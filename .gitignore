@@ -1,0 +1,7 @@
+driver/*.cmd
+driver/*.mod.c
+driver/*.o
+driver/.tmp_versions
+driver/Module.symvers
+driver/gator.ko
+driver/modules.order
