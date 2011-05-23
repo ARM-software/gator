@@ -19,6 +19,7 @@ Required Kernel Changes (depending on the kernel version, the location of these 
     - [*] Trace process context switches and events
 - Kernel Features
   - [*] High Resolution Timer Support
+  - [*] Use local timer interrupts (only required for SMP)
 
 The "context switches and events" option will not be available if other trace configurations are enabled. Other trace configurations being enabled is sufficient to turn on context switches and events.
 
@@ -32,7 +33,7 @@ make -j5 ARCH=arm CROSS_COMPILE=${CROSS_TOOLS}/bin/arm-none-linux-gnueabi- uImag
 *** Building the gator module ***
 
 To create the gator.ko module,
-	cd /ds-5-install-directory/arm/src
+	cd /ds-5-install-directory/arm/gator/src
 	tar xzf gator-driver.tar.gz
 	cd gator-driver
 	make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
@@ -50,7 +51,7 @@ Recommended compiler settings:
 *** Running gator ***
 
 Load the kernel onto the target and copy gatord and gator.ko into the target's filesystem.
-gatord is located in <installdir>/arm/armv5t/.
+gatord is located in <installdir>/arm/gator/.
 Ensure gatord has execute permissions
 	chmod +x gatord
 gator.ko must be located in the same directory as gatord on the target.

@@ -7,7 +7,7 @@
  *
  */
 
-static unsigned long gator_protocol_version = 3;
+static unsigned long gator_protocol_version = 4;
 
 #include "gator.h"
 #include <linux/slab.h>
@@ -15,6 +15,9 @@ static unsigned long gator_protocol_version = 3;
 #include <linux/sched.h>
 #include <linux/irq.h>
 #include <linux/vmalloc.h>
+#include <linux/hardirq.h>
+#include <linux/highmem.h>
+#include <linux/pagemap.h>
 #include <asm/uaccess.h>
 
 #ifndef CONFIG_GENERIC_TRACER
@@ -31,6 +34,12 @@ static unsigned long gator_protocol_version = 3;
 #warning gator requires the kernel to have CONFIG_HIGH_RES_TIMERS defined
 #endif
 
+#ifdef CONFIG_SMP
+#ifndef CONFIG_LOCAL_TIMERS
+#warning gator requires the kernel to have CONFIG_LOCAL_TIMERS defined on SMP systems
+#endif
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
 #error kernels prior to 2.6.32 are not supported
 #endif
@@ -38,7 +47,7 @@ static unsigned long gator_protocol_version = 3;
 /******************************************************************************
  * DEFINES
  ******************************************************************************/
-#define BUFFER_SIZE_DEFAULT		262144
+#define BUFFER_SIZE_DEFAULT		(256*1024)
 #define SYNC_FREQ_DEFAULT		1000
 
 #define NO_COOKIE				0UL
@@ -280,13 +289,15 @@ static void gator_add_trace(int cpu, unsigned int address)
 
 static void gator_add_sample(int cpu, struct pt_regs * const regs)
 {
+	struct module *mod;
+	unsigned int addr, cookie = 0;
 	int inKernel = regs ? !user_mode(regs) : 1;
-	unsigned long cookie = !inKernel ? get_exec_cookie(cpu, current) : NO_COOKIE;
+	unsigned long exec_cookie = !inKernel ? get_exec_cookie(cpu, current) : NO_COOKIE;
 
 	gator_buffer_write_packed_int(cpu, PROTOCOL_START_BACKTRACE);
 
 	// TGID::PID::inKernel
-	gator_buffer_write_packed_int(cpu, cookie);
+	gator_buffer_write_packed_int(cpu, exec_cookie);
 	gator_buffer_write_packed_int(cpu, (unsigned int)current->tgid);
 	gator_buffer_write_packed_int(cpu, (unsigned int)current->pid);
 	gator_buffer_write_packed_int(cpu, inKernel);
@@ -294,8 +305,14 @@ static void gator_add_sample(int cpu, struct pt_regs * const regs)
 	// get_irq_regs() will return NULL outside of IRQ context (e.g. nested IRQ)
 	if (regs) {
 		if (inKernel) {
-			gator_buffer_write_packed_int(cpu, PC_REG & ~1);
-			gator_buffer_write_packed_int(cpu, 0); // cookie
+			addr = PC_REG;
+			mod = __module_address(addr);
+			if (mod) {
+				cookie = get_cookie(cpu, current, NULL, mod);
+				addr = addr - (unsigned long)mod->module_core;
+			}
+			gator_buffer_write_packed_int(cpu, addr & ~1);
+			gator_buffer_write_packed_int(cpu, cookie);
 		} else {
 			// Cookie+PC
 			gator_add_trace(cpu, PC_REG);
@@ -739,12 +756,10 @@ static int gator_op_start(void)
 
 	mutex_lock(&start_mutex);
 
-	if (gator_started || gator_start())
+	if (gator_started || gator_start() || cookies_initialize())
 		err = -EINVAL;
 	else
 		gator_started = 1;
-
-	cookies_initialize();
 
 	mutex_unlock(&start_mutex);
 

@@ -23,17 +23,6 @@ static char *annotateBuf1;
 static int annotatePos;
 static int annotateSel;
 
-static int gatorfs_copy_from_user(char* localbuf, char const __user *buf, size_t count)
-{
-	if (count == 0)
-		return 0;
-
-	if (copy_from_user(localbuf, buf, count))
-		return -EFAULT;
-
-	return 0;
-}
-
 static ssize_t annotate_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
 	char tempBuffer[32];
@@ -51,7 +40,7 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 		return 0;
 
 	// copy from user space
-	retval = gatorfs_copy_from_user(tempBuffer, buf, size);
+	retval = copy_from_user(tempBuffer, buf, size);
 	if (retval == 0) {
 		// synchronize shared variables annotateBuf and annotatePos
 		spin_lock_irqsave(&annotate_lock, flags);
@@ -68,6 +57,8 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 
 		// return the number of bytes written
 		retval = size;
+	} else {
+		retval = -EINVAL;
 	}
 
 	return retval;
@@ -101,13 +92,14 @@ int gator_annotate_start(void)
 
 void gator_annotate_stop(void)
 {
-	spin_lock(&annotate_lock);
+	unsigned long flags;
+	spin_lock_irqsave(&annotate_lock, flags);
 
 	kfree(annotateBuf0);
 	kfree(annotateBuf1);
 	annotateBuf = annotateBuf0 = annotateBuf1 = NULL;
 
-	spin_unlock(&annotate_lock);
+	spin_unlock_irqrestore(&annotate_lock, flags);
 }
 
 int gator_annotate_read(int **buffer)

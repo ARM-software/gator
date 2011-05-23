@@ -136,6 +136,7 @@ static void gator_events_net_stop(void)
 static int gator_events_net_read(int **buffer)
 {
 	int len, drv_delta, rx_delta, tx_delta;
+	static int last_drv_delta = 0, last_rx_delta = 0, last_tx_delta = 0;
 
 	if (raw_smp_processor_id() != 0)
 		return 0;
@@ -144,17 +145,20 @@ static int gator_events_net_read(int **buffer)
 	calculate_delta(&drv_delta, &rx_delta, &tx_delta);
 
 	len = 0;
-	if (netdrv_enabled) {
+	if (netdrv_enabled && last_drv_delta != drv_delta) {
+		last_drv_delta = drv_delta;
 		netGet[len++] = netdrv_key;
 		netGet[len++] = drv_delta;
 	}
 
-	if (netrx_enabled) {
+	if (netrx_enabled && last_rx_delta != rx_delta) {
+		last_rx_delta = rx_delta;
 		netGet[len++] = netrx_key;
 		netGet[len++] = rx_delta;
 	}
 
-	if (nettx_enabled) {
+	if (nettx_enabled && last_tx_delta != tx_delta) {
+		last_tx_delta = tx_delta;
 		netGet[len++] = nettx_key;
 		netGet[len++] = tx_delta;
 	}
