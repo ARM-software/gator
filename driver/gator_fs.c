@@ -20,8 +20,6 @@
 #define TMPBUFSIZE 50
 DEFINE_SPINLOCK(gatorfs_lock);
 
-void gator_op_create_files(struct super_block *sb, struct dentry *root);
-
 static struct inode *gatorfs_get_inode(struct super_block *sb, int mode)
 {
 	struct inode *inode = new_inode(sb);

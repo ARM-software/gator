@@ -101,22 +101,6 @@ static int gator_events_net_create_files(struct super_block *sb, struct dentry *
 	return 0;
 }
 
-static int gator_events_net_init(int *key)
-{
-	netdrv_key = *key;
-	*key = *key + 1;
-	netrx_key = *key;
-	*key = *key + 1;
-	nettx_key = *key;
-	*key = *key + 1;
-
-	netdrv_enabled = 0;
-	netrx_enabled = 0;
-	nettx_enabled = 0;
-
-	return 0;
-}
-
 static int gator_events_net_start(void)
 {
 	get_network_stats(NULL);
@@ -138,7 +122,7 @@ static int gator_events_net_read(int **buffer)
 	int len, drv_delta, rx_delta, tx_delta;
 	static int last_drv_delta = 0, last_rx_delta = 0, last_tx_delta = 0;
 
-	if (raw_smp_processor_id() != 0)
+	if (smp_processor_id() != 0)
 		return 0;
 
 	schedule_work(&wq_get_stats);
@@ -169,12 +153,25 @@ static int gator_events_net_read(int **buffer)
 	return len;
 }
 
-int gator_events_net_install(gator_interface *gi) {
-	gi->create_files = gator_events_net_create_files;
-	gi->init = gator_events_net_init;
-	gi->start = gator_events_net_start;
-	gi->stop = gator_events_net_stop;
-	gi->read = gator_events_net_read;
+static struct gator_interface gator_events_net_interface = {
+	.create_files = gator_events_net_create_files,
+	.start = gator_events_net_start,
+	.stop = gator_events_net_stop,
+	.read = gator_events_net_read,
+};
+
+int gator_events_net_init(void)
+{
 	gator_net_traffic++;
-	return 0;
+
+	netdrv_key = gator_events_get_key();
+	netrx_key = gator_events_get_key();
+	nettx_key = gator_events_get_key();
+
+	netdrv_enabled = 0;
+	netrx_enabled = 0;
+	nettx_enabled = 0;
+
+	return gator_events_install(&gator_events_net_interface);
 }
+gator_events_init(gator_events_net_init);

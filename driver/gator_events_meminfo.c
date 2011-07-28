@@ -69,20 +69,6 @@ static int gator_events_meminfo_create_files(struct super_block *sb, struct dent
 	return 0;
 }
 
-static int gator_events_meminfo_init(int *key)
-{
-	int i;
-
-	meminfo_global_enabled = 0;
-	for (i = 0; i < MEMINFO_TOTAL; i++) {
-		meminfo_enabled[i] = 0;
-		meminfo_key[i] = *key;
-		*key = *key + 1;
-	}
-
-	return 0;
-}
-
 static int gator_events_meminfo_start(void)
 {
 	int i;
@@ -187,11 +173,23 @@ static int gator_events_meminfo_read(int **buffer)
 	return meminfo_length;
 }
 
-int gator_events_meminfo_install(gator_interface *gi) {
-	gi->create_files = gator_events_meminfo_create_files;
-	gi->init = gator_events_meminfo_init;
-	gi->start = gator_events_meminfo_start;
-	gi->stop = gator_events_meminfo_stop;
-	gi->read = gator_events_meminfo_read;
-	return 0;
+static struct gator_interface gator_events_meminfo_interface = {
+	.create_files = gator_events_meminfo_create_files,
+	.start = gator_events_meminfo_start,
+	.stop = gator_events_meminfo_stop,
+	.read = gator_events_meminfo_read,
+};
+
+int gator_events_meminfo_init(void)
+{
+	int i;
+
+	meminfo_global_enabled = 0;
+	for (i = 0; i < MEMINFO_TOTAL; i++) {
+		meminfo_enabled[i] = 0;
+		meminfo_key[i] = gator_events_get_key();
+	}
+
+	return gator_events_install(&gator_events_meminfo_interface);
 }
+gator_events_init(gator_events_meminfo_init);

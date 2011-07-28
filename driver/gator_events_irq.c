@@ -30,7 +30,7 @@ GATOR_DEFINE_PROBE(irq_handler_exit, TP_PROTO(int irq,
 	// disable interrupts to synchronize with gator_events_irq_read()
 	// spinlocks not needed since percpu buffers are used
 	local_irq_save(flags);
-	per_cpu(irqCnt, raw_smp_processor_id())[HARDIRQ]++;
+	per_cpu(irqCnt, smp_processor_id())[HARDIRQ]++;
 	local_irq_restore(flags);
 }
 
@@ -45,7 +45,7 @@ GATOR_DEFINE_PROBE(softirq_exit, TP_PROTO(unsigned int vec_nr))
 	// disable interrupts to synchronize with gator_events_irq_read()
 	// spinlocks not needed since percpu buffers are used
 	local_irq_save(flags);
-	per_cpu(irqCnt, raw_smp_processor_id())[SOFTIRQ]++;
+	per_cpu(irqCnt, smp_processor_id())[SOFTIRQ]++;
 	local_irq_restore(flags);
 }
 
@@ -68,19 +68,6 @@ static int gator_events_irq_create_files(struct super_block *sb, struct dentry *
 	}
 	gatorfs_create_ulong(sb, dir, "enabled", &softirq_enabled);
 	gatorfs_create_ro_ulong(sb, dir, "key", &softirq_key);
-
-	return 0;
-}
-
-static int gator_events_irq_init(int *key)
-{
-	hardirq_key = *key;
-	*key = *key + 1;
-	softirq_key = *key;
-	*key = *key + 1;
-
-	hardirq_enabled = 0;
-	softirq_enabled = 0;
 
 	return 0;
 }
@@ -131,7 +118,7 @@ static int gator_events_irq_read(int **buffer)
 {
 	unsigned long flags;
 	int len, value;
-	int cpu = raw_smp_processor_id();
+	int cpu = smp_processor_id();
 
 	len = 0;
 	if (hardirq_enabled) {
@@ -164,11 +151,21 @@ static int gator_events_irq_read(int **buffer)
 	return len;
 }
 
-int gator_events_irq_install(gator_interface *gi) {
-	gi->create_files = gator_events_irq_create_files;
-	gi->init = gator_events_irq_init;
-	gi->start = gator_events_irq_start;
-	gi->stop = gator_events_irq_stop;
-	gi->read = gator_events_irq_read;
-	return 0;
+static struct gator_interface gator_events_irq_interface = {
+	.create_files = gator_events_irq_create_files,
+	.start = gator_events_irq_start,
+	.stop = gator_events_irq_stop,
+	.read = gator_events_irq_read,
+};
+
+int gator_events_irq_init(void)
+{
+	hardirq_key = gator_events_get_key();
+	softirq_key = gator_events_get_key();
+
+	hardirq_enabled = 0;
+	softirq_enabled = 0;
+
+	return gator_events_install(&gator_events_irq_interface);
 }
+gator_events_init(gator_events_irq_init);

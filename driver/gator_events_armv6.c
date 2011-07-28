@@ -8,15 +8,11 @@
 
 #include "gator.h"
 
-#if defined(__arm__)
-
 #define ARM1136		0xb36
 #define ARM1156		0xb56
 #define ARM1176		0xb76
 
 static const char *pmnc_name;
-
-extern u32 gator_cpuid(void);
 
 /*
  * Per-CPU PMCR
@@ -99,20 +95,6 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 	return 0;
 }
 
-static int gator_events_armv6_init(int *key)
-{
-	unsigned int cnt;
-
-	for (cnt = PMN0; cnt <= CCNT; cnt++) {
-		pmnc_enabled[cnt] = 0;
-		pmnc_event[cnt] = 0;
-		pmnc_key[cnt] = *key;
-		*key = *key + 1;
-	}
-
-	return 0;
-}
-
 static void gator_events_armv6_online(void)
 {
 	unsigned int cnt;
@@ -130,7 +112,7 @@ static void gator_events_armv6_online(void)
 	for (pmnc = 0, cnt = PMN0; cnt <= CCNT; cnt++) {
 		unsigned long event;
 
-		per_cpu(perfPrev, raw_smp_processor_id())[cnt] = 0;
+		per_cpu(perfPrev, smp_processor_id())[cnt] = 0;
 
 		if (!pmnc_enabled[cnt])
 			continue;
@@ -177,7 +159,7 @@ static void gator_events_armv6_stop(void)
 static int gator_events_armv6_read(int **buffer)
 {
 	int cnt, len = 0;
-	int cpu = raw_smp_processor_id();
+	int cpu = smp_processor_id();
 
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		if (pmnc_enabled[cnt]) {
@@ -208,10 +190,19 @@ static int gator_events_armv6_read(int **buffer)
 
 	return len;
 }
-#endif
 
-int gator_events_armv6_install(gator_interface *gi) {
-#if defined(__arm__)
+static struct gator_interface gator_events_armv6_interface = {
+	.create_files = gator_events_armv6_create_files,
+	.stop = gator_events_armv6_stop,
+	.online = gator_events_armv6_online,
+	.offline = gator_events_armv6_offline,
+	.read = gator_events_armv6_read,
+};
+
+int gator_events_armv6_init(void)
+{
+	unsigned int cnt;
+
 	switch (gator_cpuid()) {
 	case ARM1136:
 	case ARM1156:
@@ -222,12 +213,12 @@ int gator_events_armv6_install(gator_interface *gi) {
 		return -1;
 	}
 
-	gi->create_files = gator_events_armv6_create_files;
-	gi->init = gator_events_armv6_init;
-	gi->stop = gator_events_armv6_stop;
-	gi->online = gator_events_armv6_online;
-	gi->offline = gator_events_armv6_offline;
-	gi->read = gator_events_armv6_read;
-#endif
-	return 0;
+	for (cnt = PMN0; cnt <= CCNT; cnt++) {
+		pmnc_enabled[cnt] = 0;
+		pmnc_event[cnt] = 0;
+		pmnc_key[cnt] = gator_events_get_key();
+	}
+
+	return gator_events_install(&gator_events_armv6_interface);
 }
+gator_events_init(gator_events_armv6_init);

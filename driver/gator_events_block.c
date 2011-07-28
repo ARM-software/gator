@@ -33,7 +33,7 @@ GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct r
 {
 	unsigned long flags;
 	int write, size;
-	int cpu = raw_smp_processor_id();
+	int cpu = smp_processor_id();
 
 	if (!rq)
 		return;
@@ -79,19 +79,6 @@ static int gator_events_block_create_files(struct super_block *sb, struct dentry
 	return 0;
 }
 
-static int gator_events_block_init(int *key)
-{
-	block_rq_wr_enabled = 0;
-	block_rq_rd_enabled = 0;
-
-	block_rq_wr_key = *key;
-	*key = *key + 1;
-	block_rq_rd_key = *key;
-	*key = *key + 1;
-
-	return 0;
-}
-
 static int gator_events_block_start(void)
 {
 	int cpu;
@@ -128,7 +115,7 @@ static int gator_events_block_read(int **buffer)
 {
 	unsigned long flags;
 	int len, value, cpu, data = 0;
-	cpu = raw_smp_processor_id();
+	cpu = smp_processor_id();
 
 	if (per_cpu(new_data_avail, cpu) == false)
 		return 0;
@@ -164,11 +151,21 @@ static int gator_events_block_read(int **buffer)
 	return len;
 }
 
-int gator_events_block_install(gator_interface *gi) {
-	gi->create_files = gator_events_block_create_files;
-	gi->init = gator_events_block_init;
-	gi->start = gator_events_block_start;
-	gi->stop = gator_events_block_stop;
-	gi->read = gator_events_block_read;
-	return 0;
+static struct gator_interface gator_events_block_interface = {
+	.create_files = gator_events_block_create_files,
+	.start = gator_events_block_start,
+	.stop = gator_events_block_stop,
+	.read = gator_events_block_read,
+};
+
+int gator_events_block_init(void)
+{
+	block_rq_wr_enabled = 0;
+	block_rq_rd_enabled = 0;
+
+	block_rq_wr_key = gator_events_get_key();
+	block_rq_rd_key = gator_events_get_key();
+
+	return gator_events_install(&gator_events_block_interface);
 }
+gator_events_init(gator_events_block_init);

@@ -4,4 +4,5 @@ driver/*.o
 driver/.tmp_versions
 driver/Module.symvers
 driver/gator.ko
+driver/gator_events.h
 driver/modules.order

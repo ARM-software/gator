@@ -29,7 +29,7 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_
 	// disable interrupts to synchronize with gator_events_sched_read()
 	// spinlocks not needed since percpu buffers are used
 	local_irq_save(flags);
-	per_cpu(schedCnt, raw_smp_processor_id())[SCHED_SWITCH]++;
+	per_cpu(schedCnt, smp_processor_id())[SCHED_SWITCH]++;
 	local_irq_restore(flags);
 }
 
@@ -44,16 +44,6 @@ static int gator_events_sched_create_files(struct super_block *sb, struct dentry
 	}
 	gatorfs_create_ulong(sb, dir, "enabled", &sched_switch_enabled);
 	gatorfs_create_ro_ulong(sb, dir, "key", &sched_switch_key);
-
-	return 0;
-}
-
-static int gator_events_sched_init(int *key)
-{
-	sched_switch_enabled = 0;
-
-	sched_switch_key = *key;
-	*key = *key + 1;
 
 	return 0;
 }
@@ -88,7 +78,7 @@ static int gator_events_sched_read(int **buffer)
 {
 	unsigned long flags;
 	int len, value;
-	int cpu = raw_smp_processor_id();
+	int cpu = smp_processor_id();
 
 	len = 0;
 	if (sched_switch_enabled) {
@@ -106,11 +96,19 @@ static int gator_events_sched_read(int **buffer)
 	return len;
 }
 
-int gator_events_sched_install(gator_interface *gi) {
-	gi->create_files = gator_events_sched_create_files;
-	gi->init = gator_events_sched_init;
-	gi->start = gator_events_sched_start;
-	gi->stop = gator_events_sched_stop;
-	gi->read = gator_events_sched_read;
-	return 0;
+static struct gator_interface gator_events_sched_interface = {
+	.create_files = gator_events_sched_create_files,
+	.start = gator_events_sched_start,
+	.stop = gator_events_sched_stop,
+	.read = gator_events_sched_read,
+};
+
+int gator_events_sched_init(void)
+{
+	sched_switch_enabled = 0;
+
+	sched_switch_key = gator_events_get_key();
+
+	return gator_events_install(&gator_events_sched_interface);
 }
+gator_events_init(gator_events_sched_init);

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010  ARM, Ltd.
+ * Copyright (C) ARM Limited 2010-2011. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,6 +12,7 @@
 #include <linux/version.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/list.h>
 
 /******************************************************************************
  * Filesystem
@@ -27,6 +28,8 @@ int gatorfs_create_ulong(struct super_block *sb, struct dentry *root,
 
 int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 	char const *name, unsigned long *val);
+
+void gator_op_create_files(struct super_block *sb, struct dentry *root);
 
 /******************************************************************************
  * Tracepoints
@@ -52,21 +55,25 @@ int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 /******************************************************************************
  * Events
  ******************************************************************************/
-struct __gator_interface {
+struct gator_interface {
 	int  (*create_files)(struct super_block *sb, struct dentry *root);
-	int  (*init)(int *key);
 	int  (*start)(void);
 	void (*stop)(void);
 	void (*online)(void);
 	void (*offline)(void);
 	int  (*read)(int **buffer);
-	struct __gator_interface *next;
+	struct list_head list;
 };
 
-typedef struct __gator_interface gator_interface;
+#define gator_events_init(initfn) \
+	static inline int __gator_events_init_test(void) \
+	{ return initfn(); }
 
-int gator_event_install(int (*event_install)(gator_interface *));
+int gator_events_install(struct gator_interface *interface);
+int gator_events_get_key(void);
+extern u32 gator_cpuid(void);
 
 extern unsigned long gator_net_traffic;
+
 
 #endif // GATOR_H_

@@ -57,7 +57,7 @@ static uint32_t gator_chksum_crc32(char *data)
  */
 static uint32_t cookiemap_exists(uint64_t key) {
 	unsigned long x, flags, retval = 0;
-	int cpu = raw_smp_processor_id();
+	int cpu = smp_processor_id();
 	uint32_t cookiecode = cookiemap_code(key);
 	uint64_t *keys = &(per_cpu(cookie_keys, cpu)[cookiecode]);
 	uint32_t *values = &(per_cpu(cookie_values, cpu)[cookiecode]);
@@ -88,7 +88,7 @@ static uint32_t cookiemap_exists(uint64_t key) {
  *  Post: [v][0][1][2]..[n-2]
  */
 static void cookiemap_add(uint64_t key, uint32_t value) {
-	int cpu = raw_smp_processor_id();
+	int cpu = smp_processor_id();
 	int cookiecode = cookiemap_code(key);
 	uint64_t *keys = &(per_cpu(cookie_keys, cpu)[cookiecode]);
 	uint32_t *values = &(per_cpu(cookie_values, cpu)[cookiecode]);
