@@ -8,10 +8,6 @@
 
 #include "gator.h"
 
-#define ARM1136		0xb36
-#define ARM1156		0xb56
-#define ARM1176		0xb76
-
 static const char *pmnc_name;
 
 /*
@@ -29,9 +25,10 @@ static const char *pmnc_name;
 #define CCNT 2
 #define CNTMAX	(CCNT+1)
 
-static int pmnc_count = 0;
+static int pmnc_counters = 0;
 static unsigned long pmnc_enabled[CNTMAX];
 static unsigned long pmnc_event[CNTMAX];
+static unsigned long pmnc_count[CNTMAX];
 static unsigned long pmnc_key[CNTMAX];
 
 static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
@@ -72,7 +69,7 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 	struct dentry *dir;
 	int i;
 
-	pmnc_count = 3;
+	pmnc_counters = 3;
 
 	for (i = PMN0; i <= CCNT; i++) {
 		char buf[40];
@@ -86,10 +83,11 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 			return -1;
 		}
 		gatorfs_create_ulong(sb, dir, "enabled", &pmnc_enabled[i]);
+		gatorfs_create_ulong(sb, dir, "count", &pmnc_count[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);
 		if (i != CCNT) {
 			gatorfs_create_ulong(sb, dir, "event", &pmnc_event[i]);
 		}
-		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);
 	}
 
 	return 0;
@@ -119,18 +117,14 @@ static void gator_events_armv6_online(void)
 
 		event = pmnc_event[cnt] & 255;
 
-		/*
-		 * Set event (if destined for PMNx counters)
-		 */
+		// Set event (if destined for PMNx counters)
 		if (cnt == PMN0) {
 			pmnc |= event << 20;
 		} else if (cnt == PMN1) {
 			pmnc |= event << 12;
 		}
 
-		/*
-		 * Reset counter
-		 */
+		// Reset counter
 		armv6_pmnc_reset_counter(cnt);
 	}
 	armv6_pmnc_write(pmnc | PMCR_E);
@@ -146,6 +140,20 @@ static void gator_events_armv6_offline(void)
 	}
 }
 
+static int gator_events_armv6_start(void)
+{
+	int cnt;
+
+	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
+		if (pmnc_count[cnt] > 0) {
+			pr_err("gator: event based sampling not supported on ARM v6 architectures\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static void gator_events_armv6_stop(void)
 {
 	unsigned int cnt;
@@ -153,6 +161,7 @@ static void gator_events_armv6_stop(void)
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
+		pmnc_count[cnt] = 0;
 	}
 }
 
@@ -193,6 +202,7 @@ static int gator_events_armv6_read(int **buffer)
 
 static struct gator_interface gator_events_armv6_interface = {
 	.create_files = gator_events_armv6_create_files,
+	.start = gator_events_armv6_start,
 	.stop = gator_events_armv6_stop,
 	.online = gator_events_armv6_online,
 	.offline = gator_events_armv6_offline,
@@ -209,6 +219,9 @@ int gator_events_armv6_init(void)
 	case ARM1176:
 		pmnc_name = "ARM11";
 		break;
+	case ARM11MPCORE:
+		pmnc_name = "ARM11MPCore";
+		break;
 	default:
 		return -1;
 	}
@@ -216,6 +229,7 @@ int gator_events_armv6_init(void)
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
+		pmnc_count[cnt] = 0;
 		pmnc_key[cnt] = gator_events_get_key();
 	}
 

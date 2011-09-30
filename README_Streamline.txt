@@ -41,10 +41,14 @@ Note: Configurations may not be supported on all targets
 
 make -j5 ARCH=arm CROSS_COMPILE=${CROSS_TOOLS}/bin/arm-none-linux-gnueabi- uImage
 
+*** Checking the gator requirements ***
+
+(optional) Use the hrtimer_module utility to validate the kernel High Resolution Timer requirement.
+
 *** Building the gator module ***
 
 To create the gator.ko module,
-	cd /ds-5-install-directory/arm/gator/src
+	cd /ds-5-install-directory/arm/gator/driver-src
 	tar xzf gator-driver.tar.gz
 	cd gator-driver
 	make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
@@ -62,7 +66,7 @@ Recommended compiler settings:
 *** Running gator ***
 
 Load the kernel onto the target and copy gatord and gator.ko into the target's filesystem.
-gatord is located in <installdir>/arm/gator/.
+gatord is located in <installdir>/arm/gator/linux or <installdir>/arm/gator/android or can be built from source.
 Ensure gatord has execute permissions
 	chmod +x gatord
 gator.ko must be located in the same directory as gatord on the target.
@@ -90,4 +94,4 @@ update-rc.d rungator.sh defaults
 
 *** GPL License ***
 
-For license information, please see the file LICENSE.
+For license information, please see the file LICENSE after unzipping driver-src/gator-driver.tar.gz.

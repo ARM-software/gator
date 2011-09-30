@@ -19,7 +19,7 @@
 static ulong meminfo_global_enabled;
 static ulong meminfo_enabled[MEMINFO_TOTAL];
 static ulong meminfo_key[MEMINFO_TOTAL];
-static int meminfo_buffer[MEMINFO_TOTAL * 2];
+static unsigned long long meminfo_buffer[MEMINFO_TOTAL * 2];
 static int meminfo_length = 0;
 static unsigned int mem_event = 0;
 static bool new_data_avail;
@@ -120,7 +120,8 @@ static void gator_events_meminfo_stop(void)
 static void wq_sched_handler(struct work_struct *wsptr)
 {
 	struct sysinfo info;
-	int i, len, value;
+	int i, len;
+	unsigned long long value;
 
 	meminfo_length = len = 0;
 
@@ -141,7 +142,7 @@ static void wq_sched_handler(struct work_struct *wsptr)
 				value = 0;
 				break;
 			}
-			meminfo_buffer[len++] = meminfo_key[i];
+			meminfo_buffer[len++] = (unsigned long long)meminfo_key[i];
 			meminfo_buffer[len++] = value;
 		}
 	}
@@ -150,7 +151,7 @@ static void wq_sched_handler(struct work_struct *wsptr)
 	new_data_avail = true;
 }
 
-static int gator_events_meminfo_read(int **buffer)
+static int gator_events_meminfo_read(long long **buffer)
 {
 	static unsigned int last_mem_event = 0;
 
@@ -177,7 +178,7 @@ static struct gator_interface gator_events_meminfo_interface = {
 	.create_files = gator_events_meminfo_create_files,
 	.start = gator_events_meminfo_start,
 	.stop = gator_events_meminfo_stop,
-	.read = gator_events_meminfo_read,
+	.read64 = gator_events_meminfo_read,
 };
 
 int gator_events_meminfo_init(void)

@@ -1,3 +1,6 @@
+daemon/*.o
+daemon/events.xml
+daemon/gatord
 driver/*.cmd
 driver/*.mod.c
 driver/*.o

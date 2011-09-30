@@ -15,7 +15,7 @@ struct frame_tail_eabi {
 	unsigned long lr;
 };
 
-static void arm_backtrace_eabi(int cpu, struct pt_regs * const regs, unsigned int depth)
+static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs, unsigned int depth)
 {
 #if defined(__arm__)
 	struct frame_tail_eabi *tail;
@@ -31,7 +31,7 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs * const regs, unsigned in
 	}
 
 	/* entry preamble may not have executed */
-	gator_add_trace(cpu, lr);
+	gator_add_trace(cpu, buftype, lr);
 
 	/* check tail is valid */
 	if (fp == 0) {
@@ -49,7 +49,7 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs * const regs, unsigned in
 		ptrtail = &buftail;
 
 		lr = ptrtail[0].lr;
-		gator_add_trace(cpu, lr);
+		gator_add_trace(cpu, buftype, lr);
 
 		/* frame pointers should progress back up the stack, towards higher addresses */
 		next = (struct frame_tail_eabi *)(lr - 4);

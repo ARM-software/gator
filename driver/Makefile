@@ -17,7 +17,8 @@ endif
 
 gator-$(CONFIG_ARM) +=	gator_events_armv6.o \
 			gator_events_armv7.o \
-			gator_events_pl310.o
+			gator_events_l2c-310.o \
+			gator_events_scorpion.o
 
 $(obj)/gator_main.o: gator_events.h
 
@@ -40,6 +41,6 @@ all:
 	$(error)
 
 clean:
-	rm -f *.o modules.order Module.symvers gator.ko gator.mod.c
+	rm -f *.o .*.cmd gator_events.h modules.order Module.symvers gator.ko gator.mod.c
 
 endif

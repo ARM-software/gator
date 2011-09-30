@@ -1,0 +1,16 @@
+  <category name="Linux">
+    <event counter="Linux_cpuload_user" title="CPU Load" name="User" per_cpu="yes" description="Scheduler CPU Load of User Application" operation="percentage"/>
+    <event counter="Linux_cpuload_system" title="CPU Load" name="System" per_cpu="yes" description="Scheduler CPU Load of System Behavior" operation="percentage"/>
+    <event counter="Linux_irq_softirq" title="Interrupts" name="SoftIRQ" per_cpu="yes" description="Linux SoftIRQ taken"/>
+    <event counter="Linux_irq_irq" title="Interrupts" name="IRQ" per_cpu="yes" description="Linux IRQ taken"/>
+    <event counter="Linux_block_rq_wr" title="Disk IO" name="Write" description="Disk IO Bytes Written"/>
+    <event counter="Linux_block_rq_rd" title="Disk IO" name="Read" description="Disk IO Bytes Read"/>
+    <event counter="Linux_meminfo_memused" title="Memory" name="Used" description="Total used memory size" operation="maximum"/>
+    <event counter="Linux_meminfo_memfree" title="Memory" name="Free" description="Available memory size" operation="maximum"/>
+    <event counter="Linux_meminfo_bufferram" title="Memory" name="Buffer" description="Memory used by buffers" operation="maximum"/>
+    <event counter="Linux_net_drv" title="Network" name="Gator" description="Network traffic from Gator driver"/>
+    <event counter="Linux_net_rx" title="Network" name="Receive" description="Receive network traffic, excluding effect from Streamline"/>
+    <event counter="Linux_net_tx" title="Network" name="Transmit" description="Transmit network traffic, excluding effect from Streamline"/>
+    <event counter="Linux_sched_switch" title="Scheduler" name="Switch" description="Context switch events"/>
+  </category>
+  

@@ -14,6 +14,16 @@
 #include <linux/mm.h>
 #include <linux/list.h>
 
+// cpu ids
+#define ARM1136		0xb36
+#define ARM1156		0xb56
+#define ARM1176		0xb76
+#define ARM11MPCORE 0xb02
+#define CORTEX_A5	0xc05
+#define CORTEX_A8	0xc08
+#define CORTEX_A9	0xc09
+#define CORTEX_A15	0xc0f
+
 /******************************************************************************
  * Filesystem
  ******************************************************************************/
@@ -62,6 +72,7 @@ struct gator_interface {
 	void (*online)(void);
 	void (*offline)(void);
 	int  (*read)(int **buffer);
+	int  (*read64)(long long **buffer);
 	struct list_head list;
 };
 
@@ -74,6 +85,5 @@ int gator_events_get_key(void);
 extern u32 gator_cpuid(void);
 
 extern unsigned long gator_net_traffic;
-
 
 #endif // GATOR_H_

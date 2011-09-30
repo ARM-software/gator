@@ -12,7 +12,7 @@
 #define SCORPIONMP	0x2d
 
 static const char *pmnc_name;
-static int pmnc_count;
+static int pmnc_counters;
 
 // Per-CPU PMNC: config reg
 #define PMNC_E		(1 << 0)	/* Enable all counters */
@@ -32,6 +32,7 @@ static int pmnc_count;
 
 static unsigned long pmnc_enabled[CNTMAX];
 static unsigned long pmnc_event[CNTMAX];
+static unsigned long pmnc_count[CNTMAX];
 static unsigned long pmnc_key[CNTMAX];
 
 static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
@@ -209,6 +210,10 @@ static const struct scorp_evt sc_evt[] = {
 	{SCORPION_EXCEPTIONS_UNDERFLOW, 0x80000c00, 4, 0x5d},
 	{SCORPION_EXCEPTIONS_DENORM, 0x8c000000, 4, 0x5f},
 
+#ifdef CONFIG_ARCH_MSM_SCORPIONMP
+    {SCORPIONMP_NUM_BARRIERS, 0x80000e00, 3, 0x59},
+    {SCORPIONMP_BARRIER_CYCLES, 0x800e0000, 3, 0x5a},
+#else
 	{SCORPION_BANK_AB_HIT, 0x80000001, 3, 0x58},
 	{SCORPION_BANK_AB_ACCESS, 0x80000100, 3, 0x59},
 	{SCORPION_BANK_CD_HIT, 0x80010000, 3, 0x5a},
@@ -228,6 +233,7 @@ static const struct scorp_evt sc_evt[] = {
 	{SCORPION_BANK_AB_L2_CASTOUT, 0x80000c00, 3, 0x59},
 	{SCORPION_BANK_CD_NON_CASTOUT, 0x800c0000, 3, 0x5a},
 	{SCORPION_BANK_CD_L2_CASTOUT, 0x8c000000, 3, 0x5b},
+#endif
 };
 
 static inline void scorpion_pmnc_write(u32 val)
@@ -498,7 +504,7 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 	struct dentry *dir;
 	int i;
 
-	for (i = 0; i < pmnc_count; i++) {
+	for (i = 0; i < pmnc_counters; i++) {
 		char buf[40];
 		if (i == 0) {
 			snprintf(buf, sizeof buf, "%s_ccnt", pmnc_name);
@@ -510,10 +516,11 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 			return -1;
 		}
 		gatorfs_create_ulong(sb, dir, "enabled", &pmnc_enabled[i]);
+		gatorfs_create_ulong(sb, dir, "count", &pmnc_count[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);		
 		if (i > 0) {
 			gatorfs_create_ulong(sb, dir, "event", &pmnc_event[i]);
 		}
-		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);
 	}
 
 	return 0;
@@ -565,6 +572,20 @@ static void gator_events_scorpion_offline(void)
 	// investigate: need to do the clearpmu() here on each counter?
 }
 
+static int gator_events_scorpion_start(void)
+{
+	int cnt;
+
+	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
+		if (pmnc_count[cnt] > 0) {
+			pr_err("gator: event based sampling not supported on Scorpion cores\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static void gator_events_scorpion_stop(void)
 {
 	unsigned int cnt;
@@ -572,6 +593,7 @@ static void gator_events_scorpion_stop(void)
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
+		pmnc_count[cnt] = 0;
 	}
 }
 
@@ -580,10 +602,10 @@ static int gator_events_scorpion_read(int **buffer)
 	int cnt, len = 0;
 	int cpu = smp_processor_id();
 
-	if (!pmnc_count)
+	if (!pmnc_counters)
 		return 0;
 
-	for (cnt = 0; cnt < pmnc_count; cnt++) {
+	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		if (pmnc_enabled[cnt]) {
 			int value;
 			if (cnt == CCNT) {
@@ -611,6 +633,7 @@ static int gator_events_scorpion_read(int **buffer)
 
 static struct gator_interface gator_events_scorpion_interface = {
 	.create_files = gator_events_scorpion_create_files,
+	.start = gator_events_scorpion_start,
 	.stop = gator_events_scorpion_stop,
 	.online = gator_events_scorpion_online,
 	.offline = gator_events_scorpion_offline,
@@ -636,21 +659,22 @@ int gator_events_scorpion_init(void)
 	switch (gator_cpuid()) {
 	case SCORPION:
 		pmnc_name = "Scorpion";
-		pmnc_count = 4;
+		pmnc_counters = 4;
 		break;
 	case SCORPIONMP:
 		pmnc_name = "ScorpionMP";
-		pmnc_count = 4;
+		pmnc_counters = 4;
 		break;
 	default:
 		return -1;
 	}
 
-	pmnc_count++; // CNT[n] + CCNT
+	pmnc_counters++; // CNT[n] + CCNT
 
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
+		pmnc_count[cnt] = 0;
 		pmnc_key[cnt] = gator_events_get_key();
 	}
 

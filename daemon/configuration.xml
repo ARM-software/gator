@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding='UTF-8'?>
+<configurations version="1">
+  <configuration counter="ARM_ARM11_ccnt" title="Clock" name="Cycles" color="0x800084AB" per_cpu="yes" description="The number of core clock cycles"/>
+  <configuration counter="ARM_ARM11_cnt0" event="0x7" title="Instruction" name="Executed" color="0x80008000" per_cpu="yes" description="Instructions executed"/>
+  <configuration counter="ARM_ARM11_cnt1" event="0xa" title="Cache" name="Data miss" color="0x80C92211" per_cpu="yes" description="Data cache miss, not including Cache Operations"/>
+  <configuration counter="ARM_ARM11MPCore_ccnt" title="Clock" name="Cycles" color="0x800084AB" per_cpu="yes" description="The number of core clock cycles"/>
+  <configuration counter="ARM_ARM11MPCore_cnt0" event="0x08" title="Core" name="Instructions" color="0x80008000" per_cpu="yes" description="Instructions executed"/>
+  <configuration counter="ARM_ARM11MPCore_cnt1" event="0x0b" title="Cache" name="Data read miss" color="0x000080FF" per_cpu="yes" description="Data cache miss, not including Cache Operations"/>
+  <configuration counter="ARM_Cortex-A5_ccnt" title="Clock" name="Cycles" color="0x800084AB" per_cpu="yes" event_based_sampling="yes" description="The number of core clock cycles"/>
+  <configuration counter="ARM_Cortex-A5_cnt0" event="0x8" title="Instruction" name="Executed" color="0x80008000" per_cpu="yes" event_based_sampling="yes" description="Instruction architecturally executed"/>
+  <configuration counter="ARM_Cortex-A5_cnt1" event="0x1" title="Cache" name="Instruction refill" color="0x80C92211" per_cpu="yes" event_based_sampling="yes" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
+  <configuration counter="ARM_Cortex-A8_ccnt" title="Clock" name="Cycles" color="0x800084AB" per_cpu="yes" event_based_sampling="yes" description="The number of core clock cycles"/>
+  <configuration counter="ARM_Cortex-A8_cnt0" event="0x8" title="Instruction" name="Executed" color="0x80008000" per_cpu="yes" event_based_sampling="yes" description="Instruction architecturally executed"/>
+  <configuration counter="ARM_Cortex-A8_cnt1" event="0x44" title="Cache" name="L2 miss" color="0x80C92211" per_cpu="yes" event_based_sampling="yes" description="Any cacheable miss in the L2 cache"/>
+  <configuration counter="ARM_Cortex-A8_cnt2" event="0x43" title="Cache" name="L1 miss" color="0x80FFC000" per_cpu="yes" event_based_sampling="yes" description="Any accesses to the L2 cache"/>
+  <configuration counter="ARM_Cortex-A8_cnt3" event="0x10" title="Branch" name="Mispredicted" color="0x80FFFF33" per_cpu="yes" event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
+  <configuration counter="ARM_Cortex-A9_ccnt" title="Clock" name="Cycles" color="0x800084AB" per_cpu="yes" event_based_sampling="yes" description="The number of core clock cycles"/>
+  <configuration counter="ARM_Cortex-A9_cnt0" event="0x68" title="Instruction" name="Executed" color="0x80008000" per_cpu="yes" event_based_sampling="yes" description="Counts the number of instructions going through the Register Renaming stage. This number is an approximate number of the total number of instructions speculatively executed, and even more approximate of the total number of instructions architecturally executed"/>
+  <configuration counter="ARM_Cortex-A9_cnt1" event="0x50" title="Cache" name="Coherency miss" color="0x80C92211" per_cpu="yes" event_based_sampling="yes" description="Counts the number of coherent linefill requests performed by the Cortex-A9 processor which also miss in all the other Cortex-A9 processors, meaning that the request is sent to the external memory"/>
+  <configuration counter="ARM_Cortex-A9_cnt2" event="0x51" title="Cache" name="Coherency hit" color="0x80FFC000" per_cpu="yes" event_based_sampling="yes" description="Counts the number of coherent linefill requests performed by the Cortex-A9 processor which hit in another Cortex-A9 processor, meaning that the linefill data is fetched directly from the relevant Cortex-A9 cache"/>
+  <configuration counter="ARM_Cortex-A9_cnt3" event="0x0c" title="Branch" name="PC change" color="0x809900FF" per_cpu="yes" event_based_sampling="yes" description="Software change of Program Counter, except by an exception, architecturally executed"/>
+  <configuration counter="ARM_Cortex-A9_cnt4" event="0x10" title="Branch" name="Mispredicted" color="0x80FFFF33" per_cpu="yes" event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
+  <configuration counter="ARM_Cortex-A9_cnt5" event="0x0f" title="Fault" name="Unaligned access" color="0x666666" per_cpu="yes" event_based_sampling="yes" description="Unaligned access architecturally executed"/>
+  <configuration counter="ARM_Cortex-A15_ccnt" title="Clock" name="Cycles" color="0x800084AB" per_cpu="yes" event_based_sampling="yes" description="The number of core clock cycles"/>
+  <configuration counter="ARM_Cortex-A15_cnt0" event="0x8" title="Instruction" name="Executed" color="0x80008000" per_cpu="yes" event_based_sampling="yes" description="Instruction architecturally executed"/>
+  <configuration counter="ARM_Cortex-A15_cnt1" event="0x16" title="Cache" name="L2 data access" color="0x80C92211" per_cpu="yes" event_based_sampling="yes" description="Level 2 data cache access"/>
+  <configuration counter="ARM_Cortex-A15_cnt2" event="0x10" title="Branch" name="Mispredicted" color="0x80FFFF33" per_cpu="yes" event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
+  <configuration counter="ARM_Cortex-A15_cnt3" event="0x19" title="Bus" name="Access" color="0x809900FF" per_cpu="yes" event_based_sampling="yes" description=""/>
+  <configuration counter="Linux_irq_irq" title="Interrupts" name="IRQ" color="0x805050F4" per_cpu="yes" description="Linux IRQ taken"/>
+  <configuration counter="Linux_irq_softirq" title="Interrupts" name="SoftIRQ" color="0x80FF9000" per_cpu="yes" description="Linux SoftIRQ taken"/>
+  <configuration counter="Linux_block_rq_wr" title="Disk IO" name="Write" color="0x80FF4020" description="Disk IO Bytes Written"/>
+  <configuration counter="Linux_block_rq_rd" title="Disk IO" name="Read" color="0x800090FF" description="Disk IO Bytes Read"/>
+  <configuration counter="Linux_meminfo_memused" title="Memory" name="Used" color="0x800084ab" operation="maximum" description="Total used memory size"/>
+  <configuration counter="Linux_meminfo_memfree" title="Memory" name="Free" color="0x80e9e9e9" operation="maximum" description="Available memory size"/>
+  <configuration counter="Linux_net_rx" title="Network" name="Receive" color="0x805050F4" description="Receive network traffic, excluding effect from Streamline"/>
+  <configuration counter="Linux_net_tx" title="Network" name="Transmit" color="0x80FF9000" description="Transmit network traffic, excluding effect from Streamline"/>
+  <configuration counter="Linux_cpuload_system" title="CPU Load" name="System" color="0x80FF0000" description="Scheduler CPU Load of System Behavior"/>
+  <configuration counter="Linux_cpuload_user" title="CPU Load" name="User" color="0x8000FF00" description="Scheduler CPU Load of User Application"/>
+</configurations>

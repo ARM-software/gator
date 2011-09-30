@@ -22,7 +22,7 @@ static DEFINE_PER_CPU(int, translate_buffer_read);
 static DEFINE_PER_CPU(int, translate_buffer_write);
 static DEFINE_PER_CPU(unsigned int *, translate_buffer);
 
-static inline uint32_t get_cookie(int cpu, struct task_struct *task, struct vm_area_struct *vma, struct module *mod);
+static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt);
 static void wq_cookie_handler(struct work_struct *unused);
 DECLARE_WORK(cookie_work, wq_cookie_handler);
 
@@ -96,7 +96,7 @@ static void cookiemap_add(uint64_t key, uint32_t value) {
 
 	for (x = MAX_COLLISIONS-1; x > 0; x--) {
 		keys[x] = keys[x-1];
-		values[x] = keys[x-1];
+		values[x] = values[x-1];
 	}
 	keys[0] = key;
 	values[0] = value;
@@ -126,12 +126,12 @@ static void wq_cookie_handler(struct work_struct *unused)
 	while (per_cpu(translate_buffer_read, cpu) != commit) {
 		task = (struct task_struct *)translate_buffer_read_int(cpu);
 		vma = (struct vm_area_struct *)translate_buffer_read_int(cpu);
-		cookie = get_cookie(cpu, task, vma, NULL);
+		cookie = get_cookie(cpu, TIMER_BUF, task, vma, NULL, false);
 	}
 }
 
 // Retrieve full name from proc/pid/cmdline for java processes on Android
-static int translate_app_process(char** text, int cpu, struct task_struct * task, struct vm_area_struct *vma)
+static int translate_app_process(char** text, int cpu, struct task_struct * task, struct vm_area_struct *vma, bool in_interrupt)
 {
 	void *maddr;
 	unsigned int len;
@@ -143,7 +143,9 @@ static int translate_app_process(char** text, int cpu, struct task_struct * task
 	char * buf = per_cpu(translate_text, cpu);
 
 	// Push work into a work queue if in atomic context as the kernel functions below might sleep
-	if (in_irq()) {
+	// Rely on the in_interrupt variable rather than in_irq() or in_interrupt() kernel functions, as the value of these functions seems
+	//   inconsistent during a context switch between android/linux versions
+	if (in_interrupt) {
 		// Check if already in buffer
 		ptr = per_cpu(translate_buffer_read, cpu);
 		while (ptr != per_cpu(translate_buffer_write, cpu)) {
@@ -205,7 +207,7 @@ out:
 	return retval;
 }
 
-static inline uint32_t get_cookie(int cpu, struct task_struct *task, struct vm_area_struct *vma, struct module *mod)
+static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt)
 {
 	unsigned long flags, cookie;
 	struct path *path;
@@ -235,26 +237,26 @@ static inline uint32_t get_cookie(int cpu, struct task_struct *task, struct vm_a
 	}
 
 	if (strcmp(text, "app_process") == 0 && !mod) {
-		if (!translate_app_process(&text, cpu, task, vma))
+		if (!translate_app_process(&text, cpu, task, vma, in_interrupt))
 			return INVALID_COOKIE;
 	}
 
-	// Can be called from interrupt handler or from work queue
+	// Can be called from interrupt handler or from work queue or from scheduler trace
 	local_irq_save(flags);
 
 	cookie = per_cpu(cookie_next_key, cpu)+=nr_cpu_ids;
 	cookiemap_add(key, cookie);
 
-	gator_buffer_write_packed_int(cpu, PROTOCOL_COOKIE);
-	gator_buffer_write_packed_int(cpu, cookie);
-	gator_buffer_write_string(cpu, text);
+	gator_buffer_write_packed_int(cpu, buftype, MESSAGE_COOKIE);
+	gator_buffer_write_packed_int(cpu, buftype, cookie);
+	gator_buffer_write_string(cpu, buftype, text);
 
 	local_irq_restore(flags);
 
 	return cookie;
 }
 
-static int get_exec_cookie(int cpu, struct task_struct *task)
+static int get_exec_cookie(int cpu, int buftype, struct task_struct *task)
 {
 	unsigned long cookie = NO_COOKIE;
 	struct mm_struct *mm = task->mm;
@@ -268,14 +270,14 @@ static int get_exec_cookie(int cpu, struct task_struct *task)
 			continue;
 		if (!(vma->vm_flags & VM_EXECUTABLE))
 			continue;
-		cookie = get_cookie(cpu, task, vma, NULL);
+		cookie = get_cookie(cpu, buftype, task, vma, NULL, true);
 		break;
 	}
 
 	return cookie;
 }
 
-static unsigned long get_address_cookie(int cpu, struct task_struct *task, unsigned long addr, off_t *offset)
+static unsigned long get_address_cookie(int cpu, int buftype, struct task_struct *task, unsigned long addr, off_t *offset)
 {
 	unsigned long cookie = NO_COOKIE;
 	struct mm_struct *mm = task->mm;
@@ -289,7 +291,7 @@ static unsigned long get_address_cookie(int cpu, struct task_struct *task, unsig
 			continue;
 
 		if (vma->vm_file) {
-			cookie = get_cookie(cpu, task, vma, NULL);
+			cookie = get_cookie(cpu, buftype, task, vma, NULL, true);
 			*offset = (vma->vm_pgoff << PAGE_SHIFT) + addr - vma->vm_start;
 		} else {
 			/* must be an anonymous map */
@@ -318,10 +320,18 @@ static int cookies_initialize(void)
 
 		size = COOKIEMAP_ENTRIES * MAX_COLLISIONS * sizeof(uint64_t);
 		per_cpu(cookie_keys, cpu) = (uint64_t*)kmalloc(size, GFP_KERNEL);
+		if (!per_cpu(cookie_keys, cpu)) {
+			err = -ENOMEM;
+			goto cookie_setup_error;
+		}
 		memset(per_cpu(cookie_keys, cpu), 0, size);
 
 		size = COOKIEMAP_ENTRIES * MAX_COLLISIONS * sizeof(uint32_t);
 		per_cpu(cookie_values, cpu) = (uint32_t*)kmalloc(size, GFP_KERNEL);
+		if (!per_cpu(cookie_values, cpu)) {
+			err = -ENOMEM;
+			goto cookie_setup_error;
+		}
 		memset(per_cpu(cookie_values, cpu), 0, size);
 
 		per_cpu(translate_buffer, cpu) = (unsigned int *)kmalloc(translate_buffer_size, GFP_KERNEL);

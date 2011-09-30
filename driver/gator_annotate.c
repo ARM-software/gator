@@ -22,6 +22,7 @@ static char *annotateBuf0;
 static char *annotateBuf1;
 static int annotatePos;
 static int annotateSel;
+static bool collect_annotations = false;
 
 static ssize_t annotate_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
@@ -45,16 +46,13 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 	if (retval == 0) {
 		// synchronize shared variables annotateBuf and annotatePos
 		spin_lock(&annotate_lock);
-		if (annotateBuf) {
+		if (collect_annotations && annotateBuf) {
 			uint32_t tid = current->pid;
-			uint32_t tick = gator_master_tick;
 			uint64_t time = gator_get_time();
 			uint32_t cpuid = smp_processor_id();
 			int pos = annotatePos;
 			pos += gator_write_packed_int(&annotateBuf[pos], tid);
-			pos += gator_write_packed_int(&annotateBuf[pos], tick);
-			pos += gator_write_packed_int(&annotateBuf[pos], time);
-			pos += gator_write_packed_int(&annotateBuf[pos], time >> 32);
+			pos += gator_write_packed_int64(&annotateBuf[pos], time);
 			pos += gator_write_packed_int(&annotateBuf[pos], cpuid);
 			pos += gator_write_packed_int(&annotateBuf[pos], size);
 			memcpy(&annotateBuf[pos], tempBuffer, size);
@@ -81,12 +79,9 @@ static int annotate_release(struct inode *inode, struct file *file)
 	spin_lock(&annotate_lock);
 	if (annotateBuf) {
 		uint32_t tid = current->pid;
-		uint32_t tick = gator_master_tick;
 		int pos = annotatePos;
 		pos += gator_write_packed_int(&annotateBuf[pos], tid);
-		pos += gator_write_packed_int(&annotateBuf[pos], tick);
-		pos += gator_write_packed_int(&annotateBuf[pos], 0); // time
-		pos += gator_write_packed_int(&annotateBuf[pos], 0); // time
+		pos += gator_write_packed_int64(&annotateBuf[pos], 0); // time
 		pos += gator_write_packed_int(&annotateBuf[pos], 0); // cpuid
 		pos += gator_write_packed_int(&annotateBuf[pos], 0); // size
 		annotatePos = pos;
@@ -118,12 +113,20 @@ static int gator_annotate_init(void)
 
 static int gator_annotate_start(void)
 {
-	annotatePos = annotateSel = 0;
+	annotateSel = 0;
+	annotatePos = 1;
 	annotateBuf = annotateBuf0;
+	annotateBuf[0] = FRAME_ANNOTATE;
+	collect_annotations = true;
 	return 0;
 }
 
 static void gator_annotate_stop(void)
+{
+	collect_annotations = false;
+}
+
+static void gator_annotate_shutdown(void)
 {
 	spin_lock(&annotate_lock);
 	annotateBuf = NULL;
@@ -141,7 +144,7 @@ static void gator_annotate_exit(void)
 
 static int gator_annotate_ready(void)
 {
-	return annotatePos && annotateBuf;
+	return annotatePos > 1 && annotateBuf;
 }
 
 static int gator_annotate_read(char **buffer)
@@ -158,8 +161,9 @@ static int gator_annotate_read(char **buffer)
 
 	spin_lock(&annotate_lock);
 	len = annotatePos;
-	annotatePos = 0;
 	annotateBuf = annotateSel ? annotateBuf1 : annotateBuf0;
+	annotateBuf[0] = FRAME_ANNOTATE;
+	annotatePos = 1;
 	spin_unlock(&annotate_lock);
 
 	return len;
