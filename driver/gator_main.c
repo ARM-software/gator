@@ -560,14 +560,15 @@ static int gator_start(void)
 		}
 	}
 
-	if (gator_event_sampling_start())
-		goto event_sampling_failure;
+	// cookies shall be initialized before trace_sched_start() and gator_timer_online()
+	if (cookies_initialize())
+		goto cookies_failure;
 	if (gator_annotate_start())
 		goto annotate_failure;
 	if (gator_trace_sched_start())
 		goto sched_failure;
-	if (cookies_initialize())
-		goto cookies_failure;
+	if (gator_event_sampling_start())
+		goto event_sampling_failure;
 	if (gator_timer_online(gator_timer_count))
 		goto timer_failure;
 	if (gator_notifier_start())
@@ -578,14 +579,14 @@ static int gator_start(void)
 notifier_failure:
 	gator_timer_offline();
 timer_failure:
-	cookies_release();
-cookies_failure:
+	gator_event_sampling_stop();
+event_sampling_failure:
 	gator_trace_sched_stop();
 sched_failure:
 	gator_annotate_stop();
 annotate_failure:
-	gator_event_sampling_stop();
-event_sampling_failure:
+	cookies_release();
+cookies_failure:
 	// stop all events
 	list_for_each_entry(gi, &gator_events, list)
 		if (gi->stop)
@@ -604,9 +605,9 @@ static void gator_stop(void)
 		if (gi->stop)
 			gi->stop();
 
-	gator_event_sampling_stop();
 	gator_annotate_stop();
 	gator_trace_sched_stop();
+	gator_event_sampling_stop();
 
 	// stop all interrupt callback reads before tearing down other interfaces
 	gator_notifier_stop(); // should be called before gator_timer_offline to avoid re-enabling the hrtimer after it has been offlined
