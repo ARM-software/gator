@@ -48,7 +48,7 @@ make -j5 ARCH=arm CROSS_COMPILE=${CROSS_TOOLS}/bin/arm-none-linux-gnueabi- uImag
 *** Building the gator module ***
 
 To create the gator.ko module,
-	cd /ds-5-install-directory/arm/gator/driver-src
+	cd /path/to/gator/driver-src
 	tar xzf gator-driver.tar.gz
 	cd gator-driver
 	make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
@@ -56,22 +56,33 @@ for example
 	make -C /home/username/kernel_2.6.32/ M=`pwd` ARCH=arm CROSS_COMPILE=/home/username/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-linux-gnueabi- modules
 If successful, a gator.ko module should be generated
 
+*** Building the gator daemon ***
+
+cd /path/to/gator/daemon-src
+tar -xzf gator-daemon.tar.gz
+For Linux,
+	build with 'make'
+For Android,
+	mv gator-daemon jni
+	install the android ndk, see developer.android.com
+	/path/to/ndk/ndk-build
+	gatord should now be created and located in libs/armeabi
+
+*** Running gator ***
+
+Load the kernel onto the target and copy gatord and gator.ko into the target's filesystem.
+Ensure gatord has execute permissions
+	chmod +x gatord
+gator.ko must be located in the same directory as gatord on the target.
+With root privileges, run the daemon
+	sudo ./gatord &
+
 *** Compiling an application or shared library ***
 
 Recommended compiler settings:
 	"-g": Debug symbols needed for best analysis results.
 	"-fno-inline": Speed improvement when processing the image files and most accurate analysis results.
 	"-fno-omit-frame-pointer": ARM EABI frame pointers (Code Sourcery cross compiler) allow the call stack to be recorded with each sample taken when in ARM state (i.e. not -mthumb).
-
-*** Running gator ***
-
-Load the kernel onto the target and copy gatord and gator.ko into the target's filesystem.
-gatord is located in <installdir>/arm/gator/linux or <installdir>/arm/gator/android or can be built from source.
-Ensure gatord has execute permissions
-	chmod +x gatord
-gator.ko must be located in the same directory as gatord on the target.
-With root privileges, run the daemon
-	sudo ./gatord &
 
 *** Profiling the kernel (optional) ***
 
@@ -82,7 +93,7 @@ make ARCH=arm CROSS_COMPILE=$(CROSS_TOOLS}/bin/arm-none-linux-gnueabi- menuconfi
 make -j5 ARCH=arm CROSS_COMPILE=${CROSS_TOOLS}/bin/arm-none-linux-gnueabi- uImage
 Use vmlinux as the image for debug symbols in Streamline.
 Drivers may be profiled using this method by statically linking the driver into the kernel image or adding the module as an image.
-Note that the gator driver does not perform kernel call stack recording.
+To perform kernel stack unwinding and module unwinding, edit the Makefile to enable GATOR_KERNEL_STACK_UNWINDING and rebuild gator.ko.
 
 *** Automatically start gator on boot (optional) ***
 

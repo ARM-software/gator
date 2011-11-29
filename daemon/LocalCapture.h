@@ -9,7 +9,7 @@
 #ifndef	__LOCAL_CAPTURE_H__
 #define	__LOCAL_CAPTURE_H__
 
-#include "ReadSession.h"
+#include "SessionXML.h"
 
 class LocalCapture {
 public:

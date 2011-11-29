@@ -12,8 +12,8 @@
 class XMLOut {
 	int indent;
 	bool incomplete;
-	char temp_buffer[4096];
-	char xml_string[64*1024];
+	char temp_buffer[4096];   // arbitrarilly large buffer to hold variable arguments
+	char xml_string[64*1024]; // arbitrarilly large buffer to hold an xml file output by the daemon
 	
 	void writeTabs();
 	void encodeAttributeData(const char* data);

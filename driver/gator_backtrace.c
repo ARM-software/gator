@@ -23,6 +23,7 @@ static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs
 	struct frame_tail_eabi *ptrtail;
 	struct frame_tail_eabi buftail;
 	unsigned long fp = regs->ARM_fp;
+	unsigned long sp = regs->ARM_sp;
 	unsigned long lr = regs->ARM_lr;
 	int is_user_mode = user_mode(regs);
 
@@ -34,7 +35,7 @@ static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs
 	gator_add_trace(cpu, buftype, lr);
 
 	/* check tail is valid */
-	if (fp == 0) {
+	if (fp == 0 || fp < sp) {
 		return;
 	}
 
@@ -64,5 +65,52 @@ static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs
 
 		tail = next;
 	}
+#endif
+}
+
+#if defined(__arm__)
+static DEFINE_PER_CPU(int, backtrace_buffer);
+static int report_trace(struct stackframe *frame, void *d)
+{
+	struct module *mod;
+	unsigned int *depth = d, addr = frame->pc, cookie = NO_COOKIE, cpu = smp_processor_id();
+
+	if (*depth) {
+		mod = __module_address(addr);
+		if (mod) {
+			cookie = get_cookie(cpu, per_cpu(backtrace_buffer, cpu), current, NULL, mod, true);
+			addr = addr - (unsigned long)mod->module_core;
+		}
+		gator_buffer_write_packed_int(cpu, per_cpu(backtrace_buffer, cpu), addr & ~1);
+		gator_buffer_write_packed_int(cpu, per_cpu(backtrace_buffer, cpu), cookie);
+		(*depth)--;
+	}
+
+	return *depth == 0;
+}
+#endif
+
+// Uncomment the following line to enable kernel stack unwinding within gator, note it can also be defined from the Makefile
+// #define GATOR_KERNEL_STACK_UNWINDING
+static void kernel_backtrace(int cpu, int buftype, struct pt_regs * const regs)
+{
+#if defined(__arm__)
+#ifdef GATOR_KERNEL_STACK_UNWINDING
+	int depth = gator_backtrace_depth;
+#else
+	int depth = 1;
+#endif
+	struct stackframe frame;
+	if (depth == 0)
+		depth = 1;
+	frame.fp = regs->ARM_fp;
+	frame.sp = regs->ARM_sp;
+	frame.lr = regs->ARM_lr;
+	frame.pc = regs->ARM_pc;
+	per_cpu(backtrace_buffer, cpu) = buftype;
+	walk_stackframe(&frame, report_trace, &depth);
+#else
+	gator_buffer_write_packed_int(cpu, buftype, PC_REG & ~1);
+	gator_buffer_write_packed_int(cpu, buftype, NO_COOKIE);
 #endif
 }

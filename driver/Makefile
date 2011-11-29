@@ -1,5 +1,8 @@
 ifneq ($(KERNELRELEASE),)
 
+# Uncomment the following line to enable kernel stack unwinding within gator, or update gator_backtrace.c
+# EXTRA_CFLAGS +=	-DGATOR_KERNEL_STACK_UNWINDING
+
 obj-m := gator.o
 
 gator-y :=	gator_main.o \
@@ -12,7 +15,12 @@ gator-y :=	gator_main.o \
 gator-y +=	gator_events_mmaped.o
 
 ifneq ($(GATOR_WITH_MALI_SUPPORT),)
+ifeq ($(GATOR_WITH_MALI_SUPPORT),MALI_T6xx)
+gator-y +=	gator_events_mali_t6xx.o
+else
 gator-y +=	gator_events_mali.o
+endif
+EXTRA_CFLAGS +=	-DMALI_SUPPORT=$(GATOR_WITH_MALI_SUPPORT)
 endif
 
 gator-$(CONFIG_ARM) +=	gator_events_armv6.o \

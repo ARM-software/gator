@@ -95,16 +95,19 @@ static int gator_event_sampling_start(void)
 		int irq, i;
 
 		if (IS_ERR(pmu_device)) {
-			pr_err("gator: event based sampling is not supported as the kernel function reserve_pmu() failed");
+			pr_err("gator: event based sampling is not supported as the kernel function reserve_pmu() failed\n");
 			return -1;
 		}
 
-		init_pmu(ARM_PMU_DEVICE_CPU);
+		// init_pmu sets the irq affinity, therefore we do not care if it fails for single core
+		if (init_pmu(ARM_PMU_DEVICE_CPU) != 0 && gator_cpu_cores > 1) {
+			pr_err("gator: unable to initialize the pmu\n");
+			goto out_ebs_start;
+		}
+
 		if (pmu_device->num_resources == 0) {
 			pr_err("gator: no irqs for PMUs defined\n");
-			release_pmu(pmu_device);
-			pmu_device = NULL;
-			return -1;
+			goto out_ebs_start;
 		}
 
 		for (i = 0; i < pmu_device->num_resources; ++i) {
@@ -121,9 +124,7 @@ static int gator_event_sampling_start(void)
 					if (irq >= 0)
 						free_irq(irq, NULL);
 				}
-				release_pmu(pmu_device);
-				pmu_device = NULL;
-				return -1;
+				goto out_ebs_start;
 			}
 		}
 	}
@@ -135,6 +136,17 @@ static int gator_event_sampling_start(void)
 #endif
 
 	return 0;
+
+#if LINUX_PMU_SUPPORT
+out_ebs_start:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
+	release_pmu(pmu_device);
+#else
+	release_pmu(ARM_PMU_DEVICE_CPU);
+#endif
+	pmu_device = NULL;
+	return -1;
+#endif
 }
 
 static void gator_event_sampling_stop(void)
@@ -148,8 +160,13 @@ static void gator_event_sampling_stop(void)
 				free_irq(irq, NULL);
 		}
 	}
-	if (!IS_ERR(pmu_device))
+	if (!IS_ERR(pmu_device)) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
 		release_pmu(pmu_device);
+#else
+		release_pmu(ARM_PMU_DEVICE_CPU);
+#endif
+	}
 	pmu_device = NULL;
 #endif
 }

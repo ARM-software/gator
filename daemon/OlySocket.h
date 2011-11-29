@@ -30,7 +30,7 @@ public:
 private:
 	char* strError;
 	int mSocketID, fdServer;
-	// void createClientSocket(char* hostname, int port);
+	void createClientSocket(char* hostname, int port);
 	void createSingleServerConnection(int port);
 	void createServerSocket(int port);
 };

@@ -6,8 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
-typedef long long int64_t;
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -33,14 +31,14 @@ static const char*  ATTR_DESCRIPTION = "description";
 static const char*	ATTR_EBS         = "event_based_sampling";
 
 ConfigurationXML::ConfigurationXML() {
-#include "configuration_xml.h"
-	char path[PATH_MAX];
+#include "configuration_xml.h" // defines and initializes char configuration_xml[] and int configuration_xml_len
 	index = 0;
+	char* path = (char *)malloc(PATH_MAX);
 
-	if (util->getApplicationFullPath(path, sizeof(path)) != 0) {
+	if (util->getApplicationFullPath(path, PATH_MAX) != 0) {
 		logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
 	}
-	strcat(path, "configuration.xml");
+	strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
 	mConfigurationXML = util->readFromDisk(path);
 
 	if (mConfigurationXML == NULL) {
@@ -66,6 +64,7 @@ ConfigurationXML::ConfigurationXML() {
 	}
 
 	collector->enablePerfCounters();
+	free(path);
 }
 
 ConfigurationXML::~ConfigurationXML() {

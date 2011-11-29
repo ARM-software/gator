@@ -9,13 +9,16 @@
 #ifndef	__LOGGING_H__
 #define	__LOGGING_H__
 
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <pthread.h>
-#endif
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
+#ifdef WIN32
+#include <windows.h>
+#define GATOR_PATH_MAX MAX_PATH
+#else
+#include <pthread.h>
+#define GATOR_PATH_MAX PATH_MAX
+#endif
 
 #define DRIVER_ERROR "\n Driver issue:\n  >> gator.ko must be built against the current kernel version & configuration\n  >> gator.ko should be co-located with gatord in the same directory\n  >>   OR insmod gator.ko prior to launching gatord"
 
@@ -25,14 +28,14 @@ public:
 	~Logging();
 	void logError(const char* file, int line, const char* fmt, ...);
 	void logMessage(const char* fmt, ...);
-	void SetWarningFile(char* path) {strncpy(mWarningXMLPath, path, sizeof(mWarningXMLPath) - 1);}
+	void SetWarningFile(char* path) {strncpy(mWarningXMLPath, path, GATOR_PATH_MAX); mWarningXMLPath[GATOR_PATH_MAX - 1] = 0;}
 	char* getLastError() {return mErrBuf;}
 	char* getLastMessage() {return mLogBuf;}
 
 private:
-	char	mWarningXMLPath[4096];
-	char	mErrBuf[4096];
-	char	mLogBuf[4096];
+	char	mWarningXMLPath[GATOR_PATH_MAX];
+	char	mErrBuf[4096]; // Arbitrarily large buffer to hold a string
+	char	mLogBuf[4096]; // Arbitrarily large buffer to hold a string
 	bool	mDebug;
 	bool	mFileCreated;
 #ifdef WIN32

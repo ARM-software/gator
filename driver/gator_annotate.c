@@ -27,27 +27,35 @@ static bool collect_annotations = false;
 static ssize_t annotate_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
 	char tempBuffer[512];
-	int retval, remaining, size;
+	int remaining, size;
+	uint32_t tid;
 
 	if (*offset)
 		return -EINVAL;
 
 	// determine size to capture
-	remaining = ANNOTATE_SIZE - annotatePos - 256; // pad for headers and release
 	size = count < sizeof(tempBuffer) ? count : sizeof(tempBuffer);
-	size = size < remaining ? size : remaining;
-	if (size <= 0) {
-		wake_up(&gator_buffer_wait);
-		return 0;
+
+	// note: copy may be for naught if remaining is zero, but better to do the copy outside of the spinlock
+	if (file == NULL) {
+		// copy from kernel
+		memcpy(tempBuffer, buf, size);
+
+		// set the thread id to the kernel thread, not the current thread
+		tid = -1;
+	} else {
+		// copy from user space
+		if (copy_from_user(tempBuffer, buf, size) != 0)
+			return -EINVAL;
+		tid = current->pid;
 	}
 
-	// copy from user space
-	retval = copy_from_user(tempBuffer, buf, size);
-	if (retval == 0) {
-		// synchronize shared variables annotateBuf and annotatePos
-		spin_lock(&annotate_lock);
-		if (collect_annotations && annotateBuf) {
-			uint32_t tid = current->pid;
+	// synchronize shared variables annotateBuf and annotatePos
+	spin_lock(&annotate_lock);
+	if (collect_annotations && annotateBuf) {
+		remaining = ANNOTATE_SIZE - annotatePos - 256; // pad for headers and release
+		size = size < remaining ? size : remaining;
+		if (size > 0) {
 			uint64_t time = gator_get_time();
 			uint32_t cpuid = smp_processor_id();
 			int pos = annotatePos;
@@ -58,16 +66,19 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 			memcpy(&annotateBuf[pos], tempBuffer, size);
 			annotatePos = pos + size;
 		}
-		spin_unlock(&annotate_lock);
+	}
+	spin_unlock(&annotate_lock);
 
-		// return the number of bytes written
-		retval = size;
-	} else {
-		retval = -EINVAL;
+	if (size <= 0) {
+		wake_up(&gator_buffer_wait);
+		return 0;
 	}
 
-	return retval;
+	// return the number of bytes written
+	return size;
 }
+
+#include "gator_annotate_kernel.c"
 
 static int annotate_release(struct inode *inode, struct file *file)
 {

@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <stdio.h>
 #ifdef WIN32
 #include <Winsock2.h>
@@ -46,11 +45,10 @@ OlySocket::OlySocket(int port, bool multiple) {
 	}
 }
 
-// Implement client socket for windows
-/*OlySocket::OlySocket(int port, char* host) {
+OlySocket::OlySocket(int port, char* host) {
 	fdServer = 0;
 	createClientSocket(host, port);
-}*/
+}
 
 OlySocket::~OlySocket() {
 	if (mSocketID > 0) {
@@ -79,9 +77,10 @@ void OlySocket::closeServerSocket() {
 	fdServer = 0;
 }
 
-// Implement for windows
-/*
 void OlySocket::createClientSocket(char* hostname, int portno) {
+#ifdef WIN32
+	// TODO: Implement for Windows
+#else
 	char buf[32];
 	struct addrinfo hints, *res, *res0;
 
@@ -113,8 +112,8 @@ void OlySocket::createClientSocket(char* hostname, int portno) {
 		logg->logError(__FILE__, __LINE__, "Could not connect to client socket. Ensure ARM Streamline is running.");
 		handleException();
 	}
+#endif
 }
-*/
 
 void OlySocket::createSingleServerConnection(int port) {
 	createServerSocket(port);

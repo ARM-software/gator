@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <fcntl.h>
 #include <malloc.h>
 #include <unistd.h>
@@ -27,19 +26,20 @@ Collector::Collector() {
 
 	checkVersion();
 
+	int enable = -1;
+	if (readIntDriver("enable", &enable) != 0 || enable != 0) {
+		logg->logError(__FILE__, __LINE__, "Driver already enabled, possibly a session is already in progress.");
+		handleException();
+	}
+
 	readIntDriver("cpu_cores", &gSessionData.mCores);
 	if (gSessionData.mCores == 0) {
 		gSessionData.mCores = 1;
 	}
 
-	if (writeDriver("buffer_size", 256*1024)) {
-		logg->logError(__FILE__, __LINE__, "Unable to set the cpu buffer settings");
-		handleException();
-	}
-
-	readIntDriver("buffer_size", &bufferSize);
-	if (bufferSize <= 0) {
-		logg->logError(__FILE__, __LINE__, "bufferSize %d is invalid", bufferSize);
+	bufferSize = 512 * 1024;
+	if (writeReadDriver("buffer_size", &bufferSize) || bufferSize <= 0) {
+		logg->logError(__FILE__, __LINE__, "Unable to set the driver buffer size");
 		handleException();
 	}
 
@@ -60,9 +60,10 @@ Collector::~Collector() {
 }
 
 void Collector::enablePerfCounters() {
+	char base[sizeof(gSessionData.mPerfCounterType[0]) + 10]; // sufficiently large to hold all events/<types>
+	char text[sizeof(gSessionData.mPerfCounterType[0]) + 20]; // sufficiently large to hold all events/<types>/<file>
+
 	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
-		char base[256];
-		char text[256];
 		if (!gSessionData.mPerfCounterEnabled[i]) {
 			continue;
 		}
@@ -135,7 +136,7 @@ void Collector::start() {
 		handleException();
 	}
 
-	// set the frequency of syncing data, i.e. once per second
+	// notify the kernel of the streaming mode, currently used for network stats
 	int streaming = (int)!gSessionData.mOneShot;
 	if (writeReadDriver("streaming", &streaming) != 0) {
 		logg->logError(__FILE__, __LINE__, "Unable to set streaming");
@@ -176,8 +177,8 @@ int Collector::collect(char* buffer) {
 }
 
 void Collector::getCoreName() {
-	char temp[256];
-	strncpy(gSessionData.mCoreName, "unknown", sizeof(gSessionData.mCoreName));
+	char temp[256]; // arbitrarily large amount
+	strcpy(gSessionData.mCoreName, "unknown");
 
 	FILE* f = fopen("/proc/cpuinfo", "r");	
 	if (f == NULL) {
@@ -198,6 +199,7 @@ void Collector::getCoreName() {
 				return;
 			}
 			strncpy(gSessionData.mCoreName, (char *)((int)position + 2), sizeof(gSessionData.mCoreName));
+			gSessionData.mCoreName[sizeof(gSessionData.mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
 			fclose(f);
 			return;
 		}
@@ -209,7 +211,7 @@ void Collector::getCoreName() {
 }
 
 char* Collector::resolvePath(const char* file) {
-	static char fullpath[128];
+	static char fullpath[100]; // Sufficiently large to hold any path within /dev/gator
 	snprintf(fullpath, sizeof(fullpath), "/dev/gator/%s", file);
 	return fullpath;
 }
@@ -222,7 +224,7 @@ int Collector::readIntDriver(const char* path, int* value) {
 	}
 	if (fscanf(file, "%u", value) != 1) {
 		fclose(file);
-		logg->logMessage(__FILE__, __LINE__, "Invalid value in file %s", fullpath);
+		logg->logMessage("Invalid value in file %s", fullpath);
 		return -1;
 	}
 	fclose(file);
@@ -230,7 +232,7 @@ int Collector::readIntDriver(const char* path, int* value) {
 }
 
 int Collector::writeDriver(const char* path, int value) {
-	char data[40];
+	char data[40]; // Sufficiently large to hold any integer
 	snprintf(data, sizeof(data), "%d", value);
 	return writeDriver(path, data);
 }

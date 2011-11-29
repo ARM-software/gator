@@ -14,13 +14,6 @@
 #define SCHED_SWITCH			1
 #define SCHED_PROCESS_FREE		2
 
-#define FIELD_TYPE				0
-#define FIELD_TIME				1
-#define FIELD_PARAM1			2
-#define FIELD_PARAM2			3
-#define FIELD_PARAM3			4
-#define FIELDS_PER_SCHED		5
-
 #define SCHEDSIZE				(8*1024)
 #define TASK_MAP_ENTRIES		1024		/* must be power of 2 */
 #define TASK_MAX_COLLISIONS		2
@@ -31,7 +24,13 @@ static DEFINE_PER_CPU(int, theSchedPos);
 static DEFINE_PER_CPU(int, theSchedErr);
 static DEFINE_PER_CPU(uint64_t *, taskname_keys);
 
-void emit_pid_name(uint64_t time, struct task_struct* task)
+enum {
+	STATE_CONTENTION = 0,
+	STATE_WAIT_ON_IO,
+	STATE_WAIT_ON_OTHER
+};
+
+void emit_pid_name(struct task_struct* task)
 {
 	bool found = false;
 	unsigned long flags;
@@ -68,55 +67,92 @@ void emit_pid_name(uint64_t time, struct task_struct* task)
 		// disable interrupts to synchronize with hrtimer populating timer buf
 		local_irq_save(flags);
 		gator_buffer_write_packed_int(cpu, TIMER_BUF, MESSAGE_PID_NAME);
-		gator_buffer_write_packed_int64(cpu, TIMER_BUF, time);
+		gator_buffer_write_packed_int64(cpu, TIMER_BUF, gator_get_time());
 		gator_buffer_write_packed_int(cpu, TIMER_BUF, task->pid);
 		gator_buffer_write_string(cpu, TIMER_BUF, taskcomm);
 		local_irq_restore(flags);
 	}
 }
 
-static void probe_sched_write(int type, int param1, int param2, int param3)
+static void probe_sched_write(int type, struct task_struct* task, struct task_struct* old_task)
 {
+	int schedPos, cookie = 0, state = 0;
 	unsigned long flags;
+	uint64_t *schedBuf, time;
 	int cpu = smp_processor_id();
-	uint64_t time = gator_get_time();
-	uint64_t *schedBuf;
-	int schedPos, cookie = param3;
+	int pid = task->pid;
+	int tgid = task->tgid;
 
 	if (!per_cpu(theSchedBuf, cpu)[per_cpu(theSchedSel, cpu)])
 		return;
 
-	if (param3) {
+	if (type == SCHED_SWITCH) {
 		// do as much work as possible before disabling interrupts
-		struct task_struct *task = (struct task_struct *)param3;
 		cookie = get_exec_cookie(cpu, TIMER_BUF, task);
-		emit_pid_name(time, task);
+		emit_pid_name(task);
+		if (old_task->state == 0)
+			state = STATE_CONTENTION;
+		else if (old_task->in_iowait)
+			state = STATE_WAIT_ON_IO;
+		else
+			state = STATE_WAIT_ON_OTHER;
 	}
 
 	// disable interrupts to synchronize with gator_trace_sched_read(); spinlocks not needed since percpu buffers are used
 	local_irq_save(flags);
 
+	time = gator_get_time();
 	schedPos = per_cpu(theSchedPos, cpu);
 	schedBuf = per_cpu(theSchedBuf, cpu)[per_cpu(theSchedSel, cpu)];
 
-	if (schedPos < (SCHEDSIZE-100)) {
+	if (schedPos < (SCHEDSIZE - 100)) {
 		// capture
-		schedBuf[schedPos+FIELD_TYPE] = type;
-		schedBuf[schedPos+FIELD_TIME] = time;
-		schedBuf[schedPos+FIELD_PARAM1] = param1;
-		schedBuf[schedPos+FIELD_PARAM2] = param2;
-		schedBuf[schedPos+FIELD_PARAM3] = cookie;
-		per_cpu(theSchedPos, cpu) = schedPos + FIELDS_PER_SCHED;
+		schedBuf[schedPos++] = type;
+		schedBuf[schedPos++] = time;
+		schedBuf[schedPos++] = pid;
+		schedBuf[schedPos++] = tgid;
+		schedBuf[schedPos++] = cookie;
+		schedBuf[schedPos++] = state;
 	} else if (!per_cpu(theSchedErr, cpu)) {
 		per_cpu(theSchedErr, cpu) = 1;
-		schedBuf[schedPos+FIELD_TYPE] = SCHED_OVERFLOW;
-		schedBuf[schedPos+FIELD_TIME] = time;
-		schedBuf[schedPos+FIELD_PARAM1] = 0;
-		schedBuf[schedPos+FIELD_PARAM2] = 0;
-		schedBuf[schedPos+FIELD_PARAM3] = 0;
-		per_cpu(theSchedPos, cpu) = schedPos + FIELDS_PER_SCHED;
+		schedBuf[schedPos++] = SCHED_OVERFLOW;
+		schedBuf[schedPos++] = time;
+		schedBuf[schedPos++] = 0;
+		schedBuf[schedPos++] = 0;
+		schedBuf[schedPos++] = 0;
+		schedBuf[schedPos++] = 0;
 		pr_debug("gator: tracepoint overflow\n");
 	}
+	per_cpu(theSchedPos, cpu) = schedPos;
+	local_irq_restore(flags);
+}
+
+// special case used during a suspend of the system
+static void trace_sched_insert_idle(void* unused)
+{
+	unsigned long flags;
+	uint64_t *schedBuf;
+	int schedPos, cpu = smp_processor_id();
+
+	if (!per_cpu(theSchedBuf, cpu)[per_cpu(theSchedSel, cpu)])
+		return;
+
+	local_irq_save(flags);
+
+	schedPos = per_cpu(theSchedPos, cpu);
+	schedBuf = per_cpu(theSchedBuf, cpu)[per_cpu(theSchedSel, cpu)];
+
+	if (schedPos < (SCHEDSIZE - (6 * 8))) {
+		// capture
+		schedBuf[schedPos++] = SCHED_SWITCH;
+		schedBuf[schedPos++] = gator_get_time();
+		schedBuf[schedPos++] = 0; // idle pid is zero
+		schedBuf[schedPos++] = 0; // idle tid is zero
+		schedBuf[schedPos++] = 0; // idle cookie is zero
+		schedBuf[schedPos++] = STATE_WAIT_ON_OTHER;
+	}
+
+	per_cpu(theSchedPos, cpu) = schedPos;
 	local_irq_restore(flags);
 }
 
@@ -126,17 +162,36 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct rq *rq, struct task_struct *pre
 GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_struct *next))
 #endif
 {
-	probe_sched_write(SCHED_SWITCH, next->pid, next->tgid, (int)next);
+	probe_sched_write(SCHED_SWITCH, next, prev);
 }
 
 GATOR_DEFINE_PROBE(sched_process_free, TP_PROTO(struct task_struct *p))
 {
-	probe_sched_write(SCHED_PROCESS_FREE, p->pid, 0, 0);
+	probe_sched_write(SCHED_PROCESS_FREE, p, 0);
 }
 
 int gator_trace_sched_init(void)
 {
 	return 0;
+}
+
+static int register_scheduler_tracepoints(void) {
+	// register tracepoints
+	if (GATOR_REGISTER_TRACE(sched_switch))
+		goto fail_sched_switch;
+	if (GATOR_REGISTER_TRACE(sched_process_free))
+		goto fail_sched_process_free;
+	pr_debug("gator: registered tracepoints\n");
+
+	return 0;
+
+	// unregister tracepoints on error
+fail_sched_process_free:
+	GATOR_UNREGISTER_TRACE(sched_switch);
+fail_sched_switch:
+	pr_err("gator: tracepoints failed to activate, please verify that tracepoints are enabled in the linux kernel\n");
+
+	return -1;
 }
 
 int gator_trace_sched_start(void)
@@ -159,30 +214,20 @@ int gator_trace_sched_start(void)
 		memset(per_cpu(taskname_keys, cpu), 0, size);
 	}
 
-	// register tracepoints
-	if (GATOR_REGISTER_TRACE(sched_switch))
-		goto fail_sched_switch;
-	if (GATOR_REGISTER_TRACE(sched_process_free))
-		goto fail_sched_process_free;
-	pr_debug("gator: registered tracepoints\n");
+	return register_scheduler_tracepoints();
+}
 
-	return 0;
-
-	// unregister tracepoints on error
-fail_sched_process_free:
+static void unregister_scheduler_tracepoints(void)
+{
 	GATOR_UNREGISTER_TRACE(sched_switch);
-fail_sched_switch:
-	pr_err("gator: tracepoints failed to activate, please verify that tracepoints are enabled in the linux kernel\n");
-
-	return -1;
+	GATOR_UNREGISTER_TRACE(sched_process_free);
+	pr_debug("gator: unregistered tracepoints\n");
 }
 
 void gator_trace_sched_stop(void)
 {
 	int cpu;
-	GATOR_UNREGISTER_TRACE(sched_switch);
-	GATOR_UNREGISTER_TRACE(sched_process_free);
-	pr_debug("gator: unregistered tracepoints\n");
+	unregister_scheduler_tracepoints();
 
 	for_each_present_cpu(cpu) {
 		kfree(per_cpu(theSchedBuf, cpu)[0]);

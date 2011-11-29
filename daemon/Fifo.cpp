@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

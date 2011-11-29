@@ -10,6 +10,7 @@
 #define	__SENDER_H__
 
 #include <stdio.h>
+#include <pthread.h>
 #include "OlySocket.h"
 
 enum {
@@ -31,6 +32,7 @@ private:
 	OlySocket* dataSocket;
 	FILE* dataFile;
 	char* dataFileName;
+	pthread_mutex_t sendMutex;
 };
 
 #endif 	//__SENDER_H__

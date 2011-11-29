@@ -6,8 +6,8 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef READ_SESSION_H
-#define READ_SESSION_H
+#ifndef SESSION_XML_H
+#define SESSION_XML_H
 
 #include "XMLReader.h"
 #include "SessionData.h"
@@ -24,10 +24,10 @@ struct ConfigParameters {
 	struct ImageLinkList *images;	// linked list of image strings
 };
 
-class ReadSession {
+class SessionXML {
 public:
-	ReadSession(const char * str);
-	~ReadSession();
+	SessionXML(const char * str);
+	~SessionXML();
 	void parse();
 	ConfigParameters parameters;
 private:
@@ -37,4 +37,4 @@ private:
 	void sessionImage(XMLReader* in);
 };
 
-#endif // READ_SESSION_H
+#endif // SESSION_XML_H

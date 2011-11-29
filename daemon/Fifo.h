@@ -11,8 +11,8 @@
 
 #include <semaphore.h>
 
-// Driver buffer size is 512k, large buffer mode with 2GB of total RAM will allocate 256M
-#define FIFO_BUFFER_LIMIT	256*1024/512
+// Number of buffers allowed with large buffer mode
+#define FIFO_BUFFER_LIMIT	64
 
 class Fifo {
 public:

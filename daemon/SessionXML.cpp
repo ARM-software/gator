@@ -6,11 +6,10 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "ReadSession.h"
+#include "SessionXML.h"
 #include "Logging.h"
 
 extern void handleException();
@@ -29,7 +28,7 @@ static const char*	ATTR_OUTPUT_PATH        = "output_path";
 static const char*	ATTR_DURATION           = "duration";
 static const char*	ATTR_PATH               = "path";
 
-ReadSession::ReadSession(const char * str) {
+SessionXML::SessionXML(const char * str) {
 	parameters.title = 0;
 	parameters.uuid[0] = 0;
 	parameters.target_path = 0;
@@ -44,13 +43,13 @@ ReadSession::ReadSession(const char * str) {
 	logg->logMessage(mSessionXML);
 }
 
-ReadSession::~ReadSession() {
+SessionXML::~SessionXML() {
 	if (mPath != 0) {
 		free(mSessionXML);
 	}
 }
 
-void ReadSession::parse() {
+void SessionXML::parse() {
 	XMLReader reader(mSessionXML);
 	char * tag = reader.nextTag();
 	while(tag != 0) {
@@ -65,15 +64,15 @@ void ReadSession::parse() {
 	handleException();
 }
 
-void ReadSession::sessionTag(XMLReader* in) {
-	char tempBuffer[PATH_MAX];
+void SessionXML::sessionTag(XMLReader* in) {
+	char* tempBuffer = (char*)malloc(PATH_MAX);
 	int version = in->getAttributeAsInteger(ATTR_VERSION, 0);
 	if (version != 1) {
 		logg->logError(__FILE__, __LINE__, "Invalid session.xml version: %d", version);
 		handleException();
 	}
 
-	in->getAttribute(ATTR_TITLE, tempBuffer, sizeof(tempBuffer), "unnamed");
+	in->getAttribute(ATTR_TITLE, tempBuffer, PATH_MAX, "unnamed");
 	parameters.title = strdup(tempBuffer); // freed when the child process exits
 	if (parameters.title == NULL) {
 		logg->logError(__FILE__, __LINE__, "failed to allocate parameters.title (%d bytes)", strlen(tempBuffer));
@@ -84,18 +83,20 @@ void ReadSession::sessionTag(XMLReader* in) {
 	parameters.call_stack_unwinding = in->getAttributeAsBoolean(ATTR_CALL_STACK_UNWINDING, true);
 	in->getAttribute(ATTR_BUFFER_MODE, parameters.buffer_mode, sizeof(parameters.buffer_mode), "normal");
 	in->getAttribute(ATTR_SAMPLE_RATE, parameters.sample_rate, sizeof(parameters.sample_rate), "");
-	in->getAttribute(ATTR_TARGET_PATH, tempBuffer, sizeof(tempBuffer), "");
+	in->getAttribute(ATTR_TARGET_PATH, tempBuffer, PATH_MAX, "");
 	parameters.target_path = strdup(tempBuffer); // freed when the child process exits
 	if (parameters.target_path == NULL) {
 		logg->logError(__FILE__, __LINE__, "failed to allocate parameters.target_path (%d bytes)", strlen(tempBuffer));
 		handleException();
 	}
-	in->getAttribute(ATTR_OUTPUT_PATH, tempBuffer, sizeof(tempBuffer), "");
+	in->getAttribute(ATTR_OUTPUT_PATH, tempBuffer, PATH_MAX, "");
 	parameters.output_path = strdup(tempBuffer); // freed when the child process exits
 	if (parameters.output_path == NULL) {
 		logg->logError(__FILE__, __LINE__, "failed to allocate parameters.output_path (%d bytes)", strlen(tempBuffer));
 		handleException();
 	}
+
+	free(tempBuffer);
 
 	char * tag = in->nextTag();
 	while(tag != 0) {
@@ -106,7 +107,7 @@ void ReadSession::sessionTag(XMLReader* in) {
 	}
 }
 
-void ReadSession::sessionImage(XMLReader* in) {
+void SessionXML::sessionImage(XMLReader* in) {
 	int length = in->getAttributeLength(ATTR_PATH);
 	struct ImageLinkList *image;
 

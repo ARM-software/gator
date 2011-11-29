@@ -6,8 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef long long int64_t;
-typedef unsigned long long uint64_t;
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -235,13 +233,13 @@ void StreamlineSetup::sendProtocol() {
 }
 
 void StreamlineSetup::sendEvents() {
-#include "events_xml.h"
-	char path[PATH_MAX];
-	char * buffer;
+#include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
+	char* path = (char*)malloc(PATH_MAX);;
+	char* buffer;
 	unsigned int size = 0;
 
-	util->getApplicationFullPath(path, sizeof(path));
-	strncat(path, "events.xml", sizeof(path) - strlen(path) - 1);
+	util->getApplicationFullPath(path, PATH_MAX);
+	strncat(path, "events.xml", PATH_MAX - strlen(path) - 1);
 	buffer = util->readFromDisk(path, &size);
 	if (buffer == NULL) {
 		logg->logMessage("Unable to locate events.xml, using default");
@@ -253,6 +251,7 @@ void StreamlineSetup::sendEvents() {
 	if (buffer != (char*)events_xml) {
 		free(buffer);
 	}
+	free(path);
 }
 
 void StreamlineSetup::sendConfiguration() {
@@ -263,7 +262,7 @@ void StreamlineSetup::sendConfiguration() {
 }
 
 void StreamlineSetup::sendDefaults() {
-#include "configuration_xml.h"
+#include "configuration_xml.h" // defines and initializes char configuration_xml[] and int configuration_xml_len
 	// Send the config built into the binary
 	char* xml = (char*)configuration_xml;
 	unsigned int size = configuration_xml_len;
@@ -306,14 +305,15 @@ void StreamlineSetup::sendCounters() {
 }
 
 void StreamlineSetup::writeConfiguration(char* xml) {
-	char path[PATH_MAX];
+	char* path = (char*)malloc(PATH_MAX);
 
-	util->getApplicationFullPath(path, sizeof(path));
-	strncat(path, "configuration.xml", sizeof(path) - strlen(path) - 1);
+	util->getApplicationFullPath(path, PATH_MAX);
+	strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
 	if (util->writeToDisk(path, xml) < 0) {
-		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify the path.", path);
+		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify write permissions to this path.", path);
 		handleException();
 	}
 
 	new ConfigurationXML();
+	free(path);
 }

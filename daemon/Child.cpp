@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
@@ -182,7 +181,6 @@ void Child::endSession() {
 	gSessionData.mSessionIsActive = false;
 	collector->stop();
 	sem_post(&haltPipeline);
-	sem_post(&haltPipeline);
 }
 
 void Child::run() {
@@ -192,7 +190,7 @@ void Child::run() {
 
 	prctl(PR_SET_NAME, (unsigned int)&"gatord-child", 0, 0, 0);
 
-	// Instantiate the Sender - must be done first, afterwhich error messages can be sent
+	// Instantiate the Sender - must be done first, after which error messages can be sent
 	sender = new Sender(socket);
 
 	if (numConnections > 1) {
@@ -223,8 +221,7 @@ void Child::run() {
 		delete xmlString;
 	}
 
-	// Create user-space buffers to pass the driver data to the socket driver
-	// Could optimize by using a zero-copy pipe/splice to copy directly from the gator driver to the socket buffer
+	// Create user-space buffers
 	int fifoBufferSize = collector->getBufferSize();
 	int numCollectorBuffers = (gSessionData.mTotalBufferSize * 1024 * 1024 + fifoBufferSize - 1) / fifoBufferSize;
 	numCollectorBuffers = (numCollectorBuffers < 4) ? 4 : numCollectorBuffers;

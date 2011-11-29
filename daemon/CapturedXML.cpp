@@ -6,8 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
-typedef long long int64_t;
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
@@ -83,10 +81,10 @@ const char* CapturedXML::getXML() {
 }
 
 void CapturedXML::write(char* path) {
-	char file[PATH_MAX];
+	char* file = (char*)malloc(PATH_MAX);
 
 	// Set full path
-	snprintf(file, sizeof(file), "%s/captured.xml", path);
+	snprintf(file, PATH_MAX, "%s/captured.xml", path);
 	
 	// Write the file
 	const char* xml = getXML();
@@ -94,4 +92,6 @@ void CapturedXML::write(char* path) {
 		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify the path.", file);
 		handleException();
 	}
+
+	free(file);
 }

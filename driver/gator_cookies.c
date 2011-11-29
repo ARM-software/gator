@@ -122,12 +122,18 @@ static void wq_cookie_handler(struct work_struct *unused)
 	int cpu = smp_processor_id();
 	unsigned int cookie, commit;
 
-	commit = per_cpu(translate_buffer_write, cpu);
-	while (per_cpu(translate_buffer_read, cpu) != commit) {
-		task = (struct task_struct *)translate_buffer_read_int(cpu);
-		vma = (struct vm_area_struct *)translate_buffer_read_int(cpu);
-		cookie = get_cookie(cpu, TIMER_BUF, task, vma, NULL, false);
+	mutex_lock(&start_mutex);
+
+	if (gator_started != 0) {
+		commit = per_cpu(translate_buffer_write, cpu);
+		while (per_cpu(translate_buffer_read, cpu) != commit) {
+			task = (struct task_struct *)translate_buffer_read_int(cpu);
+			vma = (struct vm_area_struct *)translate_buffer_read_int(cpu);
+			cookie = get_cookie(cpu, TIMER_BUF, task, vma, NULL, false);
+		}
 	}
+
+	mutex_unlock(&start_mutex);
 }
 
 // Retrieve full name from proc/pid/cmdline for java processes on Android

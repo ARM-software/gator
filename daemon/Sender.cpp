@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -22,6 +21,7 @@ extern void handleException();
 
 Sender::Sender(OlySocket* socket) {
 	dataFile = NULL;
+	dataSocket = NULL;
 
 	// Set up the socket connection
 	if (socket) {
@@ -44,6 +44,8 @@ Sender::Sender(OlySocket* socket) {
 		gSessionData.mWaitingOnCommand = true;
 		logg->logMessage("Completed magic sequence");
 	}
+
+	pthread_mutex_init(&sendMutex, NULL);
 }
 
 Sender::~Sender() {
@@ -72,10 +74,13 @@ void Sender::writeData(const char* data, int length, int type) {
 		return;
 	}
 
+	// Multiple threads call writeData()
+	pthread_mutex_lock(&sendMutex);
+
 	// Send data over the socket connection
 	if (dataSocket) {
 		// Start alarm
-		alarm(5);
+		alarm(8);
 
 		// Send data over the socket, sending the type and size first
 		logg->logMessage("Sending data with length %d", length);
@@ -96,4 +101,6 @@ void Sender::writeData(const char* data, int length, int type) {
 			handleException();
 		}
 	}
+
+	pthread_mutex_unlock(&sendMutex);
 }

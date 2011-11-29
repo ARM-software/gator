@@ -6,10 +6,9 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <string.h>
 #include "SessionData.h"
-#include "ReadSession.h"
+#include "SessionXML.h"
 #include "Logging.h"
 extern void handleException();
 
@@ -56,7 +55,7 @@ void SessionData::initializeCounters() {
 }
 
 void SessionData::parseSessionXML(char* xmlString) {
-	ReadSession session(xmlString);
+	SessionXML session(xmlString);
 	session.parse();
 
 	// Parameter error checking

@@ -6,8 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
-typedef long long int64_t;
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -34,56 +32,60 @@ void LocalCapture::createAPCDirectory(char* target_path, char* name) {
 }
 
 void LocalCapture::write(char* string) {
-	char file[PATH_MAX];
+	char* file = (char*)malloc(PATH_MAX);
 
 	// Set full path
-	snprintf(file, sizeof(file), "%s/session.xml", gSessionData.apcDir);
+	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData.apcDir);
 
 	// Write the file
 	if (util->writeToDisk(file, string) < 0) {
 		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify the path.", file);
 		handleException();
 	}
+
+	free(file);
 }
 
 char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending, char* title) {
 	int i;
-	char path[PATH_MAX];
+	char* output;
+	char* path = (char*)malloc(PATH_MAX);
 
 	// Ensure the path is an absolute path, i.e. starts with a slash
 	if (initialPath == 0 || strlen(initialPath) == 0) {
-		if (getcwd(path, sizeof(path)) == 0)
+		if (getcwd(path, PATH_MAX) == 0)
 			logg->logMessage("Unable to retrive the current working directory");
-		strncat(path, "/@F_@N", sizeof(path) - strlen(path) - 1);
+		strncat(path, "/@F_@N", PATH_MAX - strlen(path) - 1);
 	} else if (initialPath[0] != '/') {
-		if (getcwd(path, sizeof(path)) == 0)
+		if (getcwd(path, PATH_MAX) == 0)
 			logg->logMessage("Unable to retrive the current working directory");
-		strncat(path, "/", sizeof(path) - strlen(path) - 1);
-		strncat(path, initialPath, sizeof(path) - strlen(path) - 1);
+		strncat(path, "/", PATH_MAX - strlen(path) - 1);
+		strncat(path, initialPath, PATH_MAX - strlen(path) - 1);
 	} else {
-		strncpy(path, initialPath, sizeof(path));
+		strncpy(path, initialPath, PATH_MAX);
+		path[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
 	}
 
 	// Convert to uppercase
-	replaceAll(path, "@f", "@F", sizeof(path));
-	replaceAll(path, "@n", "@N", sizeof(path));
+	replaceAll(path, "@f", "@F", PATH_MAX);
+	replaceAll(path, "@n", "@N", PATH_MAX);
 
 	// Replace @F with the session xml title
-	replaceAll(path, "@F", title, sizeof(path));
+	replaceAll(path, "@F", title, PATH_MAX);
 
 	// Add ending if it is not already there
 	if (strcmp(&path[strlen(path) - strlen(ending)], ending) != 0) {
-		strncat(path, ending, sizeof(path) - strlen(path) - 1);
+		strncat(path, ending, PATH_MAX - strlen(path) - 1);
 	}
 
 	// Replace @N with a unique integer
 	if (strstr(path, "@N")) {
-		char tempPath[PATH_MAX];
+		char* tempPath = (char*)malloc(PATH_MAX);
 		for (i = 1; i < 1000; i++) {
 			char number[4];
 			snprintf(number, sizeof(number), "%03d", i);
-			strncpy(tempPath, path, sizeof(tempPath));
-			replaceAll(tempPath, "@N", number, sizeof(tempPath));
+			strcpy(tempPath, path);
+			replaceAll(tempPath, "@N", number, PATH_MAX);
 			struct stat mFileInfo;
 			if (stat(tempPath, &mFileInfo) != 0) {
 				// if the direcotry does not exist, break
@@ -96,10 +98,13 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
 			handleException();
 		}
 
-		strncpy(path, tempPath, sizeof(path));
+		output = strdup(tempPath);
+		free(tempPath);
+	} else {
+		output = strdup(path);
 	}
 
-	char* output = strdup(path);
+	free(path);
 	return output;
 }
 
@@ -184,13 +189,14 @@ int LocalCapture::removeDirAndAllContents(char *path) {
 }
 
 void LocalCapture::copyImages(ImageLinkList* ptr) {
-	char dstfilename[PATH_MAX];
+	char* dstfilename = (char*)malloc(PATH_MAX);
 
 	while (ptr) {
-		strncpy(dstfilename, gSessionData.apcDir, sizeof(dstfilename));
+		strncpy(dstfilename, gSessionData.apcDir, PATH_MAX);
+		dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
 		if (gSessionData.apcDir[strlen(gSessionData.apcDir) - 1] != '/')
-			strncat(dstfilename, "/", sizeof(dstfilename));
-		strncat(dstfilename, util->getFilePart(ptr->path), sizeof(dstfilename) - strlen(dstfilename) - 1);
+			strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
+		strncat(dstfilename, util->getFilePart(ptr->path), PATH_MAX - strlen(dstfilename) - 1);
 		if (util->copyFile(ptr->path, dstfilename))
 			logg->logMessage("copied file %s to %s", ptr->path, dstfilename);
 		else
@@ -198,4 +204,5 @@ void LocalCapture::copyImages(ImageLinkList* ptr) {
 
 		ptr = ptr->next;
 	}
+	free(dstfilename);
 }

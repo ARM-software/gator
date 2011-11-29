@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -58,7 +57,7 @@ void XMLOut::writeData(const char *format, ...) {
 	vsnprintf(temp_buffer, sizeof(temp_buffer), format, ap);
 	va_end(ap);
 
-	strncat(xml_string, temp_buffer, sizeof(xml_string)-strlen(xml_string)-1);
+	strncat(xml_string, temp_buffer, sizeof(xml_string) - strlen(xml_string) - 1);
 }
 
 const XMLOut & XMLOut::xmlHeader(void) {

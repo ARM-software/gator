@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -24,7 +23,7 @@ typedef unsigned long long uint64_t;
 #include "Logging.h"
 #include "OlyUtility.h"
 
-#define DEBUG false 
+#define DEBUG false
 
 extern Child* child;
 extern void handleException();
@@ -33,6 +32,7 @@ static pthread_mutex_t numSessions_mutex;
 static int numSessions = 0;
 static OlySocket* socket = NULL;
 static bool driverRunningAtStart = false;
+static bool driverMountedAtStart = false;
 
 struct cmdline_t {
 	int port;
@@ -51,10 +51,35 @@ void cleanUp() {
 // CTRL C Signal Handler
 void handler(int signum) {
 	logg->logMessage("Received signal %d, gator daemon exiting", signum);
+
+	// Case 1: both child and parent receive the signal
 	if (numSessions > 0) {
-		// Kill child threads
+		// Arbitrary sleep of 1 second to give time for the child to exit;
+		// if something bad happens, continue the shutdown process regardless
+		sleep(1);
+	}
+
+	// Case 2: only the parent received the signal
+	if (numSessions > 0) {
+		// Kill child threads - the first signal exits gracefully
 		logg->logMessage("Killing process group as %d child was running when signal was received", numSessions);
 		kill(0, SIGINT);
+
+		// Give time for the child to exit
+		sleep(1);
+
+		if (numSessions > 0) {
+			// The second signal force kills the child
+			logg->logMessage("Force kill the child");
+			kill(0, SIGINT);
+			// Again, sleep for 1 second
+			sleep(1);
+
+			if (numSessions > 0) {
+				// Something bad has really happened; the child is not exiting and therefore may hold the /dev/gator resource open
+				printf("Unable to kill the gatord child process, thus gator.ko may still be loaded.\n");
+			}
+		}
 	}
 
 	cleanUp();
@@ -88,6 +113,8 @@ int mountGatorFS() {
 }
 
 int setupFilesystem() {
+	int retval;
+
 	// Verify root permissions
 	uid_t euid = geteuid();
 	if (euid) {
@@ -95,20 +122,34 @@ int setupFilesystem() {
 		handleException();
 	}
 
-	if (mountGatorFS() >= 0) {
+	retval = mountGatorFS();
+	if (retval == 1) {
 		logg->logMessage("Driver already running at startup");
 		driverRunningAtStart = true;
+	} else if (retval == 0) {
+		logg->logMessage("Driver already mounted at startup");
+		driverRunningAtStart = driverMountedAtStart = true;
 	} else {
-		// Load driver
-		char command[512];
-		strcpy(command, "insmod ");
-		if (util->getApplicationFullPath(&command[7], sizeof(command) - 64) != 0) {
+		char command[256]; // arbitrarily large amount
+
+		// Is the driver co-located in the same directory?
+		if (util->getApplicationFullPath(command, sizeof(command)) != 0) { // allow some buffer space
 			logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
 		}
+		strcat(command, "gator.ko");
+		if (access(command, F_OK) == -1) {
+			logg->logError(__FILE__, __LINE__, "Unable to locate gator.ko driver:\n  >>> gator.ko should be co-located with gatord in the same directory\n  >>> OR insmod gator.ko prior to launching gatord");
+			handleException();
+		}
+
+		// Load driver
+		strcpy(command, "insmod ");
+		util->getApplicationFullPath(&command[7], sizeof(command) - 64); // allow some buffer space
 		strcat(command, "gator.ko >/dev/null 2>&1");
+
 		if (system(command) != 0) {
 			logg->logMessage("Unable to load gator.ko driver with command: %s", command);
-			logg->logError(__FILE__, __LINE__, "Unable to load (insmod) gator.ko driver. %s", DRIVER_ERROR);
+			logg->logError(__FILE__, __LINE__, "Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
 			handleException();
 		}
 
@@ -122,12 +163,13 @@ int setupFilesystem() {
 }
 
 int shutdownFilesystem() {
-	umount("/dev/gator");
-	if (driverRunningAtStart == true || system("rmmod gator >/dev/null 2>&1") == 0) {
-		return 0;
-	}
+	if (driverMountedAtStart == false)
+		umount("/dev/gator");
+	if (driverRunningAtStart == false)
+		if (system("rmmod gator >/dev/null 2>&1") != 0)
+			return -1;
 
-	return -1;
+	return 0; // success
 }
 
 struct cmdline_t parseCommandLine(int argc, char** argv) {
@@ -137,8 +179,8 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 
 	for (int i = 1; i < argc; i++) {
 		// Is the argument a number?
-		if (atoi(argv[i]) > 0) {
-			cmdline.port = atoi(argv[i]);
+		if (strtol(argv[i], NULL, 10) > 0) {
+			cmdline.port = strtol(argv[i], NULL, 10);
 			continue;
 		}
 
@@ -217,7 +259,6 @@ int main(int argc, char** argv, char *envp[]) {
 				logg->logError(__FILE__, __LINE__, "Fork process failed. Please power cycle the target device if this error persists.");
 			} else if (pid == 0) {
 				// Child
-				strncpy(argv[0],"gatorc",strlen(argv[0])); // rename command line name to gatorc
 				socket->closeServerSocket();
 				child = new Child(socket, numSessions + 1);
 				child->run();

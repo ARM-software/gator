@@ -7,7 +7,7 @@
  *
  */
 
-static unsigned long gator_protocol_version = 6;
+static unsigned long gator_protocol_version = 7;
 
 #include <linux/slab.h>
 #include <linux/cpu.h>
@@ -17,6 +17,8 @@ static unsigned long gator_protocol_version = 6;
 #include <linux/hardirq.h>
 #include <linux/highmem.h>
 #include <linux/pagemap.h>
+#include <linux/suspend.h>
+#include <asm/stacktrace.h>
 #include <asm/uaccess.h>
 
 #include "gator.h"
@@ -51,7 +53,7 @@ static unsigned long gator_protocol_version = 6;
 /******************************************************************************
  * DEFINES
  ******************************************************************************/
-#define TIMER_BUFFER_SIZE_DEFAULT	(256*1024)
+#define TIMER_BUFFER_SIZE_DEFAULT	(512*1024)
 #define EVENT_BUFFER_SIZE_DEFAULT	(128*1024)
 
 #define NO_COOKIE				0UL
@@ -267,10 +269,11 @@ static void gator_add_trace(int cpu, int buftype, unsigned int address)
 
 static void gator_add_sample(int cpu, int buftype, struct pt_regs * const regs)
 {
-	struct module *mod;
-	unsigned int addr, cookie = 0;
 	int inKernel = regs ? !user_mode(regs) : 1;
 	unsigned long exec_cookie = inKernel ? NO_COOKIE : get_exec_cookie(cpu, buftype, current);
+
+	if (!regs)
+		return;
 
 	gator_buffer_write_packed_int(cpu, buftype, MESSAGE_START_BACKTRACE);
 	gator_buffer_write_packed_int64(cpu, buftype, gator_get_time());
@@ -279,25 +282,15 @@ static void gator_add_sample(int cpu, int buftype, struct pt_regs * const regs)
 	gator_buffer_write_packed_int(cpu, buftype, (unsigned int)current->pid);
 	gator_buffer_write_packed_int(cpu, buftype, inKernel);
 
-	// get_irq_regs() will return NULL outside of IRQ context (e.g. nested IRQ)
-	if (regs) {
-		if (inKernel) {
-			addr = PC_REG;
-			mod = __module_address(addr);
-			if (mod) {
-				cookie = get_cookie(cpu, buftype, current, NULL, mod, true);
-				addr = addr - (unsigned long)mod->module_core;
-			}
-			gator_buffer_write_packed_int(cpu, buftype, addr & ~1);
-			gator_buffer_write_packed_int(cpu, buftype, cookie);
-		} else {
-			// Cookie+PC
-			gator_add_trace(cpu, buftype, PC_REG);
+	if (inKernel) {
+		kernel_backtrace(cpu, buftype, regs);
+	} else {
+		// Cookie+PC
+		gator_add_trace(cpu, buftype, PC_REG);
 
-			// Backtrace
-			if (gator_backtrace_depth)
-				arm_backtrace_eabi(cpu, buftype, regs, gator_backtrace_depth);
-		}
+		// Backtrace
+		if (gator_backtrace_depth)
+			arm_backtrace_eabi(cpu, buftype, regs, gator_backtrace_depth);
 	}
 
 	gator_buffer_write_packed_int(cpu, buftype, MESSAGE_END_BACKTRACE);
@@ -352,11 +345,12 @@ static void gator_timer_interrupt(void)
 			}
 		} else if (gi->read64) {
 			len = gi->read64(&buffer64);
-			if (len > 0)
+			if (len > 0) {
 				gator_buffer_write_packed_int(cpu, buftype, len);
 				for (i = 0; i < len; i++) {
 					gator_buffer_write_packed_int64(cpu, buftype, buffer64[i]);
 				}
+			}
 		}
 	}
 	gator_buffer_write_packed_int(cpu, buftype, 0);
@@ -460,28 +454,27 @@ static uint64_t gator_get_time(void)
 	struct timespec ts;
 	uint64_t timestamp;
 
-	ktime_get_ts(&ts);
+	getnstimeofday(&ts);
 	timestamp = timespec_to_ns(&ts);
 
 	return timestamp;
 }
 
 /******************************************************************************
- * cpu online notifier
+ * cpu online and pm notifiers
  ******************************************************************************/
-static int __cpuinit gator_cpu_notify(struct notifier_block *self,
-											unsigned long action, void *hcpu)
+static int __cpuinit gator_cpu_notify(struct notifier_block *self, unsigned long action, void *hcpu)
 {
 	long cpu = (long)hcpu;
 
 	switch (action) {
-		case CPU_ONLINE:
-		case CPU_ONLINE_FROZEN:
-			smp_call_function_single(cpu, __gator_timer_online, NULL, 1);
-			break;
 		case CPU_DOWN_PREPARE:
 		case CPU_DOWN_PREPARE_FROZEN:
 			smp_call_function_single(cpu, __gator_timer_offline, NULL, 1);
+			break;
+		case CPU_ONLINE:
+		case CPU_ONLINE_FROZEN:
+			smp_call_function_single(cpu, __gator_timer_online, NULL, 1);
 			break;
 	}
 
@@ -492,13 +485,45 @@ static struct notifier_block __refdata gator_cpu_notifier = {
 	.notifier_call = gator_cpu_notify,
 };
 
+// n.b. calling "on_each_cpu" only runs on those that are online
+// Registered linux events are not disabled, so their counters will continue to collect
+static int gator_pm_notify(struct notifier_block *nb, unsigned long event, void *dummy)
+{
+	switch (event) {
+		case PM_HIBERNATION_PREPARE:
+		case PM_SUSPEND_PREPARE:
+			unregister_hotcpu_notifier(&gator_cpu_notifier);
+			unregister_scheduler_tracepoints();
+			on_each_cpu(trace_sched_insert_idle, NULL, 1);
+			on_each_cpu(__gator_timer_offline, NULL, 1);
+			break;
+		case PM_POST_HIBERNATION:
+		case PM_POST_SUSPEND:
+			on_each_cpu(__gator_timer_online, NULL, 1);
+			register_scheduler_tracepoints();
+			register_hotcpu_notifier(&gator_cpu_notifier);
+			break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block gator_pm_notifier = {
+	.notifier_call = gator_pm_notify,
+};
+
 static int gator_notifier_start(void)
 {
-	return register_hotcpu_notifier(&gator_cpu_notifier);
+	int retval;
+	retval = register_hotcpu_notifier(&gator_cpu_notifier);
+	if (retval == 0)
+		retval = register_pm_notifier(&gator_pm_notifier);
+	return retval;
 }
 
 static void gator_notifier_stop(void)
 {
+	unregister_pm_notifier(&gator_pm_notifier);
 	unregister_hotcpu_notifier(&gator_cpu_notifier);
 }
 

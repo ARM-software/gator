@@ -29,7 +29,7 @@ all: $(TARGET)
 	$(CPP) $(INCLUDES) -c $(CFLAGS) -o $@ $<
 
 $(TARGET): convert $(TGT_OBJS)
-	$(CPP) -s -o $@ $(TGT_OBJS) -lc -lrt
+	$(CPP) -s -o $@ $(TGT_OBJS) -lc -lrt -lpthread
 	rm events_xml.h configuration_xml.h
 
 convert:

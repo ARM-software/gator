@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -23,7 +22,7 @@ XMLReader::~XMLReader() {
 }
 
 char* XMLReader::nextTag() {
-	static char tag[128];
+	static char tag[128]; // arbitrarily set max tag size to 127 characters + nul
 
 	// Check if past the end of the root tag
 	if (mNoMore) return NULL;
@@ -117,7 +116,7 @@ int XMLReader::getAttributeAsInteger(const char* name, int defValue) {
 	if (value[0] == '0' && value[1] == 'x') {
 		return (int) strtoul(&value[2], (char**)NULL, 16);
 	}
-	return atoi(value);
+	return strtol(value, NULL, 10);
 }
 
 bool XMLReader::getAttributeAsBoolean(const char* name, bool defValue) {
@@ -138,7 +137,7 @@ bool XMLReader::getAttributeAsBoolean(const char* name, bool defValue) {
 }
 
 int XMLReader::getAttributeLength(const char* name) {
-	char searchString[128];
+	char searchString[128]; // arbitrarily large amount
 
 	// Determine search string by ending the name with ="
 	if (strlen(name) > sizeof(searchString) - 3) return 0;

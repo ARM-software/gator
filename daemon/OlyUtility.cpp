@@ -6,7 +6,6 @@
  * published by the Free Software Foundation.
  */
 
-typedef unsigned long long uint64_t;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,8 +109,9 @@ int OlyUtility::appendToDisk(const char* path, const char* data) {
  * The dstFile will be overwritten if it exists.
  * 0 is returned on an error; otherwise 1.
  */
+#define TRANSFER_SIZE 1024
 int OlyUtility::copyFile(const char * srcFile, const char * dstFile) {
-	char buffer[1024];
+	char* buffer = (char*)malloc(TRANSFER_SIZE);
 	FILE * f_src = fopen(srcFile,"rb");
 	if (!f_src) {
 		return 0;
@@ -122,8 +122,8 @@ int OlyUtility::copyFile(const char * srcFile, const char * dstFile) {
 		return 0;
 	}
 	while (!feof(f_src)) {
-		int num_bytes_read = fread(buffer, 1, sizeof(buffer), f_src);
-		if (num_bytes_read < (int)sizeof(buffer) && !feof(f_src)) {
+		int num_bytes_read = fread(buffer, 1, TRANSFER_SIZE, f_src);
+		if (num_bytes_read < TRANSFER_SIZE && !feof(f_src)) {
 			fclose(f_src);
 			fclose(f_dst);
 			return 0;
@@ -137,6 +137,7 @@ int OlyUtility::copyFile(const char * srcFile, const char * dstFile) {
 	}
 	fclose(f_src);
 	fclose(f_dst);
+	free(buffer);
 	return 1;
 }
 
