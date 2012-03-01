@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,8 +30,6 @@
 Logging* logg = NULL;
 
 Logging::Logging(bool debug) {
-	mFileCreated = false;
-	mWarningXMLPath[0] = 0;
 	mDebug = debug;
 	MUTEX_INIT();
 
@@ -40,9 +38,6 @@ Logging::Logging(bool debug) {
 }
 
 Logging::~Logging() {
-	if (mFileCreated) {
-		util->appendToDisk(mWarningXMLPath, "</warnings>");
-	}
 }
 
 void Logging::logError(const char* file, int line, const char* fmt, ...) {
@@ -59,18 +54,6 @@ void Logging::logError(const char* file, int line, const char* fmt, ...) {
 	vsnprintf(mErrBuf + strlen(mErrBuf), sizeof(mErrBuf) - 2 - strlen(mErrBuf), fmt, args); //  subtract 2 for \n and \0
 	va_end(args);
 
-	// Add the message to the warning file if the warning file was created
-	if (mWarningXMLPath[0] != 0) {
-		if (!mFileCreated) {
-			if (util->writeToDisk(mWarningXMLPath, "<?xml version=\"1.0\" encoding='UTF-8'?>\n<warnings version=\"1\">\n") < 0) {
-				return;
-			}
-			mFileCreated = true;
-		}
-		util->appendToDisk(mWarningXMLPath, "  <warning text=\"");
-		util->appendToDisk(mWarningXMLPath, mErrBuf);
-		util->appendToDisk(mWarningXMLPath, "\"/>\n");
-	}
 	if (strlen(mErrBuf) > 0) {
 		strcat(mErrBuf, "\n");
 	}

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -101,7 +101,7 @@ void child_exit(int signum) {
 // retval: -1 = failure; 0 = was already mounted; 1 = successfully mounted
 int mountGatorFS() {
 	// If already mounted,
-	if (access("/dev/gator/buffer", F_OK) != -1)
+	if (access("/dev/gator/buffer", F_OK) == 0)
 		return 0;
 
 	// else, mount the filesystem
@@ -176,28 +176,34 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 	struct cmdline_t cmdline;
 	cmdline.port = 8080;
 	cmdline.sessionXML = NULL;
+	int c;
 
-	for (int i = 1; i < argc; i++) {
-		// Is the argument a number?
-		if (strtol(argv[i], NULL, 10) > 0) {
-			cmdline.port = strtol(argv[i], NULL, 10);
-			continue;
-		}
-
-		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
-			logg->logError(__FILE__, __LINE__,
-				"Streamline gatord version %d. All parameters are optional:\n"
-				"port_number\tport upon which the server listens; default is 8080\n"
-				"session_xml\tfilename of a session xml used for local capture\n"
-				"-v/--version\tversion information\n"
-				"-h/--help\tthis help page\n", PROTOCOL_VERSION);
-			handleException();
-		} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-			logg->logError(__FILE__, __LINE__, "Streamline gatord version %d", PROTOCOL_VERSION);
-			handleException();
-		} else {
-			// Assume it is an .xml file
-			cmdline.sessionXML = argv[i];
+	while ((c = getopt (argc, argv, "hvp:s:c:")) != -1) {
+		switch(c) {
+			case 'p':
+				cmdline.port = strtol(optarg, NULL, 10);
+				break;
+			case 's':
+				cmdline.sessionXML = optarg;
+				break;
+			case 'c':
+				gSessionData->configurationXMLPath = optarg;
+				break;
+			case 'h':
+			case '?':
+				logg->logError(__FILE__, __LINE__,
+					"Streamline gatord version %d. All parameters are optional:\n"
+					"-p port_number\tport upon which the server listens; default is 8080\n"
+					"-s session_xml\tpath and filename of a session xml used for local capture\n"
+					"-c config_xml\tpath and filename of the configuration.xml to use\n"
+					"-v\t\tversion information\n"
+					"-h\t\tthis help page\n", PROTOCOL_VERSION);
+				handleException();
+				break;
+			case 'v':
+				logg->logError(__FILE__, __LINE__, "Streamline gatord version %d", PROTOCOL_VERSION);
+				handleException();
+				break;
 		}
 	}
 
@@ -207,11 +213,17 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 		handleException();
 	}
 
+	if (optind < argc) {
+		logg->logError(__FILE__, __LINE__, "Unknown argument: %s. Use '-h' for help.", argv[optind]);
+		handleException();
+	}
+
 	return cmdline;
 }
 
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char** argv, char *envp[]) {
+	gSessionData = new SessionData(); // Global data class
 	logg = new Logging(DEBUG);  // Set up global thread-safe logging
 	util = new OlyUtility();	// Set up global utility class
 
@@ -223,10 +235,11 @@ int main(int argc, char** argv, char *envp[]) {
 	signal(SIGABRT, handler);
 
 	// Set to high priority
-	setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19);
+	if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1)
+		logg->logMessage("setpriority() failed");
 
 	// Initialize session data
-	gSessionData.initialize();
+	gSessionData->initialize();
 
 	// Parse the command line parameters
 	struct cmdline_t cmdline = parseCommandLine(argc, argv);

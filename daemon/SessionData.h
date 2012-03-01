@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,7 +13,7 @@
 #define MAX_STRING_LEN				80
 #define MAX_DESCRIPTION_LEN			400
 
-#define PROTOCOL_VERSION	7
+#define PROTOCOL_VERSION	8
 #define PROTOCOL_DEV		1000	// Differentiates development versions (timestamp) from release versions
 
 struct ImageLinkList {
@@ -31,6 +31,7 @@ public:
 
 	char mCoreName[MAX_STRING_LEN];
 	struct ImageLinkList *images;
+	char* configurationXMLPath;
 	char* target_path;
 	char* apcDir;
 	char* title;
@@ -62,6 +63,6 @@ public:
 	char mPerfCounterOperation[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 };
 
-extern SessionData gSessionData;
+extern SessionData* gSessionData;
 
 #endif // SESSION_DATA_H

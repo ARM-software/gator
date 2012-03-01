@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,7 +30,7 @@ const char* CapturedXML::getXML() {
 	xmlHeader();
 
 	for (x=0; x<MAX_PERFORMANCE_COUNTERS; x++) {
-		if (gSessionData.mPerfCounterEnabled[x]) {
+		if (gSessionData->mPerfCounterEnabled[x]) {
 			perfCounters = true;
 			break;
 		}
@@ -39,38 +39,38 @@ const char* CapturedXML::getXML() {
 	startElement("captured");
 	attributeInt("version", 1);
 	attributeInt("protocol", PROTOCOL_VERSION);
-	if (gSessionData.mBytes > 0) { // Send the following only after the capture is complete
+	if (gSessionData->mBytes > 0) { // Send the following only after the capture is complete
 		if (time(NULL) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
 			attributeUInt("created", time(NULL)); // Valid until the year 2038
 		}
-		attributeUInt("bytes", gSessionData.mBytes);
+		attributeUInt("bytes", gSessionData->mBytes);
 	}
 	startElement("target");
-	attributeString("name", gSessionData.mCoreName);
-	attributeInt("sample_rate", gSessionData.mSampleRate);
-	attributeInt("cores", gSessionData.mCores);
+	attributeString("name", gSessionData->mCoreName);
+	attributeInt("sample_rate", gSessionData->mSampleRate);
+	attributeInt("cores", gSessionData->mCores);
 	endElement("target");
 	if (perfCounters) {
 		startElement("counters");
 		for (x = 0; x < MAX_PERFORMANCE_COUNTERS; x++) {
-			if (gSessionData.mPerfCounterEnabled[x]) {
+			if (gSessionData->mPerfCounterEnabled[x]) {
 				startElement("counter");
-				attributeString("title", gSessionData.mPerfCounterTitle[x]);
-				attributeString("name", gSessionData.mPerfCounterName[x]);
-				attributeHex8("color", gSessionData.mPerfCounterColor[x]);
-				attributeHex8("key", gSessionData.mPerfCounterKey[x]);
-				attributeString("type", gSessionData.mPerfCounterType[x]);
-				attributeHex8("event", gSessionData.mPerfCounterEvent[x]);
-				if (gSessionData.mPerfCounterPerCPU[x]) {
+				attributeString("title", gSessionData->mPerfCounterTitle[x]);
+				attributeString("name", gSessionData->mPerfCounterName[x]);
+				attributeHex8("color", gSessionData->mPerfCounterColor[x]);
+				attributeHex8("key", gSessionData->mPerfCounterKey[x]);
+				attributeString("type", gSessionData->mPerfCounterType[x]);
+				attributeHex8("event", gSessionData->mPerfCounterEvent[x]);
+				if (gSessionData->mPerfCounterPerCPU[x]) {
 					attributeBool("per_cpu", true);
 				}
-				if (strlen(gSessionData.mPerfCounterOperation[x]) > 0) {
-					attributeString("operation", gSessionData.mPerfCounterOperation[x]);
+				if (strlen(gSessionData->mPerfCounterOperation[x]) > 0) {
+					attributeString("operation", gSessionData->mPerfCounterOperation[x]);
 				}
-				if (gSessionData.mPerfCounterCount[x] > 0) {
-					attributeInt("count", gSessionData.mPerfCounterCount[x]);
+				if (gSessionData->mPerfCounterCount[x] > 0) {
+					attributeInt("count", gSessionData->mPerfCounterCount[x]);
 				}
-				attributeString("description", gSessionData.mPerfCounterDescription[x]);
+				attributeString("description", gSessionData->mPerfCounterDescription[x]);
 				endElement("counter");
 			}
 		}

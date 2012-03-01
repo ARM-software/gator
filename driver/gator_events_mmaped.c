@@ -1,13 +1,15 @@
 /*
  * Example events provider
  *
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Similar entires must be present in events.xml file:
+ * Similar entries to those below must be present in the events.xml file.
+ * To add them to the events.xml, create an events-mmap.xml with the 
+ * following contents and rebuild gatord:
  *
  * <counter_set name="mmaped_cntX">
  *   <counter name="mmaped_cnt0"/>

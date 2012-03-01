@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -24,9 +24,9 @@ LocalCapture::LocalCapture() {}
 LocalCapture::~LocalCapture() {}
 
 void LocalCapture::createAPCDirectory(char* target_path, char* name) {
-	gSessionData.apcDir = createUniqueDirectory(target_path, ".apc", name);
-	if ((removeDirAndAllContents(gSessionData.apcDir) != 0 || mkdir(gSessionData.apcDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
-		logg->logError(__FILE__, __LINE__, "Unable to create directory %s", gSessionData.apcDir);
+	gSessionData->apcDir = createUniqueDirectory(target_path, ".apc", name);
+	if ((removeDirAndAllContents(gSessionData->apcDir) != 0 || mkdir(gSessionData->apcDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
+		logg->logError(__FILE__, __LINE__, "Unable to create directory %s", gSessionData->apcDir);
 		handleException();
 	}
 }
@@ -35,7 +35,7 @@ void LocalCapture::write(char* string) {
 	char* file = (char*)malloc(PATH_MAX);
 
 	// Set full path
-	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData.apcDir);
+	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData->apcDir);
 
 	// Write the file
 	if (util->writeToDisk(file, string) < 0) {
@@ -192,9 +192,9 @@ void LocalCapture::copyImages(ImageLinkList* ptr) {
 	char* dstfilename = (char*)malloc(PATH_MAX);
 
 	while (ptr) {
-		strncpy(dstfilename, gSessionData.apcDir, PATH_MAX);
+		strncpy(dstfilename, gSessionData->apcDir, PATH_MAX);
 		dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
-		if (gSessionData.apcDir[strlen(gSessionData.apcDir) - 1] != '/')
+		if (gSessionData->apcDir[strlen(gSessionData->apcDir) - 1] != '/')
 			strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
 		strncat(dstfilename, util->getFilePart(ptr->path), PATH_MAX - strlen(dstfilename) - 1);
 		if (util->copyFile(ptr->path, dstfilename))

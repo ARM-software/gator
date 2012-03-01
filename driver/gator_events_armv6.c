@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -7,6 +7,9 @@
  */
 
 #include "gator.h"
+
+// gator_events_perf_pmu.c is used if perf is supported
+#if GATOR_NO_PERF_SUPPORT
 
 static const char *pmnc_name;
 
@@ -28,7 +31,6 @@ static const char *pmnc_name;
 static int pmnc_counters = 0;
 static unsigned long pmnc_enabled[CNTMAX];
 static unsigned long pmnc_event[CNTMAX];
-static unsigned long pmnc_count[CNTMAX];
 static unsigned long pmnc_key[CNTMAX];
 
 static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
@@ -83,7 +85,6 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 			return -1;
 		}
 		gatorfs_create_ulong(sb, dir, "enabled", &pmnc_enabled[i]);
-		gatorfs_create_ulong(sb, dir, "count", &pmnc_count[i]);
 		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);
 		if (i != CCNT) {
 			gatorfs_create_ulong(sb, dir, "event", &pmnc_event[i]);
@@ -93,9 +94,9 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 	return 0;
 }
 
-static void gator_events_armv6_online(void)
+static int gator_events_armv6_online(int** buffer)
 {
-	unsigned int cnt;
+	unsigned int cnt, len = 0, cpu = smp_processor_id();
 	u32 pmnc;
 
 	if (armv6_pmnc_read() & PMCR_E) {
@@ -110,7 +111,7 @@ static void gator_events_armv6_online(void)
 	for (pmnc = 0, cnt = PMN0; cnt <= CCNT; cnt++) {
 		unsigned long event;
 
-		per_cpu(perfPrev, smp_processor_id())[cnt] = 0;
+		per_cpu(perfPrev, cpu)[cnt] = 0;
 
 		if (!pmnc_enabled[cnt])
 			continue;
@@ -128,27 +129,28 @@ static void gator_events_armv6_online(void)
 		armv6_pmnc_reset_counter(cnt);
 	}
 	armv6_pmnc_write(pmnc | PMCR_E);
+
+	// return zero values, no need to read as the counters were just reset
+	for (cnt = PMN0; cnt <= CCNT; cnt++) {
+		if (pmnc_enabled[cnt]) {
+			per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
+			per_cpu(perfCnt, cpu)[len++] = 0;
+		}
+	}
+
+	if (buffer)
+		*buffer = per_cpu(perfCnt, cpu);
+
+	return len;
 }
 
-static void gator_events_armv6_offline(void)
+static int gator_events_armv6_offline(int** buffer)
 {
 	unsigned int cnt;
 
 	armv6_pmnc_write(armv6_pmnc_read() & ~PMCR_E);
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		armv6_pmnc_reset_counter(cnt);
-	}
-}
-
-static int gator_events_armv6_start(void)
-{
-	int cnt;
-
-	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
-		if (pmnc_count[cnt] > 0) {
-			pr_err("gator: event based sampling not supported on ARM v6 architectures\n");
-			return -1;
-		}
 	}
 
 	return 0;
@@ -161,7 +163,6 @@ static void gator_events_armv6_stop(void)
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
-		pmnc_count[cnt] = 0;
 	}
 }
 
@@ -193,7 +194,6 @@ static int gator_events_armv6_read(int **buffer)
 		}
 	}
 
-	// update or discard
 	if (buffer)
 		*buffer = per_cpu(perfCnt, cpu);
 
@@ -202,7 +202,6 @@ static int gator_events_armv6_read(int **buffer)
 
 static struct gator_interface gator_events_armv6_interface = {
 	.create_files = gator_events_armv6_create_files,
-	.start = gator_events_armv6_start,
 	.stop = gator_events_armv6_stop,
 	.online = gator_events_armv6_online,
 	.offline = gator_events_armv6_offline,
@@ -229,10 +228,17 @@ int gator_events_armv6_init(void)
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
-		pmnc_count[cnt] = 0;
 		pmnc_key[cnt] = gator_events_get_key();
 	}
 
 	return gator_events_install(&gator_events_armv6_interface);
 }
+
 gator_events_init(gator_events_armv6_init);
+
+#else
+int gator_events_armv6_init(void)
+{
+	return -1;
+}
+#endif

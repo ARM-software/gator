@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,11 +22,12 @@
 #include "Sender.h"
 #include "OlyUtility.h"
 #include "StreamlineSetup.h"
+#include "ConfigurationXML.h"
 
 static sem_t haltPipeline, senderThreadStarted, startProfile; // Shared by Child and spawned threads
 static Fifo* collectorFifo = NULL;   // Shared by Child.cpp and spawned threads
 static Sender* sender = NULL;        // Shared by Child.cpp and spawned threads
-Collector* collector = NULL;         // shared by Child.cpp and ConfigurationXML.cpp
+Collector* collector = NULL;
 Child* child = NULL;                 // shared by Child.cpp and main.cpp
 
 extern void cleanUp();
@@ -44,7 +45,7 @@ void handleException() {
 			sender->writeData(logg->getLastError(), strlen(logg->getLastError()), RESPONSE_ERROR);
 
 			// cannot close the socket before Streamline issues the command, so wait for the command before exiting
-			if (gSessionData.mWaitingOnCommand) {
+			if (gSessionData->mWaitingOnCommand) {
 				char discard;
 				child->socket->receiveNBytes(&discard, 1);
 			}
@@ -54,7 +55,7 @@ void handleException() {
 		}
 	}
 
-	if (gSessionData.mLocalCapture)
+	if (gSessionData->mLocalCapture)
 		cleanUp();
 
 	exit(1);
@@ -80,11 +81,11 @@ void child_handler(int signum) {
 void* durationThread(void* pVoid) {
 	prctl(PR_SET_NAME, (unsigned int)&"gatord-duration", 0, 0, 0);
 	sem_wait(&startProfile);
-	if (gSessionData.mSessionIsActive) {
+	if (gSessionData->mSessionIsActive) {
 		// Time out after duration seconds
 		// Add a second for host-side filtering
-		sleep(gSessionData.mDuration + 1);
-		if (gSessionData.mSessionIsActive) {
+		sleep(gSessionData->mDuration + 1);
+		if (gSessionData->mSessionIsActive) {
 			logg->logMessage("Duration expired.");
 			child->endSession();
 		}
@@ -99,7 +100,7 @@ void* stopThread(void* pVoid) {
 	OlySocket* socket = child->socket;
 
 	prctl(PR_SET_NAME, (unsigned int)&"gatord-stopper", 0, 0, 0);
-	while (gSessionData.mSessionIsActive) {
+	while (gSessionData->mSessionIsActive) {
 		// This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
 		if (socket->receiveNBytes(&type, sizeof(type)) > 0) {
 			if ((type != COMMAND_APC_STOP) && (type != COMMAND_PING)) {
@@ -149,6 +150,7 @@ void* senderThread(void* pVoid) {
 Child::Child(char* path) {
 	initialization();
 	sessionXMLPath = path;
+	gSessionData->mLocalCapture = true;
 }
 
 Child::Child(OlySocket* sock, int conn) {
@@ -162,7 +164,7 @@ Child::~Child() {
 
 void Child::initialization() {
 	// Set up different handlers for signals
-	gSessionData.mSessionIsActive = true;
+	gSessionData->mSessionIsActive = true;
 	signal(SIGINT, child_handler);
 	signal(SIGTERM, child_handler);
 	signal(SIGABRT, child_handler);
@@ -178,7 +180,7 @@ void Child::initialization() {
 }
 
 void Child::endSession() {
-	gSessionData.mSessionIsActive = false;
+	gSessionData->mSessionIsActive = false;
 	collector->stop();
 	sem_post(&haltPipeline);
 }
@@ -198,7 +200,10 @@ void Child::run() {
 		handleException();
 	}
 
-	// Set up the driver
+	// Populate gSessionData with the configuration
+	new ConfigurationXML();
+
+	// Set up the driver; must be done after gSessionData->mPerfCounterType[] is populated
 	collector = new Collector();
 
 	// Start up and parse session xml
@@ -207,23 +212,25 @@ void Child::run() {
 		StreamlineSetup ss(socket);
 	} else {
 		xmlString = util->readFromDisk(sessionXMLPath);
-		gSessionData.mLocalCapture = true;
 		if (xmlString == 0) {
 			logg->logError(__FILE__, __LINE__, "Unable to read session xml file: %s", sessionXMLPath);
 			handleException();
 		}
-		gSessionData.parseSessionXML(xmlString);
+		gSessionData->parseSessionXML(xmlString);
 		localCapture = new LocalCapture();
-		localCapture->createAPCDirectory(gSessionData.target_path, gSessionData.title);
-		localCapture->copyImages(gSessionData.images);
+		localCapture->createAPCDirectory(gSessionData->target_path, gSessionData->title);
+		localCapture->copyImages(gSessionData->images);
 		localCapture->write(xmlString);
-		sender->createDataFile(gSessionData.apcDir);
+		sender->createDataFile(gSessionData->apcDir);
 		delete xmlString;
 	}
 
+	// Write configuration into the driver
+	collector->setupPerfCounters();
+
 	// Create user-space buffers
 	int fifoBufferSize = collector->getBufferSize();
-	int numCollectorBuffers = (gSessionData.mTotalBufferSize * 1024 * 1024 + fifoBufferSize - 1) / fifoBufferSize;
+	int numCollectorBuffers = (gSessionData->mTotalBufferSize * 1024 * 1024 + fifoBufferSize - 1) / fifoBufferSize;
 	numCollectorBuffers = (numCollectorBuffers < 4) ? 4 : numCollectorBuffers;
 	logg->logMessage("Created %d %d-byte collector buffers", numCollectorBuffers, fifoBufferSize);
 	collectorFifo = new Fifo(numCollectorBuffers, fifoBufferSize);
@@ -232,11 +239,11 @@ void Child::run() {
 	collectBuffer = collectorFifo->start();
 
 	// Sender thread shall be halted until it is signaled for one shot mode
-	sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
+	sem_init(&haltPipeline, 0, gSessionData->mOneShot ? 0 : 2);
 
 	// Create the duration, stop, and sender threads
 	bool thread_creation_success = true;
-	if (gSessionData.mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThread, NULL))
+	if (gSessionData->mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThread, NULL))
 		thread_creation_success = false;
 	else if (socket && pthread_create(&stopThreadID, NULL, stopThread, NULL))
 		thread_creation_success = false;
@@ -261,7 +268,7 @@ void Child::run() {
 		bytesCollected = collector->collect(collectBuffer);
 
 		// In one shot mode, stop collection once all the buffers are filled
-		if (gSessionData.mOneShot && gSessionData.mSessionIsActive) {
+		if (gSessionData->mOneShot && gSessionData->mSessionIsActive) {
 			// Depth minus 1 because write() has not yet been called
 			if ((bytesCollected == -1) || (collectorFifo->numWriteToReadBuffersFilled() == collectorFifo->depth() - 1)) {
 				logg->logMessage("One shot");
@@ -283,9 +290,9 @@ void Child::run() {
 	}
 
 	// Write the captured xml file
-	if (gSessionData.mLocalCapture) {
+	if (gSessionData->mLocalCapture) {
 		CapturedXML capturedXML;
-		capturedXML.write(gSessionData.apcDir);
+		capturedXML.write(gSessionData->apcDir);
 	}
 
 	logg->logMessage("Profiling ended.");

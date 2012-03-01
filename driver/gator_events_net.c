@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,13 +12,10 @@
 
 #define NETRX		0
 #define NETTX		1
-#define NETDRV		2
-#define TOTALNET	(NETDRV+1)
+#define TOTALNET	2
 
-static ulong netdrv_enabled;
 static ulong netrx_enabled;
 static ulong nettx_enabled;
-static ulong netdrv_key;
 static ulong netrx_key;
 static ulong nettx_key;
 static int rx_total, tx_total;
@@ -44,19 +41,9 @@ static void get_network_stats(struct work_struct *wsptr) {
 }
 DECLARE_WORK(wq_get_stats, get_network_stats);
 
-static void calculate_delta(int *drv, int *rx, int *tx)
+static void calculate_delta(int *rx, int *tx)
 {
-	int drv_calc, rx_calc, tx_calc;
-
-	drv_calc = gator_net_traffic - netPrev[NETDRV];
-	if (drv_calc > 0) {
-		netPrev[NETDRV] += drv_calc;
-		netPrev[NETTX] += drv_calc;
-		// remove tcp/ip header overhead
-		//  approximation based on empirical measurement
-		netPrev[NETRX] += drv_calc / 42;
-		netPrev[NETTX] += drv_calc / 18;
-	}
+	int rx_calc, tx_calc;
 
 	rx_calc = (int)(rx_total - netPrev[NETRX]);
 	if (rx_calc < 0)
@@ -68,7 +55,6 @@ static void calculate_delta(int *drv, int *rx, int *tx)
 		tx_calc = 0;
 	netPrev[NETTX] += tx_calc;
 
-	*drv = drv_calc;
 	*rx = rx_calc;
 	*tx = tx_calc;
 }
@@ -76,13 +62,6 @@ static void calculate_delta(int *drv, int *rx, int *tx)
 static int gator_events_net_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
-
-	dir = gatorfs_mkdir(sb, root, "Linux_net_drv");
-	if (!dir) {
-		return -1;
-	}
-	gatorfs_create_ulong(sb, dir, "enabled", &netdrv_enabled);
-	gatorfs_create_ro_ulong(sb, dir, "key", &netdrv_key);
 
 	dir = gatorfs_mkdir(sb, root, "Linux_net_rx");
 	if (!dir) {
@@ -104,7 +83,6 @@ static int gator_events_net_create_files(struct super_block *sb, struct dentry *
 static int gator_events_net_start(void)
 {
 	get_network_stats(NULL);
-	netPrev[NETDRV] = 0;
 	netPrev[NETRX] = rx_total;
 	netPrev[NETTX] = tx_total;
 	return 0;
@@ -112,29 +90,22 @@ static int gator_events_net_start(void)
 
 static void gator_events_net_stop(void)
 {
-	netdrv_enabled = 0;
 	netrx_enabled = 0;
 	nettx_enabled = 0;
 }
 
 static int gator_events_net_read(int **buffer)
 {
-	int len, drv_delta, rx_delta, tx_delta;
-	static int last_drv_delta = 0, last_rx_delta = 0, last_tx_delta = 0;
+	int len, rx_delta, tx_delta;
+	static int last_rx_delta = 0, last_tx_delta = 0;
 
 	if (smp_processor_id() != 0)
 		return 0;
 
 	schedule_work(&wq_get_stats);
-	calculate_delta(&drv_delta, &rx_delta, &tx_delta);
+	calculate_delta(&rx_delta, &tx_delta);
 
 	len = 0;
-	if (netdrv_enabled && last_drv_delta != drv_delta) {
-		last_drv_delta = drv_delta;
-		netGet[len++] = netdrv_key;
-		netGet[len++] = drv_delta;
-	}
-
 	if (netrx_enabled && last_rx_delta != rx_delta) {
 		last_rx_delta = rx_delta;
 		netGet[len++] = netrx_key;
@@ -162,13 +133,9 @@ static struct gator_interface gator_events_net_interface = {
 
 int gator_events_net_init(void)
 {
-	gator_net_traffic++;
-
-	netdrv_key = gator_events_get_key();
 	netrx_key = gator_events_get_key();
 	nettx_key = gator_events_get_key();
 
-	netdrv_enabled = 0;
 	netrx_enabled = 0;
 	nettx_enabled = 0;
 

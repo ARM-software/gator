@@ -21,7 +21,7 @@
     <event event="0x0c" title="Branch" name="PC change" description="Software change of the Program Counter, except by an exception, architecturally executed"/>
     <event event="0x0d" title="Branch" name="Immediate" description="Immediate branch architecturally executed"/>
     <event event="0x0e" title="Procedure" name="Return" description="Procedure return, other than exception return, architecturally executed"/>
-    <event event="0x0f" title="Fault" name="Unaligned access" description="Unaligned access architecturally executed"/>
+    <event event="0x0f" title="Memory" name="Unaligned access" description="Unaligned access architecturally executed"/>
     <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
     <event event="0x12" title="Branch" name="Potential prediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
     <event event="0x40" title="Cache" name="Write buffer full" description="Any write buffer full cycle"/>
@@ -33,8 +33,8 @@
     <event event="0x46" title="AXI" name="Write" description="The number of AXI write data transfers"/>
     <event event="0x47" title="Memory" name="Replay event" description="Any replay event in the memory system"/>
     <event event="0x48" title="Memory" name="Unaligned access" description="Any unaligned memory access that results in a replay"/>
-    <event event="0x49" title="Cache" name="L1 data miss" description="Any L1 data memory access that misses in the cache as a result of the hashing algorithm"/>
-    <event event="0x4a" title="Cache" name="L1 inst miss" description="Any L1 instruction memory access that misses in the cache as a result of the hashing algorithm"/>
+    <event event="0x49" title="Cache" name="L1 data hash miss" description="Any L1 data memory access that misses in the cache as a result of the hashing algorithm"/>
+    <event event="0x4a" title="Cache" name="L1 inst hash miss" description="Any L1 instruction memory access that misses in the cache as a result of the hashing algorithm"/>
     <event event="0x4b" title="Cache" name="L1 page coloring" description="Any L1 data memory access in which a page coloring alias occurs"/>
     <event event="0x4c" title="NEON" name="L1 cache hit" description="Any NEON access that hits in the L1 data cache"/>
     <event event="0x4d" title="NEON" name="L1 cache access" description="Any NEON cacheable data accesses for L1 data cache"/>

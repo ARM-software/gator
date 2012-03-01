@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,8 +8,8 @@
 
 #include "gator.h"
 
-#define SCORPION	0xf
-#define SCORPIONMP	0x2d
+// gator_events_perf_pmu.c is used if perf is supported
+#if GATOR_NO_PERF_SUPPORT
 
 static const char *pmnc_name;
 static int pmnc_counters;
@@ -32,7 +32,6 @@ static int pmnc_counters;
 
 static unsigned long pmnc_enabled[CNTMAX];
 static unsigned long pmnc_event[CNTMAX];
-static unsigned long pmnc_count[CNTMAX];
 static unsigned long pmnc_key[CNTMAX];
 
 static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
@@ -516,7 +515,6 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 			return -1;
 		}
 		gatorfs_create_ulong(sb, dir, "enabled", &pmnc_enabled[i]);
-		gatorfs_create_ulong(sb, dir, "count", &pmnc_count[i]);
 		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);		
 		if (i > 0) {
 			gatorfs_create_ulong(sb, dir, "event", &pmnc_event[i]);
@@ -526,9 +524,9 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 	return 0;
 }
 
-static void gator_events_scorpion_online(void)
+static int gator_events_scorpion_online(int** buffer)
 {
-	unsigned int cnt;
+	unsigned int cnt, len = 0, cpu = smp_processor_id();
 
 	if (scorpion_pmnc_read() & PMNC_E) {
 		scorpion_pmnc_write(scorpion_pmnc_read() & ~PMNC_E);
@@ -563,26 +561,34 @@ static void gator_events_scorpion_online(void)
 
 	// enable
 	scorpion_pmnc_write(scorpion_pmnc_read() | PMNC_E);
-}
 
-static void gator_events_scorpion_offline(void)
-{
-	scorpion_pmnc_write(scorpion_pmnc_read() & ~PMNC_E);
-
-	// investigate: need to do the clearpmu() here on each counter?
-}
-
-static int gator_events_scorpion_start(void)
-{
-	int cnt;
-
-	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
-		if (pmnc_count[cnt] > 0) {
-			pr_err("gator: event based sampling not supported on Scorpion cores\n");
-			return -1;
+	// read the counters and toss the invalid data, return zero instead
+	for (cnt = 0; cnt < pmnc_counters; cnt++) {
+		if (pmnc_enabled[cnt]) {
+			int value;
+			if (cnt == CCNT) {
+				value = scorpion_ccnt_read();
+			} else if (scorpion_pmnc_select_counter(cnt) == cnt) {
+				value = scorpion_cntn_read();
+			} else {
+				value = 0;
+			}
+			scorpion_pmnc_reset_counter(cnt);
+			per_cpu(perfPrev, cpu)[cnt] = 0;
+			per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
+			per_cpu(perfCnt, cpu)[len++] = 0;
 		}
 	}
 
+	if (buffer)
+		*buffer = per_cpu(perfCnt, cpu);
+
+	return len;
+}
+
+static int gator_events_scorpion_offline(int** buffer)
+{
+	scorpion_pmnc_write(scorpion_pmnc_read() & ~PMNC_E);
 	return 0;
 }
 
@@ -593,7 +599,6 @@ static void gator_events_scorpion_stop(void)
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
-		pmnc_count[cnt] = 0;
 	}
 }
 
@@ -601,9 +606,6 @@ static int gator_events_scorpion_read(int **buffer)
 {
 	int cnt, len = 0;
 	int cpu = smp_processor_id();
-
-	if (!pmnc_counters)
-		return 0;
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		if (pmnc_enabled[cnt]) {
@@ -624,7 +626,6 @@ static int gator_events_scorpion_read(int **buffer)
 		}
 	}
 
-	// update or discard
 	if (buffer)
 		*buffer = per_cpu(perfCnt, cpu);
 
@@ -633,24 +634,11 @@ static int gator_events_scorpion_read(int **buffer)
 
 static struct gator_interface gator_events_scorpion_interface = {
 	.create_files = gator_events_scorpion_create_files,
-	.start = gator_events_scorpion_start,
 	.stop = gator_events_scorpion_stop,
 	.online = gator_events_scorpion_online,
 	.offline = gator_events_scorpion_offline,
 	.read = gator_events_scorpion_read,
 };
-
-
-static void scorpion_clear_pmuregs(void)
-{
-	scorpion_write_lpm0(0);
-	scorpion_write_lpm1(0);
-	scorpion_write_lpm2(0);
-	scorpion_write_l2lpm(0);
-	scorpion_pre_vlpm();
-	scorpion_write_vlpm(0);
-	scorpion_post_vlpm();
-}
 
 int gator_events_scorpion_init(void)
 {
@@ -674,12 +662,17 @@ int gator_events_scorpion_init(void)
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
-		pmnc_count[cnt] = 0;
 		pmnc_key[cnt] = gator_events_get_key();
 	}
 
-	scorpion_clear_pmuregs();
-
 	return gator_events_install(&gator_events_scorpion_interface);
 }
+
 gator_events_init(gator_events_scorpion_init);
+
+#else
+int gator_events_scorpion_init(void)
+{
+	return -1;
+}
+#endif

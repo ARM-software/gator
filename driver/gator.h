@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,15 +14,25 @@
 #include <linux/mm.h>
 #include <linux/list.h>
 
+#define GATOR_PERF_SUPPORT		LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
+#define GATOR_PERF_PMU_SUPPORT  GATOR_PERF_SUPPORT && defined(CONFIG_PERF_EVENTS) && defined(CONFIG_HW_PERF_EVENTS)
+#define GATOR_NO_PERF_SUPPORT   (!(GATOR_PERF_SUPPORT))
+#define GATOR_CPU_FREQ_SUPPORT  (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) && defined(CONFIG_CPU_FREQ)
+
 // cpu ids
 #define ARM1136		0xb36
 #define ARM1156		0xb56
 #define ARM1176		0xb76
 #define ARM11MPCORE 0xb02
 #define CORTEX_A5	0xc05
+#define CORTEX_A7	0xc07
 #define CORTEX_A8	0xc08
 #define CORTEX_A9	0xc09
 #define CORTEX_A15	0xc0f
+#define SCORPION	0x00f
+#define SCORPIONMP	0x02d
+#define KRAITSIM	0x049
+#define KRAIT       0x04d
 
 /******************************************************************************
  * Filesystem
@@ -69,8 +79,10 @@ struct gator_interface {
 	int  (*create_files)(struct super_block *sb, struct dentry *root);
 	int  (*start)(void);
 	void (*stop)(void);
-	void (*online)(void);
-	void (*offline)(void);
+	int  (*online)(int** buffer);
+	int  (*offline)(int** buffer);
+	void  (*online_dispatch)(int cpu);  // called in process context but may not be running on core 'cpu'
+	void  (*offline_dispatch)(int cpu); // called in process context but may not be running on core 'cpu'
 	int  (*read)(int **buffer);
 	int  (*read64)(long long **buffer);
 	struct list_head list;
@@ -83,7 +95,5 @@ struct gator_interface {
 int gator_events_install(struct gator_interface *interface);
 int gator_events_get_key(void);
 extern u32 gator_cpuid(void);
-
-extern unsigned long gator_net_traffic;
 
 #endif // GATOR_H_

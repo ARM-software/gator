@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,7 +12,7 @@
 #include "Logging.h"
 extern void handleException();
 
-SessionData gSessionData;
+SessionData* gSessionData = NULL;
 
 SessionData::SessionData() {
 	initialize();
@@ -27,6 +27,7 @@ void SessionData::initialize() {
 	mLocalCapture = false;
 	mOneShot = false;
 	strcpy(mCoreName, "unknown");
+	configurationXMLPath = NULL;
 	apcDir = NULL;
 	mSampleRate = 0;
 	mDuration = 0;
@@ -34,6 +35,8 @@ void SessionData::initialize() {
 	mBacktraceDepth = 0;
 	mTotalBufferSize = 0;
 	mCores = 1;
+
+	initializeCounters();
 }
 
 void SessionData::initializeCounters() {
@@ -62,39 +65,39 @@ void SessionData::parseSessionXML(char* xmlString) {
 	if (session.parameters.output_path == 0 && session.parameters.target_path == 0) {
 		logg->logError(__FILE__, __LINE__, "No capture path (target or host) was provided.");
 		handleException();
-	} else if (gSessionData.mLocalCapture && session.parameters.target_path == 0) {
+	} else if (gSessionData->mLocalCapture && session.parameters.target_path == 0) {
 		logg->logError(__FILE__, __LINE__, "Missing target_path tag in session xml required for a local capture.");
 		handleException();
 	}
 
 	// Set session data values
 	if (strcmp(session.parameters.sample_rate, "high") == 0) {
-		gSessionData.mSampleRate = 10000;
+		gSessionData->mSampleRate = 10000;
 	} else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
-		gSessionData.mSampleRate = 1000;
+		gSessionData->mSampleRate = 1000;
 	} else { // "low"
-		gSessionData.mSampleRate = 100;
+		gSessionData->mSampleRate = 100;
 	}
-	gSessionData.mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
-	gSessionData.mDuration = session.parameters.duration;
+	gSessionData->mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
+	gSessionData->mDuration = session.parameters.duration;
 
 	// Determine buffer size (in MB) based on buffer mode
-	gSessionData.mOneShot = true;
+	gSessionData->mOneShot = true;
 	if (strcmp(session.parameters.buffer_mode, "streaming") == 0) {
-		gSessionData.mOneShot = false;
-		gSessionData.mTotalBufferSize = 1;
+		gSessionData->mOneShot = false;
+		gSessionData->mTotalBufferSize = 1;
 	} else if (strcmp(session.parameters.buffer_mode, "small") == 0) {
-		gSessionData.mTotalBufferSize = 1;
+		gSessionData->mTotalBufferSize = 1;
 	} else if (strcmp(session.parameters.buffer_mode, "normal") == 0) {
-		gSessionData.mTotalBufferSize = 4;
+		gSessionData->mTotalBufferSize = 4;
 	} else if (strcmp(session.parameters.buffer_mode, "large") == 0) {
-		gSessionData.mTotalBufferSize = 16;
+		gSessionData->mTotalBufferSize = 16;
 	} else {
 		logg->logError(__FILE__, __LINE__, "Invalid value for buffer mode in session xml.");
 		handleException();
 	}
 
-	gSessionData.images = session.parameters.images;
-	gSessionData.target_path = session.parameters.target_path;
-	gSessionData.title = session.parameters.title;
+	gSessionData->images = session.parameters.images;
+	gSessionData->target_path = session.parameters.target_path;
+	gSessionData->title = session.parameters.title;
 }

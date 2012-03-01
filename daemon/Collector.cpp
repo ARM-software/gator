@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,12 +16,13 @@
 #include "Collector.h"
 #include "SessionData.h"
 #include "Logging.h"
-#include "ConfigurationXML.h"
 
 extern void handleException();
 
 // Driver initialization independent of session settings
 Collector::Collector() {
+	char text[sizeof(gSessionData->mPerfCounterType[0]) + 20]; // sufficiently large to hold all events/<types>/<file>
+
 	bufferFD = 0;
 
 	checkVersion();
@@ -32,9 +33,9 @@ Collector::Collector() {
 		handleException();
 	}
 
-	readIntDriver("cpu_cores", &gSessionData.mCores);
-	if (gSessionData.mCores == 0) {
-		gSessionData.mCores = 1;
+	readIntDriver("cpu_cores", &gSessionData->mCores);
+	if (gSessionData->mCores == 0) {
+		gSessionData->mCores = 1;
 	}
 
 	bufferSize = 512 * 1024;
@@ -45,8 +46,15 @@ Collector::Collector() {
 
 	getCoreName();
 
-	// populate performance counter session data
-	new ConfigurationXML();
+	enablePerfCounters();
+
+	// Read unchanging keys from driver which are created at insmod'ing of gator.ko
+	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
+		if (gSessionData->mPerfCounterEnabled[i]) {
+			snprintf(text, sizeof(text), "events/%s/key", gSessionData->mPerfCounterType[i]);
+			readIntDriver(text, &gSessionData->mPerfCounterKey[i]);
+		}
+	}
 }
 
 Collector::~Collector() {
@@ -60,28 +68,42 @@ Collector::~Collector() {
 }
 
 void Collector::enablePerfCounters() {
-	char base[sizeof(gSessionData.mPerfCounterType[0]) + 10]; // sufficiently large to hold all events/<types>
-	char text[sizeof(gSessionData.mPerfCounterType[0]) + 20]; // sufficiently large to hold all events/<types>/<file>
-
+	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/enabled
 	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
-		if (!gSessionData.mPerfCounterEnabled[i]) {
+		if (!gSessionData->mPerfCounterEnabled[i]) {
 			continue;
 		}
-		snprintf(base, sizeof(base), "events/%s", gSessionData.mPerfCounterType[i]);
-		snprintf(text, sizeof(text), "%s/event", base);
-		writeDriver(text, gSessionData.mPerfCounterEvent[i]);
-		snprintf(text, sizeof(text), "%s/key", base);
-		readIntDriver(text, &gSessionData.mPerfCounterKey[i]);
-		if (gSessionData.mPerfCounterEBSCapable[i]) {
-			snprintf(text, sizeof(text), "%s/count", base);
-			if (writeReadDriver(text, &gSessionData.mPerfCounterCount[i]))
-				gSessionData.mPerfCounterCount[i] = 0;
-			if (gSessionData.mPerfCounterCount[i] > 0)
-				logg->logMessage("EBS enabled for %s with a count of %d", gSessionData.mPerfCounterName[i], gSessionData.mPerfCounterCount[i]);
+		snprintf(text, sizeof(text), "events/%s/enabled", gSessionData->mPerfCounterType[i]);
+		if (writeReadDriver(text, &gSessionData->mPerfCounterEnabled[i])) {
+			// Disable those events that don't exist on this hardware platform even though they exist in configuration.xml
+			gSessionData->mPerfCounterEnabled[i] = 0;
+			continue;
 		}
-		snprintf(text, sizeof(text), "%s/enabled", base);
-		if (writeReadDriver(text, &gSessionData.mPerfCounterEnabled[i])) {
-			gSessionData.mPerfCounterEnabled[i] = 0;
+	}
+}
+
+void Collector::setupPerfCounters() {
+	char base[sizeof(gSessionData->mPerfCounterType[0]) + 10]; // sufficiently large to hold all events/<types>
+	char text[sizeof(gSessionData->mPerfCounterType[0]) + 20]; // sufficiently large to hold all events/<types>/<file>
+
+	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
+		if (!gSessionData->mPerfCounterEnabled[i]) {
+			continue;
+		}
+		snprintf(base, sizeof(base), "events/%s", gSessionData->mPerfCounterType[i]);
+		snprintf(text, sizeof(text), "%s/event", base);
+		writeDriver(text, gSessionData->mPerfCounterEvent[i]);
+		if (gSessionData->mPerfCounterEBSCapable[i]) {
+			snprintf(text, sizeof(text), "%s/count", base);
+			if (access(resolvePath(text), F_OK) == 0) {
+				if (writeReadDriver(text, &gSessionData->mPerfCounterCount[i]) && gSessionData->mPerfCounterCount[i] > 0) {
+					logg->logError(__FILE__, __LINE__, "Cannot enable EBS for %s with a count of %d\n", gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterCount[i]);
+					handleException();
+				}
+			} else if (gSessionData->mPerfCounterCount[i] > 0) {
+				logg->logError(__FILE__, __LINE__, "Event Based Sampling is only supported with kernel versions 3.0.0 and higher with CONFIG_PERF_EVENTS=y, and CONFIG_HW_PERF_EVENTS=y\n");
+				handleException();
+			}
 		}
 	}
 }
@@ -117,27 +139,26 @@ void Collector::checkVersion() {
 
 void Collector::start() {
 	// Set the maximum backtrace depth
-	if (writeReadDriver("backtrace_depth", &gSessionData.mBacktraceDepth)) {
+	if (writeReadDriver("backtrace_depth", &gSessionData->mBacktraceDepth)) {
 		logg->logError(__FILE__, __LINE__, "Unable to set the driver backtrace depth");
 		handleException();
 	}
 
 	// open the buffer which calls userspace_buffer_open() in the driver
-	char* fullpath = resolvePath("buffer");
-	bufferFD = open(fullpath, O_RDONLY);
+	bufferFD = open(resolvePath("buffer"), O_RDONLY);
 	if (bufferFD < 0) {
 		logg->logError(__FILE__, __LINE__, "The gator driver did not set up properly. Please view the linux console or dmesg log for more information on the failure.");
 		handleException();
 	}
 
 	// set the tick rate of the profiling timer
-	if (writeReadDriver("tick", &gSessionData.mSampleRate) != 0) {
+	if (writeReadDriver("tick", &gSessionData->mSampleRate) != 0) {
 		logg->logError(__FILE__, __LINE__, "Unable to set the driver tick");
 		handleException();
 	}
 
 	// notify the kernel of the streaming mode, currently used for network stats
-	int streaming = (int)!gSessionData.mOneShot;
+	int streaming = (int)!gSessionData->mOneShot;
 	if (writeReadDriver("streaming", &streaming) != 0) {
 		logg->logError(__FILE__, __LINE__, "Unable to set streaming");
 		handleException();
@@ -178,7 +199,7 @@ int Collector::collect(char* buffer) {
 
 void Collector::getCoreName() {
 	char temp[256]; // arbitrarily large amount
-	strcpy(gSessionData.mCoreName, "unknown");
+	strcpy(gSessionData->mCoreName, "unknown");
 
 	FILE* f = fopen("/proc/cpuinfo", "r");	
 	if (f == NULL) {
@@ -198,8 +219,8 @@ void Collector::getCoreName() {
 					"The core name in the captured xml file will be 'unknown'.");
 				return;
 			}
-			strncpy(gSessionData.mCoreName, (char *)((int)position + 2), sizeof(gSessionData.mCoreName));
-			gSessionData.mCoreName[sizeof(gSessionData.mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
+			strncpy(gSessionData->mCoreName, (char *)((int)position + 2), sizeof(gSessionData->mCoreName));
+			gSessionData->mCoreName[sizeof(gSessionData->mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
 			fclose(f);
 			return;
 		}

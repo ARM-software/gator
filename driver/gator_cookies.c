@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -250,12 +250,15 @@ static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task
 	// Can be called from interrupt handler or from work queue or from scheduler trace
 	local_irq_save(flags);
 
-	cookie = per_cpu(cookie_next_key, cpu)+=nr_cpu_ids;
-	cookiemap_add(key, cookie);
+	cookie = INVALID_COOKIE;
+	if (buffer_check_space(cpu, buftype, strlen(text) + 2 * MAXSIZE_PACK32)) {
+		cookie = per_cpu(cookie_next_key, cpu) += nr_cpu_ids;
+		cookiemap_add(key, cookie);
 
-	gator_buffer_write_packed_int(cpu, buftype, MESSAGE_COOKIE);
-	gator_buffer_write_packed_int(cpu, buftype, cookie);
-	gator_buffer_write_string(cpu, buftype, text);
+		gator_buffer_write_packed_int(cpu, buftype, MESSAGE_COOKIE);
+		gator_buffer_write_packed_int(cpu, buftype, cookie);
+		gator_buffer_write_string(cpu, buftype, text);
+	}
 
 	local_irq_restore(flags);
 

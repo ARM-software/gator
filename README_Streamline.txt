@@ -59,13 +59,15 @@ If successful, a gator.ko module should be generated
 *** Building the gator daemon ***
 
 cd /path/to/gator/daemon-src
-tar -xzf gator-daemon.tar.gz
-For Linux,
-	build with 'make'
-For Android,
+tar -xzf gator-daemon.tar.gz (may need to issue with 'sudo')
+For Linux targets,
+	cd gator-daemon
+	make
+	gatord should now be created
+For Android targets (install the android ndk, see developer.android.com)
 	mv gator-daemon jni
-	install the android ndk, see developer.android.com
-	/path/to/ndk/ndk-build
+	ndk-build
+		or execute /path/to/ndk/ndk-build if the ndk is not on your path
 	gatord should now be created and located in libs/armeabi
 
 *** Running gator ***

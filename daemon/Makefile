@@ -19,14 +19,13 @@ CPP=$(CROSS_COMPILE)g++
 # -mthumb-interwork is required for interworking to ARM or Thumb stdlibc
 CFLAGS=-O3 -Wall -Werror -march=armv5t -mthumb-interwork
 TARGET=gatord
-CPP_SRC = $(wildcard *.cpp) $(wildcard ../../reptilia/*.cpp)
+CPP_SRC = $(wildcard *.cpp)
 TGT_OBJS = $(CPP_SRC:%.cpp=%.o)
-INCLUDES = -I../../reptilia
 
 all: $(TARGET)
 
 %.o: %.cpp *.h
-	$(CPP) $(INCLUDES) -c $(CFLAGS) -o $@ $<
+	$(CPP) -c $(CFLAGS) -o $@ $<
 
 $(TARGET): convert $(TGT_OBJS)
 	$(CPP) -s -o $@ $(TGT_OBJS) -lc -lrt -lpthread
@@ -38,4 +37,4 @@ convert:
 	xxd -i configuration.xml > configuration_xml.h
 
 clean:
-	rm -f *.o $(TARGET) events.xml events_xml.h configuration_xml.h ../../reptilia/*.o
+	rm -f *.o $(TARGET) events.xml events_xml.h configuration_xml.h

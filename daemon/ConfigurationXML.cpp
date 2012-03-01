@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,12 +11,10 @@
 #include <dirent.h>
 #include "ConfigurationXML.h"
 #include "Logging.h"
-#include "Collector.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
 
 extern void handleException();
-extern Collector* collector;
 
 static const char*	ATTR_COUNTER     = "counter";
 static const char*  ATTR_VERSION     = "version";
@@ -35,10 +33,14 @@ ConfigurationXML::ConfigurationXML() {
 	index = 0;
 	char* path = (char *)malloc(PATH_MAX);
 
-	if (util->getApplicationFullPath(path, PATH_MAX) != 0) {
-		logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
+	if (gSessionData->configurationXMLPath) {
+		strncpy(path, gSessionData->configurationXMLPath, PATH_MAX);
+	} else {
+		if (util->getApplicationFullPath(path, PATH_MAX) != 0) {
+			logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
+		}
+		strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
 	}
-	strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
 	mConfigurationXML = util->readFromDisk(path);
 
 	if (mConfigurationXML == NULL) {
@@ -49,7 +51,10 @@ ConfigurationXML::ConfigurationXML() {
 		mConfigurationXML[configuration_xml_len] = 0;
 	}
 
-	gSessionData.initializeCounters();
+	// disable all counters prior to parsing the configuration xml
+	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
+		gSessionData->mPerfCounterEnabled[i] = 0;
+	}
 
 	int ret = parse(mConfigurationXML);
 	if (ret == 1) {
@@ -63,7 +68,6 @@ ConfigurationXML::ConfigurationXML() {
 		handleException();
 	}
 
-	collector->enablePerfCounters();
 	free(path);
 }
 
@@ -91,20 +95,20 @@ int ConfigurationXML::parse(const char* configurationXML) {
 
 bool ConfigurationXML::isValid(void) {
 	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
-		if (gSessionData.mPerfCounterEnabled[i]) {
-			if (strcmp(gSessionData.mPerfCounterType[i], "") == 0 ||
-					strcmp(gSessionData.mPerfCounterTitle[i], "") == 0 ||
-					strcmp(gSessionData.mPerfCounterName[i], "") == 0) {
-				logg->logMessage("Invalid required attribute\n  counter=\"%s\"\n  title=\"%s\"\n  name=\"%s\"\n  event=%d\n", gSessionData.mPerfCounterType[i], gSessionData.mPerfCounterTitle[i], gSessionData.mPerfCounterName[i], gSessionData.mPerfCounterEvent[i]);
+		if (gSessionData->mPerfCounterEnabled[i]) {
+			if (strcmp(gSessionData->mPerfCounterType[i], "") == 0 ||
+					strcmp(gSessionData->mPerfCounterTitle[i], "") == 0 ||
+					strcmp(gSessionData->mPerfCounterName[i], "") == 0) {
+				logg->logMessage("Invalid required attribute\n  counter=\"%s\"\n  title=\"%s\"\n  name=\"%s\"\n  event=%d\n", gSessionData->mPerfCounterType[i], gSessionData->mPerfCounterTitle[i], gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterEvent[i]);
 				return false; // failure
 			}
 
 			// iterate through the remaining enabled performance counters
 			for (int j = i + 1; j < MAX_PERFORMANCE_COUNTERS; j++) {
-				if (gSessionData.mPerfCounterEnabled[j]) {
+				if (gSessionData->mPerfCounterEnabled[j]) {
 					// check if the type or device are the same
-					if (strcmp(gSessionData.mPerfCounterType[i], gSessionData.mPerfCounterType[j]) == 0) {
-						logg->logMessage("Duplicate performance counter type: %s", gSessionData.mPerfCounterType[i]);
+					if (strcmp(gSessionData->mPerfCounterType[i], gSessionData->mPerfCounterType[j]) == 0) {
+						logg->logMessage("Duplicate performance counter type: %s", gSessionData->mPerfCounterType[i]);
 						return false; // failure
 					}
 				}
@@ -133,17 +137,17 @@ int ConfigurationXML::configurationTag(XMLReader* in) {
 	}
 
 	// read attributes
-	in->getAttribute(ATTR_COUNTER, gSessionData.mPerfCounterType[index], sizeof(gSessionData.mPerfCounterType[index]), "");
-	in->getAttribute(ATTR_TITLE, gSessionData.mPerfCounterTitle[index], sizeof(gSessionData.mPerfCounterTitle[index]), "");
-	in->getAttribute(ATTR_NAME, gSessionData.mPerfCounterName[index], sizeof(gSessionData.mPerfCounterName[index]), "");
-	in->getAttribute(ATTR_DESCRIPTION, gSessionData.mPerfCounterDescription[index], sizeof(gSessionData.mPerfCounterDescription[index]), "");
-	gSessionData.mPerfCounterEvent[index] = in->getAttributeAsInteger(ATTR_EVENT, 0);
-	gSessionData.mPerfCounterCount[index] = in->getAttributeAsInteger(ATTR_COUNT, 0);
-	gSessionData.mPerfCounterColor[index] = in->getAttributeAsInteger(ATTR_COLOR, 0);
-	gSessionData.mPerfCounterPerCPU[index] = in->getAttributeAsBoolean(ATTR_PER_CPU, false);
-	gSessionData.mPerfCounterEBSCapable[index] = in->getAttributeAsBoolean(ATTR_EBS, false);
-	in->getAttribute(ATTR_OPERATION, gSessionData.mPerfCounterOperation[index], sizeof(gSessionData.mPerfCounterOperation[index]), "");
-	gSessionData.mPerfCounterEnabled[index] = true;
+	in->getAttribute(ATTR_COUNTER, gSessionData->mPerfCounterType[index], sizeof(gSessionData->mPerfCounterType[index]), "");
+	in->getAttribute(ATTR_TITLE, gSessionData->mPerfCounterTitle[index], sizeof(gSessionData->mPerfCounterTitle[index]), "");
+	in->getAttribute(ATTR_NAME, gSessionData->mPerfCounterName[index], sizeof(gSessionData->mPerfCounterName[index]), "");
+	in->getAttribute(ATTR_DESCRIPTION, gSessionData->mPerfCounterDescription[index], sizeof(gSessionData->mPerfCounterDescription[index]), "");
+	gSessionData->mPerfCounterEvent[index] = in->getAttributeAsInteger(ATTR_EVENT, 0);
+	gSessionData->mPerfCounterCount[index] = in->getAttributeAsInteger(ATTR_COUNT, 0);
+	gSessionData->mPerfCounterColor[index] = in->getAttributeAsInteger(ATTR_COLOR, 0);
+	gSessionData->mPerfCounterPerCPU[index] = in->getAttributeAsBoolean(ATTR_PER_CPU, false);
+	gSessionData->mPerfCounterEBSCapable[index] = in->getAttributeAsBoolean(ATTR_EBS, false);
+	in->getAttribute(ATTR_OPERATION, gSessionData->mPerfCounterOperation[index], sizeof(gSessionData->mPerfCounterOperation[index]), "");
+	gSessionData->mPerfCounterEnabled[index] = true;
 
 	// update counter index
 	index++;

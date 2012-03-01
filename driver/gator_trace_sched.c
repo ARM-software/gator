@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,6 +30,8 @@ enum {
 	STATE_WAIT_ON_OTHER
 };
 
+int gator_trace_sched_read(long long **buffer);
+
 void emit_pid_name(struct task_struct* task)
 {
 	bool found = false;
@@ -50,7 +52,7 @@ void emit_pid_name(struct task_struct* task)
 		}
 	}
 
-	if (!found) {
+	if (!found && buffer_check_space(cpu, TIMER_BUF, TASK_COMM_LEN + 2 * MAXSIZE_PACK32 + MAXSIZE_PACK64)) {
 		// shift values, new value always in front
 		uint64_t oldv, newv = value;
 		for (x = 0; x < TASK_MAX_COLLISIONS; x++) {
@@ -128,7 +130,7 @@ static void probe_sched_write(int type, struct task_struct* task, struct task_st
 }
 
 // special case used during a suspend of the system
-static void trace_sched_insert_idle(void* unused)
+static void trace_sched_insert_idle(void)
 {
 	unsigned long flags;
 	uint64_t *schedBuf;
@@ -168,11 +170,6 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_
 GATOR_DEFINE_PROBE(sched_process_free, TP_PROTO(struct task_struct *p))
 {
 	probe_sched_write(SCHED_PROCESS_FREE, p, 0);
-}
-
-int gator_trace_sched_init(void)
-{
-	return 0;
 }
 
 static int register_scheduler_tracepoints(void) {
@@ -215,6 +212,12 @@ int gator_trace_sched_start(void)
 	}
 
 	return register_scheduler_tracepoints();
+}
+
+int gator_trace_sched_offline(long long **buffer)
+{
+	trace_sched_insert_idle();
+	return gator_trace_sched_read(buffer);
 }
 
 static void unregister_scheduler_tracepoints(void)

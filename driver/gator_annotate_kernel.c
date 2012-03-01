@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011. All rights reserved.
+ * Copyright (C) ARM Limited 2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,7 +25,6 @@ static void kannotate_write(char* ptr, unsigned int size)
 // String annotation
 void gator_annotate(char* string)
 {
-	printk(KERN_ERR "module: %s\n", string);
 	kannotate_write(string, strlen(string) + 1);
 }
 EXPORT_SYMBOL(gator_annotate);

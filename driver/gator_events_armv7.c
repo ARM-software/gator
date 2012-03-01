@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,15 +14,29 @@
  */
 
 #include "gator.h"
-#include "gator_events_armv7.h"
 
-const char *pmnc_name;
-int pmnc_counters;
+// gator_events_perf_pmu.c is used if perf is supported
+#if GATOR_NO_PERF_SUPPORT
 
-unsigned long pmnc_enabled[CNTMAX];
-unsigned long pmnc_event[CNTMAX];
-unsigned long pmnc_count[CNTMAX];
-unsigned long pmnc_key[CNTMAX];
+// Per-CPU PMNC: config reg
+#define PMNC_E		(1 << 0)	/* Enable all counters */
+#define PMNC_P		(1 << 1)	/* Reset all counters */
+#define PMNC_C		(1 << 2)	/* Cycle counter reset */
+#define	PMNC_MASK	0x3f		/* Mask for writable bits */
+
+// ccnt reg
+#define CCNT_REG	(1 << 31)
+
+#define CCNT 		0
+#define CNT0		1
+#define CNTMAX 		(6+1)
+
+static const char *pmnc_name;
+static int pmnc_counters;
+
+static unsigned long pmnc_enabled[CNTMAX];
+static unsigned long pmnc_event[CNTMAX];
+static unsigned long pmnc_key[CNTMAX];
 
 static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
 static DEFINE_PER_CPU(int[CNTMAX * 2], perfCnt);
@@ -76,19 +90,13 @@ inline u32 armv7_cntn_read(unsigned int cnt, u32 reset_value)
 	return oldval;
 }
 
-static inline void armv7_pmnc_enable_interrupt(unsigned int cnt)
-{
-	u32 val = cnt ? (1 << (cnt - CNT0)) : (1 << 31);
-	asm volatile("mcr p15, 0, %0, c9, c14, 1" : : "r" (val));
-}
-
 static inline void armv7_pmnc_disable_interrupt(unsigned int cnt)
 {
 	u32 val = cnt ? (1 << (cnt - CNT0)) : (1 << 31);
 	asm volatile("mcr p15, 0, %0, c9, c14, 2" : : "r" (val));
 }
 
-inline u32 armv7_pmnc_reset_interrupt()
+inline u32 armv7_pmnc_reset_interrupt(void)
 {
 	// Get and reset overflow status flags
 	u32 flags;
@@ -143,7 +151,6 @@ static int gator_events_armv7_create_files(struct super_block *sb, struct dentry
 			return -1;
 		}
 		gatorfs_create_ulong(sb, dir, "enabled", &pmnc_enabled[i]);
-		gatorfs_create_ulong(sb, dir, "count", &pmnc_count[i]);
 		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);
 		if (i > 0) {
 			gatorfs_create_ulong(sb, dir, "event", &pmnc_event[i]);
@@ -153,10 +160,9 @@ static int gator_events_armv7_create_files(struct super_block *sb, struct dentry
 	return 0;
 }
 
-static void gator_events_armv7_online(void)
+static int gator_events_armv7_online(int** buffer)
 {
-	unsigned int cnt;
-	int cpu = smp_processor_id();
+	unsigned int cnt, len = 0, cpu = smp_processor_id();
 
 	if (armv7_pmnc_read() & PMNC_E) {
 		armv7_pmnc_write(armv7_pmnc_read() & ~PMNC_E);
@@ -185,14 +191,10 @@ static void gator_events_armv7_online(void)
 		if (cnt != CCNT)
 			armv7_pmnc_write_evtsel(cnt, event);
 
-		// Enable/disable interrupt
-		if (pmnc_count[cnt] > 0)
-			armv7_pmnc_enable_interrupt(cnt);
-		else
-			armv7_pmnc_disable_interrupt(cnt);
+		armv7_pmnc_disable_interrupt(cnt);
 
 		// Reset counter
-		cnt ? armv7_cntn_read(cnt, pmnc_count[cnt]) : armv7_ccnt_read(pmnc_count[cnt]);
+		cnt ? armv7_cntn_read(cnt, 0) : armv7_ccnt_read(0);
 
 		// Enable counter
 		armv7_pmnc_enable_counter(cnt);
@@ -200,12 +202,27 @@ static void gator_events_armv7_online(void)
 
 	// enable
 	armv7_pmnc_write(armv7_pmnc_read() | PMNC_E);
+
+	// return zero values, no need to read as the counters were just reset
+	for (cnt = 0; cnt < pmnc_counters; cnt++) {
+		if (pmnc_enabled[cnt]) {
+			per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
+			per_cpu(perfCnt, cpu)[len++] = 0;
+		}
+	}
+
+	if (buffer)
+		*buffer = per_cpu(perfCnt, cpu);
+
+	return len;
 }
 
-static void gator_events_armv7_offline(void)
+static int gator_events_armv7_offline(int** buffer)
 {
 	// disbale all counters, including PMCCNTR; overflow IRQs will not be signaled
 	armv7_pmnc_write(armv7_pmnc_read() & ~PMNC_E);
+	
+	return 0;
 }
 
 static void gator_events_armv7_stop(void)
@@ -215,7 +232,6 @@ static void gator_events_armv7_stop(void)
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
-		pmnc_count[cnt] = 0;
 	}
 }
 
@@ -224,11 +240,8 @@ static int gator_events_armv7_read(int **buffer)
 	int cnt, len = 0;
 	int cpu = smp_processor_id();
 
-	if (!pmnc_counters)
-		return 0;
-
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-		if (pmnc_enabled[cnt] && pmnc_count[cnt] == 0) {
+		if (pmnc_enabled[cnt]) {
 			int value;
 			if (cnt == CCNT) {
 				value = armv7_ccnt_read(0);
@@ -243,7 +256,6 @@ static int gator_events_armv7_read(int **buffer)
 		}
 	}
 
-	// update or discard
 	if (buffer)
 		*buffer = per_cpu(perfCnt, cpu);
 
@@ -267,6 +279,10 @@ int gator_events_armv7_init(void)
 		pmnc_name = "Cortex-A5";
 		pmnc_counters = 2;
 		break;
+	case CORTEX_A7:
+		pmnc_name = "Cortex-A7";
+		pmnc_counters = 4;
+		break;
 	case CORTEX_A8:
 		pmnc_name = "Cortex-A8";
 		pmnc_counters = 4;
@@ -288,10 +304,17 @@ int gator_events_armv7_init(void)
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;
 		pmnc_event[cnt] = 0;
-		pmnc_count[cnt] = 0;
 		pmnc_key[cnt] = gator_events_get_key();
 	}
 
 	return gator_events_install(&gator_events_armv7_interface);
 }
+
 gator_events_init(gator_events_armv7_init);
+
+#else
+int gator_events_armv7_init(void)
+{
+	return -1;
+}
+#endif

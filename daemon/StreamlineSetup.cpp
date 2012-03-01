@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -41,7 +41,7 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 	// Receive commands from Streamline (master)
 	while (!ready) {
 		// receive command over socket
-		gSessionData.mWaitingOnCommand = true;
+		gSessionData->mWaitingOnCommand = true;
 		data = readCommand(&type);
 
 		// parse and handle data
@@ -57,16 +57,12 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 				ready = true;
 				break;
 			case COMMAND_APC_STOP:
-				// Clear error log so no text appears on console and exit
 				logg->logMessage("Received apc stop request before apc start request");
-				logg->logError(__FILE__, __LINE__, "");
-				handleException();
+				exit(0);
 				break;
 			case COMMAND_DISCONNECT:
-				// Clear error log so no text appears on console and exit
 				logg->logMessage("Received disconnect command");
-				logg->logError(__FILE__, __LINE__, "");
-				handleException();
+				exit(0);
 				break;
 			case COMMAND_PING:
 				logg->logMessage("Received ping command");
@@ -95,7 +91,7 @@ char* StreamlineSetup::readCommand(int* command) {
 	response = socket->receiveNBytes(&type, sizeof(type));
 
 	// After receiving a single byte, we are no longer waiting on a command
-	gSessionData.mWaitingOnCommand = false;
+	gSessionData->mWaitingOnCommand = false;
 
 	if (response < 0) {
 		logg->logError(__FILE__, __LINE__, "Target error: Unexpected socket disconnect");
@@ -196,7 +192,7 @@ void StreamlineSetup::handleDeliver(char* xml) {
 			break;
 		case SESSION_XML:
 			// Parse the session xml
-			gSessionData.parseSessionXML(xml);
+			gSessionData->parseSessionXML(xml);
 
 			// Save xml
 			mSessionXML = strdup(xml);
@@ -307,13 +303,19 @@ void StreamlineSetup::sendCounters() {
 void StreamlineSetup::writeConfiguration(char* xml) {
 	char* path = (char*)malloc(PATH_MAX);
 
-	util->getApplicationFullPath(path, PATH_MAX);
-	strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
+	if (gSessionData->configurationXMLPath) {
+		strncpy(path, gSessionData->configurationXMLPath, PATH_MAX);
+	} else {
+		util->getApplicationFullPath(path, PATH_MAX);
+		strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
+	}
+
 	if (util->writeToDisk(path, xml) < 0) {
 		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify write permissions to this path.", path);
 		handleException();
 	}
 
+	// Re-populate gSessionData with the configuration, as it has now changed
 	new ConfigurationXML();
 	free(path);
 }

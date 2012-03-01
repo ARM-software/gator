@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2011. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2012. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -72,15 +72,38 @@ static int gator_events_irq_create_files(struct super_block *sb, struct dentry *
 	return 0;
 }
 
-static int gator_events_irq_start(void)
+static int gator_events_irq_online(int** buffer)
 {
-	int cpu, i;
+	int len = 0, cpu = smp_processor_id();
+	unsigned long flags; // not necessary as we are in interrupt context anyway, but doesn't hurt
 
-	for_each_present_cpu(cpu) {
-		for (i = 0; i < TOTALIRQ; i++)
-			per_cpu(irqPrev, cpu)[i] = 0;
+	// synchronization with the irq_exit functions is not necessary as the values are being reset
+	if (hardirq_enabled) {
+		local_irq_save(flags);
+		per_cpu(irqCnt, cpu)[HARDIRQ] = 0;
+		local_irq_restore(flags);
+		per_cpu(irqPrev, cpu)[HARDIRQ] = 0;
+		per_cpu(irqGet, cpu)[len++] = hardirq_key;
+		per_cpu(irqGet, cpu)[len++] = 0;
 	}
 
+	if (softirq_enabled) {
+		local_irq_save(flags);
+		per_cpu(irqCnt, cpu)[SOFTIRQ] = 0;
+		local_irq_restore(flags);
+		per_cpu(irqPrev, cpu)[SOFTIRQ] = 0;
+		per_cpu(irqGet, cpu)[len++] = softirq_key;
+		per_cpu(irqGet, cpu)[len++] = 0;
+	}
+
+	if (buffer)
+		*buffer = per_cpu(irqGet, cpu);
+
+	return len;
+}
+
+static int gator_events_irq_start(void)
+{
 	// register tracepoints
 	if (hardirq_enabled)
 		if (GATOR_REGISTER_TRACE(irq_handler_exit))
@@ -116,7 +139,7 @@ static void gator_events_irq_stop(void)
 
 static int gator_events_irq_read(int **buffer)
 {
-	unsigned long flags;
+	unsigned long flags; // not necessary as we are in interrupt context anyway, but doesn't hurt
 	int len, value;
 	int cpu = smp_processor_id();
 
@@ -153,6 +176,7 @@ static int gator_events_irq_read(int **buffer)
 
 static struct gator_interface gator_events_irq_interface = {
 	.create_files = gator_events_irq_create_files,
+	.online = gator_events_irq_online,
 	.start = gator_events_irq_start,
 	.stop = gator_events_irq_stop,
 	.read = gator_events_irq_read,
