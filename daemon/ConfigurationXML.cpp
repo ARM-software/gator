@@ -17,7 +17,7 @@
 extern void handleException();
 
 static const char*	ATTR_COUNTER     = "counter";
-static const char*  ATTR_VERSION     = "version";
+static const char*  ATTR_REVISION    = "revision";
 static const char* 	ATTR_TITLE       = "title";
 static const char* 	ATTR_NAME        = "name";
 static const char*	ATTR_EVENT       = "event";
@@ -27,14 +27,19 @@ static const char*	ATTR_OPERATION   = "operation";
 static const char*	ATTR_PER_CPU     = "per_cpu";
 static const char*  ATTR_DESCRIPTION = "description";
 static const char*	ATTR_EBS         = "event_based_sampling";
+static const char*  ATTR_LEVEL       = "level";
+static const char*  ATTR_ALIAS       = "alias";
+static const char*  ATTR_DISPLAY     = "display";
+static const char*  ATTR_UNITS       = "units";
+static const char*  ATTR_AVERAGE_SELECTION = "average_selection";
 
 ConfigurationXML::ConfigurationXML() {
 #include "configuration_xml.h" // defines and initializes char configuration_xml[] and int configuration_xml_len
-	index = 0;
-	char* path = (char *)malloc(PATH_MAX);
+	mIndex = 0;
+	char* path = (char*)malloc(PATH_MAX);
 
-	if (gSessionData->configurationXMLPath) {
-		strncpy(path, gSessionData->configurationXMLPath, PATH_MAX);
+	if (gSessionData->mConfigurationXMLPath) {
+		strncpy(path, gSessionData->mConfigurationXMLPath, PATH_MAX);
 	} else {
 		if (util->getApplicationFullPath(path, PATH_MAX) != 0) {
 			logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
@@ -63,10 +68,10 @@ ConfigurationXML::ConfigurationXML() {
 			logg->logError(__FILE__, __LINE__, "Invalid configuration.xml file detected and unable to delete it. To resolve, delete configuration.xml on disk");
 			handleException();
 		}
-	} else if (ret < 0 || isValid() == false) {
-		logg->logError(__FILE__, __LINE__, "Parsing of the configuration.xml file failed. Please verify configuration.xml on the target filesystem is valid or delete it to use the default.");
-		handleException();
+		logg->logMessage("Invalid configuration.xml file detected and removed");
 	}
+	
+	validate();
 
 	free(path);
 }
@@ -78,79 +83,106 @@ ConfigurationXML::~ConfigurationXML() {
 }
 
 int ConfigurationXML::parse(const char* configurationXML) {
-	int ret = 0;
-	XMLReader reader(configurationXML);
-	char * tag = reader.nextTag();
-	while(tag != 0 && ret == 0) {
-		if (strcmp(tag, "configurations") == 0) {
-			ret = configurationsTag(&reader);
-		} else if (strcmp(tag, "configuration") == 0) {
-			ret = configurationTag(&reader);
+	mxml_node_t *tree, *node;
+	int ret;
+
+	tree = mxmlLoadString(NULL, configurationXML, MXML_NO_CALLBACK);
+
+	node = mxmlGetFirstChild(tree);
+	while (node && mxmlGetType(node) != MXML_ELEMENT)
+		node = mxmlWalkNext(node, tree, MXML_NO_DESCEND);
+	
+	ret = configurationsTag(node);
+
+	node = mxmlGetFirstChild(node);
+	while (node) {
+		if (mxmlGetType(node) != MXML_ELEMENT) {
+			node = mxmlWalkNext(node, tree, MXML_NO_DESCEND);
+			continue;
 		}
-		tag = reader.nextTag();
+		configurationTag(node);
+		node = mxmlWalkNext(node, tree, MXML_NO_DESCEND);
 	}
+
+	mxmlDelete(tree);
 
 	return ret;
 }
 
-bool ConfigurationXML::isValid(void) {
+void ConfigurationXML::validate(void) {
 	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
 		if (gSessionData->mPerfCounterEnabled[i]) {
-			if (strcmp(gSessionData->mPerfCounterType[i], "") == 0 ||
-					strcmp(gSessionData->mPerfCounterTitle[i], "") == 0 ||
-					strcmp(gSessionData->mPerfCounterName[i], "") == 0) {
-				logg->logMessage("Invalid required attribute\n  counter=\"%s\"\n  title=\"%s\"\n  name=\"%s\"\n  event=%d\n", gSessionData->mPerfCounterType[i], gSessionData->mPerfCounterTitle[i], gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterEvent[i]);
-				return false; // failure
+			if (strcmp(gSessionData->mPerfCounterType[i], "") == 0) {
+				logg->logError(__FILE__, __LINE__, "Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  title=\"%s\"\n  name=\"%s\"\n  event=%d\n", gSessionData->mPerfCounterType[i], gSessionData->mPerfCounterTitle[i], gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterEvent[i]);
+				handleException();
 			}
 
 			// iterate through the remaining enabled performance counters
 			for (int j = i + 1; j < MAX_PERFORMANCE_COUNTERS; j++) {
 				if (gSessionData->mPerfCounterEnabled[j]) {
-					// check if the type or device are the same
+					// check if the types are the same
 					if (strcmp(gSessionData->mPerfCounterType[i], gSessionData->mPerfCounterType[j]) == 0) {
-						logg->logMessage("Duplicate performance counter type: %s", gSessionData->mPerfCounterType[i]);
-						return false; // failure
+						logg->logError(__FILE__, __LINE__, "Duplicate performance counter type in configuration.xml: %s", gSessionData->mPerfCounterType[i]);
+						handleException();
 					}
 				}
 			}
 		}
 	}
-
-	return true; // success
 }
 
-#define CONFIGURATION_VERSION 1
-int ConfigurationXML::configurationsTag(XMLReader *in) {
-	int version = in->getAttributeAsInteger(ATTR_VERSION, 0);
-	if (version != CONFIGURATION_VERSION) {
-		logg->logMessage("Incompatible configuration.xml version (%d) detected. The version needs to be %d.", version, CONFIGURATION_VERSION);
-		return 1; // version issue
+#define CONFIGURATION_REVISION 1
+int ConfigurationXML::configurationsTag(mxml_node_t *node) {
+	const char* revision_string;
+	
+	revision_string = mxmlElementGetAttr(node, ATTR_REVISION);
+	if (!revision_string) {
+		return 1; //revision issue;
 	}
+
+	int revision = strtol(revision_string, NULL, 10);
+	if (revision < CONFIGURATION_REVISION) {
+		return 1; // revision issue
+	}
+
 	return 0;
 }
 
-int ConfigurationXML::configurationTag(XMLReader* in) {
+void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	// handle all other performance counters
-	if (index >= MAX_PERFORMANCE_COUNTERS) {
-		logg->logMessage("Invalid performance counter index: %d", index);
-		return -1; // failure
+	if (mIndex >= MAX_PERFORMANCE_COUNTERS) {
+		logg->logError(__FILE__, __LINE__, "Exceeded maximum number of %d performance counters", MAX_PERFORMANCE_COUNTERS);
+		handleException();
 	}
 
 	// read attributes
-	in->getAttribute(ATTR_COUNTER, gSessionData->mPerfCounterType[index], sizeof(gSessionData->mPerfCounterType[index]), "");
-	in->getAttribute(ATTR_TITLE, gSessionData->mPerfCounterTitle[index], sizeof(gSessionData->mPerfCounterTitle[index]), "");
-	in->getAttribute(ATTR_NAME, gSessionData->mPerfCounterName[index], sizeof(gSessionData->mPerfCounterName[index]), "");
-	in->getAttribute(ATTR_DESCRIPTION, gSessionData->mPerfCounterDescription[index], sizeof(gSessionData->mPerfCounterDescription[index]), "");
-	gSessionData->mPerfCounterEvent[index] = in->getAttributeAsInteger(ATTR_EVENT, 0);
-	gSessionData->mPerfCounterCount[index] = in->getAttributeAsInteger(ATTR_COUNT, 0);
-	gSessionData->mPerfCounterColor[index] = in->getAttributeAsInteger(ATTR_COLOR, 0);
-	gSessionData->mPerfCounterPerCPU[index] = in->getAttributeAsBoolean(ATTR_PER_CPU, false);
-	gSessionData->mPerfCounterEBSCapable[index] = in->getAttributeAsBoolean(ATTR_EBS, false);
-	in->getAttribute(ATTR_OPERATION, gSessionData->mPerfCounterOperation[index], sizeof(gSessionData->mPerfCounterOperation[index]), "");
-	gSessionData->mPerfCounterEnabled[index] = true;
+	if (mxmlElementGetAttr(node, ATTR_COUNTER)) strncpy(gSessionData->mPerfCounterType[mIndex], mxmlElementGetAttr(node, ATTR_COUNTER), sizeof(gSessionData->mPerfCounterType[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_TITLE)) strncpy(gSessionData->mPerfCounterTitle[mIndex], mxmlElementGetAttr(node, ATTR_TITLE), sizeof(gSessionData->mPerfCounterTitle[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_NAME)) strncpy(gSessionData->mPerfCounterName[mIndex], mxmlElementGetAttr(node, ATTR_NAME), sizeof(gSessionData->mPerfCounterName[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_DESCRIPTION)) strncpy(gSessionData->mPerfCounterDescription[mIndex], mxmlElementGetAttr(node, ATTR_DESCRIPTION), sizeof(gSessionData->mPerfCounterDescription[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_EVENT)) gSessionData->mPerfCounterEvent[mIndex] = strtol(mxmlElementGetAttr(node, ATTR_EVENT), NULL, 16);
+	if (mxmlElementGetAttr(node, ATTR_COUNT)) gSessionData->mPerfCounterCount[mIndex] = strtol(mxmlElementGetAttr(node, ATTR_COUNT), NULL, 10);
+	if (mxmlElementGetAttr(node, ATTR_COLOR)) gSessionData->mPerfCounterColor[mIndex] = strtol(mxmlElementGetAttr(node, ATTR_COLOR), NULL, 16);
+	if (mxmlElementGetAttr(node, ATTR_PER_CPU)) gSessionData->mPerfCounterPerCPU[mIndex] = util->stringToBool(mxmlElementGetAttr(node, ATTR_PER_CPU), false);
+	if (mxmlElementGetAttr(node, ATTR_EBS)) gSessionData->mPerfCounterEBSCapable[mIndex] = util->stringToBool(mxmlElementGetAttr(node, ATTR_EBS), false);
+	if (mxmlElementGetAttr(node, ATTR_OPERATION)) strncpy(gSessionData->mPerfCounterOperation[mIndex], mxmlElementGetAttr(node, ATTR_OPERATION), sizeof(gSessionData->mPerfCounterOperation[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_LEVEL)) gSessionData->mPerfCounterLevel[mIndex] = util->stringToBool(mxmlElementGetAttr(node, ATTR_LEVEL), false);
+	if (mxmlElementGetAttr(node, ATTR_ALIAS)) strncpy(gSessionData->mPerfCounterAlias[mIndex], mxmlElementGetAttr(node, ATTR_ALIAS), sizeof(gSessionData->mPerfCounterAlias[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_DISPLAY)) strncpy(gSessionData->mPerfCounterDisplay[mIndex], mxmlElementGetAttr(node, ATTR_DISPLAY), sizeof(gSessionData->mPerfCounterDisplay[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_UNITS)) strncpy(gSessionData->mPerfCounterUnits[mIndex], mxmlElementGetAttr(node, ATTR_UNITS), sizeof(gSessionData->mPerfCounterUnits[mIndex]));
+	if (mxmlElementGetAttr(node, ATTR_AVERAGE_SELECTION)) gSessionData->mPerfCounterAverageSelection[mIndex] = util->stringToBool(mxmlElementGetAttr(node, ATTR_AVERAGE_SELECTION), false);
+	gSessionData->mPerfCounterEnabled[mIndex] = true;
+
+	// strncpy does not guarantee a null-termianted string
+	gSessionData->mPerfCounterType[mIndex][sizeof(gSessionData->mPerfCounterType[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterTitle[mIndex][sizeof(gSessionData->mPerfCounterTitle[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterName[mIndex][sizeof(gSessionData->mPerfCounterName[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterDescription[mIndex][sizeof(gSessionData->mPerfCounterDescription[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterOperation[mIndex][sizeof(gSessionData->mPerfCounterOperation[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterAlias[mIndex][sizeof(gSessionData->mPerfCounterAlias[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterDisplay[mIndex][sizeof(gSessionData->mPerfCounterDisplay[mIndex]) - 1] = 0;
+	gSessionData->mPerfCounterUnits[mIndex][sizeof(gSessionData->mPerfCounterUnits[mIndex]) - 1] = 0;
 
 	// update counter index
-	index++;
-
-	return 0; // success
+	mIndex++;
 }

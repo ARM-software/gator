@@ -33,7 +33,6 @@ static unsigned long pmnc_enabled[CNTMAX];
 static unsigned long pmnc_event[CNTMAX];
 static unsigned long pmnc_key[CNTMAX];
 
-static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
 static DEFINE_PER_CPU(int[CNTMAX * 2], perfCnt);
 
 static inline void armv6_pmnc_write(u32 val)
@@ -111,8 +110,6 @@ static int gator_events_armv6_online(int** buffer)
 	for (pmnc = 0, cnt = PMN0; cnt <= CCNT; cnt++) {
 		unsigned long event;
 
-		per_cpu(perfPrev, cpu)[cnt] = 0;
-
 		if (!pmnc_enabled[cnt])
 			continue;
 
@@ -171,6 +168,11 @@ static int gator_events_armv6_read(int **buffer)
 	int cnt, len = 0;
 	int cpu = smp_processor_id();
 
+	// a context switch may occur before the online hotplug event, thus need to check that the pmu is enabled
+	if (!(armv6_pmnc_read() & PMCR_E)) {
+		return 0;
+	}
+
 	for (cnt = PMN0; cnt <= CCNT; cnt++) {
 		if (pmnc_enabled[cnt]) {
 			u32 value = 0;
@@ -186,11 +188,9 @@ static int gator_events_armv6_read(int **buffer)
 				break;
 			}
 			armv6_pmnc_reset_counter(cnt);
-			if (value != per_cpu(perfPrev, cpu)[cnt]) {
-				per_cpu(perfPrev, cpu)[cnt] = value;
-				per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
-				per_cpu(perfCnt, cpu)[len++] = value;
-			}
+
+			per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
+			per_cpu(perfCnt, cpu)[len++] = value;
 		}
 	}
 

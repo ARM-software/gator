@@ -88,6 +88,7 @@ struct gator_interface {
 	struct list_head list;
 };
 
+// gator_events_init is used as a search term in gator_events.sh
 #define gator_events_init(initfn) \
 	static inline int __gator_events_init_test(void) \
 	{ return initfn(); }

@@ -27,8 +27,10 @@ void SessionData::initialize() {
 	mLocalCapture = false;
 	mOneShot = false;
 	strcpy(mCoreName, "unknown");
-	configurationXMLPath = NULL;
-	apcDir = NULL;
+	mConfigurationXMLPath = NULL;
+	mSessionXMLPath = NULL;
+	mEventsXMLPath = NULL;
+	mAPCDir = NULL;
 	mSampleRate = 0;
 	mDuration = 0;
 	mBytes = 0;
@@ -46,14 +48,19 @@ void SessionData::initializeCounters() {
 		mPerfCounterTitle[i][0] = 0;
 		mPerfCounterName[i][0] = 0;
 		mPerfCounterDescription[i][0] = 0;
+		mPerfCounterOperation[i][0] = 0;
+		mPerfCounterAlias[i][0] = 0;
+		mPerfCounterDisplay[i][0] = 0;
+		mPerfCounterUnits[i][0] = 0;
 		mPerfCounterEnabled[i] = 0;
 		mPerfCounterEvent[i] = 0;
 		mPerfCounterColor[i] = 0;
 		mPerfCounterKey[i] = 0;
 		mPerfCounterCount[i] = 0;
-		mPerfCounterOperation[i][0] = 0;
 		mPerfCounterPerCPU[i] = false;
 		mPerfCounterEBSCapable[i] = false;
+		mPerfCounterLevel[i] = false;
+		mPerfCounterAverageSelection[i] = false;
 	}
 }
 
@@ -75,8 +82,10 @@ void SessionData::parseSessionXML(char* xmlString) {
 		gSessionData->mSampleRate = 10000;
 	} else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
 		gSessionData->mSampleRate = 1000;
-	} else { // "low"
+	} else if (strcmp(session.parameters.sample_rate, "low") == 0) {
 		gSessionData->mSampleRate = 100;
+	} else {
+		gSessionData->mSampleRate = 0;
 	}
 	gSessionData->mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
 	gSessionData->mDuration = session.parameters.duration;
@@ -97,7 +106,7 @@ void SessionData::parseSessionXML(char* xmlString) {
 		handleException();
 	}
 
-	gSessionData->images = session.parameters.images;
-	gSessionData->target_path = session.parameters.target_path;
-	gSessionData->title = session.parameters.title;
+	gSessionData->mImages = session.parameters.images;
+	gSessionData->mTargetPath = session.parameters.target_path;
+	gSessionData->mTitle = session.parameters.title;
 }

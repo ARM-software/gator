@@ -5,30 +5,30 @@
     <counter name="ARM_Cortex-A8_cnt3"/>
   </counter_set>
   <category name="Cortex-A8" counter_set="ARM_Cortex-A8_cntX" per_cpu="yes" event_based_sampling="yes">
-    <event counter="ARM_Cortex-A8_ccnt" title="Clock" name="Cycles" description="The number of core clock cycles"/>
+    <event counter="ARM_Cortex-A8_ccnt" title="Clock" name="Cycles" alias="ClockCycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
     <event event="0x02" title="Cache" name="Inst TLB refill" description="Instruction fetch that causes a TLB refill of at least the level of TLB closest to the processor"/>
     <event event="0x03" title="Cache" name="Data refill" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/>
     <event event="0x04" title="Cache" name="Data access" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/>
     <event event="0x05" title="Cache" name="Data TLB refill" description="Memory Read or Write operation that causes a TLB refill of at least the level of TLB closest to the processor"/>
-    <event event="0x06" title="Instruction" name="Memory read" description="Memory-reading instruction architecturally executed"/>
-    <event event="0x07" title="Instruction" name="Memory write" description="Memory-writing instruction architecturally executed"/>
-    <event event="0x08" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
+    <event event="0x06" title="Instruction" name="Memory read" alias="MemoryRead" description="Memory-reading instruction architecturally executed"/>
+    <event event="0x07" title="Instruction" name="Memory write" alias="MemoryWrite" description="Memory-writing instruction architecturally executed"/>
+    <event event="0x08" title="Instruction" name="Executed" alias="InstructionsExecuted" description="Instruction architecturally executed"/>
     <event event="0x09" title="Exception" name="Taken" description="Exceptions taken"/>
     <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed"/>
     <event event="0x0b" title="Instruction" name="CONTEXTIDR" description="Instruction that writes to the CONTEXTIDR architecturally executed"/>
     <event event="0x0c" title="Branch" name="PC change" description="Software change of the Program Counter, except by an exception, architecturally executed"/>
     <event event="0x0d" title="Branch" name="Immediate" description="Immediate branch architecturally executed"/>
     <event event="0x0e" title="Procedure" name="Return" description="Procedure return, other than exception return, architecturally executed"/>
-    <event event="0x0f" title="Memory" name="Unaligned access" description="Unaligned access architecturally executed"/>
-    <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
-    <event event="0x12" title="Branch" name="Potential prediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
+    <event event="0x0f" title="Memory" name="Unaligned access" alias="UnalignedAccess" description="Unaligned access architecturally executed"/>
+    <event event="0x10" title="Branch" name="Mispredicted" alias="BranchMispredicted" description="Branch mispredicted or not predicted"/>
+    <event event="0x12" title="Branch" name="Potential prediction" alias="PotentialPrediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
     <event event="0x40" title="Cache" name="Write buffer full" description="Any write buffer full cycle"/>
     <event event="0x41" title="Cache" name="L2 store" description="Any store that is merged in the L2 memory system"/>
     <event event="0x42" title="Cache" name="Bufferable transaction" description="Any bufferable store transaction from load/store to L2 cache, excluding eviction or cast out data"/>
-    <event event="0x43" title="Cache" name="L1 miss" description="Any accesses to the L2 cache"/>
-    <event event="0x44" title="Cache" name="L2 miss" description="Any cacheable miss in the L2 cache"/>
+    <event event="0x43" title="Cache" name="L1 miss" alias="L1Miss" description="Any accesses to the L2 cache"/>
+    <event event="0x44" title="Cache" name="L2 miss" alias="L2Miss" description="Any cacheable miss in the L2 cache"/>
     <event event="0x45" title="AXI" name="Read" description="The number of AXI read data transfers"/>
     <event event="0x46" title="AXI" name="Write" description="The number of AXI write data transfers"/>
     <event event="0x47" title="Memory" name="Replay event" description="Any replay event in the memory system"/>
@@ -55,4 +55,3 @@
     <event event="0x71" title="External" name="PMUEXTIN[1]" description="Counts any event from external input source PMUEXTIN[1]"/>
     <event event="0x72" title="External" name="PMUEXTIN[0,1]" description="Counts any event from both external input sources PMUEXTIN[0] and PMUEXTIN[1]"/>
   </category>
-  

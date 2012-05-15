@@ -13,11 +13,11 @@
 #define MAX_STRING_LEN				80
 #define MAX_DESCRIPTION_LEN			400
 
-#define PROTOCOL_VERSION	8
+#define PROTOCOL_VERSION	9
 #define PROTOCOL_DEV		1000	// Differentiates development versions (timestamp) from release versions
 
 struct ImageLinkList {
-	char *path;
+	char* path;
 	struct ImageLinkList *next;
 };
 
@@ -30,11 +30,13 @@ public:
 	void parseSessionXML(char* xmlString);
 
 	char mCoreName[MAX_STRING_LEN];
-	struct ImageLinkList *images;
-	char* configurationXMLPath;
-	char* target_path;
-	char* apcDir;
-	char* title;
+	struct ImageLinkList *mImages;
+	char* mConfigurationXMLPath;
+	char* mSessionXMLPath;
+	char* mEventsXMLPath;
+	char* mTargetPath;
+	char* mAPCDir;
+	char* mTitle;
 
 	bool mWaitingOnCommand;
 	bool mSessionIsActive;
@@ -42,7 +44,7 @@ public:
 	bool mOneShot;		// halt processing of the driver data until profiling is complete or the buffer is filled
 	
 	int mBacktraceDepth;
-	int mTotalBufferSize;	// approximate number of MB to use for the entire collection buffer, the actual amount is a multiple based on a buffer size retrieved from the driver
+	int mTotalBufferSize;	// number of MB to use for the entire collection buffer
 	int mSampleRate;
 	int mDuration;
 	int mCores;
@@ -53,6 +55,10 @@ public:
 	char mPerfCounterTitle[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterName[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterDescription[MAX_PERFORMANCE_COUNTERS][MAX_DESCRIPTION_LEN];
+	char mPerfCounterOperation[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
+	char mPerfCounterAlias[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
+	char mPerfCounterDisplay[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
+	char mPerfCounterUnits[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	int mPerfCounterEnabled[MAX_PERFORMANCE_COUNTERS];
 	int mPerfCounterEvent[MAX_PERFORMANCE_COUNTERS];
 	int mPerfCounterColor[MAX_PERFORMANCE_COUNTERS];
@@ -60,7 +66,8 @@ public:
 	int mPerfCounterKey[MAX_PERFORMANCE_COUNTERS];
 	bool mPerfCounterPerCPU[MAX_PERFORMANCE_COUNTERS];
 	bool mPerfCounterEBSCapable[MAX_PERFORMANCE_COUNTERS];
-	char mPerfCounterOperation[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
+	bool mPerfCounterLevel[MAX_PERFORMANCE_COUNTERS];
+	bool mPerfCounterAverageSelection[MAX_PERFORMANCE_COUNTERS];
 };
 
 extern SessionData* gSessionData;

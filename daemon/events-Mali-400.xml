@@ -353,7 +353,9 @@
     <event event="0x68" title="Mali L2 Cache" name="Cacheable read transactions, slave 4" description="Cacheable read transactions, slave 4" />
   </category>
   <category name="ARM_Mali-400_Filmstrip" counter_set="ARM_Mali-400_Filmstrip_cntX" per_cpu="no">
-    <event event="0x040a" title="ARM_Mali-400_Filmstrip" name="Size 1:4, freq 1:10" description="Scaled framebuffer captures every 10th frame" />
+    <event event="0x040a" title="ARM_Mali-400_Filmstrip" name="Freq 1:10" description="Scaled framebuffer captures every 10th frame" />
+    <event event="0x041e" title="ARM_Mali-400_Filmstrip" name="Freq 1:30" description="Scaled framebuffer captures every 30th frame" />
+    <event event="0x043c" title="ARM_Mali-400_Filmstrip" name="Freq 1:60" description="Scaled framebuffer captures every 60th frame" />
   </category>
   <category name="Mali-400-SW" counter_set="ARM_Mali-400_SW_cntX" per_cpu="no">
     <!-- EGL Counters -->

@@ -29,10 +29,10 @@ public:
 	void writeData(const char* data, int length, int type);
 	void createDataFile(char* apcDir);
 private:
-	OlySocket* dataSocket;
-	FILE* dataFile;
-	char* dataFileName;
-	pthread_mutex_t sendMutex;
+	OlySocket* mDataSocket;
+	FILE* mDataFile;
+	char* mDataFileName;
+	pthread_mutex_t mSendMutex;
 };
 
 #endif 	//__SENDER_H__

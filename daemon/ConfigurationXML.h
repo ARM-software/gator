@@ -9,21 +9,21 @@
 #ifndef COUNTERS_H
 #define COUNTERS_H
 
-#include "XMLReader.h"
+#include "mxml/mxml.h"
 
 class ConfigurationXML {
 public:
 	ConfigurationXML();
 	~ConfigurationXML();
 	const char* getConfigurationXML() {return mConfigurationXML;}
+	void validate(void);
 private:
 	char* mConfigurationXML;
+	int mIndex;
 
 	int parse(const char* xmlFile);
-	bool isValid(void);
-	int configurationsTag(XMLReader *in);
-	int configurationTag(XMLReader* in);
-	int index;
+	int configurationsTag(mxml_node_t *node);
+	void configurationTag(mxml_node_t *node);
 };
 
 #endif // COUNTERS_H

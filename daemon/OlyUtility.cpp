@@ -21,9 +21,35 @@
 
 OlyUtility* util = NULL;
 
+bool OlyUtility::stringToBool(const char* string, bool defValue) {
+	char value[32];
+
+	strncpy(value, string, sizeof(value));
+	if (value[0] == 0) {
+		return defValue;
+	}
+	value[sizeof(value) - 1] = 0; // strncpy does not guarantee a null-terminated string
+
+	// Convert to lowercase
+	int i = 0;
+	while (value[i]) {
+		value[i] = tolower(value[i]);
+		i++;
+	}
+
+	if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0 || strcmp(value, "on") == 0) {
+		return true;
+	} else if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 || strcmp(value, "off") == 0) {
+		return false;
+	} else {
+		return defValue;
+	}
+}
+
 void OlyUtility::stringToLower(char* string) {
-	if (string == NULL)
+	if (string == NULL) {
 		return;
+	}
 
 	while (*string) {
 		*string = tolower(*string);
@@ -40,8 +66,9 @@ int OlyUtility::getApplicationFullPath(char* fullpath, int sizeOfPath) {
 	int length = readlink("/proc/self/exe", fullpath, sizeOfPath);
 #endif
 
-	if (length == sizeOfPath)
+	if (length == sizeOfPath) {
 		return -1;
+	}
 
 	fullpath[length] = 0;
 	fullpath = getPathPart(fullpath);
@@ -52,7 +79,9 @@ int OlyUtility::getApplicationFullPath(char* fullpath, int sizeOfPath) {
 char* OlyUtility::readFromDisk(const char* file, unsigned int *size, bool appendNull) {
 	// Open the file
 	FILE* pFile = fopen(file, "rb");
-	if (pFile==NULL) return NULL;
+	if (pFile==NULL) {
+		return NULL;
+	}
 
 	// Obtain file size
 	fseek(pFile , 0 , SEEK_END);
@@ -61,19 +90,28 @@ char* OlyUtility::readFromDisk(const char* file, unsigned int *size, bool append
 
 	// Allocate memory to contain the whole file
 	char* buffer = (char*)malloc(lSize + (int)appendNull);
-	if (buffer == NULL) return NULL;
+	if (buffer == NULL) {
+		fclose(pFile);
+		return NULL;
+	}
 
 	// Copy the file into the buffer
-	if (fread(buffer, 1, lSize, pFile) != lSize) return NULL;
+	if (fread(buffer, 1, lSize, pFile) != lSize) {
+		free(buffer);
+		fclose(pFile);
+		return NULL;
+	}
 
 	// Terminate
 	fclose(pFile);
 
-	if (appendNull)
+	if (appendNull) {
 		buffer[lSize] = 0;
+	}
 
-	if (size)
+	if (size) {
 		*size = lSize;
+	}
 
 	return buffer;
 }
@@ -81,10 +119,15 @@ char* OlyUtility::readFromDisk(const char* file, unsigned int *size, bool append
 int OlyUtility::writeToDisk(const char* path, const char* data) {
 	// Open the file
 	FILE* pFile = fopen(path, "wb");
-	if (pFile == NULL) return -1;
+	if (pFile == NULL) {
+		return -1;
+	}
 
 	// Write the data to disk
-	if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) return -1;
+	if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) {
+		fclose(pFile);
+		return -1;
+	}
 
 	// Terminate
 	fclose(pFile);
@@ -94,10 +137,15 @@ int OlyUtility::writeToDisk(const char* path, const char* data) {
 int OlyUtility::appendToDisk(const char* path, const char* data) {
 	// Open the file
 	FILE* pFile = fopen(path, "a");
-	if (pFile == NULL) return -1;
+	if (pFile == NULL) {
+		return -1;
+	}
 
 	// Write the data to disk
-	if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) return -1;
+	if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) {
+		fclose(pFile);
+		return -1;
+	}
 
 	// Terminate
 	fclose(pFile);
@@ -110,7 +158,7 @@ int OlyUtility::appendToDisk(const char* path, const char* data) {
  * 0 is returned on an error; otherwise 1.
  */
 #define TRANSFER_SIZE 1024
-int OlyUtility::copyFile(const char * srcFile, const char * dstFile) {
+int OlyUtility::copyFile(const char* srcFile, const char* dstFile) {
 	char* buffer = (char*)malloc(TRANSFER_SIZE);
 	FILE * f_src = fopen(srcFile,"rb");
 	if (!f_src) {
@@ -164,4 +212,43 @@ char* OlyUtility::getPathPart(char* path) {
 	*(char*)((int)last_sep + 1) = 0;
 
 	return (path);
+}
+
+// whitespace callback utility function used with mini-xml
+const char * mxmlWhitespaceCB(mxml_node_t *node, int loc) {
+	const char *name;
+
+	name = mxmlGetElement(node);
+
+	if (loc == MXML_WS_BEFORE_OPEN) {
+		// Single indentation
+		if (!strcmp(name, "target") || !strcmp(name, "counters"))
+			return("\n  ");
+
+		// Double indentation
+		if (!strcmp(name, "counter"))
+			return("\n    ");
+
+		// Avoid a carriage return on the first line of the xml file
+		if (!strncmp(name, "?xml", 4))
+			return(NULL);
+
+		// Default - no indentation
+		return("\n");
+	}
+
+	if (loc == MXML_WS_BEFORE_CLOSE) {
+		// No indentation
+		if (!strcmp(name, "captured"))
+			return("\n");
+
+		// Single indentation
+		if (!strcmp(name, "counters"))
+			return("\n  ");
+
+		// Default - no carriage return
+		return(NULL);
+	}
+
+	return(NULL);
 }

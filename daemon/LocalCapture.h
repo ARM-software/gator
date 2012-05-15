@@ -15,13 +15,13 @@ class LocalCapture {
 public:
 	LocalCapture();
 	~LocalCapture();
-	void write(char *string);
+	void write(char* string);
 	void copyImages(ImageLinkList* ptr);
 	void createAPCDirectory(char* target_path, char* name);
 private:
 	char* createUniqueDirectory(const char* path, const char* ending, char* title);
 	void replaceAll(char* target, const char* find, const char* replace, unsigned int size);
-	int removeDirAndAllContents(char *path);
+	int removeDirAndAllContents(char* path);
 };
 
 #endif 	//__LOCAL_CAPTURE_H__

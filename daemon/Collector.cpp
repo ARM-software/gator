@@ -16,31 +16,32 @@
 #include "Collector.h"
 #include "SessionData.h"
 #include "Logging.h"
+#include "Sender.h"
 
 extern void handleException();
 
 // Driver initialization independent of session settings
 Collector::Collector() {
-	char text[sizeof(gSessionData->mPerfCounterType[0]) + 20]; // sufficiently large to hold all events/<types>/<file>
+	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/<file>
 
-	bufferFD = 0;
+	mBufferFD = 0;
 
 	checkVersion();
 
 	int enable = -1;
-	if (readIntDriver("enable", &enable) != 0 || enable != 0) {
+	if (readIntDriver("/dev/gator/enable", &enable) != 0 || enable != 0) {
 		logg->logError(__FILE__, __LINE__, "Driver already enabled, possibly a session is already in progress.");
 		handleException();
 	}
 
-	readIntDriver("cpu_cores", &gSessionData->mCores);
+	readIntDriver("/dev/gator/cpu_cores", &gSessionData->mCores);
 	if (gSessionData->mCores == 0) {
 		gSessionData->mCores = 1;
 	}
 
-	bufferSize = 512 * 1024;
-	if (writeReadDriver("buffer_size", &bufferSize) || bufferSize <= 0) {
-		logg->logError(__FILE__, __LINE__, "Unable to set the driver buffer size");
+	mBufferSize = 0;
+	if (readIntDriver("/dev/gator/buffer_size", &mBufferSize) || mBufferSize <= 0) {
+		logg->logError(__FILE__, __LINE__, "Unable to read the driver buffer size");
 		handleException();
 	}
 
@@ -51,7 +52,7 @@ Collector::Collector() {
 	// Read unchanging keys from driver which are created at insmod'ing of gator.ko
 	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
 		if (gSessionData->mPerfCounterEnabled[i]) {
-			snprintf(text, sizeof(text), "events/%s/key", gSessionData->mPerfCounterType[i]);
+			snprintf(text, sizeof(text), "/dev/gator/events/%s/key", gSessionData->mPerfCounterType[i]);
 			readIntDriver(text, &gSessionData->mPerfCounterKey[i]);
 		}
 	}
@@ -59,21 +60,37 @@ Collector::Collector() {
 
 Collector::~Collector() {
 	// Write zero for safety, as a zero should have already been written
-	writeDriver("enable", "0");
+	writeDriver("/dev/gator/enable", "0");
 
 	// Calls event_buffer_release in the driver
-	if (bufferFD) {
-		close(bufferFD);
+	if (mBufferFD) {
+		close(mBufferFD);
 	}
 }
 
+#include <dirent.h>
 void Collector::enablePerfCounters() {
 	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/enabled
+
+	// Initialize all perf counters in the driver, i.e. set enabled to zero
+	struct dirent *ent;
+	DIR* dir = opendir("/dev/gator/events");
+	if (dir) {
+		while ((ent = readdir(dir)) != NULL) {
+			// skip hidden files, current dir, and parent dir
+			if (ent->d_name[0] == '.')
+				continue;
+			snprintf(text, sizeof(text), "/dev/gator/events/%s/enabled", ent->d_name);
+			writeDriver(text, 0);
+		}
+		closedir (dir);
+	}
+
 	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
 		if (!gSessionData->mPerfCounterEnabled[i]) {
 			continue;
 		}
-		snprintf(text, sizeof(text), "events/%s/enabled", gSessionData->mPerfCounterType[i]);
+		snprintf(text, sizeof(text), "/dev/gator/events/%s/enabled", gSessionData->mPerfCounterType[i]);
 		if (writeReadDriver(text, &gSessionData->mPerfCounterEnabled[i])) {
 			// Disable those events that don't exist on this hardware platform even though they exist in configuration.xml
 			gSessionData->mPerfCounterEnabled[i] = 0;
@@ -83,21 +100,21 @@ void Collector::enablePerfCounters() {
 }
 
 void Collector::setupPerfCounters() {
-	char base[sizeof(gSessionData->mPerfCounterType[0]) + 10]; // sufficiently large to hold all events/<types>
-	char text[sizeof(gSessionData->mPerfCounterType[0]) + 20]; // sufficiently large to hold all events/<types>/<file>
+	char base[sizeof(gSessionData->mPerfCounterType[0]) + 20]; // sufficiently large to hold all /dev/gator/events/<types>
+	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/<file>
 
 	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
 		if (!gSessionData->mPerfCounterEnabled[i]) {
 			continue;
 		}
-		snprintf(base, sizeof(base), "events/%s", gSessionData->mPerfCounterType[i]);
+		snprintf(base, sizeof(base), "/dev/gator/events/%s", gSessionData->mPerfCounterType[i]);
 		snprintf(text, sizeof(text), "%s/event", base);
 		writeDriver(text, gSessionData->mPerfCounterEvent[i]);
 		if (gSessionData->mPerfCounterEBSCapable[i]) {
 			snprintf(text, sizeof(text), "%s/count", base);
-			if (access(resolvePath(text), F_OK) == 0) {
+			if (access(text, F_OK) == 0) {
 				if (writeReadDriver(text, &gSessionData->mPerfCounterCount[i]) && gSessionData->mPerfCounterCount[i] > 0) {
-					logg->logError(__FILE__, __LINE__, "Cannot enable EBS for %s with a count of %d\n", gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterCount[i]);
+					logg->logError(__FILE__, __LINE__, "Cannot enable EBS for %s:%s with a count of %d\n", gSessionData->mPerfCounterTitle[i], gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterCount[i]);
 					handleException();
 				}
 			} else if (gSessionData->mPerfCounterCount[i] > 0) {
@@ -111,7 +128,7 @@ void Collector::setupPerfCounters() {
 void Collector::checkVersion() {
 	int driver_version = 0;
 
-	if (readIntDriver("version", &driver_version) == -1) {
+	if (readIntDriver("/dev/gator/version", &driver_version) == -1) {
 		logg->logError(__FILE__, __LINE__, "Error reading gator driver version");
 		handleException();
 	}
@@ -139,61 +156,61 @@ void Collector::checkVersion() {
 
 void Collector::start() {
 	// Set the maximum backtrace depth
-	if (writeReadDriver("backtrace_depth", &gSessionData->mBacktraceDepth)) {
+	if (writeReadDriver("/dev/gator/backtrace_depth", &gSessionData->mBacktraceDepth)) {
 		logg->logError(__FILE__, __LINE__, "Unable to set the driver backtrace depth");
 		handleException();
 	}
 
 	// open the buffer which calls userspace_buffer_open() in the driver
-	bufferFD = open(resolvePath("buffer"), O_RDONLY);
-	if (bufferFD < 0) {
+	mBufferFD = open("/dev/gator/buffer", O_RDONLY);
+	if (mBufferFD < 0) {
 		logg->logError(__FILE__, __LINE__, "The gator driver did not set up properly. Please view the linux console or dmesg log for more information on the failure.");
 		handleException();
 	}
 
 	// set the tick rate of the profiling timer
-	if (writeReadDriver("tick", &gSessionData->mSampleRate) != 0) {
+	if (writeReadDriver("/dev/gator/tick", &gSessionData->mSampleRate) != 0) {
 		logg->logError(__FILE__, __LINE__, "Unable to set the driver tick");
 		handleException();
 	}
 
-	// notify the kernel of the streaming mode, currently used for network stats
-	int streaming = (int)!gSessionData->mOneShot;
-	if (writeReadDriver("streaming", &streaming) != 0) {
-		logg->logError(__FILE__, __LINE__, "Unable to set streaming");
+	// notify the kernel of the response type
+	int response_type = gSessionData->mLocalCapture ? 0 : RESPONSE_APC_DATA;
+	if (writeDriver("/dev/gator/response_type", response_type)) {
+		logg->logError(__FILE__, __LINE__, "Unable to write the response type");
 		handleException();
 	}
 
 	logg->logMessage("Start the driver");
 
 	// This command makes the driver start profiling by calling gator_op_start() in the driver
-	if (writeDriver("enable", "1") != 0) {
+	if (writeDriver("/dev/gator/enable", "1") != 0) {
 		logg->logError(__FILE__, __LINE__, "The gator driver did not start properly. Please view the linux console or dmesg log for more information on the failure.");
 		handleException();
 	}
 
-	lseek(bufferFD, 0, SEEK_SET);
+	lseek(mBufferFD, 0, SEEK_SET);
 }
 
 // These commands should cause the read() function in collect() to return
 void Collector::stop() {
 	// This will stop the driver from profiling
-	if (writeDriver("enable", "0") != 0) {
+	if (writeDriver("/dev/gator/enable", "0") != 0) {
 		logg->logMessage("Stopping kernel failed");
 	}
 }
 
 int Collector::collect(char* buffer) {
 	// Calls event_buffer_read in the driver
-	int bytesRead = read(bufferFD, buffer, bufferSize);
+	int bytesRead = read(mBufferFD, buffer, mBufferSize);
 
 	// If read() returned due to an interrupt signal, re-read to obtain the last bit of collected data
 	if (bytesRead == -1 && errno == EINTR) {
-		bytesRead = read(bufferFD, buffer, bufferSize);
+		bytesRead = read(mBufferFD, buffer, mBufferSize);
 	}
 
+	// return the total bytes written
 	logg->logMessage("Driver read of %d bytes", bytesRead);
-
 	return bytesRead;
 }
 
@@ -209,8 +226,9 @@ void Collector::getCoreName() {
 	}
 
 	while (fgets(temp, sizeof(temp), f)) {
-		if (strlen(temp) > 0)
+		if (strlen(temp) > 0) {
 			temp[strlen(temp) - 1] = 0;	// Replace the line feed with a null
+		}
 
 		if (strstr(temp, "Hardware") != 0) {
 			char* position = strchr(temp, ':');
@@ -219,7 +237,7 @@ void Collector::getCoreName() {
 					"The core name in the captured xml file will be 'unknown'.");
 				return;
 			}
-			strncpy(gSessionData->mCoreName, (char *)((int)position + 2), sizeof(gSessionData->mCoreName));
+			strncpy(gSessionData->mCoreName, (char*)((int)position + 2), sizeof(gSessionData->mCoreName));
 			gSessionData->mCoreName[sizeof(gSessionData->mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
 			fclose(f);
 			return;
@@ -231,14 +249,7 @@ void Collector::getCoreName() {
 	fclose(f);
 }
 
-char* Collector::resolvePath(const char* file) {
-	static char fullpath[100]; // Sufficiently large to hold any path within /dev/gator
-	snprintf(fullpath, sizeof(fullpath), "/dev/gator/%s", file);
-	return fullpath;
-}
-
-int Collector::readIntDriver(const char* path, int* value) {
-	char* fullpath = resolvePath(path);
+int Collector::readIntDriver(const char* fullpath, int* value) {
 	FILE* file = fopen(fullpath, "r");
 	if (file == NULL) {
 		return -1;
@@ -258,8 +269,7 @@ int Collector::writeDriver(const char* path, int value) {
 	return writeDriver(path, data);
 }
 
-int Collector::writeDriver(const char* path, const char* data) {
-	char* fullpath = resolvePath(path);
+int Collector::writeDriver(const char* fullpath, const char* data) {
 	int fd = open(fullpath, O_WRONLY);
 	if (fd < 0) {
 		return -1;

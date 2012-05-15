@@ -26,8 +26,8 @@ public:
 	StreamlineSetup(OlySocket *socket);
 	~StreamlineSetup();
 private:
-	int numConnections;
-	OlySocket* socket;
+	int mNumConnections;
+	OlySocket* mSocket;
 	char* mSessionXML;
 
 	char* readCommand(int*);

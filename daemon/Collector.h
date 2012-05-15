@@ -20,16 +20,14 @@ public:
 	int collect(char* buffer);
 	void enablePerfCounters();
 	void setupPerfCounters();
-	int getBufferSize() {return bufferSize;}
+	int getBufferSize() {return mBufferSize;}
 private:
-	int bufferSize;
-	int bufferFD;
-	char * buffer;
+	int mBufferSize;
+	int mBufferFD;
 
 	void checkVersion();
 	void getCoreName();
 
-	char* resolvePath(const char* file);
 	int readIntDriver(const char* path, int* value);
 	int writeDriver(const char* path, int value);
 	int writeDriver(const char* path, const char* data);

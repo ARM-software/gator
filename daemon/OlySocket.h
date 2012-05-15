@@ -25,11 +25,9 @@ public:
 	int receive(char* buffer, int size);
 	int receiveNBytes(char* buffer, int size);
 	int receiveString(char* buffer, int size);
-	char* getLastError() {return strError;}
 	int getSocketID() {return mSocketID;}
 private:
-	char* strError;
-	int mSocketID, fdServer;
+	int mSocketID, mFDServer;
 	void createClientSocket(char* hostname, int port);
 	void createSingleServerConnection(int port);
 	void createServerSocket(int port);

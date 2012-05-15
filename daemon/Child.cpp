@@ -134,6 +134,7 @@ void* stopThread(void* pVoid) {
 void* senderThread(void* pVoid) {
 	int length;
 	char* data;
+	char end_sequence[] = {RESPONSE_APC_DATA, 0, 0, 0, 0};
 
 	sem_post(&senderThreadStarted);
 	prctl(PR_SET_NAME, (unsigned int)&"gatord-sender", 0, 0, 0);
@@ -143,20 +144,25 @@ void* senderThread(void* pVoid) {
 		data = collectorFifo->read(&length);
 		sender->writeData(data, length, RESPONSE_APC_DATA);
 	} while (length > 0);
+
+	// write end-of-capture sequence
+	if (!gSessionData->mLocalCapture) {
+		sender->writeData(end_sequence, sizeof(end_sequence), RESPONSE_APC_DATA);
+	}
+
 	logg->logMessage("Exit sender thread");
 	return 0;
 }
 
-Child::Child(char* path) {
+Child::Child() {
 	initialization();
-	sessionXMLPath = path;
 	gSessionData->mLocalCapture = true;
 }
 
 Child::Child(OlySocket* sock, int conn) {
 	initialization();
 	socket = sock;
-	numConnections = conn;
+	mNumConnections = conn;
 }
 
 Child::~Child() {
@@ -171,8 +177,7 @@ void Child::initialization() {
 	signal(SIGALRM, child_handler);
 	socket = NULL;
 	numExceptions = 0;
-	numConnections = 0;
-	sessionXMLPath = 0;
+	mNumConnections = 0;
 
 	// Initialize semaphores
 	sem_init(&senderThreadStarted, 0, 0);
@@ -189,13 +194,17 @@ void Child::run() {
 	char* collectBuffer;
 	int bytesCollected = 0;
 	LocalCapture* localCapture = NULL;
+	pthread_t durationThreadID, stopThreadID, senderThreadID;
 
 	prctl(PR_SET_NAME, (unsigned int)&"gatord-child", 0, 0, 0);
+
+	// Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
+	mxmlSetWrapMargin(0);
 
 	// Instantiate the Sender - must be done first, after which error messages can be sent
 	sender = new Sender(socket);
 
-	if (numConnections > 1) {
+	if (mNumConnections > 1) {
 		logg->logError(__FILE__, __LINE__, "Session already in progress");
 		handleException();
 	}
@@ -211,29 +220,27 @@ void Child::run() {
 		// Respond to Streamline requests
 		StreamlineSetup ss(socket);
 	} else {
-		xmlString = util->readFromDisk(sessionXMLPath);
+		char* xmlString;
+		xmlString = util->readFromDisk(gSessionData->mSessionXMLPath);
 		if (xmlString == 0) {
-			logg->logError(__FILE__, __LINE__, "Unable to read session xml file: %s", sessionXMLPath);
+			logg->logError(__FILE__, __LINE__, "Unable to read session xml file: %s", gSessionData->mSessionXMLPath);
 			handleException();
 		}
 		gSessionData->parseSessionXML(xmlString);
 		localCapture = new LocalCapture();
-		localCapture->createAPCDirectory(gSessionData->target_path, gSessionData->title);
-		localCapture->copyImages(gSessionData->images);
+		localCapture->createAPCDirectory(gSessionData->mTargetPath, gSessionData->mTitle);
+		localCapture->copyImages(gSessionData->mImages);
 		localCapture->write(xmlString);
-		sender->createDataFile(gSessionData->apcDir);
-		delete xmlString;
+		sender->createDataFile(gSessionData->mAPCDir);
+		free(xmlString);
 	}
 
 	// Write configuration into the driver
 	collector->setupPerfCounters();
 
-	// Create user-space buffers
-	int fifoBufferSize = collector->getBufferSize();
-	int numCollectorBuffers = (gSessionData->mTotalBufferSize * 1024 * 1024 + fifoBufferSize - 1) / fifoBufferSize;
-	numCollectorBuffers = (numCollectorBuffers < 4) ? 4 : numCollectorBuffers;
-	logg->logMessage("Created %d %d-byte collector buffers", numCollectorBuffers, fifoBufferSize);
-	collectorFifo = new Fifo(numCollectorBuffers, fifoBufferSize);
+	// Create user-space buffers, add 5 to the size to account for the 1-byte type and 4-byte length
+	logg->logMessage("Created %d MB collector buffer with a %d-byte ragged end", gSessionData->mTotalBufferSize, collector->getBufferSize());
+	collectorFifo = new Fifo(collector->getBufferSize() + 5, gSessionData->mTotalBufferSize* 1024 * 1024);
 
 	// Get the initial pointer to the collect buffer
 	collectBuffer = collectorFifo->start();
@@ -243,12 +250,14 @@ void Child::run() {
 
 	// Create the duration, stop, and sender threads
 	bool thread_creation_success = true;
-	if (gSessionData->mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThread, NULL))
+	if (gSessionData->mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThread, NULL)) {
 		thread_creation_success = false;
-	else if (socket && pthread_create(&stopThreadID, NULL, stopThread, NULL))
+	} else if (socket && pthread_create(&stopThreadID, NULL, stopThread, NULL)) {
 		thread_creation_success = false;
-	else if (pthread_create(&senderThreadID, NULL, senderThread, NULL))
+	} else if (pthread_create(&senderThreadID, NULL, senderThread, NULL)){
 		thread_creation_success = false;
+	}
+
 	if (!thread_creation_success) {
 		logg->logError(__FILE__, __LINE__, "Failed to create gator threads");
 		handleException();
@@ -269,8 +278,7 @@ void Child::run() {
 
 		// In one shot mode, stop collection once all the buffers are filled
 		if (gSessionData->mOneShot && gSessionData->mSessionIsActive) {
-			// Depth minus 1 because write() has not yet been called
-			if ((bytesCollected == -1) || (collectorFifo->numWriteToReadBuffersFilled() == collectorFifo->depth() - 1)) {
+			if (bytesCollected == -1 || collectorFifo->willFill(bytesCollected)) {
 				logg->logMessage("One shot");
 				endSession();
 			}
@@ -292,7 +300,7 @@ void Child::run() {
 	// Write the captured xml file
 	if (gSessionData->mLocalCapture) {
 		CapturedXML capturedXML;
-		capturedXML.write(gSessionData->apcDir);
+		capturedXML.write(gSessionData->mAPCDir);
 	}
 
 	logg->logMessage("Profiling ended.");

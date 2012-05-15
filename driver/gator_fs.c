@@ -233,9 +233,17 @@ static int gatorfs_fill_super(struct super_block *sb, void *data, int silent)
 		return -ENOMEM;
 	root_inode->i_op = &simple_dir_inode_operations;
 	root_inode->i_fop = &simple_dir_operations;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
 	root_dentry = d_alloc_root(root_inode);
+#else
+	root_dentry = d_make_root(root_inode);
+#endif
+
 	if (!root_dentry) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
 		iput(root_inode);
+#endif
 		return -ENOMEM;
 	}
 

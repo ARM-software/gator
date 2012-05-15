@@ -15,7 +15,7 @@
 
 class Child {
 public:
-	Child(char* sessionXMLPath);
+	Child();
 	Child(OlySocket* sock, int numConnections);
 	~Child();
 	void run();
@@ -23,11 +23,7 @@ public:
 	void endSession();
 	int numExceptions;
 private:
-	char* xmlString;
-	char* sessionXMLPath;
-	int numConnections;
-	time_t timeStart;
-	pthread_t durationThreadID, stopThreadID, senderThreadID;
+	int mNumConnections;
 
 	void initialization();
 };

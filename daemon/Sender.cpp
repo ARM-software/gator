@@ -20,18 +20,18 @@
 extern void handleException();
 
 Sender::Sender(OlySocket* socket) {
-	dataFile = NULL;
-	dataSocket = NULL;
+	mDataFile = NULL;
+	mDataSocket = NULL;
 
 	// Set up the socket connection
 	if (socket) {
 		char streamline[64] = {0};
-		dataSocket = socket;
+		mDataSocket = socket;
 
 		// Receive magic sequence - can wait forever
 		// Streamline will send data prior to the magic sequence for legacy support, which should be ignored for v4+
 		while (strcmp("STREAMLINE", streamline) != 0) {
-			if (dataSocket->receiveString(streamline, sizeof(streamline)) == -1) {
+			if (mDataSocket->receiveString(streamline, sizeof(streamline)) == -1) {
 				logg->logError(__FILE__, __LINE__, "Socket disconnected");
 				handleException();
 			}
@@ -39,32 +39,33 @@ Sender::Sender(OlySocket* socket) {
 
 		// Send magic sequence - must be done first, afterwhich error messages can be sent
 		char magic[] = {'G', 'A', 'T', 'O', 'R', '\n'};
-		dataSocket->send(magic, sizeof(magic));
+		mDataSocket->send(magic, sizeof(magic));
 
 		gSessionData->mWaitingOnCommand = true;
 		logg->logMessage("Completed magic sequence");
 	}
 
-	pthread_mutex_init(&sendMutex, NULL);
+	pthread_mutex_init(&mSendMutex, NULL);
 }
 
 Sender::~Sender() {
-	delete dataSocket;
-	dataSocket = NULL;
-	if (dataFile) {
-		fclose(dataFile);
+	delete mDataSocket;
+	mDataSocket = NULL;
+	if (mDataFile) {
+		fclose(mDataFile);
 	}
 }
 
 void Sender::createDataFile(char* apcDir) {
-	if (apcDir == NULL)
+	if (apcDir == NULL) {
 		return;
+	}
 
-	dataFileName = (char*)malloc(strlen(apcDir) + 12);
-	sprintf(dataFileName, "%s/0000000000", apcDir);
-	dataFile = fopen(dataFileName, "wb");
-	if (!dataFile) {
-		logg->logError(__FILE__, __LINE__, "Failed to open binary file: %s", dataFileName);
+	mDataFileName = (char*)malloc(strlen(apcDir) + 12);
+	sprintf(mDataFileName, "%s/0000000000", apcDir);
+	mDataFile = fopen(mDataFileName, "wb");
+	if (!mDataFile) {
+		logg->logError(__FILE__, __LINE__, "Failed to open binary file: %s", mDataFileName);
 		handleException();
 	}
 }
@@ -75,32 +76,35 @@ void Sender::writeData(const char* data, int length, int type) {
 	}
 
 	// Multiple threads call writeData()
-	pthread_mutex_lock(&sendMutex);
+	pthread_mutex_lock(&mSendMutex);
 
 	// Send data over the socket connection
-	if (dataSocket) {
+	if (mDataSocket) {
 		// Start alarm
 		alarm(8);
 
 		// Send data over the socket, sending the type and size first
 		logg->logMessage("Sending data with length %d", length);
-		dataSocket->send((char*)&type, 1);
-		dataSocket->send((char*)&length, sizeof(length));
-		dataSocket->send((char*)data, length);
+		if (type != RESPONSE_APC_DATA) {
+			// type and length already added by the Collector for apc data
+			mDataSocket->send((char*)&type, 1);
+			mDataSocket->send((char*)&length, sizeof(length));
+		}
+		mDataSocket->send((char*)data, length);
 
 		// Stop alarm
 		alarm(0);
 	}
 
 	// Write data to disk as long as it is not meta data
-	if (dataFile && type == RESPONSE_APC_DATA) {
+	if (mDataFile && type == RESPONSE_APC_DATA) {
 		logg->logMessage("Writing data with length %d", length);
-		// Send data to the data file, storing the size first
-		if ((fwrite((char*)&length, 1, sizeof(length), dataFile) != sizeof(length)) || (fwrite(data, 1, length, dataFile) != (unsigned int)length)) {
-			logg->logError(__FILE__, __LINE__, "Failed writing binary file %s", dataFileName);
+		// Send data to the data file
+		if (fwrite(data, 1, length, mDataFile) != (unsigned int)length) {
+			logg->logError(__FILE__, __LINE__, "Failed writing binary file %s", mDataFileName);
 			handleException();
 		}
 	}
 
-	pthread_mutex_unlock(&sendMutex);
+	pthread_mutex_unlock(&mSendMutex);
 }

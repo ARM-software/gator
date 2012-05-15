@@ -36,7 +36,7 @@ static bool driverMountedAtStart = false;
 
 struct cmdline_t {
 	int port;
-	char* sessionXML;
+	char* module;
 };
 
 void cleanUp() {
@@ -101,18 +101,20 @@ void child_exit(int signum) {
 // retval: -1 = failure; 0 = was already mounted; 1 = successfully mounted
 int mountGatorFS() {
 	// If already mounted,
-	if (access("/dev/gator/buffer", F_OK) == 0)
+	if (access("/dev/gator/buffer", F_OK) == 0) {
 		return 0;
+	}
 
 	// else, mount the filesystem
 	mkdir("/dev/gator", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if (mount("nodev", "/dev/gator", "gatorfs", 0, NULL) != 0)
+	if (mount("nodev", "/dev/gator", "gatorfs", 0, NULL) != 0) {
 		return -1;
-	else
+	} else {
 		return 1;
+	}
 }
 
-int setupFilesystem() {
+int setupFilesystem(char* module) {
 	int retval;
 
 	// Verify root permissions
@@ -120,6 +122,17 @@ int setupFilesystem() {
 	if (euid) {
 		logg->logError(__FILE__, __LINE__, "gatord must be launched with root privileges");
 		handleException();
+	}
+
+	if (module) {
+		// unmount and rmmod if the module was specified on the commandline, i.e. ensure that the specified module is indeed running
+		shutdownFilesystem();
+
+		// if still mounted
+		if (access("/dev/gator/buffer", F_OK) == 0) {
+			logg->logError(__FILE__, __LINE__, "Unable to remove the running gator.ko. Manually remove the module or use the running module by not specifying one on the commandline");
+			handleException();
+		}
 	}
 
 	retval = mountGatorFS();
@@ -131,22 +144,25 @@ int setupFilesystem() {
 		driverRunningAtStart = driverMountedAtStart = true;
 	} else {
 		char command[256]; // arbitrarily large amount
+		char location[256]; // arbitrarily large amount
 
-		// Is the driver co-located in the same directory?
-		if (util->getApplicationFullPath(command, sizeof(command)) != 0) { // allow some buffer space
-			logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
+		if (module) {
+			strncpy(location, module, sizeof(location));
+		} else {
+			// Is the driver co-located in the same directory?
+			if (util->getApplicationFullPath(location, sizeof(location)) != 0) { // allow some buffer space
+				logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
+			}
+			strncat(location, "gator.ko", sizeof(location) - strlen(location) - 1);
 		}
-		strcat(command, "gator.ko");
-		if (access(command, F_OK) == -1) {
-			logg->logError(__FILE__, __LINE__, "Unable to locate gator.ko driver:\n  >>> gator.ko should be co-located with gatord in the same directory\n  >>> OR insmod gator.ko prior to launching gatord");
+
+		if (access(location, F_OK) == -1) {
+			logg->logError(__FILE__, __LINE__, "Unable to locate gator.ko driver:\n  >>> gator.ko should be co-located with gatord in the same directory\n  >>> OR insmod gator.ko prior to launching gatord\n  >>> OR specify the location of gator.ko on the command line");
 			handleException();
 		}
 
 		// Load driver
-		strcpy(command, "insmod ");
-		util->getApplicationFullPath(&command[7], sizeof(command) - 64); // allow some buffer space
-		strcat(command, "gator.ko >/dev/null 2>&1");
-
+		snprintf(command, sizeof(command), "insmod %s >/dev/null 2>&1", location);
 		if (system(command) != 0) {
 			logg->logMessage("Unable to load gator.ko driver with command: %s", command);
 			logg->logError(__FILE__, __LINE__, "Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
@@ -163,11 +179,14 @@ int setupFilesystem() {
 }
 
 int shutdownFilesystem() {
-	if (driverMountedAtStart == false)
+	if (driverMountedAtStart == false) {
 		umount("/dev/gator");
-	if (driverRunningAtStart == false)
-		if (system("rmmod gator >/dev/null 2>&1") != 0)
+	}
+	if (driverRunningAtStart == false) {
+		if (system("rmmod gator >/dev/null 2>&1") != 0) {
 			return -1;
+		}
+	}
 
 	return 0; // success
 }
@@ -175,29 +194,38 @@ int shutdownFilesystem() {
 struct cmdline_t parseCommandLine(int argc, char** argv) {
 	struct cmdline_t cmdline;
 	cmdline.port = 8080;
-	cmdline.sessionXML = NULL;
+	cmdline.module = NULL;
 	int c;
 
-	while ((c = getopt (argc, argv, "hvp:s:c:")) != -1) {
+	while ((c = getopt(argc, argv, "hvp:s:c:e:m:")) != -1) {
 		switch(c) {
+			case 'c':
+				gSessionData->mConfigurationXMLPath = optarg;
+				break;
+			case 'e':
+				gSessionData->mEventsXMLPath = optarg;
+				break;
+			case 'm':
+				cmdline.module = optarg;
+				break;
 			case 'p':
 				cmdline.port = strtol(optarg, NULL, 10);
 				break;
 			case 's':
-				cmdline.sessionXML = optarg;
-				break;
-			case 'c':
-				gSessionData->configurationXMLPath = optarg;
+				gSessionData->mSessionXMLPath = optarg;
 				break;
 			case 'h':
 			case '?':
 				logg->logError(__FILE__, __LINE__,
 					"Streamline gatord version %d. All parameters are optional:\n"
+					"-c config_xml\tpath and filename of the configuration.xml to use\n"
+					"-e events_xml\tpath and filename of the events.xml to use\n"
+					"-h\t\tthis help page\n"
+					"-m module\tpath and filename of gator.ko\n"
 					"-p port_number\tport upon which the server listens; default is 8080\n"
 					"-s session_xml\tpath and filename of a session xml used for local capture\n"
-					"-c config_xml\tpath and filename of the configuration.xml to use\n"
 					"-v\t\tversion information\n"
-					"-h\t\tthis help page\n", PROTOCOL_VERSION);
+					, PROTOCOL_VERSION);
 				handleException();
 				break;
 			case 'v':
@@ -208,7 +236,7 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 	}
 
 	// Error checking
-	if (cmdline.port != 8080 && cmdline.sessionXML != NULL) {
+	if (cmdline.port != 8080 && gSessionData->mSessionXMLPath != NULL) {
 		logg->logError(__FILE__, __LINE__, "Only a port or a session xml can be specified, not both");
 		handleException();
 	}
@@ -222,7 +250,7 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 }
 
 // Gator data flow: collector -> collector fifo -> sender
-int main(int argc, char** argv, char *envp[]) {
+int main(int argc, char** argv, char* envp[]) {
 	gSessionData = new SessionData(); // Global data class
 	logg = new Logging(DEBUG);  // Set up global thread-safe logging
 	util = new OlyUtility();	// Set up global utility class
@@ -235,8 +263,9 @@ int main(int argc, char** argv, char *envp[]) {
 	signal(SIGABRT, handler);
 
 	// Set to high priority
-	if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1)
+	if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {
 		logg->logMessage("setpriority() failed");
+	}
 
 	// Initialize session data
 	gSessionData->initialize();
@@ -245,7 +274,7 @@ int main(int argc, char** argv, char *envp[]) {
 	struct cmdline_t cmdline = parseCommandLine(argc, argv);
 
 	// Call before setting up the SIGCHLD handler, as system() spawns child processes
-	setupFilesystem();
+	setupFilesystem(cmdline.module);
 
 	// Handle child exit codes
 	signal(SIGCHLD, child_exit);
@@ -255,8 +284,8 @@ int main(int argc, char** argv, char *envp[]) {
 	signal(SIGPIPE, SIG_IGN);
 
 	// If the command line argument is a session xml file, no need to open a socket
-	if (cmdline.sessionXML) {
-		child = new Child(cmdline.sessionXML);
+	if (gSessionData->mSessionXMLPath) {
+		child = new Child();
 		child->run();
 		delete child;
 	} else {

@@ -26,7 +26,7 @@ static ulong block_rq_rd_enabled;
 static ulong block_rq_wr_key;
 static ulong block_rq_rd_key;
 static DEFINE_PER_CPU(int[BLOCK_TOTAL], blockCnt);
-static DEFINE_PER_CPU(int[BLOCK_TOTAL * 2], blockGet);
+static DEFINE_PER_CPU(int[BLOCK_TOTAL * 4], blockGet);
 static DEFINE_PER_CPU(bool, new_data_avail);
 
 GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct request *rq))
@@ -129,6 +129,8 @@ static int gator_events_block_read(int **buffer)
 		per_cpu(blockCnt, cpu)[BLOCK_RQ_WR] = 0;
 		local_irq_restore(flags);
 		per_cpu(blockGet, cpu)[len++] = block_rq_wr_key;
+		per_cpu(blockGet, cpu)[len++] = 0; // indicates to Streamline that value bytes were written now, not since the last message
+		per_cpu(blockGet, cpu)[len++] = block_rq_wr_key;
 		per_cpu(blockGet, cpu)[len++] = value;
 		data += value;
 	}
@@ -137,6 +139,8 @@ static int gator_events_block_read(int **buffer)
 		value = per_cpu(blockCnt, cpu)[BLOCK_RQ_RD];
 		per_cpu(blockCnt, cpu)[BLOCK_RQ_RD] = 0;
 		local_irq_restore(flags);
+		per_cpu(blockGet, cpu)[len++] = block_rq_rd_key;
+		per_cpu(blockGet, cpu)[len++] = 0; // indicates to Streamline that value bytes were read now, not since the last message
 		per_cpu(blockGet, cpu)[len++] = block_rq_rd_key;
 		per_cpu(blockGet, cpu)[len++] = value;
 		data += value;

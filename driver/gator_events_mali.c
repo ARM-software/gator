@@ -14,17 +14,41 @@
 
 #include "linux/mali_linux_trace.h"
 
-#define ACTIVITY_START  1
-#define ACTIVITY_STOP   2
+/*
+ * There are (currently) three different variants of the comms between gator and Mali:
+ * 1 (deprecated): No software counter support
+ * 2 (deprecated): Tracepoint called for each separate s/w counter value as it appears
+ * 3 (default): Single tracepoint for all s/w counters in a bundle.
+ * Interface style 3 is the default if no other is specified.  1 and 2 will be eliminated when
+ * existing Mali DDKs are upgraded.
+ */
 
-#ifndef MALI_SUPPORT
-#error MALI_SUPPORT not defined!
+#if !defined(GATOR_MALI_INTERFACE_STYLE)
+#define GATOR_MALI_INTERFACE_STYLE (3)
 #endif
 
-#define MALI_200     0x0a07
-#define MALI_300     0x0b06 //This is not actually true; Mali-300 is also 0x0b07
-#define MALI_400     0x0b07
-#define MALI_T6xx    0x0056
+#define MALI_200     (0x0a07)
+#define MALI_300     (0x0b06) //This is not actually true; Mali-300 is also 0x0b07
+#define MALI_400     (0x0b07)
+#define MALI_T6xx    (0x0056)
+
+/*
+ * List of possible actions allowing DDK to be controlled by Streamline.
+ * The following numbers are used by DDK to control the frame buffer dumping.
+ */
+#define FBDUMP_CONTROL_ENABLE (1)
+#define FBDUMP_CONTROL_RATE (2)
+#define SW_EVENTS_ENABLE      (3)
+#define FBDUMP_CONTROL_RESIZE_FACTOR (4)
+
+/*
+ * Check that the MALI_SUPPORT define is set to one of the allowable device codes.
+ */
+#if !defined(MALI_SUPPORT)
+#error MALI_SUPPORT not defined!
+#elif (MALI_SUPPORT != MALI_200) && (MALI_SUPPORT != MALI_300) && (MALI_SUPPORT != MALI_400) && (MALI_SUPPORT != MALI_T6xx)
+#error MALI_SUPPORT set to an invalid device code
+#endif
 
 static const char *mali_name;
 
@@ -226,12 +250,31 @@ GATOR_DEFINE_PROBE(mali_hw_counter, TP_PROTO(unsigned int event_id, unsigned int
     }
 }
 
+#if GATOR_MALI_INTERFACE_STYLE == 2
 GATOR_DEFINE_PROBE(mali_sw_counter, TP_PROTO(unsigned int event_id, signed long long value))
 {
     if (is_sw_counter(event_id)) {
         counter_data[event_id] = scale_sw_counter_value(event_id, value);
     }
 }
+#endif /* GATOR_MALI_INTERFACE_STYLE == 2 */
+
+
+#if GATOR_MALI_INTERFACE_STYLE == 3
+GATOR_DEFINE_PROBE(mali_sw_counters, TP_PROTO(pid_t pid, pid_t tid, void * surface_id, unsigned int * counters))
+{
+	u32 i;
+
+	/* Copy over the values for those counters which are enabled. */
+	for(i=FIRST_SW_COUNTER; i <= LAST_SW_COUNTER; i++)
+	{
+		if(counter_enabled[i])
+		{
+			counter_data[i] = (u32)(counters[i - FIRST_SW_COUNTER]);
+		}
+	}
+}
+#endif /* GATOR_MALI_INTERFACE_STYLE == 3 */
 
 //TODO need to work out how many fp units we have
 u32 gator_mali_get_n_fp(void) {
@@ -363,9 +406,29 @@ int gator_events_mali_create_files(struct super_block *sb, struct dentry *root) 
 //TODO
 void _mali_profiling_set_event(unsigned int, unsigned int);
 void _mali_osk_fb_control_set(unsigned int, unsigned int);
+void _mali_profiling_control(unsigned int, unsigned int);
 
 void _mali_profiling_get_counters(unsigned int*, unsigned int*, unsigned int*, unsigned int*);
 void (*_mali_profiling_get_counters_function_pointer)(unsigned int*, unsigned int*, unsigned int*, unsigned int*);
+
+/*
+ * Examine list of software counters and determine if any one is enabled.
+ * Returns 1 if any counter is enabled, 0 if none is.
+ */
+static int is_any_sw_counter_enabled(void)
+{
+	unsigned int i;
+
+	for (i = FIRST_SW_COUNTER; i <= LAST_SW_COUNTER; i++)
+	{
+		if (counter_enabled[i])
+		{
+			return 1;	/* At least one counter is enabled */
+		}
+	}
+
+	return 0;	/* No s/w counters enabled */
+}
 
 static void mali_counter_initialize(void) 
 {
@@ -375,6 +438,7 @@ static void mali_counter_initialize(void)
      */
     void (*set_hw_event)(unsigned int, unsigned int);
 	void (*set_fb_event)(unsigned int, unsigned int);
+	void (*mali_control)(unsigned int, unsigned int);
 
     set_hw_event = symbol_get(_mali_profiling_set_event);
 
@@ -408,6 +472,27 @@ static void mali_counter_initialize(void)
 		printk("gator: mali online _mali_osk_fb_control_set symbol not found\n");
 	}
 
+	/* Generic control interface for Mali DDK. */
+	mali_control = symbol_get(_mali_profiling_control);
+	if (mali_control) {
+		/* The event attribute in the XML file keeps the actual frame rate. */
+		unsigned int rate = counter_event[COUNTER_FILMSTRIP] & 0xff;
+		unsigned int resize_factor = (counter_event[COUNTER_FILMSTRIP] >> 8) & 0xff;
+
+		pr_debug("gator: mali online _mali_profiling_control symbol @ %p\n", mali_control);
+
+		mali_control(SW_EVENTS_ENABLE, (is_any_sw_counter_enabled()?1:0));
+		mali_control(FBDUMP_CONTROL_ENABLE, (counter_enabled[COUNTER_FILMSTRIP]?1:0));
+		mali_control(FBDUMP_CONTROL_RATE, rate);
+		mali_control(FBDUMP_CONTROL_RESIZE_FACTOR, resize_factor);
+
+		pr_debug("gator: sent mali_control enabled=%d, rate=%d\n", (counter_enabled[COUNTER_FILMSTRIP]?1:0), rate);
+
+		symbol_put(_mali_profiling_control);
+	} else {
+		printk("gator: mali online _mali_profiling_control symbol not found\n");
+	}
+
 	_mali_profiling_get_counters_function_pointer =  symbol_get(_mali_profiling_get_counters);
 	if (_mali_profiling_get_counters_function_pointer){
 		pr_debug("gator: mali online _mali_profiling_get_counters symbol @ %p\n", _mali_profiling_get_counters_function_pointer);
@@ -417,13 +502,13 @@ static void mali_counter_initialize(void)
 	else{
 		pr_debug("gator WARNING: mali _mali_profiling_get_counters symbol  not defined");
 	}
-		
 }
 
 static void mali_counter_deinitialize(void) 
 {
     void (*set_hw_event)(unsigned int, unsigned int);
 	void (*set_fb_event)(unsigned int, unsigned int);
+	void (*mali_control)(unsigned int, unsigned int);
 
     set_hw_event = symbol_get(_mali_profiling_set_event);
 
@@ -452,6 +537,22 @@ static void mali_counter_deinitialize(void)
 		printk("gator: mali offline _mali_osk_fb_control_set symbol not found\n");
 	}
 	
+	/* Generic control interface for Mali DDK. */
+	mali_control = symbol_get(_mali_profiling_control);
+
+	if (mali_control) {
+		pr_debug("gator: mali offline _mali_profiling_control symbol @ %p\n", set_fb_event);
+
+		/* Reset the DDK state - disable counter collection */
+		mali_control(SW_EVENTS_ENABLE, 0);
+
+		mali_control(FBDUMP_CONTROL_ENABLE, 0);
+
+		symbol_put(_mali_profiling_control);
+	} else {
+		printk("gator: mali offline _mali_profiling_control symbol not found\n");
+	}
+
 	if (_mali_profiling_get_counters_function_pointer){
 		symbol_put(_mali_profiling_get_counters);
 	}
@@ -465,10 +566,23 @@ static int gator_events_mali_start(void) {
         return -1;
     }
 
+#if GATOR_MALI_INTERFACE_STYLE == 1
+		/* None. */
+#elif GATOR_MALI_INTERFACE_STYLE == 2
+		/* For patched Mali driver. */
     if (GATOR_REGISTER_TRACE(mali_sw_counter)) {
         printk("gator: mali_sw_counter tracepoint failed to activate\n");
         return -1;
     }
+#elif GATOR_MALI_INTERFACE_STYLE == 3
+/* For Mali drivers with built-in support. */
+    if (GATOR_REGISTER_TRACE(mali_sw_counters)) {
+        printk("gator: mali_sw_counters tracepoint failed to activate\n");
+        return -1;
+    }
+#else
+#error Unknown GATOR_MALI_INTERFACE_STYLE option.
+#endif
 
     trace_registered = 1;
 
@@ -483,8 +597,19 @@ static void gator_events_mali_stop(void) {
 
     if (trace_registered) {
         GATOR_UNREGISTER_TRACE(mali_hw_counter);
-        GATOR_UNREGISTER_TRACE(mali_sw_counter);
-    
+
+#if GATOR_MALI_INTERFACE_STYLE == 1
+    /* None. */
+#elif GATOR_MALI_INTERFACE_STYLE == 2
+    /* For patched Mali driver. */
+    GATOR_UNREGISTER_TRACE(mali_sw_counter);
+#elif GATOR_MALI_INTERFACE_STYLE == 3
+    /* For Mali drivers with built-in support. */
+    GATOR_UNREGISTER_TRACE(mali_sw_counters);
+#else
+#error Unknown GATOR_MALI_INTERFACE_STYLE option.
+#endif
+
         pr_debug("gator: mali timeline tracepoint deactivated\n");
         
         trace_registered = 0;
@@ -538,22 +663,10 @@ static int gator_events_mali_read(int **buffer) {
     // Process other (non-timeline) counters.
     for (cnt = COUNTER_VP_C0; cnt <= LAST_SW_COUNTER; cnt++) {
         if (counter_enabled[cnt]) {
-            u32 value = 0;
+            counter_dump[len++] = counter_key[cnt];
+            counter_dump[len++] = counter_data[cnt];
 
-            // Determine the current value of the counter.
-            if( counter_address[cnt] != NULL && 0 ) {   // Never true!
-                value = *counter_address[cnt];
-            } else if (counter_data[cnt]!=0) {
-                value = counter_data[cnt];
-                counter_data[cnt] = 0;
-            }
-
-            // Send the counter value only if it differs from last time.
-            if (value != counter_prev[cnt]) {
-                counter_prev[cnt] = value;
-                counter_dump[len++] = counter_key[cnt];
-                counter_dump[len++] = value;
-            }
+            counter_data[cnt] = 0;
         }
     }
 

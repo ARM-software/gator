@@ -9,7 +9,7 @@
 #ifndef SESSION_XML_H
 #define SESSION_XML_H
 
-#include "XMLReader.h"
+#include "mxml/mxml.h"
 #include "SessionData.h"
 
 struct ConfigParameters {
@@ -26,15 +26,15 @@ struct ConfigParameters {
 
 class SessionXML {
 public:
-	SessionXML(const char * str);
+	SessionXML(const char* str);
 	~SessionXML();
 	void parse();
 	ConfigParameters parameters;
 private:
 	char*  mSessionXML;
 	char*  mPath;
-	void sessionTag(XMLReader* in);
-	void sessionImage(XMLReader* in);
+	void sessionTag(mxml_node_t *tree, mxml_node_t *node);
+	void sessionImage(mxml_node_t *node);
 };
 
 #endif // SESSION_XML_H

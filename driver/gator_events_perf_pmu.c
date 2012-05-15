@@ -19,6 +19,8 @@ int ccnt = 0;
 
 #define CNTMAX (6+1)
 
+static DEFINE_MUTEX(perf_mutex);
+
 unsigned long pmnc_enabled[CNTMAX];
 unsigned long pmnc_event[CNTMAX];
 unsigned long pmnc_count[CNTMAX];
@@ -122,11 +124,19 @@ static void gator_events_perf_pmu_online_dispatch(int cpu)
 static void gator_events_perf_pmu_offline_dispatch(int cpu)
 {
 	int cnt;
+	struct perf_event * pe;
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-		if (per_cpu(pevent, cpu)[cnt] != NULL) {
-			perf_event_release_kernel(per_cpu(pevent, cpu)[cnt]);
+		pe = NULL;
+		mutex_lock(&perf_mutex);
+		if (per_cpu(pevent, cpu)[cnt]) {
+			pe = per_cpu(pevent, cpu)[cnt];
 			per_cpu(pevent, cpu)[cnt] = NULL;
+		}
+		mutex_unlock(&perf_mutex);
+
+		if (pe) {
+			perf_event_release_kernel(pe);
 		}
 	}
 }
@@ -139,7 +149,7 @@ static int gator_events_perf_pmu_start(void)
 	for_each_present_cpu(cpu) {
 		for (cnt = 0; cnt < pmnc_counters; cnt++) {
 			per_cpu(pevent, cpu)[cnt] = NULL;
-			if (!pmnc_enabled[cnt] || pmnc_count[cnt] > 0) // Skip disabled counters and EBS counters
+			if (!pmnc_enabled[cnt]) // Skip disabled counters
 				continue;
 
 			per_cpu(perfPrev, cpu)[cnt] = 0;

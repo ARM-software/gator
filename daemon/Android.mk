@@ -16,13 +16,20 @@ LOCAL_SRC_FILES:= \
 	main.cpp \
 	OlySocket.cpp \
 	OlyUtility.cpp \
-	RequestXML.cpp \
 	Sender.cpp \
 	SessionData.cpp \
 	SessionXML.cpp \
 	StreamlineSetup.cpp \
-	XMLOut.cpp \
-	XMLReader.cpp 
+	mxml/mxml-attr.c \
+	mxml/mxml-entity.c \
+	mxml/mxml-file.c \
+	mxml/mxml-get.c \
+	mxml/mxml-index.c \
+	mxml/mxml-node.c \
+	mxml/mxml-private.c \
+	mxml/mxml-search.c \
+	mxml/mxml-set.c \
+	mxml/mxml-string.c
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) 
 

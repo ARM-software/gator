@@ -19,7 +19,6 @@ static ulong softirq_enabled;
 static ulong hardirq_key;
 static ulong softirq_key;
 static DEFINE_PER_CPU(int[TOTALIRQ], irqCnt);
-static DEFINE_PER_CPU(int[TOTALIRQ], irqPrev);
 static DEFINE_PER_CPU(int[TOTALIRQ * 2], irqGet);
 
 GATOR_DEFINE_PROBE(irq_handler_exit, TP_PROTO(int irq,
@@ -82,7 +81,6 @@ static int gator_events_irq_online(int** buffer)
 		local_irq_save(flags);
 		per_cpu(irqCnt, cpu)[HARDIRQ] = 0;
 		local_irq_restore(flags);
-		per_cpu(irqPrev, cpu)[HARDIRQ] = 0;
 		per_cpu(irqGet, cpu)[len++] = hardirq_key;
 		per_cpu(irqGet, cpu)[len++] = 0;
 	}
@@ -91,7 +89,6 @@ static int gator_events_irq_online(int** buffer)
 		local_irq_save(flags);
 		per_cpu(irqCnt, cpu)[SOFTIRQ] = 0;
 		local_irq_restore(flags);
-		per_cpu(irqPrev, cpu)[SOFTIRQ] = 0;
 		per_cpu(irqGet, cpu)[len++] = softirq_key;
 		per_cpu(irqGet, cpu)[len++] = 0;
 	}
@@ -149,11 +146,9 @@ static int gator_events_irq_read(int **buffer)
 		value = per_cpu(irqCnt, cpu)[HARDIRQ];
 		per_cpu(irqCnt, cpu)[HARDIRQ] = 0;
 		local_irq_restore(flags);
-		if (value != per_cpu(irqPrev, cpu)[HARDIRQ]) {
-			per_cpu(irqPrev, cpu)[HARDIRQ] = value;
-			per_cpu(irqGet, cpu)[len++] = hardirq_key;
-			per_cpu(irqGet, cpu)[len++] = value;
-		}
+
+		per_cpu(irqGet, cpu)[len++] = hardirq_key;
+		per_cpu(irqGet, cpu)[len++] = value;
 	}
 
 	if (softirq_enabled) {
@@ -161,11 +156,9 @@ static int gator_events_irq_read(int **buffer)
 		value = per_cpu(irqCnt, cpu)[SOFTIRQ];
 		per_cpu(irqCnt, cpu)[SOFTIRQ] = 0;
 		local_irq_restore(flags);
-		if (value != per_cpu(irqPrev, cpu)[SOFTIRQ]) {
-			per_cpu(irqPrev, cpu)[SOFTIRQ] = value;
-			per_cpu(irqGet, cpu)[len++] = softirq_key;
-			per_cpu(irqGet, cpu)[len++] = value;
-		}
+
+		per_cpu(irqGet, cpu)[len++] = softirq_key;
+		per_cpu(irqGet, cpu)[len++] = value;
 	}
 
 	if (buffer)

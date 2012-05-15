@@ -14,90 +14,113 @@
 
 extern void handleException();
 
-Fifo::Fifo(int numBuffers, int bufferSize) {
-	int	which;
+// bufferSize is the amount of data to be filled
+// singleBufferSize is the maximum size that may be filled during a single write
+// (bufferSize + singleBufferSize) will be allocated
+Fifo::Fifo(int singleBufferSize, int bufferSize) {
+	mWrite = mRead = mReadCommit = mRaggedEnd = 0;
+	mWrapThreshold = bufferSize;
+	mSingleBufferSize = singleBufferSize;
+	mBuffer = (char*)valloc(bufferSize + singleBufferSize);
+	mEnd = false;
 
-	if (numBuffers > FIFO_BUFFER_LIMIT) {
-		logg->logError(__FILE__, __LINE__, "Number of fifo buffers exceeds maximum");
+	if (mBuffer == NULL) {
+		logg->logError(__FILE__, __LINE__, "failed to allocate %d bytes", bufferSize + singleBufferSize);
 		handleException();
 	}
-	mNumBuffers = numBuffers;
-	mBufferSize = bufferSize;
-	mWriteCurrent = 0;
-	mReadCurrent = mNumBuffers - 1; // (n-1) pipelined
 
-	for (which=0; which<mNumBuffers; which++) {
-		// initialized read-to-write sem to 1, so that first wait goes through; write-to-read init'd to 0
-		if (sem_init(&mReadToWriteSem[which], 0, 1) ||
-			sem_init(&mWriteToReadSem[which], 0, 0)) {
-			logg->logError(__FILE__, __LINE__, "sem_init(%d) failed", which);
-			handleException();
-		}
-		// page-align allocate buffers
-		mBuffer[which] = (char*)valloc(bufferSize);
-		if (mBuffer[which] == NULL) {
-			logg->logError(__FILE__, __LINE__, "failed to allocate %d bytes", bufferSize);
-			handleException();
-		}
-		// touch each page to fault it in
-		for (int i=0; i<bufferSize; i+= getpagesize()) {
-			*mBuffer[which] = 0;
-		}
+	if (sem_init(&mWaitForSpaceSem, 0, 0) || sem_init(&mWaitForDataSem, 0, 0)) {
+		logg->logError(__FILE__, __LINE__, "sem_init() failed");
+		handleException();
 	}
 }
 
 Fifo::~Fifo() {
-	for (int which=0; which<mNumBuffers; which++) {
-		if (mBuffer[which] != NULL) {
-			free(mBuffer[which]);
-			mBuffer[which] = NULL;
-		}
-	}
+	free(mBuffer);
 }
 
-int Fifo::depth(void) {
-	return mNumBuffers;
-}
-
-int Fifo::numReadToWriteBuffersFilled() {
-	int value;
-	int numFilled = 0;
-	for (int which=0; which<mNumBuffers; which++) {
-		if (sem_getvalue(&mReadToWriteSem[which], &value) == 0) numFilled += value;
-	}
-	return numFilled;
-}
-
-int Fifo::numWriteToReadBuffersFilled() {
-	int value;
-	int numFilled = 0;
-	for (int which=0; which<mNumBuffers; which++) {
-		if (sem_getvalue(&mWriteToReadSem[which], &value) == 0) numFilled += value;
-	}
-	return numFilled;
+int Fifo::numBytesFilled() {
+	return mWrite - mRead + mRaggedEnd;
 }
 
 char* Fifo::start() {
-	sem_wait(&mReadToWriteSem[mWriteCurrent]);
-	return mBuffer[mWriteCurrent];
+	return mBuffer;
 }
 
-char* Fifo::write(int length) {
-	mLength[mWriteCurrent] = length;
-	sem_post(&mWriteToReadSem[mWriteCurrent]);
-	mWriteCurrent = (mWriteCurrent + 1) % mNumBuffers;
-	sem_wait(&mReadToWriteSem[mWriteCurrent]);
-	return mBuffer[mWriteCurrent];
+bool Fifo::isEmpty() {
+	return mRead == mWrite;
 }
 
-char* Fifo::read(int* length) {
-	static bool firstTime = true;
-	if (!firstTime) {
-		sem_post(&mReadToWriteSem[mReadCurrent]);
+bool Fifo::isFull() {
+	return willFill(0);
+}
+
+// Determines if the buffer will fill assuming 'additional' bytes will be added to the buffer
+// comparisons use '<', read and write pointers must never equal when not empty
+// 'full' means there is less than singleBufferSize bytes available; it does not mean there are zero bytes available
+bool Fifo::willFill(int additional) {
+	if (mWrite > mRead) {
+		if (numBytesFilled() + additional < mWrapThreshold) {
+			return false;
+		}
+	} else {
+		if (numBytesFilled() + additional < mWrapThreshold - mSingleBufferSize) {
+			return false;
+		}
 	}
-	firstTime = false;
-	mReadCurrent = (mReadCurrent + 1) % mNumBuffers;
-	sem_wait(&mWriteToReadSem[mReadCurrent]);
-	*length = mLength[mReadCurrent];
-	return mBuffer[mReadCurrent];
+	return true;
+}
+
+// This function will stall until contiguous singleBufferSize bytes are available
+char* Fifo::write(int length) {
+	if (length <= 0) {
+		length = 0;
+		mEnd = true;
+	}
+
+	// update the write pointer
+	mWrite += length;
+
+	// handle the wrap-around
+	if (mWrite >= mWrapThreshold) {
+		mRaggedEnd = mWrite;
+		mWrite = 0;
+	}
+
+	// send a notification that data is ready
+	sem_post(&mWaitForDataSem);
+
+	// wait for space
+	while (isFull()) {
+		sem_wait(&mWaitForSpaceSem);
+	}
+
+	return &mBuffer[mWrite];
+}
+
+// This function will stall until data is available
+char* Fifo::read(int* length) {
+	// update the read pointer now that the data has been handled
+	mRead = mReadCommit;
+
+	// handle the wrap-around
+	if (mRead >= mWrapThreshold) {
+		mRaggedEnd = mRead = mReadCommit = 0;
+	}
+
+	// send a notification that data is free (space is available)
+	sem_post(&mWaitForSpaceSem);
+
+	// wait for data
+	while (isEmpty() && !mEnd) {
+		sem_wait(&mWaitForDataSem);
+	}
+
+	// obtain the length
+	do {
+		mReadCommit = mRaggedEnd ? mRaggedEnd : mWrite;
+		*length = mReadCommit - mRead;
+	} while (*length < 0); // plugs race condition without using semaphores
+
+	return &mBuffer[mRead];
 }

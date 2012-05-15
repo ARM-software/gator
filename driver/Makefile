@@ -11,7 +11,6 @@ gator-y :=	gator_main.o \
 		gator_events_net.o \
 		gator_events_block.o \
 		gator_events_meminfo.o \
-		gator_events_power.o \
 		gator_events_perf_pmu.o
 
 gator-y +=	gator_events_mmaped.o

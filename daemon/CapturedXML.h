@@ -10,14 +10,16 @@
 #ifndef	__CAPTURED_XML_H__
 #define	__CAPTURED_XML_H__
 
-#include "XMLOut.h"
+#include "mxml/mxml.h"
 
-class CapturedXML : XMLOut {
+class CapturedXML {
 public:
 	CapturedXML();
 	~CapturedXML();
-	const char* getXML();
+	char* getXML(); // the string should be freed by the caller
 	void write(char* path);
+private:
+	mxml_node_t* getTree();
 };
 
 #endif 	//__CAPTURED_XML_H__

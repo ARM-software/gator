@@ -34,7 +34,6 @@ static unsigned long pmnc_enabled[CNTMAX];
 static unsigned long pmnc_event[CNTMAX];
 static unsigned long pmnc_key[CNTMAX];
 
-static DEFINE_PER_CPU(int[CNTMAX], perfPrev);
 static DEFINE_PER_CPU(int[CNTMAX * 2], perfCnt);
 
 enum scorpion_perf_types {
@@ -538,8 +537,6 @@ static int gator_events_scorpion_online(int** buffer)
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		unsigned long event;
 
-		per_cpu(perfPrev, smp_processor_id())[cnt] = 0;
-
 		if (!pmnc_enabled[cnt])
 			continue;
 
@@ -574,7 +571,7 @@ static int gator_events_scorpion_online(int** buffer)
 				value = 0;
 			}
 			scorpion_pmnc_reset_counter(cnt);
-			per_cpu(perfPrev, cpu)[cnt] = 0;
+
 			per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
 			per_cpu(perfCnt, cpu)[len++] = 0;
 		}
@@ -607,6 +604,11 @@ static int gator_events_scorpion_read(int **buffer)
 	int cnt, len = 0;
 	int cpu = smp_processor_id();
 
+	// a context switch may occur before the online hotplug event, thus need to check that the pmu is enabled
+	if (!(scorpion_pmnc_read() & PMNC_E)) {
+		return 0;
+	}
+
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		if (pmnc_enabled[cnt]) {
 			int value;
@@ -618,11 +620,9 @@ static int gator_events_scorpion_read(int **buffer)
 				value = 0;
 			}
 			scorpion_pmnc_reset_counter(cnt);
-			if (value != per_cpu(perfPrev, cpu)[cnt]) {
-				per_cpu(perfPrev, cpu)[cnt] = value;
-				per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
-				per_cpu(perfCnt, cpu)[len++] = value;
-			}
+
+			per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];
+			per_cpu(perfCnt, cpu)[len++] = value;
 		}
 	}
 

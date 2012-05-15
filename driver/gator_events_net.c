@@ -9,6 +9,7 @@
 
 #include "gator.h"
 #include <linux/netdevice.h>
+#include <linux/hardirq.h>
 
 #define NETRX		0
 #define NETTX		1
@@ -20,7 +21,7 @@ static ulong netrx_key;
 static ulong nettx_key;
 static int rx_total, tx_total;
 static ulong netPrev[TOTALNET];
-static int netGet[TOTALNET * 2];
+static int netGet[TOTALNET * 4];
 
 static void get_network_stats(struct work_struct *wsptr) {
 	int rx = 0, tx = 0;
@@ -102,18 +103,30 @@ static int gator_events_net_read(int **buffer)
 	if (smp_processor_id() != 0)
 		return 0;
 
-	schedule_work(&wq_get_stats);
+	if (!netrx_enabled && !nettx_enabled)
+		return 0;
+
+	if (in_interrupt()){
+		schedule_work(&wq_get_stats);
+	} else {
+		get_network_stats(NULL);
+	}
+
 	calculate_delta(&rx_delta, &tx_delta);
 
 	len = 0;
 	if (netrx_enabled && last_rx_delta != rx_delta) {
 		last_rx_delta = rx_delta;
 		netGet[len++] = netrx_key;
+		netGet[len++] = 0; // indicates to Streamline that rx_delta bytes were transmitted now, not since the last message
+		netGet[len++] = netrx_key;
 		netGet[len++] = rx_delta;
 	}
 
 	if (nettx_enabled && last_tx_delta != tx_delta) {
 		last_tx_delta = tx_delta;
+		netGet[len++] = nettx_key;
+		netGet[len++] = 0; // indicates to Streamline that tx_delta bytes were transmitted now, not since the last message
 		netGet[len++] = nettx_key;
 		netGet[len++] = tx_delta;
 	}

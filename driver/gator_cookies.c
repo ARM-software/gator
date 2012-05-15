@@ -129,7 +129,7 @@ static void wq_cookie_handler(struct work_struct *unused)
 		while (per_cpu(translate_buffer_read, cpu) != commit) {
 			task = (struct task_struct *)translate_buffer_read_int(cpu);
 			vma = (struct vm_area_struct *)translate_buffer_read_int(cpu);
-			cookie = get_cookie(cpu, TIMER_BUF, task, vma, NULL, false);
+			cookie = get_cookie(cpu, BACKTRACE_BUF, task, vma, NULL, false);
 		}
 	}
 
@@ -251,13 +251,10 @@ static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task
 	local_irq_save(flags);
 
 	cookie = INVALID_COOKIE;
-	if (buffer_check_space(cpu, buftype, strlen(text) + 2 * MAXSIZE_PACK32)) {
+	if (marshal_cookie_header(text)) {
 		cookie = per_cpu(cookie_next_key, cpu) += nr_cpu_ids;
 		cookiemap_add(key, cookie);
-
-		gator_buffer_write_packed_int(cpu, buftype, MESSAGE_COOKIE);
-		gator_buffer_write_packed_int(cpu, buftype, cookie);
-		gator_buffer_write_string(cpu, buftype, text);
+		marshal_cookie(cookie, text);
 	}
 
 	local_irq_restore(flags);
@@ -271,6 +268,7 @@ static int get_exec_cookie(int cpu, int buftype, struct task_struct *task)
 	struct mm_struct *mm = task->mm;
 	struct vm_area_struct *vma;
 
+	// kernel threads have no address space
 	if (!mm)
 		return cookie;
 

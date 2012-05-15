@@ -14,11 +14,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "XMLOut.h"
 #include "Sender.h"
 #include "Logging.h"
-#include "XMLReader.h"
-#include "RequestXML.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
 #include "CapturedXML.h"
@@ -27,15 +24,24 @@
 
 extern void handleException();
 
-static const char*	TAG_SESSION = "session";
-static const char*	TAG_CONFIGURATIONS = "configurations";
+static const char* TAG_SESSION = "session";
+static const char* TAG_REQUEST = "request";
+static const char* TAG_CONFIGURATIONS = "configurations";
+
+static const char* 	ATTR_PROTOCOL		= "protocol";		
+static const char* 	ATTR_EVENTS			= "events";
+static const char* 	ATTR_CONFIGURATION	= "configuration";
+static const char* 	ATTR_COUNTERS		= "counters";
+static const char* 	ATTR_SESSION		= "session";
+static const char* 	ATTR_CAPTURED		= "captured";
+static const char*	ATTR_DEFAULTS		= "defaults";
 
 StreamlineSetup::StreamlineSetup(OlySocket* s) {
 	bool ready = false;
-	char *data = NULL;
+	char* data = NULL;
 	int type;
 
-	socket = s;
+	mSocket = s;
 	mSessionXML = NULL;
 
 	// Receive commands from Streamline (master)
@@ -73,13 +79,14 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 				handleException();
 		}
 
-		delete(data);
+		free(data);
 	}
 }
 
 StreamlineSetup::~StreamlineSetup() {
-	if (mSessionXML)
+	if (mSessionXML) {
 		free(mSessionXML);
+	}
 }
 
 char* StreamlineSetup::readCommand(int* command) {
@@ -88,7 +95,7 @@ char* StreamlineSetup::readCommand(int* command) {
 	int response, length;
 
 	// receive type
-	response = socket->receiveNBytes(&type, sizeof(type));
+	response = mSocket->receiveNBytes(&type, sizeof(type));
 
 	// After receiving a single byte, we are no longer waiting on a command
 	gSessionData->mWaitingOnCommand = false;
@@ -99,7 +106,7 @@ char* StreamlineSetup::readCommand(int* command) {
 	}
 
 	// receive length
-	response = socket->receiveNBytes((char*)&length, sizeof(length));
+	response = mSocket->receiveNBytes((char*)&length, sizeof(length));
 	if (response < 0) {
 		logg->logError(__FILE__, __LINE__, "Target error: Unexpected socket disconnect");
 		handleException();
@@ -119,7 +126,7 @@ char* StreamlineSetup::readCommand(int* command) {
 	}
 
 	// receive data
-	response = socket->receiveNBytes(data, length);
+	response = mSocket->receiveNBytes(data, length);
 	if (response < 0) {
 		logg->logError(__FILE__, __LINE__, "Target error: Unexpected socket disconnect");
 		handleException();
@@ -135,29 +142,31 @@ char* StreamlineSetup::readCommand(int* command) {
 }
 
 void StreamlineSetup::handleRequest(char* xml) {
-	RequestXML request(xml);
+	mxml_node_t *tree, *node;
 
-	if (request.parameters.protocol) {
+	tree = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
+	if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_PROTOCOL, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_PROTOCOL), false)) {
 		sendProtocol();
 		logg->logMessage("Sent protocol xml response");
-	} else if (request.parameters.events) {
+	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_EVENTS, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_EVENTS), false)) {
 		sendEvents();
 		logg->logMessage("Sent events xml response");
-	} else if (request.parameters.configuration) {
+	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_CONFIGURATION, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_CONFIGURATION), false)) {
 		sendConfiguration();
 		logg->logMessage("Sent configuration xml response");
-	} else if (request.parameters.counters) {
+	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_COUNTERS, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_COUNTERS), false)) {
 		sendCounters();
 		logg->logMessage("Sent counters xml response");
-	} else if (request.parameters.session) {
+	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_SESSION, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_SESSION), false)) {
 		sendData(mSessionXML, strlen(mSessionXML), RESPONSE_XML);
 		logg->logMessage("Sent session xml response");
-	} else if (request.parameters.captured) {
+	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_CAPTURED, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_CAPTURED), false)) {
 		CapturedXML capturedXML;
-		const char* capturedText = capturedXML.getXML();
+		char* capturedText = capturedXML.getXML();
 		sendData(capturedText, strlen(capturedText), RESPONSE_XML);
+		free(capturedText);
 		logg->logMessage("Sent captured xml response");
-	} else if (request.parameters.defaults) {
+	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_DEFAULTS, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_DEFAULTS), false)) {
 		sendDefaults();
 		logg->logMessage("Sent default configuration xml response");
 	} else {
@@ -165,67 +174,60 @@ void StreamlineSetup::handleRequest(char* xml) {
 		sendData(error, strlen(error), RESPONSE_NAK);
 		logg->logMessage("Received unknown request:\n%s", xml);
 	}
+
+	mxmlDelete(tree);
 }
 
-typedef enum {UNKNOWN, SESSION_XML, CONFIGURATION_XML} delivery_type_t;
 void StreamlineSetup::handleDeliver(char* xml) {
-	delivery_type_t type = UNKNOWN;	
+	mxml_node_t *tree;
 
 	// Determine xml type
-	XMLReader reader(xml);
-	char * tag = reader.nextTag();
-	while(tag != 0) {
-		if (strcmp(tag, TAG_SESSION) == 0) {
-			type = SESSION_XML;
-			break;
-		} else if (strcmp(tag, TAG_CONFIGURATIONS) == 0) {
-			type = CONFIGURATION_XML;
-			break;
+	tree = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
+	if (mxmlFindElement(tree, tree, TAG_SESSION, NULL, NULL, MXML_DESCEND_FIRST)) {
+		// Session XML
+		gSessionData->parseSessionXML(xml);
+
+		// Save xml
+		mSessionXML = strdup(xml);
+		if (mSessionXML == NULL) {
+			logg->logError(__FILE__, __LINE__, "malloc failed for size %d", strlen(xml) + 1);
+			handleException();
 		}
-		tag = reader.nextTag();
+		sendData(NULL, 0, RESPONSE_ACK);
+		logg->logMessage("Received session xml");
+	} else if (mxmlFindElement(tree, tree, TAG_CONFIGURATIONS, NULL, NULL, MXML_DESCEND_FIRST)) {
+		// Configuration XML
+		writeConfiguration(xml);
+		sendData(NULL, 0, RESPONSE_ACK);
+		logg->logMessage("Received configuration xml");
+	} else {
+		// Unknown XML
+		logg->logMessage("Received unknown XML delivery type");
+		sendData(NULL, 0, RESPONSE_NAK);
 	}
 
-	switch (type) {
-		case UNKNOWN:
-			logg->logMessage("Received unknown delivery type: %d", type);
-			sendData(NULL, 0, RESPONSE_NAK);
-			break;
-		case SESSION_XML:
-			// Parse the session xml
-			gSessionData->parseSessionXML(xml);
-
-			// Save xml
-			mSessionXML = strdup(xml);
-			if (mSessionXML == NULL) {
-				logg->logError(__FILE__, __LINE__, "malloc failed for size %d", strlen(xml) + 1);
-				handleException();
-			}
-			sendData(NULL, 0, RESPONSE_ACK);
-			logg->logMessage("Received session xml");
-			break;
-		case CONFIGURATION_XML:
-			writeConfiguration(xml);
-			sendData(NULL, 0, RESPONSE_ACK);
-			logg->logMessage("Received configuration xml");
-			break;
-	}
+	mxmlDelete(tree);
 }
 
 void StreamlineSetup::sendData(const char* data, int length, int type) {
-	socket->send((char*)&type, 1);
-	socket->send((char*)&length, sizeof(length));
-	socket->send((char*)data, length);
+	mSocket->send((char*)&type, 1);
+	mSocket->send((char*)&length, sizeof(length));
+	mSocket->send((char*)data, length);
 }
 
 void StreamlineSetup::sendProtocol() {
-	XMLOut out;
-	out.xmlHeader();
+	mxml_node_t *xml;
+    mxml_node_t *protocol;
 
-	out.startElement("protocol");
-	out.attributeInt("version", PROTOCOL_VERSION);
-	out.endElement("protocol");
+	xml = mxmlNewXML("1.0");
+	protocol = mxmlNewElement(xml, "protocol");
+	mxmlElementSetAttrf(protocol, "version", "%d", PROTOCOL_VERSION);
 
-	sendString(out.getXmlString(), RESPONSE_XML);
+	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+	sendString(string, RESPONSE_XML);
+
+	free(string);
+	mxmlDelete(xml);
 }
 
 void StreamlineSetup::sendEvents() {
@@ -234,8 +236,12 @@ void StreamlineSetup::sendEvents() {
 	char* buffer;
 	unsigned int size = 0;
 
-	util->getApplicationFullPath(path, PATH_MAX);
-	strncat(path, "events.xml", PATH_MAX - strlen(path) - 1);
+	if (gSessionData->mEventsXMLPath) {
+		strncpy(path, gSessionData->mEventsXMLPath, PATH_MAX);
+	} else {
+		util->getApplicationFullPath(path, PATH_MAX);
+		strncat(path, "events.xml", PATH_MAX - strlen(path) - 1);
+	}
 	buffer = util->readFromDisk(path, &size);
 	if (buffer == NULL) {
 		logg->logMessage("Unable to locate events.xml, using default");
@@ -274,8 +280,10 @@ void StreamlineSetup::sendDefaults() {
 
 #include <dirent.h>
 void StreamlineSetup::sendCounters() {
-	XMLOut out;
 	struct dirent *ent;
+	mxml_node_t *xml;
+    mxml_node_t *counters;
+	mxml_node_t *counter;
 
 	// counters.xml is simply a file listing of /dev/gator/events
 	DIR* dir = opendir("/dev/gator/events");
@@ -284,27 +292,29 @@ void StreamlineSetup::sendCounters() {
 		handleException();
 	}
 
-	out.xmlHeader();
-	out.startElement("counters");
+	xml = mxmlNewXML("1.0");
+	counters = mxmlNewElement(xml, "counters");
 	while ((ent = readdir(dir)) != NULL) {
 		// skip hidden files, current dir, and parent dir
 		if (ent->d_name[0] == '.')
 			continue;
-		out.startElement("counter");
-		out.attributeString("name", ent->d_name);
-		out.endElement("counter");
+		counter = mxmlNewElement(counters, "counter");
+		mxmlElementSetAttr(counter, "name", ent->d_name);
 	}
-	out.endElement("counters");
 	closedir (dir);
 
-	sendString(out.getXmlString(), RESPONSE_XML);
+	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+	sendString(string, RESPONSE_XML);
+
+	free(string);
+	mxmlDelete(xml);
 }
 
 void StreamlineSetup::writeConfiguration(char* xml) {
 	char* path = (char*)malloc(PATH_MAX);
 
-	if (gSessionData->configurationXMLPath) {
-		strncpy(path, gSessionData->configurationXMLPath, PATH_MAX);
+	if (gSessionData->mConfigurationXMLPath) {
+		strncpy(path, gSessionData->mConfigurationXMLPath, PATH_MAX);
 	} else {
 		util->getApplicationFullPath(path, PATH_MAX);
 		strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);

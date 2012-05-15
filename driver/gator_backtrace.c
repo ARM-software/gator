@@ -81,8 +81,7 @@ static int report_trace(struct stackframe *frame, void *d)
 			cookie = get_cookie(cpu, per_cpu(backtrace_buffer, cpu), current, NULL, mod, true);
 			addr = addr - (unsigned long)mod->module_core;
 		}
-		gator_buffer_write_packed_int(cpu, per_cpu(backtrace_buffer, cpu), addr & ~1);
-		gator_buffer_write_packed_int(cpu, per_cpu(backtrace_buffer, cpu), cookie);
+		marshal_backtrace(addr & ~1, cookie);
 		(*depth)--;
 	}
 
@@ -110,7 +109,6 @@ static void kernel_backtrace(int cpu, int buftype, struct pt_regs * const regs)
 	per_cpu(backtrace_buffer, cpu) = buftype;
 	walk_stackframe(&frame, report_trace, &depth);
 #else
-	gator_buffer_write_packed_int(cpu, buftype, PC_REG & ~1);
-	gator_buffer_write_packed_int(cpu, buftype, NO_COOKIE);
+	marshal_backtrace(PC_REG & ~1, NO_COOKIE);
 #endif
 }

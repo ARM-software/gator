@@ -11,31 +11,23 @@
 
 #include <semaphore.h>
 
-// Number of buffers allowed with large buffer mode
-#define FIFO_BUFFER_LIMIT	64
-
 class Fifo {
 public:
-	Fifo(int numBuffers, int bufferSize);
+	Fifo(int singleBufferSize, int totalBufferSize);
 	~Fifo();
-	int depth(void);
-	int numReadToWriteBuffersFilled();
-	int numWriteToReadBuffersFilled();
-	int numReadToWriteBuffersEmpty() {return depth() - numReadToWriteBuffersFilled();}
-	int numWriteToReadBuffersEmpty() {return depth() - numWriteToReadBuffersFilled();}
+	int numBytesFilled();
+	bool isEmpty();
+	bool isFull();
+	bool willFill(int additional);
 	char* start();
 	char* write(int length);
 	char* read(int* length);
 
 private:
-	int		mNumBuffers;
-	int		mBufferSize;
-	int		mWriteCurrent;
-	int		mReadCurrent;
-	sem_t	mReadToWriteSem[FIFO_BUFFER_LIMIT];
-	sem_t	mWriteToReadSem[FIFO_BUFFER_LIMIT];
-	char*	mBuffer[FIFO_BUFFER_LIMIT];
-	int		mLength[FIFO_BUFFER_LIMIT];
+	int		mSingleBufferSize, mWrite, mRead, mReadCommit, mRaggedEnd, mWrapThreshold;
+	sem_t	mWaitForSpaceSem, mWaitForDataSem;
+	char*	mBuffer;
+	bool	mEnd;
 };
 
 #endif 	//__FIFO_H__

@@ -14,6 +14,8 @@
 
 #include <asm/pmu.h>
 
+static DEFINE_MUTEX(perf_mutex);
+
 extern int pmnc_counters;
 extern int ccnt;
 extern unsigned long pmnc_enabled[];
@@ -32,59 +34,16 @@ static void ebs_overflow_handler(struct perf_event *event, int unused, struct pe
 static void ebs_overflow_handler(struct perf_event *event, struct perf_sample_data *data, struct pt_regs *regs)
 #endif
 {
-	unsigned int value, delta, cpu = smp_processor_id(), buftype = EVENT_BUF;
+	int cpu = smp_processor_id();
 
 	if (event != per_cpu(pevent, cpu))
 		return;
 
-	if (buffer_check_space(cpu, buftype, 5 * MAXSIZE_PACK32 + MAXSIZE_PACK64)) {
-		value = local64_read(&event->count);
-		delta = value - per_cpu(prev_value, cpu);
-		per_cpu(prev_value, cpu) = value;
-
-		// Counters header
-		gator_buffer_write_packed_int(cpu, buftype, MESSAGE_COUNTERS);     // type
-		gator_buffer_write_packed_int64(cpu, buftype, gator_get_time());   // time
-
-		// Output counter
-		gator_buffer_write_packed_int(cpu, buftype, 2);                    // length
-		gator_buffer_write_packed_int(cpu, buftype, per_cpu(key, cpu));    // key
-		gator_buffer_write_packed_int(cpu, buftype, delta);                // delta
-
-		// End Counters, length of zero
-		gator_buffer_write_packed_int(cpu, buftype, 0);
-	}
-
 	// Output backtrace
-	if (buffer_check_space(cpu, buftype, gator_backtrace_depth * 2 * MAXSIZE_PACK32))
-		gator_add_sample(cpu, buftype, regs);
+	gator_add_sample(cpu, BACKTRACE_BUF, regs);
 
-	// Check and commit; commit is set to occur once buffer is 3/4 full
-	buffer_check(cpu, buftype);
-}
-
-static void gator_event_sampling_online(void)
-{
-	int cpu = smp_processor_id(), buftype = EVENT_BUF;
-
-	// read the counter and toss the invalid data, return zero instead
-	struct perf_event * ev = per_cpu(pevent, cpu);
-	if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
-		ev->pmu->read(ev);
-		per_cpu(prev_value, cpu) = local64_read(&ev->count);
-
-		// Counters header
-		gator_buffer_write_packed_int(cpu, buftype, MESSAGE_COUNTERS);     // type
-		gator_buffer_write_packed_int64(cpu, buftype, gator_get_time());   // time
-
-		// Output counter
-		gator_buffer_write_packed_int(cpu, buftype, 2);                    // length
-		gator_buffer_write_packed_int(cpu, buftype, per_cpu(key, cpu));    // key
-		gator_buffer_write_packed_int(cpu, buftype, 0);                    // delta - zero for initialization
-
-		// End Counters, length of zero
-		gator_buffer_write_packed_int(cpu, buftype, 0);
-	}
+	// Collect counters
+	collect_counters();
 }
 
 static void gator_event_sampling_online_dispatch(int cpu)
@@ -117,9 +76,17 @@ static void gator_event_sampling_online_dispatch(int cpu)
 
 static void gator_event_sampling_offline_dispatch(int cpu)
 {
+	struct perf_event * pe = NULL;
+
+	mutex_lock(&perf_mutex);
 	if (per_cpu(pevent, cpu)) {
-		perf_event_release_kernel(per_cpu(pevent, cpu));
+		pe = per_cpu(pevent, cpu);
 		per_cpu(pevent, cpu) = NULL;
+	}
+	mutex_unlock(&perf_mutex);
+
+	if (pe) {
+		perf_event_release_kernel(pe);
 	}
 }
 
@@ -184,7 +151,6 @@ static void gator_event_sampling_stop(void)
 }
 
 #else
-static void gator_event_sampling_online(void) {}
 static void gator_event_sampling_online_dispatch(int cpu) {}
 static void gator_event_sampling_offline_dispatch(int cpu) {}
 static int gator_event_sampling_start(void) {return 0;}

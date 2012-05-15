@@ -4,18 +4,18 @@
     <counter name="ARM_ARM11_cnt2"/>
   </counter_set>
   <category name="ARM11" counter_set="ARM_ARM11_cntX" per_cpu="yes">
-    <event counter="ARM_ARM11_ccnt" title="Clock" name="Cycles" description="The number of core clock cycles"/>
+    <event counter="ARM_ARM11_ccnt" title="Clock" name="Cycles" alias="ClockCycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Cache" name="Inst miss" description="Instruction cache miss to a cacheable location, which requires a fetch from external memory"/>
     <event event="0x01" title="Pipeline" name="Instruction stall" description="Stall because instruction buffer cannot deliver an instruction"/>
     <event event="0x02" title="Pipeline" name="Data stall" description="Stall because of a data dependency"/>
     <event event="0x03" title="Cache" name="Inst micro TLB miss" description="Instruction MicroTLB miss (unused on ARM1156)"/>
     <event event="0x04" title="Cache" name="Data micro TLB miss" description="Data MicroTLB miss (unused on ARM1156)"/>
     <event event="0x05" title="Branch" name="Instruction executed" description="Branch instruction executed, branch might or might not have changed program flow"/>
-    <event event="0x06" title="Branch" name="Mispredicted" description="Branch mis-predicted"/>
-    <event event="0x07" title="Instruction" name="Executed" description="Instructions executed"/>
+    <event event="0x06" title="Branch" name="Mispredicted" alias="BranchMispredicted" description="Branch mis-predicted"/>
+    <event event="0x07" title="Instruction" name="Executed" alias="InstructionsExecuted" description="Instructions executed"/>
     <event event="0x09" title="Cache" name="Data access" description="Data cache access, not including Cache operations"/>
     <event event="0x0a" title="Cache" name="Data all access" description="Data cache access, not including Cache Operations regardless of whether or not the location is cacheable"/>
-    <event event="0x0b" title="Cache" name="Data miss" description="Data cache miss, not including Cache Operations"/>
+    <event event="0x0b" title="Cache" name="Data miss" alias="L1Miss" description="Data cache miss, not including Cache Operations"/>
     <event event="0x0c" title="Cache" name="Write-back" description="Data cache write-back"/>
     <event event="0x0d" title="Program Counter" name="SW change" description="Software changed the PC"/>
     <event event="0x0f" title="Cache " name="TLB miss" description="Main TLB miss (unused on ARM1156)"/>

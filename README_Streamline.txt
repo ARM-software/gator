@@ -75,9 +75,10 @@ For Android targets (install the android ndk, see developer.android.com)
 Load the kernel onto the target and copy gatord and gator.ko into the target's filesystem.
 Ensure gatord has execute permissions
 	chmod +x gatord
-gator.ko must be located in the same directory as gatord on the target.
+gator.ko must be located in the same directory as gatord on the target or the location specified with the -m option.
 With root privileges, run the daemon
 	sudo ./gatord &
+Note: gatord requires libstdc++.so.6 which is usually supplied by the Linux distribution on the target. A copy of libstdc++.so.6 is available in the DS-5 Linux example distribution.
 
 *** Compiling an application or shared library ***
 

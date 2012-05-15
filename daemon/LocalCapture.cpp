@@ -24,9 +24,9 @@ LocalCapture::LocalCapture() {}
 LocalCapture::~LocalCapture() {}
 
 void LocalCapture::createAPCDirectory(char* target_path, char* name) {
-	gSessionData->apcDir = createUniqueDirectory(target_path, ".apc", name);
-	if ((removeDirAndAllContents(gSessionData->apcDir) != 0 || mkdir(gSessionData->apcDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
-		logg->logError(__FILE__, __LINE__, "Unable to create directory %s", gSessionData->apcDir);
+	gSessionData->mAPCDir = createUniqueDirectory(target_path, ".apc", name);
+	if ((removeDirAndAllContents(gSessionData->mAPCDir) != 0 || mkdir(gSessionData->mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
+		logg->logError(__FILE__, __LINE__, "Unable to create directory %s", gSessionData->mAPCDir);
 		handleException();
 	}
 }
@@ -35,7 +35,7 @@ void LocalCapture::write(char* string) {
 	char* file = (char*)malloc(PATH_MAX);
 
 	// Set full path
-	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData->apcDir);
+	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData->mAPCDir);
 
 	// Write the file
 	if (util->writeToDisk(file, string) < 0) {
@@ -53,12 +53,14 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
 
 	// Ensure the path is an absolute path, i.e. starts with a slash
 	if (initialPath == 0 || strlen(initialPath) == 0) {
-		if (getcwd(path, PATH_MAX) == 0)
+		if (getcwd(path, PATH_MAX) == 0) {
 			logg->logMessage("Unable to retrive the current working directory");
+		}
 		strncat(path, "/@F_@N", PATH_MAX - strlen(path) - 1);
 	} else if (initialPath[0] != '/') {
-		if (getcwd(path, PATH_MAX) == 0)
+		if (getcwd(path, PATH_MAX) == 0) {
 			logg->logMessage("Unable to retrive the current working directory");
+		}
 		strncat(path, "/", PATH_MAX - strlen(path) - 1);
 		strncat(path, initialPath, PATH_MAX - strlen(path) - 1);
 	} else {
@@ -158,7 +160,7 @@ void LocalCapture::replaceAll(char* target, const char* find, const char* replac
 	free(original);
 }
 
-int LocalCapture::removeDirAndAllContents(char *path) {
+int LocalCapture::removeDirAndAllContents(char* path) {
 	int error = 0;
 	struct stat mFileInfo;
 	// Does the path exist?
@@ -173,7 +175,9 @@ int LocalCapture::removeDirAndAllContents(char *path) {
 					sprintf(newpath, "%s/%s", path, entry->d_name);
 					error = removeDirAndAllContents(newpath);
 					free(newpath);
-					if (error) break;
+					if (error) {
+						break;
+					}
 				}
 				entry = readdir(dir);
 			}
@@ -192,15 +196,17 @@ void LocalCapture::copyImages(ImageLinkList* ptr) {
 	char* dstfilename = (char*)malloc(PATH_MAX);
 
 	while (ptr) {
-		strncpy(dstfilename, gSessionData->apcDir, PATH_MAX);
+		strncpy(dstfilename, gSessionData->mAPCDir, PATH_MAX);
 		dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
-		if (gSessionData->apcDir[strlen(gSessionData->apcDir) - 1] != '/')
+		if (gSessionData->mAPCDir[strlen(gSessionData->mAPCDir) - 1] != '/') {
 			strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
+		}
 		strncat(dstfilename, util->getFilePart(ptr->path), PATH_MAX - strlen(dstfilename) - 1);
-		if (util->copyFile(ptr->path, dstfilename))
+		if (util->copyFile(ptr->path, dstfilename)) {
 			logg->logMessage("copied file %s to %s", ptr->path, dstfilename);
-		else
+		} else {
 			logg->logMessage("copy of file %s to %s failed", ptr->path, dstfilename);
+		}
 
 		ptr = ptr->next;
 	}
