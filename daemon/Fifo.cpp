@@ -48,7 +48,7 @@ char* Fifo::start() {
 }
 
 bool Fifo::isEmpty() {
-	return mRead == mWrite;
+	return mRead == mWrite && mRaggedEnd == 0;
 }
 
 bool Fifo::isFull() {
@@ -56,8 +56,7 @@ bool Fifo::isFull() {
 }
 
 // Determines if the buffer will fill assuming 'additional' bytes will be added to the buffer
-// comparisons use '<', read and write pointers must never equal when not empty
-// 'full' means there is less than singleBufferSize bytes available; it does not mean there are zero bytes available
+// 'full' means there is less than singleBufferSize bytes available contiguously; it does not mean there are zero bytes available
 bool Fifo::willFill(int additional) {
 	if (mWrite > mRead) {
 		if (numBytesFilled() + additional < mWrapThreshold) {

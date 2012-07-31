@@ -195,7 +195,15 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 	struct cmdline_t cmdline;
 	cmdline.port = 8080;
 	cmdline.module = NULL;
+	char version_string[256]; // arbitrary length to hold the version information
 	int c;
+
+	// build the version string
+	if (PROTOCOL_VERSION < PROTOCOL_DEV) {
+		snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d)", PROTOCOL_VERSION, PROTOCOL_VERSION + 1);
+	} else {
+		snprintf(version_string, sizeof(version_string), "Streamline gatord development version %d", PROTOCOL_VERSION);
+	}
 
 	while ((c = getopt(argc, argv, "hvp:s:c:e:m:")) != -1) {
 		switch(c) {
@@ -217,19 +225,19 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 			case 'h':
 			case '?':
 				logg->logError(__FILE__, __LINE__,
-					"Streamline gatord version %d. All parameters are optional:\n"
-					"-c config_xml\tpath and filename of the configuration.xml to use\n"
-					"-e events_xml\tpath and filename of the events.xml to use\n"
-					"-h\t\tthis help page\n"
-					"-m module\tpath and filename of gator.ko\n"
-					"-p port_number\tport upon which the server listens; default is 8080\n"
-					"-s session_xml\tpath and filename of a session xml used for local capture\n"
-					"-v\t\tversion information\n"
-					, PROTOCOL_VERSION);
+					"%s. All parameters are optional:\n"
+					"-c config_xml   path and filename of the configuration.xml to use\n"
+					"-e events_xml   path and filename of the events.xml to use\n"
+					"-h              this help page\n"
+					"-m module       path and filename of gator.ko\n"
+					"-p port_number  port upon which the server listens; default is 8080\n"
+					"-s session_xml  path and filename of a session xml used for local capture\n"
+					"-v              version information\n"
+					, version_string);
 				handleException();
 				break;
 			case 'v':
-				logg->logError(__FILE__, __LINE__, "Streamline gatord version %d", PROTOCOL_VERSION);
+				logg->logError(__FILE__, __LINE__, version_string);
 				handleException();
 				break;
 		}
@@ -255,7 +263,7 @@ int main(int argc, char** argv, char* envp[]) {
 	logg = new Logging(DEBUG);  // Set up global thread-safe logging
 	util = new OlyUtility();	// Set up global utility class
 
-	prctl(PR_SET_NAME, (unsigned int)&"gatord-main", 0, 0, 0);
+	prctl(PR_SET_NAME, (unsigned long)&"gatord-main", 0, 0, 0);
 	pthread_mutex_init(&numSessions_mutex, NULL);
 
 	signal(SIGINT, handler);

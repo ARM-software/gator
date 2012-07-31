@@ -32,6 +32,7 @@ static DEFINE_PER_CPU(int[CNTMAX], perfPrevDelta);
 static DEFINE_PER_CPU(int[CNTMAX * 2], perfCnt);
 static DEFINE_PER_CPU(struct perf_event *[CNTMAX], pevent);
 static DEFINE_PER_CPU(struct perf_event_attr *[CNTMAX], pevent_attr);
+extern DEFINE_PER_CPU(struct perf_event *, pevent_ebs);
 
 static void gator_events_perf_pmu_stop(void);
 
@@ -74,10 +75,15 @@ static void dummy_handler(struct perf_event *event, struct perf_sample_data *dat
 static int gator_events_perf_pmu_online(int** buffer)
 {
 	int cnt, len = 0, cpu = smp_processor_id();
+	struct perf_event * ev;
 
 	// read the counters and toss the invalid data, return zero instead
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-		struct perf_event * ev = per_cpu(pevent, cpu)[cnt];
+        if (pmnc_count[cnt] > 0) {
+            ev = per_cpu(pevent_ebs, cpu); // special case for EBS
+        } else {
+		    ev = per_cpu(pevent, cpu)[cnt];
+        }
 		if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
 			ev->pmu->read(ev);
 			per_cpu(perfPrev, cpu)[cnt] = per_cpu(perfCurr, cpu)[cnt] = local64_read(&ev->count);
@@ -100,6 +106,9 @@ static void gator_events_perf_pmu_online_dispatch(int cpu)
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		if (per_cpu(pevent, cpu)[cnt] != NULL || per_cpu(pevent_attr, cpu)[cnt] == 0)
 			continue;
+
+		if (pmnc_count[cnt] > 0)
+			continue; // skip the EBS counter
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
 		per_cpu(pevent, cpu)[cnt] = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu)[cnt], cpu, 0, dummy_handler);
@@ -203,14 +212,19 @@ static int gator_events_perf_pmu_read(int **buffer)
 {
 	int cnt, delta, len = 0;
 	int cpu = smp_processor_id();
+    struct perf_event * ev;
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-		struct perf_event * ev = per_cpu(pevent, cpu)[cnt];
+        if (pmnc_count[cnt] > 0) {
+            ev = per_cpu(pevent_ebs, cpu); // special case for EBS
+        } else {
+		    ev = per_cpu(pevent, cpu)[cnt];
+        }
 		if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
 			ev->pmu->read(ev);
 			per_cpu(perfCurr, cpu)[cnt] = local64_read(&ev->count);
 			delta = per_cpu(perfCurr, cpu)[cnt] - per_cpu(perfPrev, cpu)[cnt];
-			if (delta != per_cpu(perfPrevDelta, cpu)[cnt]) {
+			if (delta != 0 || delta != per_cpu(perfPrevDelta, cpu)[cnt]) {
 				per_cpu(perfPrevDelta, cpu)[cnt] = delta;
 				per_cpu(perfPrev, cpu)[cnt] = per_cpu(perfCurr, cpu)[cnt];
 				per_cpu(perfCnt, cpu)[len++] = pmnc_key[cnt];

@@ -5,13 +5,13 @@
     <event counter="Linux_irq_irq" title="Interrupts" name="IRQ" per_cpu="yes" description="Linux IRQ taken"/>
     <event counter="Linux_block_rq_wr" title="Disk IO" name="Write" units="B" description="Disk IO Bytes Written"/>
     <event counter="Linux_block_rq_rd" title="Disk IO" name="Read" units="B" description="Disk IO Bytes Read"/>
-    <event counter="Linux_net_rx" title="Network" name="Receive" units="B" description="Receive network traffic, excluding effect from Streamline"/>
-    <event counter="Linux_net_tx" title="Network" name="Transmit" units="B" description="Transmit network traffic, excluding effect from Streamline"/>
+    <event counter="Linux_net_rx" title="Network" name="Receive" units="B" description="Receive network traffic, including effect from Streamline"/>
+    <event counter="Linux_net_tx" title="Network" name="Transmit" units="B" description="Transmit network traffic, including effect from Streamline"/>
     <event counter="Linux_sched_switch" title="Scheduler" name="Switch" description="Context switch events"/>
     <event counter="Linux_meminfo_memused" title="Memory" name="Used" display="maximum" units="B" average_selection="yes" description="Total used memory size"/>
     <event counter="Linux_meminfo_memfree" title="Memory" name="Free" display="minimum" units="B" average_selection="yes" description="Available memory size"/>
     <event counter="Linux_meminfo_bufferram" title="Memory" name="Buffer" display="maximum" units="B" average_selection="yes" description="Memory used by buffers"/>
-    <event counter="Linux_power_cpu_freq" title="Clock" name="DVFS" per_cpu="yes" display="maximum" units="Hz" average_selection="yes" description="Target frequency of the CPU"/>
+    <event counter="Linux_power_cpu_freq" title="Clock" name="Frequency" per_cpu="yes" display="maximum" units="Hz" average_selection="yes" description="Frequency setting of the CPU"/>
     <event counter="Linux_power_cpu_idle" title="Power" name="Idle" per_cpu="yes" display="maximum" average_selection="yes" description="CPU Idle State, set the Sample Rate to None to prevent the hrtimer from interrupting the system"/>
   </category>
   

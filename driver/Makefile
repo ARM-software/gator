@@ -17,10 +17,13 @@ gator-y +=	gator_events_mmaped.o
 
 ifneq ($(GATOR_WITH_MALI_SUPPORT),)
 ifeq ($(GATOR_WITH_MALI_SUPPORT),MALI_T6xx)
-gator-y +=	gator_events_mali_t6xx.o
+gator-y +=	gator_events_mali_t6xx.o \
+		gator_events_mali_t6xx_hw.o
+include $(M)/mali_t6xx.mk
 else
-gator-y +=	gator_events_mali.o
+gator-y +=	gator_events_mali_400.o
 endif
+gator-y +=	gator_events_mali_common.o
 EXTRA_CFLAGS +=	-DMALI_SUPPORT=$(GATOR_WITH_MALI_SUPPORT)
 endif
 

@@ -1,0 +1,278 @@
+
+  <category name="Mali-T6xx-JobManager" per_cpu="no"> 
+    <event counter="ARM_Mali-T6xx_MESSAGES_SENT" title="Mali GPU Job Manager" name="Job Manager messages sent" description="Number of JCB messages sent by the Job Manager."/>
+    <event counter="ARM_Mali-T6xx_MESSAGES_RECEIVED" title="Mali GPU Job Manager" name="Job Manager messages received " description="Number of JCB messages received by the Job Manager."/>
+    <event counter="ARM_Mali-T6xx_GPU_ACTIVE" title="Mali GPU Job Manager" name="GPU active cycles" description="Number of cycles the GPU was active."/>
+    <event counter="ARM_Mali-T6xx_IRQ_ACTIVE" title="Mali GPU Job Manager" name="IRQ active cycles" description="Number of cycles with active interrupts."/>
+
+    <event counter="ARM_Mali-T6xx_JS0_JOBS" title="Mali GPU Job Manager" name="Job Slot 0 jobs complete" description="Number of jobs completed in Job Slot 0."/>
+    <event counter="ARM_Mali-T6xx_JS0_TASKS" title="Mali GPU Job Manager" name="Job Slot 0 tasks complete" description="Number of tasks completed in Job Slot 0."/>
+    <event counter="ARM_Mali-T6xx_JS0_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 0 active" description="Number of cycles Job Slot 0 was active."/>
+    <event counter="ARM_Mali-T6xx_JS0_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 0 wait read" description="Number of cycles Job Slot 0 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS0_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 0 wait issue" description="Number of cycles Job Slot 0 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS0_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 0 wait depend" description="Number of cycles Job Slot 0 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS0_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 0 wait finish" description="Number of cycles Job Slot 0 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+
+    <event counter="ARM_Mali-T6xx_JS1_JOBS" title="Mali GPU Job Manager" name="Job Slot 1 jobs complete" description="Number of jobs completed in Job Slot 1."/>
+    <event counter="ARM_Mali-T6xx_JS1_TASKS" title="Mali GPU Job Manager" name="Job Slot 1 tasks complete" description="Number of tasks completed in Job Slot 1."/>
+    <event counter="ARM_Mali-T6xx_JS1_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 1 active" description="Number of cycles Job Slot 1 was active."/>
+    <event counter="ARM_Mali-T6xx_JS1_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 1 wait read" description="Number of cycles Job Slot 1 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS1_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 1 wait issue" description="Number of cycles Job Slot 1 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS1_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 1 wait depend" description="Number of cycles Job Slot 1 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS1_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 1 wait finish" description="Number of cycles Job Slot 1 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+
+    <event counter="ARM_Mali-T6xx_JS2_JOBS" title="Mali GPU Job Manager" name="Job Slot 2 jobs complete" description="Number of jobs completed in Job Slot 2."/>
+    <event counter="ARM_Mali-T6xx_JS2_TASKS" title="Mali GPU Job Manager" name="Job Slot 2 tasks complete" description="Number of tasks completed in Job Slot 2."/>
+    <event counter="ARM_Mali-T6xx_JS2_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 2 active" description="Number of cycles Job Slot 2 was active."/>
+    <event counter="ARM_Mali-T6xx_JS2_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 2 wait read" description="Number of cycles Job Slot 2 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS2_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 2 wait issue" description="Number of cycles Job Slot 2 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS2_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 2 wait depend" description="Number of cycles Job Slot 2 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS2_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 2 wait finish" description="Number of cycles Job Slot 2 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+<!--
+    <event counter="ARM_Mali-T6xx_JS3_JOBS" title="Mali GPU Job Manager" name="Job Slot 3 jobs complete" description="Number of jobs completed in Job Slot 3."/>
+    <event counter="ARM_Mali-T6xx_JS3_TASKS" title="Mali GPU Job Manager" name="Job Slot 3 tasks complete" description="Number of tasks completed in Job Slot 3."/>
+    <event counter="ARM_Mali-T6xx_JS3_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 3 active" description="Number of cycles Job Slot 3 was active."/>
+    <event counter="ARM_Mali-T6xx_JS3_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 3 wait read" description="Number of cycles Job Slot 3 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS3_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 3 wait issue" description="Number of cycles Job Slot 3 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS3_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 3 wait depend" description="Number of cycles Job Slot 3 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS3_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 3 wait finish" description="Number of cycles Job Slot 3 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+
+    <event counter="ARM_Mali-T6xx_JS4_JOBS" title="Mali GPU Job Manager" name="Job Slot 4 jobs complete" description="Number of jobs completed in Job Slot 4."/>
+    <event counter="ARM_Mali-T6xx_JS4_TASKS" title="Mali GPU Job Manager" name="Job Slot 4 tasks complete" description="Number of tasks completed in Job Slot 4."/>
+    <event counter="ARM_Mali-T6xx_JS4_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 4 active" description="Number of cycles Job Slot 4 was active."/>
+    <event counter="ARM_Mali-T6xx_JS4_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 4 wait read" description="Number of cycles Job Slot 4 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS4_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 4 wait issue" description="Number of cycles Job Slot 4 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS4_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 4 wait depend" description="Number of cycles Job Slot 4 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS4_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 4 wait finish" description="Number of cycles Job Slot 4 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+
+    <event counter="ARM_Mali-T6xx_JS5_JOBS" title="Mali GPU Job Manager" name="Job Slot 5 jobs complete" description="Number of jobs completed in Job Slot 5."/>
+    <event counter="ARM_Mali-T6xx_JS5_TASKS" title="Mali GPU Job Manager" name="Job Slot 5 tasks complete" description="Number of tasks completed in Job Slot 5."/>
+    <event counter="ARM_Mali-T6xx_JS5_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 5 active" description="Number of cycles Job Slot 5 was active."/>
+    <event counter="ARM_Mali-T6xx_JS5_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 5 wait read" description="Number of cycles Job Slot 5 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS5_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 5 wait issue" description="Number of cycles Job Slot 5 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS5_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 5 wait depend" description="Number of cycles Job Slot 5 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS5_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 5 wait finish" description="Number of cycles Job Slot 5 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+
+    <event counter="ARM_Mali-T6xx_JS6_JOBS" title="Mali GPU Job Manager" name="Job Slot 6 jobs complete" description="Number of jobs completed in Job Slot 6."/>
+    <event counter="ARM_Mali-T6xx_JS6_TASKS" title="Mali GPU Job Manager" name="Job Slot 6 tasks complete" description="Number of tasks completed in Job Slot 6."/>
+    <event counter="ARM_Mali-T6xx_JS6_ACTIVE" title="Mali GPU Job Manager" name="Job Slot 6 active" description="Number of cycles Job Slot 6 was active."/>
+    <event counter="ARM_Mali-T6xx_JS6_WAIT_READ" title="Mali GPU Job Manager" name="Job Slot 6 wait read" description="Number of cycles Job Slot 6 stalled waiting for descriptors to be read."/>
+    <event counter="ARM_Mali-T6xx_JS6_WAIT_ISSUE" title="Mali GPU Job Manager" name="Job Slot 6 wait issue" description="Number of cycles Job Slot 6 stalled unable to issue tasks because all available cores were full."/>
+    <event counter="ARM_Mali-T6xx_JS6_WAIT_DEPEND" title="Mali GPU Job Manager" name="Job Slot 6 wait depend" description="Number of cycles Job Slot 6 stalled waiting for task dependencies, and the task could have been issued if not for the dependency."/>
+    <event counter="ARM_Mali-T6xx_JS6_WAIT_FINISH" title="Mali GPU Job Manager" name="Job Slot 6 wait finish" description="Number of cycles Job Slot 6 stalled after finishing the last job in the job chain, waiting for all active tasks to finish."/>
+-->
+  </category>
+
+  <category name="Mali-T6xx-Tiler" per_cpu="no"> 
+<!--
+    <event counter="ARM_Mali-T6xx_JOBS_PROCESSED" title="Mali GPU Tiler" name="Jobs processed" description="Number of jobs processed."/>
+-->
+    <event counter="ARM_Mali-T6xx_TRIANGLES" title="Mali GPU Tiler" name="Triangles processed" description="Number of triangles processed."/>
+    <event counter="ARM_Mali-T6xx_QUADS" title="Mali GPU Tiler" name="Quads processed" description="Number of quads processed."/>
+    <event counter="ARM_Mali-T6xx_POLYGONS" title="Mali GPU Tiler" name="Polygons processed" description="Number of polygons processed."/>
+    <event counter="ARM_Mali-T6xx_POINTS" title="Mali GPU Tiler" name="Points processed" description="Number of points processed."/>
+
+    <event counter="ARM_Mali-T6xx_LINES" title="Mali GPU Tiler" name="Lines processed" description="Number of lines processed."/>
+    <event counter="ARM_Mali-T6xx_VCACHE_HIT" title="Mali GPU Tiler" name="Vertex cache hits" description="Number of vertex cache hits."/>
+    <event counter="ARM_Mali-T6xx_VCACHE_MISS" title="Mali GPU Tiler" name="Vertex cache misses" description="Number of vertex cache misses."/>
+    <event counter="ARM_Mali-T6xx_FRONT_FACING" title="Mali GPU Tiler" name="Front facing primitives" description="Number of front facing primitives."/>
+
+    <event counter="ARM_Mali-T6xx_BACK_FACING" title="Mali GPU Tiler" name="Back facing primitives" description="Number of back facing primitives."/>
+    <event counter="ARM_Mali-T6xx_PRIM_VISIBLE" title="Mali GPU Tiler" name="Visible primitives" description="Number of visible primitives."/>
+    <event counter="ARM_Mali-T6xx_PRIM_CULLED" title="Mali GPU Tiler" name="Culled primitives" description="Number of culled primitives."/>
+    <event counter="ARM_Mali-T6xx_PRIM_CLIPPED" title="Mali GPU Tiler" name="Clipped primitives" description="Number of clipped primitives."/>
+
+    <event counter="ARM_Mali-T6xx_LEVEL0" title="Mali GPU Tiler" name="Level 0 primitives" description="Number of primitives tiled to hierarchy level 0."/>
+    <event counter="ARM_Mali-T6xx_LEVEL1" title="Mali GPU Tiler" name="Level 1 primitives" description="Number of primitives tiled to hierarchy level 1."/>
+    <event counter="ARM_Mali-T6xx_LEVEL2" title="Mali GPU Tiler" name="Level 2 primitives" description="Number of primitives tiled to hierarchy level 2."/>
+    <event counter="ARM_Mali-T6xx_LEVEL3" title="Mali GPU Tiler" name="Level 3 primitives" description="Number of primitives tiled to hierarchy level 3."/>
+
+    <event counter="ARM_Mali-T6xx_LEVEL4" title="Mali GPU Tiler" name="Level 4 primitives" description="Number of primitives tiled to hierarchy level 4."/>
+    <event counter="ARM_Mali-T6xx_LEVEL5" title="Mali GPU Tiler" name="Level 5 primitives" description="Number of primitives tiled to hierarchy level 5."/>
+    <event counter="ARM_Mali-T6xx_LEVEL6" title="Mali GPU Tiler" name="Level 6 primitives" description="Number of primitives tiled to hierarchy level 6."/>
+    <event counter="ARM_Mali-T6xx_LEVEL7" title="Mali GPU Tiler" name="Level 7 primitives" description="Number of primitives tiled to hierarchy level 7."/>
+
+    <event counter="ARM_Mali-T6xx_COMMAND_1" title="Mali GPU Tiler" name="Primitives tiled to 1 command" description="Number of primitives producing 1 command in tile list."/>
+    <event counter="ARM_Mali-T6xx_COMMAND_2" title="Mali GPU Tiler" name="Primitives tiled to 2 commands" description="Number of primitives producing 2 commands in tile list."/>
+    <event counter="ARM_Mali-T6xx_COMMAND_3" title="Mali GPU Tiler" name="Primitives tiled to 3 commands" description="Number of primitives producing 3 commands in tile list."/>
+    <event counter="ARM_Mali-T6xx_COMMAND_4" title="Mali GPU Tiler" name="Primitives tiled to 4 commands" description="Number of primitives producing 4 commands in tile list."/>
+
+    <event counter="ARM_Mali-T6xx_COMMAND_4_7" title="Mali GPU Tiler" name="Primitives tiled to 4-7 commands" description="Number of primitives producing 4-7 commands in tile list."/>
+    <event counter="ARM_Mali-T6xx_COMMAND_8_15" title="Mali GPU Tiler" name="Primitives tiled to 8-15 commands" description="Number of primitives producing 8-15 commands in tile list."/>
+    <event counter="ARM_Mali-T6xx_COMMAND_16_63" title="Mali GPU Tiler" name="Primitives tiled to 16-63 commands" description="Number of primitives producing 16-63 commands in tile list."/>
+    <event counter="ARM_Mali-T6xx_COMMAND_64" title="Mali GPU Tiler" name="Primitives tiled to >= 64 commands" description="Number of primitives producing >= 64 commands in tile list."/>
+
+    <event counter="ARM_Mali-T6xx_COMPRESS_IN" title="Mali GPU Tiler" name="Commands entering compressor" description="Number of commands entering compressor."/>
+    <event counter="ARM_Mali-T6xx_COMPRESS_OUT" title="Mali GPU Tiler" name="Compressed commands from compressor" description="Number of compressed commands produced by compressor."/>
+    <event counter="ARM_Mali-T6xx_COMPRESS_FLUSH" title="Mali GPU Tiler" name="Compressor state flushes" description="Number of compressor state flushes."/>
+    <event counter="ARM_Mali-T6xx_TIMESTAMPS" title="Mali GPU Tiler" name="Timestamps emitted" description="Number of timestamps emitted."/>
+
+    <event counter="ARM_Mali-T6xx_PCACHE_HIT" title="Mali GPU Tiler" name="Pointer-cache hits" description="Number of pointer-cache hits."/>
+    <event counter="ARM_Mali-T6xx_PCACHE_MISS" title="Mali GPU Tiler" name="Pointer-cache misses" description="Number of pointer-cache misses."/>
+    <event counter="ARM_Mali-T6xx_PCACHE_LINE" title="Mali GPU Tiler" name="Pointer-cache line-fils" description="Number of pointer-cache line-fills."/>
+    <event counter="ARM_Mali-T6xx_PCACHE_STALL" title="Mali GPU Tiler" name="Pointer-cache stalls" description="Number of pointer-cache stalls."/>
+
+    <event counter="ARM_Mali-T6xx_WRBUF_HIT" title="Mali GPU Tiler" name="Write-buffer hits" description="Number of write-buffer hits."/>
+    <event counter="ARM_Mali-T6xx_WRBUF_MISS" title="Mali GPU Tiler" name="Write-buffer misses" description="Number of write-buffer misses."/>
+    <event counter="ARM_Mali-T6xx_WRBUF_LINE" title="Mali GPU Tiler" name="Write-buffer full-lines written out" description="Number of complete cache lines written out from the write buffer."/>
+    <event counter="ARM_Mali-T6xx_WRBUF_PARTIAL" title="Mali GPU Tiler" name="Write-buffer partial-lines written out" description="Number of incomplete cache lines written out from the write buffer."/>
+
+    <event counter="ARM_Mali-T6xx_WRBUF_STALL" title="Mali GPU Tiler" name="Write-buffer stalls" description="Number of write-buffer stalls."/>
+    <event counter="ARM_Mali-T6xx_ACTIVE" title="Mali GPU Tiler" name="Tiler active cycles" description="Number of cycles the tiler is active."/>
+    <event counter="ARM_Mali-T6xx_LOADING_DESC" title="Mali GPU Tiler" name="Cycles loading descriptors" description="Number of cycle spent loading descriptors while the tiler frontend is otherwise idle."/>  
+    <event counter="ARM_Mali-T6xx_INDEX_WAIT" title="Mali GPU Tiler" name="Cycles index fetch miss" description="Number of cycles the vertex cache could accept an index, but due to a miss, the index fetcher could not provide one."/>
+
+    <event counter="ARM_Mali-T6xx_INDEX_RANGE_WAIT" title="Mali GPU Tiler" name="Cycles index out of range" description="Number of cycles the index fetcher provides an index, but the index is outside the range of currently shaded vertices. Only relevant for fused jobs."/>
+    <event counter="ARM_Mali-T6xx_VERTEX_WAIT" title="Mali GPU Tiler" name="Cycles vertex cache miss" description="Number of cycles the primitive assembly could accept a vertex, but due to a vertex cache miss, the vertex fetcher is unable to provide a vertex."/>
+    <event counter="ARM_Mali-T6xx_PCACHE_WAIT" title="Mali GPU Tiler" name="Cycles pointer cache miss" description="Number of cycles the command compressor could accept a command, but due to a cache miss, the pointer cache is unable to provide the polygon list pointer."/>
+    <event counter="ARM_Mali-T6xx_WRBUF_WAIT" title="Mali GPU Tiler" name="Cycles no write buffer entry" description="Number of cycles a command could be written to the write buffer, but no write buffer entry is available."/>
+
+    <event counter="ARM_Mali-T6xx_BUS_READ" title="Mali GPU Tiler" name="Data beats from L2 cache read." description="Number of data beats (64-bit) on read from the L2 cache."/>
+    <event counter="ARM_Mali-T6xx_BUS_WRITE" title="Mali GPU Tiler" name="Data beats from L2 chache write" description="Number of data beats (64-bit) on written to the L2 cache."/>
+
+    <event counter="ARM_Mali-T6xx_UTLB_STALL" title="Mali GPU Tiler" name="uTLB cycles stall" description="uTLB: Cycles with stall on input AXI address channel."/>
+
+    <event counter="ARM_Mali-T6xx_UTLB_REPLAY_MISS" title="Mali GPU Tiler" name="uTLB replay buffer cache misses" description="uTLB: Number of cache misses on accesses from replay buffer."/>    
+    <event counter="ARM_Mali-T6xx_UTLB_REPLAY_FULL" title="Mali GPU Tiler" name="uTLB cycle reply buffer full" description="uTLB: Number of cycles replay buffer is full."/>
+    <event counter="ARM_Mali-T6xx_UTLB_NEW_MISS" title="Mali GPU Tiler" name="uTLB cache misses on new request" description="uTLB: Number of cache misses on new requests."/>
+    <event counter="ARM_Mali-T6xx_UTLB_HIT" title="Mali GPU Tiler" name="uTLB cache hits" description="uTLB: Number of cache hits."/>
+  </category>
+
+  <category name="Mali-T6xx-ShaderCore" per_cpu="no">
+<!--
+    <event counter="ARM_Mali-T6xx_SHADER_CORE_ACTIVE" title="Mali GPU Shader Core" name="Shader core active cycles" description="Number of cycles the shader core active."/>
+-->
+    <event counter="ARM_Mali-T6xx_FRAG_ACTIVE" title="Fragment" name="Fragment active cycles" description="Number of cycles fragment processing was active."/>
+    <event counter="ARM_Mali-T6xx_FRAG_PRIMATIVES" title="Fragment" name="Primitives" description="Number of primitives."/>
+    <event counter="ARM_Mali-T6xx_FRAG_PRIMATIVES_DROPPED" title="Fragment" name="Primitives dropped" description="Primitives dropped due to Polygon List Reader coverage."/>
+    <event counter="ARM_Mali-T6xx_FRAG_CYCLE_DESC" title="Fragment" name="Stall: Waiting for descriptors" description="Number of cycles spent waiting for descriptors / 2."/>
+
+    <event counter="ARM_Mali-T6xx_FRAG_CYCLES_PLR" title="Fragment" name="Stall: Waiting for PLR" description="Cycles spent waiting for Polygon List Reader."/>
+    <event counter="ARM_Mali-T6xx_FRAG_CYCLES_VERT" title="Fragment" name="Stall: Waiting for vertices" description="Cycles spent waiting for vertices."/>
+    <event counter="ARM_Mali-T6xx_FRAG_CYCLES_TRISETUP" title="Fragment" name="Stall: Waiting for trisetup" description="Cycles spent waiting for trisetup."/>
+    <event counter="ARM_Mali-T6xx_FRAG_CYCLES_RAST" title="Fragment" name="Stall: Waiting for rasterizer" description="Cycles spent waiting for rasterizer."/>
+
+    <event counter="ARM_Mali-T6xx_FRAG_THREADS" title="Fragment" name="Fragment threads started" description="Number of fragment threads started."/>
+    <event counter="ARM_Mali-T6xx_FRAG_DUMMY_THREADS" title="Fragment" name="Dummy threads started" description="Number of dummy threads started."/>
+    <event counter="ARM_Mali-T6xx_FRAG_QUADS_RAST" title="Fragment" name="Quads rasterized" description="Number of quads rasterized."/>
+    <event counter="ARM_Mali-T6xx_FRAG_QUADS_EZS_TEST" title="Fragment" name="Quads doing early ZS test" description="Number of quads doing early ZS test."/>
+
+    <event counter="ARM_Mali-T6xx_FRAG_QUADS_EZS_KILLED" title="Fragment" name="Quads killed early ZS test" description="Number of quads killed in early ZS test."/>
+    <event counter="ARM_Mali-T6xx_FRAG_QUADS_LZS_TEST" title="Fragment" name="Threads doing late ZS test" description="Number of threads doing in late ZS test."/>
+    <event counter="ARM_Mali-T6xx_FRAG_QUADS_LZS_KILLED" title="Fragment" name="Threads killed late ZS test" description="Number of threads killed in late ZS test."/>
+    <event counter="ARM_Mali-T6xx_FRAG_CYCLE_NO_TILE" title="Fragment" name="cycles waiting for physical tile buffers" description="Number of cycles spent waiting while no physical tile buffers were available for rendering."/>
+
+    <event counter="ARM_Mali-T6xx_FRAG_NUM_TILES" title="Fragment" name="Tiles rendered" description="Number of tiles rendered."/>
+    <event counter="ARM_Mali-T6xx_FRAG_TRANS_ELIM" title="Fragment" name="Transaction elimination signature matches" description="Transaction elimination signature matches."/>
+    <event counter="ARM_Mali-T6xx_COMPUTE_ACTIVE" title="Compute" name="Compute active cycles" description="Number of cycles compute processing was active."/>
+    <event counter="ARM_Mali-T6xx_COMPUTE_TASKS" title="Compute" name="Tasks" description="Number of tasks."/>
+
+    <event counter="ARM_Mali-T6xx_COMPUTE_THREADS" title="Compute" name="Compute threads started" description="Number of compute threads started."/>
+    <event counter="ARM_Mali-T6xx_COMPUTE_CYCLES_DESC" title="Compute" name="Stall: Waiting for descriptors" description="Number of cycles spent waiting for descriptors."/>
+    <event counter="ARM_Mali-T6xx_TRIPIPE_ACTIVE" title="Tripipe" name="Tripipe active cycles" description="Number of cycles the Tripipe was active."/>
+    <event counter="ARM_Mali-T6xx_ARITH_WORDS" title="Arithmetic Pipeline" name="Instructions per pipe" description="Number of instruction words in the arithmethic pipelines, divided by the number of arithmethic pipelines."/>
+
+    <event counter="ARM_Mali-T6xx_ARITH_CYCLES_REG" title="Arithmetic Pipeline" name="Stall: Register scheduling" description="Number of cycles lost in the arithmethic pipelines due to register scheduling, divided by the number of arithmethic pipelines."/>
+    <event counter="ARM_Mali-T6xx_ARITH_CYCLES_L0" title="Arithmetic Pipeline" name="Stall: Icache miss per pipe" description="Number of cycles lost in the arithmethic pipelines due to L0 instruction cache misses, divided by the number of arithmethic pipelines."/>
+    <event counter="ARM_Mali-T6xx_ARITH_FRAG_DEPEND" title="Arithmetic Pipeline" name="Stall: Fragment dependency fails per pipe" description="Number of fragment dependency check failures in the arithmethic pipelines, divided by the number of arithmethic pipelines."/>
+    <event counter="ARM_Mali-T6xx_LS_WORDS" title="Load/Store Pipeline" name="Load/Store instruction words completed" description="Number of instruction words completed in the Load/Store pipeline."/>
+
+    <event counter="ARM_Mali-T6xx_LS_ISSUES" title="Load/Store Pipeline" name="Full pipeline issues" description="Number of full pipeline issues in the Load/Store pipeline."/>
+    <event counter="ARM_Mali-T6xx_LS_RESTARTS" title="Load/Store Pipeline" name="Stall: Unpairable instruction" description="Number of restarts due to unpairable instructions in the Load/Store pipeline."/>
+    <event counter="ARM_Mali-T6xx_LS_REISSUES_MISS" title="Load/Store Pipeline" name="Stall: Cache misses" description="Number of full pipe re-issues due to cache misses or TLB misses in the Load/Store pipeline."/>
+    <event counter="ARM_Mali-T6xx_LS_REISSUES_VD" title="Load/Store Pipeline" name="Stall: Varying misses" description="Number of full pipe re-issues due to varying data being unavailable in the Load/Store pipeline."/>
+
+    <event counter="ARM_Mali-T6xx_LS_REISSUE_ATTRIB_MISS" title="Load/Store Pipeline" name="Stall: Attribute cache misses" description="Number of full pipe re-issues due to attribute cache misses in the Load/Store pipeline."/>
+    <event counter="ARM_Mali-T6xx_LS_NO_WB" title="Load/Store Pipeline" name="Writeback not used, pause buffer used" description="Writeback not used, and something into pause buffer in the Load/Store pipeline."/>
+    <event counter="ARM_Mali-T6xx_TEX_WORDS" title="Texturing Pipeline" name="Texturing pipeline instruction words completed" description="Number of instruction words completed in the texturing pipeline."/>
+    <event counter="ARM_Mali-T6xx_TEX_BUBBLES" title="Texturing Pipeline" name="Stall: Waiting for barrier" description="Number of bubbles with threads waiting for barrier in the texturing pipeline."/>
+
+    <event counter="ARM_Mali-T6xx_TEX_WORDS_L0" title="Texturing Pipeline" name="Stall: Icache misses" description="Number of instruction words in the texturing pipeline restart loop 1 due to L0 instruction cache miss."/>
+    <event counter="ARM_Mali-T6xx_TEX_WORDS_DESC" title="Texturing Pipeline" name="Stall: Descriptor misses" description="Number of instruction words in the texturing pipeline restart loop 1 due to descriptor misses."/>
+    <event counter="ARM_Mali-T6xx_TEX_THREADS" title="Texturing Pipeline" name="Threads in loop 2" description="Number of threads in the texturing pipeline through loop 2 address calculation."/>
+    <event counter="ARM_Mali-T6xx_TEX_RECIRC_FMISS" title="Texturing Pipeline" name="Stall: Texture cache misses" description="Number of instructions in the texturing pipeline recirculated due to complete texture cache miss."/>
+
+    <event counter="ARM_Mali-T6xx_TEX_RECIRC_DESC" title="Texturing Pipeline" name="Stall: Surface Descriptor misses" description="Number of instructions in the texturing pipeline recirculated due to surface descriptor miss."/>
+    <event counter="ARM_Mali-T6xx_TEX_RECIRC_MULTI" title="Texturing Pipeline" name="Reissue: multipass" description="Number of instructions in the texturing pipeline recirculated due to multipass."/>
+    <event counter="ARM_Mali-T6xx_TEX_RECIRC_PMISS" title="Texturing Pipeline" name="Stall: Partial misses" description="Number of instructions in the texturing pipeline recirculated due to partial cache miss."/>
+    <event counter="ARM_Mali-T6xx_TEX_RECIRC_CONF" title="Texturing Pipeline" name="Stall: Bank conflict" description="Number of instructions in the texturing pipeline recirculated due to texture cache bank conflict."/>
+
+    <event counter="ARM_Mali-T6xx_LSC_READ_HITS" title="Load/Store Cache" name="Read hits" description="Number of read hits in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_LSC_READ_MISSES" title="Load/Store Cache" name="Read misses" description="Number of read misses in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_LSC_WRITE_HITS" title="Load/Store Cache" name="Write hits" description="Number of write hits in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_LSC_WRITE_MISSES" title="Load/Store Cache" name="Write misses" description="Number of write misses in the Load/Store Cache."/>
+
+    <event counter="ARM_Mali-T6xx_LSC_ATOMIC_HITS" title="Load/Store Cache" name="Atomic hits" description="Number of atomic hits in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_LSC_ATOMIC_MISSES" title="Load/Store Cache" name="Atomic misses" description="Number of atomic misses in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_LSC_LINE_FETCHES" title="Load/Store Cache" name="Line fetches" description="Number of line fetches in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_LSC_DIRTY_LINE" title="Load/Store Cache" name="Dirty line evictions" description="Number of dirty line evictions in the Load/Store Cache."/>
+
+    <event counter="ARM_Mali-T6xx_LSC_SNOOPS" title="Load/Store Cache" name="Snoops in LSC" description="Snoops in the Load/Store Cache."/>
+    <event counter="ARM_Mali-T6xx_AXI_TLB_STALL" title="AXI uTLB" name="Stall: TLB AXI address channel" description="AXI address channel stall generated."/>
+    <event counter="ARM_Mali-T6xx_AXI_TLB_MIESS" title="AXI uTLB" name="Stall: TLB Cache misses" description="New request cache miss."/>
+    <event counter="ARM_Mali-T6xx_AXI_TLB_TRANSACTION" title="AXI uTLB" name="AXI transactions" description="Number of AXI transactions."/>
+
+    <event counter="ARM_Mali-T6xx_LS_TLB_MISS" title="LS uTLB" name="Cache misses per interface" description="Number of cache misses / number of interfaces."/>
+    <event counter="ARM_Mali-T6xx_LS_TLB_HIT" title="LS uTLB" name="Cache hits per interface" description="Number of cache hits / number of interfaces."/>
+    <event counter="ARM_Mali-T6xx_AXI_BEATS_READ" title="AXI" name="Beats read" description="Number of beats read."/>
+    <event counter="ARM_Mali-T6xx_AXI_BEATS_WRITTEN" title="AXI" name="Beats written" description="Number of beats written."/>
+  </category>
+
+  <category name="Mali-T6xx-L2AndMMU" per_cpu="no">
+    <event counter="ARM_Mali-T6xx_MMU_TABLE_WALK" title="MMU" name="Page table walks" description="Number of page table walks started."/>
+    <event counter="ARM_Mali-T6xx_MMU_REPLAY_MISS" title="MMU" name="Cache misses from replay buffer" description="Number of cache misses on accesses from replay buffer."/>
+    <event counter="ARM_Mali-T6xx_MMU_REPLAY_FULL" title="MMU" name="MMU full replay buffer (cycles)" description="Number of cycles replay buffer is full."/>
+    <event counter="ARM_Mali-T6xx_MMU_NEW_MISS" title="MMU" name="Cache misses on new requests" description="Number of cache misses on new requests."/>
+
+    <event counter="ARM_Mali-T6xx_MMU_HIT" title="MMU" name="MMU cache hits" description="Number of cache hits."/>
+
+    <event counter="ARM_Mali-T6xx_UTLB_STALL" title="uTLB" name="Stall on input AXI (cycles)" description="Cycles with stall on input AXI address channel."/>
+    <event counter="ARM_Mali-T6xx_UTLB_REPLAY_MISS" title="uTLB" name="Cache misses from replay buffer" description="Number of cache misses on accesses from replay buffer."/>
+    <event counter="ARM_Mali-T6xx_UTLB_REPLAY_FULL" title="uTLB" name="uTLB full replay buffer (cycles)" description="Number of cycles replay buffer is full."/>
+    <event counter="ARM_Mali-T6xx_UTLB_NEW_MISS" title="uTLB" name="Cache misses on new requests" description="Number of cache misses on new requests."/>
+
+    <event counter="ARM_Mali-T6xx_UTLB_HIT" title="uTLB" name="uTLB cache hits" description="Number of cache hits."/>
+
+    <event counter="ARM_Mali-T6xx_L2_WRITE_BEATS" title="L2 Cache" name="External bus write beats" description="External bus write beats."/>
+    <event counter="ARM_Mali-T6xx_L2_READ_BEATS" title="L2 Cache" name="External bus read beats" description="External bus read beats."/>
+
+    <event counter="ARM_Mali-T6xx_L2_ANY_LOOKUP" title="L2 Cache" name="Transaction/snoop tag lookups" description="A transaction or a snoop response completes the tag lookup."/>
+    <event counter="ARM_Mali-T6xx_L2_READ_LOOKUP" title="L2 Cache" name="Read transaction tag lookups" description="Any read transaction completes the tag lookup."/>
+    <event counter="ARM_Mali-T6xx_L2_SREAD_LOOKUP" title="L2 Cache" name="Shareable read transaction tag lookups" description="Shareable read transaction tag lookup."/>
+    <event counter="ARM_Mali-T6xx_L2_READ_REPLAY" title="L2 Cache" name="Replayed read transactions" description="Any read transaction is replayed (not serialized)."/>
+
+    <event counter="ARM_Mali-T6xx_L2_READ_SNOOP" title="L2 Cache" name="Read transaction snoops" description="Read transaction issues a snoop."/>
+    <event counter="ARM_Mali-T6xx_L2_READ_HIT" title="L2 Cache" name="L2 Cache read hits" description="A read hits in the L2 Cache."/>
+    <event counter="ARM_Mali-T6xx_L2_CLEAN_MISS" title="L2 Cache" name="CleanUnique misses" description="A CleanUnique misses in the L2 Cache, line allocated without a linefill."/>
+    <event counter="ARM_Mali-T6xx_L2_WRITE_LOOKUP" title="L2 Cache" name="Write transaction tag lookups" description="Any write transaction completes the tag lookup."/>
+
+    <event counter="ARM_Mali-T6xx_L2_SWRITE_LOOKUP" title="L2 write" name="Shareable write transaction tag lookup" description="Shareable write transaction tag lookup."/>
+    <event counter="ARM_Mali-T6xx_L2_WRITE_REPLAY" title="L2 write" name="Replayed write transaction" description="Any write transaction is replayed (not serialized)."/>
+    <event counter="ARM_Mali-T6xx_L2_WRITE_SNOOP" title="L2 write" name="Write transaction snoops" description="Write transaction issues a snoop."/>
+    <event counter="ARM_Mali-T6xx_L2_WRITE_HIT" title="L2 write" name="L2 write hits" description="A write hits in the L2 Cache."/>
+
+    <event counter="ARM_Mali-T6xx_L2_EXT_READ_FULL" title="L2 Cache" name="External read attempted with full BIU" description="External read attempted, but the BIU read buffer is full."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_READ_HALF" title="L2 Cache" name="External read requested with more then half full BIU" description="External read requested when the BIU read buffer is more than half full."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_WRITE_FULL" title="L2 Cache" name="External write attempted with full BIU" description="External write attempted, but the BIU write buffer is full."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_WRITE_HALF" title="L2 Cache" name="External write requested with more then half full BIU" description="External write requested when the BIU write buffer is more than half full."/>
+
+    <event counter="ARM_Mali-T6xx_L2_EXT_READ" title="L2 Cache" name="External read" description="External read."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_READ_LINE" title="L2 Cache" name="External read - linefill" description="External read - linefill."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_WRITE" title="L2 Cache" name="External write." description="External write."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_WRITE_LINE" title="L2 Cache" name="External write - writeback." description="External write - writeback."/>
+
+    <event counter="ARM_Mali-T6xx_L2_EXT_WRITE_SMALL" title="L2 Cache" name="External write - burst size less than 64B" description="External write - burst size less than 64B."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_BARRIER" title="L2 Cache" name="External barrier" description="External barrier (even if disabled)."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_AR_STALL" title="L2 Cache" name="External interconnect stalls (AR)" description="A valid read address (AR) is stalled by the external interconnect."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_R_BUF_FULL" title="L2 Cache" name="External read stalls (full buffer)" description="External read stalled due to the response buffer being full."/>
+
+    <event counter="ARM_Mali-T6xx_L2_EXT_RD_BUF_FULL" title="L2 Cache" name="External read not allocated" description="External read could not allocate an entry in the read data buffer."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_R_RAW" title="L2 Cache" name="External read stalled (RAW)" description="External read stalled due to the RAW hazard."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_W_STALL" title="L2 Cache" name="External interconnect stalls (W channel)" description="Valid write data (W channel) is stalled by the external interconnect."/>
+    <event counter="ARM_Mali-T6xx_L2_EXT_W_BUF_FULL" title="L2 Cache" name="External write stalls (full buffer)" description="External write stalled due to the response buffer being full."/>
+
+    <event counter="ARM_Mali-T6xx_L2_EXT_R_W_HAZARD" title="L2 Cache" name="External read stalled (WAW or WAR)" description="External read stalled due to the WAW or WAR hazard."/>
+    <event counter="ARM_Mali-T6xx_L2_TAG_HAZARD" title="L2 Cache" name="Replayed transactions due to tag hazard" description="A transaction will be replayed due to a tag hazard."/>
+    <event counter="ARM_Mali-T6xx_L2_SNOOP_FULL" title="L2 Cache" name="Cycles with full snoop buffer" description="Counts every cycle when the snoop buffer is full."/>
+    <event counter="ARM_Mali-T6xx_L2_REPLAY_FULL" title="L2 Cache" name="Cycles with full replay buffer" description="Counts every cycle when the replay buffer is full."/>
+  </category>

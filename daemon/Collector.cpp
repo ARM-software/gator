@@ -237,7 +237,7 @@ void Collector::getCoreName() {
 					"The core name in the captured xml file will be 'unknown'.");
 				return;
 			}
-			strncpy(gSessionData->mCoreName, (char*)((int)position + 2), sizeof(gSessionData->mCoreName));
+			strncpy(gSessionData->mCoreName, (char*)((long)position + 2), sizeof(gSessionData->mCoreName));
 			gSessionData->mCoreName[sizeof(gSessionData->mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
 			fclose(f);
 			return;

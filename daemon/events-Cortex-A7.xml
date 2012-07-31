@@ -5,29 +5,29 @@
     <counter name="ARM_Cortex-A7_cnt3"/>
   </counter_set>
   <category name="Cortex-A7" counter_set="ARM_Cortex-A7_cntX" per_cpu="yes" event_based_sampling="yes">
-    <event counter="ARM_Cortex-A7_ccnt" title="Clock" name="Cycles" alias="ClockCycles" display="hertz" units="Hz" average_selection="yes"  description="The number of core clock cycles"/>
+    <event counter="ARM_Cortex-A7_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes"  description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Software increment architecturally executed"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
     <event event="0x02" title="Cache" name="Inst TLB refill" description="Instruction fetch that causes a TLB refill of at least the level of TLB closest to the processor"/>
     <event event="0x03" title="Cache" name="Data refill" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/>
     <event event="0x04" title="Cache" name="Data access" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/>
     <event event="0x05" title="Cache" name="Data TLB refill" description="Memory Read or Write operation that causes a TLB refill of at least the level of TLB closest to the processor"/>
-    <event event="0x06" title="Memory" name="Data Read" alias="MemoryRead" description="Data read architecturally executed"/>
-    <event event="0x07" title="Memory" name="Data Write" alias="MemoryWrite" description="Data write architecturally executed"/>
-    <event event="0x08" title="Instruction" name="Executed" alias="InstructionsExecuted" description="Instruction architecturally executed"/>
+    <event event="0x06" title="Memory" name="Data Read" description="Data read architecturally executed"/>
+    <event event="0x07" title="Memory" name="Data Write" description="Data write architecturally executed"/>
+    <event event="0x08" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
     <event event="0x09" title="Exception" name="Taken" description="Exceptions taken"/>
     <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed"/>
     <event event="0x0b" title="Instruction" name="CONTEXTIDR" description="Instruction that writes to the CONTEXTIDR architecturally executed"/>
     <event event="0x0c" title="Branch" name="PC change" description="Software change of the Program Counter, except by an exception, architecturally executed"/>
     <event event="0x0d" title="Branch" name="Immediate" description="Immediate branch architecturally executed"/>
-    <event event="0x0f" title="Memory" name="Unaligned access" alias="UnalignedAccess" description="Unaligned access architecturally executed"/>
-    <event event="0x10" title="Branch" name="Mispredicted" alias="BranchMispredicted" description="Branch mispredicted or not predicted"/>
+    <event event="0x0f" title="Memory" name="Unaligned access" description="Unaligned access architecturally executed"/>
+    <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
     <event event="0x11" title="Cycle" name="Counter" description=""/>
-    <event event="0x12" title="Branch" name="Potential prediction" alias="PotentialPrediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
+    <event event="0x12" title="Branch" name="Potential prediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
     <event event="0x13" title="Memory" name="Memory access" description="Data memory access"/>
     <event event="0x14" title="Cache" name="L1 inst access" description="Instruction cache access"/>
     <event event="0x15" title="Cache" name="L1 data eviction" description="Level 1 data cache eviction"/>
-    <event event="0x16" title="Cache" name="L2 data access" alias="L1Miss" description="Level 2 data cache access"/>
+    <event event="0x16" title="Cache" name="L2 data access" description="Level 2 data cache access"/>
     <event event="0x17" title="Cache" name="L2 data refill" description="Level 2 data cache refill"/>
     <event event="0x18" title="Cache" name="L2 data write" description="Level 2 data cache Write-Back"/>
     <event event="0x19" title="Bus" name="Access" description=""/>

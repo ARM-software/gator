@@ -87,6 +87,11 @@ Recommended compiler settings:
 	"-fno-inline": Speed improvement when processing the image files and most accurate analysis results.
 	"-fno-omit-frame-pointer": ARM EABI frame pointers (Code Sourcery cross compiler) allow the call stack to be recorded with each sample taken when in ARM state (i.e. not -mthumb).
 
+*** Hardfloat EABI ***
+Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. The included compiler with DS-5 supports hardfloat.
+To compile for non-hardfloat targets it is necessary to add options '-marm -march=armv4t -mfloat-abi=soft'.
+Attempting to run an incompatible binary often results in the confusing error message "No such file or directory" when clearly the file exists.
+
 *** Profiling the kernel (optional) ***
 
 make ARCH=arm CROSS_COMPILE=$(CROSS_TOOLS}/bin/arm-none-linux-gnueabi- menuconfig

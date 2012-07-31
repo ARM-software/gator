@@ -7,7 +7,7 @@
  *
  */
 
-static unsigned long gator_protocol_version = 9;
+static unsigned long gator_protocol_version = 10;
 
 #include <linux/slab.h>
 #include <linux/cpu.h>
@@ -108,8 +108,12 @@ static DEFINE_MUTEX(start_mutex);
 static DEFINE_MUTEX(gator_buffer_mutex);
 
 bool event_based_sampling;
+#if defined(__arm__) && (GATOR_PERF_PMU_SUPPORT)
+DEFINE_PER_CPU(struct perf_event *, pevent_ebs);
+#endif
 
 static DECLARE_WAIT_QUEUE_HEAD(gator_buffer_wait);
+static struct timer_list gator_buffer_wake_up_timer;
 static LIST_HEAD(gator_events);
 
 /******************************************************************************
@@ -162,6 +166,11 @@ u32 gator_cpuid(void)
 	return (val >> 4) & 0xfff;
 }
 #endif
+
+static void gator_buffer_wake_up(unsigned long data)
+{
+	wake_up(&gator_buffer_wait);
+}
 
 /******************************************************************************
  * Commit interface
@@ -283,7 +292,9 @@ static void gator_commit_buffer(int cpu, int buftype)
 
 	per_cpu(gator_buffer_commit, cpu)[buftype] = per_cpu(gator_buffer_write, cpu)[buftype];
 	gator_buffer_header(cpu, buftype);
-	wake_up(&gator_buffer_wait);
+
+	// had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater
+	mod_timer(&gator_buffer_wake_up_timer, jiffies + 1);
 }
 
 static void buffer_check(int cpu, int buftype)
@@ -682,11 +693,6 @@ static void gator_stop(void)
 {
 	struct gator_interface *gi;
 
-	// stop all events
-	list_for_each_entry(gi, &gator_events, list)
-		if (gi->stop)
-			gi->stop();
-
 	gator_annotate_stop();
 	gator_trace_sched_stop();
 	gator_trace_power_stop();
@@ -696,6 +702,11 @@ static void gator_stop(void)
 	// stop all interrupt callback reads before tearing down other interfaces
 	gator_notifier_stop(); // should be called before gator_timer_stop to avoid re-enabling the hrtimer after it has been offlined
 	gator_timer_stop();
+
+	// stop all events
+	list_for_each_entry(gi, &gator_events, list)
+		if (gi->stop)
+			gi->stop();
 }
 
 /******************************************************************************
@@ -1069,11 +1080,14 @@ static int __init gator_module_init(void)
 		return -1;
 	}
 
+	setup_timer(&gator_buffer_wake_up_timer, gator_buffer_wake_up, 0);
+
 	return 0;
 }
 
 static void __exit gator_module_exit(void)
 {
+	del_timer_sync(&gator_buffer_wake_up_timer);
 	tracepoint_synchronize_unregister();
 	gatorfs_unregister();
 }

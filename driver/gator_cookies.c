@@ -25,6 +25,8 @@ static DEFINE_PER_CPU(unsigned int *, translate_buffer);
 static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt);
 static void wq_cookie_handler(struct work_struct *unused);
 DECLARE_WORK(cookie_work, wq_cookie_handler);
+static struct timer_list app_process_wake_up_timer;
+static void app_process_wake_up_handler(unsigned long unused_data);
 
 static uint32_t cookiemap_code(uint64_t value64) {
 	uint32_t value = (uint32_t)((value64 >> 32) + value64);
@@ -136,6 +138,12 @@ static void wq_cookie_handler(struct work_struct *unused)
 	mutex_unlock(&start_mutex);
 }
 
+static void app_process_wake_up_handler(unsigned long unused_data)
+{
+	// had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater
+	schedule_work(&cookie_work);
+}
+
 // Retrieve full name from proc/pid/cmdline for java processes on Android
 static int translate_app_process(char** text, int cpu, struct task_struct * task, struct vm_area_struct *vma, bool in_interrupt)
 {
@@ -162,7 +170,8 @@ static int translate_app_process(char** text, int cpu, struct task_struct * task
 
 		translate_buffer_write_int(cpu, (unsigned int)task);
 		translate_buffer_write_int(cpu, (unsigned int)vma);
-		schedule_work(&cookie_work);
+
+		mod_timer(&app_process_wake_up_timer, jiffies + 1);
 		goto out;
 	}
 
@@ -372,6 +381,8 @@ static int cookies_initialize(void)
 		gator_crc32_table[i] = crc;
 	}
 
+	setup_timer(&app_process_wake_up_timer, app_process_wake_up_handler, 0);
+
 cookie_setup_error:
 	return err;
 }
@@ -396,6 +407,7 @@ static void cookies_release(void)
 		per_cpu(translate_text, cpu) = NULL;
 	}
 
+	del_timer_sync(&app_process_wake_up_timer);
 	kfree(gator_crc32_table);
 	gator_crc32_table = NULL;
 }

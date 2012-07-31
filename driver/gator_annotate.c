@@ -43,9 +43,9 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 	if (*offset)
 		return -EINVAL;
 
-	if (!collect_annotations) {
+	if (!collect_annotations)
+		// Not collecting annotations, tell the caller everything was written
 		return count_orig;
-	}
 
 	cpu = 0; // Annotation only uses a single per-cpu buffer as the data must be in order to the engine
 
@@ -64,6 +64,8 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 	size = count < available ? count : available;
 
 	if (size <= 0) {
+		// Buffer is full but don't return an error.  Instead return 0 so the
+		// caller knows nothing was written and they can try again.
 		size = 0;
 		goto annotate_write_out;
 	}
@@ -115,8 +117,9 @@ static int annotate_release(struct inode *inode, struct file *file)
 	// synchronize between cores
 	spin_lock(&annotate_lock);
 
-	if (per_cpu(gator_buffer, cpu)[ANNOTATE_BUF] && buffer_check_space(cpu, ANNOTATE_BUF, MAXSIZE_PACK64 + 2 * MAXSIZE_PACK32)) {
+	if (per_cpu(gator_buffer, cpu)[ANNOTATE_BUF] && buffer_check_space(cpu, ANNOTATE_BUF, MAXSIZE_PACK64 + 3 * MAXSIZE_PACK32)) {
 		uint32_t tid = current->pid;
+		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, smp_processor_id());
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, tid);
 		gator_buffer_write_packed_int64(cpu, ANNOTATE_BUF, 0); // time
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, 0);   // size

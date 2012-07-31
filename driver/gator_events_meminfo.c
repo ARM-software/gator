@@ -26,8 +26,9 @@ static unsigned int mem_event = 0;
 static bool new_data_avail;
 
 static void wq_sched_handler(struct work_struct *wsptr);
-
 DECLARE_WORK(work, wq_sched_handler);
+static struct timer_list meminfo_wake_up_timer;
+static void meminfo_wake_up_handler(unsigned long unused_data);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
 GATOR_DEFINE_PROBE(mm_page_free_direct, TP_PROTO(struct page *page, unsigned int order)) {
@@ -107,6 +108,7 @@ static int gator_events_meminfo_start(void)
 	if (GATOR_REGISTER_TRACE(mm_page_alloc))
 		goto mm_page_alloc_exit;
 
+	setup_timer(&meminfo_wake_up_timer, meminfo_wake_up_handler, 0);
 	return 0;
 
 mm_page_alloc_exit:
@@ -138,6 +140,8 @@ static void gator_events_meminfo_stop(void)
 		GATOR_UNREGISTER_TRACE(mm_page_free_batched);
 #endif
 		GATOR_UNREGISTER_TRACE(mm_page_alloc);
+
+		del_timer_sync(&meminfo_wake_up_timer);
 	}
 
 	meminfo_global_enabled = 0;
@@ -146,7 +150,7 @@ static void gator_events_meminfo_stop(void)
 	}
 }
 
-// Must be run in process context (work queue) as the kernel function si_meminfo() can sleep
+// Must be run in process context as the kernel function si_meminfo() can sleep
 static void wq_sched_handler(struct work_struct *wsptr)
 {
 	struct sysinfo info;
@@ -181,6 +185,12 @@ static void wq_sched_handler(struct work_struct *wsptr)
 	new_data_avail = true;
 }
 
+static void meminfo_wake_up_handler(unsigned long unused_data)
+{
+	// had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater
+	schedule_work(&work);
+}
+
 static int gator_events_meminfo_read(long long **buffer)
 {
 	static unsigned int last_mem_event = 0;
@@ -190,11 +200,7 @@ static int gator_events_meminfo_read(long long **buffer)
 
 	if (last_mem_event != mem_event) {
 		last_mem_event = mem_event;
-		if (in_interrupt()) {
-			schedule_work(&work);
-		} else {
-			wq_sched_handler(NULL);
-		}
+		mod_timer(&meminfo_wake_up_timer, jiffies + 1);
 	}
 
 	if (!new_data_avail)

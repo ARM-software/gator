@@ -23,10 +23,8 @@ extern unsigned long pmnc_event[];
 extern unsigned long pmnc_count[];
 extern unsigned long pmnc_key[];
 
-static DEFINE_PER_CPU(struct perf_event *, pevent);
 static DEFINE_PER_CPU(struct perf_event_attr *, pevent_attr);
 static DEFINE_PER_CPU(int, key);
-static DEFINE_PER_CPU(unsigned int, prev_value);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
 static void ebs_overflow_handler(struct perf_event *event, int unused, struct perf_sample_data *data, struct pt_regs *regs)
@@ -36,7 +34,7 @@ static void ebs_overflow_handler(struct perf_event *event, struct perf_sample_da
 {
 	int cpu = smp_processor_id();
 
-	if (event != per_cpu(pevent, cpu))
+	if (event != per_cpu(pevent_ebs, cpu))
 		return;
 
 	// Output backtrace
@@ -54,9 +52,9 @@ static void gator_event_sampling_online_dispatch(int cpu)
 		return;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-	ev = per_cpu(pevent, cpu) = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu), cpu, 0, ebs_overflow_handler);
+	ev = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu), cpu, 0, ebs_overflow_handler);
 #else
-	ev = per_cpu(pevent, cpu) = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu), cpu, 0, ebs_overflow_handler, 0);
+	ev = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu), cpu, 0, ebs_overflow_handler, 0);
 #endif
 
 	if (IS_ERR(ev)) {
@@ -71,7 +69,7 @@ static void gator_event_sampling_online_dispatch(int cpu)
 	}
 
 	ev->pmu->read(ev);
-	per_cpu(prev_value, cpu) = local64_read(&ev->count);
+	per_cpu(pevent_ebs, cpu) = ev;
 }
 
 static void gator_event_sampling_offline_dispatch(int cpu)
@@ -79,9 +77,9 @@ static void gator_event_sampling_offline_dispatch(int cpu)
 	struct perf_event * pe = NULL;
 
 	mutex_lock(&perf_mutex);
-	if (per_cpu(pevent, cpu)) {
-		pe = per_cpu(pevent, cpu);
-		per_cpu(pevent, cpu) = NULL;
+	if (per_cpu(pevent_ebs, cpu)) {
+		pe = per_cpu(pevent_ebs, cpu);
+		per_cpu(pevent_ebs, cpu) = NULL;
 	}
 	mutex_unlock(&perf_mutex);
 
@@ -95,7 +93,7 @@ static int gator_event_sampling_start(void)
 	int cnt, event = 0, count = 0, ebs_key = 0, cpu;
 
 	for_each_present_cpu(cpu) {
-		per_cpu(pevent, cpu) = NULL;
+		per_cpu(pevent_ebs, cpu) = NULL;
 		per_cpu(pevent_attr, cpu) = NULL;
 	}
 

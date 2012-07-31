@@ -3,7 +3,7 @@ include $(CLEAR_VARS)
 
 $(shell cd $(LOCAL_PATH);cat events_header.xml events-*\.xml events_footer.xml > events.xml;xxd -i events.xml > events_xml.h;xxd -i configuration.xml > configuration_xml.h)
 
-LOCAL_CFLAGS +=  -Wall -O3 -ftree-vectorize
+LOCAL_CFLAGS +=  -Wall -O3 -ftree-vectorize -Wno-error=sequence-point
 
 LOCAL_SRC_FILES:= \
 	CapturedXML.cpp \

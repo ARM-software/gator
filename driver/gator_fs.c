@@ -251,7 +251,6 @@ static int gatorfs_fill_super(struct super_block *sb, void *data, int silent)
 
 	gator_op_create_files(sb, root_dentry);
 
-	// FIXME: verify kill_litter_super removes our dentries
 	return 0;
 }
 

@@ -13,7 +13,7 @@
 #define MAX_STRING_LEN				80
 #define MAX_DESCRIPTION_LEN			400
 
-#define PROTOCOL_VERSION	9
+#define PROTOCOL_VERSION	10
 #define PROTOCOL_DEV		1000	// Differentiates development versions (timestamp) from release versions
 
 struct ImageLinkList {

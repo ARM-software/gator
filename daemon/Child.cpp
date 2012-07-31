@@ -79,7 +79,7 @@ void child_handler(int signum) {
 }
 
 void* durationThread(void* pVoid) {
-	prctl(PR_SET_NAME, (unsigned int)&"gatord-duration", 0, 0, 0);
+	prctl(PR_SET_NAME, (unsigned long)&"gatord-duration", 0, 0, 0);
 	sem_wait(&startProfile);
 	if (gSessionData->mSessionIsActive) {
 		// Time out after duration seconds
@@ -99,7 +99,7 @@ void* stopThread(void* pVoid) {
 	char type;
 	OlySocket* socket = child->socket;
 
-	prctl(PR_SET_NAME, (unsigned int)&"gatord-stopper", 0, 0, 0);
+	prctl(PR_SET_NAME, (unsigned long)&"gatord-stopper", 0, 0, 0);
 	while (gSessionData->mSessionIsActive) {
 		// This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
 		if (socket->receiveNBytes(&type, sizeof(type)) > 0) {
@@ -137,7 +137,7 @@ void* senderThread(void* pVoid) {
 	char end_sequence[] = {RESPONSE_APC_DATA, 0, 0, 0, 0};
 
 	sem_post(&senderThreadStarted);
-	prctl(PR_SET_NAME, (unsigned int)&"gatord-sender", 0, 0, 0);
+	prctl(PR_SET_NAME, (unsigned long)&"gatord-sender", 0, 0, 0);
 	sem_wait(&haltPipeline);
 
 	do {
@@ -196,7 +196,7 @@ void Child::run() {
 	LocalCapture* localCapture = NULL;
 	pthread_t durationThreadID, stopThreadID, senderThreadID;
 
-	prctl(PR_SET_NAME, (unsigned int)&"gatord-child", 0, 0, 0);
+	prctl(PR_SET_NAME, (unsigned long)&"gatord-child", 0, 0, 0);
 
 	// Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
 	mxmlSetWrapMargin(0);

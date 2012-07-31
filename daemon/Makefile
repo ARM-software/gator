@@ -16,9 +16,10 @@ GCC=$(CROSS_COMPILE)gcc
 # -Werror treats warnings as errors
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
-# -march=armv5t is required to set the minimum architecture
 # -mthumb-interwork is required for interworking to ARM or Thumb stdlibc
-CFLAGS=-O3 -Wall -Werror -march=armv5t -mthumb-interwork
+CFLAGS=-O3 -Wall -Werror -Wno-error=sequence-point -mthumb-interwork
+# -s strips the binary of debug info
+LDFLAGS=-s
 TARGET=gatord
 C_SRC = $(wildcard mxml/*.c)
 CPP_SRC  = $(wildcard *.cpp)
@@ -34,7 +35,7 @@ all: $(TARGET)
 	$(CPP) -c $(CFLAGS) -o $@ $<
 
 $(TARGET): convert $(TGT_OBJS)
-	$(CPP) -s -o $@ $(TGT_OBJS) -lc -lrt -lpthread
+	$(CPP) $(LDFLAGS) -o $@ $(TGT_OBJS) -lc -lrt -lpthread
 	rm events_xml.h configuration_xml.h
 
 convert:

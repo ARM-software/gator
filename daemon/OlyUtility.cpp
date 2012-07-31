@@ -197,7 +197,7 @@ const char* OlyUtility::getFilePart(const char* path) {
 		return path;
 	}
 
-	return (const char*)((int)last_sep + 1);
+	return last_sep++;
 }
 
 // getPathPart may modify the contents of path
@@ -209,7 +209,8 @@ char* OlyUtility::getPathPart(char* path) {
 	if (last_sep == NULL) {
 		return 0;
 	}
-	*(char*)((int)last_sep + 1) = 0;
+	last_sep++;
+	*last_sep = 0;
 
 	return (path);
 }
