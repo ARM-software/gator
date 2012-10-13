@@ -32,7 +32,6 @@ static DEFINE_PER_CPU(int[CNTMAX], perfPrevDelta);
 static DEFINE_PER_CPU(int[CNTMAX * 2], perfCnt);
 static DEFINE_PER_CPU(struct perf_event *[CNTMAX], pevent);
 static DEFINE_PER_CPU(struct perf_event_attr *[CNTMAX], pevent_attr);
-extern DEFINE_PER_CPU(struct perf_event *, pevent_ebs);
 
 static void gator_events_perf_pmu_stop(void);
 
@@ -64,6 +63,15 @@ static int gator_events_perf_pmu_create_files(struct super_block *sb, struct den
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
+static void ebs_overflow_handler(struct perf_event *event, int unused, struct perf_sample_data *data, struct pt_regs *regs)
+#else
+static void ebs_overflow_handler(struct perf_event *event, struct perf_sample_data *data, struct pt_regs *regs)
+#endif
+{
+	gator_backtrace_handler(regs);
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
 static void dummy_handler(struct perf_event *event, int unused, struct perf_sample_data *data, struct pt_regs *regs)
 #else
 static void dummy_handler(struct perf_event *event, struct perf_sample_data *data, struct pt_regs *regs)
@@ -75,15 +83,10 @@ static void dummy_handler(struct perf_event *event, struct perf_sample_data *dat
 static int gator_events_perf_pmu_online(int** buffer)
 {
 	int cnt, len = 0, cpu = smp_processor_id();
-	struct perf_event * ev;
 
 	// read the counters and toss the invalid data, return zero instead
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-        if (pmnc_count[cnt] > 0) {
-            ev = per_cpu(pevent_ebs, cpu); // special case for EBS
-        } else {
-		    ev = per_cpu(pevent, cpu)[cnt];
-        }
+		struct perf_event * ev = per_cpu(pevent, cpu)[cnt];
 		if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
 			ev->pmu->read(ev);
 			per_cpu(perfPrev, cpu)[cnt] = per_cpu(perfCurr, cpu)[cnt] = local64_read(&ev->count);
@@ -102,18 +105,22 @@ static int gator_events_perf_pmu_online(int** buffer)
 static void gator_events_perf_pmu_online_dispatch(int cpu)
 {
 	int cnt;
+	perf_overflow_handler_t handler;
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		if (per_cpu(pevent, cpu)[cnt] != NULL || per_cpu(pevent_attr, cpu)[cnt] == 0)
 			continue;
 
-		if (pmnc_count[cnt] > 0)
-			continue; // skip the EBS counter
+		if (pmnc_count[cnt] > 0) {
+			handler = ebs_overflow_handler;
+		} else {
+			handler = dummy_handler;
+		}
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-		per_cpu(pevent, cpu)[cnt] = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu)[cnt], cpu, 0, dummy_handler);
+		per_cpu(pevent, cpu)[cnt] = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu)[cnt], cpu, 0, handler);
 #else
-		per_cpu(pevent, cpu)[cnt] = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu)[cnt], cpu, 0, dummy_handler, 0);
+		per_cpu(pevent, cpu)[cnt] = perf_event_create_kernel_counter(per_cpu(pevent_attr, cpu)[cnt], cpu, 0, handler, 0);
 #endif
 		if (IS_ERR(per_cpu(pevent, cpu)[cnt])) {
 			pr_debug("gator: unable to online a counter on cpu %d\n", cpu);
@@ -154,6 +161,18 @@ static int gator_events_perf_pmu_start(void)
 {
 	int cnt, cpu;
 	u32 size = sizeof(struct perf_event_attr);
+	int found_ebs = false;
+
+	for (cnt = 0; cnt < pmnc_counters; cnt++) {
+		if (pmnc_count[cnt] > 0) {
+			if (!found_ebs) {
+				found_ebs = true;
+			} else {
+				// Only one ebs counter is allowed
+				return -1;
+			}
+		}
+	}
 
 	for_each_present_cpu(cpu) {
 		for (cnt = 0; cnt < pmnc_counters; cnt++) {
@@ -174,7 +193,7 @@ static int gator_events_perf_pmu_start(void)
 			per_cpu(pevent_attr, cpu)[cnt]->type = PERF_TYPE_RAW;
 			per_cpu(pevent_attr, cpu)[cnt]->size = size;
 			per_cpu(pevent_attr, cpu)[cnt]->config = pmnc_event[cnt];
-			per_cpu(pevent_attr, cpu)[cnt]->sample_period = 0;
+			per_cpu(pevent_attr, cpu)[cnt]->sample_period = pmnc_count[cnt];
 			per_cpu(pevent_attr, cpu)[cnt]->pinned = 1;
 
 			// handle special case for ccnt
@@ -212,14 +231,9 @@ static int gator_events_perf_pmu_read(int **buffer)
 {
 	int cnt, delta, len = 0;
 	int cpu = smp_processor_id();
-    struct perf_event * ev;
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-        if (pmnc_count[cnt] > 0) {
-            ev = per_cpu(pevent_ebs, cpu); // special case for EBS
-        } else {
-		    ev = per_cpu(pevent, cpu)[cnt];
-        }
+		struct perf_event * ev = per_cpu(pevent, cpu)[cnt];
 		if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
 			ev->pmu->read(ev);
 			per_cpu(perfCurr, cpu)[cnt] = local64_read(&ev->count);
@@ -299,6 +313,11 @@ int gator_events_perf_pmu_init(void)
 	case KRAIT:
 		pmnc_name = "Krait";
 		pmnc_counters = 4;
+		break;
+	case AARCH64:
+		pmnc_name = "ARM_AArch64";
+		// Copied from A15, get the correct number
+		pmnc_counters = 6;
 		break;
 	default:
 		return -1;

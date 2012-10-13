@@ -35,7 +35,6 @@ private:
 	void handleDeliver(char* xml);
 	void sendData(const char* data, int length, int type);
 	void sendString(const char* string, int type) {sendData(string, strlen(string), type);}
-	void sendProtocol();
 	void sendEvents();
 	void sendConfiguration();
 	void sendDefaults();

@@ -38,8 +38,9 @@ Sender::Sender(OlySocket* socket) {
 		}
 
 		// Send magic sequence - must be done first, afterwhich error messages can be sent
-		char magic[] = {'G', 'A', 'T', 'O', 'R', '\n'};
-		mDataSocket->send(magic, sizeof(magic));
+		char magic[32];
+		snprintf(magic, 32, "GATOR %i\n", PROTOCOL_VERSION);
+		mDataSocket->send(magic, strlen(magic));
 
 		gSessionData->mWaitingOnCommand = true;
 		logg->logMessage("Completed magic sequence");

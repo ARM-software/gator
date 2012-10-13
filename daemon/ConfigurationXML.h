@@ -13,10 +13,13 @@
 
 class ConfigurationXML {
 public:
+	static void getDefaultConfigurationXml(const char * & xml, unsigned int & len);
+
 	ConfigurationXML();
 	~ConfigurationXML();
 	const char* getConfigurationXML() {return mConfigurationXML;}
 	void validate(void);
+
 private:
 	char* mConfigurationXML;
 	int mIndex;

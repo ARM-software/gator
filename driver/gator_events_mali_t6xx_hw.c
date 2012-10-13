@@ -1,11 +1,10 @@
-/*
- * This confidential and proprietary software may be used only as
- * authorised by a licensing agreement from ARM Limited
- * (C) COPYRIGHT 2011-2012 ARM Limited
- * ALL RIGHTS RESERVED
- * The entire notice above must be reproduced on all authorised
- * copies and copies may only be made to the extent permitted
- * by a licensing agreement from ARM Limited.
+/**
+ * Copyright (C) ARM Limited 2012. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
  */
 
 #include "gator.h"
@@ -22,6 +21,39 @@
 #include "kbase/src/linux/mali_kbase_mem_linux.h"
 
 #include "gator_events_mali_common.h"
+
+/*
+ * Mali-T6xx
+ */
+typedef struct kbase_device *kbase_find_device_type(int);
+typedef kbase_context *kbase_create_context_type(kbase_device*);
+typedef void kbase_destroy_context_type(kbase_context *);
+typedef void *kbase_va_alloc_type(kbase_context *, u32);
+typedef void kbase_va_free_type(kbase_context *, void *);
+typedef mali_error kbase_instr_hwcnt_enable_type(kbase_context *, kbase_uk_hwcnt_setup *);
+typedef mali_error kbase_instr_hwcnt_disable_type(kbase_context *);
+typedef mali_error kbase_instr_hwcnt_clear_type(kbase_context *);
+typedef mali_error kbase_instr_hwcnt_dump_irq_type(kbase_context *);
+typedef mali_bool kbase_instr_hwcnt_dump_complete_type(kbase_context *, mali_bool *);
+
+static kbase_find_device_type * kbase_find_device_symbol;
+static kbase_create_context_type * kbase_create_context_symbol;
+static kbase_va_alloc_type * kbase_va_alloc_symbol;
+static kbase_instr_hwcnt_enable_type * kbase_instr_hwcnt_enable_symbol;
+static kbase_instr_hwcnt_clear_type * kbase_instr_hwcnt_clear_symbol;
+static kbase_instr_hwcnt_dump_irq_type * kbase_instr_hwcnt_dump_irq_symbol;
+static kbase_instr_hwcnt_dump_complete_type * kbase_instr_hwcnt_dump_complete_symbol;
+static kbase_instr_hwcnt_disable_type * kbase_instr_hwcnt_disable_symbol;
+static kbase_va_free_type * kbase_va_free_symbol;
+static kbase_destroy_context_type * kbase_destroy_context_symbol;
+
+/** The interval between reads, in ns. */
+static const int READ_INTERVAL_NSEC = 1000000;
+
+
+#if GATOR_TEST
+#include "gator_events_mali_t6xx_hw_test.c"
+#endif
 
 /* Blocks for HW counters */
 enum
@@ -322,7 +354,12 @@ static void *kernel_dump_buffer;
 static kbase_context *kbcontext = NULL;
 static struct kbase_device *kbdevice = NULL;
 
-extern struct kbase_device *kbase_find_device(int minor);
+/*
+ * The following function has no external prototype in older DDK revisions.  When the DDK
+ * is updated then this should be removed.
+ */
+struct kbase_device *kbase_find_device(int minor);
+
 static volatile bool kbase_device_busy = false;
 static unsigned int num_hardware_counters_enabled;
 
@@ -335,6 +372,96 @@ static mali_counter counters[NUMBER_OF_HARDWARE_COUNTERS];
  * as key,value pairs hence the *2
  */
 static unsigned long counter_dump[NUMBER_OF_HARDWARE_COUNTERS * 2];
+
+#define SYMBOL_GET(FUNCTION, ERROR_COUNT) \
+	if(FUNCTION ## _symbol) \
+	{ \
+		printk("gator: mali " #FUNCTION " symbol was already registered\n"); \
+		(ERROR_COUNT)++; \
+	} \
+	else \
+	{ \
+		FUNCTION ## _symbol = symbol_get(FUNCTION); \
+		if(! FUNCTION ## _symbol) \
+		{ \
+			printk("gator: mali online " #FUNCTION " symbol not found\n"); \
+			(ERROR_COUNT)++; \
+		} \
+	}
+
+#define SYMBOL_CLEANUP(FUNCTION) \
+	if(FUNCTION ## _symbol) \
+	{ \
+        symbol_put(FUNCTION); \
+        FUNCTION ## _symbol = NULL; \
+	}
+
+/**
+ * Execute symbol_get for all the Mali symbols and check for success.
+ * @return the number of symbols not loaded.
+ */
+static int init_symbols(void)
+{
+    int error_count = 0;
+    SYMBOL_GET(kbase_find_device, error_count);
+    SYMBOL_GET(kbase_create_context, error_count);
+    SYMBOL_GET(kbase_va_alloc, error_count);
+    SYMBOL_GET(kbase_instr_hwcnt_enable, error_count);
+    SYMBOL_GET(kbase_instr_hwcnt_clear, error_count);
+    SYMBOL_GET(kbase_instr_hwcnt_dump_irq, error_count);
+    SYMBOL_GET(kbase_instr_hwcnt_dump_complete, error_count);
+    SYMBOL_GET(kbase_instr_hwcnt_disable, error_count);
+    SYMBOL_GET(kbase_va_free, error_count);
+    SYMBOL_GET(kbase_destroy_context, error_count);
+
+    return error_count;
+}
+
+/**
+ * Execute symbol_put for all the registered Mali symbols.
+ */
+static void clean_symbols(void)
+{
+    SYMBOL_CLEANUP(kbase_find_device);
+    SYMBOL_CLEANUP(kbase_create_context);
+    SYMBOL_CLEANUP(kbase_va_alloc);
+    SYMBOL_CLEANUP(kbase_instr_hwcnt_enable);
+    SYMBOL_CLEANUP(kbase_instr_hwcnt_clear);
+    SYMBOL_CLEANUP(kbase_instr_hwcnt_dump_irq);
+    SYMBOL_CLEANUP(kbase_instr_hwcnt_dump_complete);
+    SYMBOL_CLEANUP(kbase_instr_hwcnt_disable);
+    SYMBOL_CLEANUP(kbase_va_free);
+    SYMBOL_CLEANUP(kbase_destroy_context);
+}
+
+/**
+ * Determines whether a read should take place
+ * @param current_time The current time, obtained from getnstimeofday()
+ * @param prev_time_s The number of seconds at the previous read attempt.
+ * @param next_read_time_ns The time (in ns) when the next read should be allowed.
+ *
+ * Note that this function has been separated out here to allow it to be tested.
+ */
+static int is_read_scheduled(const struct timespec *current_time, u32* prev_time_s, s32* next_read_time_ns)
+{
+	/* If the current ns count rolls over a second, roll the next read time too. */
+	if(current_time->tv_sec != *prev_time_s)
+	{
+		*next_read_time_ns = *next_read_time_ns - NSEC_PER_SEC;
+	}
+
+	/* Abort the read if the next read time has not arrived. */
+	if(current_time->tv_nsec < *next_read_time_ns)
+	{
+		return 0;
+	}
+
+	/* Set the next read some fixed time after this one, and update the read timestamp. */
+	*next_read_time_ns = current_time->tv_nsec + READ_INTERVAL_NSEC;
+
+	*prev_time_s = current_time->tv_sec;
+	return 1;
+}
 
 static int start(void)
 {
@@ -368,12 +495,23 @@ static int start(void)
     /* Create a kbase context for HW counters */
     if (num_hardware_counters_enabled > 0)
     {
-        kbdevice = kbase_find_device(-1);
+    	if(init_symbols() > 0)
+    	{
+        	clean_symbols();
+        	/* No Mali driver code entrypoints found - not a fault. */
+            return 0;
+    	}
 
-        if (kbcontext)
-            return -1;
+        kbdevice = kbase_find_device_symbol(-1);
 
-        kbcontext = kbase_create_context(kbdevice);
+        /* If we already got a context, fail */
+        if (kbcontext) {
+        	pr_debug("gator: Mali-T6xx: error context already present\n");
+        	goto out;
+        }
+
+        /* kbcontext will only be valid after all the Mali symbols are loaded successfully */
+        kbcontext = kbase_create_context_symbol(kbdevice);
         if (!kbcontext)
         {
             pr_debug("gator: Mali-T6xx: error creating kbase context\n");
@@ -388,7 +526,7 @@ static int start(void)
          *             * number of bytes per counter (always 4 in midgard)
          * For a Mali-T6xx with a single core group = 1 * 8 * 64 * 4
          */
-        kernel_dump_buffer = kbase_va_alloc(kbcontext, 2048);
+        kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 2048);
         if (!kernel_dump_buffer)
         {
             pr_debug("gator: Mali-T6xx: error trying to allocate va\n");
@@ -404,14 +542,14 @@ static int start(void)
         setup.l3_cache_bm = 0;
 
         /* Use kbase API to enable hardware counters and provide dump buffer */
-        err = kbase_instr_hwcnt_enable(kbcontext, &setup);
+        err = kbase_instr_hwcnt_enable_symbol(kbcontext, &setup);
         if (err != MALI_ERROR_NONE)
         {
             pr_debug("gator: Mali-T6xx: can't setup hardware counters\n");
             goto free_buffer;
         }
         pr_debug("gator: Mali-T6xx: hardware counters enabled\n");
-        kbase_instr_hwcnt_clear(kbcontext);
+        kbase_instr_hwcnt_clear_symbol(kbcontext);
         pr_debug("gator: Mali-T6xx: hardware counters cleared \n");
 
         kbase_device_busy = false;
@@ -420,10 +558,13 @@ static int start(void)
     return 0;
 
     free_buffer:
-        kbase_va_free(kbcontext, kernel_dump_buffer);
+        kbase_va_free_symbol(kbcontext, kernel_dump_buffer);
+
     destroy_context:
-        kbase_destroy_context(kbcontext);
+        kbase_destroy_context_symbol(kbcontext);
+
     out:
+    	clean_symbols();
         return -1;
 }
 
@@ -448,10 +589,13 @@ static void stop(void) {
         temp_kbcontext = kbcontext;
         kbcontext = NULL;
 
-        kbase_instr_hwcnt_disable(temp_kbcontext);
-        kbase_va_free(temp_kbcontext, kernel_dump_buffer);
-        kbase_destroy_context(temp_kbcontext);
+        kbase_instr_hwcnt_disable_symbol(temp_kbcontext);
+        kbase_va_free_symbol(temp_kbcontext, kernel_dump_buffer);
+        kbase_destroy_context_symbol(temp_kbcontext);
+
         pr_debug("gator: Mali-T6xx: hardware counters stopped\n");
+
+        clean_symbols();
     }
 }
 
@@ -461,10 +605,25 @@ static int read(int **buffer) {
     u32 value = 0;
     mali_bool success;
 
+	struct timespec current_time;
+	static u32 prev_time_s = 0;
+	static s32 next_read_time_ns = 0;
+
     if (smp_processor_id()!=0)
     {
         return 0;
     }
+
+	getnstimeofday(&current_time);
+
+	/*
+	 * Discard reads unless a respectable time has passed.  This reduces the load on the GPU without sacrificing
+	 * accuracy on the Streamline display.
+	 */
+	if(!is_read_scheduled(&current_time, &prev_time_s, &next_read_time_ns))
+	{
+		return 0;
+	}
 
     /*
      * Report the HW counters
@@ -484,8 +643,8 @@ static int read(int **buffer) {
             return -1;
         }
 
-        // TODO: SYMBOL_GET (all kbase functions)
-        if (kbase_instr_hwcnt_dump_complete(kbcontext, &success) == MALI_TRUE)
+        /* Mali symbols can be called safely since a kbcontext is valid */
+        if (kbase_instr_hwcnt_dump_complete_symbol(kbcontext, &success) == MALI_TRUE)
         {
             kbase_device_busy = false;
 
@@ -520,7 +679,7 @@ static int read(int **buffer) {
         if (! kbase_device_busy)
         {
             kbase_device_busy = true;
-            kbase_instr_hwcnt_dump_irq(kbcontext);
+            kbase_instr_hwcnt_dump_irq_symbol(kbcontext);
         }
     }
 
@@ -551,7 +710,6 @@ static int create_files(struct super_block *sb, struct dentry *root)
     return 0;
 }
 
-
 static struct gator_interface gator_events_mali_t6xx_interface = {
     .create_files    = create_files,
     .start        = start,
@@ -562,6 +720,10 @@ static struct gator_interface gator_events_mali_t6xx_interface = {
 int gator_events_mali_t6xx_hw_init(void)
 {
     pr_debug("gator: Mali-T6xx: sw_counters init\n");
+
+#if GATOR_TEST
+    test_all_is_read_scheduled();
+#endif
 
     gator_mali_initialise_counters(counters, NUMBER_OF_HARDWARE_COUNTERS);
 

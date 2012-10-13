@@ -11,13 +11,14 @@ EXTRA_CFLAGS += -DMALI_USE_UMP=1 \
 
 KBASE_DIR = $(DDK_DIR)/kernel/drivers/gpu/arm/t6xx/kbase
 OSK_DIR = $(DDK_DIR)/kernel/drivers/gpu/arm/t6xx/kbase/osk
-UMP_DIR = $(DDK_DIR)/kernel/drivers/gpu/arm/ump
+UMP_DIR = $(DDK_DIR)/kernel/include/linux
 
 # Include directories in the DDK
 EXTRA_CFLAGS += -I$(DDK_DIR) \
                 -I$(KBASE_DIR)/.. \
                 -I$(OSK_DIR)/.. \
                 -I$(UMP_DIR)/.. \
+                -I$(DDK_DIR)/kernel/include \
                 -I$(KBASE_DIR)/osk/src/linux/include \
                 -I$(KBASE_DIR)/platform_dummy \
                 -I$(KBASE_DIR)/src

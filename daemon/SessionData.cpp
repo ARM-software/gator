@@ -30,10 +30,10 @@ void SessionData::initialize() {
 	mConfigurationXMLPath = NULL;
 	mSessionXMLPath = NULL;
 	mEventsXMLPath = NULL;
+	mTargetPath = NULL;
 	mAPCDir = NULL;
 	mSampleRate = 0;
 	mDuration = 0;
-	mBytes = 0;
 	mBacktraceDepth = 0;
 	mTotalBufferSize = 0;
 	mCores = 1;
@@ -48,8 +48,6 @@ void SessionData::initializeCounters() {
 		mPerfCounterTitle[i][0] = 0;
 		mPerfCounterName[i][0] = 0;
 		mPerfCounterDescription[i][0] = 0;
-		mPerfCounterOperation[i][0] = 0;
-		mPerfCounterAlias[i][0] = 0;
 		mPerfCounterDisplay[i][0] = 0;
 		mPerfCounterUnits[i][0] = 0;
 		mPerfCounterEnabled[i] = 0;
@@ -59,7 +57,6 @@ void SessionData::initializeCounters() {
 		mPerfCounterCount[i] = 0;
 		mPerfCounterPerCPU[i] = false;
 		mPerfCounterEBSCapable[i] = false;
-		mPerfCounterLevel[i] = false;
 		mPerfCounterAverageSelection[i] = false;
 	}
 }
@@ -68,15 +65,6 @@ void SessionData::parseSessionXML(char* xmlString) {
 	SessionXML session(xmlString);
 	session.parse();
 
-	// Parameter error checking
-	if (session.parameters.output_path == 0 && session.parameters.target_path == 0) {
-		logg->logError(__FILE__, __LINE__, "No capture path (target or host) was provided.");
-		handleException();
-	} else if (gSessionData->mLocalCapture && session.parameters.target_path == 0) {
-		logg->logError(__FILE__, __LINE__, "Missing target_path tag in session xml required for a local capture.");
-		handleException();
-	}
-
 	// Set session data values
 	if (strcmp(session.parameters.sample_rate, "high") == 0) {
 		gSessionData->mSampleRate = 10000;
@@ -84,8 +72,11 @@ void SessionData::parseSessionXML(char* xmlString) {
 		gSessionData->mSampleRate = 1000;
 	} else if (strcmp(session.parameters.sample_rate, "low") == 0) {
 		gSessionData->mSampleRate = 100;
-	} else {
+	} else if (strcmp(session.parameters.sample_rate, "none") == 0) {
 		gSessionData->mSampleRate = 0;
+	} else {
+		logg->logError(__FILE__, __LINE__, "Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
+		handleException();
 	}
 	gSessionData->mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
 	gSessionData->mDuration = session.parameters.duration;
@@ -107,6 +98,4 @@ void SessionData::parseSessionXML(char* xmlString) {
 	}
 
 	gSessionData->mImages = session.parameters.images;
-	gSessionData->mTargetPath = session.parameters.target_path;
-	gSessionData->mTitle = session.parameters.title;
 }

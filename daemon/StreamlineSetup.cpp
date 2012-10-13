@@ -28,13 +28,13 @@ static const char* TAG_SESSION = "session";
 static const char* TAG_REQUEST = "request";
 static const char* TAG_CONFIGURATIONS = "configurations";
 
-static const char* 	ATTR_PROTOCOL		= "protocol";		
-static const char* 	ATTR_EVENTS			= "events";
-static const char* 	ATTR_CONFIGURATION	= "configuration";
-static const char* 	ATTR_COUNTERS		= "counters";
-static const char* 	ATTR_SESSION		= "session";
-static const char* 	ATTR_CAPTURED		= "captured";
-static const char*	ATTR_DEFAULTS		= "defaults";
+static const char* ATTR_TYPE           = "type";
+static const char* VALUE_EVENTS        = "events";
+static const char* VALUE_CONFIGURATION = "configuration";
+static const char* VALUE_COUNTERS      = "counters";
+static const char* VALUE_SESSION       = "session";
+static const char* VALUE_CAPTURED      = "captured";
+static const char* VALUE_DEFAULTS      = "defaults";
 
 StreamlineSetup::StreamlineSetup(OlySocket* s) {
 	bool ready = false;
@@ -80,6 +80,11 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 		}
 
 		free(data);
+	}
+
+	if (gSessionData->mCounterOverflow) {
+		logg->logError(__FILE__, __LINE__, "Exceeded maximum number of %d performance counters", MAX_PERFORMANCE_COUNTERS);
+		handleException();
 	}
 }
 
@@ -143,30 +148,32 @@ char* StreamlineSetup::readCommand(int* command) {
 
 void StreamlineSetup::handleRequest(char* xml) {
 	mxml_node_t *tree, *node;
+	const char * attr = NULL;
 
 	tree = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
-	if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_PROTOCOL, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_PROTOCOL), false)) {
-		sendProtocol();
-		logg->logMessage("Sent protocol xml response");
-	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_EVENTS, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_EVENTS), false)) {
+	node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_TYPE, NULL, MXML_DESCEND_FIRST);
+	if (node) {
+		attr = mxmlElementGetAttr(node, ATTR_TYPE);
+	}
+	if (attr && strcmp(attr, VALUE_EVENTS) == 0) {
 		sendEvents();
 		logg->logMessage("Sent events xml response");
-	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_CONFIGURATION, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_CONFIGURATION), false)) {
+	} else if (attr && strcmp(attr, VALUE_CONFIGURATION) == 0) {
 		sendConfiguration();
 		logg->logMessage("Sent configuration xml response");
-	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_COUNTERS, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_COUNTERS), false)) {
+	} else if (attr && strcmp(attr, VALUE_COUNTERS) == 0) {
 		sendCounters();
 		logg->logMessage("Sent counters xml response");
-	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_SESSION, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_SESSION), false)) {
+	} else if (attr && strcmp(attr, VALUE_SESSION) == 0) {
 		sendData(mSessionXML, strlen(mSessionXML), RESPONSE_XML);
 		logg->logMessage("Sent session xml response");
-	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_CAPTURED, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_CAPTURED), false)) {
+	} else if (attr && strcmp(attr, VALUE_CAPTURED) == 0) {
 		CapturedXML capturedXML;
-		char* capturedText = capturedXML.getXML();
+		char* capturedText = capturedXML.getXML(false);
 		sendData(capturedText, strlen(capturedText), RESPONSE_XML);
 		free(capturedText);
 		logg->logMessage("Sent captured xml response");
-	} else if ((node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_DEFAULTS, NULL, MXML_DESCEND_FIRST)) && util->stringToBool(mxmlElementGetAttr(node, ATTR_DEFAULTS), false)) {
+	} else if (attr && strcmp(attr, VALUE_DEFAULTS) == 0) {
 		sendDefaults();
 		logg->logMessage("Sent default configuration xml response");
 	} else {
@@ -215,21 +222,6 @@ void StreamlineSetup::sendData(const char* data, int length, int type) {
 	mSocket->send((char*)data, length);
 }
 
-void StreamlineSetup::sendProtocol() {
-	mxml_node_t *xml;
-    mxml_node_t *protocol;
-
-	xml = mxmlNewXML("1.0");
-	protocol = mxmlNewElement(xml, "protocol");
-	mxmlElementSetAttrf(protocol, "version", "%d", PROTOCOL_VERSION);
-
-	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
-	sendString(string, RESPONSE_XML);
-
-	free(string);
-	mxmlDelete(xml);
-}
-
 void StreamlineSetup::sendEvents() {
 #include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
 	char* path = (char*)malloc(PATH_MAX);;
@@ -264,10 +256,10 @@ void StreamlineSetup::sendConfiguration() {
 }
 
 void StreamlineSetup::sendDefaults() {
-#include "configuration_xml.h" // defines and initializes char configuration_xml[] and int configuration_xml_len
 	// Send the config built into the binary
-	char* xml = (char*)configuration_xml;
-	unsigned int size = configuration_xml_len;
+	const char* xml;
+	unsigned int size;
+	ConfigurationXML::getDefaultConfigurationXml(xml, size);
 
 	// Artificial size restriction
 	if (size > 1024*1024) {
@@ -282,7 +274,7 @@ void StreamlineSetup::sendDefaults() {
 void StreamlineSetup::sendCounters() {
 	struct dirent *ent;
 	mxml_node_t *xml;
-    mxml_node_t *counters;
+	mxml_node_t *counters;
 	mxml_node_t *counter;
 
 	// counters.xml is simply a file listing of /dev/gator/events
@@ -328,4 +320,9 @@ void StreamlineSetup::writeConfiguration(char* xml) {
 	// Re-populate gSessionData with the configuration, as it has now changed
 	new ConfigurationXML();
 	free(path);
+
+	if (gSessionData->mCounterOverflow) {
+		logg->logError(__FILE__, __LINE__, "Exceeded maximum number of %d performance counters", MAX_PERFORMANCE_COUNTERS);
+		handleException();
+	}
 }

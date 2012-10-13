@@ -95,7 +95,11 @@ static int gator_events_net_start(void)
 	get_network_stats(0);
 	netPrev[NETRX] = rx_total;
 	netPrev[NETTX] = tx_total;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
 	setup_timer(&net_wake_up_timer, net_wake_up_handler, 0);
+#else
+	setup_deferrable_timer_on_stack(&net_wake_up_timer, net_wake_up_handler, 0);
+#endif
 	return 0;
 }
 

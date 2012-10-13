@@ -1,8 +1,5 @@
-  <counter_set name="L2C-310_cntX">
-    <counter name="L2C-310_cnt0"/>
-    <counter name="L2C-310_cnt1"/>
-  </counter_set>
-  <category name="L2C-310" counter_set="L2C-310_cntX" per_cpu="no">
+  <counter_set name="L2C-310_cnt" count="2"/>
+  <category name="L2C-310" counter_set="L2C-310_cnt" per_cpu="no">
     <event event="0x1" title="L2 Cache" name="CO" description="Eviction, CastOUT, of a line from the L2 cache"/>
     <event event="0x2" title="L2 Cache" name="DRH" description="Data read hit"/>
     <event event="0x3" title="L2 Cache" name="DRREQ" description="Data read request"/>

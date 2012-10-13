@@ -385,7 +385,7 @@ static int create_files(struct super_block *sb, struct dentry *root) {
 
         switch(event) {
         case COUNTER_FILMSTRIP:
-            snprintf(buf, sizeof(buf), "ARM_%s_Filmstrip", mali_name);
+            snprintf(buf, sizeof(buf), "ARM_%s_Filmstrip_cnt0", mali_name);
         	break;
 
         case COUNTER_FREQUENCY:

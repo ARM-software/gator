@@ -15,7 +15,7 @@ struct frame_tail_eabi {
 	unsigned long lr;
 };
 
-static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs, unsigned int depth)
+static void arm_backtrace_eabi(int cpu, struct pt_regs * const regs, unsigned int depth)
 {
 #if defined(__arm__)
 	struct frame_tail_eabi *tail;
@@ -32,7 +32,7 @@ static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs
 	}
 
 	/* entry preamble may not have executed */
-	gator_add_trace(cpu, buftype, lr);
+	gator_add_trace(cpu, lr);
 
 	/* check tail is valid */
 	if (fp == 0 || fp < sp) {
@@ -50,7 +50,7 @@ static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs
 		ptrtail = &buftail;
 
 		lr = ptrtail[0].lr;
-		gator_add_trace(cpu, buftype, lr);
+		gator_add_trace(cpu, lr);
 
 		/* frame pointers should progress back up the stack, towards higher addresses */
 		next = (struct frame_tail_eabi *)(lr - 4);
@@ -69,16 +69,16 @@ static void arm_backtrace_eabi(int cpu, int buftype, struct pt_regs * const regs
 }
 
 #if defined(__arm__)
-static DEFINE_PER_CPU(int, backtrace_buffer);
 static int report_trace(struct stackframe *frame, void *d)
 {
 	struct module *mod;
-	unsigned int *depth = d, addr = frame->pc, cookie = NO_COOKIE, cpu = smp_processor_id();
+	unsigned int *depth = d, cookie = NO_COOKIE, cpu = smp_processor_id();
+	unsigned long addr = frame->pc;
 
 	if (*depth) {
 		mod = __module_address(addr);
 		if (mod) {
-			cookie = get_cookie(cpu, per_cpu(backtrace_buffer, cpu), current, NULL, mod, true);
+			cookie = get_cookie(cpu, current, NULL, mod, true);
 			addr = addr - (unsigned long)mod->module_core;
 		}
 		marshal_backtrace(addr & ~1, cookie);
@@ -91,7 +91,7 @@ static int report_trace(struct stackframe *frame, void *d)
 
 // Uncomment the following line to enable kernel stack unwinding within gator, note it can also be defined from the Makefile
 // #define GATOR_KERNEL_STACK_UNWINDING
-static void kernel_backtrace(int cpu, int buftype, struct pt_regs * const regs)
+static void kernel_backtrace(int cpu, struct pt_regs * const regs)
 {
 #if defined(__arm__)
 #ifdef GATOR_KERNEL_STACK_UNWINDING
@@ -106,7 +106,6 @@ static void kernel_backtrace(int cpu, int buftype, struct pt_regs * const regs)
 	frame.sp = regs->ARM_sp;
 	frame.lr = regs->ARM_lr;
 	frame.pc = regs->ARM_pc;
-	per_cpu(backtrace_buffer, cpu) = buftype;
 	walk_stackframe(&frame, report_trace, &depth);
 #else
 	marshal_backtrace(PC_REG & ~1, NO_COOKIE);

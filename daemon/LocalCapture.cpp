@@ -23,8 +23,8 @@ LocalCapture::LocalCapture() {}
 
 LocalCapture::~LocalCapture() {}
 
-void LocalCapture::createAPCDirectory(char* target_path, char* name) {
-	gSessionData->mAPCDir = createUniqueDirectory(target_path, ".apc", name);
+void LocalCapture::createAPCDirectory(char* target_path) {
+	gSessionData->mAPCDir = createUniqueDirectory(target_path, ".apc");
 	if ((removeDirAndAllContents(gSessionData->mAPCDir) != 0 || mkdir(gSessionData->mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
 		logg->logError(__FILE__, __LINE__, "Unable to create directory %s", gSessionData->mAPCDir);
 		handleException();
@@ -46,17 +46,14 @@ void LocalCapture::write(char* string) {
 	free(file);
 }
 
-char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending, char* title) {
-	int i;
+char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending) {
 	char* output;
 	char* path = (char*)malloc(PATH_MAX);
 
 	// Ensure the path is an absolute path, i.e. starts with a slash
 	if (initialPath == 0 || strlen(initialPath) == 0) {
-		if (getcwd(path, PATH_MAX) == 0) {
-			logg->logMessage("Unable to retrive the current working directory");
-		}
-		strncat(path, "/@F_@N", PATH_MAX - strlen(path) - 1);
+		logg->logError(__FILE__, __LINE__, "Missing -o command line option required for a local capture.");
+		handleException();
 	} else if (initialPath[0] != '/') {
 		if (getcwd(path, PATH_MAX) == 0) {
 			logg->logMessage("Unable to retrive the current working directory");
@@ -68,96 +65,15 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
 		path[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
 	}
 
-	// Convert to uppercase
-	replaceAll(path, "@f", "@F", PATH_MAX);
-	replaceAll(path, "@n", "@N", PATH_MAX);
-
-	// Replace @F with the session xml title
-	replaceAll(path, "@F", title, PATH_MAX);
-
 	// Add ending if it is not already there
 	if (strcmp(&path[strlen(path) - strlen(ending)], ending) != 0) {
 		strncat(path, ending, PATH_MAX - strlen(path) - 1);
 	}
 
-	// Replace @N with a unique integer
-	if (strstr(path, "@N")) {
-		char* tempPath = (char*)malloc(PATH_MAX);
-		for (i = 1; i < 1000; i++) {
-			char number[4];
-			snprintf(number, sizeof(number), "%03d", i);
-			strcpy(tempPath, path);
-			replaceAll(tempPath, "@N", number, PATH_MAX);
-			struct stat mFileInfo;
-			if (stat(tempPath, &mFileInfo) != 0) {
-				// if the direcotry does not exist, break
-				break;
-			}
-		}
-
-		if (i == 1000) {
-			logg->logError(__FILE__, __LINE__, "Unable to create .apc directory, please delete older directories.");
-			handleException();
-		}
-
-		output = strdup(tempPath);
-		free(tempPath);
-	} else {
-		output = strdup(path);
-	}
+	output = strdup(path);
 
 	free(path);
 	return output;
-}
-
-//Replaces all occurrences of <find> in <target> with <replace> provided enough <size> is available
-void LocalCapture::replaceAll(char* target, const char* find, const char* replace, unsigned int size) {
-	char* nextOccurrence;
-	unsigned int count = 0;
-
-	// Duplicate the original string
-	char* original = strdup(target);
-	char* ptr = original;
-
-	// Determine number of <find>s
-	ptr = strstr(ptr, find);
-	while (ptr) {
-		count++;
-		ptr += strlen(find);
-		ptr = strstr(ptr, find);
-	}
-
-	// Is there enough space available
-	if (strlen(target) + (strlen(replace) - strlen(find)) * count > size - 1) {
-		free(original);
-		return;
-	}
-
-	// Reset
-	ptr = original;
-
-	nextOccurrence = strstr(ptr, find);
-	while (nextOccurrence) {
-		// Move pointers to location of replace
-		int length = nextOccurrence - ptr;
-		target += length;
-		ptr += length;
-
-		// Replace <find> with <replace>
-		memcpy(target, replace, strlen(replace));
-
-		// Increment over <replace>/<find>
-		target += strlen(replace);
-		ptr += strlen(find);
-
-		// Copy remainder of ptr
-		strcpy(target, ptr);
-
-		// Get next occurrence
-		nextOccurrence = strstr(ptr, find);
-	}
-
-	free(original);
 }
 
 int LocalCapture::removeDirAndAllContents(char* path) {

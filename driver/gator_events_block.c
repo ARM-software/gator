@@ -25,15 +25,13 @@ static ulong block_rq_wr_enabled;
 static ulong block_rq_rd_enabled;
 static ulong block_rq_wr_key;
 static ulong block_rq_rd_key;
-static DEFINE_PER_CPU(int[BLOCK_TOTAL], blockCnt);
-static DEFINE_PER_CPU(int[BLOCK_TOTAL * 4], blockGet);
-static DEFINE_PER_CPU(bool, new_data_avail);
+static atomic_t blockCnt[BLOCK_TOTAL];
+static int blockGet[BLOCK_TOTAL * 4];
 
 GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct request *rq))
 {
 	unsigned long flags;
 	int write, size;
-	int cpu = smp_processor_id();
 
 	if (!rq)
 		return;
@@ -47,13 +45,16 @@ GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct r
 	// disable interrupts to synchronize with gator_events_block_read()
 	// spinlocks not needed since percpu buffers are used
 	local_irq_save(flags);
-	if (write)
-		per_cpu(blockCnt, cpu)[BLOCK_RQ_WR] += size;
-	else
-		per_cpu(blockCnt, cpu)[BLOCK_RQ_RD] += size;
+	if (write) {
+		if (block_rq_wr_enabled) {
+			atomic_add(size, &blockCnt[BLOCK_RQ_WR]);
+		}
+	} else {
+		if (block_rq_rd_enabled) {
+			atomic_add(size, &blockCnt[BLOCK_RQ_RD]);
+		}
+	}
 	local_irq_restore(flags);
-
-	per_cpu(new_data_avail, cpu) = true;
 }
 
 static int gator_events_block_create_files(struct super_block *sb, struct dentry *root)
@@ -81,11 +82,6 @@ static int gator_events_block_create_files(struct super_block *sb, struct dentry
 
 static int gator_events_block_start(void)
 {
-	int cpu;
-
-	for_each_present_cpu(cpu) 
-		per_cpu(new_data_avail, cpu) = true;
-
 	// register tracepoints
 	if (block_rq_wr_enabled || block_rq_rd_enabled)
 		if (GATOR_REGISTER_TRACE(block_rq_complete))
@@ -113,44 +109,32 @@ static void gator_events_block_stop(void)
 
 static int gator_events_block_read(int **buffer)
 {
-	unsigned long flags;
-	int len, value, cpu, data = 0;
-	cpu = smp_processor_id();
+	int len, value, data = 0;
 
-	if (per_cpu(new_data_avail, cpu) == false)
+	if (smp_processor_id() != 0) {
 		return 0;
-
-	per_cpu(new_data_avail, cpu) = false;
+	}
 
 	len = 0;
-	if (block_rq_wr_enabled) {
-		local_irq_save(flags);
-		value = per_cpu(blockCnt, cpu)[BLOCK_RQ_WR];
-		per_cpu(blockCnt, cpu)[BLOCK_RQ_WR] = 0;
-		local_irq_restore(flags);
-		per_cpu(blockGet, cpu)[len++] = block_rq_wr_key;
-		per_cpu(blockGet, cpu)[len++] = 0; // indicates to Streamline that value bytes were written now, not since the last message
-		per_cpu(blockGet, cpu)[len++] = block_rq_wr_key;
-		per_cpu(blockGet, cpu)[len++] = value;
+	if (block_rq_wr_enabled && (value = atomic_read(&blockCnt[BLOCK_RQ_WR])) > 0) {
+		atomic_sub(value, &blockCnt[BLOCK_RQ_WR]);
+		blockGet[len++] = block_rq_wr_key;
+		blockGet[len++] = 0; // indicates to Streamline that value bytes were written now, not since the last message
+		blockGet[len++] = block_rq_wr_key;
+		blockGet[len++] = value;
 		data += value;
 	}
-	if (block_rq_rd_enabled) {
-		local_irq_save(flags);
-		value = per_cpu(blockCnt, cpu)[BLOCK_RQ_RD];
-		per_cpu(blockCnt, cpu)[BLOCK_RQ_RD] = 0;
-		local_irq_restore(flags);
-		per_cpu(blockGet, cpu)[len++] = block_rq_rd_key;
-		per_cpu(blockGet, cpu)[len++] = 0; // indicates to Streamline that value bytes were read now, not since the last message
-		per_cpu(blockGet, cpu)[len++] = block_rq_rd_key;
-		per_cpu(blockGet, cpu)[len++] = value;
+	if (block_rq_rd_enabled && (value = atomic_read(&blockCnt[BLOCK_RQ_RD])) > 0) {
+		atomic_sub(value, &blockCnt[BLOCK_RQ_RD]);
+		blockGet[len++] = block_rq_rd_key;
+		blockGet[len++] = 0; // indicates to Streamline that value bytes were read now, not since the last message
+		blockGet[len++] = block_rq_rd_key;
+		blockGet[len++] = value;
 		data += value;
 	}
-
-	if (data != 0)
-		per_cpu(new_data_avail, cpu) = true;
 
 	if (buffer)
-		*buffer = per_cpu(blockGet, cpu);
+		*buffer = blockGet;
 
 	return len;
 }

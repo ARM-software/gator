@@ -1,33 +1,12 @@
-  <counter_set name="ARM_Mali-400_VP_cntX">
-    <counter name="ARM_Mali-400_VP_cnt0"/>
-    <counter name="ARM_Mali-400_VP_cnt1"/>
-  </counter_set>
-  <counter_set name="ARM_Mali-400_FP0_cntX">
-    <counter name="ARM_Mali-400_FP0_cnt0"/>
-    <counter name="ARM_Mali-400_FP0_cnt1"/>
-  </counter_set>
-  <counter_set name="ARM_Mali-400_FP1_cntX">
-    <counter name="ARM_Mali-400_FP1_cnt0"/>
-    <counter name="ARM_Mali-400_FP1_cnt1"/>
-  </counter_set>  
-  <counter_set name="ARM_Mali-400_FP2_cntX">
-    <counter name="ARM_Mali-400_FP2_cnt0"/>
-    <counter name="ARM_Mali-400_FP2_cnt1"/>
-  </counter_set>
-  <counter_set name="ARM_Mali-400_FP3_cntX">
-    <counter name="ARM_Mali-400_FP3_cnt0"/>
-    <counter name="ARM_Mali-400_FP3_cnt1"/>
-  </counter_set>
-  <counter_set name="ARM_Mali-400_L2_cntX">
-    <counter name="ARM_Mali-400_L2_cnt0"/>
-    <counter name="ARM_Mali-400_L2_cnt1"/>
-  </counter_set>
-  <counter_set name="ARM_Mali-400_SW_cntX">
-  </counter_set>  
-  <counter_set name="ARM_Mali-400_Filmstrip_cntX">
-	<counter name="ARM_Mali-400_Filmstrip"/>
-  </counter_set>  
-  <category name="Mali-400-VP" counter_set="ARM_Mali-400_VP_cntX" per_cpu="no">
+  <counter_set name="ARM_Mali-400_VP_cnt" count="2"/>
+  <counter_set name="ARM_Mali-400_FP0_cnt" count="2"/>
+  <counter_set name="ARM_Mali-400_FP1_cnt" count="2"/>
+  <counter_set name="ARM_Mali-400_FP2_cnt" count="2"/>
+  <counter_set name="ARM_Mali-400_FP3_cnt" count="2"/>
+  <counter_set name="ARM_Mali-400_L2_cnt" count="2"/>
+  <counter_set name="ARM_Mali-400_SW_cnt" count="0"/>
+  <counter_set name="ARM_Mali-400_Filmstrip_cnt" count="1"/>
+  <category name="Mali-400-VP" counter_set="ARM_Mali-400_VP_cnt" per_cpu="no">
     <event event="0x01" title="Mali GPU Vertex Processor" name="Active cycles" description="Number of cycles per frame the MaliGP2 was active."/>
     <event event="0x02" title="Mali GPU Vertex Processor" name="Active cycles, vertex shader" description="Number of cycles per frame the vertex shader unit was active."/>
     <event event="0x03" title="Mali GPU Vertex Processor" name="Active cycles, vertex storer" description="Number of cycles per frame the vertex storer unit was active."/>
@@ -54,7 +33,7 @@
     <event event="0x20" title="Mali GPU Vertex Processor" name="Active cycles, Scissor tile iterator" description="Number of active cycles per frame spent by the MaliGP2 PLBU iterating over tiles to perform scissoringi. This includes time spent waiting on the bus."/>
     <event event="0x21" title="Mali GPU Vertex Processor" name="Active cycles, PLBU tile iterator" description="Number of active cycles per frame spent by the MaliGP2 PLBU iterating over the tiles in the bounding box generating commands (mainly graphics primitives). This includes time spent waiting on the bus."/>
   </category>
-  <category name="Mali-400-FP0" counter_set="ARM_Mali-400_FP0_cntX" per_cpu="no">
+  <category name="Mali-400-FP0" counter_set="ARM_Mali-400_FP0_cnt" per_cpu="no">
     <event event="0x00" title="Mali GPU Fragment Processor 0" name="Active clock cycles" description="Active clock cycles, between polygon start and IRQ."/>
     <event event="0x02" title="Mali GPU Fragment Processor 0" name="Total bus reads" description="Total number of 64-bit words read from the bus."/>
     <event event="0x03" title="Mali GPU Fragment Processor 0" name="Total bus writes" description="Total number of 64-bit words written to the bus."/>
@@ -113,7 +92,7 @@
     <event event="0x3c" title="Mali GPU Fragment Processor 0" name="Program cache hit count" description="Number of hits in the program cache."/>
     <event event="0x3d" title="Mali GPU Fragment Processor 0" name="Program cache miss count" description="Number of misses in the program cache."/>
   </category>
-  <category name="Mali-400-FP1" counter_set="ARM_Mali-400_FP1_cntX" per_cpu="no">
+  <category name="Mali-400-FP1" counter_set="ARM_Mali-400_FP1_cnt" per_cpu="no">
     <event event="0x00" title="Mali GPU Fragment Processor 1" name="Active clock cycles" description="Active clock cycles, between polygon start and IRQ."/>
     <event event="0x02" title="Mali GPU Fragment Processor 1" name="Total bus reads" description="Total number of 64-bit words read from the bus."/>
     <event event="0x03" title="Mali GPU Fragment Processor 1" name="Total bus writes" description="Total number of 64-bit words written to the bus."/>
@@ -172,7 +151,7 @@
     <event event="0x3c" title="Mali GPU Fragment Processor 1" name="Program cache hit count" description="Number of hits in the program cache."/>
     <event event="0x3d" title="Mali GPU Fragment Processor 1" name="Program cache miss count" description="Number of misses in the program cache."/>
   </category>
-  <category name="Mali-400-FP2" counter_set="ARM_Mali-400_FP2_cntX" per_cpu="no">
+  <category name="Mali-400-FP2" counter_set="ARM_Mali-400_FP2_cnt" per_cpu="no">
     <event event="0x00" title="Mali GPU Fragment Processor 2" name="Active clock cycles" description="Active clock cycles, between polygon start and IRQ."/>
     <event event="0x02" title="Mali GPU Fragment Processor 2" name="Total bus reads" description="Total number of 64-bit words read from the bus."/>
     <event event="0x03" title="Mali GPU Fragment Processor 2" name="Total bus writes" description="Total number of 64-bit words written to the bus."/>
@@ -231,7 +210,7 @@
     <event event="0x3c" title="Mali GPU Fragment Processor 2" name="Program cache hit count" description="Number of hits in the program cache."/>
     <event event="0x3d" title="Mali GPU Fragment Processor 2" name="Program cache miss count" description="Number of misses in the program cache."/>
   </category>
-  <category name="Mali-400-FP3" counter_set="ARM_Mali-400_FP3_cntX" per_cpu="no">
+  <category name="Mali-400-FP3" counter_set="ARM_Mali-400_FP3_cnt" per_cpu="no">
     <event event="0x00" title="Mali GPU Fragment Processor 3" name="Active clock cycles" description="Active clock cycles, between polygon start and IRQ."/>
     <event event="0x02" title="Mali GPU Fragment Processor 3" name="Total bus reads" description="Total number of 64-bit words read from the bus."/>
     <event event="0x03" title="Mali GPU Fragment Processor 3" name="Total bus writes" description="Total number of 64-bit words written to the bus."/>
@@ -290,7 +269,7 @@
     <event event="0x3c" title="Mali GPU Fragment Processor 3" name="Program cache hit count" description="Number of hits in the program cache."/>
     <event event="0x3d" title="Mali GPU Fragment Processor 3" name="Program cache miss count" description="Number of misses in the program cache."/>
   </category>
-  <category name="Mali-400-L2" counter_set="ARM_Mali-400_L2_cntX" per_cpu="no">
+  <category name="Mali-400-L2" counter_set="ARM_Mali-400_L2_cnt" per_cpu="no">
     <event event="0x01" title="Mali L2 Cache" name="Total clock cycles" description="Total clock cycles."/>
     <event event="0x02" title="Mali L2 Cache" name="Active clock cycles" description="Active clock cycles." />
     <event event="0x08" title="Mali L2 Cache" name="Read transactions, master" description="Read transactions, master." />
@@ -352,7 +331,7 @@
     <event event="0x67" title="Mali L2 Cache" name="Read invalidates, slave 4" description="Read invalidates, slave 4." />
     <event event="0x68" title="Mali L2 Cache" name="Cacheable read transactions, slave 4" description="Cacheable read transactions, slave 4." />
   </category>
-  <category name="ARM_Mali-400_Filmstrip" counter_set="ARM_Mali-400_Filmstrip_cntX" per_cpu="no">
+  <category name="ARM_Mali-400_Filmstrip" counter_set="ARM_Mali-400_Filmstrip_cnt" per_cpu="no">
     <event event="0x040a" title="ARM_Mali-400_Filmstrip" name="Freq 1:10" description="Scaled framebuffer captures every 10th frame." />
     <event event="0x041e" title="ARM_Mali-400_Filmstrip" name="Freq 1:30" description="Scaled framebuffer captures every 30th frame." />
     <event event="0x043c" title="ARM_Mali-400_Filmstrip" name="Freq 1:60" description="Scaled framebuffer captures every 60th frame." />
@@ -363,7 +342,7 @@
   <category name="ARM_Mali-400_Frequency" per_cpu="no">
     <event counter="ARM_Mali-400_Frequency" title="Mali GPU Frequency" name="Frequency" display="average" average_selection="yes" units="MHz" description="GPU core frequency."/>
   </category>
-  <category name="Mali-400-SW" counter_set="ARM_Mali-400_SW_cntX" per_cpu="no">
+  <category name="Mali-400-SW" counter_set="ARM_Mali-400_SW_cnt" per_cpu="no">
     <!-- EGL Counters -->
     <event counter="ARM_Mali-400_SW_17" title="Mali EGL Software Counters" name="Blit Time" description="Time spent blitting the the framebuffer from video memory to framebuffer."/>
     <!-- glDrawElements Counters -->

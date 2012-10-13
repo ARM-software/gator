@@ -12,7 +12,7 @@
 #define MAX_COLLISIONS		2
 
 static uint32_t *gator_crc32_table;
-static uint32_t translate_buffer_mask;
+static unsigned int translate_buffer_mask;
 
 static DEFINE_PER_CPU(char *, translate_text);
 static DEFINE_PER_CPU(uint32_t, cookie_next_key);
@@ -20,9 +20,9 @@ static DEFINE_PER_CPU(uint64_t *, cookie_keys);
 static DEFINE_PER_CPU(uint32_t *, cookie_values);
 static DEFINE_PER_CPU(int, translate_buffer_read);
 static DEFINE_PER_CPU(int, translate_buffer_write);
-static DEFINE_PER_CPU(unsigned int *, translate_buffer);
+static DEFINE_PER_CPU(void * *, translate_buffer);
 
-static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt);
+static inline uint32_t get_cookie(int cpu, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt);
 static void wq_cookie_handler(struct work_struct *unused);
 DECLARE_WORK(cookie_work, wq_cookie_handler);
 static struct timer_list app_process_wake_up_timer;
@@ -40,16 +40,16 @@ static uint32_t cookiemap_code(uint64_t value64) {
 
 static uint32_t gator_chksum_crc32(char *data)
 {
-   register unsigned long crc;
-   unsigned char *block = data;
-   int i, length = strlen(data);
+	register unsigned long crc;
+	unsigned char *block = data;
+	int i, length = strlen(data);
 
-   crc = 0xFFFFFFFF;
-   for (i = 0; i < length; i++) {
-      crc = ((crc >> 8) & 0x00FFFFFF) ^ gator_crc32_table[(crc ^ *block++) & 0xFF];
-   }
+	crc = 0xFFFFFFFF;
+	for (i = 0; i < length; i++) {
+		crc = ((crc >> 8) & 0x00FFFFFF) ^ gator_crc32_table[(crc ^ *block++) & 0xFF];
+	}
 
-   return (crc ^ 0xFFFFFFFF);
+	return (crc ^ 0xFFFFFFFF);
 }
 
 /*
@@ -104,15 +104,15 @@ static void cookiemap_add(uint64_t key, uint32_t value) {
 	values[0] = value;
 }
 
-static void translate_buffer_write_int(int cpu, unsigned int x)
+static void translate_buffer_write_ptr(int cpu, void * x)
 {
 	per_cpu(translate_buffer, cpu)[per_cpu(translate_buffer_write, cpu)++] = x;
 	per_cpu(translate_buffer_write, cpu) &= translate_buffer_mask;
 }
 
-static unsigned int translate_buffer_read_int(int cpu)
+static void * translate_buffer_read_ptr(int cpu)
 {
-	unsigned int value = per_cpu(translate_buffer, cpu)[per_cpu(translate_buffer_read, cpu)++];
+	void * value = per_cpu(translate_buffer, cpu)[per_cpu(translate_buffer_read, cpu)++];
 	per_cpu(translate_buffer_read, cpu) &= translate_buffer_mask;
 	return value;
 }
@@ -129,9 +129,9 @@ static void wq_cookie_handler(struct work_struct *unused)
 	if (gator_started != 0) {
 		commit = per_cpu(translate_buffer_write, cpu);
 		while (per_cpu(translate_buffer_read, cpu) != commit) {
-			task = (struct task_struct *)translate_buffer_read_int(cpu);
-			vma = (struct vm_area_struct *)translate_buffer_read_int(cpu);
-			cookie = get_cookie(cpu, BACKTRACE_BUF, task, vma, NULL, false);
+			task = (struct task_struct *)translate_buffer_read_ptr(cpu);
+			vma = (struct vm_area_struct *)translate_buffer_read_ptr(cpu);
+			cookie = get_cookie(cpu, task, vma, NULL, false);
 		}
 	}
 
@@ -163,13 +163,13 @@ static int translate_app_process(char** text, int cpu, struct task_struct * task
 		// Check if already in buffer
 		ptr = per_cpu(translate_buffer_read, cpu);
 		while (ptr != per_cpu(translate_buffer_write, cpu)) {
-			if (per_cpu(translate_buffer, cpu)[ptr] == (int)task)
+			if (per_cpu(translate_buffer, cpu)[ptr] == (void *)task)
 				goto out;
 			ptr = (ptr + 2) & translate_buffer_mask;
 		}
 
-		translate_buffer_write_int(cpu, (unsigned int)task);
-		translate_buffer_write_int(cpu, (unsigned int)vma);
+		translate_buffer_write_ptr(cpu, (void *)task);
+		translate_buffer_write_ptr(cpu, (void *)vma);
 
 		mod_timer(&app_process_wake_up_timer, jiffies + 1);
 		goto out;
@@ -222,7 +222,7 @@ out:
 	return retval;
 }
 
-static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt)
+static inline uint32_t get_cookie(int cpu, struct task_struct *task, struct vm_area_struct *vma, struct module *mod, bool in_interrupt)
 {
 	unsigned long flags, cookie;
 	struct path *path;
@@ -271,7 +271,7 @@ static inline uint32_t get_cookie(int cpu, int buftype, struct task_struct *task
 	return cookie;
 }
 
-static int get_exec_cookie(int cpu, int buftype, struct task_struct *task)
+static int get_exec_cookie(int cpu, struct task_struct *task)
 {
 	unsigned long cookie = NO_COOKIE;
 	struct mm_struct *mm = task->mm;
@@ -286,14 +286,14 @@ static int get_exec_cookie(int cpu, int buftype, struct task_struct *task)
 			continue;
 		if (!(vma->vm_flags & VM_EXECUTABLE))
 			continue;
-		cookie = get_cookie(cpu, buftype, task, vma, NULL, true);
+		cookie = get_cookie(cpu, task, vma, NULL, true);
 		break;
 	}
 
 	return cookie;
 }
 
-static unsigned long get_address_cookie(int cpu, int buftype, struct task_struct *task, unsigned long addr, off_t *offset)
+static unsigned long get_address_cookie(int cpu, struct task_struct *task, unsigned long addr, off_t *offset)
 {
 	unsigned long cookie = NO_COOKIE;
 	struct mm_struct *mm = task->mm;
@@ -307,7 +307,7 @@ static unsigned long get_address_cookie(int cpu, int buftype, struct task_struct
 			continue;
 
 		if (vma->vm_file) {
-			cookie = get_cookie(cpu, buftype, task, vma, NULL, true);
+			cookie = get_cookie(cpu, task, vma, NULL, true);
 			*offset = (vma->vm_pgoff << PAGE_SHIFT) + addr - vma->vm_start;
 		} else {
 			/* must be an anonymous map */
@@ -350,7 +350,7 @@ static int cookies_initialize(void)
 		}
 		memset(per_cpu(cookie_values, cpu), 0, size);
 
-		per_cpu(translate_buffer, cpu) = (unsigned int *)kmalloc(translate_buffer_size, GFP_KERNEL);
+		per_cpu(translate_buffer, cpu) = (void * *)kmalloc(translate_buffer_size, GFP_KERNEL);
 		if (!per_cpu(translate_buffer, cpu)) {
 			err = -ENOMEM;
 			goto cookie_setup_error;

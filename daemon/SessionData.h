@@ -13,7 +13,7 @@
 #define MAX_STRING_LEN				80
 #define MAX_DESCRIPTION_LEN			400
 
-#define PROTOCOL_VERSION	10
+#define PROTOCOL_VERSION	11
 #define PROTOCOL_DEV		1000	// Differentiates development versions (timestamp) from release versions
 
 struct ImageLinkList {
@@ -36,7 +36,6 @@ public:
 	char* mEventsXMLPath;
 	char* mTargetPath;
 	char* mAPCDir;
-	char* mTitle;
 
 	bool mWaitingOnCommand;
 	bool mSessionIsActive;
@@ -48,15 +47,13 @@ public:
 	int mSampleRate;
 	int mDuration;
 	int mCores;
-	int mBytes;
 
 	// PMU Counters
+	bool mCounterOverflow;
 	char mPerfCounterType[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterTitle[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterName[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterDescription[MAX_PERFORMANCE_COUNTERS][MAX_DESCRIPTION_LEN];
-	char mPerfCounterOperation[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
-	char mPerfCounterAlias[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterDisplay[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	char mPerfCounterUnits[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
 	int mPerfCounterEnabled[MAX_PERFORMANCE_COUNTERS];
@@ -66,7 +63,6 @@ public:
 	int mPerfCounterKey[MAX_PERFORMANCE_COUNTERS];
 	bool mPerfCounterPerCPU[MAX_PERFORMANCE_COUNTERS];
 	bool mPerfCounterEBSCapable[MAX_PERFORMANCE_COUNTERS];
-	bool mPerfCounterLevel[MAX_PERFORMANCE_COUNTERS];
 	bool mPerfCounterAverageSelection[MAX_PERFORMANCE_COUNTERS];
 };
 

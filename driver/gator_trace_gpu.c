@@ -33,9 +33,7 @@ static int mali_timeline_trace_registered;
 static int mali_job_slots_trace_registered;
 static int gpu_trace_registered;
 
-#define GPU_START			1
-#define GPU_STOP			2
-
+#define GPU_UNIT_NONE			0
 #define GPU_UNIT_VP			1
 #define GPU_UNIT_FP			2
 #define GPU_UNIT_CL			3
@@ -84,18 +82,18 @@ GATOR_DEFINE_PROBE(mali_timeline_event, TP_PROTO(unsigned int event_id, unsigned
 	case EVENT_TYPE_START:
 		if (component == EVENT_CHANNEL_VP0) {
 			/* tgid = d0; pid = d1; */
-			marshal_sched_gpu(GPU_START, GPU_UNIT_VP, 0, d0, d1);
+			marshal_sched_gpu_start(GPU_UNIT_VP, 0, d0, d1);
 		} else if (component >= EVENT_CHANNEL_FP0 && component <= EVENT_CHANNEL_FP7) {
 			/* tgid = d0; pid = d1; */
-			marshal_sched_gpu(GPU_START, GPU_UNIT_FP, component - EVENT_CHANNEL_FP0, d0, d1);
+			marshal_sched_gpu_start(GPU_UNIT_FP, component - EVENT_CHANNEL_FP0, d0, d1);
 		}
 		break;
 
 	case EVENT_TYPE_STOP:
 		if (component == EVENT_CHANNEL_VP0) {
-			marshal_sched_gpu(GPU_STOP, GPU_UNIT_VP, 0, 0, 0);
+			marshal_sched_gpu_stop(GPU_UNIT_VP, 0);
 		} else if (component >= EVENT_CHANNEL_FP0 && component <= EVENT_CHANNEL_FP7) {
-			marshal_sched_gpu(GPU_STOP, GPU_UNIT_FP, component - EVENT_CHANNEL_FP0, 0, 0);
+			marshal_sched_gpu_stop(GPU_UNIT_FP, component - EVENT_CHANNEL_FP0);
 		}
 		break;
 
@@ -118,11 +116,10 @@ GATOR_DEFINE_PROBE(mali_timeline_event, TP_PROTO(unsigned int event_id, unsigned
 #if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_T6xx)
 GATOR_DEFINE_PROBE(mali_job_slots_event, TP_PROTO(unsigned int event_id, unsigned int tgid, unsigned int pid))
 {
-	unsigned int component, state, type, unit = 0;
+	unsigned int component, state, unit;
 
 	component = (event_id >> 16) & 0xFF; // component is an 8-bit field
 	state = (event_id >> 24) & 0xF;      // state is a 4-bit field
-	type = (state == EVENT_TYPE_START) ? GPU_START : GPU_STOP;
 
 	switch (component)
 	{
@@ -135,23 +132,37 @@ GATOR_DEFINE_PROBE(mali_job_slots_event, TP_PROTO(unsigned int event_id, unsigne
 	case 2:
 		unit = GPU_UNIT_CL;
 		break;
+	default:
+		unit = GPU_UNIT_NONE;
 	}
 
-	if (unit != 0)
+	if (unit != GPU_UNIT_NONE)
 	{
-		marshal_sched_gpu(type, unit, 0, tgid, (pid != 0 ? pid : tgid));
+		switch(state) {
+		case EVENT_TYPE_START:
+			marshal_sched_gpu_start(unit, 0, tgid, (pid != 0 ? pid : tgid));
+			break;
+		case EVENT_TYPE_STOP:
+			marshal_sched_gpu_stop(unit, 0);
+			break;
+		default:
+			/*
+			 * Some jobs can be soft-stopped, so ensure that this terminates the activity trace.
+			 */
+			marshal_sched_gpu_stop(unit, 0);
+		}
 	}
 }
 #endif
 
 GATOR_DEFINE_PROBE(gpu_activity_start, TP_PROTO(int gpu_unit, int gpu_core, struct task_struct *p))
 {
-	marshal_sched_gpu(GPU_START, gpu_unit, gpu_core, (int)p->tgid, (int)p->pid);
+	marshal_sched_gpu_start(gpu_unit, gpu_core, (int)p->tgid, (int)p->pid);
 }
 
 GATOR_DEFINE_PROBE(gpu_activity_stop, TP_PROTO(int gpu_unit, int gpu_core))
 {
-	marshal_sched_gpu(GPU_STOP, gpu_unit, gpu_core, 0, 0);
+	marshal_sched_gpu_stop(gpu_unit, gpu_core);
 }
 
 int gator_trace_gpu_start(void)

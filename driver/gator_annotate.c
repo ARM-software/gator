@@ -38,25 +38,33 @@ static int annotate_copy(struct file *file, char const __user *buf, size_t count
 
 static ssize_t annotate_write(struct file *file, char const __user *buf, size_t count_orig, loff_t *offset)
 {
-	int tid, cpu, header_size, available, contiguous, length1, length2, size, count = count_orig & 0x7fffffff;
+	int pid, cpu, header_size, available, contiguous, length1, length2, size, count = count_orig & 0x7fffffff;
 
-	if (*offset)
+	if (*offset) {
 		return -EINVAL;
+	}
 
-	if (!collect_annotations)
+	// Annotation is not supported in interrupt context
+	if (in_interrupt()) {
+		return -EINVAL;
+	}
+
+    // synchronize between cores and with collect_annotations
+	spin_lock(&annotate_lock);
+
+    if (!collect_annotations) {
 		// Not collecting annotations, tell the caller everything was written
-		return count_orig;
+		size = count_orig;
+        goto annotate_write_out;
+	}
 
 	cpu = 0; // Annotation only uses a single per-cpu buffer as the data must be in order to the engine
 
-	if (file == NULL) {
-		tid = -1; // set the thread id to the kernel thread
+	if (current == NULL) {
+		pid = 0;
 	} else {
-		tid = current->pid;
+		pid = current->pid;
 	}
-
-	// synchronize between cores
-	spin_lock(&annotate_lock);
 
 	// determine total size of the payload
 	header_size = MAXSIZE_PACK32 * 3 + MAXSIZE_PACK64;
@@ -71,9 +79,9 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 	}
 
 	// synchronize shared variables annotateBuf and annotatePos
-	if (collect_annotations && per_cpu(gator_buffer, cpu)[ANNOTATE_BUF]) {
+	if (per_cpu(gator_buffer, cpu)[ANNOTATE_BUF]) {
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, smp_processor_id());
-		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, tid);
+		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, pid);
 		gator_buffer_write_packed_int64(cpu, ANNOTATE_BUF, gator_get_time());
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, size);
 
@@ -118,9 +126,9 @@ static int annotate_release(struct inode *inode, struct file *file)
 	spin_lock(&annotate_lock);
 
 	if (per_cpu(gator_buffer, cpu)[ANNOTATE_BUF] && buffer_check_space(cpu, ANNOTATE_BUF, MAXSIZE_PACK64 + 3 * MAXSIZE_PACK32)) {
-		uint32_t tid = current->pid;
+		uint32_t pid = current->pid;
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, smp_processor_id());
-		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, tid);
+		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, pid);
 		gator_buffer_write_packed_int64(cpu, ANNOTATE_BUF, 0); // time
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, 0);   // size
 	}
@@ -148,5 +156,8 @@ static int gator_annotate_start(void)
 
 static void gator_annotate_stop(void)
 {
+    // the spinlock here will ensure that when this function exits, we are not in the middle of an annotation
+    spin_lock(&annotate_lock);
 	collect_annotations = false;
+    spin_unlock(&annotate_lock);
 }

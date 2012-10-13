@@ -1,12 +1,5 @@
-  <counter_set name="ARM_Cortex-A15_cntX">
-    <counter name="ARM_Cortex-A15_cnt0"/>
-    <counter name="ARM_Cortex-A15_cnt1"/>
-    <counter name="ARM_Cortex-A15_cnt2"/>
-    <counter name="ARM_Cortex-A15_cnt3"/>
-    <counter name="ARM_Cortex-A15_cnt4"/>
-    <counter name="ARM_Cortex-A15_cnt5"/>
-  </counter_set>
-  <category name="Cortex-A15" counter_set="ARM_Cortex-A15_cntX" per_cpu="yes" event_based_sampling="yes">
+  <counter_set name="ARM_Cortex-A15_cnt" count="6"/>
+  <category name="Cortex-A15" counter_set="ARM_Cortex-A15_cnt" per_cpu="yes" supports_event_based_sampling="yes">
     <event counter="ARM_Cortex-A15_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Software increment architecturally executed"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
@@ -19,7 +12,6 @@
     <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed"/>
     <event event="0x0b" title="Instruction" name="CONTEXTIDR" description="Instruction that writes to the CONTEXTIDR architecturally executed"/>
     <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
-    <event event="0x11" title="Cycle" name="Cycle" description=""/>
     <event event="0x12" title="Branch" name="Potential prediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
     <event event="0x13" title="Memory" name="Memory access" description="Data memory access"/>
     <event event="0x14" title="Cache" name="L1 inst access" description="Instruction cache access"/>

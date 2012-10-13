@@ -202,7 +202,10 @@ void Collector::stop() {
 
 int Collector::collect(char* buffer) {
 	// Calls event_buffer_read in the driver
-	int bytesRead = read(mBufferFD, buffer, mBufferSize);
+	int bytesRead;
+
+	errno = 0;
+	bytesRead = read(mBufferFD, buffer, mBufferSize);
 
 	// If read() returned due to an interrupt signal, re-read to obtain the last bit of collected data
 	if (bytesRead == -1 && errno == EINTR) {

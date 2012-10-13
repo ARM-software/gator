@@ -1,10 +1,5 @@
-  <counter_set name="Scorpion_cntX">
-    <counter name="Scorpion_cnt0"/>
-    <counter name="Scorpion_cnt1"/>
-    <counter name="Scorpion_cnt2"/>
-    <counter name="Scorpion_cnt3"/>
-  </counter_set>
-  <category name="Scorpion" counter_set="Scorpion_cntX" per_cpu="yes">
+  <counter_set name="Scorpion_cnt" count="4"/>
+  <category name="Scorpion" counter_set="Scorpion_cnt" per_cpu="yes" supports_event_based_sampling="yes">
     <event counter="Scorpion_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>

@@ -7,7 +7,7 @@
  *
  */
 
-static unsigned long gator_protocol_version = 10;
+static unsigned long gator_protocol_version = 11;
 
 #include <linux/slab.h>
 #include <linux/cpu.h>
@@ -57,41 +57,65 @@ static unsigned long gator_protocol_version = 10;
 /******************************************************************************
  * DEFINES
  ******************************************************************************/
-#define BACKTRACE_BUFFER_SIZE    (128*1024)
-#define COUNTER_BUFFER_SIZE      (128*1024)
-#define ANNOTATE_BUFFER_SIZE     (64*1024) // annotate  counters have the core as part of the data and the core value in the frame header may be discarded
-#define SCHED_TRACE_BUFFER_SIZE  (128*1024)
-#define GPU_TRACE_BUFFER_SIZE    (64*1024)
-#define COUNTER2_BUFFER_SIZE     (64*1024) // counters2 counters have the core as part of the data and the core value in the frame header may be discarded
-#define WFI_BUFFER_SIZE          (32*1024) // wfi       counters have the core as part of the data and the core value in the frame header may be discarded
+#define SUMMARY_BUFFER_SIZE       (1*1024)
+#define BACKTRACE_BUFFER_SIZE     (128*1024)
+#define NAME_BUFFER_SIZE          (64*1024)
+#define COUNTER_BUFFER_SIZE       (64*1024) // counters have the core as part of the data and the core value in the frame header may be discarded
+#define BLOCK_COUNTER_BUFFER_SIZE (128*1024)
+#define ANNOTATE_BUFFER_SIZE      (64*1024) // annotate counters have the core as part of the data and the core value in the frame header may be discarded
+#define SCHED_TRACE_BUFFER_SIZE   (128*1024)
+#define GPU_TRACE_BUFFER_SIZE     (64*1024) // gpu trace counters have the core as part of the data and the core value in the frame header may be discarded
+#define IDLE_BUFFER_SIZE          (32*1024) // idle counters have the core as part of the data and the core value in the frame header may be discarded
 
-#define NO_COOKIE				0UL
-#define INVALID_COOKIE			~0UL
+#define NO_COOKIE      0U
+#define INVALID_COOKIE ~0U
 
-#define FRAME_BACKTRACE     1
-#define FRAME_COUNTER       2
-#define FRAME_ANNOTATE      3
-#define FRAME_SCHED_TRACE   4
-#define FRAME_GPU_TRACE     5
-#define FRAME_COUNTER2      6
-#define FRAME_WFI           7
+#define FRAME_SUMMARY       1
+#define FRAME_BACKTRACE     2
+#define FRAME_NAME          3
+#define FRAME_COUNTER       4
+#define FRAME_BLOCK_COUNTER 5
+#define FRAME_ANNOTATE      6
+#define FRAME_SCHED_TRACE   7
+#define FRAME_GPU_TRACE     8
+#define FRAME_IDLE          9
 
-#define MESSAGE_COOKIE              1
-#define MESSAGE_START_BACKTRACE     5
-#define MESSAGE_END_BACKTRACE       7
-#define MESSAGE_SUMMARY             9
-#define MESSAGE_PID_NAME            11
+#define MESSAGE_END_BACKTRACE 1
 
-#define MAXSIZE_PACK32		5
-#define MAXSIZE_PACK64		9
+#define MESSAGE_COOKIE      1
+#define MESSAGE_THREAD_NAME 2
+#define HRTIMER_CORE_NAME   3
+
+#define MESSAGE_GPU_START 1
+#define MESSAGE_GPU_STOP  2
+
+#define MESSAGE_SCHED_SWITCH 1
+#define MESSAGE_SCHED_EXIT   2
+
+#define MAXSIZE_PACK32     5
+#define MAXSIZE_PACK64    10
+#define MAXSIZE_CORE_NAME 32
 
 #if defined(__arm__)
 #define PC_REG regs->ARM_pc
+#elif defined(__aarch64__)
+#define PC_REG regs->pc
 #else
 #define PC_REG regs->ip
 #endif
 
-enum {BACKTRACE_BUF, COUNTER_BUF, SCHED_TRACE_BUF, GPU_TRACE_BUF, ANNOTATE_BUF, COUNTER2_BUF, WFI_BUF, NUM_GATOR_BUFS};
+enum {
+	SUMMARY_BUF,
+	BACKTRACE_BUF,
+	NAME_BUF,
+	COUNTER_BUF,
+	BLOCK_COUNTER_BUF,
+	ANNOTATE_BUF,
+	SCHED_TRACE_BUF,
+	GPU_TRACE_BUF,
+	IDLE_BUF,
+	NUM_GATOR_BUFS
+};
 
 /******************************************************************************
  * Globals
@@ -101,16 +125,12 @@ static unsigned long userspace_buffer_size;
 static unsigned long gator_backtrace_depth;
 
 static unsigned long gator_started;
+static uint64_t monotonic_started;
 static unsigned long gator_buffer_opened;
 static unsigned long gator_timer_count;
 static unsigned long gator_response_type;
 static DEFINE_MUTEX(start_mutex);
 static DEFINE_MUTEX(gator_buffer_mutex);
-
-bool event_based_sampling;
-#if defined(__arm__) && (GATOR_PERF_PMU_SUPPORT)
-DEFINE_PER_CPU(struct perf_event *, pevent_ebs);
-#endif
 
 static DECLARE_WAIT_QUEUE_HEAD(gator_buffer_wait);
 static struct timer_list gator_buffer_wake_up_timer;
@@ -125,10 +145,10 @@ static bool buffer_check_space(int cpu, int buftype, int bytes);
 static int contiguous_space_available(int cpu, int bufytpe);
 static void gator_buffer_write_packed_int(int cpu, int buftype, unsigned int x);
 static void gator_buffer_write_packed_int64(int cpu, int buftype, unsigned long long x);
-static void gator_buffer_write_bytes(int cpu, int buftype, char *x, int len);
-static void gator_buffer_write_string(int cpu, int buftype, char *x);
-static void gator_add_trace(int cpu, int buftype, unsigned int address);
-static void gator_add_sample(int cpu, int buftype, struct pt_regs * const regs);
+static void gator_buffer_write_bytes(int cpu, int buftype, const char *x, int len);
+static void gator_buffer_write_string(int cpu, int buftype, const char *x);
+static void gator_add_trace(int cpu, unsigned long address);
+static void gator_add_sample(int cpu, struct pt_regs * const regs);
 static uint64_t gator_get_time(void);
 
 static uint32_t gator_buffer_size[NUM_GATOR_BUFS];
@@ -152,17 +172,20 @@ static DEFINE_PER_CPU(char *[NUM_GATOR_BUFS], gator_buffer);
 #include "gator_backtrace.c"
 #include "gator_annotate.c"
 #include "gator_fs.c"
-#include "gator_ebs.c"
 #include "gator_pack.c"
 
 /******************************************************************************
  * Misc
  ******************************************************************************/
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 u32 gator_cpuid(void)
 {
 	u32 val;
+#if !defined(__aarch64__)
 	asm volatile("mrc p15, 0, %0, c0, c0, 0" : "=r" (val));
+#else
+	asm volatile("mrs %0, midr_el1" : "=r" (val));
+#endif
 	return (val >> 4) & 0xfff;
 }
 #endif
@@ -237,7 +260,7 @@ static bool buffer_check_space(int cpu, int buftype, int bytes)
 	return per_cpu(buffer_space_available, cpu)[buftype];
 }
 
-static void gator_buffer_write_bytes(int cpu, int buftype, char *x, int len)
+static void gator_buffer_write_bytes(int cpu, int buftype, const char *x, int len)
 {
 	int i;
 	u32 write = per_cpu(gator_buffer_write, cpu)[buftype];
@@ -252,7 +275,7 @@ static void gator_buffer_write_bytes(int cpu, int buftype, char *x, int len)
 	per_cpu(gator_buffer_write, cpu)[buftype] = write;
 }
 
-static void gator_buffer_write_string(int cpu, int buftype, char *x)
+static void gator_buffer_write_string(int cpu, int buftype, const char *x)
 {
 	int len = strlen(x);
 	gator_buffer_write_packed_int(cpu, buftype, len);
@@ -263,22 +286,38 @@ static void gator_buffer_header(int cpu, int buftype)
 {
 	int frame;
 
-	if (buftype == BACKTRACE_BUF)
+	switch (buftype) {
+	case SUMMARY_BUF:
+		frame = FRAME_SUMMARY;
+		break;
+	case BACKTRACE_BUF:
 		frame = FRAME_BACKTRACE;
-	else if (buftype == COUNTER_BUF)
+		break;
+	case NAME_BUF:
+		frame = FRAME_NAME;
+		break;
+	case COUNTER_BUF:
 		frame = FRAME_COUNTER;
-	else if (buftype == ANNOTATE_BUF)
+		break;
+	case BLOCK_COUNTER_BUF:
+		frame = FRAME_BLOCK_COUNTER;
+		break;
+	case ANNOTATE_BUF:
 		frame = FRAME_ANNOTATE;
-	else if (buftype == SCHED_TRACE_BUF)
+		break;
+	case SCHED_TRACE_BUF:
 		frame = FRAME_SCHED_TRACE;
-	else if (buftype == GPU_TRACE_BUF)
+		break;
+	case GPU_TRACE_BUF:
 		frame = FRAME_GPU_TRACE;
-	else if (buftype == COUNTER2_BUF)
-		frame = FRAME_COUNTER2;
-	else if (buftype == WFI_BUF)
-		frame = FRAME_WFI;
-	else
+		break;
+	case IDLE_BUF:
+		frame = FRAME_IDLE;
+		break;
+	default:
 		frame = -1;
+		break;
+	}
 
 	if (per_cpu(gator_buffer, cpu)[buftype]) {
 		marshal_frame(cpu, buftype, frame);
@@ -308,10 +347,10 @@ static void buffer_check(int cpu, int buftype)
 	}
 }
 
-static void gator_add_trace(int cpu, int buftype, unsigned int address)
+static void gator_add_trace(int cpu, unsigned long address)
 {
 	off_t offset = 0;
-	unsigned long cookie = get_address_cookie(cpu, buftype, current, address & ~1, &offset);
+	unsigned long cookie = get_address_cookie(cpu, current, address & ~1, &offset);
 
 	if (cookie == NO_COOKIE || cookie == INVALID_COOKIE) {
 		offset = address;
@@ -320,26 +359,29 @@ static void gator_add_trace(int cpu, int buftype, unsigned int address)
 	marshal_backtrace(offset & ~1, cookie);
 }
 
-static void gator_add_sample(int cpu, int buftype, struct pt_regs * const regs)
+static void gator_add_sample(int cpu, struct pt_regs * const regs)
 {
-	int inKernel = regs ? !user_mode(regs) : 1;
-	unsigned long exec_cookie = inKernel ? NO_COOKIE : get_exec_cookie(cpu, buftype, current);
+	bool inKernel;
+	unsigned long exec_cookie;
 
 	if (!regs)
 		return;
+
+	inKernel = !user_mode(regs);
+	exec_cookie = get_exec_cookie(cpu, current);
 
 	if (!marshal_backtrace_header(exec_cookie, current->tgid, current->pid, inKernel))
 		return;
 
 	if (inKernel) {
-		kernel_backtrace(cpu, buftype, regs);
+		kernel_backtrace(cpu, regs);
 	} else {
 		// Cookie+PC
-		gator_add_trace(cpu, buftype, PC_REG);
+		gator_add_trace(cpu, PC_REG);
 
 		// Backtrace
 		if (gator_backtrace_depth)
-			arm_backtrace_eabi(cpu, buftype, regs, gator_backtrace_depth);
+			arm_backtrace_eabi(cpu, regs, gator_backtrace_depth);
 	}
 
 	marshal_backtrace_footer();
@@ -351,13 +393,20 @@ static void gator_add_sample(int cpu, int buftype, struct pt_regs * const regs)
 static void gator_timer_interrupt(void)
 {
 	struct pt_regs * const regs = get_irq_regs();
+	gator_backtrace_handler(regs);
+}
+
+void gator_backtrace_handler(struct pt_regs * const regs)
+{
 	int cpu = smp_processor_id();
 
 	// Output backtrace
-	gator_add_sample(cpu, BACKTRACE_BUF, regs);
+	gator_add_sample(cpu, regs);
 
 	// Collect counters
-	collect_counters();
+	if (!per_cpu(collecting, cpu)) {
+		collect_counters();
+	}
 }
 
 static int gator_running;
@@ -397,8 +446,6 @@ static void gator_timer_offline_dispatch(int cpu)
 	list_for_each_entry(gi, &gator_events, list)
 		if (gi->offline_dispatch)
 			gi->offline_dispatch(cpu);
-
-	gator_event_sampling_offline_dispatch(cpu);
 }
 
 static void gator_timer_stop(void)
@@ -436,6 +483,32 @@ static void gator_timer_online(void* unused)
 	}
 
 	gator_hrtimer_online(cpu);
+#if defined(__arm__) || defined(__aarch64__)
+	{
+		const char * core_name = NULL;
+
+		// String lengths must be less than MAXSIZE_CORE_NAME
+		switch (gator_cpuid()) {
+		case ARM1136: core_name = "ARM1136"; break;
+		case ARM1156: core_name = "ARM1156"; break;
+		case ARM1176: core_name = "ARM1176"; break;
+		case ARM11MPCORE: core_name = "ARM11MPCore"; break;
+		case CORTEX_A5: core_name = "Cortex-A5"; break;
+		case CORTEX_A7: core_name = "Cortex-A7"; break;
+		case CORTEX_A8: core_name = "Cortex-A8"; break;
+		case CORTEX_A9: core_name = "Cortex-A9"; break;
+		case CORTEX_A15: core_name = "Cortex-A15"; break;
+		case SCORPION: core_name = "Scorpion"; break;
+		case SCORPIONMP: core_name = "ScorpionMP"; break;
+		case KRAITSIM: core_name = "KraitSIM"; break;
+		case KRAIT: core_name = "Krait"; break;
+		case AARCH64: core_name = "AArch64"; break;
+		default: core_name = "Unknown"; break;
+		}
+
+		marshal_core_name(core_name);
+	}
+#endif
 }
 
 // This function runs in interrupt context and may be running on a core other than core 'cpu'
@@ -446,8 +519,6 @@ static void gator_timer_online_dispatch(int cpu)
 	list_for_each_entry(gi, &gator_events, list)
 		if (gi->online_dispatch)
 			gi->online_dispatch(cpu);
-
-	gator_event_sampling_online_dispatch(cpu);
 }
 
 int gator_timer_start(unsigned long sample_rate)
@@ -460,10 +531,6 @@ int gator_timer_start(unsigned long sample_rate)
 	}
 
 	gator_running = 1;
-
-	// event based sampling trumps hr timer based sampling
-	if (event_based_sampling)
-		sample_rate = 0;
 
 	if (gator_hrtimer_init(sample_rate, gator_timer_interrupt) == -1)
 		return -1;
@@ -481,8 +548,9 @@ static uint64_t gator_get_time(void)
 	struct timespec ts;
 	uint64_t timestamp;
 
-	getnstimeofday(&ts);
-	timestamp = timespec_to_ns(&ts);
+	//getnstimeofday(&ts);
+	do_posix_clock_monotonic_gettime(&ts);
+	timestamp = timespec_to_ns(&ts) - monotonic_started;
 
 	return timestamp;
 }
@@ -568,20 +636,15 @@ static void gator_notifier_stop(void)
  ******************************************************************************/
 static void gator_summary(void)
 {
-	uint64_t timestamp, uptime = 0;
+	uint64_t timestamp;
 	struct timespec uptime_ts;
-	void (*m2b)(struct timespec *ts);
 
 	timestamp = gator_get_time();
 
 	do_posix_clock_monotonic_gettime(&uptime_ts);
-	m2b = symbol_get(monotonic_to_bootbased);
-	if (m2b) {
-		m2b(&uptime_ts);
-		uptime = (long long)uptime_ts.tv_sec * 1000000000 + uptime_ts.tv_nsec;
-	}
+	monotonic_started = timespec_to_ns(&uptime_ts);
 
-	marshal_summary(timestamp, uptime);
+	marshal_summary(timestamp, monotonic_started);
 }
 
 int gator_events_install(struct gator_interface *interface)
@@ -656,8 +719,6 @@ static int gator_start(void)
 		goto power_failure;
 	if (gator_trace_gpu_start())
 		goto gpu_failure;
-	if (gator_event_sampling_start())
-		goto event_sampling_failure;
 	if (gator_timer_start(gator_timer_count))
 		goto timer_failure;
 	if (gator_notifier_start())
@@ -668,8 +729,6 @@ static int gator_start(void)
 notifier_failure:
 	gator_timer_stop();
 timer_failure:
-	gator_event_sampling_stop();
-event_sampling_failure:
 	gator_trace_gpu_stop();
 gpu_failure:
 	gator_trace_power_stop();
@@ -697,7 +756,6 @@ static void gator_stop(void)
 	gator_trace_sched_stop();
 	gator_trace_power_stop();
 	gator_trace_gpu_stop();
-	gator_event_sampling_stop();
 
 	// stop all interrupt callback reads before tearing down other interfaces
 	gator_notifier_stop(); // should be called before gator_timer_stop to avoid re-enabling the hrtimer after it has been offlined
@@ -720,11 +778,23 @@ static int gator_op_setup(void)
 
 	mutex_lock(&start_mutex);
 
+	gator_buffer_size[SUMMARY_BUF] = SUMMARY_BUFFER_SIZE;
+	gator_buffer_mask[SUMMARY_BUF] = SUMMARY_BUFFER_SIZE - 1;
+
 	gator_buffer_size[BACKTRACE_BUF] = BACKTRACE_BUFFER_SIZE;
 	gator_buffer_mask[BACKTRACE_BUF] = BACKTRACE_BUFFER_SIZE - 1;
 
+	gator_buffer_size[NAME_BUF] = NAME_BUFFER_SIZE;
+	gator_buffer_mask[NAME_BUF] = NAME_BUFFER_SIZE - 1;
+
 	gator_buffer_size[COUNTER_BUF] = COUNTER_BUFFER_SIZE;
 	gator_buffer_mask[COUNTER_BUF] = COUNTER_BUFFER_SIZE - 1;
+
+	gator_buffer_size[BLOCK_COUNTER_BUF] = BLOCK_COUNTER_BUFFER_SIZE;
+	gator_buffer_mask[BLOCK_COUNTER_BUF] = BLOCK_COUNTER_BUFFER_SIZE - 1;
+
+	gator_buffer_size[ANNOTATE_BUF] = ANNOTATE_BUFFER_SIZE;
+	gator_buffer_mask[ANNOTATE_BUF] = ANNOTATE_BUFFER_SIZE - 1;
 
 	gator_buffer_size[SCHED_TRACE_BUF] = SCHED_TRACE_BUFFER_SIZE;
 	gator_buffer_mask[SCHED_TRACE_BUF] = SCHED_TRACE_BUFFER_SIZE - 1;
@@ -732,14 +802,8 @@ static int gator_op_setup(void)
 	gator_buffer_size[GPU_TRACE_BUF] = GPU_TRACE_BUFFER_SIZE;
 	gator_buffer_mask[GPU_TRACE_BUF] = GPU_TRACE_BUFFER_SIZE - 1;
 
-	gator_buffer_size[ANNOTATE_BUF] = ANNOTATE_BUFFER_SIZE;
-	gator_buffer_mask[ANNOTATE_BUF] = ANNOTATE_BUFFER_SIZE - 1;
-
-	gator_buffer_size[COUNTER2_BUF] = COUNTER2_BUFFER_SIZE;
-	gator_buffer_mask[COUNTER2_BUF] = COUNTER2_BUFFER_SIZE - 1;
-
-	gator_buffer_size[WFI_BUF] = WFI_BUFFER_SIZE;
-	gator_buffer_mask[WFI_BUF] = WFI_BUFFER_SIZE - 1;
+	gator_buffer_size[IDLE_BUF] = IDLE_BUFFER_SIZE;
+	gator_buffer_mask[IDLE_BUF] = IDLE_BUFFER_SIZE - 1;
 
 	// Initialize percpu per buffer variables
 	for (i = 0; i < NUM_GATOR_BUFS; i++) {
@@ -1047,8 +1111,8 @@ void gator_op_create_files(struct super_block *sb, struct dentry *root)
 	gatorfs_create_file(sb, root, "enable", &enable_fops);
 	gatorfs_create_file(sb, root, "buffer", &gator_event_buffer_fops);
 	gatorfs_create_file(sb, root, "backtrace_depth", &depth_fops);
-	gatorfs_create_ulong(sb, root, "cpu_cores", &gator_cpu_cores);
-	gatorfs_create_ulong(sb, root, "buffer_size", &userspace_buffer_size);
+	gatorfs_create_ro_ulong(sb, root, "cpu_cores", &gator_cpu_cores);
+	gatorfs_create_ro_ulong(sb, root, "buffer_size", &userspace_buffer_size);
 	gatorfs_create_ulong(sb, root, "tick", &gator_timer_count);
 	gatorfs_create_ulong(sb, root, "response_type", &gator_response_type);
 	gatorfs_create_ro_ulong(sb, root, "version", &gator_protocol_version);

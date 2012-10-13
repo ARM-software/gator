@@ -19,21 +19,13 @@ static const char*	TAG_SESSION = "session";
 static const char*	TAG_IMAGE	= "image";
 
 static const char*	ATTR_VERSION            = "version";		
-static const char*	ATTR_TITLE              = "title";
-static const char*	ATTR_UUID               = "uuid";
 static const char*	ATTR_CALL_STACK_UNWINDING = "call_stack_unwinding";
 static const char*	ATTR_BUFFER_MODE        = "buffer_mode";
 static const char*	ATTR_SAMPLE_RATE        = "sample_rate";	
-static const char*	ATTR_TARGET_PATH        = "target_path";
-static const char*	ATTR_OUTPUT_PATH        = "output_path";
 static const char*	ATTR_DURATION           = "duration";
 static const char*	ATTR_PATH               = "path";
 
 SessionXML::SessionXML(const char* str) {
-	parameters.title = 0;
-	parameters.uuid[0] = 0;
-	parameters.target_path = 0;
-	parameters.output_path = 0;
 	parameters.buffer_mode[0] = 0;
 	parameters.sample_rate[0] = 0;
 	parameters.duration = 0;
@@ -75,34 +67,7 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node) {
 		handleException();
 	}
 
-	// allocate strings
-	if (mxmlElementGetAttr(node, ATTR_TITLE)) {
-		parameters.title = strdup(mxmlElementGetAttr(node, ATTR_TITLE)); // freed when the child process exits
-		if (parameters.title == NULL) {
-			logg->logError(__FILE__, __LINE__, "failed to allocate parameters.title");
-			handleException();
-		}
-	}
-	if (mxmlElementGetAttr(node, ATTR_TARGET_PATH)) {
-		parameters.target_path = strdup(mxmlElementGetAttr(node, ATTR_TARGET_PATH)); // freed when the child process exits
-		if (parameters.target_path == NULL) {
-			logg->logError(__FILE__, __LINE__, "failed to allocate parameters.target_path");
-			handleException();
-		}
-	}
-	if (mxmlElementGetAttr(node, ATTR_OUTPUT_PATH)) {
-		parameters.output_path = strdup(mxmlElementGetAttr(node, ATTR_OUTPUT_PATH)); // freed when the child process exits
-		if (parameters.output_path == NULL) {
-			logg->logError(__FILE__, __LINE__, "failed to allocate parameters.output_path");
-			handleException();
-		}
-	}
-
 	// copy to pre-allocated strings
-	if (mxmlElementGetAttr(node, ATTR_UUID)) {
-		strncpy(parameters.uuid, mxmlElementGetAttr(node, ATTR_UUID), sizeof(parameters.uuid));
-		parameters.uuid[sizeof(parameters.uuid) - 1] = 0; // strncpy does not guarantee a null-terminated string
-	}
 	if (mxmlElementGetAttr(node, ATTR_BUFFER_MODE)) {
 		strncpy(parameters.buffer_mode, mxmlElementGetAttr(node, ATTR_BUFFER_MODE), sizeof(parameters.buffer_mode));
 		parameters.buffer_mode[sizeof(parameters.buffer_mode) - 1] = 0; // strncpy does not guarantee a null-terminated string

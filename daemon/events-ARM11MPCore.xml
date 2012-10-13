@@ -1,9 +1,5 @@
-  <counter_set name="ARM_ARM11MPCore_cntX">
-    <counter name="ARM_ARM11MPCore_cnt0"/>
-    <counter name="ARM_ARM11MPCore_cnt1"/>
-    <counter name="ARM_ARM11MPCore_cnt2"/>
-  </counter_set>
-  <category name="ARM11MPCore" counter_set="ARM_ARM11MPCore_cntX" per_cpu="yes">
+  <counter_set name="ARM_ARM11MPCore_cnt" count="3"/>
+  <category name="ARM11MPCore" counter_set="ARM_ARM11MPCore_cnt" per_cpu="yes">
     <event counter="ARM_ARM11MPCore_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Cache" name="Inst miss" description="Instruction cache miss to a cacheable location, which requires a fetch from external memory"/>
     <event event="0x01" title="Pipeline" name="Instruction stall" description="Stall because instruction buffer cannot deliver an instruction"/>

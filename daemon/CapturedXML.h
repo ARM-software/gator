@@ -16,10 +16,10 @@ class CapturedXML {
 public:
 	CapturedXML();
 	~CapturedXML();
-	char* getXML(); // the string should be freed by the caller
+	char* getXML(bool includeTime); // the string should be freed by the caller
 	void write(char* path);
 private:
-	mxml_node_t* getTree();
+	mxml_node_t* getTree(bool includeTime);
 };
 
 #endif 	//__CAPTURED_XML_H__

@@ -1,10 +1,5 @@
-  <counter_set name="Krait_cntX">
-    <counter name="Krait_cnt0"/>
-    <counter name="Krait_cnt1"/>
-    <counter name="Krait_cnt2"/>
-    <counter name="Krait_cnt3"/>
-  </counter_set>
-  <category name="Krait" counter_set="Krait_cntX" per_cpu="yes">
+  <counter_set name="Krait_cnt" count="4"/>
+  <category name="Krait" counter_set="Krait_cnt" per_cpu="yes" supports_event_based_sampling="yes">
     <event counter="Krait_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>

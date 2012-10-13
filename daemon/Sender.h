@@ -14,7 +14,6 @@
 #include "OlySocket.h"
 
 enum {
-	RESPONSE_END = 0, // unused
 	RESPONSE_XML = 1,
 	RESPONSE_APC_DATA = 3,
 	RESPONSE_ACK = 4,

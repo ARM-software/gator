@@ -13,10 +13,6 @@
 #include "SessionData.h"
 
 struct ConfigParameters {
-	char* title;		// status title
-	char uuid[64];		// universal unique identifier 
-	char* target_path;	// target path of where to write to disk
-	char* output_path;	// host path of where to write to disk
 	char buffer_mode[64];	// buffer mode, "streaming", "low", "normal", "high" defines oneshot and buffer size
 	char sample_rate[64];	// capture mode, "high", "normal", or "low"
 	int duration;		// length of profile in seconds

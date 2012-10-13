@@ -20,19 +20,20 @@
 #define GATOR_CPU_FREQ_SUPPORT  (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) && defined(CONFIG_CPU_FREQ)
 
 // cpu ids
-#define ARM1136		0xb36
-#define ARM1156		0xb56
-#define ARM1176		0xb76
+#define ARM1136     0xb36
+#define ARM1156     0xb56
+#define ARM1176     0xb76
 #define ARM11MPCORE 0xb02
-#define CORTEX_A5	0xc05
-#define CORTEX_A7	0xc07
-#define CORTEX_A8	0xc08
-#define CORTEX_A9	0xc09
-#define CORTEX_A15	0xc0f
-#define SCORPION	0x00f
-#define SCORPIONMP	0x02d
-#define KRAITSIM	0x049
+#define CORTEX_A5   0xc05
+#define CORTEX_A7   0xc07
+#define CORTEX_A8   0xc08
+#define CORTEX_A9   0xc09
+#define CORTEX_A15  0xc0f
+#define SCORPION    0x00f
+#define SCORPIONMP  0x02d
+#define KRAITSIM    0x049
 #define KRAIT       0x04d
+#define AARCH64     0xd0f
 
 /******************************************************************************
  * Filesystem
@@ -96,5 +97,7 @@ struct gator_interface {
 int gator_events_install(struct gator_interface *interface);
 int gator_events_get_key(void);
 extern u32 gator_cpuid(void);
+
+void gator_backtrace_handler(struct pt_regs * const regs);
 
 #endif // GATOR_H_

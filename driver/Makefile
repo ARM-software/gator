@@ -27,6 +27,10 @@ gator-y +=	gator_events_mali_common.o
 EXTRA_CFLAGS +=	-DMALI_SUPPORT=$(GATOR_WITH_MALI_SUPPORT)
 endif
 
+# GATOR_TEST controls whether to include (=1) or exclude (=0) test code. 
+GATOR_TEST ?= 0
+EXTRA_CFLAGS +=	-DGATOR_TEST=$(GATOR_TEST)
+
 gator-$(CONFIG_ARM) +=	gator_events_armv6.o \
 			gator_events_armv7.o \
 			gator_events_l2c-310.o \

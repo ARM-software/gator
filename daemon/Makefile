@@ -3,7 +3,11 @@
 #
 
 # Uncomment and define CROSS_COMPILE if it is not already defined
-# CROSS_COMPILE=/path/to/cross-compiler/arm-none-linux-gnueabi-
+# CROSS_COMPILE=/path/to/cross-compiler/arm-linux-gnueabihf-
+# NOTE: This toolchain uses the hardfloat abi by default. For non-hardfloat
+# targets it is necessary to add options
+# '-marm -march=armv4t -mfloat-abi=soft'.
+
 ARCH=arm
 
 CPP=$(CROSS_COMPILE)g++
@@ -17,7 +21,10 @@ GCC=$(CROSS_COMPILE)gcc
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
 # -mthumb-interwork is required for interworking to ARM or Thumb stdlibc
-CFLAGS=-O3 -Wall -Werror -Wno-error=sequence-point -mthumb-interwork
+CFLAGS=-O3 -Wall -mthumb-interwork
+ifeq ($(WERROR),1)
+	CFLAGS += -Werror
+endif
 # -s strips the binary of debug info
 LDFLAGS=-s
 TARGET=gatord

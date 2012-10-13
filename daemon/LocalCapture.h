@@ -17,10 +17,9 @@ public:
 	~LocalCapture();
 	void write(char* string);
 	void copyImages(ImageLinkList* ptr);
-	void createAPCDirectory(char* target_path, char* name);
+	void createAPCDirectory(char* target_path);
 private:
-	char* createUniqueDirectory(const char* path, const char* ending, char* title);
-	void replaceAll(char* target, const char* find, const char* replace, unsigned int size);
+	char* createUniqueDirectory(const char* path, const char* ending);
 	int removeDirAndAllContents(char* path);
 };
 

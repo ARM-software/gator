@@ -17,6 +17,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "Child.h"
 #include "SessionData.h"
 #include "OlySocket.h"
@@ -114,6 +116,26 @@ int mountGatorFS() {
 	}
 }
 
+bool init_module (const char * const location) {
+	bool ret(false);
+	const int fd = open(location, O_RDONLY);
+	if (fd >= 0) {
+		struct stat st;
+		if (fstat(fd, &st) == 0) {
+			void * const p = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+			if (p != MAP_FAILED) {
+				if (syscall(__NR_init_module, p, st.st_size, "") == 0) {
+					ret = true;
+				}
+				munmap(p, st.st_size);
+			}
+		}
+		close(fd);
+	}
+
+	return ret;
+}
+
 int setupFilesystem(char* module) {
 	int retval;
 
@@ -162,11 +184,15 @@ int setupFilesystem(char* module) {
 		}
 
 		// Load driver
-		snprintf(command, sizeof(command), "insmod %s >/dev/null 2>&1", location);
-		if (system(command) != 0) {
-			logg->logMessage("Unable to load gator.ko driver with command: %s", command);
-			logg->logError(__FILE__, __LINE__, "Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
-			handleException();
+		bool success = init_module(location);
+		if (!success) {
+			logg->logMessage("init_module failed, trying insmod");
+			snprintf(command, sizeof(command), "insmod %s >/dev/null 2>&1", location);
+			if (system(command) != 0) {
+				logg->logMessage("Unable to load gator.ko driver with command: %s", command);
+				logg->logError(__FILE__, __LINE__, "Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
+				handleException();
+			}
 		}
 
 		if (mountGatorFS() == -1) {
@@ -183,8 +209,11 @@ int shutdownFilesystem() {
 		umount("/dev/gator");
 	}
 	if (driverRunningAtStart == false) {
-		if (system("rmmod gator >/dev/null 2>&1") != 0) {
-			return -1;
+		if (syscall(__NR_delete_module, "gator", O_NONBLOCK) != 0) {
+			logg->logMessage("delete_module failed, trying rmmod");
+			if (system("rmmod gator >/dev/null 2>&1") != 0) {
+				return -1;
+			}
 		}
 	}
 
@@ -205,7 +234,7 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 		snprintf(version_string, sizeof(version_string), "Streamline gatord development version %d", PROTOCOL_VERSION);
 	}
 
-	while ((c = getopt(argc, argv, "hvp:s:c:e:m:")) != -1) {
+	while ((c = getopt(argc, argv, "hvp:s:c:e:m:o:")) != -1) {
 		switch(c) {
 			case 'c':
 				gSessionData->mConfigurationXMLPath = optarg;
@@ -222,6 +251,9 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 			case 's':
 				gSessionData->mSessionXMLPath = optarg;
 				break;
+			case 'o':
+				gSessionData->mTargetPath = optarg;
+				break;
 			case 'h':
 			case '?':
 				logg->logError(__FILE__, __LINE__,
@@ -232,6 +264,7 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 					"-m module       path and filename of gator.ko\n"
 					"-p port_number  port upon which the server listens; default is 8080\n"
 					"-s session_xml  path and filename of a session xml used for local capture\n"
+					"-o apc_dir      path and name of the output for a local capture\n"
 					"-v              version information\n"
 					, version_string);
 				handleException();
@@ -249,6 +282,11 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 		handleException();
 	}
 
+	if (gSessionData->mTargetPath != NULL && gSessionData->mSessionXMLPath == NULL) {
+		logg->logError(__FILE__, __LINE__, "Missing -s command line option required for a local capture.");
+		handleException();
+	}
+
 	if (optind < argc) {
 		logg->logError(__FILE__, __LINE__, "Unknown argument: %s. Use '-h' for help.", argv[optind]);
 		handleException();
@@ -259,6 +297,7 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char** argv, char* envp[]) {
+	setsid();
 	gSessionData = new SessionData(); // Global data class
 	logg = new Logging(DEBUG);  // Set up global thread-safe logging
 	util = new OlyUtility();	// Set up global utility class

@@ -17,6 +17,7 @@
 #define TASK_MAX_COLLISIONS		2
 
 static DEFINE_PER_CPU(uint64_t *, taskname_keys);
+static DEFINE_PER_CPU(int, collecting);
 
 enum {
 	STATE_WAIT_ON_OTHER = 0,
@@ -59,7 +60,7 @@ void emit_pid_name(struct task_struct* task)
 			strcat(taskcomm, "...");
 		}
 
-		marshal_pid_name(task->pid, taskcomm);
+		marshal_thread_name(task->pid, taskcomm);
 	}
 }
 
@@ -87,12 +88,12 @@ static void probe_sched_write(int type, struct task_struct* task, struct task_st
 {
 	int cookie = 0, state = 0;
 	int cpu = smp_processor_id();
-	int pid = task->pid;
 	int tgid = task->tgid;
+	int pid = task->pid;
 
 	if (type == SCHED_SWITCH) {
 		// do as much work as possible before disabling interrupts
-		cookie = get_exec_cookie(cpu, BACKTRACE_BUF, task);
+		cookie = get_exec_cookie(cpu, task);
 		emit_pid_name(task);
 		if (old_task->state == TASK_RUNNING) {
 			state = STATE_CONTENTION;
@@ -106,18 +107,24 @@ static void probe_sched_write(int type, struct task_struct* task, struct task_st
 			state = STATE_WAIT_ON_OTHER;
 		}
 
+		per_cpu(collecting, cpu) = 1;
 		collect_counters();
+		per_cpu(collecting, cpu) = 0;
 	}
 
 	// marshal_sched_trace() disables interrupts as the free may trigger while switch is writing to the buffer; disabling preemption is not sufficient
 	// is disable interrupts necessary now that exit is used instead of free?
-	marshal_sched_trace(type, pid, tgid, cookie, state);
+	if (type == SCHED_SWITCH) {
+		marshal_sched_trace_switch(tgid, pid, cookie, state);
+	} else {
+		marshal_sched_trace_exit(tgid, pid);
+	}
 }
 
 // special case used during a suspend of the system
 static void trace_sched_insert_idle(void)
 {
-	marshal_sched_trace(SCHED_SWITCH, 0, 0, 0, 0);
+	marshal_sched_trace_switch(0, 0, 0, 0);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)

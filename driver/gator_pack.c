@@ -141,7 +141,7 @@ static void gator_buffer_write_packed_int64(int cpu, int buftype, unsigned long 
 		buffer[write6] = (x>>42) | 0x80;
 		buffer[write7] = (x>>49) & 0x7f;
 		per_cpu(gator_buffer_write, cpu)[buftype] = write8;
-	} else {
+	} else if ((x & 0x8000000000000000LL) == 0) {
 		int write2 = (write + 2) & mask;
 		int write3 = (write + 3) & mask;
 		int write4 = (write + 4) & mask;
@@ -158,7 +158,28 @@ static void gator_buffer_write_packed_int64(int cpu, int buftype, unsigned long 
 		buffer[write5] = (x>>35) | 0x80;
 		buffer[write6] = (x>>42) | 0x80;
 		buffer[write7] = (x>>49) | 0x80;
-		buffer[write8] = (x>>56) & 0xff;
+		buffer[write8] = (x>>56) & 0x7f;
 		per_cpu(gator_buffer_write, cpu)[buftype] = write9;
+	} else {
+		int write2 = (write + 2) & mask;
+		int write3 = (write + 3) & mask;
+		int write4 = (write + 4) & mask;
+		int write5 = (write + 5) & mask;
+		int write6 = (write + 6) & mask;
+		int write7 = (write + 7) & mask;
+		int write8 = (write + 8) & mask;
+		int write9 = (write + 9) & mask;
+		int write10 = (write + 10) & mask;
+		buffer[write0] = x | 0x80;
+		buffer[write1] = (x>>7) | 0x80;
+		buffer[write2] = (x>>14) | 0x80;
+		buffer[write3] = (x>>21) | 0x80;
+		buffer[write4] = (x>>28) | 0x80;
+		buffer[write5] = (x>>35) | 0x80;
+		buffer[write6] = (x>>42) | 0x80;
+		buffer[write7] = (x>>49) | 0x80;
+		buffer[write8] = (x>>56) | 0x80;
+		buffer[write9] = (x>>63) & 0x7f;
+		per_cpu(gator_buffer_write, cpu)[buftype] = write10;
 	}
 }

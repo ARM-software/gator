@@ -9,6 +9,7 @@
 
 #include <linux/cpufreq.h>
 #include <trace/events/power.h>
+#include <asm/mach-types.h>
 
 // cpu_frequency and cpu_idle trace points were introduced in Linux kernel v2.6.38
 // the now deprecated power_frequency trace point was available prior to 2.6.38, but only for x86
@@ -52,32 +53,29 @@ GATOR_DEFINE_PROBE(cpu_frequency, TP_PROTO(unsigned int frequency, unsigned int 
 	marshal_event_single(cpu, power_cpu_key[POWER_CPU_FREQ], frequency * 1000);
 }
 
-#define WFI_ACTIVE_THRESHOLD 2  // may vary on platform/OS
-#define WFI_EXIT 0
+#define WFI_EXIT 2
 #define WFI_ENTER 1
 GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
 {
-	// the streamline engine treats all counter values as unsigned
-	if (state & 0x80000000) {
-		state = 0;
-	}
-
 	if (state == per_cpu(idle_prev_state, cpu)) {
 		return;
 	}
 
-	if (state < WFI_ACTIVE_THRESHOLD && per_cpu(idle_prev_state, cpu) >= WFI_ACTIVE_THRESHOLD) {
-		// transition from wfi to non-wfi
-		marshal_wfi(cpu, WFI_EXIT);
-	} else if (state >= WFI_ACTIVE_THRESHOLD && per_cpu(idle_prev_state, cpu) < WFI_ACTIVE_THRESHOLD) {
-		// transition from non-wfi to wfi
-		marshal_wfi(cpu, WFI_ENTER);
+	if (!machine_is_omap3_beagle()) {
+		if (state == PWR_EVENT_EXIT) {
+            // transition from wfi to non-wfi
+			marshal_idle(cpu, WFI_EXIT);
+		} else {
+			// transition from non-wfi to wfi
+			marshal_idle(cpu, WFI_ENTER);
+		}
 	}
 
 	per_cpu(idle_prev_state, cpu) = state;
 
 	if (power_cpu_enabled[POWER_CPU_IDLE]) {
-		marshal_event_single(cpu, power_cpu_key[POWER_CPU_IDLE], state);
+		// Increment state so that no negative numbers are sent
+		marshal_event_single(cpu, power_cpu_key[POWER_CPU_IDLE], state + 1);
 	}
 }
 

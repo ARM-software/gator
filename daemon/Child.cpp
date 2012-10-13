@@ -102,7 +102,10 @@ void* stopThread(void* pVoid) {
 	prctl(PR_SET_NAME, (unsigned long)&"gatord-stopper", 0, 0, 0);
 	while (gSessionData->mSessionIsActive) {
 		// This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
-		if (socket->receiveNBytes(&type, sizeof(type)) > 0) {
+		const int result = socket->receiveNBytes(&type, sizeof(type));
+		if (result == -1) {
+			child->endSession();
+		} else if (result > 0) {
 			if ((type != COMMAND_APC_STOP) && (type != COMMAND_PING)) {
 				logg->logMessage("INVESTIGATE: Received unknown command type %d", type);
 			} else {
@@ -228,7 +231,7 @@ void Child::run() {
 		}
 		gSessionData->parseSessionXML(xmlString);
 		localCapture = new LocalCapture();
-		localCapture->createAPCDirectory(gSessionData->mTargetPath, gSessionData->mTitle);
+		localCapture->createAPCDirectory(gSessionData->mTargetPath);
 		localCapture->copyImages(gSessionData->mImages);
 		localCapture->write(xmlString);
 		sender->createDataFile(gSessionData->mAPCDir);

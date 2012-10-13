@@ -11,12 +11,8 @@
  * To add them to the events.xml, create an events-mmap.xml with the 
  * following contents and rebuild gatord:
  *
- * <counter_set name="mmaped_cntX">
- *   <counter name="mmaped_cnt0"/>
- *   <counter name="mmaped_cnt1"/>
- *   <counter name="mmaped_cnt2"/>
- * </counter_set>
- * <category name="mmaped" counter_set="mmaped_cntX" per_cpu="no">
+ * <counter_set name="mmaped_cnt" count="3"/>
+ * <category name="mmaped" counter_set="mmaped_cnt" per_cpu="no">
  *   <event event="0x0" title="Simulated" name="Sine" display="maximum" average_selection="yes" description="Sort-of-sine"/>
  *   <event event="0x1" title="Simulated" name="Triangle" display="maximum" average_selection="yes" description="Triangular wave"/>
  *   <event event="0x2" title="Simulated" name="PWM" display="maximum" average_selection="yes" description="PWM Signal"/>

@@ -24,6 +24,10 @@ OlyUtility* util = NULL;
 bool OlyUtility::stringToBool(const char* string, bool defValue) {
 	char value[32];
 
+	if (string == NULL) {
+		return defValue;
+	}
+
 	strncpy(value, string, sizeof(value));
 	if (value[0] == 0) {
 		return defValue;

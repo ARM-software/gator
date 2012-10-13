@@ -1,10 +1,5 @@
-  <counter_set name="ARM_Cortex-A7_cntX">
-    <counter name="ARM_Cortex-A7_cnt0"/>
-    <counter name="ARM_Cortex-A7_cnt1"/>
-    <counter name="ARM_Cortex-A7_cnt2"/>
-    <counter name="ARM_Cortex-A7_cnt3"/>
-  </counter_set>
-  <category name="Cortex-A7" counter_set="ARM_Cortex-A7_cntX" per_cpu="yes" event_based_sampling="yes">
+  <counter_set name="ARM_Cortex-A7_cnt" count="4"/>
+  <category name="Cortex-A7" counter_set="ARM_Cortex-A7_cnt" per_cpu="yes" supports_event_based_sampling="yes">
     <event counter="ARM_Cortex-A7_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes"  description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Software increment architecturally executed"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
