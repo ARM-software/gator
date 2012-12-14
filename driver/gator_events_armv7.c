@@ -22,7 +22,7 @@
 #define PMNC_E		(1 << 0)	/* Enable all counters */
 #define PMNC_P		(1 << 1)	/* Reset all counters */
 #define PMNC_C		(1 << 2)	/* Cycle counter reset */
-#define	PMNC_MASK	0x3f		/* Mask for writable bits */
+#define	PMNC_MASK	0x3f	/* Mask for writable bits */
 
 // ccnt reg
 #define CCNT_REG	(1 << 31)
@@ -63,7 +63,7 @@ inline u32 armv7_ccnt_read(u32 reset_value)
 	local_irq_save(flags);
 	asm volatile("mcr p15, 0, %0, c9, c12, 2" : : "r" (den));	// disable
 	asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r" (val));	// read
-	asm volatile("mcr p15, 0, %0, c9, c13, 0" : : "r" (newval));// new value
+	asm volatile("mcr p15, 0, %0, c9, c13, 0" : : "r" (newval));	// new value
 	asm volatile("mcr p15, 0, %0, c9, c12, 1" : : "r" (den));	// enable
 	local_irq_restore(flags);
 
@@ -82,7 +82,7 @@ inline u32 armv7_cntn_read(unsigned int cnt, u32 reset_value)
 	asm volatile("mcr p15, 0, %0, c9, c12, 2" : : "r" (den));	// disable
 	asm volatile("mcr p15, 0, %0, c9, c12, 5" : : "r" (sel));	// select
 	asm volatile("mrc p15, 0, %0, c9, c13, 2" : "=r" (oldval));	// read
-    asm volatile("mcr p15, 0, %0, c9, c13, 2" : : "r" (newval));// new value
+	asm volatile("mcr p15, 0, %0, c9, c13, 2" : : "r" (newval));	// new value
 	asm volatile("mcr p15, 0, %0, c9, c12, 1" : : "r" (den));	// enable
 	local_irq_restore(flags);
 
@@ -143,7 +143,7 @@ static int gator_events_armv7_create_files(struct super_block *sb, struct dentry
 		if (i == 0) {
 			snprintf(buf, sizeof buf, "ARM_%s_ccnt", pmnc_name);
 		} else {
-			snprintf(buf, sizeof buf, "ARM_%s_cnt%d", pmnc_name, i-1);
+			snprintf(buf, sizeof buf, "ARM_%s_cnt%d", pmnc_name, i - 1);
 		}
 		dir = gatorfs_mkdir(sb, root, buf);
 		if (!dir) {
@@ -159,7 +159,7 @@ static int gator_events_armv7_create_files(struct super_block *sb, struct dentry
 	return 0;
 }
 
-static int gator_events_armv7_online(int** buffer)
+static int gator_events_armv7_online(int **buffer)
 {
 	unsigned int cnt, len = 0, cpu = smp_processor_id();
 
@@ -214,11 +214,11 @@ static int gator_events_armv7_online(int** buffer)
 	return len;
 }
 
-static int gator_events_armv7_offline(int** buffer)
+static int gator_events_armv7_offline(int **buffer)
 {
-	// disbale all counters, including PMCCNTR; overflow IRQs will not be signaled
+	// disable all counters, including PMCCNTR; overflow IRQs will not be signaled
 	armv7_pmnc_write(armv7_pmnc_read() & ~PMNC_E);
-	
+
 	return 0;
 }
 
@@ -298,7 +298,7 @@ int gator_events_armv7_init(void)
 		return -1;
 	}
 
-	pmnc_counters++; // CNT[n] + CCNT
+	pmnc_counters++;	// CNT[n] + CCNT
 
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;

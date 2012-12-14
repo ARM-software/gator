@@ -45,7 +45,7 @@ static int gator_events_perf_pmu_create_files(struct super_block *sb, struct den
 		if (i == 0) {
 			snprintf(buf, sizeof buf, "%s_ccnt", pmnc_name);
 		} else {
-			snprintf(buf, sizeof buf, "%s_cnt%d", pmnc_name, i-1);
+			snprintf(buf, sizeof buf, "%s_cnt%d", pmnc_name, i - 1);
 		}
 		dir = gatorfs_mkdir(sb, root, buf);
 		if (!dir) {
@@ -80,13 +80,13 @@ static void dummy_handler(struct perf_event *event, struct perf_sample_data *dat
 // Required as perf_event_create_kernel_counter() requires an overflow handler, even though all we do is poll
 }
 
-static int gator_events_perf_pmu_online(int** buffer)
+static int gator_events_perf_pmu_online(int **buffer)
 {
 	int cnt, len = 0, cpu = smp_processor_id();
 
 	// read the counters and toss the invalid data, return zero instead
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-		struct perf_event * ev = per_cpu(pevent, cpu)[cnt];
+		struct perf_event *ev = per_cpu(pevent, cpu)[cnt];
 		if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
 			ev->pmu->read(ev);
 			per_cpu(perfPrev, cpu)[cnt] = per_cpu(perfCurr, cpu)[cnt] = local64_read(&ev->count);
@@ -140,7 +140,7 @@ static void gator_events_perf_pmu_online_dispatch(int cpu)
 static void gator_events_perf_pmu_offline_dispatch(int cpu)
 {
 	int cnt;
-	struct perf_event * pe;
+	struct perf_event *pe;
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		pe = NULL;
@@ -177,7 +177,7 @@ static int gator_events_perf_pmu_start(void)
 	for_each_present_cpu(cpu) {
 		for (cnt = 0; cnt < pmnc_counters; cnt++) {
 			per_cpu(pevent, cpu)[cnt] = NULL;
-			if (!pmnc_enabled[cnt]) // Skip disabled counters
+			if (!pmnc_enabled[cnt])	// Skip disabled counters
 				continue;
 
 			per_cpu(perfPrev, cpu)[cnt] = 0;
@@ -233,7 +233,7 @@ static int gator_events_perf_pmu_read(int **buffer)
 	int cpu = smp_processor_id();
 
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
-		struct perf_event * ev = per_cpu(pevent, cpu)[cnt];
+		struct perf_event *ev = per_cpu(pevent, cpu)[cnt];
 		if (ev != NULL && ev->state == PERF_EVENT_STATE_ACTIVE) {
 			ev->pmu->read(ev);
 			per_cpu(perfCurr, cpu)[cnt] = local64_read(&ev->count);
@@ -268,62 +268,21 @@ static struct gator_interface gator_events_perf_pmu_interface = {
 int gator_events_perf_pmu_init(void)
 {
 	unsigned int cnt;
+	const u32 cpuid = gator_cpuid();
 
-	switch (gator_cpuid()) {
-	case ARM1136:
-	case ARM1156:
-	case ARM1176:
-		pmnc_name = "ARM_ARM11";
-		pmnc_counters = 3;
-		ccnt = 2;
-		break;
-	case ARM11MPCORE:
-		pmnc_name = "ARM_ARM11MPCore";
-		pmnc_counters = 3;
-		break;
-	case CORTEX_A5:
-		pmnc_name = "ARM_Cortex-A5";
-		pmnc_counters = 2;
-		break;
-	case CORTEX_A7:
-		pmnc_name = "ARM_Cortex-A7";
-		pmnc_counters = 4;
-		break;
-	case CORTEX_A8:
-		pmnc_name = "ARM_Cortex-A8";
-		pmnc_counters = 4;
-		break;
-	case CORTEX_A9:
-		pmnc_name = "ARM_Cortex-A9";
-		pmnc_counters = 6;
-		break;
-	case CORTEX_A15:
-		pmnc_name = "ARM_Cortex-A15";
-		pmnc_counters = 6;
-		break;
-	case SCORPION:
-		pmnc_name = "Scorpion";
-		pmnc_counters = 4;
-		break;
-	case SCORPIONMP:
-		pmnc_name = "ScorpionMP";
-		pmnc_counters = 4;
-		break;
-	case KRAITSIM:
-	case KRAIT:
-		pmnc_name = "Krait";
-		pmnc_counters = 4;
-		break;
-	case AARCH64:
-		pmnc_name = "ARM_AArch64";
-		// Copied from A15, get the correct number
-		pmnc_counters = 6;
-		break;
-	default:
+	for (cnt = 0; gator_cpus[cnt].cpuid != 0; ++cnt) {
+		if (gator_cpus[cnt].cpuid == cpuid) {
+			pmnc_name = gator_cpus[cnt].pmnc_name;
+			pmnc_counters = gator_cpus[cnt].pmnc_counters;
+			ccnt = gator_cpus[cnt].ccnt;
+			break;
+		}
+	}
+	if (gator_cpus[cnt].cpuid == 0) {
 		return -1;
 	}
 
-	pmnc_counters++; // CNT[n] + CCNT
+	pmnc_counters++;	// CNT[n] + CCNT
 
 	for (cnt = 0; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;

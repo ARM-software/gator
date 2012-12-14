@@ -15,7 +15,7 @@
 #include <linux/list.h>
 
 #define GATOR_PERF_SUPPORT		LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-#define GATOR_PERF_PMU_SUPPORT  GATOR_PERF_SUPPORT && defined(CONFIG_PERF_EVENTS) && defined(CONFIG_HW_PERF_EVENTS)
+#define GATOR_PERF_PMU_SUPPORT  GATOR_PERF_SUPPORT && defined(CONFIG_PERF_EVENTS) && (!(defined(__arm__) || defined(__aarch64__)) || defined(CONFIG_HW_PERF_EVENTS))
 #define GATOR_NO_PERF_SUPPORT   (!(GATOR_PERF_SUPPORT))
 #define GATOR_CPU_FREQ_SUPPORT  (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) && defined(CONFIG_CPU_FREQ)
 
@@ -33,22 +33,39 @@
 #define SCORPIONMP  0x02d
 #define KRAITSIM    0x049
 #define KRAIT       0x04d
+#define KRAIT_S4_PRO 0x06f
+#define CORTEX_A53  0xd03
+#define CORTEX_A57  0xd07
 #define AARCH64     0xd0f
+#define OTHER       0xfff
+
+#define MAXSIZE_CORE_NAME 32
+
+struct gator_cpu {
+  const int cpuid;
+  const char core_name[MAXSIZE_CORE_NAME];
+  const char * const pmnc_name;
+  const int pmnc_counters;
+  const int ccnt;
+};
+
+extern struct gator_cpu gator_cpus[];
 
 /******************************************************************************
  * Filesystem
  ******************************************************************************/
 int gatorfs_create_file_perm(struct super_block *sb, struct dentry *root,
-	char const *name, const struct file_operations *fops, int perm);
+			     char const *name,
+			     const struct file_operations *fops, int perm);
 
-struct dentry *gatorfs_mkdir(struct super_block *sb,
-	struct dentry *root, char const *name);
+struct dentry *gatorfs_mkdir(struct super_block *sb, struct dentry *root,
+			     char const *name);
 
 int gatorfs_create_ulong(struct super_block *sb, struct dentry *root,
-	char const *name, unsigned long *val);
+			 char const *name, unsigned long *val);
 
 int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
-	char const *name, unsigned long *val);
+			    char const *name, unsigned long *val);
 
 void gator_op_create_files(struct super_block *sb, struct dentry *root);
 
@@ -77,15 +94,16 @@ void gator_op_create_files(struct super_block *sb, struct dentry *root);
  * Events
  ******************************************************************************/
 struct gator_interface {
-	int  (*create_files)(struct super_block *sb, struct dentry *root);
-	int  (*start)(void);
-	void (*stop)(void);
-	int  (*online)(int** buffer);
-	int  (*offline)(int** buffer);
-	void  (*online_dispatch)(int cpu);  // called in process context but may not be running on core 'cpu'
-	void  (*offline_dispatch)(int cpu); // called in process context but may not be running on core 'cpu'
-	int  (*read)(int **buffer);
-	int  (*read64)(long long **buffer);
+	void (*shutdown)(void);	// Complementary function to init
+	int (*create_files)(struct super_block *sb, struct dentry *root);
+	int (*start)(void);
+	void (*stop)(void);		// Complementary function to start
+	int (*online)(int **buffer);
+	int (*offline)(int **buffer);
+	void (*online_dispatch)(int cpu);	// called in process context but may not be running on core 'cpu'
+	void (*offline_dispatch)(int cpu);	// called in process context but may not be running on core 'cpu'
+	int (*read)(int **buffer);
+	int (*read64)(long long **buffer);
 	struct list_head list;
 };
 
@@ -96,8 +114,8 @@ struct gator_interface {
 
 int gator_events_install(struct gator_interface *interface);
 int gator_events_get_key(void);
-extern u32 gator_cpuid(void);
+u32 gator_cpuid(void);
 
-void gator_backtrace_handler(struct pt_regs * const regs);
+void gator_backtrace_handler(struct pt_regs *const regs);
 
 #endif // GATOR_H_

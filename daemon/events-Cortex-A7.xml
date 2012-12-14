@@ -41,4 +41,4 @@
     <event event="0xC8" title="ETM" name="ETM Ext Out[1]" description=""/>
     <event event="0xC9" title="Instruction" name="Pipeline stall" description="Data Write operation that stalls the pipeline because the store buffer is full"/>
     <event event="0xCA" title="Memory" name="Snoop" description="Data snooped from other processor. This event counts memory-read operations that read data from another processor within the local cluster, rather than accessing the L2 cache or issuing an external read."/>
-  </category>  
+  </category>

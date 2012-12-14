@@ -13,7 +13,7 @@
 #define SCHED_SWITCH			1
 #define SCHED_PROCESS_EXIT		2
 
-#define TASK_MAP_ENTRIES		1024		/* must be power of 2 */
+#define TASK_MAP_ENTRIES		1024	/* must be power of 2 */
 #define TASK_MAX_COLLISIONS		2
 
 static DEFINE_PER_CPU(uint64_t *, taskname_keys);
@@ -26,14 +26,14 @@ enum {
 	STATE_WAIT_ON_MUTEX,
 };
 
-void emit_pid_name(struct task_struct* task)
+void emit_pid_name(struct task_struct *task)
 {
 	bool found = false;
 	char taskcomm[TASK_COMM_LEN + 3];
 	unsigned long x, cpu = smp_processor_id();
 	uint64_t *keys = &(per_cpu(taskname_keys, cpu)[(task->pid & 0xFF) * TASK_MAX_COLLISIONS]);
 	uint64_t value;
-	
+
 	value = gator_chksum_crc32(task->comm);
 	value = (value << 32) | (uint32_t)task->pid;
 
@@ -64,7 +64,6 @@ void emit_pid_name(struct task_struct* task)
 	}
 }
 
-
 static void collect_counters(void)
 {
 	int *buffer, len;
@@ -84,7 +83,7 @@ static void collect_counters(void)
 	}
 }
 
-static void probe_sched_write(int type, struct task_struct* task, struct task_struct* old_task)
+static void probe_sched_write(int type, struct task_struct *task, struct task_struct *old_task)
 {
 	int cookie = 0, state = 0;
 	int cpu = smp_processor_id();
@@ -141,13 +140,24 @@ GATOR_DEFINE_PROBE(sched_process_exit, TP_PROTO(struct task_struct *p))
 	probe_sched_write(SCHED_PROCESS_EXIT, p, 0);
 }
 
-static int register_scheduler_tracepoints(void) {
+static void do_nothing(void *info)
+{
+	// Intentionally do nothing
+	(void)info;
+}
+
+static int register_scheduler_tracepoints(void)
+{
 	// register tracepoints
 	if (GATOR_REGISTER_TRACE(sched_switch))
 		goto fail_sched_switch;
 	if (GATOR_REGISTER_TRACE(sched_process_exit))
 		goto fail_sched_process_exit;
 	pr_debug("gator: registered tracepoints\n");
+
+	// Now that the scheduler tracepoint is registered, force a context switch
+	// on all cpus to capture what is currently running.
+	on_each_cpu(do_nothing, NULL, 0);
 
 	return 0;
 
@@ -166,7 +176,7 @@ int gator_trace_sched_start(void)
 
 	for_each_present_cpu(cpu) {
 		size = TASK_MAP_ENTRIES * TASK_MAX_COLLISIONS * sizeof(uint64_t);
-		per_cpu(taskname_keys, cpu) = (uint64_t*)kmalloc(size, GFP_KERNEL);
+		per_cpu(taskname_keys, cpu) = (uint64_t *)kmalloc(size, GFP_KERNEL);
 		if (!per_cpu(taskname_keys, cpu))
 			return -1;
 		memset(per_cpu(taskname_keys, cpu), 0, size);

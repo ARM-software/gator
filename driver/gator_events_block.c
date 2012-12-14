@@ -119,7 +119,7 @@ static int gator_events_block_read(int **buffer)
 	if (block_rq_wr_enabled && (value = atomic_read(&blockCnt[BLOCK_RQ_WR])) > 0) {
 		atomic_sub(value, &blockCnt[BLOCK_RQ_WR]);
 		blockGet[len++] = block_rq_wr_key;
-		blockGet[len++] = 0; // indicates to Streamline that value bytes were written now, not since the last message
+		blockGet[len++] = 0;	// indicates to Streamline that value bytes were written now, not since the last message
 		blockGet[len++] = block_rq_wr_key;
 		blockGet[len++] = value;
 		data += value;
@@ -127,7 +127,7 @@ static int gator_events_block_read(int **buffer)
 	if (block_rq_rd_enabled && (value = atomic_read(&blockCnt[BLOCK_RQ_RD])) > 0) {
 		atomic_sub(value, &blockCnt[BLOCK_RQ_RD]);
 		blockGet[len++] = block_rq_rd_key;
-		blockGet[len++] = 0; // indicates to Streamline that value bytes were read now, not since the last message
+		blockGet[len++] = 0;	// indicates to Streamline that value bytes were read now, not since the last message
 		blockGet[len++] = block_rq_rd_key;
 		blockGet[len++] = value;
 		data += value;
@@ -156,4 +156,5 @@ int gator_events_block_init(void)
 
 	return gator_events_install(&gator_events_block_interface);
 }
+
 gator_events_init(gator_events_block_init);

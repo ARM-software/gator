@@ -31,22 +31,25 @@ static struct timer_list meminfo_wake_up_timer;
 static void meminfo_wake_up_handler(unsigned long unused_data);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-GATOR_DEFINE_PROBE(mm_page_free_direct, TP_PROTO(struct page *page, unsigned int order)) {
+GATOR_DEFINE_PROBE(mm_page_free_direct, TP_PROTO(struct page *page, unsigned int order))
 #else
-GATOR_DEFINE_PROBE(mm_page_free, TP_PROTO(struct page *page, unsigned int order)) {
+GATOR_DEFINE_PROBE(mm_page_free, TP_PROTO(struct page *page, unsigned int order))
 #endif
+{
 	mem_event++;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-GATOR_DEFINE_PROBE(mm_pagevec_free, TP_PROTO(struct page *page, int cold)) {
+GATOR_DEFINE_PROBE(mm_pagevec_free, TP_PROTO(struct page *page, int cold))
 #else
-GATOR_DEFINE_PROBE(mm_page_free_batched, TP_PROTO(struct page *page, int cold)) {
+GATOR_DEFINE_PROBE(mm_page_free_batched, TP_PROTO(struct page *page, int cold))
 #endif
+{
 	mem_event++;
 }
 
-GATOR_DEFINE_PROBE(mm_page_alloc, TP_PROTO(struct page *page, unsigned int order, gfp_t gfp_flags, int migratetype)) {
+GATOR_DEFINE_PROBE(mm_page_alloc, TP_PROTO(struct page *page, unsigned int order, gfp_t gfp_flags, int migratetype))
+{
 	mem_event++;
 }
 
@@ -233,4 +236,5 @@ int gator_events_meminfo_init(void)
 
 	return gator_events_install(&gator_events_meminfo_interface);
 }
+
 gator_events_init(gator_events_meminfo_init);

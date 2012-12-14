@@ -30,7 +30,7 @@
     <event event="0x1b" title="Mali GPU Vertex Processor" name="Active cycles, PLBU primitive assembly" description="Number of active cycles per frame spent by the MaliGP2 PLBU doing primitive assembly. This does not include scissoring or final output. This includes time spent waiting on the bus."/>
     <event event="0x1c" title="Mali GPU Vertex Processor" name="Active cycles, PLBU vertex fetcher" description="Number of active cycles per frame spent by the MaliGP2 PLBU fetching vertex data. This includes time spent waiting on the bus."/>
     <event event="0x1e" title="Mali GPU Vertex Processor" name="Active cycles, Bounding-box and command generator" description="Number of active cycles per frame spent by the MaliGP2 PLBU setting up bounding boxes and commands (mainly graphics primitives). This includes time spent waiting on the bus."/>
-    <event event="0x20" title="Mali GPU Vertex Processor" name="Active cycles, Scissor tile iterator" description="Number of active cycles per frame spent by the MaliGP2 PLBU iterating over tiles to perform scissoringi. This includes time spent waiting on the bus."/>
+    <event event="0x20" title="Mali GPU Vertex Processor" name="Active cycles, Scissor tile iterator" description="Number of active cycles per frame spent by the MaliGP2 PLBU iterating over tiles to perform scissoring. This includes time spent waiting on the bus."/>
     <event event="0x21" title="Mali GPU Vertex Processor" name="Active cycles, PLBU tile iterator" description="Number of active cycles per frame spent by the MaliGP2 PLBU iterating over the tiles in the bounding box generating commands (mainly graphics primitives). This includes time spent waiting on the bus."/>
   </category>
   <category name="Mali-400-FP0" counter_set="ARM_Mali-400_FP0_cnt" per_cpu="no">
@@ -344,10 +344,10 @@
   </category>
   <category name="Mali-400-SW" counter_set="ARM_Mali-400_SW_cnt" per_cpu="no">
     <!-- EGL Counters -->
-    <event counter="ARM_Mali-400_SW_17" title="Mali EGL Software Counters" name="Blit Time" description="Time spent blitting the the framebuffer from video memory to framebuffer."/>
+    <event counter="ARM_Mali-400_SW_17" title="Mali EGL Software Counters" name="Blit Time" description="Time spent blitting the framebuffer from video memory to framebuffer."/>
     <!-- glDrawElements Counters -->
     <event counter="ARM_Mali-400_SW_18" title="glDrawElements Statistics" name="Calls to glDrawElements" description="Number of calls to glDrawElements."/>
-    <event counter="ARM_Mali-400_SW_19" title="glDrawElements Statistics" name="Indices to glDrawElements" description="Number of indicies to glDrawElements."/>
+    <event counter="ARM_Mali-400_SW_19" title="glDrawElements Statistics" name="Indices to glDrawElements" description="Number of indices to glDrawElements."/>
     <event counter="ARM_Mali-400_SW_20" title="glDrawElements Statistics" name="Transformed by glDrawElements" description="Number of vertices transformed by glDrawElements."/>
     <!-- glDrawArrays Counters -->
     <event counter="ARM_Mali-400_SW_21" title="glDrawArrays Statistics" name="Calls to glDrawArrays" description="Number of calls to glDrawArrays."/>
@@ -365,7 +365,7 @@
     <!-- Buffer Profiling Counters -->
     <event counter="ARM_Mali-400_SW_32" title="Buffer Profiling" name="Texture Upload Time (ms)" description="Time spent uploading textures."/>
     <event counter="ARM_Mali-400_SW_33" title="Buffer Profiling" name="VBO Upload Time (ms)" description="Time spent uploading vertex buffer objects."/>
-    <event counter="ARM_Mali-400_SW_34" title="Buffer Profiling" name="FBO Flushes" description="Number of flushed on framebuffer attachement."/>
+    <event counter="ARM_Mali-400_SW_34" title="Buffer Profiling" name="FBO Flushes" description="Number of flushed on framebuffer attachment."/>
     <!-- OpenGL ES 1.1 Emulation -->
     <event counter="ARM_Mali-400_SW_35" title="Fixed-function Emulation" name="# Vertex Shaders Generated" description="Number of vertex shaders generated."/>
     <event counter="ARM_Mali-400_SW_36" title="Fixed-function Emulation" name="# Fragment Shaders Generated" description="Number of fragment shaders generated."/>

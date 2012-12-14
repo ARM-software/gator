@@ -21,8 +21,8 @@ static ulong softirq_key;
 static DEFINE_PER_CPU(int[TOTALIRQ], irqCnt);
 static DEFINE_PER_CPU(int[TOTALIRQ * 2], irqGet);
 
-GATOR_DEFINE_PROBE(irq_handler_exit, TP_PROTO(int irq,
-		struct irqaction *action, int ret))
+GATOR_DEFINE_PROBE(irq_handler_exit,
+		   TP_PROTO(int irq, struct irqaction *action, int ret))
 {
 	unsigned long flags;
 
@@ -71,10 +71,10 @@ static int gator_events_irq_create_files(struct super_block *sb, struct dentry *
 	return 0;
 }
 
-static int gator_events_irq_online(int** buffer)
+static int gator_events_irq_online(int **buffer)
 {
 	int len = 0, cpu = smp_processor_id();
-	unsigned long flags; // not necessary as we are in interrupt context anyway, but doesn't hurt
+	unsigned long flags;	// not necessary as we are in interrupt context anyway, but doesn't hurt
 
 	// synchronization with the irq_exit functions is not necessary as the values are being reset
 	if (hardirq_enabled) {
@@ -136,7 +136,7 @@ static void gator_events_irq_stop(void)
 
 static int gator_events_irq_read(int **buffer)
 {
-	unsigned long flags; // not necessary as we are in interrupt context anyway, but doesn't hurt
+	unsigned long flags;	// not necessary as we are in interrupt context anyway, but doesn't hurt
 	int len, value;
 	int cpu = smp_processor_id();
 
@@ -185,4 +185,5 @@ int gator_events_irq_init(void)
 
 	return gator_events_install(&gator_events_irq_interface);
 }
+
 gator_events_init(gator_events_irq_init);

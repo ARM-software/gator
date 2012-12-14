@@ -19,6 +19,8 @@
 #include <sys/mount.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include "Child.h"
 #include "SessionData.h"
 #include "OlySocket.h"
@@ -28,7 +30,6 @@
 #define DEBUG false
 
 extern Child* child;
-extern void handleException();
 int shutdownFilesystem();
 static pthread_mutex_t numSessions_mutex;
 static int numSessions = 0;
@@ -297,7 +298,10 @@ struct cmdline_t parseCommandLine(int argc, char** argv) {
 
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char** argv, char* envp[]) {
+	// Ensure proper signal handling by making gatord the process group leader
+	//   e.g. it may not be the group leader when launched as 'sudo gatord'
 	setsid();
+
 	gSessionData = new SessionData(); // Global data class
 	logg = new Logging(DEBUG);  // Set up global thread-safe logging
 	util = new OlyUtility();	// Set up global utility class
@@ -313,9 +317,6 @@ int main(int argc, char** argv, char* envp[]) {
 	if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {
 		logg->logMessage("setpriority() failed");
 	}
-
-	// Initialize session data
-	gSessionData->initialize();
 
 	// Parse the command line parameters
 	struct cmdline_t cmdline = parseCommandLine(argc, argv);

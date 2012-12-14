@@ -14,8 +14,6 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
-extern void handleException();
-
 static const char*	ATTR_COUNTER     = "counter";
 static const char*  ATTR_REVISION    = "revision";
 static const char* 	ATTR_TITLE       = "title";
@@ -171,7 +169,7 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	if (mxmlElementGetAttr(node, ATTR_AVERAGE_SELECTION)) gSessionData->mPerfCounterAverageSelection[mIndex] = util->stringToBool(mxmlElementGetAttr(node, ATTR_AVERAGE_SELECTION), false);
 	gSessionData->mPerfCounterEnabled[mIndex] = true;
 
-	// strncpy does not guarantee a null-termianted string
+	// strncpy does not guarantee a null-terminated string
 	gSessionData->mPerfCounterType[mIndex][sizeof(gSessionData->mPerfCounterType[mIndex]) - 1] = 0;
 	gSessionData->mPerfCounterTitle[mIndex][sizeof(gSessionData->mPerfCounterTitle[mIndex]) - 1] = 0;
 	gSessionData->mPerfCounterName[mIndex][sizeof(gSessionData->mPerfCounterName[mIndex]) - 1] = 0;
@@ -184,8 +182,6 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 }
 
 void ConfigurationXML::getDefaultConfigurationXml(const char * & xml, unsigned int & len) {
-	// the first line of configuration_xml.h is "unsigned char configuration_xml", but configuration_xml needs to be const static as well
-	const static
 #include "configuration_xml.h" // defines and initializes char configuration_xml[] and int configuration_xml_len
 	xml = (const char *)configuration_xml;
 	len = configuration_xml_len;

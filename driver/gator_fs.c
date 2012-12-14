@@ -35,8 +35,8 @@ static struct inode *gatorfs_get_inode(struct super_block *sb, int mode)
 }
 
 static const struct super_operations s_ops = {
-	.statfs		= simple_statfs,
-	.drop_inode 	= generic_delete_inode,
+	.statfs = simple_statfs,
+	.drop_inode = generic_delete_inode,
 };
 
 ssize_t gatorfs_str_to_user(char const *str, char __user *buf, size_t count, loff_t *offset)
@@ -104,19 +104,21 @@ static int default_open(struct inode *inode, struct file *filp)
 }
 
 static const struct file_operations ulong_fops = {
-	.read		= ulong_read_file,
-	.write		= ulong_write_file,
-	.open		= default_open,
+	.read = ulong_read_file,
+	.write = ulong_write_file,
+	.open = default_open,
 };
 
 static const struct file_operations ulong_ro_fops = {
-	.read		= ulong_read_file,
-	.open		= default_open,
+	.read = ulong_read_file,
+	.open = default_open,
 };
 
 static struct dentry *__gatorfs_create_file(struct super_block *sb,
-	struct dentry *root, char const *name, const struct file_operations *fops,
-	int perm)
+					    struct dentry *root,
+					    char const *name,
+					    const struct file_operations *fops,
+					    int perm)
 {
 	struct dentry *dentry;
 	struct inode *inode;
@@ -135,10 +137,10 @@ static struct dentry *__gatorfs_create_file(struct super_block *sb,
 }
 
 int gatorfs_create_ulong(struct super_block *sb, struct dentry *root,
-	char const *name, unsigned long *val)
+			 char const *name, unsigned long *val)
 {
 	struct dentry *d = __gatorfs_create_file(sb, root, name,
-						     &ulong_fops, 0644);
+						 &ulong_fops, 0644);
 	if (!d)
 		return -EFAULT;
 
@@ -147,10 +149,10 @@ int gatorfs_create_ulong(struct super_block *sb, struct dentry *root,
 }
 
 int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
-	char const *name, unsigned long *val)
+			    char const *name, unsigned long *val)
 {
 	struct dentry *d = __gatorfs_create_file(sb, root, name,
-						     &ulong_ro_fops, 0444);
+						 &ulong_ro_fops, 0444);
 	if (!d)
 		return -EFAULT;
 
@@ -165,15 +167,15 @@ static ssize_t atomic_read_file(struct file *file, char __user *buf, size_t coun
 }
 
 static const struct file_operations atomic_ro_fops = {
-	.read		= atomic_read_file,
-	.open		= default_open,
+	.read = atomic_read_file,
+	.open = default_open,
 };
 
 int gatorfs_create_ro_atomic(struct super_block *sb, struct dentry *root,
-	char const *name, atomic_t *val)
+			     char const *name, atomic_t *val)
 {
 	struct dentry *d = __gatorfs_create_file(sb, root, name,
-						     &atomic_ro_fops, 0444);
+						 &atomic_ro_fops, 0444);
 	if (!d)
 		return -EFAULT;
 
@@ -182,7 +184,7 @@ int gatorfs_create_ro_atomic(struct super_block *sb, struct dentry *root,
 }
 
 int gatorfs_create_file(struct super_block *sb, struct dentry *root,
-	char const *name, const struct file_operations *fops)
+			char const *name, const struct file_operations *fops)
 {
 	if (!__gatorfs_create_file(sb, root, name, fops, 0644))
 		return -EFAULT;
@@ -190,7 +192,8 @@ int gatorfs_create_file(struct super_block *sb, struct dentry *root,
 }
 
 int gatorfs_create_file_perm(struct super_block *sb, struct dentry *root,
-	char const *name, const struct file_operations *fops, int perm)
+			     char const *name,
+			     const struct file_operations *fops, int perm)
 {
 	if (!__gatorfs_create_file(sb, root, name, fops, perm))
 		return -EFAULT;
@@ -198,7 +201,7 @@ int gatorfs_create_file_perm(struct super_block *sb, struct dentry *root,
 }
 
 struct dentry *gatorfs_mkdir(struct super_block *sb,
-	struct dentry *root, char const *name)
+			     struct dentry *root, char const *name)
 {
 	struct dentry *dentry;
 	struct inode *inode;
@@ -256,28 +259,29 @@ static int gatorfs_fill_super(struct super_block *sb, void *data, int silent)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
 static int gatorfs_get_sb(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data, struct vfsmount *mnt)
+			  int flags, const char *dev_name, void *data,
+			  struct vfsmount *mnt)
 {
 	return get_sb_single(fs_type, flags, data, gatorfs_fill_super, mnt);
 }
 #else
 static struct dentry *gatorfs_mount(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data)
+				    int flags, const char *dev_name, void *data)
 {
 	return mount_nodev(fs_type, flags, data, gatorfs_fill_super);
 }
 #endif
 
 static struct file_system_type gatorfs_type = {
-	.owner		= THIS_MODULE,
-	.name		= "gatorfs",
+	.owner = THIS_MODULE,
+	.name = "gatorfs",
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
-	 	.get_sb		= gatorfs_get_sb,
+	.get_sb = gatorfs_get_sb,
 #else
-	 	.mount		= gatorfs_mount,
+	.mount = gatorfs_mount,
 #endif
 
-	.kill_sb	= kill_litter_super,
+	.kill_sb = kill_litter_super,
 };
 
 int __init gatorfs_register(void)

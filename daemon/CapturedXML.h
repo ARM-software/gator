@@ -22,4 +22,6 @@ private:
 	mxml_node_t* getTree(bool includeTime);
 };
 
+const char * mxmlWhitespaceCB(mxml_node_t *node, int where);
+
 #endif 	//__CAPTURED_XML_H__

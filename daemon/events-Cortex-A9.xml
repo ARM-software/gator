@@ -31,9 +31,9 @@
     <event event="0x66" title="Pipeline" name="Issue stage no dispatch" description="Counts the number of cycles where the issue stage does not dispatch any instruction because it is empty or cannot dispatch any instructions"/>
     <event event="0x67" title="Pipeline" name="Issue stage empty" description="Counts the number of cycles where the issue stage is empty"/>
     <event event="0x68" title="Instruction" name="Executed" description="Counts the number of instructions going through the Register Renaming stage. This number is an approximate number of the total number of instructions speculatively executed, and even more approximate of the total number of instructions architecturally executed"/>
-	<event event="0x69" title="Cache" name="Data linefills" description="Counts the number of linefills performed on the external AXI bus"/>
-	<event event="0x6A" title="Cache" name="Prefetch linefills" description="Counts the number of data linefills caused by prefetcher requests"/>
-	<event event="0x6B" title="Cache" name="Prefetch hits" description="Counts the number of cache hits in a line that belongs to a stream followed by the prefetcher"/>
+    <event event="0x69" title="Cache" name="Data linefills" description="Counts the number of linefills performed on the external AXI bus"/>
+    <event event="0x6A" title="Cache" name="Prefetch linefills" description="Counts the number of data linefills caused by prefetcher requests"/>
+    <event event="0x6B" title="Cache" name="Prefetch hits" description="Counts the number of cache hits in a line that belongs to a stream followed by the prefetcher"/>
     <event event="0x6E" title="Core" name="Functions" description="Counts the number of procedure returns whose condition codes do not fail, excluding all returns from exception"/>
     <event event="0x70" title="Instruction" name="Main execution unit" description="Counts the number of instructions being executed in the main execution pipeline of the processor, the multiply pipeline and arithmetic logic unit pipeline"/>
     <event event="0x71" title="Instruction" name="Second execution unit" description="Counts the number of instructions being executed in the processor second execution pipeline (ALU)"/>
@@ -49,9 +49,9 @@
     <event event="0x86" title="Stalls" name="DMB" description="Counts the number of stall cycles because of the execution of a DMB memory barrier"/>
     <event event="0x8A" title="Clock" name="Integer core" description="Counts the number of cycles during which the integer core clock is enabled"/>
     <event event="0x8B" title="Clock" name="Data engine" description="Counts the number of cycles during which the Data Engine clock is enabled"/>
-	<event event="0x8C" title="Clock" name="NEON" description="Counts the number of cycles when the NEON SIMD clock is enabled"/>
-	<event event="0x8D" title="Memory" name="TLB inst allocations" description="Counts the number of TLB allocations because of Instruction requests"/>
-	<event event="0x8E" title="Memory" name="TLB data allocations" description="Counts the number of TLB allocations because of Data requests"/>
+    <event event="0x8C" title="Clock" name="NEON" description="Counts the number of cycles when the NEON SIMD clock is enabled"/>
+    <event event="0x8D" title="Memory" name="TLB inst allocations" description="Counts the number of TLB allocations because of Instruction requests"/>
+    <event event="0x8E" title="Memory" name="TLB data allocations" description="Counts the number of TLB allocations because of Data requests"/>
     <event event="0x90" title="Instruction" name="ISB" description="Counts the number of ISB instructions architecturally executed"/>
     <event event="0x91" title="Instruction" name="DSB" description="Counts the number of DSB instructions architecturally executed"/>
     <event event="0x92" title="Instruction" name="DMB" description="Counts the number of DMB instructions speculatively executed"/>

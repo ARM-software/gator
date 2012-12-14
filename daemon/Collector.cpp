@@ -18,8 +18,6 @@
 #include "Logging.h"
 #include "Sender.h"
 
-extern void handleException();
-
 // Driver initialization independent of session settings
 Collector::Collector() {
 	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/<file>

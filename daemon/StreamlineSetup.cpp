@@ -22,8 +22,6 @@
 #include "StreamlineSetup.h"
 #include "ConfigurationXML.h"
 
-extern void handleException();
-
 static const char* TAG_SESSION = "session";
 static const char* TAG_REQUEST = "request";
 static const char* TAG_CONFIGURATIONS = "configurations";

@@ -28,50 +28,50 @@
  */
 TRACE_EVENT(gpu_activity_start,
 
-	TP_PROTO(int gpu_unit, int gpu_core, struct task_struct *p),
+	    TP_PROTO(int gpu_unit, int gpu_core, struct task_struct *p),
 
-	TP_ARGS(gpu_unit, gpu_core, p),
+	    TP_ARGS(gpu_unit, gpu_core, p),
 
-	TP_STRUCT__entry(
-		__field(        int,    gpu_unit                )
-		__field(        int,    gpu_core                )
-		__array(        char,   comm,   TASK_COMM_LEN   )
-		__field(        pid_t,  pid                     )
-	),
+	    TP_STRUCT__entry(
+			     __field(int, gpu_unit)
+			     __field(int, gpu_core)
+			     __array(char, comm, TASK_COMM_LEN)
+			     __field(pid_t, pid)
+	    ),
 
-	TP_fast_assign(
-		__entry->gpu_unit       = gpu_unit;
-		__entry->gpu_core       = gpu_core;
-		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
-		__entry->pid            = p->pid;
-	),
+	    TP_fast_assign(
+			   __entry->gpu_unit = gpu_unit;
+			   __entry->gpu_core = gpu_core;
+			   memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+			   __entry->pid = p->pid;
+	    ),
 
-	TP_printk("unit=%d core=%d comm=%s pid=%d",
-		__entry->gpu_unit, __entry->gpu_core, __entry->comm, __entry->pid)
-);
+	    TP_printk("unit=%d core=%d comm=%s pid=%d",
+		      __entry->gpu_unit, __entry->gpu_core, __entry->comm,
+		      __entry->pid)
+    );
 
 /*
  * Tracepoint for calling GPU unit stop activity on core
  */
 TRACE_EVENT(gpu_activity_stop,
 
-	TP_PROTO(int gpu_unit, int gpu_core),
+	    TP_PROTO(int gpu_unit, int gpu_core),
 
-	TP_ARGS(gpu_unit, gpu_core),
+	    TP_ARGS(gpu_unit, gpu_core),
 
-	TP_STRUCT__entry(
-		__field(        int,    gpu_unit                )
-		__field(        int,    gpu_core                )
-	),
+	    TP_STRUCT__entry(
+			     __field(int, gpu_unit)
+			     __field(int, gpu_core)
+	    ),
 
-	TP_fast_assign(
-		__entry->gpu_unit       = gpu_unit;
-		__entry->gpu_core       = gpu_core;
-	),
+	    TP_fast_assign(
+			   __entry->gpu_unit = gpu_unit;
+			   __entry->gpu_core = gpu_core;
+	    ),
 
-	TP_printk("unit=%d core=%d",
-		__entry->gpu_unit, __entry->gpu_core)
-);
+	    TP_printk("unit=%d core=%d", __entry->gpu_unit, __entry->gpu_core)
+    );
 
 #endif /* _TRACE_GPU_H */
 

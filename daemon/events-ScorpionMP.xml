@@ -87,4 +87,4 @@
     <event event="0x8d" title="Scorpion" name="EXCEPTIONS_DENORM" description="Scorpion denorm exceptions"/>
     <event event="0x8e" title="ScorpionMP" name="NUM_BARRIERS" description="Barriers"/>
     <event event="0x8f" title="ScorpionMP" name="BARRIER_CYCLES" description="Barrier cycles"/>
-  </category>  
+  </category>

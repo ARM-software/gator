@@ -8,8 +8,8 @@
     <event counter="Linux_sched_switch" title="Scheduler" name="Switch" per_cpu="yes" description="Context switch events"/>
     <event counter="Linux_meminfo_memused" title="Memory" name="Used" display="maximum" units="B" average_selection="yes" description="Total used memory size"/>
     <event counter="Linux_meminfo_memfree" title="Memory" name="Free" display="minimum" units="B" average_selection="yes" description="Available memory size"/>
-    <event counter="Linux_meminfo_bufferram" title="Memory" name="Buffer" display="maximum" units="B" average_selection="yes" description="Memory used by buffers"/>
+    <event counter="Linux_meminfo_bufferram" title="Memory" name="Buffer" display="maximum" units="B" average_selection="yes" description="Memory used by OS disk buffers"/>
     <event counter="Linux_power_cpu_freq" title="Clock" name="Frequency" per_cpu="yes" display="maximum" units="Hz" average_selection="yes" description="Frequency setting of the CPU"/>
     <event counter="Linux_power_cpu_idle" title="Power" name="Idle" per_cpu="yes" display="maximum" average_selection="yes" description="CPU Idle State + 1, set the Sample Rate to None to prevent the hrtimer from interrupting the system"/>
   </category>
-  
+

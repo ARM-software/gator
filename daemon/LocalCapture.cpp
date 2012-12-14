@@ -17,8 +17,6 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 
-extern void handleException();
-
 LocalCapture::LocalCapture() {}
 
 LocalCapture::~LocalCapture() {}
@@ -56,7 +54,7 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
 		handleException();
 	} else if (initialPath[0] != '/') {
 		if (getcwd(path, PATH_MAX) == 0) {
-			logg->logMessage("Unable to retrive the current working directory");
+			logg->logMessage("Unable to retrieve the current working directory");
 		}
 		strncat(path, "/", PATH_MAX - strlen(path) - 1);
 		strncat(path, initialPath, PATH_MAX - strlen(path) - 1);

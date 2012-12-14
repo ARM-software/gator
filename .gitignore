@@ -1,4 +1,5 @@
 daemon/*.o
+daemon/escape
 daemon/events.xml
 daemon/gatord
 daemon/mxml/*.o

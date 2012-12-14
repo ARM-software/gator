@@ -65,4 +65,4 @@
     <event event="0x7c" title="Instruction" name="ISB" description="Barrier speculatively executed - ISB"/>
     <event event="0x7d" title="Instruction" name="DSB" description="Barrier speculatively executed - DSB"/>
     <event event="0x7e" title="Instruction" name="DMB" description="Barrier speculatively executed - DMB"/>
-  </category>  
+  </category>

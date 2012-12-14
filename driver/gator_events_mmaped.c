@@ -45,7 +45,7 @@ static s64 prev_time;
 
 /* Adds mmaped_cntX directories and enabled, event, and key files to /dev/gator/events */
 static int gator_events_mmaped_create_files(struct super_block *sb,
-		struct dentry *root)
+					    struct dentry *root)
 {
 	int i;
 
@@ -58,11 +58,11 @@ static int gator_events_mmaped_create_files(struct super_block *sb,
 		if (WARN_ON(!dir))
 			return -1;
 		gatorfs_create_ulong(sb, dir, "enabled",
-				&mmaped_counters[i].enabled);
+				     &mmaped_counters[i].enabled);
 		gatorfs_create_ulong(sb, dir, "event",
-				&mmaped_counters[i].event);
+				     &mmaped_counters[i].event);
 		gatorfs_create_ro_ulong(sb, dir, "key",
-				&mmaped_counters[i].key);
+					&mmaped_counters[i].key);
 	}
 
 	return 0;
@@ -73,7 +73,7 @@ static int gator_events_mmaped_start(void)
 #ifdef TODO
 	for (i = 0; i < MMAPED_COUNTERS_NUM; i++)
 		writel(mmaped_counters[i].event,
-				mmaped_base + COUNTERS_CONFIG_OFFSET[i]);
+		       mmaped_base + COUNTERS_CONFIG_OFFSET[i]);
 
 	writel(ENABLED, COUNTERS_CONTROL_OFFSET);
 #endif
@@ -102,7 +102,7 @@ static int mmaped_simulate(int counter, int delta_in_us)
 	int result = 0;
 
 	switch (counter) {
-	case 0: /* sort-of-sine */
+	case 0:		/* sort-of-sine */
 		{
 			static int t = 0;
 			int x;
@@ -123,7 +123,7 @@ static int mmaped_simulate(int counter, int delta_in_us)
 				result = 1922 - result;
 		}
 		break;
-	case 1: /* triangle */
+	case 1:		/* triangle */
 		{
 			static int v, d = 1;
 
@@ -139,7 +139,7 @@ static int mmaped_simulate(int counter, int delta_in_us)
 			result = v;
 		}
 		break;
-	case 2: /* PWM signal */
+	case 2:		/* PWM signal */
 		{
 			static int t, dc, x;
 
@@ -149,7 +149,7 @@ static int mmaped_simulate(int counter, int delta_in_us)
 			if (x / 1000000 != (x + delta_in_us) / 1000000)
 				dc = (dc + 100000) % 1000000;
 			x += delta_in_us;
-			
+
 			result = t < dc ? 0 : 10;
 		}
 		break;
@@ -173,7 +173,7 @@ static int gator_events_mmaped_read(int **buffer)
 	if (smp_processor_id())
 		return 0;
 
-#ifndef TODO	
+#ifndef TODO
 	getnstimeofday(&ts);
 	time = timespec_to_ns(&ts);
 	delta_in_us = (int)(time - prev_time) / 1000;
@@ -184,15 +184,16 @@ static int gator_events_mmaped_read(int **buffer)
 		if (mmaped_counters[i].enabled) {
 			mmaped_buffer[len++] = mmaped_counters[i].key;
 #ifdef TODO
-			mmaped_buffer[len++] = readl(mmaped_base +
-					COUNTERS_VALUE_OFFSET[i]);
+			mmaped_buffer[len++] =
+			    readl(mmaped_base + COUNTERS_VALUE_OFFSET[i]);
 #else
-			mmaped_buffer[len++] = mmaped_simulate(
-					mmaped_counters[i].event, delta_in_us);
+			mmaped_buffer[len++] =
+			    mmaped_simulate(mmaped_counters[i].event,
+					    delta_in_us);
 #endif
 		}
 	}
-	
+
 	if (buffer)
 		*buffer = mmaped_buffer;
 
@@ -214,7 +215,7 @@ int __init gator_events_mmaped_init(void)
 #ifdef TODO
 	mmaped_base = ioremap(COUNTERS_PHYS_ADDR, SZ_4K);
 	if (!mmaped_base)
-		return -ENOMEM;	
+		return -ENOMEM;
 #endif
 
 	for (i = 0; i < MMAPED_COUNTERS_NUM; i++) {
@@ -224,4 +225,5 @@ int __init gator_events_mmaped_init(void)
 
 	return gator_events_install(&gator_events_mmaped_interface);
 }
+
 gator_events_init(gator_events_mmaped_init);

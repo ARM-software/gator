@@ -10,7 +10,6 @@
 #include "SessionData.h"
 #include "SessionXML.h"
 #include "Logging.h"
-extern void handleException();
 
 SessionData* gSessionData = NULL;
 

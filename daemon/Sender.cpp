@@ -17,8 +17,6 @@
 #include "Logging.h"
 #include "SessionData.h"
 
-extern void handleException();
-
 Sender::Sender(OlySocket* socket) {
 	mDataFile = NULL;
 	mDataSocket = NULL;
@@ -37,7 +35,7 @@ Sender::Sender(OlySocket* socket) {
 			}
 		}
 
-		// Send magic sequence - must be done first, afterwhich error messages can be sent
+		// Send magic sequence - must be done first, after which error messages can be sent
 		char magic[32];
 		snprintf(magic, 32, "GATOR %i\n", PROTOCOL_VERSION);
 		mDataSocket->send(magic, strlen(magic));

@@ -26,8 +26,6 @@ static int l2c310_buffer[L2C310_COUNTERS_NUM * 2];
 
 static void __iomem *l2c310_base;
 
-
-
 static void gator_events_l2c310_reset_counters(void)
 {
 	u32 val = readl(l2c310_base + L2X0_EVENT_CNT_CTRL);
@@ -37,9 +35,8 @@ static void gator_events_l2c310_reset_counters(void)
 	writel(val, l2c310_base + L2X0_EVENT_CNT_CTRL);
 }
 
-
 static int gator_events_l2c310_create_files(struct super_block *sb,
-		struct dentry *root)
+					    struct dentry *root)
 {
 	int i;
 
@@ -52,11 +49,11 @@ static int gator_events_l2c310_create_files(struct super_block *sb,
 		if (WARN_ON(!dir))
 			return -1;
 		gatorfs_create_ulong(sb, dir, "enabled",
-				&l2c310_counters[i].enabled);
+				     &l2c310_counters[i].enabled);
 		gatorfs_create_ulong(sb, dir, "event",
-				&l2c310_counters[i].event);
+				     &l2c310_counters[i].event);
 		gatorfs_create_ro_ulong(sb, dir, "key",
-				&l2c310_counters[i].key);
+					&l2c310_counters[i].key);
 	}
 
 	return 0;
@@ -73,7 +70,7 @@ static int gator_events_l2c310_start(void)
 	/* Counter event sources */
 	for (i = 0; i < L2C310_COUNTERS_NUM; i++)
 		writel((l2c310_counters[i].event & 0xf) << 2,
-				l2c310_base + l2x0_event_cntx_cfg[i]);
+		       l2c310_base + l2x0_event_cntx_cfg[i]);
 
 	gator_events_l2c310_reset_counters();
 
@@ -105,10 +102,10 @@ static int gator_events_l2c310_read(int **buffer)
 		if (l2c310_counters[i].enabled) {
 			l2c310_buffer[len++] = l2c310_counters[i].key;
 			l2c310_buffer[len++] = readl(l2c310_base +
-					l2x0_event_cntx_val[i]);
+						     l2x0_event_cntx_val[i]);
 		}
 	}
-	
+
 	/* l2c310 counters are saturating, not wrapping in case of overflow */
 	gator_events_l2c310_reset_counters();
 
@@ -176,4 +173,5 @@ int gator_events_l2c310_init(void)
 
 	return gator_events_install(&gator_events_l2c310_interface);
 }
+
 gator_events_init(gator_events_l2c310_init);

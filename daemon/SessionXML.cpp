@@ -13,8 +13,6 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 
-extern void handleException();
-
 static const char*	TAG_SESSION = "session";
 static const char*	TAG_IMAGE	= "image";
 

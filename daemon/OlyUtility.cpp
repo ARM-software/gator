@@ -11,10 +11,12 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef WIN32
+#if defined(WIN32)
+#include <windows.h>
+#elif defined(__linux__)
 #include <unistd.h>
-#else
-#include <Windows.h>
+#elif defined(DARWIN)
+#include <mach-o/dyld.h>
 #endif
 
 #include "OlyUtility.h"
@@ -22,138 +24,144 @@
 OlyUtility* util = NULL;
 
 bool OlyUtility::stringToBool(const char* string, bool defValue) {
-	char value[32];
+  char value[32];
 
-	if (string == NULL) {
-		return defValue;
-	}
+  if (string == NULL) {
+    return defValue;
+  }
 
-	strncpy(value, string, sizeof(value));
-	if (value[0] == 0) {
-		return defValue;
-	}
-	value[sizeof(value) - 1] = 0; // strncpy does not guarantee a null-terminated string
+  strncpy(value, string, sizeof(value));
+  if (value[0] == 0) {
+    return defValue;
+  }
+  value[sizeof(value) - 1] = 0; // strncpy does not guarantee a null-terminated string
 
-	// Convert to lowercase
-	int i = 0;
-	while (value[i]) {
-		value[i] = tolower(value[i]);
-		i++;
-	}
+  // Convert to lowercase
+  int i = 0;
+  while (value[i]) {
+    value[i] = tolower(value[i]);
+    i++;
+  }
 
-	if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0 || strcmp(value, "on") == 0) {
-		return true;
-	} else if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 || strcmp(value, "off") == 0) {
-		return false;
-	} else {
-		return defValue;
-	}
+  if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0 || strcmp(value, "on") == 0) {
+    return true;
+  } else if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 || strcmp(value, "off") == 0) {
+    return false;
+  } else {
+    return defValue;
+  }
 }
 
 void OlyUtility::stringToLower(char* string) {
-	if (string == NULL) {
-		return;
-	}
+  if (string == NULL) {
+    return;
+  }
 
-	while (*string) {
-		*string = tolower(*string);
-		string++;
-	}
+  while (*string) {
+    *string = tolower(*string);
+    string++;
+  }
 }
 
 // Modifies fullpath with the path part including the trailing path separator
 int OlyUtility::getApplicationFullPath(char* fullpath, int sizeOfPath) {
-	memset(fullpath, 0, sizeOfPath);
-#ifdef WIN32
-	int length = GetModuleFileName(NULL, fullpath, sizeOfPath);
-#else
-	int length = readlink("/proc/self/exe", fullpath, sizeOfPath);
+  memset(fullpath, 0, sizeOfPath);
+#if defined(WIN32)
+  int length = GetModuleFileName(NULL, fullpath, sizeOfPath);
+#elif defined(__linux__)
+  int length = readlink("/proc/self/exe", fullpath, sizeOfPath);
+#elif defined(DARWIN)
+  uint32_t length_u = (uint32_t)sizeOfPath;
+  int length = sizeOfPath;
+  if (_NSGetExecutablePath(fullpath, &length_u) == 0) {
+    length = strlen(fullpath);
+  }
 #endif
 
-	if (length == sizeOfPath) {
-		return -1;
-	}
+  if (length == sizeOfPath) {
+    return -1;
+  }
 
-	fullpath[length] = 0;
-	fullpath = getPathPart(fullpath);
+  fullpath[length] = 0;
+  fullpath = getPathPart(fullpath);
 
-	return 0;
+  return 0;
 }
 
 char* OlyUtility::readFromDisk(const char* file, unsigned int *size, bool appendNull) {
-	// Open the file
-	FILE* pFile = fopen(file, "rb");
-	if (pFile==NULL) {
-		return NULL;
-	}
+  // Open the file
+  FILE* pFile = fopen(file, "rb");
+  if (pFile==NULL) {
+    return NULL;
+  }
 
-	// Obtain file size
-	fseek(pFile , 0 , SEEK_END);
-	unsigned int lSize = ftell(pFile);
-	rewind(pFile);
+  // Obtain file size
+  fseek(pFile , 0 , SEEK_END);
+  unsigned int lSize = ftell(pFile);
+  rewind(pFile);
 
-	// Allocate memory to contain the whole file
-	char* buffer = (char*)malloc(lSize + (int)appendNull);
-	if (buffer == NULL) {
-		fclose(pFile);
-		return NULL;
-	}
+  // Allocate memory to contain the whole file
+  char* buffer = (char*)malloc(lSize + (int)appendNull);
+  if (buffer == NULL) {
+    fclose(pFile);
+    return NULL;
+  }
 
-	// Copy the file into the buffer
-	if (fread(buffer, 1, lSize, pFile) != lSize) {
-		free(buffer);
-		fclose(pFile);
-		return NULL;
-	}
+  // Copy the file into the buffer
+  if (fread(buffer, 1, lSize, pFile) != lSize) {
+    free(buffer);
+    fclose(pFile);
+    return NULL;
+  }
 
-	// Terminate
-	fclose(pFile);
+  // Terminate
+  fclose(pFile);
 
-	if (appendNull) {
-		buffer[lSize] = 0;
-	}
+  if (appendNull) {
+    buffer[lSize] = 0;
+  }
 
-	if (size) {
-		*size = lSize;
-	}
+  if (size) {
+    *size = lSize;
+  }
 
-	return buffer;
+  return buffer;
 }
 
 int OlyUtility::writeToDisk(const char* path, const char* data) {
-	// Open the file
-	FILE* pFile = fopen(path, "wb");
-	if (pFile == NULL) {
-		return -1;
-	}
+  // Open the file
+  FILE* pFile = fopen(path, "wb");
+  if (pFile == NULL) {
+    return -1;
+  }
 
-	// Write the data to disk
-	if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) {
-		fclose(pFile);
-		return -1;
-	}
+  // Write the data to disk
+  if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) {
+    fclose(pFile);
+    return -1;
+  }
 
-	// Terminate
-	fclose(pFile);
-	return 0;
+  // Terminate
+  fclose(pFile);
+  return 0;
 }
 
 int OlyUtility::appendToDisk(const char* path, const char* data) {
-	// Open the file
-	FILE* pFile = fopen(path, "a");
-	if (pFile == NULL) {
-		return -1;
-	}
+  // Open the file
+  FILE* pFile = fopen(path, "a");
+  if (pFile == NULL) {
+    return -1;
+  }
 
-	// Write the data to disk
-	if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) {
-		fclose(pFile);
-		return -1;
-	}
+  // Write the data to disk
+  if (fwrite(data, 1, strlen(data), pFile) != strlen(data)) {
+    fclose(pFile);
+    return -1;
+  }
 
-	// Terminate
-	fclose(pFile);
-	return 0;
+  // Terminate
+  fclose(pFile);
+  return 0;
 }
 
 /**
@@ -163,97 +171,58 @@ int OlyUtility::appendToDisk(const char* path, const char* data) {
  */
 #define TRANSFER_SIZE 1024
 int OlyUtility::copyFile(const char* srcFile, const char* dstFile) {
-	char* buffer = (char*)malloc(TRANSFER_SIZE);
-	FILE * f_src = fopen(srcFile,"rb");
-	if (!f_src) {
-		return 0;
-	}
-	FILE * f_dst = fopen(dstFile,"wb");
-	if (!f_dst) {
-		fclose(f_src);
-		return 0;
-	}
-	while (!feof(f_src)) {
-		int num_bytes_read = fread(buffer, 1, TRANSFER_SIZE, f_src);
-		if (num_bytes_read < TRANSFER_SIZE && !feof(f_src)) {
-			fclose(f_src);
-			fclose(f_dst);
-			return 0;
-		}
-		int num_bytes_written = fwrite(buffer, 1, num_bytes_read, f_dst);
-		if (num_bytes_written != num_bytes_read) {
-			fclose(f_src);
-			fclose(f_dst);
-			return 0;
-		}
-	}
-	fclose(f_src);
-	fclose(f_dst);
-	free(buffer);
-	return 1;
+  char* buffer = (char*)malloc(TRANSFER_SIZE);
+  FILE * f_src = fopen(srcFile,"rb");
+  if (!f_src) {
+    return 0;
+  }
+  FILE * f_dst = fopen(dstFile,"wb");
+  if (!f_dst) {
+    fclose(f_src);
+    return 0;
+  }
+  while (!feof(f_src)) {
+    int num_bytes_read = fread(buffer, 1, TRANSFER_SIZE, f_src);
+    if (num_bytes_read < TRANSFER_SIZE && !feof(f_src)) {
+      fclose(f_src);
+      fclose(f_dst);
+      return 0;
+    }
+    int num_bytes_written = fwrite(buffer, 1, num_bytes_read, f_dst);
+    if (num_bytes_written != num_bytes_read) {
+      fclose(f_src);
+      fclose(f_dst);
+      return 0;
+    }
+  }
+  fclose(f_src);
+  fclose(f_dst);
+  free(buffer);
+  return 1;
 }
 
 const char* OlyUtility::getFilePart(const char* path) {
-	const char* last_sep = strrchr(path, PATH_SEPARATOR);
+  const char* last_sep = strrchr(path, PATH_SEPARATOR);
 
-	// in case path is not a full path
-	if (last_sep == NULL) {
-		return path;
-	}
+  // in case path is not a full path
+  if (last_sep == NULL) {
+    return path;
+  }
 
-	return last_sep++;
+  return last_sep++;
 }
 
 // getPathPart may modify the contents of path
 // returns the path including the trailing path separator
 char* OlyUtility::getPathPart(char* path) {
-	char* last_sep = strrchr(path, PATH_SEPARATOR);
+  char* last_sep = strrchr(path, PATH_SEPARATOR);
 
-	// in case path is not a full path
-	if (last_sep == NULL) {
-		return 0;
-	}
-	last_sep++;
-	*last_sep = 0;
+  // in case path is not a full path
+  if (last_sep == NULL) {
+    return 0;
+  }
+  last_sep++;
+  *last_sep = 0;
 
-	return (path);
-}
-
-// whitespace callback utility function used with mini-xml
-const char * mxmlWhitespaceCB(mxml_node_t *node, int loc) {
-	const char *name;
-
-	name = mxmlGetElement(node);
-
-	if (loc == MXML_WS_BEFORE_OPEN) {
-		// Single indentation
-		if (!strcmp(name, "target") || !strcmp(name, "counters"))
-			return("\n  ");
-
-		// Double indentation
-		if (!strcmp(name, "counter"))
-			return("\n    ");
-
-		// Avoid a carriage return on the first line of the xml file
-		if (!strncmp(name, "?xml", 4))
-			return(NULL);
-
-		// Default - no indentation
-		return("\n");
-	}
-
-	if (loc == MXML_WS_BEFORE_CLOSE) {
-		// No indentation
-		if (!strcmp(name, "captured"))
-			return("\n");
-
-		// Single indentation
-		if (!strcmp(name, "counters"))
-			return("\n  ");
-
-		// Default - no carriage return
-		return(NULL);
-	}
-
-	return(NULL);
+  return (path);
 }

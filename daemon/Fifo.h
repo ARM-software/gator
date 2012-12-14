@@ -15,13 +15,13 @@ class Fifo {
 public:
 	Fifo(int singleBufferSize, int totalBufferSize);
 	~Fifo();
-	int numBytesFilled();
-	bool isEmpty();
-	bool isFull();
-	bool willFill(int additional);
-	char* start();
+	int numBytesFilled() const;
+	bool isEmpty() const;
+	bool isFull() const;
+	bool willFill(int additional) const;
+	char* start() const;
 	char* write(int length);
-	char* read(int* length);
+	char* read(int *const length);
 
 private:
 	int		mSingleBufferSize, mWrite, mRead, mReadCommit, mRaggedEnd, mWrapThreshold;

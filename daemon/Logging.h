@@ -42,4 +42,6 @@ private:
 
 extern Logging* logg;
 
+extern void handleException();
+
 #endif 	//__LOGGING_H__

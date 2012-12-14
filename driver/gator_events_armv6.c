@@ -93,7 +93,7 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 	return 0;
 }
 
-static int gator_events_armv6_online(int** buffer)
+static int gator_events_armv6_online(int **buffer)
 {
 	unsigned int cnt, len = 0, cpu = smp_processor_id();
 	u32 pmnc;
@@ -104,7 +104,7 @@ static int gator_events_armv6_online(int** buffer)
 
 	/* initialize PMNC, reset overflow, D bit, C bit and P bit. */
 	armv6_pmnc_write(PMCR_OFL_PMN0 | PMCR_OFL_PMN1 | PMCR_OFL_CCNT |
-			PMCR_C | PMCR_P);
+			 PMCR_C | PMCR_P);
 
 	/* configure control register */
 	for (pmnc = 0, cnt = PMN0; cnt <= CCNT; cnt++) {
@@ -141,7 +141,7 @@ static int gator_events_armv6_online(int** buffer)
 	return len;
 }
 
-static int gator_events_armv6_offline(int** buffer)
+static int gator_events_armv6_offline(int **buffer)
 {
 	unsigned int cnt;
 

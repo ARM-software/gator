@@ -1,5 +1,5 @@
 
-  <category name="Mali-T6xx-JobManager" per_cpu="no"> 
+  <category name="Mali-T6xx-JobManager" per_cpu="no">
     <event counter="ARM_Mali-T6xx_MESSAGES_SENT" title="Mali GPU Job Manager" name="Job Manager messages sent" description="Number of JCB messages sent by the Job Manager."/>
     <event counter="ARM_Mali-T6xx_MESSAGES_RECEIVED" title="Mali GPU Job Manager" name="Job Manager messages received " description="Number of JCB messages received by the Job Manager."/>
     <event counter="ARM_Mali-T6xx_GPU_ACTIVE" title="Mali GPU Job Manager" name="GPU active cycles" description="Number of cycles the GPU was active."/>
@@ -63,7 +63,7 @@
 -->
   </category>
 
-  <category name="Mali-T6xx-Tiler" per_cpu="no"> 
+  <category name="Mali-T6xx-Tiler" per_cpu="no">
 <!--
     <event counter="ARM_Mali-T6xx_JOBS_PROCESSED" title="Mali GPU Tiler" name="Jobs processed" description="Number of jobs processed."/>
 -->
@@ -119,7 +119,7 @@
 
     <event counter="ARM_Mali-T6xx_WRBUF_STALL" title="Mali GPU Tiler" name="Write-buffer stalls" description="Number of write-buffer stalls."/>
     <event counter="ARM_Mali-T6xx_ACTIVE" title="Mali GPU Tiler" name="Tiler active cycles" description="Number of cycles the tiler is active."/>
-    <event counter="ARM_Mali-T6xx_LOADING_DESC" title="Mali GPU Tiler" name="Cycles loading descriptors" description="Number of cycle spent loading descriptors while the tiler frontend is otherwise idle."/>  
+    <event counter="ARM_Mali-T6xx_LOADING_DESC" title="Mali GPU Tiler" name="Cycles loading descriptors" description="Number of cycle spent loading descriptors while the tiler frontend is otherwise idle."/>
     <event counter="ARM_Mali-T6xx_INDEX_WAIT" title="Mali GPU Tiler" name="Cycles index fetch miss" description="Number of cycles the vertex cache could accept an index, but due to a miss, the index fetcher could not provide one."/>
 
     <event counter="ARM_Mali-T6xx_INDEX_RANGE_WAIT" title="Mali GPU Tiler" name="Cycles index out of range" description="Number of cycles the index fetcher provides an index, but the index is outside the range of currently shaded vertices. Only relevant for fused jobs."/>
@@ -132,7 +132,7 @@
 
     <event counter="ARM_Mali-T6xx_UTLB_STALL" title="Mali GPU Tiler" name="uTLB cycles stall" description="uTLB: Cycles with stall on input AXI address channel."/>
 
-    <event counter="ARM_Mali-T6xx_UTLB_REPLAY_MISS" title="Mali GPU Tiler" name="uTLB replay buffer cache misses" description="uTLB: Number of cache misses on accesses from replay buffer."/>    
+    <event counter="ARM_Mali-T6xx_UTLB_REPLAY_MISS" title="Mali GPU Tiler" name="uTLB replay buffer cache misses" description="uTLB: Number of cache misses on accesses from replay buffer."/>
     <event counter="ARM_Mali-T6xx_UTLB_REPLAY_FULL" title="Mali GPU Tiler" name="uTLB cycle reply buffer full" description="uTLB: Number of cycles replay buffer is full."/>
     <event counter="ARM_Mali-T6xx_UTLB_NEW_MISS" title="Mali GPU Tiler" name="uTLB cache misses on new request" description="uTLB: Number of cache misses on new requests."/>
     <event counter="ARM_Mali-T6xx_UTLB_HIT" title="Mali GPU Tiler" name="uTLB cache hits" description="uTLB: Number of cache hits."/>

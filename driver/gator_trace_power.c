@@ -9,7 +9,18 @@
 
 #include <linux/cpufreq.h>
 #include <trace/events/power.h>
+
+#if defined(__arm__)
+
 #include <asm/mach-types.h>
+
+#define implements_wfi() (!machine_is_omap3_beagle())
+
+#else
+
+#define implements_wfi() false
+
+#endif
 
 // cpu_frequency and cpu_idle trace points were introduced in Linux kernel v2.6.38
 // the now deprecated power_frequency trace point was available prior to 2.6.38, but only for x86
@@ -61,9 +72,9 @@ GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
 		return;
 	}
 
-	if (!machine_is_omap3_beagle()) {
+	if (implements_wfi()) {
 		if (state == PWR_EVENT_EXIT) {
-            // transition from wfi to non-wfi
+			// transition from wfi to non-wfi
 			marshal_idle(cpu, WFI_EXIT);
 		} else {
 			// transition from non-wfi to wfi
@@ -149,10 +160,29 @@ void gator_trace_power_init(void)
 	}
 }
 #else
-static int gator_trace_power_create_files(struct super_block *sb, struct dentry *root) {return 0;}
-static void gator_trace_power_online(void) {}
-static void gator_trace_power_offline(void) {}
-static int gator_trace_power_start(void) {return 0;}
-static void gator_trace_power_stop(void) {}
-void gator_trace_power_init(void) {}
+static int gator_trace_power_create_files(struct super_block *sb, struct dentry *root)
+{
+	return 0;
+}
+
+static void gator_trace_power_online(void)
+{
+}
+
+static void gator_trace_power_offline(void)
+{
+}
+
+static int gator_trace_power_start(void)
+{
+	return 0;
+}
+
+static void gator_trace_power_stop(void)
+{
+}
+
+void gator_trace_power_init(void)
+{
+}
 #endif

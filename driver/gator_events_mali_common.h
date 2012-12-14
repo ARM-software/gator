@@ -35,8 +35,8 @@
  * Runtime state information for a counter.
  */
 typedef struct {
-    unsigned long key;            /* 'key' (a unique id set by gatord and returned by gator.ko) */
-    unsigned long enabled;        /* counter enable state */
+	unsigned long key;	/* 'key' (a unique id set by gatord and returned by gator.ko) */
+	unsigned long enabled;	/* counter enable state */
 } mali_counter;
 
 /*
@@ -45,7 +45,7 @@ typedef struct {
 typedef void mali_profiling_set_event_type(unsigned int, unsigned int);
 typedef void mali_osk_fb_control_set_type(unsigned int, unsigned int);
 typedef void mali_profiling_control_type(unsigned int, unsigned int);
-typedef void mali_profiling_get_counters_type(unsigned int*, unsigned int*, unsigned int*, unsigned int*);
+typedef void mali_profiling_get_counters_type(unsigned int *, unsigned int *, unsigned int *, unsigned int *);
 
 /*
  * Driver entry points for functions called directly by gator.
@@ -53,14 +53,14 @@ typedef void mali_profiling_get_counters_type(unsigned int*, unsigned int*, unsi
 extern void _mali_profiling_set_event(unsigned int, unsigned int);
 extern void _mali_osk_fb_control_set(unsigned int, unsigned int);
 extern void _mali_profiling_control(unsigned int, unsigned int);
-extern void _mali_profiling_get_counters(unsigned int*, unsigned int*, unsigned int*, unsigned int*);
+extern void _mali_profiling_get_counters(unsigned int *, unsigned int *, unsigned int *, unsigned int *);
 
 /**
  * Returns a name which identifies the GPU type (eg Mali-400, Mali-T6xx).
  *
  * @return The name as a constant string.
  */
-extern const char* gator_mali_get_mali_name(void);
+extern const char *gator_mali_get_mali_name(void);
 
 /**
  * Creates a filesystem entry under /dev/gator relating to the specified event name and key, and
@@ -75,10 +75,10 @@ extern const char* gator_mali_get_mali_name(void);
  *
  * @return 0 if entry point was created, non-zero if not.
  */
-extern int gator_mali_create_file_system(const char* mali_name, const char* event_name, struct super_block *sb, struct dentry *root, mali_counter *counter);
+extern int gator_mali_create_file_system(const char *mali_name, const char *event_name, struct super_block *sb, struct dentry *root, mali_counter *counter);
 
 /**
- * Initialises the counter array.
+ * Initializes the counter array.
  *
  * @param keys The array of counters
  * @param n_counters The number of entries in each of the arrays.

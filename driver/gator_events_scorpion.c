@@ -20,8 +20,8 @@ static int pmnc_counters;
 #define PMNC_C		(1 << 2)	/* Cycle counter reset */
 #define PMNC_D		(1 << 3)	/* CCNT counts every 64th cpu cycle */
 #define PMNC_X		(1 << 4)	/* Export to ETM */
-#define PMNC_DP		(1 << 5)	/* Disable CCNT if non-invasive debug*/
-#define	PMNC_MASK	0x3f		/* Mask for writable bits */
+#define PMNC_DP		(1 << 5)	/* Disable CCNT if non-invasive debug */
+#define	PMNC_MASK	0x3f	/* Mask for writable bits */
 
 // ccnt reg
 #define CCNT_REG	(1 << 31)
@@ -37,95 +37,95 @@ static unsigned long pmnc_key[CNTMAX];
 static DEFINE_PER_CPU(int[CNTMAX * 2], perfCnt);
 
 enum scorpion_perf_types {
-	SCORPION_ICACHE_EXPL_INV                = 0x4c,
-	SCORPION_ICACHE_MISS                    = 0x4d,
-	SCORPION_ICACHE_ACCESS                  = 0x4e,
-	SCORPION_ICACHE_CACHEREQ_L2             = 0x4f,
-	SCORPION_ICACHE_NOCACHE_L2              = 0x50,
-	SCORPION_HIQUP_NOPED                    = 0x51,
-	SCORPION_DATA_ABORT                     = 0x52,
-	SCORPION_IRQ                            = 0x53,
-	SCORPION_FIQ                            = 0x54,
-	SCORPION_ALL_EXCPT                      = 0x55,
-	SCORPION_UNDEF                          = 0x56,
-	SCORPION_SVC                            = 0x57,
-	SCORPION_SMC                            = 0x58,
-	SCORPION_PREFETCH_ABORT                 = 0x59,
-	SCORPION_INDEX_CHECK                    = 0x5a,
-	SCORPION_NULL_CHECK                     = 0x5b,
-	SCORPION_EXPL_ICIALLU                   = 0x5c,
-	SCORPION_IMPL_ICIALLU                   = 0x5d,
-	SCORPION_NONICIALLU_BTAC_INV            = 0x5e,
-	SCORPION_ICIMVAU_IMPL_ICIALLU           = 0x5f,
-	SCORPION_SPIPE_ONLY_CYCLES              = 0x60,
-	SCORPION_XPIPE_ONLY_CYCLES              = 0x61,
-	SCORPION_DUAL_CYCLES                    = 0x62,
-	SCORPION_DISPATCH_ANY_CYCLES            = 0x63,
-	SCORPION_FIFO_FULLBLK_CMT               = 0x64,
-	SCORPION_FAIL_COND_INST                 = 0x65,
-	SCORPION_PASS_COND_INST                 = 0x66,
-	SCORPION_ALLOW_VU_CLK                   = 0x67,
-	SCORPION_VU_IDLE                        = 0x68,
-	SCORPION_ALLOW_L2_CLK                   = 0x69,
-	SCORPION_L2_IDLE                        = 0x6a,
-	SCORPION_DTLB_IMPL_INV_SCTLR_DACR       = 0x6b,
-	SCORPION_DTLB_EXPL_INV                  = 0x6c,
-	SCORPION_DTLB_MISS                      = 0x6d,
-	SCORPION_DTLB_ACCESS                    = 0x6e,
-	SCORPION_ITLB_MISS                      = 0x6f,
-	SCORPION_ITLB_IMPL_INV                  = 0x70,
-	SCORPION_ITLB_EXPL_INV                  = 0x71,
-	SCORPION_UTLB_D_MISS                    = 0x72,
-	SCORPION_UTLB_D_ACCESS                  = 0x73,
-	SCORPION_UTLB_I_MISS                    = 0x74,
-	SCORPION_UTLB_I_ACCESS                  = 0x75,
-	SCORPION_UTLB_INV_ASID                  = 0x76,
-	SCORPION_UTLB_INV_MVA                   = 0x77,
-	SCORPION_UTLB_INV_ALL                   = 0x78,
-	SCORPION_S2_HOLD_RDQ_UNAVAIL            = 0x79,
-	SCORPION_S2_HOLD                        = 0x7a,
-	SCORPION_S2_HOLD_DEV_OP                 = 0x7b,
-	SCORPION_S2_HOLD_ORDER                  = 0x7c,
-	SCORPION_S2_HOLD_BARRIER                = 0x7d,
-	SCORPION_VIU_DUAL_CYCLE                 = 0x7e,
-	SCORPION_VIU_SINGLE_CYCLE               = 0x7f,
-	SCORPION_VX_PIPE_WAR_STALL_CYCLES       = 0x80,
-	SCORPION_VX_PIPE_WAW_STALL_CYCLES       = 0x81,
-	SCORPION_VX_PIPE_RAW_STALL_CYCLES       = 0x82,
-	SCORPION_VX_PIPE_LOAD_USE_STALL         = 0x83,
-	SCORPION_VS_PIPE_WAR_STALL_CYCLES       = 0x84,
-	SCORPION_VS_PIPE_WAW_STALL_CYCLES       = 0x85,
-	SCORPION_VS_PIPE_RAW_STALL_CYCLES       = 0x86,
-	SCORPION_EXCEPTIONS_INV_OPERATION       = 0x87,
-	SCORPION_EXCEPTIONS_DIV_BY_ZERO         = 0x88,
-	SCORPION_COND_INST_FAIL_VX_PIPE         = 0x89,
-	SCORPION_COND_INST_FAIL_VS_PIPE         = 0x8a,
-	SCORPION_EXCEPTIONS_OVERFLOW            = 0x8b,
-	SCORPION_EXCEPTIONS_UNDERFLOW           = 0x8c,
-	SCORPION_EXCEPTIONS_DENORM              = 0x8d,
+	SCORPION_ICACHE_EXPL_INV = 0x4c,
+	SCORPION_ICACHE_MISS = 0x4d,
+	SCORPION_ICACHE_ACCESS = 0x4e,
+	SCORPION_ICACHE_CACHEREQ_L2 = 0x4f,
+	SCORPION_ICACHE_NOCACHE_L2 = 0x50,
+	SCORPION_HIQUP_NOPED = 0x51,
+	SCORPION_DATA_ABORT = 0x52,
+	SCORPION_IRQ = 0x53,
+	SCORPION_FIQ = 0x54,
+	SCORPION_ALL_EXCPT = 0x55,
+	SCORPION_UNDEF = 0x56,
+	SCORPION_SVC = 0x57,
+	SCORPION_SMC = 0x58,
+	SCORPION_PREFETCH_ABORT = 0x59,
+	SCORPION_INDEX_CHECK = 0x5a,
+	SCORPION_NULL_CHECK = 0x5b,
+	SCORPION_EXPL_ICIALLU = 0x5c,
+	SCORPION_IMPL_ICIALLU = 0x5d,
+	SCORPION_NONICIALLU_BTAC_INV = 0x5e,
+	SCORPION_ICIMVAU_IMPL_ICIALLU = 0x5f,
+	SCORPION_SPIPE_ONLY_CYCLES = 0x60,
+	SCORPION_XPIPE_ONLY_CYCLES = 0x61,
+	SCORPION_DUAL_CYCLES = 0x62,
+	SCORPION_DISPATCH_ANY_CYCLES = 0x63,
+	SCORPION_FIFO_FULLBLK_CMT = 0x64,
+	SCORPION_FAIL_COND_INST = 0x65,
+	SCORPION_PASS_COND_INST = 0x66,
+	SCORPION_ALLOW_VU_CLK = 0x67,
+	SCORPION_VU_IDLE = 0x68,
+	SCORPION_ALLOW_L2_CLK = 0x69,
+	SCORPION_L2_IDLE = 0x6a,
+	SCORPION_DTLB_IMPL_INV_SCTLR_DACR = 0x6b,
+	SCORPION_DTLB_EXPL_INV = 0x6c,
+	SCORPION_DTLB_MISS = 0x6d,
+	SCORPION_DTLB_ACCESS = 0x6e,
+	SCORPION_ITLB_MISS = 0x6f,
+	SCORPION_ITLB_IMPL_INV = 0x70,
+	SCORPION_ITLB_EXPL_INV = 0x71,
+	SCORPION_UTLB_D_MISS = 0x72,
+	SCORPION_UTLB_D_ACCESS = 0x73,
+	SCORPION_UTLB_I_MISS = 0x74,
+	SCORPION_UTLB_I_ACCESS = 0x75,
+	SCORPION_UTLB_INV_ASID = 0x76,
+	SCORPION_UTLB_INV_MVA = 0x77,
+	SCORPION_UTLB_INV_ALL = 0x78,
+	SCORPION_S2_HOLD_RDQ_UNAVAIL = 0x79,
+	SCORPION_S2_HOLD = 0x7a,
+	SCORPION_S2_HOLD_DEV_OP = 0x7b,
+	SCORPION_S2_HOLD_ORDER = 0x7c,
+	SCORPION_S2_HOLD_BARRIER = 0x7d,
+	SCORPION_VIU_DUAL_CYCLE = 0x7e,
+	SCORPION_VIU_SINGLE_CYCLE = 0x7f,
+	SCORPION_VX_PIPE_WAR_STALL_CYCLES = 0x80,
+	SCORPION_VX_PIPE_WAW_STALL_CYCLES = 0x81,
+	SCORPION_VX_PIPE_RAW_STALL_CYCLES = 0x82,
+	SCORPION_VX_PIPE_LOAD_USE_STALL = 0x83,
+	SCORPION_VS_PIPE_WAR_STALL_CYCLES = 0x84,
+	SCORPION_VS_PIPE_WAW_STALL_CYCLES = 0x85,
+	SCORPION_VS_PIPE_RAW_STALL_CYCLES = 0x86,
+	SCORPION_EXCEPTIONS_INV_OPERATION = 0x87,
+	SCORPION_EXCEPTIONS_DIV_BY_ZERO = 0x88,
+	SCORPION_COND_INST_FAIL_VX_PIPE = 0x89,
+	SCORPION_COND_INST_FAIL_VS_PIPE = 0x8a,
+	SCORPION_EXCEPTIONS_OVERFLOW = 0x8b,
+	SCORPION_EXCEPTIONS_UNDERFLOW = 0x8c,
+	SCORPION_EXCEPTIONS_DENORM = 0x8d,
 #ifdef CONFIG_ARCH_MSM_SCORPIONMP
-	SCORPIONMP_NUM_BARRIERS                 = 0x8e,
-	SCORPIONMP_BARRIER_CYCLES               = 0x8f,
+	SCORPIONMP_NUM_BARRIERS = 0x8e,
+	SCORPIONMP_BARRIER_CYCLES = 0x8f,
 #else
-	SCORPION_BANK_AB_HIT                    = 0x8e,
-	SCORPION_BANK_AB_ACCESS                 = 0x8f,
-	SCORPION_BANK_CD_HIT                    = 0x90,
-	SCORPION_BANK_CD_ACCESS                 = 0x91,
-	SCORPION_BANK_AB_DSIDE_HIT              = 0x92,
-	SCORPION_BANK_AB_DSIDE_ACCESS           = 0x93,
-	SCORPION_BANK_CD_DSIDE_HIT              = 0x94,
-	SCORPION_BANK_CD_DSIDE_ACCESS           = 0x95,
-	SCORPION_BANK_AB_ISIDE_HIT              = 0x96,
-	SCORPION_BANK_AB_ISIDE_ACCESS           = 0x97,
-	SCORPION_BANK_CD_ISIDE_HIT              = 0x98,
-	SCORPION_BANK_CD_ISIDE_ACCESS           = 0x99,
-	SCORPION_ISIDE_RD_WAIT                  = 0x9a,
-	SCORPION_DSIDE_RD_WAIT                  = 0x9b,
-	SCORPION_BANK_BYPASS_WRITE              = 0x9c,
-	SCORPION_BANK_AB_NON_CASTOUT            = 0x9d,
-	SCORPION_BANK_AB_L2_CASTOUT             = 0x9e,
-	SCORPION_BANK_CD_NON_CASTOUT            = 0x9f,
-	SCORPION_BANK_CD_L2_CASTOUT             = 0xa0,
+	SCORPION_BANK_AB_HIT = 0x8e,
+	SCORPION_BANK_AB_ACCESS = 0x8f,
+	SCORPION_BANK_CD_HIT = 0x90,
+	SCORPION_BANK_CD_ACCESS = 0x91,
+	SCORPION_BANK_AB_DSIDE_HIT = 0x92,
+	SCORPION_BANK_AB_DSIDE_ACCESS = 0x93,
+	SCORPION_BANK_CD_DSIDE_HIT = 0x94,
+	SCORPION_BANK_CD_DSIDE_ACCESS = 0x95,
+	SCORPION_BANK_AB_ISIDE_HIT = 0x96,
+	SCORPION_BANK_AB_ISIDE_ACCESS = 0x97,
+	SCORPION_BANK_CD_ISIDE_HIT = 0x98,
+	SCORPION_BANK_CD_ISIDE_ACCESS = 0x99,
+	SCORPION_ISIDE_RD_WAIT = 0x9a,
+	SCORPION_DSIDE_RD_WAIT = 0x9b,
+	SCORPION_BANK_BYPASS_WRITE = 0x9c,
+	SCORPION_BANK_AB_NON_CASTOUT = 0x9d,
+	SCORPION_BANK_AB_L2_CASTOUT = 0x9e,
+	SCORPION_BANK_CD_NON_CASTOUT = 0x9f,
+	SCORPION_BANK_CD_L2_CASTOUT = 0xa0,
 #endif
 	MSM_MAX_EVT
 };
@@ -209,8 +209,8 @@ static const struct scorp_evt sc_evt[] = {
 	{SCORPION_EXCEPTIONS_DENORM, 0x8c000000, 4, 0x5f},
 
 #ifdef CONFIG_ARCH_MSM_SCORPIONMP
-    {SCORPIONMP_NUM_BARRIERS, 0x80000e00, 3, 0x59},
-    {SCORPIONMP_BARRIER_CYCLES, 0x800e0000, 3, 0x5a},
+	{SCORPIONMP_NUM_BARRIERS, 0x80000e00, 3, 0x59},
+	{SCORPIONMP_BARRIER_CYCLES, 0x800e0000, 3, 0x5a},
 #else
 	{SCORPION_BANK_AB_HIT, 0x80000001, 3, 0x58},
 	{SCORPION_BANK_AB_ACCESS, 0x80000100, 3, 0x59},
@@ -375,8 +375,8 @@ static void scorpion_write_vlpm(u32 val)
 }
 
 struct scorpion_access_funcs {
-	u32 (*read) (void);
-	void (*write) (u32);
+	u32(*read)(void);
+	void (*write)(u32);
 };
 
 struct scorpion_access_funcs scor_func[] = {
@@ -395,7 +395,7 @@ static void scorpion_pre_vlpm(void)
 	u32 venum_new_val;
 	u32 fp_new_val;
 
-	/* CPACR Enable CP10 access*/
+	/* CPACR Enable CP10 access */
 	asm volatile("mrc p15, 0, %0, c1, c0, 2" : "=r" (venum_orig_val));
 	venum_new_val = venum_orig_val | 0x00300000;
 	asm volatile("mcr p15, 0, %0, c1, c0, 2" : : "r" (venum_new_val));
@@ -407,9 +407,9 @@ static void scorpion_pre_vlpm(void)
 
 static void scorpion_post_vlpm(void)
 {
-	/* Restore FPEXC*/
+	/* Restore FPEXC */
 	asm volatile("mcr p10, 7, %0, c8, c0, 0" : : "r" (fp_orig_val));
-	/* Restore CPACR*/
+	/* Restore CPACR */
 	asm volatile("mcr p15, 0, %0, c1, c0, 2" : : "r" (venum_orig_val));
 }
 
@@ -464,7 +464,8 @@ static inline void scorpion_pmnc_write_evtsel(unsigned int cnt, u32 val)
 			u32 zero = 0;
 			struct scorp_evt evtinfo;
 			// extract evtinfo.grp and evtinfo.tevt_type_act from val
-			if (get_scorpion_evtinfo(val, &evtinfo) == 0) return;
+			if (get_scorpion_evtinfo(val, &evtinfo) == 0)
+				return;
 			asm volatile("mcr p15, 0, %0, c9, c13, 1" : : "r" (evtinfo.evt_type_act));
 			asm volatile("mcr p15, 0, %0, c9, c15, 0" : : "r" (zero));
 			scorpion_evt_setup(evtinfo.grp, val);
@@ -482,7 +483,7 @@ static void scorpion_pmnc_reset_counter(unsigned int cnt)
 		asm volatile("mcr p15, 0, %0, c9, c13, 0" : : "r" (val));
 
 		if (pmnc_enabled[cnt] != 0)
-		    scorpion_pmnc_enable_counter(cnt);
+			scorpion_pmnc_enable_counter(cnt);
 
 	} else if (cnt >= CNTMAX) {
 		pr_err("gator: CPU%u resetting wrong PMNC counter %d\n", smp_processor_id(), cnt);
@@ -490,10 +491,10 @@ static void scorpion_pmnc_reset_counter(unsigned int cnt)
 		scorpion_pmnc_disable_counter(cnt);
 
 		if (scorpion_pmnc_select_counter(cnt) == cnt)
-		    asm volatile("mcr p15, 0, %0, c9, c13, 2" : : "r" (val));
+			asm volatile("mcr p15, 0, %0, c9, c13, 2" : : "r" (val));
 
 		if (pmnc_enabled[cnt] != 0)
-		    scorpion_pmnc_enable_counter(cnt);
+			scorpion_pmnc_enable_counter(cnt);
 	}
 }
 
@@ -507,14 +508,14 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 		if (i == 0) {
 			snprintf(buf, sizeof buf, "%s_ccnt", pmnc_name);
 		} else {
-			snprintf(buf, sizeof buf, "%s_cnt%d", pmnc_name, i-1);
+			snprintf(buf, sizeof buf, "%s_cnt%d", pmnc_name, i - 1);
 		}
 		dir = gatorfs_mkdir(sb, root, buf);
 		if (!dir) {
 			return -1;
 		}
 		gatorfs_create_ulong(sb, dir, "enabled", &pmnc_enabled[i]);
-		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);		
+		gatorfs_create_ro_ulong(sb, dir, "key", &pmnc_key[i]);
 		if (i > 0) {
 			gatorfs_create_ulong(sb, dir, "event", &pmnc_event[i]);
 		}
@@ -523,7 +524,7 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 	return 0;
 }
 
-static int gator_events_scorpion_online(int** buffer)
+static int gator_events_scorpion_online(int **buffer)
 {
 	unsigned int cnt, len = 0, cpu = smp_processor_id();
 
@@ -562,13 +563,10 @@ static int gator_events_scorpion_online(int** buffer)
 	// read the counters and toss the invalid data, return zero instead
 	for (cnt = 0; cnt < pmnc_counters; cnt++) {
 		if (pmnc_enabled[cnt]) {
-			int value;
 			if (cnt == CCNT) {
-				value = scorpion_ccnt_read();
+				scorpion_ccnt_read();
 			} else if (scorpion_pmnc_select_counter(cnt) == cnt) {
-				value = scorpion_cntn_read();
-			} else {
-				value = 0;
+				scorpion_cntn_read();
 			}
 			scorpion_pmnc_reset_counter(cnt);
 
@@ -583,7 +581,7 @@ static int gator_events_scorpion_online(int** buffer)
 	return len;
 }
 
-static int gator_events_scorpion_offline(int** buffer)
+static int gator_events_scorpion_offline(int **buffer)
 {
 	scorpion_pmnc_write(scorpion_pmnc_read() & ~PMNC_E);
 	return 0;
@@ -657,7 +655,7 @@ int gator_events_scorpion_init(void)
 		return -1;
 	}
 
-	pmnc_counters++; // CNT[n] + CCNT
+	pmnc_counters++;	// CNT[n] + CCNT
 
 	for (cnt = CCNT; cnt < CNTMAX; cnt++) {
 		pmnc_enabled[cnt] = 0;

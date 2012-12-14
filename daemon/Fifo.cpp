@@ -12,8 +12,6 @@
 #include "Fifo.h"
 #include "Logging.h"
 
-extern void handleException();
-
 // bufferSize is the amount of data to be filled
 // singleBufferSize is the maximum size that may be filled during a single write
 // (bufferSize + singleBufferSize) will be allocated
@@ -37,27 +35,29 @@ Fifo::Fifo(int singleBufferSize, int bufferSize) {
 
 Fifo::~Fifo() {
 	free(mBuffer);
+	sem_destroy(&mWaitForSpaceSem);
+	sem_destroy(&mWaitForDataSem);
 }
 
-int Fifo::numBytesFilled() {
+int Fifo::numBytesFilled() const {
 	return mWrite - mRead + mRaggedEnd;
 }
 
-char* Fifo::start() {
+char* Fifo::start() const {
 	return mBuffer;
 }
 
-bool Fifo::isEmpty() {
+bool Fifo::isEmpty() const {
 	return mRead == mWrite && mRaggedEnd == 0;
 }
 
-bool Fifo::isFull() {
+bool Fifo::isFull() const {
 	return willFill(0);
 }
 
 // Determines if the buffer will fill assuming 'additional' bytes will be added to the buffer
 // 'full' means there is less than singleBufferSize bytes available contiguously; it does not mean there are zero bytes available
-bool Fifo::willFill(int additional) {
+bool Fifo::willFill(int additional) const {
 	if (mWrite > mRead) {
 		if (numBytesFilled() + additional < mWrapThreshold) {
 			return false;
@@ -98,7 +98,7 @@ char* Fifo::write(int length) {
 }
 
 // This function will stall until data is available
-char* Fifo::read(int* length) {
+char* Fifo::read(int *const length) {
 	// update the read pointer now that the data has been handled
 	mRead = mReadCommit;
 

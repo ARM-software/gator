@@ -14,8 +14,6 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 
-extern void handleException();
-
 CapturedXML::CapturedXML() {
 }
 
@@ -110,4 +108,43 @@ void CapturedXML::write(char* path) {
 
 	free(xml);
 	free(file);
+}
+
+// whitespace callback utility function used with mini-xml
+const char * mxmlWhitespaceCB(mxml_node_t *node, int loc) {
+	const char *name;
+
+	name = mxmlGetElement(node);
+
+	if (loc == MXML_WS_BEFORE_OPEN) {
+		// Single indentation
+		if (!strcmp(name, "target") || !strcmp(name, "counters"))
+			return("\n  ");
+
+		// Double indentation
+		if (!strcmp(name, "counter"))
+			return("\n    ");
+
+		// Avoid a carriage return on the first line of the xml file
+		if (!strncmp(name, "?xml", 4))
+			return(NULL);
+
+		// Default - no indentation
+		return("\n");
+	}
+
+	if (loc == MXML_WS_BEFORE_CLOSE) {
+		// No indentation
+		if (!strcmp(name, "captured"))
+			return("\n");
+
+		// Single indentation
+		if (!strcmp(name, "counters"))
+			return("\n  ");
+
+		// Default - no carriage return
+		return(NULL);
+	}
+
+	return(NULL);
 }
