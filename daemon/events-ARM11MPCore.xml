@@ -1,6 +1,6 @@
   <counter_set name="ARM_ARM11MPCore_cnt" count="3"/>
   <category name="ARM11MPCore" counter_set="ARM_ARM11MPCore_cnt" per_cpu="yes">
-    <event counter="ARM_ARM11MPCore_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="ARM_ARM11MPCore_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Cache" name="Inst miss" description="Instruction cache miss to a cacheable location, which requires a fetch from external memory"/>
     <event event="0x01" title="Pipeline" name="Instruction stall" description="Stall because instruction buffer cannot deliver an instruction"/>
     <event event="0x02" title="Pipeline" name="Data stall" description="Stall because of a data dependency"/>

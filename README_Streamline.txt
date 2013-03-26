@@ -62,8 +62,8 @@ To create the gator.ko module,
 	tar xzf gator-driver.tar.gz
 	cd gator-driver
 	make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
-for example
-	make -C /home/username/kernel_2.6.32/ M=`pwd` ARCH=arm CROSS_COMPILE=/usr/local/DS-5/bin/arm-linux-gnueabihf- modules
+for example when using the linaro-toolchain-binaries
+	make -C /home/username/kernel_2.6.32/ M=`pwd` ARCH=arm CROSS_COMPILE=/home/username/gcc-linaro-arm-linux-gnueabihf-4.7-2013.01-20130125_linux/bin/arm-linux-gnueabihf- modules
 If successful, a gator.ko module should be generated
 
 *** Building the gator daemon ***
@@ -72,7 +72,8 @@ cd /path/to/gator/daemon-src
 tar -xzf gator-daemon.tar.gz (may need to issue with 'sudo')
 For Linux targets,
 	cd gator-daemon
-	make
+	make CROSS_COMPILE=<...> # For ARMv7 targets
+	make -f Makefile_aarch64 CROSS_COMPILE=<...> # For ARMv8 targets
 	gatord should now be created
 For Android targets (install the android ndk, see developer.android.com)
 	mv gator-daemon jni
@@ -90,6 +91,13 @@ With root privileges, run the daemon
 	sudo ./gatord &
 Note: gatord requires libstdc++.so.6 which is usually supplied by the Linux distribution on the target. A copy of libstdc++.so.6 is available in the DS-5 Linux example distribution.
 
+*** Customizing the l2c-310 Counter ***
+
+The l2c-310 counter in gator_events_l2c-310.c contains hard coded offsets where the L2 cache counter registers are located.  This offset can also be configured via a module parameter specified when gator.ko is loaded, ex:
+	insmod gator.ko l2c310_addr=<offset>
+Further, the l2c-310 counter can be disabled by providing an offset of zero, ex:
+	insmod gator.ko l2c310_addr=0
+
 *** Compiling an application or shared library ***
 
 Recommended compiler settings:
@@ -99,9 +107,19 @@ Recommended compiler settings:
 	"-marm": This option is required if your compiler is configured with --with-mode=thumb, otherwise call stack unwinding will not work.
 
 *** Hardfloat EABI ***
-Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. The included compiler with DS-5 supports hardfloat.
-To compile for non-hardfloat targets it is necessary to add options '-marm -march=armv4t -mfloat-abi=soft'.
+Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. To see if your ARM compiler supports hardfloat, run "gcc -v" and look for --with-float=hard.
+To compile for non-hardfloat targets it is necessary to add options '-marm -march=armv4t -mfloat-abi=soft'. It may also be necessary to provide a softfloat filesystem by adding the option --sysroot, ex: '--sysroot=../DS-5Examples/distribution/filesystem/armv5t_mtx'. The gatord makefile will do this when run as 'make SOFTFLOAT=1 SYSROOT=/path/to/sysroot'
+The armv5t_mtx filesystem is provided as part of the "DS-5 Linux Example Distribution" package which can be downloaded from the DS-5 Downloads page.
 Attempting to run an incompatible binary often results in the confusing error message "No such file or directory" when clearly the file exists.
+
+*** Bugs ***
+
+There is a bug in some Linux kernels where perf misidentifies the CPU type. To see if you are affected by this, run ls /sys/bus/event_source/devices/ and verify the listed processor type matches what is expected. For example, an A9 should show the following.
+
+# ls /sys/bus/event_source/devices/
+ARMv7_Cortex_A9  breakpoint  software  tracepoint
+
+To workaround the issue try upgrading to a later kernel or comment out the gator_events_perf_pmu_cpu_init(gator_cpu, type); cal in gator_events_perf_pmu.c
 
 *** Profiling the kernel (optional) ***
 

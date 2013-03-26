@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,39 +25,19 @@ void SessionData::initialize() {
 	mSessionIsActive = false;
 	mLocalCapture = false;
 	mOneShot = false;
-	strcpy(mCoreName, "unknown");
+	readCpuInfo();
 	mConfigurationXMLPath = NULL;
 	mSessionXMLPath = NULL;
 	mEventsXMLPath = NULL;
 	mTargetPath = NULL;
 	mAPCDir = NULL;
 	mSampleRate = 0;
+	mLiveRate = 0;
 	mDuration = 0;
 	mBacktraceDepth = 0;
 	mTotalBufferSize = 0;
+	// sysconf(_SC_NPROCESSORS_CONF) is unreliable on 2.6 Android, get the value from the kernel module
 	mCores = 1;
-
-	initializeCounters();
-}
-
-void SessionData::initializeCounters() {
-	// PMU Counters
-	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
-		mPerfCounterType[i][0] = 0;
-		mPerfCounterTitle[i][0] = 0;
-		mPerfCounterName[i][0] = 0;
-		mPerfCounterDescription[i][0] = 0;
-		mPerfCounterDisplay[i][0] = 0;
-		mPerfCounterUnits[i][0] = 0;
-		mPerfCounterEnabled[i] = 0;
-		mPerfCounterEvent[i] = 0;
-		mPerfCounterColor[i] = 0;
-		mPerfCounterKey[i] = 0;
-		mPerfCounterCount[i] = 0;
-		mPerfCounterPerCPU[i] = false;
-		mPerfCounterEBSCapable[i] = false;
-		mPerfCounterAverageSelection[i] = false;
-	}
 }
 
 void SessionData::parseSessionXML(char* xmlString) {
@@ -66,35 +46,103 @@ void SessionData::parseSessionXML(char* xmlString) {
 
 	// Set session data values
 	if (strcmp(session.parameters.sample_rate, "high") == 0) {
-		gSessionData->mSampleRate = 10000;
+		mSampleRate = 10000;
 	} else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
-		gSessionData->mSampleRate = 1000;
+		mSampleRate = 1000;
 	} else if (strcmp(session.parameters.sample_rate, "low") == 0) {
-		gSessionData->mSampleRate = 100;
+		mSampleRate = 100;
 	} else if (strcmp(session.parameters.sample_rate, "none") == 0) {
-		gSessionData->mSampleRate = 0;
+		mSampleRate = 0;
 	} else {
 		logg->logError(__FILE__, __LINE__, "Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
 		handleException();
 	}
-	gSessionData->mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
-	gSessionData->mDuration = session.parameters.duration;
+	mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
+	mDuration = session.parameters.duration;
 
 	// Determine buffer size (in MB) based on buffer mode
-	gSessionData->mOneShot = true;
+	mOneShot = true;
 	if (strcmp(session.parameters.buffer_mode, "streaming") == 0) {
-		gSessionData->mOneShot = false;
-		gSessionData->mTotalBufferSize = 1;
+		mOneShot = false;
+		mTotalBufferSize = 1;
 	} else if (strcmp(session.parameters.buffer_mode, "small") == 0) {
-		gSessionData->mTotalBufferSize = 1;
+		mTotalBufferSize = 1;
 	} else if (strcmp(session.parameters.buffer_mode, "normal") == 0) {
-		gSessionData->mTotalBufferSize = 4;
+		mTotalBufferSize = 4;
 	} else if (strcmp(session.parameters.buffer_mode, "large") == 0) {
-		gSessionData->mTotalBufferSize = 16;
+		mTotalBufferSize = 16;
 	} else {
 		logg->logError(__FILE__, __LINE__, "Invalid value for buffer mode in session xml.");
 		handleException();
 	}
 
-	gSessionData->mImages = session.parameters.images;
+	mImages = session.parameters.images;
+	// Convert milli- to nanoseconds
+	mLiveRate = session.parameters.live_rate * (int64_t)1000000;
+	if (mLiveRate > 0 && mLocalCapture) {
+		logg->logMessage("Local capture is not compatable with live, disabling live");
+		mLiveRate = 0;
+	}
+}
+
+void SessionData::readCpuInfo() {
+	char temp[256]; // arbitrarily large amount
+	strcpy(mCoreName, "unknown");
+	mCpuId = -1;
+
+	FILE* f = fopen("/proc/cpuinfo", "r");	
+	if (f == NULL) {
+		logg->logMessage("Error opening /proc/cpuinfo\n"
+			"The core name in the captured xml file will be 'unknown'.");
+		return;
+	}
+
+	bool foundCoreName = false;
+	bool foundCpuId = false;
+	while (fgets(temp, sizeof(temp), f) && (!foundCoreName || !foundCpuId)) {
+		if (strlen(temp) > 0) {
+			temp[strlen(temp) - 1] = 0;	// Replace the line feed with a null
+		}
+
+		const bool foundHardware = strstr(temp, "Hardware") != 0;
+		const bool foundCPUPart = strstr(temp, "CPU part") != 0;
+		if (foundHardware || foundCPUPart) {
+			char* position = strchr(temp, ':');
+			if (position == NULL || (unsigned int)(position - temp) + 2 >= strlen(temp)) {
+				logg->logMessage("Unknown format of /proc/cpuinfo\n"
+					"The core name in the captured xml file will be 'unknown'.");
+				return;
+			}
+			position += 2;
+
+			if (foundHardware) {
+				strncpy(mCoreName, position, sizeof(mCoreName));
+				mCoreName[sizeof(mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
+				foundCoreName = true;
+			}
+
+			if (foundCPUPart) {
+				int cpuId = strtol(position, NULL, 16);
+				if (cpuId > mCpuId) {
+					mCpuId = cpuId;
+				}
+				foundCpuId = true;
+			}
+		}
+	}
+
+	if (!foundCoreName) {
+		logg->logMessage("Could not determine core name from /proc/cpuinfo\n"
+						 "The core name in the captured xml file will be 'unknown'.");
+	}
+	fclose(f);
+ }
+
+int getEventKey() {
+	// Start one after the gator.ko's value of 1
+	static int key = 2;
+
+	const int ret = key;
+	key += 2;
+	return ret;
 }

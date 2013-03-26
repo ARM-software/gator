@@ -1,15 +1,13 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <ctype.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -26,11 +24,12 @@
 #include "OlySocket.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "KMod.h"
 
 #define DEBUG false
 
 extern Child* child;
-int shutdownFilesystem();
+static int shutdownFilesystem();
 static pthread_mutex_t numSessions_mutex;
 static int numSessions = 0;
 static OlySocket* socket = NULL;
@@ -52,7 +51,7 @@ void cleanUp() {
 }
 
 // CTRL C Signal Handler
-void handler(int signum) {
+static void handler(int signum) {
 	logg->logMessage("Received signal %d, gator daemon exiting", signum);
 
 	// Case 1: both child and parent receive the signal
@@ -90,7 +89,7 @@ void handler(int signum) {
 }
 
 // Child exit Signal Handler
-void child_exit(int signum) {
+static void child_exit(int signum) {
 	int status;
 	int pid = wait(&status);
 	if (pid != -1) {
@@ -102,7 +101,7 @@ void child_exit(int signum) {
 }
 
 // retval: -1 = failure; 0 = was already mounted; 1 = successfully mounted
-int mountGatorFS() {
+static int mountGatorFS() {
 	// If already mounted,
 	if (access("/dev/gator/buffer", F_OK) == 0) {
 		return 0;
@@ -117,7 +116,7 @@ int mountGatorFS() {
 	}
 }
 
-bool init_module (const char * const location) {
+static bool init_module (const char * const location) {
 	bool ret(false);
 	const int fd = open(location, O_RDONLY);
 	if (fd >= 0) {
@@ -137,7 +136,7 @@ bool init_module (const char * const location) {
 	return ret;
 }
 
-int setupFilesystem(char* module) {
+static int setupFilesystem(char* module) {
 	int retval;
 
 	// Verify root permissions
@@ -205,7 +204,7 @@ int setupFilesystem(char* module) {
 	return 0;
 }
 
-int shutdownFilesystem() {
+static int shutdownFilesystem() {
 	if (driverMountedAtStart == false) {
 		umount("/dev/gator");
 	}
@@ -221,7 +220,7 @@ int shutdownFilesystem() {
 	return 0; // success
 }
 
-struct cmdline_t parseCommandLine(int argc, char** argv) {
+static struct cmdline_t parseCommandLine(int argc, char** argv) {
 	struct cmdline_t cmdline;
 	cmdline.port = 8080;
 	cmdline.module = NULL;
@@ -302,9 +301,12 @@ int main(int argc, char** argv, char* envp[]) {
 	//   e.g. it may not be the group leader when launched as 'sudo gatord'
 	setsid();
 
-	gSessionData = new SessionData(); // Global data class
 	logg = new Logging(DEBUG);  // Set up global thread-safe logging
+	gSessionData = new SessionData(); // Global data class
 	util = new OlyUtility();	// Set up global utility class
+
+	// Initialize drivers
+	new KMod();
 
 	prctl(PR_SET_NAME, (unsigned long)&"gatord-main", 0, 0, 0);
 	pthread_mutex_init(&numSessions_mutex, NULL);

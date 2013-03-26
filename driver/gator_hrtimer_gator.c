@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,8 +15,8 @@ void (*callback)(void);
 DEFINE_PER_CPU(struct hrtimer, percpu_hrtimer);
 DEFINE_PER_CPU(int, hrtimer_is_active);
 static ktime_t profiling_interval;
-static void gator_hrtimer_online(int cpu);
-static void gator_hrtimer_offline(int cpu);
+static void gator_hrtimer_online(void);
+static void gator_hrtimer_offline(void);
 
 static enum hrtimer_restart gator_hrtimer_notify(struct hrtimer *hrtimer)
 {
@@ -25,19 +25,10 @@ static enum hrtimer_restart gator_hrtimer_notify(struct hrtimer *hrtimer)
 	return HRTIMER_RESTART;
 }
 
-static void gator_hrtimer_switch_cpus_online(void *unused)
+static void gator_hrtimer_online(void)
 {
-	gator_hrtimer_online(smp_processor_id());
-}
-
-static void gator_hrtimer_online(int cpu)
-{
+	int cpu = get_logical_cpu();
 	struct hrtimer *hrtimer = &per_cpu(percpu_hrtimer, cpu);
-
-	if (cpu != smp_processor_id()) {
-		smp_call_function_single(cpu, gator_hrtimer_switch_cpus_online, NULL, 1);
-		return;
-	}
 
 	if (per_cpu(hrtimer_is_active, cpu) || profiling_interval.tv64 == 0)
 		return;
@@ -45,22 +36,16 @@ static void gator_hrtimer_online(int cpu)
 	per_cpu(hrtimer_is_active, cpu) = 1;
 	hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	hrtimer->function = gator_hrtimer_notify;
+#ifdef CONFIG_PREEMPT_RT_BASE
+	hrtimer->irqsafe = 1;
+#endif
 	hrtimer_start(hrtimer, profiling_interval, HRTIMER_MODE_REL_PINNED);
 }
 
-static void gator_hrtimer_switch_cpus_offline(void *unused)
+static void gator_hrtimer_offline(void)
 {
-	gator_hrtimer_offline(smp_processor_id());
-}
-
-static void gator_hrtimer_offline(int cpu)
-{
+	int cpu = get_logical_cpu();
 	struct hrtimer *hrtimer = &per_cpu(percpu_hrtimer, cpu);
-
-	if (cpu != smp_processor_id()) {
-		smp_call_function_single(cpu, gator_hrtimer_switch_cpus_offline, NULL, 1);
-		return;
-	}
 
 	if (!per_cpu(hrtimer_is_active, cpu))
 		return;

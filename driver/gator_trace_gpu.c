@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -32,13 +32,71 @@ static int mali_timeline_trace_registered;
 static int mali_job_slots_trace_registered;
 static int gpu_trace_registered;
 
-#define GPU_UNIT_NONE			0
-#define GPU_UNIT_VP			1
-#define GPU_UNIT_FP			2
-#define GPU_UNIT_CL			3
+enum {
+	GPU_UNIT_NONE = 0,
+	GPU_UNIT_VP,
+	GPU_UNIT_FP,
+	GPU_UNIT_CL,
+	NUMBER_OF_GPU_UNITS
+};
 
 #define MALI_400     (0x0b07)
 #define MALI_T6xx    (0x0056)
+
+struct mali_gpu_job {
+	int count;
+	int last_core;
+	int last_tgid;
+	int last_pid;
+};
+
+#define NUMBER_OF_GPU_CORES 16
+static struct mali_gpu_job mali_gpu_jobs[NUMBER_OF_GPU_UNITS][NUMBER_OF_GPU_CORES];
+static DEFINE_SPINLOCK(mali_gpu_jobs_lock);
+
+static void mali_gpu_enqueue(int unit, int core, int tgid, int pid)
+{
+	int count;
+
+	spin_lock(&mali_gpu_jobs_lock);
+	count = mali_gpu_jobs[unit][core].count;
+	BUG_ON(count < 0);
+	++mali_gpu_jobs[unit][core].count;
+	if (count) {
+		mali_gpu_jobs[unit][core].last_core = core;
+		mali_gpu_jobs[unit][core].last_tgid = tgid;
+		mali_gpu_jobs[unit][core].last_pid = pid;
+	}
+	spin_unlock(&mali_gpu_jobs_lock);
+
+	if (!count) {
+		marshal_sched_gpu_start(unit, core, tgid, pid);
+	}
+}
+
+static void mali_gpu_stop(int unit, int core)
+{
+	int count;
+	int last_core = 0;
+	int last_tgid = 0;
+	int last_pid = 0;
+
+	spin_lock(&mali_gpu_jobs_lock);
+	--mali_gpu_jobs[unit][core].count;
+	count = mali_gpu_jobs[unit][core].count;
+	BUG_ON(count < 0);
+	if (count) {
+		last_core = mali_gpu_jobs[unit][core].last_core;
+		last_tgid = mali_gpu_jobs[unit][core].last_tgid;
+		last_pid = mali_gpu_jobs[unit][core].last_pid;
+	}
+	spin_unlock(&mali_gpu_jobs_lock);
+
+	marshal_sched_gpu_stop(unit, core);
+	if (count) {
+		marshal_sched_gpu_start(unit, last_core, last_tgid, last_pid);
+	}
+}
 
 #if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_T6xx)
 #include "gator_events_mali_400.h"
@@ -80,18 +138,18 @@ GATOR_DEFINE_PROBE(mali_timeline_event, TP_PROTO(unsigned int event_id, unsigned
 	case EVENT_TYPE_START:
 		if (component == EVENT_CHANNEL_VP0) {
 			/* tgid = d0; pid = d1; */
-			marshal_sched_gpu_start(GPU_UNIT_VP, 0, d0, d1);
+			mali_gpu_enqueue(GPU_UNIT_VP, 0, d0, d1);
 		} else if (component >= EVENT_CHANNEL_FP0 && component <= EVENT_CHANNEL_FP7) {
 			/* tgid = d0; pid = d1; */
-			marshal_sched_gpu_start(GPU_UNIT_FP, component - EVENT_CHANNEL_FP0, d0, d1);
+			mali_gpu_enqueue(GPU_UNIT_FP, component - EVENT_CHANNEL_FP0, d0, d1);
 		}
 		break;
 
 	case EVENT_TYPE_STOP:
 		if (component == EVENT_CHANNEL_VP0) {
-			marshal_sched_gpu_stop(GPU_UNIT_VP, 0);
+			mali_gpu_stop(GPU_UNIT_VP, 0);
 		} else if (component >= EVENT_CHANNEL_FP0 && component <= EVENT_CHANNEL_FP7) {
-			marshal_sched_gpu_stop(GPU_UNIT_FP, component - EVENT_CHANNEL_FP0);
+			mali_gpu_stop(GPU_UNIT_FP, component - EVENT_CHANNEL_FP0);
 		}
 		break;
 
@@ -136,16 +194,16 @@ GATOR_DEFINE_PROBE(mali_job_slots_event, TP_PROTO(unsigned int event_id, unsigne
 	if (unit != GPU_UNIT_NONE) {
 		switch (state) {
 		case EVENT_TYPE_START:
-			marshal_sched_gpu_start(unit, 0, tgid, (pid != 0 ? pid : tgid));
+			mali_gpu_enqueue(unit, 0, tgid, (pid != 0 ? pid : tgid));
 			break;
 		case EVENT_TYPE_STOP:
-			marshal_sched_gpu_stop(unit, 0);
+			mali_gpu_stop(unit, 0);
 			break;
 		default:
 			/*
 			 * Some jobs can be soft-stopped, so ensure that this terminates the activity trace.
 			 */
-			marshal_sched_gpu_stop(unit, 0);
+			mali_gpu_stop(unit, 0);
 		}
 	}
 }
@@ -153,12 +211,12 @@ GATOR_DEFINE_PROBE(mali_job_slots_event, TP_PROTO(unsigned int event_id, unsigne
 
 GATOR_DEFINE_PROBE(gpu_activity_start, TP_PROTO(int gpu_unit, int gpu_core, struct task_struct *p))
 {
-	marshal_sched_gpu_start(gpu_unit, gpu_core, (int)p->tgid, (int)p->pid);
+	mali_gpu_enqueue(gpu_unit, gpu_core, (int)p->tgid, (int)p->pid);
 }
 
 GATOR_DEFINE_PROBE(gpu_activity_stop, TP_PROTO(int gpu_unit, int gpu_core))
 {
-	marshal_sched_gpu_stop(gpu_unit, gpu_core);
+	mali_gpu_stop(gpu_unit, gpu_core);
 }
 
 int gator_trace_gpu_start(void)

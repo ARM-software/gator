@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,7 +13,7 @@
 
 class Fifo {
 public:
-	Fifo(int singleBufferSize, int totalBufferSize);
+	Fifo(int singleBufferSize, int totalBufferSize, sem_t* readerSem);
 	~Fifo();
 	int numBytesFilled() const;
 	bool isEmpty() const;
@@ -21,11 +21,13 @@ public:
 	bool willFill(int additional) const;
 	char* start() const;
 	char* write(int length);
+	void release();
 	char* read(int *const length);
 
 private:
 	int		mSingleBufferSize, mWrite, mRead, mReadCommit, mRaggedEnd, mWrapThreshold;
-	sem_t	mWaitForSpaceSem, mWaitForDataSem;
+	sem_t	mWaitForSpaceSem;
+	sem_t* mReaderSem;
 	char*	mBuffer;
 	bool	mEnd;
 };

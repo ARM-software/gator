@@ -1,7 +1,7 @@
 /**
  * l2c310 (L2 Cache Controller) event counters for gator
  *
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -10,6 +10,7 @@
 
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/module.h>
 #include <asm/hardware/cache-l2x0.h>
 
 #include "gator.h"
@@ -95,7 +96,7 @@ static int gator_events_l2c310_read(int **buffer)
 	int i;
 	int len = 0;
 
-	if (smp_processor_id())
+	if (!on_primary_core())
 		return 0;
 
 	for (i = 0; i < L2C310_COUNTERS_NUM; i++) {
@@ -122,20 +123,48 @@ static struct gator_interface gator_events_l2c310_interface = {
 	.read = gator_events_l2c310_read,
 };
 
-static void __maybe_unused gator_events_l2c310_probe(unsigned long phys)
+#define L2C310_ADDR_PROBE (~0)
+
+MODULE_PARM_DESC(l2c310_addr, "L2C310 physical base address (0 to disable)");
+static unsigned long l2c310_addr = L2C310_ADDR_PROBE;
+module_param(l2c310_addr, ulong, 0444);
+
+static void __iomem *gator_events_l2c310_probe(void)
 {
-	if (l2c310_base)
-		return;
+	phys_addr_t variants[] = {
+#if defined(CONFIG_ARCH_EXYNOS4) || defined(CONFIG_ARCH_S5PV310)
+		0x10502000,
+#endif
+#if defined(CONFIG_ARCH_OMAP4)
+		0x48242000,
+#endif
+#if defined(CONFIG_ARCH_TEGRA)
+		0x50043000,
+#endif
+#if defined(CONFIG_ARCH_U8500)
+		0xa0412000,
+#endif
+#if defined(CONFIG_ARCH_VEXPRESS)
+		0x1e00a000, // A9x4 core tile (HBI-0191)
+		0x2c0f0000, // New memory map tiles
+#endif
+	};
+	int i;
 
-	l2c310_base = ioremap(phys, SZ_4K);
-	if (l2c310_base) {
-		u32 cache_id = readl(l2c310_base + L2X0_CACHE_ID);
+	for (i = 0; i < ARRAY_SIZE(variants); i++) {
+		void __iomem *base = ioremap(variants[i], SZ_4K);
 
-		if ((cache_id & 0xff0003c0) != 0x410000c0) {
-			iounmap(l2c310_base);
-			l2c310_base = NULL;
+		if (base) {
+			u32 cache_id = readl(base + L2X0_CACHE_ID);
+
+			if ((cache_id & 0xff0003c0) == 0x410000c0)
+				return base;
+
+			iounmap(base);
 		}
 	}
+
+	return NULL;
 }
 
 int gator_events_l2c310_init(void)
@@ -145,24 +174,11 @@ int gator_events_l2c310_init(void)
 	if (gator_cpuid() != CORTEX_A5 && gator_cpuid() != CORTEX_A9)
 		return -1;
 
-#if defined(CONFIG_ARCH_EXYNOS4) || defined(CONFIG_ARCH_S5PV310)
-	gator_events_l2c310_probe(0x10502000);
-#endif
-#if defined(CONFIG_ARCH_OMAP4)
-	gator_events_l2c310_probe(0x48242000);
-#endif
-#if defined(CONFIG_ARCH_TEGRA)
-	gator_events_l2c310_probe(0x50043000);
-#endif
-#if defined(CONFIG_ARCH_U8500)
-	gator_events_l2c310_probe(0xa0412000);
-#endif
-#if defined(CONFIG_ARCH_VEXPRESS)
-	// A9x4 core tile (HBI-0191)
-	gator_events_l2c310_probe(0x1e00a000);
-	// New memory map tiles
-	gator_events_l2c310_probe(0x2c0f0000);
-#endif
+	if (l2c310_addr == L2C310_ADDR_PROBE)
+		l2c310_base = gator_events_l2c310_probe();
+	else if (l2c310_addr)
+		l2c310_base = ioremap(l2c310_addr, SZ_4K);
+
 	if (!l2c310_base)
 		return -1;
 

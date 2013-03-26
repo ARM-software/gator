@@ -1,7 +1,7 @@
   <counter_set name="ARM_Cortex-A53_cnt" count="6"/>
   <category name="Cortex-A53" counter_set="ARM_Cortex-A53_cnt" per_cpu="yes" supports_event_based_sampling="yes">
     <!-- 0x11 CPU_CYCLES - Cycle -->
-    <event counter="ARM_Cortex-A53_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="ARM_Cortex-A53_ccnt" event="0x11" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <!-- 0x00 SW_INCR - Instruction architecturally executed (condition check pass) - Software increment -->
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
     <!-- 0x01 L1I_CACHE_REFILL - Level 1 instruction cache refill -->

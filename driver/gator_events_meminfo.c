@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -198,7 +198,7 @@ static int gator_events_meminfo_read(long long **buffer)
 {
 	static unsigned int last_mem_event = 0;
 
-	if (smp_processor_id() || !meminfo_global_enabled)
+	if (!on_primary_core() || !meminfo_global_enabled)
 		return 0;
 
 	if (last_mem_event != mem_event) {

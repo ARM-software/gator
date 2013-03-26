@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include "Sender.h"
 #include "Logging.h"
+#include "OlySocket.h"
 #include "SessionData.h"
 
 Sender::Sender(OlySocket* socket) {
@@ -69,6 +70,11 @@ void Sender::createDataFile(char* apcDir) {
 	}
 }
 
+template<typename T>
+inline T min(const T a, const T b) {
+	return (a < b ? a : b);
+}
+
 void Sender::writeData(const char* data, int length, int type) {
 	if (length < 0 || (data == NULL && length > 0)) {
 		return;
@@ -80,7 +86,8 @@ void Sender::writeData(const char* data, int length, int type) {
 	// Send data over the socket connection
 	if (mDataSocket) {
 		// Start alarm
-		alarm(8);
+		const int alarmDuration = 8;
+		alarm(alarmDuration);
 
 		// Send data over the socket, sending the type and size first
 		logg->logMessage("Sending data with length %d", length);
@@ -89,7 +96,21 @@ void Sender::writeData(const char* data, int length, int type) {
 			mDataSocket->send((char*)&type, 1);
 			mDataSocket->send((char*)&length, sizeof(length));
 		}
-		mDataSocket->send((char*)data, length);
+
+		// 100Kbits/sec * alarmDuration sec / 8 bits/byte
+		const int chunkSize = 100*1000 * alarmDuration / 8;
+		int pos = 0;
+		while (true) {
+			mDataSocket->send((char*)data + pos, min(length - pos, chunkSize));
+			pos += chunkSize;
+			if (pos >= length) {
+				break;
+			}
+
+			// Reset the alarm
+			alarm(alarmDuration);
+			logg->logMessage("Resetting the alarm");
+		}
 
 		// Stop alarm
 		alarm(0);

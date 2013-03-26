@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,6 +18,9 @@
 #define GATOR_PERF_PMU_SUPPORT  GATOR_PERF_SUPPORT && defined(CONFIG_PERF_EVENTS) && (!(defined(__arm__) || defined(__aarch64__)) || defined(CONFIG_HW_PERF_EVENTS))
 #define GATOR_NO_PERF_SUPPORT   (!(GATOR_PERF_SUPPORT))
 #define GATOR_CPU_FREQ_SUPPORT  (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) && defined(CONFIG_CPU_FREQ)
+#define GATOR_IKS_SUPPORT       defined(CONFIG_BL_SWITCHER)
+
+#define GATOR_LIVE 1
 
 // cpu ids
 #define ARM1136     0xb36
@@ -42,14 +45,15 @@
 #define MAXSIZE_CORE_NAME 32
 
 struct gator_cpu {
-  const int cpuid;
-  const char core_name[MAXSIZE_CORE_NAME];
-  const char * const pmnc_name;
-  const int pmnc_counters;
-  const int ccnt;
+	const int cpuid;
+	const char core_name[MAXSIZE_CORE_NAME];
+	const char * const pmu_name;
+	const char * const pmnc_name;
+	const int pmnc_counters;
 };
 
-extern struct gator_cpu gator_cpus[];
+const struct gator_cpu *gator_find_cpu_by_cpuid(const u32 cpuid);
+const struct gator_cpu *gator_find_cpu_by_pmu_name(const char *const name);
 
 /******************************************************************************
  * Filesystem
@@ -98,10 +102,10 @@ struct gator_interface {
 	int (*create_files)(struct super_block *sb, struct dentry *root);
 	int (*start)(void);
 	void (*stop)(void);		// Complementary function to start
-	int (*online)(int **buffer);
-	int (*offline)(int **buffer);
-	void (*online_dispatch)(int cpu);	// called in process context but may not be running on core 'cpu'
-	void (*offline_dispatch)(int cpu);	// called in process context but may not be running on core 'cpu'
+	int (*online)(int **buffer, bool migrate);
+	int (*offline)(int **buffer, bool migrate);
+	void (*online_dispatch)(int cpu, bool migrate);	// called in process context but may not be running on core 'cpu'
+	void (*offline_dispatch)(int cpu, bool migrate);	// called in process context but may not be running on core 'cpu'
 	int (*read)(int **buffer);
 	int (*read64)(long long **buffer);
 	struct list_head list;
@@ -117,5 +121,22 @@ int gator_events_get_key(void);
 u32 gator_cpuid(void);
 
 void gator_backtrace_handler(struct pt_regs *const regs);
+
+#if !GATOR_IKS_SUPPORT
+
+#define get_physical_cpu() smp_processor_id()
+#define lcpu_to_pcpu(lcpu) lcpu
+#define pcpu_to_lcpu(pcpu) pcpu
+
+#else
+
+#define get_physical_cpu() lcpu_to_pcpu(get_logical_cpu())
+int lcpu_to_pcpu(const int lcpu);
+int pcpu_to_lcpu(const int pcpu);
+
+#endif
+
+#define get_logical_cpu() smp_processor_id()
+#define on_primary_core() (get_logical_cpu() == 0)
 
 #endif // GATOR_H_

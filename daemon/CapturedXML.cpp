@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,20 +21,10 @@ CapturedXML::~CapturedXML() {
 }
 
 mxml_node_t* CapturedXML::getTree(bool includeTime) {
-	bool perfCounters = false;
 	mxml_node_t *xml;
 	mxml_node_t *captured;
 	mxml_node_t *target;
-	mxml_node_t *counters;
-	mxml_node_t *counter;
 	int x;
-
-	for (x=0; x<MAX_PERFORMANCE_COUNTERS; x++) {
-		if (gSessionData->mPerfCounterEnabled[x]) {
-			perfCounters = true;
-			break;
-		}
-	}
 
 	xml = mxmlNewXML("1.0");
 
@@ -51,35 +41,40 @@ mxml_node_t* CapturedXML::getTree(bool includeTime) {
 	mxmlElementSetAttr(target, "name", gSessionData->mCoreName);
 	mxmlElementSetAttrf(target, "sample_rate", "%d", gSessionData->mSampleRate);
 	mxmlElementSetAttrf(target, "cores", "%d", gSessionData->mCores);
+	mxmlElementSetAttrf(target, "cpuid", "0x%x", gSessionData->mCpuId);
 
-	if (perfCounters) {
-		counters = mxmlNewElement(captured, "counters");
-		for (x = 0; x < MAX_PERFORMANCE_COUNTERS; x++) {
-			if (gSessionData->mPerfCounterEnabled[x]) {
-				counter = mxmlNewElement(counters, "counter");
-				mxmlElementSetAttr(counter, "title", gSessionData->mPerfCounterTitle[x]);
-				mxmlElementSetAttr(counter, "name", gSessionData->mPerfCounterName[x]);
-				mxmlElementSetAttrf(counter, "color", "0x%08x", gSessionData->mPerfCounterColor[x]);
-				mxmlElementSetAttrf(counter, "key", "0x%08x", gSessionData->mPerfCounterKey[x]);
-				mxmlElementSetAttr(counter, "type", gSessionData->mPerfCounterType[x]);
-				mxmlElementSetAttrf(counter, "event", "0x%08x", gSessionData->mPerfCounterEvent[x]);
-				if (gSessionData->mPerfCounterPerCPU[x]) {
-					mxmlElementSetAttr(counter, "per_cpu", "yes");
-				}
-				if (gSessionData->mPerfCounterCount[x] > 0) {
-					mxmlElementSetAttrf(counter, "count", "%d", gSessionData->mPerfCounterCount[x]);
-				}
-				if (strlen(gSessionData->mPerfCounterDisplay[x]) > 0) {
-					mxmlElementSetAttr(counter, "display", gSessionData->mPerfCounterDisplay[x]);
-				}
-				if (strlen(gSessionData->mPerfCounterUnits[x]) > 0) {
-					mxmlElementSetAttr(counter, "units", gSessionData->mPerfCounterUnits[x]);
-				}
-				if (gSessionData->mPerfCounterAverageSelection[x]) {
-					mxmlElementSetAttr(counter, "average_selection", "yes");
-				}
-				mxmlElementSetAttr(counter, "description", gSessionData->mPerfCounterDescription[x]);
+	mxml_node_t *counters = NULL;
+	for (x = 0; x < MAX_PERFORMANCE_COUNTERS; x++) {
+		const Counter & counter = gSessionData->mCounters[x];
+		if (counter.isEnabled()) {
+			if (counters == NULL) {
+				counters = mxmlNewElement(captured, "counters");
 			}
+			mxml_node_t *const node = mxmlNewElement(counters, "counter");
+			mxmlElementSetAttr(node, "title", counter.getTitle());
+			mxmlElementSetAttr(node, "name", counter.getName());
+			mxmlElementSetAttrf(node, "key", "0x%08x", counter.getKey());
+			mxmlElementSetAttr(node, "type", counter.getType());
+			mxmlElementSetAttrf(node, "event", "0x%08x", counter.getEvent());
+			if (counter.isPerCPU()) {
+				mxmlElementSetAttr(node, "per_cpu", "yes");
+			}
+			if (counter.getCount() > 0) {
+				mxmlElementSetAttrf(node, "count", "%d", counter.getCount());
+			}
+			if (strlen(counter.getDisplay()) > 0) {
+				mxmlElementSetAttr(node, "display", counter.getDisplay());
+			}
+			if (strlen(counter.getUnits()) > 0) {
+				mxmlElementSetAttr(node, "units", counter.getUnits());
+			}
+			if (counter.getModifier() != 1) {
+				mxmlElementSetAttrf(node, "modifier", "%d", counter.getModifier());
+			}
+			if (counter.isAverageSelection()) {
+				mxmlElementSetAttr(node, "average_selection", "yes");
+			}
+			mxmlElementSetAttr(node, "description", counter.getDescription());
 		}
 	}
 
@@ -95,7 +90,7 @@ char* CapturedXML::getXML(bool includeTime) {
 }
 
 void CapturedXML::write(char* path) {
-	char *file = (char*)malloc(PATH_MAX);
+	char file[PATH_MAX];
 
 	// Set full path
 	snprintf(file, PATH_MAX, "%s/captured.xml", path);
@@ -107,7 +102,6 @@ void CapturedXML::write(char* path) {
 	}
 
 	free(xml);
-	free(file);
 }
 
 // whitespace callback utility function used with mini-xml

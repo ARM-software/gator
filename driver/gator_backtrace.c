@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,8 +11,17 @@
  * EABI backtrace stores {fp,lr} on the stack.
  */
 struct frame_tail_eabi {
-	unsigned long fp;	// points to prev_lr
-	unsigned long lr;
+	union {
+		struct {
+			unsigned long fp;	// points to prev_lr
+			unsigned long lr;
+		};
+		// Used to read 32 bit fp/lr from a 64 bit kernel
+		struct {
+			u32 fp_32;
+			u32 lr_32;
+		};
+	};
 };
 
 static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int depth)
@@ -20,18 +29,20 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
 #if defined(__arm__) || defined(__aarch64__)
 	struct frame_tail_eabi *tail;
 	struct frame_tail_eabi *next;
-	struct frame_tail_eabi *ptrtail;
 	struct frame_tail_eabi buftail;
 #if defined(__arm__)
+	const bool is_compat = false;
 	unsigned long fp = regs->ARM_fp;
 	unsigned long sp = regs->ARM_sp;
 	unsigned long lr = regs->ARM_lr;
 	const int frame_offset = 4;
 #else
-	unsigned long fp = regs->regs[29];
-	unsigned long sp = regs->sp;
-	unsigned long lr = regs->regs[30];
-	const int frame_offset = 0;
+	// Is userspace aarch32 (32 bit)
+	const bool is_compat = compat_user_mode(regs);
+	unsigned long fp = (is_compat ? regs->regs[11] : regs->regs[29]);
+	unsigned long sp = (is_compat ? regs->compat_sp : regs->sp);
+	unsigned long lr = (is_compat ? regs->compat_lr : regs->regs[30]);
+	const int frame_offset = (is_compat ? 4 : 0);
 #endif
 	int is_user_mode = user_mode(regs);
 
@@ -55,15 +66,14 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
 			return;
 		if (__copy_from_user_inatomic(&buftail, tail, sizeof(struct frame_tail_eabi)))
 			return;
-		ptrtail = &buftail;
 
-		lr = ptrtail[0].lr;
+		lr = (is_compat ? buftail.lr_32 : buftail.lr);
 		gator_add_trace(cpu, lr);
 
 		/* frame pointers should progress back up the stack, towards higher addresses */
 		next = (struct frame_tail_eabi *)(lr - frame_offset);
 		if (tail >= next || lr == 0) {
-			fp = ptrtail[0].fp;
+			fp = (is_compat ? buftail.fp_32 : buftail.fp);
 			next = (struct frame_tail_eabi *)(fp - frame_offset);
 			/* check tail is valid */
 			if (tail >= next || fp == 0) {
@@ -79,16 +89,17 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
 #if defined(__arm__) || defined(__aarch64__)
 static int report_trace(struct stackframe *frame, void *d)
 {
-	struct module *mod;
-	unsigned int *depth = d, cookie = NO_COOKIE, cpu = smp_processor_id();
+	unsigned int *depth = d, cookie = NO_COOKIE, cpu = get_physical_cpu();
 	unsigned long addr = frame->pc;
 
 	if (*depth) {
-		mod = __module_address(addr);
+#if defined(MODULE)
+		struct module *mod = __module_address(addr);
 		if (mod) {
 			cookie = get_cookie(cpu, current, mod->name, false);
 			addr = addr - (unsigned long)mod->module_core;
 		}
+#endif
 		marshal_backtrace(addr & ~1, cookie);
 		(*depth)--;
 	}

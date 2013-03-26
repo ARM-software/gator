@@ -53,6 +53,15 @@ ssize_t gatorfs_ulong_to_user(unsigned long val, char __user *buf, size_t count,
 	return simple_read_from_buffer(buf, count, offset, tmpbuf, maxlen);
 }
 
+ssize_t gatorfs_u64_to_user(u64 val, char __user *buf, size_t count, loff_t *offset)
+{
+	char tmpbuf[TMPBUFSIZE];
+	size_t maxlen = snprintf(tmpbuf, TMPBUFSIZE, "%llu\n", val);
+	if (maxlen > TMPBUFSIZE)
+		maxlen = TMPBUFSIZE;
+	return simple_read_from_buffer(buf, count, offset, tmpbuf, maxlen);
+}
+
 int gatorfs_ulong_from_user(unsigned long *val, char const __user *buf, size_t count)
 {
 	char tmpbuf[TMPBUFSIZE];
@@ -75,10 +84,38 @@ int gatorfs_ulong_from_user(unsigned long *val, char const __user *buf, size_t c
 	return 0;
 }
 
+int gatorfs_u64_from_user(u64 *val, char const __user *buf, size_t count)
+{
+	char tmpbuf[TMPBUFSIZE];
+	unsigned long flags;
+
+	if (!count)
+		return 0;
+
+	if (count > TMPBUFSIZE - 1)
+		return -EINVAL;
+
+	memset(tmpbuf, 0x0, TMPBUFSIZE);
+
+	if (copy_from_user(tmpbuf, buf, count))
+		return -EFAULT;
+
+	spin_lock_irqsave(&gatorfs_lock, flags);
+	*val = simple_strtoull(tmpbuf, NULL, 0);
+	spin_unlock_irqrestore(&gatorfs_lock, flags);
+	return 0;
+}
+
 static ssize_t ulong_read_file(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
 	unsigned long *val = file->private_data;
 	return gatorfs_ulong_to_user(*val, buf, count, offset);
+}
+
+static ssize_t u64_read_file(struct file *file, char __user *buf, size_t count, loff_t *offset)
+{
+	u64 *val = file->private_data;
+	return gatorfs_u64_to_user(*val, buf, count, offset);
 }
 
 static ssize_t ulong_write_file(struct file *file, char const __user *buf, size_t count, loff_t *offset)
@@ -90,6 +127,21 @@ static ssize_t ulong_write_file(struct file *file, char const __user *buf, size_
 		return -EINVAL;
 
 	retval = gatorfs_ulong_from_user(value, buf, count);
+
+	if (retval)
+		return retval;
+	return count;
+}
+
+static ssize_t u64_write_file(struct file *file, char const __user *buf, size_t count, loff_t *offset)
+{
+	u64 *value = file->private_data;
+	int retval;
+
+	if (*offset)
+		return -EINVAL;
+
+	retval = gatorfs_u64_from_user(value, buf, count);
 
 	if (retval)
 		return retval;
@@ -109,8 +161,19 @@ static const struct file_operations ulong_fops = {
 	.open = default_open,
 };
 
+static const struct file_operations u64_fops = {
+	.read = u64_read_file,
+	.write = u64_write_file,
+	.open = default_open,
+};
+
 static const struct file_operations ulong_ro_fops = {
 	.read = ulong_read_file,
+	.open = default_open,
+};
+
+static const struct file_operations u64_ro_fops = {
+	.read = u64_read_file,
 	.open = default_open,
 };
 
@@ -148,11 +211,35 @@ int gatorfs_create_ulong(struct super_block *sb, struct dentry *root,
 	return 0;
 }
 
+int gatorfs_create_u64(struct super_block *sb, struct dentry *root,
+			 char const *name, u64 *val)
+{
+	struct dentry *d = __gatorfs_create_file(sb, root, name,
+						 &u64_fops, 0644);
+	if (!d)
+		return -EFAULT;
+
+	d->d_inode->i_private = val;
+	return 0;
+}
+
 int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 			    char const *name, unsigned long *val)
 {
 	struct dentry *d = __gatorfs_create_file(sb, root, name,
 						 &ulong_ro_fops, 0444);
+	if (!d)
+		return -EFAULT;
+
+	d->d_inode->i_private = val;
+	return 0;
+}
+
+int gatorfs_create_ro_u64(struct super_block *sb, struct dentry *root,
+			  char const *name, u64 * val)
+{
+	struct dentry *d =
+	    __gatorfs_create_file(sb, root, name, &u64_ro_fops, 0444);
 	if (!d)
 		return -EFAULT;
 

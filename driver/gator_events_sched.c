@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -29,7 +29,7 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_
 	// disable interrupts to synchronize with gator_events_sched_read()
 	// spinlocks not needed since percpu buffers are used
 	local_irq_save(flags);
-	per_cpu(schedCnt, smp_processor_id())[SCHED_SWITCH]++;
+	per_cpu(schedCnt, get_physical_cpu())[SCHED_SWITCH]++;
 	local_irq_restore(flags);
 }
 
@@ -78,7 +78,7 @@ static int gator_events_sched_read(int **buffer)
 {
 	unsigned long flags;
 	int len, value;
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 
 	len = 0;
 	if (sched_switch_enabled) {

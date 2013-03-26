@@ -1,7 +1,7 @@
 /*
  * Example events provider
  *
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -141,7 +141,7 @@ static int mmaped_simulate(int counter, int delta_in_us)
 		break;
 	case 2:		/* PWM signal */
 		{
-			static int t, dc, x;
+			static int dc, x, t = 0;
 
 			t += delta_in_us;
 			if (t > 1000000)
@@ -170,7 +170,7 @@ static int gator_events_mmaped_read(int **buffer)
 #endif
 
 	/* System wide counters - read from one core only */
-	if (smp_processor_id())
+	if (!on_primary_core())
 		return 0;
 
 #ifndef TODO

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -61,7 +61,7 @@ static uint32_t gator_chksum_crc32(const char *data)
 static uint32_t cookiemap_exists(uint64_t key)
 {
 	unsigned long x, flags, retval = 0;
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 	uint32_t cookiecode = cookiemap_code(key);
 	uint64_t *keys = &(per_cpu(cookie_keys, cpu)[cookiecode]);
 	uint32_t *values = &(per_cpu(cookie_values, cpu)[cookiecode]);
@@ -93,7 +93,7 @@ static uint32_t cookiemap_exists(uint64_t key)
  */
 static void cookiemap_add(uint64_t key, uint32_t value)
 {
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 	int cookiecode = cookiemap_code(key);
 	uint64_t *keys = &(per_cpu(cookie_keys, cpu)[cookiecode]);
 	uint32_t *values = &(per_cpu(cookie_values, cpu)[cookiecode]);
@@ -124,7 +124,7 @@ static void wq_cookie_handler(struct work_struct *unused)
 {
 	struct task_struct *task;
 	char *text;
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 	unsigned int commit;
 
 	mutex_lock(&start_mutex);

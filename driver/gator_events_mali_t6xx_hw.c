@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2012. All rights reserved.
+ * Copyright (C) ARM Limited 2012-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -608,7 +608,7 @@ static int read(int **buffer)
 	static u32 prev_time_s = 0;
 	static s32 next_read_time_ns = 0;
 
-	if (smp_processor_id() != 0) {
+	if (!on_primary_core()) {
 		return 0;
 	}
 

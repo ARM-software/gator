@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -411,7 +411,7 @@ static int read(int **buffer)
 	long sample_interval_us = 0;
 	struct timespec read_timestamp;
 
-	if (smp_processor_id() != 0) {
+	if (!on_primary_core()) {
 		return 0;
 	}
 

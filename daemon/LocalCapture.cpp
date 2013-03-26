@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,7 +30,7 @@ void LocalCapture::createAPCDirectory(char* target_path) {
 }
 
 void LocalCapture::write(char* string) {
-	char* file = (char*)malloc(PATH_MAX);
+	char file[PATH_MAX];
 
 	// Set full path
 	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData->mAPCDir);
@@ -40,13 +40,11 @@ void LocalCapture::write(char* string) {
 		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify the path.", file);
 		handleException();
 	}
-
-	free(file);
 }
 
 char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending) {
 	char* output;
-	char* path = (char*)malloc(PATH_MAX);
+	char path[PATH_MAX];
 
 	// Ensure the path is an absolute path, i.e. starts with a slash
 	if (initialPath == 0 || strlen(initialPath) == 0) {
@@ -70,7 +68,6 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
 
 	output = strdup(path);
 
-	free(path);
 	return output;
 }
 
@@ -107,7 +104,7 @@ int LocalCapture::removeDirAndAllContents(char* path) {
 }
 
 void LocalCapture::copyImages(ImageLinkList* ptr) {
-	char* dstfilename = (char*)malloc(PATH_MAX);
+	char dstfilename[PATH_MAX];
 
 	while (ptr) {
 		strncpy(dstfilename, gSessionData->mAPCDir, PATH_MAX);
@@ -124,5 +121,4 @@ void LocalCapture::copyImages(ImageLinkList* ptr) {
 
 		ptr = ptr->next;
 	}
-	free(dstfilename);
 }

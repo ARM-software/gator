@@ -1,18 +1,20 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
+#define __STDC_FORMAT_MACROS
+
 #include <fcntl.h>
-#include <malloc.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <inttypes.h>
 #include "Collector.h"
 #include "SessionData.h"
 #include "Logging.h"
@@ -20,8 +22,6 @@
 
 // Driver initialization independent of session settings
 Collector::Collector() {
-	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/<file>
-
 	mBufferFD = 0;
 
 	checkVersion();
@@ -42,18 +42,6 @@ Collector::Collector() {
 		logg->logError(__FILE__, __LINE__, "Unable to read the driver buffer size");
 		handleException();
 	}
-
-	getCoreName();
-
-	enablePerfCounters();
-
-	// Read unchanging keys from driver which are created at insmod'ing of gator.ko
-	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
-		if (gSessionData->mPerfCounterEnabled[i]) {
-			snprintf(text, sizeof(text), "/dev/gator/events/%s/key", gSessionData->mPerfCounterType[i]);
-			readIntDriver(text, &gSessionData->mPerfCounterKey[i]);
-		}
-	}
 }
 
 Collector::~Collector() {
@@ -63,63 +51,6 @@ Collector::~Collector() {
 	// Calls event_buffer_release in the driver
 	if (mBufferFD) {
 		close(mBufferFD);
-	}
-}
-
-#include <dirent.h>
-void Collector::enablePerfCounters() {
-	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/enabled
-
-	// Initialize all perf counters in the driver, i.e. set enabled to zero
-	struct dirent *ent;
-	DIR* dir = opendir("/dev/gator/events");
-	if (dir) {
-		while ((ent = readdir(dir)) != NULL) {
-			// skip hidden files, current dir, and parent dir
-			if (ent->d_name[0] == '.')
-				continue;
-			snprintf(text, sizeof(text), "/dev/gator/events/%s/enabled", ent->d_name);
-			writeDriver(text, 0);
-		}
-		closedir (dir);
-	}
-
-	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
-		if (!gSessionData->mPerfCounterEnabled[i]) {
-			continue;
-		}
-		snprintf(text, sizeof(text), "/dev/gator/events/%s/enabled", gSessionData->mPerfCounterType[i]);
-		if (writeReadDriver(text, &gSessionData->mPerfCounterEnabled[i])) {
-			// Disable those events that don't exist on this hardware platform even though they exist in configuration.xml
-			gSessionData->mPerfCounterEnabled[i] = 0;
-			continue;
-		}
-	}
-}
-
-void Collector::setupPerfCounters() {
-	char base[sizeof(gSessionData->mPerfCounterType[0]) + 20]; // sufficiently large to hold all /dev/gator/events/<types>
-	char text[sizeof(gSessionData->mPerfCounterType[0]) + 30]; // sufficiently large to hold all /dev/gator/events/<types>/<file>
-
-	for (int i=0; i<MAX_PERFORMANCE_COUNTERS; i++) {
-		if (!gSessionData->mPerfCounterEnabled[i]) {
-			continue;
-		}
-		snprintf(base, sizeof(base), "/dev/gator/events/%s", gSessionData->mPerfCounterType[i]);
-		snprintf(text, sizeof(text), "%s/event", base);
-		writeDriver(text, gSessionData->mPerfCounterEvent[i]);
-		if (gSessionData->mPerfCounterEBSCapable[i]) {
-			snprintf(text, sizeof(text), "%s/count", base);
-			if (access(text, F_OK) == 0) {
-				if (writeReadDriver(text, &gSessionData->mPerfCounterCount[i]) && gSessionData->mPerfCounterCount[i] > 0) {
-					logg->logError(__FILE__, __LINE__, "Cannot enable EBS for %s:%s with a count of %d\n", gSessionData->mPerfCounterTitle[i], gSessionData->mPerfCounterName[i], gSessionData->mPerfCounterCount[i]);
-					handleException();
-				}
-			} else if (gSessionData->mPerfCounterCount[i] > 0) {
-				logg->logError(__FILE__, __LINE__, "Event Based Sampling is only supported with kernel versions 3.0.0 and higher with CONFIG_PERF_EVENTS=y, and CONFIG_HW_PERF_EVENTS=y\n");
-				handleException();
-			}
-		}
 	}
 }
 
@@ -179,6 +110,12 @@ void Collector::start() {
 		handleException();
 	}
 
+	// Set the live rate
+	if (writeReadDriver("/dev/gator/live_rate", &gSessionData->mLiveRate)) {
+		logg->logError(__FILE__, __LINE__, "Unable to set the driver live rate");
+		handleException();
+	}
+
 	logg->logMessage("Start the driver");
 
 	// This command makes the driver start profiling by calling gator_op_start() in the driver
@@ -215,41 +152,6 @@ int Collector::collect(char* buffer) {
 	return bytesRead;
 }
 
-void Collector::getCoreName() {
-	char temp[256]; // arbitrarily large amount
-	strcpy(gSessionData->mCoreName, "unknown");
-
-	FILE* f = fopen("/proc/cpuinfo", "r");	
-	if (f == NULL) {
-		logg->logMessage("Error opening /proc/cpuinfo\n"
-			"The core name in the captured xml file will be 'unknown'.");
-		return;
-	}
-
-	while (fgets(temp, sizeof(temp), f)) {
-		if (strlen(temp) > 0) {
-			temp[strlen(temp) - 1] = 0;	// Replace the line feed with a null
-		}
-
-		if (strstr(temp, "Hardware") != 0) {
-			char* position = strchr(temp, ':');
-			if (position == NULL || (unsigned int)(position - temp) + 2 >= strlen(temp)) {
-				logg->logMessage("Unknown format of /proc/cpuinfo\n"
-					"The core name in the captured xml file will be 'unknown'.");
-				return;
-			}
-			strncpy(gSessionData->mCoreName, (char*)((long)position + 2), sizeof(gSessionData->mCoreName));
-			gSessionData->mCoreName[sizeof(gSessionData->mCoreName) - 1] = 0; // strncpy does not guarantee a null-terminated string
-			fclose(f);
-			return;
-		}
-	}
-
-	logg->logMessage("Could not determine core name from /proc/cpuinfo\n"
-		"The core name in the captured xml file will be 'unknown'.");
-	fclose(f);
-}
-
 int Collector::readIntDriver(const char* fullpath, int* value) {
 	FILE* file = fopen(fullpath, "r");
 	if (file == NULL) {
@@ -264,9 +166,29 @@ int Collector::readIntDriver(const char* fullpath, int* value) {
 	return 0;
 }
 
+int Collector::readInt64Driver(const char* fullpath, int64_t* value) {
+	FILE* file = fopen(fullpath, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	if (fscanf(file, "%" SCNi64, value) != 1) {
+		fclose(file);
+		logg->logMessage("Invalid value in file %s", fullpath);
+		return -1;
+	}
+	fclose(file);
+	return 0;
+}
+
 int Collector::writeDriver(const char* path, int value) {
 	char data[40]; // Sufficiently large to hold any integer
 	snprintf(data, sizeof(data), "%d", value);
+	return writeDriver(path, data);
+}
+
+int Collector::writeDriver(const char* path, int64_t value) {
+	char data[40]; // Sufficiently large to hold any integer
+	snprintf(data, sizeof(data), "%" PRIi64, value);
 	return writeDriver(path, data);
 }
 
@@ -286,6 +208,13 @@ int Collector::writeDriver(const char* fullpath, const char* data) {
 
 int Collector::writeReadDriver(const char* path, int* value) {
 	if (writeDriver(path, *value) || readIntDriver(path, value)) {
+		return -1;
+	}
+	return 0;
+}
+
+int Collector::writeReadDriver(const char* path, int64_t* value) {
+	if (writeDriver(path, *value) || readInt64Driver(path, value)) {
 		return -1;
 	}
 	return 0;

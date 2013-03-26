@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -524,7 +524,7 @@ static int gator_events_scorpion_create_files(struct super_block *sb, struct den
 	return 0;
 }
 
-static int gator_events_scorpion_online(int **buffer)
+static int gator_events_scorpion_online(int **buffer, bool migrate)
 {
 	unsigned int cnt, len = 0, cpu = smp_processor_id();
 
@@ -581,7 +581,7 @@ static int gator_events_scorpion_online(int **buffer)
 	return len;
 }
 
-static int gator_events_scorpion_offline(int **buffer)
+static int gator_events_scorpion_offline(int **buffer, bool migrate)
 {
 	scorpion_pmnc_write(scorpion_pmnc_read() & ~PMNC_E);
 	return 0;

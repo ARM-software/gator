@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -50,6 +50,7 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 		return -EINVAL;
 	}
 
+ retry:
 	// synchronize between cores and with collect_annotations
 	spin_lock(&annotate_lock);
 
@@ -74,17 +75,18 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 	size = count < available ? count : available;
 
 	if (size <= 0) {
-		// Buffer is full but don't return an error.  Instead return 0 so the
-		// caller knows nothing was written and they can try again.
-		size = 0;
-		goto annotate_write_out;
+		// Buffer is full, wait until space is available
+		spin_unlock(&annotate_lock);
+		wait_event_interruptible(gator_annotate_wait, buffer_bytes_available(cpu, ANNOTATE_BUF) > header_size || !collect_annotations);
+		goto retry;
 	}
 
 	// synchronize shared variables annotateBuf and annotatePos
 	if (per_cpu(gator_buffer, cpu)[ANNOTATE_BUF]) {
-		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, smp_processor_id());
+		u64 time = gator_get_time();
+		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, get_physical_cpu());
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, pid);
-		gator_buffer_write_packed_int64(cpu, ANNOTATE_BUF, gator_get_time());
+		gator_buffer_write_packed_int64(cpu, ANNOTATE_BUF, time);
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, size);
 
 		// determine the sizes to capture, length1 + length2 will equal size
@@ -108,7 +110,7 @@ static ssize_t annotate_write(struct file *file, char const __user *buf, size_t 
 		}
 
 		// Check and commit; commit is set to occur once buffer is 3/4 full
-		buffer_check(cpu, ANNOTATE_BUF);
+		buffer_check(cpu, ANNOTATE_BUF, time);
 	}
 
 annotate_write_out:
@@ -129,14 +131,14 @@ static int annotate_release(struct inode *inode, struct file *file)
 
 	if (per_cpu(gator_buffer, cpu)[ANNOTATE_BUF] && buffer_check_space(cpu, ANNOTATE_BUF, MAXSIZE_PACK64 + 3 * MAXSIZE_PACK32)) {
 		uint32_t pid = current->pid;
-		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, smp_processor_id());
+		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, get_physical_cpu());
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, pid);
 		gator_buffer_write_packed_int64(cpu, ANNOTATE_BUF, 0);	// time
 		gator_buffer_write_packed_int(cpu, ANNOTATE_BUF, 0);	// size
 	}
 
 	// Check and commit; commit is set to occur once buffer is 3/4 full
-	buffer_check(cpu, ANNOTATE_BUF);
+	buffer_check(cpu, ANNOTATE_BUF, gator_get_time());
 
 	spin_unlock(&annotate_lock);
 
@@ -164,5 +166,6 @@ static void gator_annotate_stop(void)
 	// the spinlock here will ensure that when this function exits, we are not in the middle of an annotation
 	spin_lock(&annotate_lock);
 	collect_annotations = false;
+	wake_up(&gator_annotate_wait);
 	spin_unlock(&annotate_lock);
 }

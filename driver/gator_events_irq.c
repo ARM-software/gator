@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,19 +18,13 @@ static ulong hardirq_enabled;
 static ulong softirq_enabled;
 static ulong hardirq_key;
 static ulong softirq_key;
-static DEFINE_PER_CPU(int[TOTALIRQ], irqCnt);
+static DEFINE_PER_CPU(atomic_t[TOTALIRQ], irqCnt);
 static DEFINE_PER_CPU(int[TOTALIRQ * 2], irqGet);
 
 GATOR_DEFINE_PROBE(irq_handler_exit,
 		   TP_PROTO(int irq, struct irqaction *action, int ret))
 {
-	unsigned long flags;
-
-	// disable interrupts to synchronize with gator_events_irq_read()
-	// spinlocks not needed since percpu buffers are used
-	local_irq_save(flags);
-	per_cpu(irqCnt, smp_processor_id())[HARDIRQ]++;
-	local_irq_restore(flags);
+	atomic_inc(&per_cpu(irqCnt, get_physical_cpu())[HARDIRQ]);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
@@ -39,13 +33,7 @@ GATOR_DEFINE_PROBE(softirq_exit, TP_PROTO(struct softirq_action *h, struct softi
 GATOR_DEFINE_PROBE(softirq_exit, TP_PROTO(unsigned int vec_nr))
 #endif
 {
-	unsigned long flags;
-
-	// disable interrupts to synchronize with gator_events_irq_read()
-	// spinlocks not needed since percpu buffers are used
-	local_irq_save(flags);
-	per_cpu(irqCnt, smp_processor_id())[SOFTIRQ]++;
-	local_irq_restore(flags);
+	atomic_inc(&per_cpu(irqCnt, get_physical_cpu())[SOFTIRQ]);
 }
 
 static int gator_events_irq_create_files(struct super_block *sb, struct dentry *root)
@@ -71,24 +59,19 @@ static int gator_events_irq_create_files(struct super_block *sb, struct dentry *
 	return 0;
 }
 
-static int gator_events_irq_online(int **buffer)
+static int gator_events_irq_online(int **buffer, bool migrate)
 {
-	int len = 0, cpu = smp_processor_id();
-	unsigned long flags;	// not necessary as we are in interrupt context anyway, but doesn't hurt
+	int len = 0, cpu = get_physical_cpu();
 
 	// synchronization with the irq_exit functions is not necessary as the values are being reset
 	if (hardirq_enabled) {
-		local_irq_save(flags);
-		per_cpu(irqCnt, cpu)[HARDIRQ] = 0;
-		local_irq_restore(flags);
+		atomic_set(&per_cpu(irqCnt, cpu)[HARDIRQ], 0);
 		per_cpu(irqGet, cpu)[len++] = hardirq_key;
 		per_cpu(irqGet, cpu)[len++] = 0;
 	}
 
 	if (softirq_enabled) {
-		local_irq_save(flags);
-		per_cpu(irqCnt, cpu)[SOFTIRQ] = 0;
-		local_irq_restore(flags);
+		atomic_set(&per_cpu(irqCnt, cpu)[SOFTIRQ], 0);
 		per_cpu(irqGet, cpu)[len++] = softirq_key;
 		per_cpu(irqGet, cpu)[len++] = 0;
 	}
@@ -136,26 +119,21 @@ static void gator_events_irq_stop(void)
 
 static int gator_events_irq_read(int **buffer)
 {
-	unsigned long flags;	// not necessary as we are in interrupt context anyway, but doesn't hurt
 	int len, value;
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 
 	len = 0;
 	if (hardirq_enabled) {
-		local_irq_save(flags);
-		value = per_cpu(irqCnt, cpu)[HARDIRQ];
-		per_cpu(irqCnt, cpu)[HARDIRQ] = 0;
-		local_irq_restore(flags);
+		value = atomic_read(&per_cpu(irqCnt, cpu)[HARDIRQ]);
+		atomic_sub(value, &per_cpu(irqCnt, cpu)[HARDIRQ]);
 
 		per_cpu(irqGet, cpu)[len++] = hardirq_key;
 		per_cpu(irqGet, cpu)[len++] = value;
 	}
 
 	if (softirq_enabled) {
-		local_irq_save(flags);
-		value = per_cpu(irqCnt, cpu)[SOFTIRQ];
-		per_cpu(irqCnt, cpu)[SOFTIRQ] = 0;
-		local_irq_restore(flags);
+		value = atomic_read(&per_cpu(irqCnt, cpu)[SOFTIRQ]);
+		atomic_sub(value, &per_cpu(irqCnt, cpu)[SOFTIRQ]);
 
 		per_cpu(irqGet, cpu)[len++] = softirq_key;
 		per_cpu(irqGet, cpu)[len++] = value;

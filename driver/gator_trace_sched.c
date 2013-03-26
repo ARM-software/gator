@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,14 +23,13 @@ enum {
 	STATE_WAIT_ON_OTHER = 0,
 	STATE_CONTENTION,
 	STATE_WAIT_ON_IO,
-	STATE_WAIT_ON_MUTEX,
 };
 
 void emit_pid_name(struct task_struct *task)
 {
 	bool found = false;
 	char taskcomm[TASK_COMM_LEN + 3];
-	unsigned long x, cpu = smp_processor_id();
+	unsigned long x, cpu = get_physical_cpu();
 	uint64_t *keys = &(per_cpu(taskname_keys, cpu)[(task->pid & 0xFF) * TASK_MAX_COLLISIONS]);
 	uint64_t value;
 
@@ -66,9 +65,10 @@ void emit_pid_name(struct task_struct *task)
 
 static void collect_counters(void)
 {
-	int *buffer, len;
+	int *buffer, len, cpu = get_physical_cpu();
 	long long *buffer64;
 	struct gator_interface *gi;
+	u64 time;
 
 	if (marshal_event_header()) {
 		list_for_each_entry(gi, &gator_events, list) {
@@ -80,13 +80,27 @@ static void collect_counters(void)
 				marshal_event64(len, buffer64);
 			}
 		}
+		// Only check after writing all counters so that time and corresponding counters appear in the same frame
+		time = gator_get_time();
+		buffer_check(cpu, BLOCK_COUNTER_BUF, time);
+
+#if GATOR_LIVE
+		// Commit buffers on timeout
+		if (gator_live_rate > 0 && time >= per_cpu(gator_buffer_commit_time, cpu)) {
+			static const int buftypes[] = { COUNTER_BUF, BLOCK_COUNTER_BUF, SCHED_TRACE_BUF };
+			int i;
+			for (i = 0; i < sizeof(buftypes)/sizeof(buftypes[0]); ++i) {
+				gator_commit_buffer(cpu, buftypes[i], time);
+			}
+		}
+#endif
 	}
 }
 
 static void probe_sched_write(int type, struct task_struct *task, struct task_struct *old_task)
 {
 	int cookie = 0, state = 0;
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 	int tgid = task->tgid;
 	int pid = task->pid;
 
@@ -98,10 +112,6 @@ static void probe_sched_write(int type, struct task_struct *task, struct task_st
 			state = STATE_CONTENTION;
 		} else if (old_task->in_iowait) {
 			state = STATE_WAIT_ON_IO;
-#ifdef CONFIG_DEBUG_MUTEXES
-		} else if (old_task->blocked_on) {
-			state = STATE_WAIT_ON_MUTEX;
-#endif
 		} else {
 			state = STATE_WAIT_ON_OTHER;
 		}

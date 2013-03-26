@@ -58,5 +58,6 @@ all:
 
 clean:
 	rm -f *.o .*.cmd gator_events.h modules.order Module.symvers gator.ko gator.mod.c
+	rm -rf .tmp_versions
 
 endif

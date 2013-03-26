@@ -109,7 +109,7 @@
 
     <event counter="ARM_Mali-T6xx_PCACHE_HIT" title="Mali GPU Tiler" name="Pointer-cache hits" description="Number of pointer-cache hits."/>
     <event counter="ARM_Mali-T6xx_PCACHE_MISS" title="Mali GPU Tiler" name="Pointer-cache misses" description="Number of pointer-cache misses."/>
-    <event counter="ARM_Mali-T6xx_PCACHE_LINE" title="Mali GPU Tiler" name="Pointer-cache line-fils" description="Number of pointer-cache line-fills."/>
+    <event counter="ARM_Mali-T6xx_PCACHE_LINE" title="Mali GPU Tiler" name="Pointer-cache line-fills" description="Number of pointer-cache line-fills."/>
     <event counter="ARM_Mali-T6xx_PCACHE_STALL" title="Mali GPU Tiler" name="Pointer-cache stalls" description="Number of pointer-cache stalls."/>
 
     <event counter="ARM_Mali-T6xx_WRBUF_HIT" title="Mali GPU Tiler" name="Write-buffer hits" description="Number of write-buffer hits."/>
@@ -128,7 +128,7 @@
     <event counter="ARM_Mali-T6xx_WRBUF_WAIT" title="Mali GPU Tiler" name="Cycles no write buffer entry" description="Number of cycles a command could be written to the write buffer, but no write buffer entry is available."/>
 
     <event counter="ARM_Mali-T6xx_BUS_READ" title="Mali GPU Tiler" name="Data beats from L2 cache read." description="Number of data beats (64-bit) on read from the L2 cache."/>
-    <event counter="ARM_Mali-T6xx_BUS_WRITE" title="Mali GPU Tiler" name="Data beats from L2 chache write" description="Number of data beats (64-bit) on written to the L2 cache."/>
+    <event counter="ARM_Mali-T6xx_BUS_WRITE" title="Mali GPU Tiler" name="Data beats from L2 cache write" description="Number of data beats (64-bit) on written to the L2 cache."/>
 
     <event counter="ARM_Mali-T6xx_UTLB_STALL" title="Mali GPU Tiler" name="uTLB cycles stall" description="uTLB: Cycles with stall on input AXI address channel."/>
 
@@ -170,11 +170,11 @@
     <event counter="ARM_Mali-T6xx_COMPUTE_THREADS" title="Compute" name="Compute threads started" description="Number of compute threads started."/>
     <event counter="ARM_Mali-T6xx_COMPUTE_CYCLES_DESC" title="Compute" name="Stall: Waiting for descriptors" description="Number of cycles spent waiting for descriptors."/>
     <event counter="ARM_Mali-T6xx_TRIPIPE_ACTIVE" title="Tripipe" name="Tripipe active cycles" description="Number of cycles the Tripipe was active."/>
-    <event counter="ARM_Mali-T6xx_ARITH_WORDS" title="Arithmetic Pipeline" name="Instructions per pipe" description="Number of instruction words in the arithmethic pipelines, divided by the number of arithmethic pipelines."/>
+    <event counter="ARM_Mali-T6xx_ARITH_WORDS" title="Arithmetic Pipeline" name="Instructions per pipe" description="Number of instruction words in the arithmetic pipelines, divided by the number of arithmetic pipelines."/>
 
-    <event counter="ARM_Mali-T6xx_ARITH_CYCLES_REG" title="Arithmetic Pipeline" name="Stall: Register scheduling" description="Number of cycles lost in the arithmethic pipelines due to register scheduling, divided by the number of arithmethic pipelines."/>
-    <event counter="ARM_Mali-T6xx_ARITH_CYCLES_L0" title="Arithmetic Pipeline" name="Stall: Icache miss per pipe" description="Number of cycles lost in the arithmethic pipelines due to L0 instruction cache misses, divided by the number of arithmethic pipelines."/>
-    <event counter="ARM_Mali-T6xx_ARITH_FRAG_DEPEND" title="Arithmetic Pipeline" name="Stall: Fragment dependency fails per pipe" description="Number of fragment dependency check failures in the arithmethic pipelines, divided by the number of arithmethic pipelines."/>
+    <event counter="ARM_Mali-T6xx_ARITH_CYCLES_REG" title="Arithmetic Pipeline" name="Stall: Register scheduling" description="Number of cycles lost in the arithmetic pipelines due to register scheduling, divided by the number of arithmetic pipelines."/>
+    <event counter="ARM_Mali-T6xx_ARITH_CYCLES_L0" title="Arithmetic Pipeline" name="Stall: Icache miss per pipe" description="Number of cycles lost in the arithmetic pipelines due to L0 instruction cache misses, divided by the number of arithmetic pipelines."/>
+    <event counter="ARM_Mali-T6xx_ARITH_FRAG_DEPEND" title="Arithmetic Pipeline" name="Stall: Fragment dependency fails per pipe" description="Number of fragment dependency check failures in the arithmetic pipelines, divided by the number of arithmetic pipelines."/>
     <event counter="ARM_Mali-T6xx_LS_WORDS" title="Load/Store Pipeline" name="Load/Store instruction words completed" description="Number of instruction words completed in the Load/Store pipeline."/>
 
     <event counter="ARM_Mali-T6xx_LS_ISSUES" title="Load/Store Pipeline" name="Full pipeline issues" description="Number of full pipeline issues in the Load/Store pipeline."/>

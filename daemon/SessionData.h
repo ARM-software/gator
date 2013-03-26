@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,11 +9,14 @@
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
 
-#define MAX_PERFORMANCE_COUNTERS	50
-#define MAX_STRING_LEN				80
-#define MAX_DESCRIPTION_LEN			400
+#include <stdint.h>
 
-#define PROTOCOL_VERSION	12
+#include "Counter.h"
+#include "Hwmon.h"
+
+#define MAX_PERFORMANCE_COUNTERS	50
+
+#define PROTOCOL_VERSION	13
 #define PROTOCOL_DEV		1000	// Differentiates development versions (timestamp) from release versions
 
 struct ImageLinkList {
@@ -23,11 +26,14 @@ struct ImageLinkList {
 
 class SessionData {
 public:
+	static const size_t MAX_STRING_LEN = 80;
+
 	SessionData();
 	~SessionData();
 	void initialize();
-	void initializeCounters();
 	void parseSessionXML(char* xmlString);
+
+	Hwmon hwmon;
 
 	char mCoreName[MAX_STRING_LEN];
 	struct ImageLinkList *mImages;
@@ -45,27 +51,21 @@ public:
 	int mBacktraceDepth;
 	int mTotalBufferSize;	// number of MB to use for the entire collection buffer
 	int mSampleRate;
+	int64_t mLiveRate;
 	int mDuration;
 	int mCores;
+	int mCpuId;
 
 	// PMU Counters
 	bool mCounterOverflow;
-	char mPerfCounterType[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
-	char mPerfCounterTitle[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
-	char mPerfCounterName[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
-	char mPerfCounterDescription[MAX_PERFORMANCE_COUNTERS][MAX_DESCRIPTION_LEN];
-	char mPerfCounterDisplay[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
-	char mPerfCounterUnits[MAX_PERFORMANCE_COUNTERS][MAX_STRING_LEN];
-	int mPerfCounterEnabled[MAX_PERFORMANCE_COUNTERS];
-	int mPerfCounterEvent[MAX_PERFORMANCE_COUNTERS];
-	int mPerfCounterColor[MAX_PERFORMANCE_COUNTERS];
-	int mPerfCounterCount[MAX_PERFORMANCE_COUNTERS];
-	int mPerfCounterKey[MAX_PERFORMANCE_COUNTERS];
-	bool mPerfCounterPerCPU[MAX_PERFORMANCE_COUNTERS];
-	bool mPerfCounterEBSCapable[MAX_PERFORMANCE_COUNTERS];
-	bool mPerfCounterAverageSelection[MAX_PERFORMANCE_COUNTERS];
+	Counter mCounters[MAX_PERFORMANCE_COUNTERS];
+
+private:
+	void readCpuInfo();
 };
 
 extern SessionData* gSessionData;
+
+int getEventKey();
 
 #endif // SESSION_DATA_H

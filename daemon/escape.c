@@ -1,9 +1,15 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ */
+
+/* 
+ * The Makefile in the daemon folder builds and executes 'escape'
+ * 'escape' creates configuration_xml.h from configuration.xml and events_xml.h from events-*.xml
+ * these genereated xml files are then #included and built as part of the gatord binary
  */
 
 #include <errno.h>

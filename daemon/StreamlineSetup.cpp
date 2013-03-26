@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,8 +9,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -21,6 +19,7 @@
 #include "CapturedXML.h"
 #include "StreamlineSetup.h"
 #include "ConfigurationXML.h"
+#include "Driver.h"
 
 static const char* TAG_SESSION = "session";
 static const char* TAG_REQUEST = "request";
@@ -30,7 +29,6 @@ static const char* ATTR_TYPE           = "type";
 static const char* VALUE_EVENTS        = "events";
 static const char* VALUE_CONFIGURATION = "configuration";
 static const char* VALUE_COUNTERS      = "counters";
-static const char* VALUE_SESSION       = "session";
 static const char* VALUE_CAPTURED      = "captured";
 static const char* VALUE_DEFAULTS      = "defaults";
 
@@ -40,7 +38,6 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 	int type;
 
 	mSocket = s;
-	mSessionXML = NULL;
 
 	// Receive commands from Streamline (master)
 	while (!ready) {
@@ -87,9 +84,6 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 }
 
 StreamlineSetup::~StreamlineSetup() {
-	if (mSessionXML) {
-		free(mSessionXML);
-	}
 }
 
 char* StreamlineSetup::readCommand(int* command) {
@@ -162,9 +156,6 @@ void StreamlineSetup::handleRequest(char* xml) {
 	} else if (attr && strcmp(attr, VALUE_COUNTERS) == 0) {
 		sendCounters();
 		logg->logMessage("Sent counters xml response");
-	} else if (attr && strcmp(attr, VALUE_SESSION) == 0) {
-		sendData(mSessionXML, strlen(mSessionXML), RESPONSE_XML);
-		logg->logMessage("Sent session xml response");
 	} else if (attr && strcmp(attr, VALUE_CAPTURED) == 0) {
 		CapturedXML capturedXML;
 		char* capturedText = capturedXML.getXML(false);
@@ -191,13 +182,6 @@ void StreamlineSetup::handleDeliver(char* xml) {
 	if (mxmlFindElement(tree, tree, TAG_SESSION, NULL, NULL, MXML_DESCEND_FIRST)) {
 		// Session XML
 		gSessionData->parseSessionXML(xml);
-
-		// Save xml
-		mSessionXML = strdup(xml);
-		if (mSessionXML == NULL) {
-			logg->logError(__FILE__, __LINE__, "malloc failed for size %d", strlen(xml) + 1);
-			handleException();
-		}
 		sendData(NULL, 0, RESPONSE_ACK);
 		logg->logMessage("Received session xml");
 	} else if (mxmlFindElement(tree, tree, TAG_CONFIGURATIONS, NULL, NULL, MXML_DESCEND_FIRST)) {
@@ -222,28 +206,43 @@ void StreamlineSetup::sendData(const char* data, int length, int type) {
 
 void StreamlineSetup::sendEvents() {
 #include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
-	char* path = (char*)malloc(PATH_MAX);;
-	char* buffer;
-	unsigned int size = 0;
+	char path[PATH_MAX];
+	mxml_node_t *xml;
+	FILE *fl;
 
+	// Avoid unused variable warning
+	(void)events_xml_len;
+
+	// Load the provided or default events xml
 	if (gSessionData->mEventsXMLPath) {
 		strncpy(path, gSessionData->mEventsXMLPath, PATH_MAX);
 	} else {
 		util->getApplicationFullPath(path, PATH_MAX);
 		strncat(path, "events.xml", PATH_MAX - strlen(path) - 1);
 	}
-	buffer = util->readFromDisk(path, &size);
-	if (buffer == NULL) {
+	fl = fopen(path, "r");
+	if (fl) {
+		xml = mxmlLoadFile(NULL, fl, MXML_NO_CALLBACK);
+		fclose(fl);
+	} else {
 		logg->logMessage("Unable to locate events.xml, using default");
-		buffer = (char*)events_xml;
-		size = events_xml_len;
+		xml = mxmlLoadString(NULL, (char *)events_xml, MXML_NO_CALLBACK);
 	}
 
-	sendData(buffer, size, RESPONSE_XML);
-	if (buffer != (char*)events_xml) {
-		free(buffer);
+	// Add dynamic events from the drivers
+	mxml_node_t *events = mxmlFindElement(xml, xml, "events", NULL, NULL, MXML_DESCEND);
+	if (!events) {
+		logg->logMessage("Unable to find <events> node in the events.xml");
+		handleException();
 	}
-	free(path);
+	for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+		driver->writeEvents(events);
+	}
+
+	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+	sendString(string, RESPONSE_XML);
+	free(string);
+	mxmlDelete(xml);
 }
 
 void StreamlineSetup::sendConfiguration() {
@@ -268,30 +267,15 @@ void StreamlineSetup::sendDefaults() {
 	sendData(xml, size, RESPONSE_XML);
 }
 
-#include <dirent.h>
 void StreamlineSetup::sendCounters() {
-	struct dirent *ent;
 	mxml_node_t *xml;
 	mxml_node_t *counters;
-	mxml_node_t *counter;
-
-	// counters.xml is simply a file listing of /dev/gator/events
-	DIR* dir = opendir("/dev/gator/events");
-	if (dir == NULL) {
-		logg->logError(__FILE__, __LINE__, "Cannot create counters.xml since unable to read /dev/gator/events");
-		handleException();
-	}
 
 	xml = mxmlNewXML("1.0");
 	counters = mxmlNewElement(xml, "counters");
-	while ((ent = readdir(dir)) != NULL) {
-		// skip hidden files, current dir, and parent dir
-		if (ent->d_name[0] == '.')
-			continue;
-		counter = mxmlNewElement(counters, "counter");
-		mxmlElementSetAttr(counter, "name", ent->d_name);
+	for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+		driver->writeCounters(counters);
 	}
-	closedir (dir);
 
 	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
 	sendString(string, RESPONSE_XML);
@@ -301,7 +285,7 @@ void StreamlineSetup::sendCounters() {
 }
 
 void StreamlineSetup::writeConfiguration(char* xml) {
-	char* path = (char*)malloc(PATH_MAX);
+	char path[PATH_MAX];
 
 	if (gSessionData->mConfigurationXMLPath) {
 		strncpy(path, gSessionData->mConfigurationXMLPath, PATH_MAX);
@@ -316,8 +300,7 @@ void StreamlineSetup::writeConfiguration(char* xml) {
 	}
 
 	// Re-populate gSessionData with the configuration, as it has now changed
-	new ConfigurationXML();
-	free(path);
+	{ ConfigurationXML configuration; }
 
 	if (gSessionData->mCounterOverflow) {
 		logg->logError(__FILE__, __LINE__, "Exceeded maximum number of %d performance counters", MAX_PERFORMANCE_COUNTERS);

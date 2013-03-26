@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -93,7 +93,7 @@ int gator_events_armv6_create_files(struct super_block *sb, struct dentry *root)
 	return 0;
 }
 
-static int gator_events_armv6_online(int **buffer)
+static int gator_events_armv6_online(int **buffer, bool migrate)
 {
 	unsigned int cnt, len = 0, cpu = smp_processor_id();
 	u32 pmnc;
@@ -141,7 +141,7 @@ static int gator_events_armv6_online(int **buffer)
 	return len;
 }
 
-static int gator_events_armv6_offline(int **buffer)
+static int gator_events_armv6_offline(int **buffer, bool migrate)
 {
 	unsigned int cnt;
 

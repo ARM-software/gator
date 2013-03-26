@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,7 +9,7 @@
 #ifndef	__LOCAL_CAPTURE_H__
 #define	__LOCAL_CAPTURE_H__
 
-#include "SessionXML.h"
+struct ImageLinkList;
 
 class LocalCapture {
 public:

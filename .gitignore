@@ -1,7 +1,12 @@
+daemon/*.d
 daemon/*.o
+daemon/*_xml.h
 daemon/escape
 daemon/events.xml
 daemon/gatord
+daemon/libsensors/*.d
+daemon/libsensors/*.o
+daemon/mxml/*.d
 daemon/mxml/*.o
 driver/*.cmd
 driver/*.mod.c

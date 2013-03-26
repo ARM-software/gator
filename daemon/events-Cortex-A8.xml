@@ -1,6 +1,6 @@
   <counter_set name="ARM_Cortex-A8_cnt" count="4"/>
   <category name="Cortex-A8" counter_set="ARM_Cortex-A8_cnt" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="ARM_Cortex-A8_ccnt" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="ARM_Cortex-A8_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
     <event event="0x02" title="Cache" name="Inst TLB refill" description="Instruction fetch that causes a TLB refill of at least the level of TLB closest to the processor"/>
@@ -27,7 +27,7 @@
     <event event="0x45" title="AXI" name="Read" description="The number of AXI read data transfers"/>
     <event event="0x46" title="AXI" name="Write" description="The number of AXI write data transfers"/>
     <event event="0x47" title="Memory" name="Replay event" description="Any replay event in the memory system"/>
-    <event event="0x48" title="Memory" name="Unaligned access" description="Any unaligned memory access that results in a replay"/>
+    <event event="0x48" title="Memory" name="Unaligned access replay" description="Any unaligned memory access that results in a replay"/>
     <event event="0x49" title="Cache" name="L1 data hash miss" description="Any L1 data memory access that misses in the cache as a result of the hashing algorithm"/>
     <event event="0x4a" title="Cache" name="L1 inst hash miss" description="Any L1 instruction memory access that misses in the cache as a result of the hashing algorithm"/>
     <event event="0x4b" title="Cache" name="L1 page coloring" description="Any L1 data memory access in which a page coloring alias occurs"/>

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,7 +30,6 @@ static int blockGet[BLOCK_TOTAL * 4];
 
 GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct request *rq))
 {
-	unsigned long flags;
 	int write, size;
 
 	if (!rq)
@@ -42,9 +41,6 @@ GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct r
 	if (!size)
 		return;
 
-	// disable interrupts to synchronize with gator_events_block_read()
-	// spinlocks not needed since percpu buffers are used
-	local_irq_save(flags);
 	if (write) {
 		if (block_rq_wr_enabled) {
 			atomic_add(size, &blockCnt[BLOCK_RQ_WR]);
@@ -54,7 +50,6 @@ GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct r
 			atomic_add(size, &blockCnt[BLOCK_RQ_RD]);
 		}
 	}
-	local_irq_restore(flags);
 }
 
 static int gator_events_block_create_files(struct super_block *sb, struct dentry *root)
@@ -111,7 +106,7 @@ static int gator_events_block_read(int **buffer)
 {
 	int len, value, data = 0;
 
-	if (smp_processor_id() != 0) {
+	if (!on_primary_core()) {
 		return 0;
 	}
 

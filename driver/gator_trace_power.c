@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -38,14 +38,27 @@ static ulong power_cpu_key[POWER_TOTAL];
 static int gator_trace_power_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
+	int cpu;
+	bool found_nonzero_freq = false;
 
-	// cpu_frequency
-	dir = gatorfs_mkdir(sb, root, "Linux_power_cpu_freq");
-	if (!dir) {
-		return -1;
+	// Even if CONFIG_CPU_FREQ is defined, it still may not be used. Check
+	// for non-zero values from cpufreq_quick_get
+	for_each_online_cpu(cpu) {
+		if (cpufreq_quick_get(cpu) > 0) {
+			found_nonzero_freq = true;
+			break;
+		}
 	}
-	gatorfs_create_ulong(sb, dir, "enabled", &power_cpu_enabled[POWER_CPU_FREQ]);
-	gatorfs_create_ro_ulong(sb, dir, "key", &power_cpu_key[POWER_CPU_FREQ]);
+
+	if (found_nonzero_freq) {
+		// cpu_frequency
+		dir = gatorfs_mkdir(sb, root, "Linux_power_cpu_freq");
+		if (!dir) {
+			return -1;
+		}
+		gatorfs_create_ulong(sb, dir, "enabled", &power_cpu_enabled[POWER_CPU_FREQ]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &power_cpu_key[POWER_CPU_FREQ]);
+	}
 
 	// cpu_idle
 	dir = gatorfs_mkdir(sb, root, "Linux_power_cpu_idle");
@@ -61,13 +74,14 @@ static int gator_trace_power_create_files(struct super_block *sb, struct dentry 
 // 'cpu' may not equal smp_processor_id(), i.e. may not be running on the core that is having the freq/idle state change
 GATOR_DEFINE_PROBE(cpu_frequency, TP_PROTO(unsigned int frequency, unsigned int cpu))
 {
+	cpu = lcpu_to_pcpu(cpu);
 	marshal_event_single(cpu, power_cpu_key[POWER_CPU_FREQ], frequency * 1000);
 }
 
-#define WFI_EXIT 2
-#define WFI_ENTER 1
 GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
 {
+	cpu = lcpu_to_pcpu(cpu);
+
 	if (state == per_cpu(idle_prev_state, cpu)) {
 		return;
 	}
@@ -75,10 +89,10 @@ GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
 	if (implements_wfi()) {
 		if (state == PWR_EVENT_EXIT) {
 			// transition from wfi to non-wfi
-			marshal_idle(cpu, WFI_EXIT);
+			marshal_idle(cpu, MESSAGE_IDLE_EXIT);
 		} else {
 			// transition from non-wfi to wfi
-			marshal_idle(cpu, WFI_ENTER);
+			marshal_idle(cpu, MESSAGE_IDLE_ENTER);
 		}
 	}
 
@@ -92,16 +106,17 @@ GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
 
 static void gator_trace_power_online(void)
 {
-	int cpu = smp_processor_id();
+	int pcpu = get_physical_cpu();
+	int lcpu = get_logical_cpu();
 	if (power_cpu_enabled[POWER_CPU_FREQ]) {
-		marshal_event_single(cpu, power_cpu_key[POWER_CPU_FREQ], cpufreq_quick_get(cpu) * 1000);
+		marshal_event_single(pcpu, power_cpu_key[POWER_CPU_FREQ], cpufreq_quick_get(lcpu) * 1000);
 	}
 }
 
 static void gator_trace_power_offline(void)
 {
 	// Set frequency to zero on an offline
-	int cpu = smp_processor_id();
+	int cpu = get_physical_cpu();
 	if (power_cpu_enabled[POWER_CPU_FREQ]) {
 		marshal_event_single(cpu, power_cpu_key[POWER_CPU_FREQ], 0);
 	}

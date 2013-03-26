@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,10 +15,11 @@
 // bufferSize is the amount of data to be filled
 // singleBufferSize is the maximum size that may be filled during a single write
 // (bufferSize + singleBufferSize) will be allocated
-Fifo::Fifo(int singleBufferSize, int bufferSize) {
+Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t* readerSem) {
 	mWrite = mRead = mReadCommit = mRaggedEnd = 0;
 	mWrapThreshold = bufferSize;
 	mSingleBufferSize = singleBufferSize;
+	mReaderSem = readerSem;
 	mBuffer = (char*)valloc(bufferSize + singleBufferSize);
 	mEnd = false;
 
@@ -27,7 +28,7 @@ Fifo::Fifo(int singleBufferSize, int bufferSize) {
 		handleException();
 	}
 
-	if (sem_init(&mWaitForSpaceSem, 0, 0) || sem_init(&mWaitForDataSem, 0, 0)) {
+	if (sem_init(&mWaitForSpaceSem, 0, 0)) {
 		logg->logError(__FILE__, __LINE__, "sem_init() failed");
 		handleException();
 	}
@@ -36,7 +37,6 @@ Fifo::Fifo(int singleBufferSize, int bufferSize) {
 Fifo::~Fifo() {
 	free(mBuffer);
 	sem_destroy(&mWaitForSpaceSem);
-	sem_destroy(&mWaitForDataSem);
 }
 
 int Fifo::numBytesFilled() const {
@@ -87,7 +87,7 @@ char* Fifo::write(int length) {
 	}
 
 	// send a notification that data is ready
-	sem_post(&mWaitForDataSem);
+	sem_post(mReaderSem);
 
 	// wait for space
 	while (isFull()) {
@@ -97,8 +97,7 @@ char* Fifo::write(int length) {
 	return &mBuffer[mWrite];
 }
 
-// This function will stall until data is available
-char* Fifo::read(int *const length) {
+void Fifo::release() {
 	// update the read pointer now that the data has been handled
 	mRead = mReadCommit;
 
@@ -109,10 +108,13 @@ char* Fifo::read(int *const length) {
 
 	// send a notification that data is free (space is available)
 	sem_post(&mWaitForSpaceSem);
+}
 
+// This function will return null if no data is available
+char* Fifo::read(int *const length) {
 	// wait for data
-	while (isEmpty() && !mEnd) {
-		sem_wait(&mWaitForDataSem);
+	if (isEmpty() && !mEnd) {
+		return NULL;
 	}
 
 	// obtain the length

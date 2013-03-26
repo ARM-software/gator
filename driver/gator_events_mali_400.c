@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -630,7 +630,7 @@ static int read(int **buffer)
 {
 	int cnt, len = 0;
 
-	if (smp_processor_id())
+	if (!on_primary_core())
 		return 0;
 
 	// Read the L2 C0 and C1 here.

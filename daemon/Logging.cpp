@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2012. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2013. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include "OlyUtility.h"
 
 #ifdef WIN32
 #define MUTEX_INIT()	mLoggingMutex = CreateMutex(NULL, false, NULL);
