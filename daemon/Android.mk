@@ -12,6 +12,7 @@ LOCAL_SRC_FILES := \
 	Collector.cpp \
 	ConfigurationXML.cpp \
 	Driver.cpp \
+	EventsXML.cpp \
 	Fifo.cpp \
 	Hwmon.cpp \
 	KMod.cpp \

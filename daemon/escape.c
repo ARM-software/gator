@@ -50,14 +50,20 @@ int main(int argc, char *argv[]) {
   printf("static const unsigned char ");
   print_escaped_path(path);
   printf("[] = {");
-  for (; (ch = fgetc(in)) != EOF; ++len) {
+  for (;;) {
+    ch = fgetc(in);
     if (len != 0) {
       printf(",");
     }
     if (len % 12 == 0) {
       printf("\n ");
     }
-    printf(" 0x%.2x", ch);
+    // Write out a null character after the contents of the file but do not increment len
+    printf(" 0x%.2x", (ch == EOF ? 0 : ch));
+    if (ch == EOF) {
+      break;
+    }
+    ++len;
   }
   printf("\n};\nstatic const unsigned int ");
   print_escaped_path(path);

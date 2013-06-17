@@ -32,7 +32,7 @@ private:
 	char* readCommand(int*);
 	void handleRequest(char* xml);
 	void handleDeliver(char* xml);
-	void sendData(const char* data, int length, int type);
+	void sendData(const char* data, uint32_t length, char type);
 	void sendString(const char* string, int type) {sendData(string, strlen(string), type);}
 	void sendEvents();
 	void sendConfiguration();

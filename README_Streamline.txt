@@ -30,7 +30,6 @@ menuconfig options (depending on the kernel version, the location of these confi
   - CPU Frequency scaling
     - [*] CPU Frequency scaling (enables CONFIG_CPU_FREQ)
 - Kernel hacking
-  - [*] Mutex debugging: basic checks (optional, enables CONFIG_DEBUG_MUTEXES)
   - [*] Compile the kernel with debug info (optional, enables CONFIG_DEBUG_INFO)
   - [*] Tracers
     - [*] Trace process context switches and events (#)
@@ -43,7 +42,6 @@ CONFIG_PROFILING
 CONFIG_HIGH_RES_TIMERS
 CONFIG_LOCAL_TIMERS (for SMP systems)
 CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS (kernel versions 3.0 and greater)
-CONFIG_DEBUG_MUTEXES (optional, provides 'mutex' as a reason code when a thread stops running)
 CONFIG_DEBUG_INFO (optional, used for analyzing the kernel)
 CONFIG_CPU_FREQ (optional, provides frequency setting of the CPU)
 
@@ -101,7 +99,7 @@ Further, the l2c-310 counter can be disabled by providing an offset of zero, ex:
 *** Compiling an application or shared library ***
 
 Recommended compiler settings:
-	"-g": Debug symbols needed for best analysis results.
+	"-g": Debug information, such as line numbers, needed for best analysis results.
 	"-fno-inline": Speed improvement when processing the image files and most accurate analysis results.
 	"-fno-omit-frame-pointer": ARM EABI frame pointers (Code Sourcery cross compiler) allow recording of the call stack with each sample taken when in ARM state (i.e. not -mthumb).
 	"-marm": This option is required if your compiler is configured with --with-mode=thumb, otherwise call stack unwinding will not work.

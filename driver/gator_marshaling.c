@@ -28,7 +28,13 @@ static void marshal_summary(long long timestamp, long long uptime, const char * 
 	gator_buffer_write_string(cpu, SUMMARY_BUF, NEWLINE_CANARY);
 	gator_buffer_write_packed_int64(cpu, SUMMARY_BUF, timestamp);
 	gator_buffer_write_packed_int64(cpu, SUMMARY_BUF, uptime);
+	gator_buffer_write_string(cpu, SUMMARY_BUF, "uname");
 	gator_buffer_write_string(cpu, SUMMARY_BUF, uname);
+#if GATOR_IKS_SUPPORT
+	gator_buffer_write_string(cpu, SUMMARY_BUF, "iks");
+	gator_buffer_write_string(cpu, SUMMARY_BUF, "");
+#endif
+	gator_buffer_write_string(cpu, SUMMARY_BUF, "");
 	// Commit the buffer now so it can be one of the first frames read by Streamline
 	gator_commit_buffer(cpu, SUMMARY_BUF, gator_get_time());
 	local_irq_restore(flags);
@@ -102,7 +108,7 @@ static void marshal_backtrace_footer(void)
 	buffer_check(cpu, BACKTRACE_BUF, gator_get_time());
 }
 
-static bool marshal_event_header(void)
+static bool marshal_event_header(u64 time)
 {
 	unsigned long flags, cpu = get_physical_cpu();
 	bool retval = false;
@@ -110,7 +116,7 @@ static bool marshal_event_header(void)
 	local_irq_save(flags);
 	if (buffer_check_space(cpu, BLOCK_COUNTER_BUF, MAXSIZE_PACK32 + MAXSIZE_PACK64)) {
 		gator_buffer_write_packed_int(cpu, BLOCK_COUNTER_BUF, 0);	// key of zero indicates a timestamp
-		gator_buffer_write_packed_int64(cpu, BLOCK_COUNTER_BUF, gator_get_time());
+		gator_buffer_write_packed_int64(cpu, BLOCK_COUNTER_BUF, time);
 		retval = true;
 	}
 	local_irq_restore(flags);
@@ -343,7 +349,7 @@ static void marshal_frame(int cpu, int buftype)
 	}
 
 	// leave space for 4-byte unpacked length
-	per_cpu(gator_buffer_write, cpu)[buftype] = (per_cpu(gator_buffer_write, cpu)[buftype] + 4) & gator_buffer_mask[buftype];
+	per_cpu(gator_buffer_write, cpu)[buftype] = (per_cpu(gator_buffer_write, cpu)[buftype] + sizeof(s32)) & gator_buffer_mask[buftype];
 
 	// add frame type and core number
 	gator_buffer_write_packed_int(cpu, buftype, frame);

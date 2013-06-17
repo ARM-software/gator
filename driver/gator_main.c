@@ -8,7 +8,7 @@
  */
 
 // This version must match the gator daemon version
-static unsigned long gator_protocol_version = 13;
+static unsigned long gator_protocol_version = 14;
 
 #include <linux/slab.h>
 #include <linux/cpu.h>
@@ -162,8 +162,8 @@ static void gator_commit_buffer(int cpu, int buftype, u64 time);
 static int buffer_bytes_available(int cpu, int buftype);
 static bool buffer_check_space(int cpu, int buftype, int bytes);
 static int contiguous_space_available(int cpu, int bufytpe);
-static void gator_buffer_write_packed_int(int cpu, int buftype, unsigned int x);
-static void gator_buffer_write_packed_int64(int cpu, int buftype, unsigned long long x);
+static void gator_buffer_write_packed_int(int cpu, int buftype, int x);
+static void gator_buffer_write_packed_int64(int cpu, int buftype, long long x);
 static void gator_buffer_write_bytes(int cpu, int buftype, const char *x, int len);
 static void gator_buffer_write_string(int cpu, int buftype, const char *x);
 static void gator_add_trace(int cpu, unsigned long address);
@@ -389,6 +389,8 @@ static bool buffer_commit_ready(int *cpu, int *buftype)
 				return true;
 			}
 	}
+	*cpu = -1;
+	*buftype = -1;
 	return false;
 }
 
@@ -476,14 +478,14 @@ static void gator_commit_buffer(int cpu, int buftype, u64 time)
 	if (length < 0) {
 		length += gator_buffer_size[buftype];
 	}
-	length = length - type_length - sizeof(int);
+	length = length - type_length - sizeof(s32);
 
 	if (length <= FRAME_HEADER_SIZE) {
 		// Nothing to write, only the frame header is present
 		return;
 	}
 
-	for (byte = 0; byte < sizeof(int); byte++) {
+	for (byte = 0; byte < sizeof(s32); byte++) {
 		per_cpu(gator_buffer, cpu)[buftype][(commit + type_length + byte) & gator_buffer_mask[buftype]] = (length >> byte * 8) & 0xFF;
 	}
 
@@ -595,7 +597,7 @@ static void gator_timer_offline(void *migrate)
 
 	// Offline any events and output counters
 	time = gator_get_time();
-	if (marshal_event_header()) {
+	if (marshal_event_header(time)) {
 		list_for_each_entry(gi, &gator_events, list) {
 			if (gi->offline) {
 				len = gi->offline(&buffer, migrate);
@@ -644,11 +646,13 @@ static void gator_timer_online(void *migrate)
 	struct gator_interface *gi;
 	int len, cpu = get_physical_cpu();
 	int *buffer;
+	u64 time;
 
 	gator_trace_power_online();
 
 	// online any events and output counters
-	if (marshal_event_header()) {
+	time = gator_get_time();
+	if (marshal_event_header(time)) {
 		list_for_each_entry(gi, &gator_events, list) {
 			if (gi->online) {
 				len = gi->online(&buffer, migrate);
@@ -656,7 +660,7 @@ static void gator_timer_online(void *migrate)
 			}
 		}
 		// Only check after writing all counters so that time and corresponding counters appear in the same frame
-		buffer_check(cpu, BLOCK_COUNTER_BUF, gator_get_time());
+		buffer_check(cpu, BLOCK_COUNTER_BUF, time);
 	}
 
 	if (!migrate) {
@@ -745,8 +749,6 @@ static u64 gator_get_time(void)
 		if (!printed_monotonic_warning && delta > 500000) {
 			printk(KERN_ERR "%s: getrawmonotonic is not monotonic  cpu: %i  delta: %lli\nSkew in Streamline data may be present at the fine zoom levels\n", __FUNCTION__, cpu, delta);
 			printed_monotonic_warning = true;
-		} else {
-			pr_debug("%s: getrawmonotonic is not monotonic  cpu: %i  delta: %lli\n", __FUNCTION__, cpu, delta);
 		}
 		timestamp = prev_timestamp;
 	}
@@ -894,6 +896,7 @@ static int gator_init(void)
 		if (gator_events_list[i])
 			gator_events_list[i]();
 
+	gator_trace_sched_init();
 	gator_trace_power_init();
 
 	return 0;
@@ -1227,83 +1230,81 @@ static int userspace_buffer_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t userspace_buffer_read(struct file *file, char __user *buf,
-				     size_t count, loff_t *offset)
+static ssize_t userspace_buffer_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
-	int retval = -EINVAL;
-	int commit = 0, length1, length2, read;
+	int commit, length1, length2, read;
 	char *buffer1;
-	char *buffer2 = NULL;
+	char *buffer2;
 	int cpu, buftype;
+	int written = 0;
 
-	/* do not handle partial reads */
-	if (count != userspace_buffer_size || *offset)
+	// ensure there is enough space for a whole frame
+	if (count < userspace_buffer_size || *offset) {
 		return -EINVAL;
+	}
 
 	// sleep until the condition is true or a signal is received
 	// the condition is checked each time gator_buffer_wait is woken up
-	buftype = cpu = -1;
 	wait_event_interruptible(gator_buffer_wait, buffer_commit_ready(&cpu, &buftype) || !gator_started);
 
-	if (signal_pending(current))
+	if (signal_pending(current)) {
 		return -EINTR;
+	}
 
-	length2 = 0;
-	retval = -EFAULT;
+	if (buftype == -1 || cpu == -1) {
+		return 0;
+	}
 
 	mutex_lock(&gator_buffer_mutex);
 
-	if (buftype == -1 || cpu == -1) {
-		retval = 0;
-		goto out;
-	}
+	do {
+		read = per_cpu(gator_buffer_read, cpu)[buftype];
+		commit = per_cpu(gator_buffer_commit, cpu)[buftype];
 
-	read = per_cpu(gator_buffer_read, cpu)[buftype];
-	commit = per_cpu(gator_buffer_commit, cpu)[buftype];
-
-	/* May happen if the buffer is freed during pending reads. */
-	if (!per_cpu(gator_buffer, cpu)[buftype]) {
-		retval = -EFAULT;
-		goto out;
-	}
-
-	/* determine the size of two halves */
-	length1 = commit - read;
-	buffer1 = &(per_cpu(gator_buffer, cpu)[buftype][read]);
-	buffer2 = &(per_cpu(gator_buffer, cpu)[buftype][0]);
-	if (length1 < 0) {
-		length1 = gator_buffer_size[buftype] - read;
-		length2 = commit;
-	}
-
-	/* start, middle or end */
-	if (length1 > 0) {
-		if (copy_to_user(&buf[0], buffer1, length1)) {
-			goto out;
+		// May happen if the buffer is freed during pending reads.
+		if (!per_cpu(gator_buffer, cpu)[buftype]) {
+			break;
 		}
-	}
 
-	/* possible wrap around */
-	if (length2 > 0) {
-		if (copy_to_user(&buf[length1], buffer2, length2)) {
-			goto out;
+		// determine the size of two halves
+		length1 = commit - read;
+		length2 = 0;
+		buffer1 = &(per_cpu(gator_buffer, cpu)[buftype][read]);
+		buffer2 = &(per_cpu(gator_buffer, cpu)[buftype][0]);
+		if (length1 < 0) {
+			length1 = gator_buffer_size[buftype] - read;
+			length2 = commit;
 		}
-	}
 
-	per_cpu(gator_buffer_read, cpu)[buftype] = commit;
-	retval = length1 + length2;
+		if (length1 + length2 > count - written) {
+			break;
+		}
 
-	/* kick just in case we've lost an SMP event */
+		// start, middle or end
+		if (length1 > 0 && copy_to_user(&buf[written], buffer1, length1)) {
+			break;
+		}
+
+		// possible wrap around
+		if (length2 > 0 && copy_to_user(&buf[written + length1], buffer2, length2)) {
+			break;
+		}
+
+		per_cpu(gator_buffer_read, cpu)[buftype] = commit;
+		written += length1 + length2;
+
+		// Wake up annotate_write if more space is available
+		if (buftype == ANNOTATE_BUF) {
+			wake_up(&gator_annotate_wait);
+		}
+	}	while (buffer_commit_ready(&cpu, &buftype));
+
+	mutex_unlock(&gator_buffer_mutex);
+
+	// kick just in case we've lost an SMP event
 	wake_up(&gator_buffer_wait);
 
-	// Wake up annotate_write if more space is available
-	if (buftype == ANNOTATE_BUF) {
-		wake_up(&gator_annotate_wait);
-	}
-
-out:
-	mutex_unlock(&gator_buffer_mutex);
-	return retval;
+	return written > 0 ? written : -EFAULT;
 }
 
 const struct file_operations gator_event_buffer_fops = {
@@ -1375,6 +1376,9 @@ void gator_op_create_files(struct super_block *sb, struct dentry *root)
 	list_for_each_entry(gi, &gator_events, list)
 		if (gi->create_files)
 			gi->create_files(sb, dir);
+
+	// Sched Events
+	sched_trace_create_files(sb, dir);
 
 	// Power interface
 	gator_trace_power_create_files(sb, dir);

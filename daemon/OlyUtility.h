@@ -9,6 +9,8 @@
 #ifndef OLY_UTILITY_H
 #define OLY_UTILITY_H
 
+#include <stddef.h>
+
 #ifdef WIN32
 #define PATH_SEPARATOR '\\'
 #define CAIMAN_PATH_MAX MAX_PATH

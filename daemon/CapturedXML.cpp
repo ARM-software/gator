@@ -51,30 +51,12 @@ mxml_node_t* CapturedXML::getTree(bool includeTime) {
 				counters = mxmlNewElement(captured, "counters");
 			}
 			mxml_node_t *const node = mxmlNewElement(counters, "counter");
-			mxmlElementSetAttr(node, "title", counter.getTitle());
-			mxmlElementSetAttr(node, "name", counter.getName());
-			mxmlElementSetAttrf(node, "key", "0x%08x", counter.getKey());
+			mxmlElementSetAttrf(node, "key", "0x%x", counter.getKey());
 			mxmlElementSetAttr(node, "type", counter.getType());
-			mxmlElementSetAttrf(node, "event", "0x%08x", counter.getEvent());
-			if (counter.isPerCPU()) {
-				mxmlElementSetAttr(node, "per_cpu", "yes");
-			}
+			mxmlElementSetAttrf(node, "event", "0x%x", counter.getEvent());
 			if (counter.getCount() > 0) {
 				mxmlElementSetAttrf(node, "count", "%d", counter.getCount());
 			}
-			if (strlen(counter.getDisplay()) > 0) {
-				mxmlElementSetAttr(node, "display", counter.getDisplay());
-			}
-			if (strlen(counter.getUnits()) > 0) {
-				mxmlElementSetAttr(node, "units", counter.getUnits());
-			}
-			if (counter.getModifier() != 1) {
-				mxmlElementSetAttrf(node, "modifier", "%d", counter.getModifier());
-			}
-			if (counter.isAverageSelection()) {
-				mxmlElementSetAttr(node, "average_selection", "yes");
-			}
-			mxmlElementSetAttr(node, "description", counter.getDescription());
 		}
 	}
 

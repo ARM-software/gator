@@ -58,25 +58,23 @@ void KMod::setupCounter(Counter &counter) {
 	}
 
 	snprintf(text, sizeof(text), "%s/key", base);
-	int key;
+	int key = 0;
 	Collector::readIntDriver(text, &key);
 	counter.setKey(key);
 
 	snprintf(text, sizeof(text), "%s/event", base);
 	Collector::writeDriver(text, counter.getEvent());
-	if (counter.isEBSCapable()) {
-		snprintf(text, sizeof(text), "%s/count", base);
-		if (access(text, F_OK) == 0) {
-			int count = counter.getCount();
-			if (Collector::writeReadDriver(text, &count) && counter.getCount() > 0) {
-				logg->logError(__FILE__, __LINE__, "Cannot enable EBS for %s:%s with a count of %d\n", counter.getTitle(), counter.getName(), counter.getCount());
-				handleException();
-			}
-			counter.setCount(count);
-		} else if (counter.getCount() > 0) {
-			logg->logError(__FILE__, __LINE__, "Event Based Sampling is only supported with kernel versions 3.0.0 and higher with CONFIG_PERF_EVENTS=y, and CONFIG_HW_PERF_EVENTS=y\n");
+	snprintf(text, sizeof(text), "%s/count", base);
+	if (access(text, F_OK) == 0) {
+		int count = counter.getCount();
+		if (Collector::writeReadDriver(text, &count) && counter.getCount() > 0) {
+			logg->logError(__FILE__, __LINE__, "Cannot enable EBS for %s:%i with a count of %d\n", counter.getType(), counter.getEvent(), counter.getCount());
 			handleException();
 		}
+		counter.setCount(count);
+	} else if (counter.getCount() > 0) {
+		logg->logError(__FILE__, __LINE__, "Event Based Sampling is only supported with kernel versions 3.0.0 and higher with CONFIG_PERF_EVENTS=y, and CONFIG_HW_PERF_EVENTS=y\n");
+		handleException();
 	}
 }
 

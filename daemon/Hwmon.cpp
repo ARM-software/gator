@@ -26,20 +26,30 @@ public:
 	const char *getName() const { return name; }
 	const char *getLabel() const { return label; }
 	const char *getTitle() const { return title; }
+	bool isDuplicate() const { return duplicate; }
 	const char *getDisplay() const { return display; }
 	const char *getUnit() const { return unit; }
 	int getModifier() const { return modifier; }
 
-	void setEnabled(const bool enabled) { this->enabled = enabled; }
+	void setEnabled(const bool enabled) {
+		this->enabled = enabled;
+		// canRead will clear enabled if the counter is not readable
+		canRead();
+	}
 
 	double read();
+	bool canRead();
 
 private:
 	void init(const sensors_chip_name *chip, const sensors_feature *feature);
 
 	HwmonCounter *const next;
 	const int key;
-	bool enabled;
+	int polled : 1,
+		readable : 1,
+		enabled : 1,
+		monotonic: 1,
+		duplicate : 1;
 
 	const sensors_chip_name *chip;
 	const sensors_feature *feature;
@@ -50,13 +60,12 @@ private:
 	const char *display;
 	const char *unit;
 	int modifier;
-	bool monotonic;
 	double previous_value;
 
 	sensors_subfeature_type input;
 };
 
-HwmonCounter::HwmonCounter(HwmonCounter *next, int key, const sensors_chip_name *chip, const sensors_feature *feature) : next(next), key(key), enabled(false), chip(chip), feature(feature) {
+HwmonCounter::HwmonCounter(HwmonCounter *next, int key, const sensors_chip_name *chip, const sensors_feature *feature) : next(next), key(key), polled(false), readable(false), enabled(false), duplicate(false), chip(chip), feature(feature) {
 
 	int len = sensors_snprintf_chip_name(NULL, 0, chip) + 1;
 	char *chip_name = new char[len];
@@ -131,6 +140,14 @@ HwmonCounter::HwmonCounter(HwmonCounter *next, int key, const sensors_chip_name 
 		logg->logError(__FILE__, __LINE__, "Unsupported hwmon feature %i", feature->type);
 		handleException();
 	}
+
+	for (HwmonCounter * counter = next; counter != NULL; counter = counter->getNext()) {
+		if (strcmp(label, counter->getLabel()) == 0 && strcmp(title, counter->getTitle()) == 0) {
+			duplicate = true;
+			counter->duplicate = true;
+			break;
+		}
+	}
 }
 
 HwmonCounter::~HwmonCounter() {
@@ -143,6 +160,7 @@ double HwmonCounter::read() {
 	double result;
 	const sensors_subfeature *subfeature;
 
+	// Keep in sync with canRead
 	subfeature = sensors_get_subfeature(chip, feature, input);
 	if (!subfeature) {
 		logg->logError(__FILE__, __LINE__, "No input value for hwmon sensor %s", label);
@@ -160,6 +178,27 @@ double HwmonCounter::read() {
 	return result;
 }
 
+bool HwmonCounter::canRead() {
+	if (!polled) {
+		double value;
+		const sensors_subfeature *subfeature;
+		bool result = true;
+
+		subfeature = sensors_get_subfeature(chip, feature, input);
+		if (!subfeature) {
+			result = false;
+		} else {
+			result = sensors_get_value(chip, subfeature->number, &value) == 0;
+		}
+
+		polled = true;
+		readable = result;
+	}
+
+	enabled &= readable;
+
+	return readable;
+}
 
 Hwmon::Hwmon() : counters(NULL) {
 	int err = sensors_init(NULL);
@@ -191,7 +230,7 @@ Hwmon::~Hwmon() {
 
 HwmonCounter *Hwmon::findCounter(const Counter &counter) const {
 	for (HwmonCounter * hwmonCounter = counters; hwmonCounter != NULL; hwmonCounter = hwmonCounter->getNext()) {
-		if (strcmp(hwmonCounter->getName(), counter.getType()) == 0) {
+		if (hwmonCounter->canRead() && strcmp(hwmonCounter->getName(), counter.getType()) == 0) {
 			return hwmonCounter;
 		}
 	}
@@ -230,6 +269,9 @@ void Hwmon::setupCounter(Counter &counter) {
 
 void Hwmon::writeCounters(mxml_node_t *root) const {
 	for (HwmonCounter * counter = counters; counter != NULL; counter = counter->getNext()) {
+		if (!counter->canRead()) {
+			continue;
+		}
 		mxml_node_t *node = mxmlNewElement(root, "counter");
 		mxmlElementSetAttr(node, "name", counter->getName());
 	}
@@ -241,10 +283,17 @@ void Hwmon::writeEvents(mxml_node_t *root) const {
 
 	char buf[1024];
 	for (HwmonCounter * counter = counters; counter != NULL; counter = counter->getNext()) {
+		if (!counter->canRead()) {
+			continue;
+		}
 		mxml_node_t *node = mxmlNewElement(root, "event");
 		mxmlElementSetAttr(node, "counter", counter->getName());
 		mxmlElementSetAttr(node, "title", counter->getTitle());
-		mxmlElementSetAttr(node, "name", counter->getLabel());
+		if (counter->isDuplicate()) {
+			mxmlElementSetAttrf(node, "name", "%s (0x%x)", counter->getLabel(), counter->getKey());
+		} else {
+			mxmlElementSetAttr(node, "name", counter->getLabel());
+		}
 		mxmlElementSetAttr(node, "display", counter->getDisplay());
 		mxmlElementSetAttr(node, "units", counter->getUnit());
 		if (counter->getModifier() != 1) {

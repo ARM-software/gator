@@ -6,6 +6,8 @@
  * published by the Free Software Foundation.
  */
 
+#include "OlySocket.h"
+
 #include <stdio.h>
 #ifdef WIN32
 #include <Winsock2.h>
@@ -15,7 +17,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #endif
-#include "OlySocket.h"
+
 #include "Logging.h"
 
 #ifdef WIN32

@@ -1,6 +1,6 @@
   <counter_set name="cci-400_cnt" count="4"/>
   <category name="CCI-400" counter_set="cci-400_cnt" per_cpu="no" supports_event_based_sampling="yes">
-    <event counter="cci-400_ccnt" event="0xff" title="CCI-400" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="cci-400_ccnt" event="0xff" title="CCI-400 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
 
     <option_set name="Slave">
       <option event_delta="0x00" name="S0" description="Slave interface 0"/>

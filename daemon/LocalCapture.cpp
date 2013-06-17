@@ -16,6 +16,7 @@
 #include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "EventsXML.h"
 
 LocalCapture::LocalCapture() {}
 
@@ -40,6 +41,10 @@ void LocalCapture::write(char* string) {
 		logg->logError(__FILE__, __LINE__, "Error writing %s\nPlease verify the path.", file);
 		handleException();
 	}
+
+	// Write events XML
+	EventsXML eventsXML;
+	eventsXML.write(gSessionData->mAPCDir);
 }
 
 char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending) {

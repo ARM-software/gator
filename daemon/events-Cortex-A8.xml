@@ -1,6 +1,6 @@
   <counter_set name="ARM_Cortex-A8_cnt" count="4"/>
   <category name="Cortex-A8" counter_set="ARM_Cortex-A8_cnt" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="ARM_Cortex-A8_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="ARM_Cortex-A8_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
     <event event="0x02" title="Cache" name="Inst TLB refill" description="Instruction fetch that causes a TLB refill of at least the level of TLB closest to the processor"/>
@@ -22,7 +22,7 @@
     <event event="0x40" title="Cache" name="Write buffer full" description="Any write buffer full cycle"/>
     <event event="0x41" title="Cache" name="L2 store" description="Any store that is merged in the L2 memory system"/>
     <event event="0x42" title="Cache" name="Bufferable transaction" description="Any bufferable store transaction from load/store to L2 cache, excluding eviction or cast out data"/>
-    <event event="0x43" title="Cache" name="L1 miss" description="Any accesses to the L2 cache"/>
+    <event event="0x43" title="Cache" name="L2 access" description="Any accesses to the L2 cache"/>
     <event event="0x44" title="Cache" name="L2 miss" description="Any cacheable miss in the L2 cache"/>
     <event event="0x45" title="AXI" name="Read" description="The number of AXI read data transfers"/>
     <event event="0x46" title="AXI" name="Write" description="The number of AXI write data transfers"/>

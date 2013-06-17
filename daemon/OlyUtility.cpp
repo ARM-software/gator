@@ -6,6 +6,8 @@
  * published by the Free Software Foundation.
  */
 
+#include "OlyUtility.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,8 +20,6 @@
 #elif defined(DARWIN)
 #include <mach-o/dyld.h>
 #endif
-
-#include "OlyUtility.h"
 
 OlyUtility* util = NULL;
 

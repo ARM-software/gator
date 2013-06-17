@@ -140,173 +140,46 @@ void Buffer::check (const uint64_t time) {
 	}
 }
 
-void Buffer::packInt (const int32_t x) {
-	const int write0 = (writePos + 0) & mask;
-	const int write1 = (writePos + 1) & mask;
+void Buffer::packInt (int32_t x) {
+	int packedBytes = 0;
+	int more = true;
+	while (more) {
+		// low order 7 bits of x
+		char b = x & 0x7f;
+		x >>= 7;
 
-	if ((x & 0xffffff80) == 0) {
-		buf[write0] = x & 0x7f;
-		writePos = write1;
-	} else if ((x & 0xffffc000) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) & 0x7f;
-		writePos = write2;
-	} else if ((x & 0xffe00000) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) & 0x7f;
-		writePos = write3;
-	} else if ((x & 0xf0000000) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) & 0x7f;
-		writePos = write4;
-	} else {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) & 0x0f;
-		writePos = write5;
+		if ((x == 0 && (b & 0x40) == 0) || (x == -1 && (b & 0x40) != 0)) {
+			more = false;
+		} else {
+			b |= 0x80;
+		}
+
+		buf[(writePos + packedBytes) & mask] = b;
+		packedBytes++;
 	}
+
+	writePos = (writePos + packedBytes) & mask;
 }
 
-void Buffer::packInt64 (const int64_t x) {
-	const int write0 = (writePos + 0) & mask;
-	const int write1 = (writePos + 1) & mask;
+void Buffer::packInt64 (int64_t x) {
+	int packedBytes = 0;
+	int more = true;
+	while (more) {
+		// low order 7 bits of x
+		char b = x & 0x7f;
+		x >>= 7;
 
-	if ((x & 0xffffffffffffff80LL) == 0) {
-		buf[write0] = x & 0x7f;
-		writePos = write1;
-	} else if ((x & 0xffffffffffffc000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) & 0x7f;
-		writePos = write2;
-	} else if ((x & 0xffffffffffe00000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) & 0x7f;
-		writePos = write3;
-	} else if ((x & 0xfffffffff0000000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) & 0x7f;
-		writePos = write4;
-	} else if ((x & 0xfffffff800000000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) & 0x7f;
-		writePos = write5;
-	} else if ((x & 0xfffffc0000000000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		const int write6 = (writePos + 6) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) | 0x80;
-		buf[write5] = (x >> 35) & 0x7f;
-		writePos = write6;
-	} else if ((x & 0xfffe000000000000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		const int write6 = (writePos + 6) & mask;
-		const int write7 = (writePos + 7) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) | 0x80;
-		buf[write5] = (x >> 35) | 0x80;
-		buf[write6] = (x >> 42) & 0x7f;
-		writePos = write7;
-	} else if ((x & 0xff00000000000000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		const int write6 = (writePos + 6) & mask;
-		const int write7 = (writePos + 7) & mask;
-		const int write8 = (writePos + 8) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) | 0x80;
-		buf[write5] = (x >> 35) | 0x80;
-		buf[write6] = (x >> 42) | 0x80;
-		buf[write7] = (x >> 49) & 0x7f;
-		writePos = write8;
-	} else if ((x & 0x8000000000000000LL) == 0) {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		const int write6 = (writePos + 6) & mask;
-		const int write7 = (writePos + 7) & mask;
-		const int write8 = (writePos + 8) & mask;
-		const int write9 = (writePos + 9) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) | 0x80;
-		buf[write5] = (x >> 35) | 0x80;
-		buf[write6] = (x >> 42) | 0x80;
-		buf[write7] = (x >> 49) | 0x80;
-		buf[write8] = (x >> 56) & 0x7f;
-		writePos = write9;
-	} else {
-		const int write2 = (writePos + 2) & mask;
-		const int write3 = (writePos + 3) & mask;
-		const int write4 = (writePos + 4) & mask;
-		const int write5 = (writePos + 5) & mask;
-		const int write6 = (writePos + 6) & mask;
-		const int write7 = (writePos + 7) & mask;
-		const int write8 = (writePos + 8) & mask;
-		const int write9 = (writePos + 9) & mask;
-		const int write10 = (writePos + 10) & mask;
-		buf[write0] = x | 0x80;
-		buf[write1] = (x >> 7) | 0x80;
-		buf[write2] = (x >> 14) | 0x80;
-		buf[write3] = (x >> 21) | 0x80;
-		buf[write4] = (x >> 28) | 0x80;
-		buf[write5] = (x >> 35) | 0x80;
-		buf[write6] = (x >> 42) | 0x80;
-		buf[write7] = (x >> 49) | 0x80;
-		buf[write8] = (x >> 56) | 0x80;
-		buf[write9] = (x >> 63) & 0x7f;
-		writePos = write10;
+		if ((x == 0 && (b & 0x40) == 0) || (x == -1 && (b & 0x40) != 0)) {
+			more = false;
+		} else {
+			b |= 0x80;
+		}
+
+		buf[(writePos + packedBytes) & mask] = b;
+		packedBytes++;
 	}
+
+	writePos = (writePos + packedBytes) & mask;
 }
 
 void Buffer::frame () {

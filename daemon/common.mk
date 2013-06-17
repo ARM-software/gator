@@ -24,7 +24,7 @@ events.xml: events_header.xml $(wildcard events-*.xml) events_footer.xml
 include $(wildcard *.d)
 include $(wildcard mxml/*.d)
 
-StreamlineSetup.cpp: events_xml.h
+EventsXML.cpp: events_xml.h
 ConfigurationXML.cpp: configuration_xml.h
 
 # Don't regenerate conf-lex.c or conf-parse.c

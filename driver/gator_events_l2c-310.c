@@ -11,6 +11,10 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#if defined(CONFIG_OF)
+#include <linux/of.h>
+#include <linux/of_address.h>
+#endif
 #include <asm/hardware/cache-l2x0.h>
 
 #include "gator.h"
@@ -150,10 +154,23 @@ static void __iomem *gator_events_l2c310_probe(void)
 #endif
 	};
 	int i;
+	void __iomem *base;
+#if defined(CONFIG_OF)
+	struct device_node *node = of_find_all_nodes(NULL);
+
+	if (node) {
+		of_node_put(node);
+
+		node = of_find_compatible_node(NULL, NULL, "arm,pl310-cache");
+		base = of_iomap(node, 0);
+		of_node_put(node);
+
+		return base;
+	}
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(variants); i++) {
-		void __iomem *base = ioremap(variants[i], SZ_4K);
-
+		base = ioremap(variants[i], SZ_4K);
 		if (base) {
 			u32 cache_id = readl(base + L2X0_CACHE_ID);
 

@@ -16,7 +16,7 @@
 
 #define MAX_PERFORMANCE_COUNTERS	50
 
-#define PROTOCOL_VERSION	13
+#define PROTOCOL_VERSION	14
 #define PROTOCOL_DEV		1000	// Differentiates development versions (timestamp) from release versions
 
 struct ImageLinkList {
@@ -57,7 +57,7 @@ public:
 	int mCpuId;
 
 	// PMU Counters
-	bool mCounterOverflow;
+	int mCounterOverflow;
 	Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 
 private:

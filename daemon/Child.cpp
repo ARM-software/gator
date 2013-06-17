@@ -100,14 +100,15 @@ static void* durationThread(void* pVoid) {
 }
 
 static void* stopThread(void* pVoid) {
-	int length;
-	char type;
 	OlySocket* socket = child->socket;
 
 	prctl(PR_SET_NAME, (unsigned long)&"gatord-stopper", 0, 0, 0);
 	while (gSessionData->mSessionIsActive) {
 		// This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
-		const int result = socket->receiveNBytes(&type, sizeof(type));
+		unsigned char header[5];
+		const int result = socket->receiveNBytes((char*)&header, sizeof(header));
+		const char type = header[0];
+		const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
 		if (result == -1) {
 			child->endSession();
 		} else if (result > 0) {
@@ -115,10 +116,6 @@ static void* stopThread(void* pVoid) {
 				logg->logMessage("INVESTIGATE: Received unknown command type %d", type);
 			} else {
 				// verify a length of zero
-				if (socket->receiveNBytes((char*)&length, sizeof(length)) < 0) {
-					break;
-				}
-
 				if (length == 0) {
 					if (type == COMMAND_APC_STOP) {
 						logg->logMessage("Stop command received.");

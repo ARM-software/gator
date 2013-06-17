@@ -15,23 +15,36 @@
 
 extern bool event_based_sampling;
 
+// Maximum number of per-core counters - currently reserves enough space for two full hardware PMUs for big.LITTLE
 #define CNTMAX 16
 #define CCI_400 4
+// Maximum number of uncore counters
 // + 1 for the cci-400 cycles counter
 #define UCCNT (CCI_400 + 1)
 
+// A gator_attr is needed for every counter
 struct gator_attr {
+	// Set once in gator_events_perf_pmu_*_init - the name of the event in the gatorfs
 	char name[40];
+	// Exposed in gatorfs - set by gatord to enable this counter
 	unsigned long enabled;
+	// Set once in gator_events_perf_pmu_*_init - the perf type to use, see perf_type_id in the perf_event.h header file.
 	unsigned long type;
+	// Exposed in gatorfs - set by gatord to select the event to collect
 	unsigned long event;
+	// Exposed in gatorfs - set by gatord with the sample period to use and enable EBS for this counter
 	unsigned long count;
+	// Exposed as read only in gatorfs - set once in __attr_init as the key to use in the APC data
 	unsigned long key;
 };
 
+// Per-core counter attributes
 static struct gator_attr attrs[CNTMAX];
+// Number of initialized per-core counters
 static int attr_count;
+// Uncore counter attributes
 static struct gator_attr uc_attrs[UCCNT];
+// Number of initialized uncore counters
 static int uc_attr_count;
 
 struct gator_event {
@@ -458,7 +471,7 @@ int gator_events_perf_pmu_init(void)
 				break;
 			}
 		}
-		// Assume that valid PMUs are contigious
+		// Assume that valid PMUs are contiguous
 		if (IS_ERR(pe)) {
 			break;
 		}
@@ -470,6 +483,7 @@ int gator_events_perf_pmu_init(void)
 				found_cpu = true;
 				gator_events_perf_pmu_cpu_init(gator_cpu, type);
 			}
+			// Initialize gator_attrs for dynamic PMUs here
 		}
 
 		perf_event_release_kernel(pe);
@@ -482,6 +496,8 @@ int gator_events_perf_pmu_init(void)
 		}
 		gator_events_perf_pmu_cpu_init(gator_cpu, PERF_TYPE_RAW);
 	}
+
+	// Initialize gator_attrs for non-dynamic PMUs here
 
 	if (attr_count > CNTMAX) {
 		printk(KERN_ERR "gator: Too many perf counters\n");

@@ -82,9 +82,12 @@ static void mali_gpu_stop(int unit, int core)
 	int last_pid = 0;
 
 	spin_lock(&mali_gpu_jobs_lock);
+	if (mali_gpu_jobs[unit][core].count == 0) {
+		spin_unlock(&mali_gpu_jobs_lock);
+		return;
+	}
 	--mali_gpu_jobs[unit][core].count;
 	count = mali_gpu_jobs[unit][core].count;
-	BUG_ON(count < 0);
 	if (count) {
 		last_core = mali_gpu_jobs[unit][core].last_core;
 		last_tgid = mali_gpu_jobs[unit][core].last_tgid;

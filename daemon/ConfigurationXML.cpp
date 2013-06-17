@@ -15,19 +15,10 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
-static const char* ATTR_COUNTER           = "counter";
-static const char* ATTR_REVISION          = "revision";
-static const char* ATTR_TITLE             = "title";
-static const char* ATTR_NAME              = "name";
-static const char* ATTR_EVENT             = "event";
-static const char* ATTR_COUNT             = "count";
-static const char* ATTR_PER_CPU           = "per_cpu";
-static const char* ATTR_DESCRIPTION       = "description";
-static const char* ATTR_EBS               = "supports_event_based_sampling";
-static const char* ATTR_DISPLAY           = "display";
-static const char* ATTR_UNITS             = "units";
-static const char* ATTR_MODIFIER          = "modifier";
-static const char* ATTR_AVERAGE_SELECTION = "average_selection";
+static const char* ATTR_COUNTER            = "counter";
+static const char* ATTR_REVISION           = "revision";
+static const char* ATTR_EVENT              = "event";
+static const char* ATTR_COUNT              = "count";
 
 ConfigurationXML::ConfigurationXML() {
 	const char * configuration_xml;
@@ -87,7 +78,7 @@ int ConfigurationXML::parse(const char* configurationXML) {
 	int ret;
 
 	// clear counter overflow
-	gSessionData->mCounterOverflow = false;
+	gSessionData->mCounterOverflow = 0;
 	mIndex = 0;
 
 	// disable all counters prior to parsing the configuration xml
@@ -123,7 +114,7 @@ void ConfigurationXML::validate(void) {
 		const Counter & counter = gSessionData->mCounters[i];
 		if (counter.isEnabled()) {
 			if (strcmp(counter.getType(), "") == 0) {
-				logg->logError(__FILE__, __LINE__, "Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  title=\"%s\"\n  name=\"%s\"\n  event=%d\n", counter.getType(), counter.getTitle(), counter.getName(), counter.getEvent());
+				logg->logError(__FILE__, __LINE__, "Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  event=%d\n", counter.getType(), counter.getEvent());
 				handleException();
 			}
 
@@ -142,7 +133,7 @@ void ConfigurationXML::validate(void) {
 	}
 }
 
-#define CONFIGURATION_REVISION 2
+#define CONFIGURATION_REVISION 3
 int ConfigurationXML::configurationsTag(mxml_node_t *node) {
 	const char* revision_string;
 	
@@ -156,13 +147,17 @@ int ConfigurationXML::configurationsTag(mxml_node_t *node) {
 		return 1; // revision issue
 	}
 
+	// A revision >= CONFIGURATION_REVISION is okay
+	// Greater than can occur when Streamline is newer than gator
+
 	return 0;
 }
 
 void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	// handle all other performance counters
 	if (mIndex >= MAX_PERFORMANCE_COUNTERS) {
-		gSessionData->mCounterOverflow = true;
+		mIndex++;
+		gSessionData->mCounterOverflow = mIndex;
 		return;
 	}
 
@@ -170,24 +165,15 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	Counter & counter = gSessionData->mCounters[mIndex];
 	counter.clear();
 	if (mxmlElementGetAttr(node, ATTR_COUNTER)) counter.setType(mxmlElementGetAttr(node, ATTR_COUNTER));
-	if (mxmlElementGetAttr(node, ATTR_TITLE)) counter.setTitle(mxmlElementGetAttr(node, ATTR_TITLE));
-	if (mxmlElementGetAttr(node, ATTR_NAME)) counter.setName(mxmlElementGetAttr(node, ATTR_NAME));
-	if (mxmlElementGetAttr(node, ATTR_DESCRIPTION)) counter.setDescription(mxmlElementGetAttr(node, ATTR_DESCRIPTION));
 	if (mxmlElementGetAttr(node, ATTR_EVENT)) counter.setEvent(strtol(mxmlElementGetAttr(node, ATTR_EVENT), NULL, 16));
 	if (mxmlElementGetAttr(node, ATTR_COUNT)) counter.setCount(strtol(mxmlElementGetAttr(node, ATTR_COUNT), NULL, 10));
-	if (mxmlElementGetAttr(node, ATTR_PER_CPU)) counter.setPerCPU(util->stringToBool(mxmlElementGetAttr(node, ATTR_PER_CPU), false));
-	if (mxmlElementGetAttr(node, ATTR_EBS)) counter.setEBSCapable(util->stringToBool(mxmlElementGetAttr(node, ATTR_EBS), false));
-	if (mxmlElementGetAttr(node, ATTR_DISPLAY)) counter.setDisplay(mxmlElementGetAttr(node, ATTR_DISPLAY));
-	if (mxmlElementGetAttr(node, ATTR_UNITS)) counter.setUnits(mxmlElementGetAttr(node, ATTR_UNITS));
-	if (mxmlElementGetAttr(node, ATTR_MODIFIER)) counter.setModifier(strtol(mxmlElementGetAttr(node, ATTR_MODIFIER), NULL, 10));
-	if (mxmlElementGetAttr(node, ATTR_AVERAGE_SELECTION)) counter.setAverageSelection(util->stringToBool(mxmlElementGetAttr(node, ATTR_AVERAGE_SELECTION), false));
 	counter.setEnabled(true);
 
 	// Associate a driver with each counter
 	for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
 		if (driver->claimCounter(counter)) {
 			if (counter.getDriver() != NULL) {
-				logg->logError(__FILE__, __LINE__, "More than one driver has claimed %s: %s", counter.getTitle(), counter.getName());
+				logg->logError(__FILE__, __LINE__, "More than one driver has claimed %s:%i", counter.getType(), counter.getEvent());
 				handleException();
 			}
 			counter.setDriver(driver);
@@ -196,12 +182,14 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 
 	// If no driver is associated with the counter, disable it
 	if (counter.getDriver() == NULL) {
-		logg->logMessage("No driver has claimed %s (%s: %s)", counter.getType(), counter.getTitle(), counter.getName());
+		logg->logMessage("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
 		counter.setEnabled(false);
 	}
 
-	// update counter index
-	mIndex++;
+	if (counter.isEnabled()) {
+		// update counter index
+		mIndex++;
+	}
 }
 
 void ConfigurationXML::getDefaultConfigurationXml(const char * & xml, unsigned int & len) {

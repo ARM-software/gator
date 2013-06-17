@@ -22,14 +22,30 @@
 
 #include "gator_events_mali_common.h"
 
+/* If API version is not specified then assume API version 1. */
+#ifndef MALI_DDK_GATOR_API_VERSION
+#define MALI_DDK_GATOR_API_VERSION 1
+#endif
+
+#if (MALI_DDK_GATOR_API_VERSION != 1) && (MALI_DDK_GATOR_API_VERSION != 2)
+#error MALI_DDK_GATOR_API_VERSION is invalid (must be 1 for r1/r2 DDK, or 2 for r3 DDK).
+#endif
+
 /*
  * Mali-T6xx
  */
 typedef struct kbase_device *kbase_find_device_type(int);
 typedef kbase_context *kbase_create_context_type(kbase_device *);
 typedef void kbase_destroy_context_type(kbase_context *);
+
+#if MALI_DDK_GATOR_API_VERSION == 1
 typedef void *kbase_va_alloc_type(kbase_context *, u32);
 typedef void kbase_va_free_type(kbase_context *, void *);
+#elif MALI_DDK_GATOR_API_VERSION == 2
+typedef void *kbase_va_alloc_type(kbase_context *, u32, kbase_hwc_dma_mapping * handle);
+typedef void kbase_va_free_type(kbase_context *, kbase_hwc_dma_mapping * handle);
+#endif
+
 typedef mali_error kbase_instr_hwcnt_enable_type(kbase_context *, kbase_uk_hwcnt_setup *);
 typedef mali_error kbase_instr_hwcnt_disable_type(kbase_context *);
 typedef mali_error kbase_instr_hwcnt_clear_type(kbase_context *);
@@ -358,6 +374,11 @@ static const char *const hardware_counter_names[] = {
 /* Memory to dump hardware counters into */
 static void *kernel_dump_buffer;
 
+#if MALI_DDK_GATOR_API_VERSION == 2
+/* DMA state used to manage lifetime of the buffer */
+kbase_hwc_dma_mapping kernel_dump_buffer_handle;
+#endif
+
 /* kbase context and device */
 static kbase_context *kbcontext = NULL;
 static struct kbase_device *kbdevice = NULL;
@@ -524,9 +545,14 @@ static int start(void)
 		 *             * number of blocks (always 8 for midgard)
 		 *             * number of counters per block (always 64 for midgard)
 		 *             * number of bytes per counter (always 4 in midgard)
-		 * For a Mali-T6xx with a single core group = 1 * 8 * 64 * 4
+		 * For a Mali-T6xx with a single core group = 1 * 8 * 64 * 4 = 2048
+		 * For a Mali-T6xx with a dual core group   = 2 * 8 * 64 * 4 = 4096
 		 */
-		kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 2048);
+#if MALI_DDK_GATOR_API_VERSION == 1
+		kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 4096);
+#elif MALI_DDK_GATOR_API_VERSION == 2
+		kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 4096, &kernel_dump_buffer_handle);
+#endif
 		if (!kernel_dump_buffer) {
 			pr_debug("gator: Mali-T6xx: error trying to allocate va\n");
 			goto destroy_context;
@@ -556,7 +582,11 @@ static int start(void)
 	return 0;
 
 free_buffer:
+#if MALI_DDK_GATOR_API_VERSION == 1
 	kbase_va_free_symbol(kbcontext, kernel_dump_buffer);
+#elif MALI_DDK_GATOR_API_VERSION == 2
+	kbase_va_free_symbol(kbcontext, &kernel_dump_buffer_handle);
+#endif
 
 destroy_context:
 	kbase_destroy_context_symbol(kbcontext);
@@ -588,7 +618,13 @@ static void stop(void)
 		kbcontext = NULL;
 
 		kbase_instr_hwcnt_disable_symbol(temp_kbcontext);
+
+#if MALI_DDK_GATOR_API_VERSION == 1
 		kbase_va_free_symbol(temp_kbcontext, kernel_dump_buffer);
+#elif MALI_DDK_GATOR_API_VERSION == 2
+		kbase_va_free_symbol(temp_kbcontext, &kernel_dump_buffer_handle);
+#endif
+
 		kbase_destroy_context_symbol(temp_kbcontext);
 
 		pr_debug("gator: Mali-T6xx: hardware counters stopped\n");

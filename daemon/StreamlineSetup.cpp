@@ -20,6 +20,7 @@
 #include "StreamlineSetup.h"
 #include "ConfigurationXML.h"
 #include "Driver.h"
+#include "EventsXML.h"
 
 static const char* TAG_SESSION = "session";
 static const char* TAG_REQUEST = "request";
@@ -77,8 +78,8 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 		free(data);
 	}
 
-	if (gSessionData->mCounterOverflow) {
-		logg->logError(__FILE__, __LINE__, "Exceeded maximum number of %d performance counters", MAX_PERFORMANCE_COUNTERS);
+	if (gSessionData->mCounterOverflow > 0) {
+		logg->logError(__FILE__, __LINE__, "Only %i performance counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, gSessionData->mCounterOverflow);
 		handleException();
 	}
 }
@@ -87,12 +88,12 @@ StreamlineSetup::~StreamlineSetup() {
 }
 
 char* StreamlineSetup::readCommand(int* command) {
-	char type;
+	unsigned char header[5];
 	char* data;
-	int response, length;
+	int response;
 
-	// receive type
-	response = mSocket->receiveNBytes(&type, sizeof(type));
+	// receive type and length
+	response = mSocket->receiveNBytes((char*)&header, sizeof(header));
 
 	// After receiving a single byte, we are no longer waiting on a command
 	gSessionData->mWaitingOnCommand = false;
@@ -102,12 +103,8 @@ char* StreamlineSetup::readCommand(int* command) {
 		handleException();
 	}
 
-	// receive length
-	response = mSocket->receiveNBytes((char*)&length, sizeof(length));
-	if (response < 0) {
-		logg->logError(__FILE__, __LINE__, "Target error: Unexpected socket disconnect");
-		handleException();
-	}
+	const char type = header[0];
+	const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
 
 	// add artificial limit
 	if ((length < 0) || length > 1024 * 1024) {
@@ -198,51 +195,22 @@ void StreamlineSetup::handleDeliver(char* xml) {
 	mxmlDelete(tree);
 }
 
-void StreamlineSetup::sendData(const char* data, int length, int type) {
-	mSocket->send((char*)&type, 1);
-	mSocket->send((char*)&length, sizeof(length));
+void StreamlineSetup::sendData(const char* data, uint32_t length, char type) {
+	unsigned char header[5];
+	header[0] = type;
+	header[1] = (length >> 0) & 0xff;
+	header[2] = (length >> 8) & 0xff;
+	header[3] = (length >> 16) & 0xff;
+	header[4] = (length >> 24) & 0xff;
+	mSocket->send((char*)&header, sizeof(header));
 	mSocket->send((char*)data, length);
 }
 
 void StreamlineSetup::sendEvents() {
-#include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
-	char path[PATH_MAX];
-	mxml_node_t *xml;
-	FILE *fl;
-
-	// Avoid unused variable warning
-	(void)events_xml_len;
-
-	// Load the provided or default events xml
-	if (gSessionData->mEventsXMLPath) {
-		strncpy(path, gSessionData->mEventsXMLPath, PATH_MAX);
-	} else {
-		util->getApplicationFullPath(path, PATH_MAX);
-		strncat(path, "events.xml", PATH_MAX - strlen(path) - 1);
-	}
-	fl = fopen(path, "r");
-	if (fl) {
-		xml = mxmlLoadFile(NULL, fl, MXML_NO_CALLBACK);
-		fclose(fl);
-	} else {
-		logg->logMessage("Unable to locate events.xml, using default");
-		xml = mxmlLoadString(NULL, (char *)events_xml, MXML_NO_CALLBACK);
-	}
-
-	// Add dynamic events from the drivers
-	mxml_node_t *events = mxmlFindElement(xml, xml, "events", NULL, NULL, MXML_DESCEND);
-	if (!events) {
-		logg->logMessage("Unable to find <events> node in the events.xml");
-		handleException();
-	}
-	for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
-		driver->writeEvents(events);
-	}
-
-	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+	EventsXML eventsXML;
+	char* string = eventsXML.getXML();
 	sendString(string, RESPONSE_XML);
 	free(string);
-	mxmlDelete(xml);
 }
 
 void StreamlineSetup::sendConfiguration() {
@@ -302,8 +270,8 @@ void StreamlineSetup::writeConfiguration(char* xml) {
 	// Re-populate gSessionData with the configuration, as it has now changed
 	{ ConfigurationXML configuration; }
 
-	if (gSessionData->mCounterOverflow) {
-		logg->logError(__FILE__, __LINE__, "Exceeded maximum number of %d performance counters", MAX_PERFORMANCE_COUNTERS);
+	if (gSessionData->mCounterOverflow > 0) {
+		logg->logError(__FILE__, __LINE__, "Only %i performance counters counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, gSessionData->mCounterOverflow);
 		handleException();
 	}
 }

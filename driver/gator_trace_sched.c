@@ -16,14 +16,43 @@
 #define TASK_MAP_ENTRIES		1024	/* must be power of 2 */
 #define TASK_MAX_COLLISIONS		2
 
-static DEFINE_PER_CPU(uint64_t *, taskname_keys);
-static DEFINE_PER_CPU(int, collecting);
-
 enum {
 	STATE_WAIT_ON_OTHER = 0,
 	STATE_CONTENTION,
 	STATE_WAIT_ON_IO,
+	CPU_WAIT_TOTAL
 };
+
+static DEFINE_PER_CPU(uint64_t *, taskname_keys);
+static DEFINE_PER_CPU(int, collecting);
+
+// this array is never read as the cpu wait charts are derived counters
+// the files are needed, nonetheless, to show that these counters are available
+static ulong cpu_wait_enabled[CPU_WAIT_TOTAL];
+static ulong sched_cpu_key[CPU_WAIT_TOTAL];
+
+static int sched_trace_create_files(struct super_block *sb, struct dentry *root)
+{
+	struct dentry *dir;
+
+	// CPU Wait - Contention
+	dir = gatorfs_mkdir(sb, root, "Linux_cpu_wait_contention");
+	if (!dir) {
+		return -1;
+	}
+	gatorfs_create_ulong(sb, dir, "enabled", &cpu_wait_enabled[STATE_CONTENTION]);
+	gatorfs_create_ro_ulong(sb, dir, "key", &sched_cpu_key[STATE_CONTENTION]);
+
+	// CPU Wait - I/O
+	dir = gatorfs_mkdir(sb, root, "Linux_cpu_wait_io");
+	if (!dir) {
+		return -1;
+	}
+	gatorfs_create_ulong(sb, dir, "enabled", &cpu_wait_enabled[STATE_WAIT_ON_IO]);
+	gatorfs_create_ro_ulong(sb, dir, "key", &sched_cpu_key[STATE_WAIT_ON_IO]);
+
+	return 0;
+}
 
 void emit_pid_name(struct task_struct *task)
 {
@@ -70,7 +99,8 @@ static void collect_counters(void)
 	struct gator_interface *gi;
 	u64 time;
 
-	if (marshal_event_header()) {
+	time = gator_get_time();
+	if (marshal_event_header(time)) {
 		list_for_each_entry(gi, &gator_events, list) {
 			if (gi->read) {
 				len = gi->read(&buffer);
@@ -81,7 +111,6 @@ static void collect_counters(void)
 			}
 		}
 		// Only check after writing all counters so that time and corresponding counters appear in the same frame
-		time = gator_get_time();
 		buffer_check(cpu, BLOCK_COUNTER_BUF, time);
 
 #if GATOR_LIVE
@@ -214,5 +243,14 @@ void gator_trace_sched_stop(void)
 
 	for_each_present_cpu(cpu) {
 		kfree(per_cpu(taskname_keys, cpu));
+	}
+}
+
+void gator_trace_sched_init(void)
+{
+	int i;
+	for (i = 0; i < CPU_WAIT_TOTAL; i++) {
+		cpu_wait_enabled[i] = 0;
+		sched_cpu_key[i] = gator_events_get_key();
 	}
 }

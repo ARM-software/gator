@@ -1,47 +1,57 @@
-<?xml version="1.0" encoding='UTF-8'?>
-<configurations revision="2">
-  <configuration counter="ARM_ARM11_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_ARM11_cnt0" event="0x7" title="Instruction" name="Executed" per_cpu="yes" description="Instructions executed"/>
-  <configuration counter="ARM_ARM11_cnt1" event="0xb" title="Cache" name="Data miss" per_cpu="yes" description="Data cache miss, not including Cache Operations"/>
-  <configuration counter="ARM_ARM11MPCore_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_ARM11MPCore_cnt0" event="0x08" title="Core" name="Instructions" per_cpu="yes" description="Instructions executed"/>
-  <configuration counter="ARM_ARM11MPCore_cnt1" event="0x0b" title="Cache" name="Data read miss" per_cpu="yes" description="Data cache miss, not including Cache Operations"/>
-  <configuration counter="ARM_Cortex-A5_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_Cortex-A5_cnt0" event="0x8" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="ARM_Cortex-A5_cnt1" event="0x1" title="Cache" name="Instruction refill" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
-  <configuration counter="ARM_Cortex-A7_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_Cortex-A7_cnt0" event="0x08" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="ARM_Cortex-A7_cnt1" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
-  <configuration counter="ARM_Cortex-A7_cnt2" event="0x16" title="Cache" name="L2 data access" per_cpu="yes" supports_event_based_sampling="yes" description="Level 2 data cache access"/>
-  <configuration counter="ARM_Cortex-A8_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_Cortex-A8_cnt0" event="0x8" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="ARM_Cortex-A8_cnt1" event="0x44" title="Cache" name="L2 miss" per_cpu="yes" supports_event_based_sampling="yes" description="Any cacheable miss in the L2 cache"/>
-  <configuration counter="ARM_Cortex-A8_cnt2" event="0x43" title="Cache" name="L1 miss" per_cpu="yes" supports_event_based_sampling="yes" description="Any accesses to the L2 cache"/>
-  <configuration counter="ARM_Cortex-A8_cnt3" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
-  <configuration counter="ARM_Cortex-A9_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_Cortex-A9_cnt0" event="0x68" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Counts the number of instructions going through the Register Renaming stage. This number is an approximate number of the total number of instructions speculatively executed, and even more approximate of the total number of instructions architecturally executed"/>
-  <configuration counter="ARM_Cortex-A9_cnt1" event="0x06" title="Instruction" name="Memory read" per_cpu="yes" supports_event_based_sampling="yes" description="Memory-reading instruction architecturally executed"/>
-  <configuration counter="ARM_Cortex-A9_cnt2" event="0x07" title="Instruction" name="Memory write" per_cpu="yes" supports_event_based_sampling="yes" description="Memory-writing instruction architecturally executed"/>
-  <configuration counter="ARM_Cortex-A9_cnt3" event="0x03" title="Cache" name="Data refill" per_cpu="yes" supports_event_based_sampling="yes" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/>
-  <configuration counter="ARM_Cortex-A9_cnt4" event="0x04" title="Cache" name="Data access" per_cpu="yes" supports_event_based_sampling="yes" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/>
-  <configuration counter="ARM_Cortex-A15_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ARM_Cortex-A15_cnt0" event="0x8" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="ARM_Cortex-A15_cnt1" event="0x16" title="Cache" name="L2 data access" per_cpu="yes" supports_event_based_sampling="yes" description="Level 2 data cache access"/>
-  <configuration counter="ARM_Cortex-A15_cnt2" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
-  <configuration counter="ARM_Cortex-A15_cnt3" event="0x19" title="Bus" name="Access" per_cpu="yes" supports_event_based_sampling="yes" description="Bus - Access"/>
-  <configuration counter="Scorpion_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="Scorpion_cnt0" event="0x08" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="Scorpion_cnt1" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
-  <configuration counter="ScorpionMP_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="ScorpionMP_cnt0" event="0x08" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="ScorpionMP_cnt1" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
-  <configuration counter="Krait_ccnt" event="0xff" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
-  <configuration counter="Krait_cnt0" event="0x08" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/>
-  <configuration counter="Krait_cnt1" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/>
-  <configuration counter="Linux_block_rq_wr" title="Disk IO" name="Write" units="B" description="Disk IO Bytes Written"/>
-  <configuration counter="Linux_block_rq_rd" title="Disk IO" name="Read" units="B" description="Disk IO Bytes Read"/>
-  <configuration counter="Linux_meminfo_memused" title="Memory" name="Used" display="maximum" units="B" average_selection="yes" description="Total used memory size"/>
-  <configuration counter="Linux_meminfo_memfree" title="Memory" name="Free" display="minimum" units="B" average_selection="yes" description="Available memory size"/>
-  <configuration counter="Linux_power_cpu_freq" title="Clock" name="Frequency" per_cpu="yes" display="maximum" units="Hz" average_selection="yes" description="Frequency setting of the CPU"/>
-  <configuration counter="L2C-310_cnt0" event="0x1" title="L2 Cache" name="CO" description="Eviction, CastOUT, of a line from the L2 cache"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<configurations revision="3">
+  <configuration counter="ARM_ARM11_ccnt" event="0xff"/>
+  <configuration counter="ARM_ARM11_cnt0" event="0x7"/>
+  <configuration counter="ARM_ARM11_cnt1" event="0xb"/>
+  <configuration counter="ARM_ARM11MPCore_ccnt" event="0xff"/>
+  <configuration counter="ARM_ARM11MPCore_cnt0" event="0x08"/>
+  <configuration counter="ARM_ARM11MPCore_cnt1" event="0x0b"/>
+  <configuration counter="ARM_Cortex-A5_ccnt" event="0xff"/>
+  <configuration counter="ARM_Cortex-A5_cnt0" event="0x8"/>
+  <configuration counter="ARM_Cortex-A5_cnt1" event="0x1"/>
+  <configuration counter="ARM_Cortex-A7_ccnt" event="0xff"/>
+  <configuration counter="ARM_Cortex-A7_cnt0" event="0x08"/>
+  <configuration counter="ARM_Cortex-A7_cnt1" event="0x10"/>
+  <configuration counter="ARM_Cortex-A7_cnt2" event="0x16"/>
+  <configuration counter="ARM_Cortex-A8_ccnt" event="0xff"/>
+  <configuration counter="ARM_Cortex-A8_cnt0" event="0x8"/>
+  <configuration counter="ARM_Cortex-A8_cnt1" event="0x44"/>
+  <configuration counter="ARM_Cortex-A8_cnt2" event="0x43"/>
+  <configuration counter="ARM_Cortex-A8_cnt3" event="0x10"/>
+  <configuration counter="ARM_Cortex-A9_ccnt" event="0xff"/>
+  <configuration counter="ARM_Cortex-A9_cnt0" event="0x68"/>
+  <configuration counter="ARM_Cortex-A9_cnt1" event="0x06"/>
+  <configuration counter="ARM_Cortex-A9_cnt2" event="0x07"/>
+  <configuration counter="ARM_Cortex-A9_cnt3" event="0x03"/>
+  <configuration counter="ARM_Cortex-A9_cnt4" event="0x04"/>
+  <configuration counter="ARM_Cortex-A15_ccnt" event="0xff"/>
+  <configuration counter="ARM_Cortex-A15_cnt0" event="0x8"/>
+  <configuration counter="ARM_Cortex-A15_cnt1" event="0x16"/>
+  <configuration counter="ARM_Cortex-A15_cnt2" event="0x10"/>
+  <configuration counter="ARM_Cortex-A15_cnt3" event="0x19"/>
+  <configuration counter="ARM_Cortex-A53_ccnt" event="0x11"/>
+  <configuration counter="ARM_Cortex-A53_cnt0" event="0x8"/>
+  <configuration counter="ARM_Cortex-A53_cnt1" event="0x16"/>
+  <configuration counter="ARM_Cortex-A53_cnt2" event="0x10"/>
+  <configuration counter="ARM_Cortex-A53_cnt3" event="0x19"/>
+  <configuration counter="ARM_Cortex-A57_ccnt" event="0x11"/>
+  <configuration counter="ARM_Cortex-A57_cnt0" event="0x8"/>
+  <configuration counter="ARM_Cortex-A57_cnt1" event="0x16"/>
+  <configuration counter="ARM_Cortex-A57_cnt2" event="0x10"/>
+  <configuration counter="ARM_Cortex-A57_cnt3" event="0x19"/>
+  <configuration counter="Scorpion_ccnt" event="0xff"/>
+  <configuration counter="Scorpion_cnt0" event="0x08"/>
+  <configuration counter="Scorpion_cnt1" event="0x10"/>
+  <configuration counter="ScorpionMP_ccnt" event="0xff"/>
+  <configuration counter="ScorpionMP_cnt0" event="0x08"/>
+  <configuration counter="ScorpionMP_cnt1" event="0x10"/>
+  <configuration counter="Krait_ccnt" event="0xff"/>
+  <configuration counter="Krait_cnt0" event="0x08"/>
+  <configuration counter="Krait_cnt1" event="0x10"/>
+  <configuration counter="Linux_block_rq_wr"/>
+  <configuration counter="Linux_block_rq_rd"/>
+  <configuration counter="Linux_meminfo_memused"/>
+  <configuration counter="Linux_meminfo_memfree"/>
+  <configuration counter="Linux_power_cpu_freq"/>
+  <configuration counter="L2C-310_cnt0" event="0x1"/>
 </configurations>
