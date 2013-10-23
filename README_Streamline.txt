@@ -117,7 +117,7 @@ There is a bug in some Linux kernels where perf misidentifies the CPU type. To s
 # ls /sys/bus/event_source/devices/
 ARMv7_Cortex_A9  breakpoint  software  tracepoint
 
-To workaround the issue try upgrading to a later kernel or comment out the gator_events_perf_pmu_cpu_init(gator_cpu, type); cal in gator_events_perf_pmu.c
+To work around the issue try upgrading to a later kernel or comment out the gator_events_perf_pmu_cpu_init(gator_cpu, type); call in gator_events_perf_pmu.c
 
 *** Profiling the kernel (optional) ***
 
