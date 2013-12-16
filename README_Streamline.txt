@@ -2,12 +2,12 @@
 *** Purpose ***
 
 Instructions on setting up ARM Streamline on the target.
-The gator driver and gator daemon are required to run on the ARM linux target in order for ARM Streamline to operate.
+The gator driver and gator daemon are required to run on the ARM Linux target in order for ARM Streamline to operate.
 The driver should be built as a module and the daemon must run with root permissions on the target.
 
 *** Introduction ***
 
-A linux development environment with cross compiling tools is most likely required, depending on what is already created and provided.
+A Linux development environment with cross compiling tools is most likely required, depending on what is already created and provided.
 -For users, the ideal environment is to be given a BSP with gatord and gator.ko already running on a properly configured kernel. In such a scenario, a development environment is not needed, root permission may or may not be needed (gatord must be executed with root permissions but can be automatically started, see below), and the user can run Streamline and profile the system without any setup.
 -The ideal development environment has the kernel source code available to be rebuilt, usually by cross-compiling on a host machine. This environment allows the greatest flexibility in configuring the kernel and building the gator driver module.
 -However, it is possible that a user/developer has a kernel but does not have the source code. In this scenario it may or may not be possible to obtain a valid profile.
@@ -49,6 +49,8 @@ These may be verified on a running system using /proc/config.gz (if this file ex
   > zcat /proc/config.gz | grep CONFIG_PROFILING
   CONFIG_PROFILING=y
 
+If a device tree is used it must include the pmu bindings, see Documentation/devicetree/bindings/arm/pmu.txt for details.
+
 *** Checking the gator requirements ***
 
 (optional) Use the hrtimer_module utility to validate the kernel High Resolution Timer requirement.
@@ -63,6 +65,17 @@ To create the gator.ko module,
 for example when using the linaro-toolchain-binaries
 	make -C /home/username/kernel_2.6.32/ M=`pwd` ARCH=arm CROSS_COMPILE=/home/username/gcc-linaro-arm-linux-gnueabihf-4.7-2013.01-20130125_linux/bin/arm-linux-gnueabihf- modules
 If successful, a gator.ko module should be generated
+
+It is also possible to integrate the gator.ko module into the kernel build system
+	cd /path/to/kernel/build/dir
+	cd drivers
+	mkdir gator
+	cp -r /path/to/gator/driver-src/* gator
+Edit Makefile in the kernel drivers folder and add this to the end
+	obj-$(CONFIG_GATOR)		+= gator/
+Edit Kconfig in the kernel drivers folder and add this before the last endmenu
+	source "drivers/gator/Kconfig"
+You can now select gator when using menuconfig while configuring the kernel and rebuild as directed
 
 *** Building the gator daemon ***
 
@@ -96,6 +109,10 @@ The l2c-310 counter in gator_events_l2c-310.c contains hard coded offsets where 
 Further, the l2c-310 counter can be disabled by providing an offset of zero, ex:
 	insmod gator.ko l2c310_addr=0
 
+*** CCN-504 ***
+
+CCN-504 is disabled by default. To enable CCN-504, insmod gator module with the ccn504_addr=<addr> parameter where addr is the base address of the CCN-504 configuration register space (PERIPHBASE), ex: insmod gator.ko ccn504_addr=0x2E000000.
+
 *** Compiling an application or shared library ***
 
 Recommended compiler settings:
@@ -124,7 +141,7 @@ To work around the issue try upgrading to a later kernel or comment out the gato
 CONFIG_DEBUG_INFO must be enabled, see "Kernel configuration" section above.
 Use vmlinux as the image for debug symbols in Streamline.
 Drivers may be profiled using this method by statically linking the driver into the kernel image or adding the driver as an image to Streamline.
-To perform kernel stack unwinding and module unwinding, edit the Makefile to enable GATOR_KERNEL_STACK_UNWINDING and rebuild gator.ko.
+To perform kernel stack unwinding and module unwinding, edit the Makefile to enable GATOR_KERNEL_STACK_UNWINDING and rebuild gator.ko or run "echo 1 > /sys/module/gator/parameters/kernel_stack_unwinding" as root on the target after gatord is started.
 
 *** Automatically start gator on boot (optional) ***
 
