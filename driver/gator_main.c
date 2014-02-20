@@ -383,6 +383,13 @@ static const struct gator_cpu gator_cpus[] = {
 		.pmnc_counters = 6,
 	},
 	{
+		.cpuid = CORTEX_A72,
+		.core_name = "Cortex-A72",
+		.pmnc_name = "ARM_Cortex-A72",
+		.dt_name = "arm,cortex-a72",
+		.pmnc_counters = 6,
+	},
+	{
 		.cpuid = AARCH64,
 		.core_name = "AArch64",
 		.pmnc_name = "ARM_AArch64",

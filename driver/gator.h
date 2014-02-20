@@ -38,6 +38,7 @@
 #define KRAIT_S4_PRO 0x06f
 #define CORTEX_A53  0xd03
 #define CORTEX_A57  0xd07
+#define CORTEX_A72  0xd08
 #define AARCH64     0xd0f
 #define OTHER       0xfff
 

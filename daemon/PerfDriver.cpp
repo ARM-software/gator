@@ -57,6 +57,7 @@ static const struct gator_cpu gator_cpus[] = {
 	{ 0x06f, "Krait S4 Pro", "Krait",            4 },
 	{ 0xd03, "Cortex-A53",   "ARM_Cortex-A53",   6 },
 	{ 0xd07, "Cortex-A57",   "ARM_Cortex-A57",   6 },
+	{ 0xd08, "Cortex-A72",   "ARM_Cortex-A72",   6 },
 	{ 0xd0f, "AArch64",      "ARM_AArch64",      6 },
 };
 
