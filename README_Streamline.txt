@@ -2,7 +2,7 @@
 *** Purpose ***
 
 Instructions on setting up ARM Streamline on the target.
-The gator driver and gator daemon are required to run on the ARM Linux target in order for ARM Streamline to operate.
+The gator driver and gator daemon are required to run on the ARM Linux target in order for ARM Streamline to operate. A new early access feature allows the gator daemon can run without the gator driver by using userspace APIs with reduced functionality when using Linux 3.12 or later.
 The driver should be built as a module and the daemon must run with root permissions on the target.
 
 *** Introduction ***
@@ -14,6 +14,7 @@ A Linux development environment with cross compiling tools is most likely requir
 	-First, check if the kernel has the proper configuration options (see below). Profiling cannot occur using a kernel that is not configured properly, a new kernel must be created. See if /proc/config.gz exists on the target.
 	-Second, given a properly configured kernel, check if the filesystem contains the kernel source/headers, which can be used to re-create the gator driver. These files may be located in different areas, but common locations are /lib/modules/ and /usr/src.
 	-If the kernel is not properly configured or sources/headers are not available, the developer is on their own and kernel creation is beyond the scope of this document. Note: It is possible for a module to work when compiled against a similar kernel source code, though this is not guaranteed to work due to differences in kernel structures, exported symbols and incompatible configuration parameters.
+	-If the target is running Linux 3.12 or later the kernel driver is not required and userspace APIs will be used instead.
 
 *** Kernel configuration ***
 
@@ -24,7 +25,7 @@ menuconfig options (depending on the kernel version, the location of these confi
   - [*] Profiling Support (enables CONFIG_PROFILING)
 - Kernel Features
   - [*] High Resolution Timer Support (enables CONFIG_HIGH_RES_TIMERS)
-  - [*] Use local timer interrupts (only required for SMP, enables CONFIG_LOCAL_TIMERS)
+  - [*] Use local timer interrupts (only required for SMP and for version before Linux 3.12, enables CONFIG_LOCAL_TIMERS)
   - [*] Enable hardware performance counter support for perf events (enables CONFIG_HW_PERF_EVENTS)
 - CPU Power Management
   - CPU Frequency scaling
@@ -46,8 +47,8 @@ CONFIG_DEBUG_INFO (optional, used for analyzing the kernel)
 CONFIG_CPU_FREQ (optional, provides frequency setting of the CPU)
 
 These may be verified on a running system using /proc/config.gz (if this file exists) by running 'zcat /proc/config.gz | grep <option>'. For example, confirming that CONFIG_PROFILING is enabled
-  > zcat /proc/config.gz | grep CONFIG_PROFILING
-  CONFIG_PROFILING=y
+	> zcat /proc/config.gz | grep CONFIG_PROFILING
+	CONFIG_PROFILING=y
 
 If a device tree is used it must include the pmu bindings, see Documentation/devicetree/bindings/arm/pmu.txt for details.
 
@@ -91,6 +92,9 @@ For Android targets (install the android ndk, see developer.android.com)
 	ndk-build
 		or execute /path/to/ndk/ndk-build if the ndk is not on your path
 	gatord should now be created and located in libs/armeabi
+	If you get an error like the following, upgrade to a more recent version of the android ndk
+		jni/PerfGroup.cpp: In function 'int sys_perf_event_open(perf_event_attr*, pid_t, int, int, long unsigned int)':
+		jni/PerfGroup.cpp:36:17: error: '__NR_perf_event_open' was not declared in this scope
 
 *** Running gator ***
 
@@ -101,6 +105,7 @@ gator.ko must be located in the same directory as gatord on the target or the lo
 With root privileges, run the daemon
 	sudo ./gatord &
 Note: gatord requires libstdc++.so.6 which is usually supplied by the Linux distribution on the target. A copy of libstdc++.so.6 is available in the DS-5 Linux example distribution.
+If gator.ko is not loaded and is not in the same directory as gatord when using Linux 3.12 or later, gatord can run without gator.ko by using userspace APIs. Not all features are supported by userspace gator. If /dev/gator/version does not exist after starting gatord it is running userspace gator.
 
 *** Customizing the l2c-310 Counter ***
 
@@ -130,11 +135,24 @@ Attempting to run an incompatible binary often results in the confusing error me
 *** Bugs ***
 
 There is a bug in some Linux kernels where perf misidentifies the CPU type. To see if you are affected by this, run ls /sys/bus/event_source/devices/ and verify the listed processor type matches what is expected. For example, an A9 should show the following.
-
-# ls /sys/bus/event_source/devices/
-ARMv7_Cortex_A9  breakpoint  software  tracepoint
-
+	# ls /sys/bus/event_source/devices/
+	ARMv7_Cortex_A9  breakpoint  software  tracepoint
 To work around the issue try upgrading to a later kernel or comment out the gator_events_perf_pmu_cpu_init(gator_cpu, type); call in gator_events_perf_pmu.c
+
+There is a bug in some Linux kernels where an Oops may occurs when using userspace gator and a core is offlined. The fix was merged into mainline in 3.14-rc5, see http://git.kernel.org/tip/e3703f8cdfcf39c25c4338c3ad8e68891cca3731, and as been backported to older kernels.
+
+If you see this error when using SELinux, ex: Android 4.4 or later
+	# ./gatord
+	Unable to load (insmod) gator.ko driver:
+	  >>> gator.ko must be built against the current kernel version & configuration
+	  >>> See dmesg for more details
+	# dmesg
+	...
+	<7>[ 6745.475110] SELinux: initialized (dev gatorfs, type gatorfs), not configured for labeling
+	<5>[ 6745.477434] type=1400 audit(1393005053.336:10): avc:  denied  { mount } for  pid=1996 comm="gatord-main" name="/" dev="gatorfs" ino=8733 scontext=u:r:shell:s0 tcontext=u:object_r:unlabeled:s0 tclass=filesystem
+disable SELinux so that gatorfs can be mounted by running
+	# setenforce 0
+Once gator is started, SELinux can be reenabled
 
 *** Profiling the kernel (optional) ***
 
@@ -154,4 +172,3 @@ update-rc.d rungator.sh defaults
 *** GPL License ***
 
 For license information, please see the file LICENSE after unzipping driver-src/gator-driver.tar.gz.
-
