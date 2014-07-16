@@ -2,7 +2,7 @@
 *** Purpose ***
 
 Instructions on setting up ARM Streamline on the target.
-The gator driver and gator daemon are required to run on the ARM Linux target in order for ARM Streamline to operate. A new early access feature allows the gator daemon can run without the gator driver by using userspace APIs with reduced functionality when using Linux 3.12 or later.
+The gator driver and gator daemon are required to run on the ARM Linux target in order for ARM Streamline to operate. A new early access feature allows the gator daemon can run without the gator driver by using userspace APIs with reduced functionality when using Linux 3.4 or later.
 The driver should be built as a module and the daemon must run with root permissions on the target.
 
 *** Introduction ***
@@ -14,7 +14,7 @@ A Linux development environment with cross compiling tools is most likely requir
 	-First, check if the kernel has the proper configuration options (see below). Profiling cannot occur using a kernel that is not configured properly, a new kernel must be created. See if /proc/config.gz exists on the target.
 	-Second, given a properly configured kernel, check if the filesystem contains the kernel source/headers, which can be used to re-create the gator driver. These files may be located in different areas, but common locations are /lib/modules/ and /usr/src.
 	-If the kernel is not properly configured or sources/headers are not available, the developer is on their own and kernel creation is beyond the scope of this document. Note: It is possible for a module to work when compiled against a similar kernel source code, though this is not guaranteed to work due to differences in kernel structures, exported symbols and incompatible configuration parameters.
-	-If the target is running Linux 3.12 or later the kernel driver is not required and userspace APIs will be used instead.
+	-If the target is running Linux 3.4 or later the kernel driver is not required and userspace APIs will be used instead.
 
 *** Kernel configuration ***
 
@@ -59,8 +59,7 @@ If a device tree is used it must include the pmu bindings, see Documentation/dev
 *** Building the gator module ***
 
 To create the gator.ko module,
-	cd /path/to/gator/driver-src
-	tar xzf gator-driver.tar.gz
+	tar xzf /path/to/DS-5/arm/gator/driver-src/gator-driver.tar.gz
 	cd gator-driver
 	make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
 for example when using the linaro-toolchain-binaries
@@ -78,10 +77,14 @@ Edit Kconfig in the kernel drivers folder and add this before the last endmenu
 	source "drivers/gator/Kconfig"
 You can now select gator when using menuconfig while configuring the kernel and rebuild as directed
 
+*** Use the prebuilt gator daemon ***
+
+A prebuilt gator daemon is provided at /path/to/DS-5/arm/gator/gatord. This gator daemon should work in most cases so building the gator daemon is only required if the prebuilt gator daemon doesn't work.
+To improve portablility gatord is statically compiled against musl libc from http://www.musl-libc.org/releases/musl-1.0.2.tar.gz instead of glibc. The gator daemon will work correctly with either glibc or musl.
+
 *** Building the gator daemon ***
 
-cd /path/to/gator/daemon-src
-tar -xzf gator-daemon.tar.gz (may need to issue with 'sudo')
+tar -xzf /path/to/DS-5/arm/gator/daemon-src/gator-daemon.tar.gz
 For Linux targets,
 	cd gator-daemon
 	make CROSS_COMPILE=<...> # For ARMv7 targets
@@ -105,7 +108,7 @@ gator.ko must be located in the same directory as gatord on the target or the lo
 With root privileges, run the daemon
 	sudo ./gatord &
 Note: gatord requires libstdc++.so.6 which is usually supplied by the Linux distribution on the target. A copy of libstdc++.so.6 is available in the DS-5 Linux example distribution.
-If gator.ko is not loaded and is not in the same directory as gatord when using Linux 3.12 or later, gatord can run without gator.ko by using userspace APIs. Not all features are supported by userspace gator. If /dev/gator/version does not exist after starting gatord it is running userspace gator.
+If gator.ko is not loaded and is not in the same directory as gatord when using Linux 3.4 or later, gatord can run without gator.ko by using userspace APIs. Not all features are supported by userspace gator. If /dev/gator/version does not exist after starting gatord it is running userspace gator.
 
 *** Customizing the l2c-310 Counter ***
 
@@ -123,7 +126,7 @@ CCN-504 is disabled by default. To enable CCN-504, insmod gator module with the 
 Recommended compiler settings:
 	"-g": Debug information, such as line numbers, needed for best analysis results.
 	"-fno-inline": Speed improvement when processing the image files and most accurate analysis results.
-	"-fno-omit-frame-pointer": ARM EABI frame pointers (Code Sourcery cross compiler) allow recording of the call stack with each sample taken when in ARM state (i.e. not -mthumb).
+	"-fno-omit-frame-pointer": ARM EABI frame pointers allow recording of the call stack with each sample taken when in ARM state (i.e. not -mthumb).
 	"-marm": This option is required if your compiler is configured with --with-mode=thumb, otherwise call stack unwinding will not work.
 
 *** Hardfloat EABI ***
@@ -132,6 +135,35 @@ To compile for non-hardfloat targets it is necessary to add options '-marm -marc
 The armv5t_mtx filesystem is provided as part of the "DS-5 Linux Example Distribution" package which can be downloaded from the DS-5 Downloads page.
 Attempting to run an incompatible binary often results in the confusing error message "No such file or directory" when clearly the file exists.
 
+*** Mali GPU ***
+
+Streamline supports Mali-400, 450, T6xx, and T7xx series GPUs with hardware activity charts, hardware & software counters and an optional 'film strip' showing periodic framebuffer snapshots. Support is chosen at build time and only one type of GPU (and version of driver) is supported at once. For best results build gator in-tree at .../drivers/gator and use the menuconfig options. Details of what these mean or how to build out of tree below.
+
+Mali-4xx:
+  ___To add Mali-4xx support to gator___
+  GATOR_WITH_MALI_SUPPORT=MALI_4xx                                               # Set by CONFIG_GATOR_MALI_4XXMP
+  CONFIG_GATOR_MALI_PATH=".../path/to/Mali_DDK_kernel_files/src/devicedrv/mali"  # gator source needs to #include "linux/mali_linux_trace.h"
+  GATOR_MALI_INTERFACE_STYLE=<3|4>                                               # 3=Mali-400 DDK >= r3p0-04rel0 and < r3p2-01rel3
+                                                                                 # 4=Mali-400 DDK >= r3p2-01rel3
+                                                                                 # (default of 4 set in gator-driver/gator_events_mali_4xx.c)
+  ___To add the corresponding support to Mali___
+  Userspace needs MALI_TIMELINE_PROFILING_ENABLED=1 MALI_FRAMEBUFFER_DUMP_ENABLED=1 MALI_SW_COUNTERS_ENABLED=1
+  Kernel driver needs USING_PROFILING=1                                          # Sets CONFIG_MALI400_PROFILING=y
+  See the DDK integration guide for more details (the above are the default in later driver versions)
+
+Mali-T6xx/T7xx:
+  ___To add Mali-T6xx support to gator___
+  GATOR_WITH_MALI_SUPPORT=MALI_T6xx                                              # Set by CONFIG_GATOR_MALI_T6XX
+  DDK_DIR=".../path/to/Mali_DDK_kernel_files"                                    # gator source needs access to headers under .../kernel/drivers/gpu/arm/...
+                                                                                 # (default of . suitable for in-tree builds)
+  ___To add the corresponding support to Mali___
+  Userspace (scons) needs gator=1
+  Kernel driver needs CONFIG_MALI_GATOR_SUPPORT=y
+  See the DDK integration guide for more details
+
+*** Polling /dev, /sys and /proc files ***
+Gator supports reading arbitrary /dev, /sys and /proc files 10 times a second. It will either interpret the file contents as a number or use a POSIX extended regex to extract the number, see events-Filesystem.xml for examples.
+
 *** Bugs ***
 
 There is a bug in some Linux kernels where perf misidentifies the CPU type. To see if you are affected by this, run ls /sys/bus/event_source/devices/ and verify the listed processor type matches what is expected. For example, an A9 should show the following.
@@ -139,7 +171,7 @@ There is a bug in some Linux kernels where perf misidentifies the CPU type. To s
 	ARMv7_Cortex_A9  breakpoint  software  tracepoint
 To work around the issue try upgrading to a later kernel or comment out the gator_events_perf_pmu_cpu_init(gator_cpu, type); call in gator_events_perf_pmu.c
 
-There is a bug in some Linux kernels where an Oops may occurs when using userspace gator and a core is offlined. The fix was merged into mainline in 3.14-rc5, see http://git.kernel.org/tip/e3703f8cdfcf39c25c4338c3ad8e68891cca3731, and as been backported to older kernels.
+There is a bug in some Linux kernels where an Oops may occur when using userspace gator and a core is offlined. The fix was merged into mainline in 3.14-rc5, see http://git.kernel.org/tip/e3703f8cdfcf39c25c4338c3ad8e68891cca3731, and as been backported to older kernels.
 
 If you see this error when using SELinux, ex: Android 4.4 or later
 	# ./gatord
@@ -172,3 +204,4 @@ update-rc.d rungator.sh defaults
 *** GPL License ***
 
 For license information, please see the file LICENSE after unzipping driver-src/gator-driver.tar.gz.
+The prebuilt gatord uses musl from http://www.musl-libc.org/releases/musl-1.0.2.tar.gz for musl license information see the COPYRIGHT file in the musl tar file.
