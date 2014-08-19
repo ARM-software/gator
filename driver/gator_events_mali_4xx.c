@@ -54,7 +54,7 @@
 #error MALI_SUPPORT set to an invalid device code: expecting MALI_4xx
 #endif
 
-static const char mali_name[] = "Mali-4xx";
+static const char mali_name[] = "4xx";
 
 /* gatorfs variables for counter enable state,
  * the event the counter should count and the
@@ -250,7 +250,7 @@ static int create_files(struct super_block *sb, struct dentry *root)
 	/* Vertex processor counters */
 	for (core_id = 0; core_id < n_vp_cores; core_id++) {
 		int activity_counter_id = ACTIVITY_VP_0;
-		snprintf(buf, sizeof buf, "ARM_%s_VP_%d_active", mali_name, core_id);
+		snprintf(buf, sizeof buf, "ARM_Mali-%s_VP_%d_active", mali_name, core_id);
 		if (create_fs_entry(sb, root, buf, activity_counter_id, 0) != 0) {
 			return -1;
 		}
@@ -258,7 +258,7 @@ static int create_files(struct super_block *sb, struct dentry *root)
 		for (counter_number = 0; counter_number < 2; counter_number++) {
 			int counter_id = COUNTER_VP_0_C0 + (2 * core_id) + counter_number;
 
-			snprintf(buf, sizeof buf, "ARM_%s_VP_%d_cnt%d", mali_name, core_id, counter_number);
+			snprintf(buf, sizeof buf, "ARM_Mali-%s_VP_%d_cnt%d", mali_name, core_id, counter_number);
 			if (create_fs_entry(sb, root, buf, counter_id, 1) != 0) {
 				return -1;
 			}
@@ -269,7 +269,7 @@ static int create_files(struct super_block *sb, struct dentry *root)
 	for (core_id = 0; core_id < n_fp_cores; core_id++) {
 		int activity_counter_id = ACTIVITY_FP_0 + core_id;
 
-		snprintf(buf, sizeof buf, "ARM_%s_FP_%d_active", mali_name, core_id);
+		snprintf(buf, sizeof buf, "ARM_Mali-%s_FP_%d_active", mali_name, core_id);
 		if (create_fs_entry(sb, root, buf, activity_counter_id, 0) != 0) {
 			return -1;
 		}
@@ -277,7 +277,7 @@ static int create_files(struct super_block *sb, struct dentry *root)
 		for (counter_number = 0; counter_number < 2; counter_number++) {
 			int counter_id = COUNTER_FP_0_C0 + (2 * core_id) + counter_number;
 
-			snprintf(buf, sizeof buf, "ARM_%s_FP_%d_cnt%d", mali_name, core_id, counter_number);
+			snprintf(buf, sizeof buf, "ARM_Mali-%s_FP_%d_cnt%d", mali_name, core_id, counter_number);
 			if (create_fs_entry(sb, root, buf, counter_id, 1) != 0) {
 				return -1;
 			}
@@ -289,7 +289,7 @@ static int create_files(struct super_block *sb, struct dentry *root)
 		for (counter_number = 0; counter_number < 2; counter_number++) {
 			int counter_id = COUNTER_L2_0_C0 + (2 * core_id) + counter_number;
 
-			snprintf(buf, sizeof buf, "ARM_%s_L2_%d_cnt%d", mali_name, core_id, counter_number);
+			snprintf(buf, sizeof buf, "ARM_Mali-%s_L2_%d_cnt%d", mali_name, core_id, counter_number);
 			if (create_fs_entry(sb, root, buf, counter_id, 1) != 0) {
 				return -1;
 			}
@@ -298,7 +298,7 @@ static int create_files(struct super_block *sb, struct dentry *root)
 
 	/* Now set up the software counter entries */
 	for (event = FIRST_SW_COUNTER; event <= LAST_SW_COUNTER; event++) {
-		snprintf(buf, sizeof(buf), "ARM_%s_SW_%d", mali_name, event - FIRST_SW_COUNTER);
+		snprintf(buf, sizeof(buf), "ARM_Mali-%s_SW_%d", mali_name, event - FIRST_SW_COUNTER);
 
 		if (create_fs_entry(sb, root, buf, event, 0) != 0) {
 			return -1;
@@ -306,18 +306,18 @@ static int create_files(struct super_block *sb, struct dentry *root)
 	}
 
 	/* Now set up the special counter entries */
-	snprintf(buf, sizeof(buf), "ARM_%s_Filmstrip_cnt0", mali_name);
+	snprintf(buf, sizeof(buf), "ARM_Mali-%s_Filmstrip_cnt0", mali_name);
 	if (create_fs_entry(sb, root, buf, COUNTER_FILMSTRIP, 1) != 0) {
 		return -1;
 	}
 
 #ifdef DVFS_REPORTED_BY_DDK
-	snprintf(buf, sizeof(buf), "ARM_%s_Frequency", mali_name);
+	snprintf(buf, sizeof(buf), "ARM_Mali-%s_Frequency", mali_name);
 	if (create_fs_entry(sb, root, buf, COUNTER_FREQUENCY, 1) != 0) {
 		return -1;
 	}
 
-	snprintf(buf, sizeof(buf), "ARM_%s_Voltage", mali_name);
+	snprintf(buf, sizeof(buf), "ARM_Mali-%s_Voltage", mali_name);
 	if (create_fs_entry(sb, root, buf, COUNTER_VOLTAGE, 1) != 0) {
 		return -1;
 	}

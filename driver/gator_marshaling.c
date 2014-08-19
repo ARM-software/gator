@@ -45,7 +45,7 @@ static void marshal_summary(long long timestamp, long long uptime, long long mon
 	gator_buffer_write_string(cpu, SUMMARY_BUF, "mali_type");
 #if (MALI_SUPPORT == MALI_4xx)
 	gator_buffer_write_string(cpu, SUMMARY_BUF, "4xx");
-#elif (MALI_SUPPORT == MALI_T6xx)
+#elif (MALI_SUPPORT == MALI_MIDGARD)
 	gator_buffer_write_string(cpu, SUMMARY_BUF, "6xx");
 #else
 	gator_buffer_write_string(cpu, SUMMARY_BUF, "unknown");

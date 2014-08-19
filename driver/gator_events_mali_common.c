@@ -17,7 +17,11 @@ extern int gator_mali_create_file_system(const char *mali_name, const char *even
 	/* If the counter name is empty ignore it */
 	if (strlen(event_name) != 0) {
 		/* Set up the filesystem entry for this event. */
-		snprintf(buf, sizeof(buf), "ARM_%s_%s", mali_name, event_name);
+		if (mali_name == NULL) {
+			snprintf(buf, sizeof(buf), "ARM_Mali-%s", event_name);
+		} else {
+			snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", mali_name, event_name);
+		}
 
 		dir = gatorfs_mkdir(sb, root, buf);
 

@@ -147,7 +147,9 @@ void mali_activity_clear(mali_counter mali_activity[], size_t mali_activity_size
 		}
 		for (core = 0; core < cores; ++core) {
 			if (mali_activity[activity].enabled) {
+				preempt_disable();
 				gator_marshal_activity_switch(core, mali_activity[activity].key, 0, 0);
+				preempt_enable();
 			}
 		}
 	}
@@ -155,7 +157,7 @@ void mali_activity_clear(mali_counter mali_activity[], size_t mali_activity_size
 
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_T6xx)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD)
 #include "gator_events_mali_4xx.h"
 
 /*
@@ -236,7 +238,7 @@ GATOR_DEFINE_PROBE(mali_timeline_event, TP_PROTO(unsigned int event_id, unsigned
 }
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_T6xx)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD)
 
 mali_counter mali_activity[3];
 
@@ -298,14 +300,14 @@ static int gator_trace_gpu_start(void)
 #endif
 	mali_timeline_trace_registered = mali_job_slots_trace_registered = 0;
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_T6xx)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD)
 	mali_activity_clear(mali_activity, ARRAY_SIZE(mali_activity));
 	if (!GATOR_REGISTER_TRACE(mali_timeline_event)) {
 		mali_timeline_trace_registered = 1;
 	}
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_T6xx)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD)
 	mali_activity_clear(mali_activity, ARRAY_SIZE(mali_activity));
 	if (!GATOR_REGISTER_TRACE(mali_job_slots_event)) {
 		mali_job_slots_trace_registered = 1;
@@ -317,13 +319,13 @@ static int gator_trace_gpu_start(void)
 
 static void gator_trace_gpu_stop(void)
 {
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_T6xx)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD)
 	if (mali_timeline_trace_registered) {
 		GATOR_UNREGISTER_TRACE(mali_timeline_event);
 	}
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_T6xx)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD)
 	if (mali_job_slots_trace_registered) {
 		GATOR_UNREGISTER_TRACE(mali_job_slots_event);
 	}

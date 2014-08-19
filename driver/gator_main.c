@@ -218,8 +218,8 @@ static DEFINE_PER_CPU(u64, gator_buffer_commit_time);
 	GATOR_EVENT(gator_events_irq_init) \
 	GATOR_EVENT(gator_events_l2c310_init) \
 	GATOR_EVENT(gator_events_mali_init) \
-	GATOR_EVENT(gator_events_mali_t6xx_hw_init) \
-	GATOR_EVENT(gator_events_mali_t6xx_init) \
+	GATOR_EVENT(gator_events_mali_midgard_hw_init) \
+	GATOR_EVENT(gator_events_mali_midgard_init) \
 	GATOR_EVENT(gator_events_meminfo_init) \
 	GATOR_EVENT(gator_events_mmapped_init) \
 	GATOR_EVENT(gator_events_net_init) \

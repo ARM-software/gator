@@ -59,14 +59,18 @@ void Buffer::write(Sender *const sender) {
 		return;
 	}
 
+	// commit and read are updated by the writer, only read them once
+	int commitPos = mCommitPos;
+	int readPos = mReadPos;
+
 	// determine the size of two halves
-	int length1 = mCommitPos - mReadPos;
-	char *buffer1 = mBuf + mReadPos;
+	int length1 = commitPos - readPos;
+	char *buffer1 = mBuf + readPos;
 	int length2 = 0;
 	char *buffer2 = mBuf;
 	if (length1 < 0) {
-		length1 = mSize - mReadPos;
-		length2 = mCommitPos;
+		length1 = mSize - readPos;
+		length2 = commitPos;
 	}
 
 	logg->logMessage("Sending data length1: %i length2: %i", length1, length2);
@@ -81,7 +85,7 @@ void Buffer::write(Sender *const sender) {
 		sender->writeData(buffer2, length2, RESPONSE_APC_DATA);
 	}
 
-	mReadPos = mCommitPos;
+	mReadPos = commitPos;
 }
 
 bool Buffer::commitReady() const {

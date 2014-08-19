@@ -44,7 +44,7 @@
 
 // gpu enums
 #define MALI_4xx     1
-#define MALI_T6xx    2
+#define MALI_MIDGARD 2
 
 #define MAXSIZE_CORE_NAME 32
 
@@ -98,7 +98,7 @@ int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 		extern struct tracepoint *gator_tracepoint_##probe_name; \
 		static void probe_##probe_name(void *data, PARAMS(proto))
 #	define GATOR_REGISTER_TRACE(probe_name) \
-		tracepoint_probe_register(gator_tracepoint_##probe_name, probe_##probe_name, NULL)
+		((gator_tracepoint_##probe_name == NULL) || tracepoint_probe_register(gator_tracepoint_##probe_name, probe_##probe_name, NULL))
 #	define GATOR_UNREGISTER_TRACE(probe_name) \
 		tracepoint_probe_unregister(gator_tracepoint_##probe_name, probe_##probe_name, NULL)
 #endif
