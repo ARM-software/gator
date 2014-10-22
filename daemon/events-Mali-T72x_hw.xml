@@ -1,7 +1,7 @@
 
   <category name="Mali Job Manager" per_cpu="no">
 
-    <event counter="ARM_Mali-T72_GPU_ACTIVE" title="Mali Job Manager Cycles" name="GPU cycles" description="Number of cycles GPU active"/>
+    <event counter="ARM_Mali-T72x_GPU_ACTIVE" title="Mali Job Manager Cycles" name="GPU cycles" description="Number of cycles GPU active"/>
     <event counter="ARM_Mali-T72x_IRQ_ACTIVE" title="Mali Job Manager Cycles" name="IRQ cycles" description="Number of cycles GPU interrupt pending"/>
     <event counter="ARM_Mali-T72x_JS0_ACTIVE" title="Mali Job Manager Cycles" name="JS0 cycles" description="Number of cycles JS0 (fragment) active"/>
     <event counter="ARM_Mali-T72x_JS1_ACTIVE" title="Mali Job Manager Cycles" name="JS1 cycles" description="Number of cycles JS1 (vertex/tiler/compute) active"/>
@@ -89,5 +89,7 @@
     <event counter="ARM_Mali-T72x_L2_WRITE_HIT" title="Mali L2 Cache" name="L2 write hits" description="Number of writes hitting in the L2 cache"/>
     <event counter="ARM_Mali-T72x_L2_EXT_AR_STALL" title="Mali L2 Cache" name="External bus stalls (AR)" description="Number of cycles a valid read address (AR) is stalled by the external interconnect"/>
     <event counter="ARM_Mali-T72x_L2_EXT_W_STALL" title="Mali L2 Cache" name="External bus stalls (W)" description="Number of cycles a valid write data (W channel) is stalled by the external interconnect"/>
+    <event counter="ARM_Mali-T72x_L2_READ_LOOKUP" title="Mali L2 Cache" name="L2 read lookups" description="Number of reads into the L2 cache"/>
+    <event counter="ARM_Mali-T72x_L2_WRITE_LOOKUP" title="Mali L2 Cache" name="L2 write lookups" description="Number of writes into the L2 cache"/>
 
   </category>

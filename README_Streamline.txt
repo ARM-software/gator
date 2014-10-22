@@ -2,7 +2,7 @@
 *** Purpose ***
 
 Instructions on setting up ARM Streamline on the target.
-The gator driver and gator daemon are required to run on the ARM Linux target in order for ARM Streamline to operate. A new early access feature allows the gator daemon can run without the gator driver by using userspace APIs with reduced functionality when using Linux 3.4 or later.
+A target agent (gator) is required to run on the ARM Linux target in order for ARM Streamline to operate. Gator may run in kernel space or user space mode, though user space gator requires Linux 3.4 or later and contains reduced functionality. Furthermore, user space gator is a beta release, see the bugs section in this readme for a list of known issues.
 The driver should be built as a module and the daemon must run with root permissions on the target.
 
 *** Introduction ***
@@ -35,13 +35,14 @@ menuconfig options (depending on the kernel version, the location of these confi
   - [*] Tracers
     - [*] Trace process context switches and events (#)
 
-(#) The "Trace process context switches and events" is not the only option that enables tracing (CONFIG_GENERIC_TRACER or CONFIG_TRACING) and may not be visible in menuconfig as an option if other trace configurations are enabled. Other trace configurations being enabled is sufficient to turn on tracing.
+(#) The "Trace process context switches and events" is not the only option that enables tracing (CONFIG_GENERIC_TRACER or CONFIG_TRACING as well as CONFIG_CONTEXT_SWITCH_TRACER) and may not be visible in menuconfig as an option if other trace configurations are enabled. Other trace configurations being enabled is sufficient to turn on tracing.
 
 The configuration options:
 CONFIG_GENERIC_TRACER or CONFIG_TRACING
+CONFIG_CONTEXT_SWITCH_TRACER
 CONFIG_PROFILING
 CONFIG_HIGH_RES_TIMERS
-CONFIG_LOCAL_TIMERS (for SMP systems)
+CONFIG_LOCAL_TIMERS (for SMP systems and kernel versions before 3.12)
 CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS (kernel versions 3.0 and greater)
 CONFIG_DEBUG_INFO (optional, used for analyzing the kernel)
 CONFIG_CPU_FREQ (optional, provides frequency setting of the CPU)
@@ -90,7 +91,7 @@ For Linux targets,
 	make CROSS_COMPILE=<...> # For ARMv7 targets
 	make -f Makefile_aarch64 CROSS_COMPILE=<...> # For ARMv8 targets
 	gatord should now be created
-For Android targets (install the android ndk, see developer.android.com)
+For Android targets (install the Android NDK appropriate for your target (ndk32 for 32-bit targets and ndk64 for 64-bit targets), see developer.android.com)
 	mv gator-daemon jni
 	ndk-build
 		or execute /path/to/ndk/ndk-build if the ndk is not on your path
@@ -98,6 +99,7 @@ For Android targets (install the android ndk, see developer.android.com)
 	If you get an error like the following, upgrade to a more recent version of the android ndk
 		jni/PerfGroup.cpp: In function 'int sys_perf_event_open(perf_event_attr*, pid_t, int, int, long unsigned int)':
 		jni/PerfGroup.cpp:36:17: error: '__NR_perf_event_open' was not declared in this scope
+	To build gatord for aarch64 edit jni/Application.mk and replace armeabi-v7a with arm64-v8a. To build for ARM11 jni/Application.mk and replace armeabi-v7a with armeabi.
 
 *** Running gator ***
 
@@ -117,9 +119,15 @@ The l2c-310 counter in gator_events_l2c-310.c contains hard coded offsets where 
 Further, the l2c-310 counter can be disabled by providing an offset of zero, ex:
 	insmod gator.ko l2c310_addr=0
 
-*** CCN-504 ***
+*** Perf PMU support ***
 
-CCN-504 is disabled by default. To enable CCN-504, insmod gator module with the ccn504_addr=<addr> parameter where addr is the base address of the CCN-504 configuration register space (PERIPHBASE), ex: insmod gator.ko ccn504_addr=0x2E000000.
+To check the perf PMUs support by your kernel, run
+   ls /sys/bus/event_source/devices/
+If you see something like ARMv7_Cortex_A## this indicates A## support. If you see CCI_400 this indicates CCI-400 support. If you see ccn, it indicates CCN support.
+
+*** CCN ***
+
+CCN requires a perf driver to work. The necessary perf driver has been merged into Linux 3.17 but can be backported to previous versions (see https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/diff/?id=a33b0daab73a0e08cc04459dd44b0121a8e8f81b and later bugfixes)
 
 *** Compiling an application or shared library ***
 
@@ -127,7 +135,7 @@ Recommended compiler settings:
 	"-g": Debug information, such as line numbers, needed for best analysis results.
 	"-fno-inline": Speed improvement when processing the image files and most accurate analysis results.
 	"-fno-omit-frame-pointer": ARM EABI frame pointers allow recording of the call stack with each sample taken when in ARM state (i.e. not -mthumb).
-	"-marm": This option is required if your compiler is configured with --with-mode=thumb, otherwise call stack unwinding will not work.
+	"-marm": This option is required for ARMv7 and earlier if your compiler is configured with --with-mode=thumb, otherwise call stack unwinding will not work.
 
 *** Hardfloat EABI ***
 Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. To see if your ARM compiler supports hardfloat, run "gcc -v" and look for --with-float=hard.
@@ -153,7 +161,7 @@ Mali-4xx:
 
 Mali-T6xx/T7xx:
   ___To add Mali-T6xx support to gator___
-  GATOR_WITH_MALI_SUPPORT=MALI_T6xx                                              # Set by CONFIG_GATOR_MALI_T6XX
+  GATOR_WITH_MALI_SUPPORT=MALI_MIDGARD                                           # Set by CONFIG_GATOR_MALI_MIDGARD
   DDK_DIR=".../path/to/Mali_DDK_kernel_files"                                    # gator source needs access to headers under .../kernel/drivers/gpu/arm/...
                                                                                  # (default of . suitable for in-tree builds)
   ___To add the corresponding support to Mali___
@@ -166,20 +174,22 @@ Gator supports reading arbitrary /dev, /sys and /proc files 10 times a second. I
 
 *** Bugs ***
 
+User space gator is in beta release with known issues. Please note that based on the kernel version and target configuration, the data presented may be incorrect and unexpected behavior can occur including crashing the target kernel. If you experience any of these issues, please use kernel space gator.
+
+There is a bug in some Linux kernels where an Oops may occur when a core is offlined (user space gator only). The fix was merged into mainline in 3.14-rc5, see http://git.kernel.org/tip/e3703f8cdfcf39c25c4338c3ad8e68891cca3731, and has been backported to older kernels (3.4.83, 3.10.33, 3.12.14 and 3.13.6).
+
+"CPU PMU: CPUx reading wrong counter -1" in dmesg (user space gator only). To work around, update to the latest Linux kernel or use kernel space gator.
+
+Scheduler switch resolutions are on exact millisecond boundaries (user space gator only). To work around, update to the latest Linux kernel or use kernel space gator.
+
 There is a bug in some Linux kernels where perf misidentifies the CPU type. To see if you are affected by this, run ls /sys/bus/event_source/devices/ and verify the listed processor type matches what is expected. For example, an A9 should show the following.
 	# ls /sys/bus/event_source/devices/
 	ARMv7_Cortex_A9  breakpoint  software  tracepoint
 To work around the issue try upgrading to a later kernel or comment out the gator_events_perf_pmu_cpu_init(gator_cpu, type); call in gator_events_perf_pmu.c
 
-There is a bug in some Linux kernels where an Oops may occur when using userspace gator and a core is offlined. The fix was merged into mainline in 3.14-rc5, see http://git.kernel.org/tip/e3703f8cdfcf39c25c4338c3ad8e68891cca3731, and as been backported to older kernels.
-
-If you see this error when using SELinux, ex: Android 4.4 or later
-	# ./gatord
-	Unable to load (insmod) gator.ko driver:
-	  >>> gator.ko must be built against the current kernel version & configuration
-	  >>> See dmesg for more details
-	# dmesg
-	...
+If you see one of these errors when using SELinux, ex: Android 4.4 or later
+        "Unable to mount the gator filesystem needed for profiling" or "Unable to load (insmod) gator.ko driver"
+with the following dmesg output,
 	<7>[ 6745.475110] SELinux: initialized (dev gatorfs, type gatorfs), not configured for labeling
 	<5>[ 6745.477434] type=1400 audit(1393005053.336:10): avc:  denied  { mount } for  pid=1996 comm="gatord-main" name="/" dev="gatorfs" ino=8733 scontext=u:r:shell:s0 tcontext=u:object_r:unlabeled:s0 tclass=filesystem
 disable SELinux so that gatorfs can be mounted by running

@@ -103,5 +103,7 @@
     <event counter="ARM_Mali-T62x_L2_EXT_R_BUF_FULL" title="Mali L2 Cache" name="External bus response buffer full" description="Number of cycles a valid request is blocked by a full response buffer"/>
     <event counter="ARM_Mali-T62x_L2_EXT_RD_BUF_FULL" title="Mali L2 Cache" name="External bus read data buffer full" description="Number of cycles a valid request is blocked by a full read data buffer"/>
     <event counter="ARM_Mali-T62x_L2_EXT_W_BUF_FULL" title="Mali L2 Cache" name="External bus write buffer full" description="Number of cycles a valid request is blocked by a full write buffer"/>
+    <event counter="ARM_Mali-T62x_L2_READ_LOOKUP" title="Mali L2 Cache" name="L2 read lookups" description="Number of reads into the L2 cache"/>
+    <event counter="ARM_Mali-T62x_L2_WRITE_LOOKUP" title="Mali L2 Cache" name="L2 write lookups" description="Number of writes into the L2 cache"/>
 
   </category>
