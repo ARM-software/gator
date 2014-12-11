@@ -729,11 +729,11 @@ static void gator_emit_perf_time(u64 time)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	if (time >= gator_sync_time) {
-		int cpu = get_physical_cpu();
-
 		marshal_event_single64(0, -1, local_clock());
 		gator_sync_time += NSEC_PER_SEC;
-		gator_commit_buffer(cpu, COUNTER_BUF, time);
+		if (gator_live_rate <= 0) {
+			gator_commit_buffer(get_physical_cpu(), COUNTER_BUF, time);
+		}
 	}
 #endif
 }
