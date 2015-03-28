@@ -23,6 +23,8 @@ menuconfig options (depending on the kernel version, the location of these confi
   - Kernel Performance Events And Counters
     - [*] Kernel performance events and counters (enables CONFIG_PERF_EVENTS)
   - [*] Profiling Support (enables CONFIG_PROFILING)
+- [*] Enable loadable module support (enables CONFIG_MODULES, needed unless the gator driver is built into the kernel)
+  - [*] Module unloading (enables MODULE_UNLOAD)
 - Kernel Features
   - [*] High Resolution Timer Support (enables CONFIG_HIGH_RES_TIMERS)
   - [*] Use local timer interrupts (only required for SMP and for version before Linux 3.12, enables CONFIG_LOCAL_TIMERS)
@@ -30,6 +32,11 @@ menuconfig options (depending on the kernel version, the location of these confi
 - CPU Power Management
   - CPU Frequency scaling
     - [*] CPU Frequency scaling (enables CONFIG_CPU_FREQ)
+- Device Drivers
+  - Graphics support
+    - ARM GPU Configuration
+      - Mali Midgard series support
+        - [*] Streamline Debug support (enables CONFIG_MALI_GATOR_SUPPORT needed as part of Mali Midgard support)
 - Kernel hacking
   - [*] Compile the kernel with debug info (optional, enables CONFIG_DEBUG_INFO)
   - [*] Tracers
@@ -38,6 +45,7 @@ menuconfig options (depending on the kernel version, the location of these confi
 (#) The "Trace process context switches and events" is not the only option that enables tracing (CONFIG_GENERIC_TRACER or CONFIG_TRACING as well as CONFIG_CONTEXT_SWITCH_TRACER) and may not be visible in menuconfig as an option if other trace configurations are enabled. Other trace configurations being enabled is sufficient to turn on tracing.
 
 The configuration options:
+CONFIG_MODULES and MODULE_UNLOAD (not needed if the gator driver is built into the kernel)
 CONFIG_GENERIC_TRACER or CONFIG_TRACING
 CONFIG_CONTEXT_SWITCH_TRACER
 CONFIG_PROFILING
@@ -46,6 +54,7 @@ CONFIG_LOCAL_TIMERS (for SMP systems and kernel versions before 3.12)
 CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS (kernel versions 3.0 and greater)
 CONFIG_DEBUG_INFO (optional, used for analyzing the kernel)
 CONFIG_CPU_FREQ (optional, provides frequency setting of the CPU)
+CONFIG_MALI_GATOR_SUPPORT (needed as part of Mali Midgard support)
 
 These may be verified on a running system using /proc/config.gz (if this file exists) by running 'zcat /proc/config.gz | grep <option>'. For example, confirming that CONFIG_PROFILING is enabled
 	> zcat /proc/config.gz | grep CONFIG_PROFILING
@@ -63,6 +72,7 @@ To create the gator.ko module,
 	tar xzf /path/to/DS-5/arm/gator/driver-src/gator-driver.tar.gz
 	cd gator-driver
 	make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
+whenever possible, use the same toolchain the kernel was built with when building gator.ko
 for example when using the linaro-toolchain-binaries
 	make -C /home/username/kernel_2.6.32/ M=`pwd` ARCH=arm CROSS_COMPILE=/home/username/gcc-linaro-arm-linux-gnueabihf-4.7-2013.01-20130125_linux/bin/arm-linux-gnueabihf- modules
 If successful, a gator.ko module should be generated
@@ -145,10 +155,9 @@ Attempting to run an incompatible binary often results in the confusing error me
 
 *** Mali GPU ***
 
-Streamline supports Mali-400, 450, T6xx, and T7xx series GPUs with hardware activity charts, hardware & software counters and an optional 'film strip' showing periodic framebuffer snapshots. Support is chosen at build time and only one type of GPU (and version of driver) is supported at once. For best results build gator in-tree at .../drivers/gator and use the menuconfig options. Details of what these mean or how to build out of tree below.
+Streamline supports Mali-400, 450, T6xx, T7xx, and T8xx series GPUs with hardware activity charts, hardware & software counters and an optional Filmstrip showing periodic framebuffer snapshots. Support is chosen at build time and only one type of GPU (and version of driver) is supported at once. For best results build gator in-tree at .../drivers/gator and use the menuconfig options. Details of what these mean or how to build out of tree below.
 
 Mali-4xx:
-  ___To add Mali-4xx support to gator___
   GATOR_WITH_MALI_SUPPORT=MALI_4xx                                               # Set by CONFIG_GATOR_MALI_4XXMP
   CONFIG_GATOR_MALI_PATH=".../path/to/Mali_DDK_kernel_files/src/devicedrv/mali"  # gator source needs to #include "linux/mali_linux_trace.h"
   GATOR_MALI_INTERFACE_STYLE=<3|4>                                               # 3=Mali-400 DDK >= r3p0-04rel0 and < r3p2-01rel3
@@ -159,8 +168,7 @@ Mali-4xx:
   Kernel driver needs USING_PROFILING=1                                          # Sets CONFIG_MALI400_PROFILING=y
   See the DDK integration guide for more details (the above are the default in later driver versions)
 
-Mali-T6xx/T7xx:
-  ___To add Mali-T6xx support to gator___
+Mali-T6xx/T7xx/T8xx (Midgard):
   GATOR_WITH_MALI_SUPPORT=MALI_MIDGARD                                           # Set by CONFIG_GATOR_MALI_MIDGARD
   DDK_DIR=".../path/to/Mali_DDK_kernel_files"                                    # gator source needs access to headers under .../kernel/drivers/gpu/arm/...
                                                                                  # (default of . suitable for in-tree builds)
@@ -195,6 +203,31 @@ with the following dmesg output,
 disable SELinux so that gatorfs can be mounted by running
 	# setenforce 0
 Once gator is started, SELinux can be reenabled
+
+On some versions of Android, the Mali Filmstrip may not work and produces a dmesg output similar to
+	<4>[  585.367411] type=1400 audit(1421862808.850:48): avc: denied { search } for pid=3681 comm="mali-renderer" name="/" dev="gatorfs" ino=22378 scontext=u:r:untrusted_app:s0 tcontext=u:object_r:unlabeled:s0 tclass=dir
+To work around this issue, use streamline_annotate.h and streamline_annotate.c from DS-5 v5.20 or later, or disable SELinux by running
+	# setenforce 0
+
+On some versions of Android, annotations may not work unless SELinux is disabled by running
+	# setenforce 0
+
+Some targets do not correctly emit uevents when cores go on/offline. This will cause CPU Activity with user space gator to be either 0% or 100% on a given core and the Heat Map may show a large number of unresolved processes. To work around this issue, user kernel space gator. To test for this run
+	# ./gatord -d | grep uevent 
+When cores go on/offline with user space gator something similar to the following should be emitted
+	INFO: read(UEvent.cpp:61): uevent: offline@/devices/system/cpu/cpu1
+	INFO: read(UEvent.cpp:61): uevent: online@/devices/system/cpu/cpu1
+The core which are on/offline can be checked by running 
+	# cat /sys/devices/system/cpu/cpu*/online
+This issues affects a given target if the on/offline cores shown by the cat command change but no cpu uevent is emitted.
+
+On some older versions of Android, the following issue may occur when starting gatord when using ndk-build
+	# ./gatord
+	[1] + Stopped (signal)        ./gatord
+	# 
+	[1]   Segmentation fault      ./gatord
+	# 
+Starting with Android-L only position independent executables (pie) are supported, but some older versions of Android do not support them. To avoid this issue, modify Android.mk and remove the references to pie.
 
 *** Profiling the kernel (optional) ***
 

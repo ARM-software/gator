@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2012-2014. All rights reserved.
+ * Copyright (C) ARM Limited 2012-2015. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,7 +18,7 @@
 /* Mali Midgard DDK includes */
 #if defined(MALI_SIMPLE_API)
 /* Header with wrapper functions to kbase structures and functions */
-#include "mali/mali_kbase_gator_api.h"
+#include "mali_kbase_gator_api.h"
 #elif defined(MALI_DIR_MIDGARD)
 /* New DDK Directory structure with kernel/drivers/gpu/arm/midgard */
 #include "mali_linux_trace.h"
@@ -38,6 +38,10 @@
 
 #if (MALI_DDK_GATOR_API_VERSION != 1) && (MALI_DDK_GATOR_API_VERSION != 2) && (MALI_DDK_GATOR_API_VERSION != 3)
 #error MALI_DDK_GATOR_API_VERSION is invalid (must be 1 for r1/r2 DDK, or 2 for r3/r4 DDK, or 3 for r5 and later DDK).
+#endif
+
+#if !defined(CONFIG_MALI_GATOR_SUPPORT)
+#error CONFIG_MALI_GATOR_SUPPORT is required for GPU activity and software counters
 #endif
 
 #include "gator_events_mali_common.h"
@@ -842,17 +846,17 @@ static int read(int **buffer, bool sched_switch)
 			return -1;
 
 		/* Mali symbols can be called safely since a kbcontext is valid */
-		if (kbase_gator_instr_hwcnt_dump_complete_symbol(handles, &success) == MALI_TRUE) {
+		if (kbase_gator_instr_hwcnt_dump_complete_symbol(handles, &success)) {
 #else
 		if (!kbcontext)
 			return -1;
 
 		/* Mali symbols can be called safely since a kbcontext is valid */
-		if (kbase_instr_hwcnt_dump_complete_symbol(kbcontext, &success) == MALI_TRUE) {
+		if (kbase_instr_hwcnt_dump_complete_symbol(kbcontext, &success)) {
 #endif
 			kbase_device_busy = false;
 
-			if (success == MALI_TRUE) {
+			if (success) {
 				/* Cycle through hardware counters and accumulate totals */
 				for (cnt = 0; cnt < number_of_hardware_counters; cnt++) {
 					const struct mali_counter *counter = &counters[cnt];

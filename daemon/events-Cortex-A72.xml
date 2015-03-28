@@ -32,8 +32,8 @@
     <event event="0x46" title="Cache" name="L1 data victim" description="Level 1 data cache Write-back - Victim"/>
     <event event="0x47" title="Cache" name="L1 data clean" description="Level 1 data cache Write-back - Cleaning and coherency"/>
     <event event="0x48" title="Cache" name="L1 data invalidate" description="Level 1 data cache invalidate"/>
-    <event event="0x4C" title="Cache" name="L1 data refill read" description="Level 1 data TLB refill - Read"/>
-    <event event="0x4D" title="Cache" name="L1 data refill write" description="Level 1 data TLB refill - Write"/>
+    <event event="0x4C" title="Cache" name="L1 TLB refill read" description="Level 1 data TLB refill - Read"/>
+    <event event="0x4D" title="Cache" name="L1 TLB refill write" description="Level 1 data TLB refill - Write"/>
     <event event="0x50" title="Cache" name="L2 data read" description="Level 2 data cache access - Read"/>
     <event event="0x51" title="Cache" name="L2 data access write" description="Level 2 data cache access - Write"/>
     <event event="0x52" title="Cache" name="L2 data refill read" description="Level 2 data cache refill - Read"/>
@@ -63,9 +63,9 @@
     <event event="0x75" title="Instruction" name="VFP" description="Operation speculatively executed - VFP"/>
     <event event="0x76" title="Instruction" name="Software change" description="Operation speculatively executed - Software change of the PC"/>
     <event event="0x77" title="Instruction" name="Crypto" description="Operation speculatively executed, crypto data processing"/>
-    <event event="0x78" title="Instruction" name="Immediate branch" description="Branch speculatively executed - Immediate branch"/>
-    <event event="0x79" title="Instruction" name="Procedure return" description="Branch speculatively executed - Procedure return"/>
-    <event event="0x7A" title="Instruction" name="Indirect branch" description="Branch speculatively executed - Indirect branch"/>
+    <event event="0x78" title="Branch" name="Immediate" description="Branch speculatively executed - Immediate branch"/>
+    <event event="0x79" title="Procedure" name="Return" description="Branch speculatively executed - Procedure return"/>
+    <event event="0x7A" title="Branch" name="Indirect" description="Branch speculatively executed - Indirect branch"/>
     <event event="0x7C" title="Instruction" name="ISB" description="Barrier speculatively executed - ISB"/>
     <event event="0x7D" title="Instruction" name="DSB" description="Barrier speculatively executed - DSB"/>
     <event event="0x7E" title="Instruction" name="DMB" description="Barrier speculatively executed - DMB"/>
