@@ -16,5 +16,5 @@ driver/.tmp_versions
 driver/Module.symvers
 driver/gator.ko
 driver/gator_events.h
-driver/gator_src_md5.c
+driver/gator_src_md5.h
 driver/modules.order

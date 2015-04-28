@@ -14,7 +14,6 @@ gator-y :=	gator_main.o \
 		gator_events_net.o \
 		gator_events_perf_pmu.o \
 		gator_events_sched.o \
-		gator_src_md5.o \
 
 # Convert the old GATOR_WITH_MALI_SUPPORT to the new kernel flags
 ifneq ($(GATOR_WITH_MALI_SUPPORT),)
@@ -64,7 +63,9 @@ gator-$(CONFIG_ARM) +=	gator_events_armv6.o \
 
 gator-$(CONFIG_ARM64) +=
 
-clean-files := gator_src_md5.c
+$(obj)/gator_main.o: $(obj)/gator_src_md5.h
+
+clean-files := gator_src_md5.h
 
 # Note, in the recipe below we use "cd $(srctree) && cd $(src)" rather than
 # "cd $(srctree)/$(src)" because under DKMS $(src) is an absolute path, and we
@@ -74,9 +75,9 @@ clean-files := gator_src_md5.c
        chk_events.h = :
  quiet_chk_events.h = echo '  CHK     $@'
 silent_chk_events.h = :
-$(obj)/gator_src_md5.c: FORCE
+$(obj)/gator_src_md5.h: FORCE
 	@$($(quiet)chk_events.h)
-	$(Q)cd $(srctree) && cd $(src) ; $(CONFIG_SHELL) -c "echo 'char *gator_src_md5 = \"'\`ls *.c *.h mali/*.h | grep -Ev '^(gator_src_md5\.c|gator\.mod\.c)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32\`'\";'" > $(@F)
+	$(Q)cd $(srctree) && cd $(src) ; $(CONFIG_SHELL) -c "echo 'static char *gator_src_md5 = \"'\`ls *.c *.h mali/*.h | grep -Ev '^(gator_src_md5\.c|gator\.mod\.c)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32\`'\";'" > $(abspath $@)
 
 else
 
@@ -88,7 +89,7 @@ all:
 	$(error)
 
 clean:
-	rm -f *.o .*.cmd gator_src_md5.c modules.order Module.symvers gator.ko gator.mod.c
+	rm -f *.o .*.cmd gator_src_md5.h modules.order Module.symvers gator.ko gator.mod.c
 	rm -rf .tmp_versions
 
 endif

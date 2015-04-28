@@ -28,6 +28,7 @@ static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 #include <linux/uaccess.h>
 
 #include "gator.h"
+#include "gator_src_md5.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
 #error kernels prior to 2.6.32 are not supported
@@ -264,7 +265,6 @@ GATOR_EVENTS_LIST
  ******************************************************************************/
 
 MODULE_PARM_DESC(gator_src_md5, "Gator driver source code md5sum");
-extern char *gator_src_md5;
 module_param_named(src_md5, gator_src_md5, charp, 0444);
 
 static const struct gator_cpu gator_cpus[] = {

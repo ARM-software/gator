@@ -138,7 +138,7 @@ mxml_node_t *EventsXML::getTree() {
 		}
 
 		// Handle categories
-		for (mxml_node_t *node = mxmlFindElement(append, append, "category", NULL, NULL, MXML_DESCEND),
+		for (mxml_node_t *node = strcmp(mxmlGetElement(append), "category") == 0 ? append : mxmlFindElement(append, append, "category", NULL, NULL, MXML_DESCEND),
 		       *next = mxmlFindElement(node, append, "category", NULL, NULL, MXML_DESCEND);
 		     node != NULL;
 		     node = next, next = mxmlFindElement(node, append, "category", NULL, NULL, MXML_DESCEND)) {
