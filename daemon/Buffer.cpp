@@ -143,6 +143,16 @@ int Buffer::contiguousSpaceAvailable() const {
 	}
 }
 
+bool Buffer::hasUncommittedMessages() const {
+	const int typeLength = gSessionData->mLocalCapture ? 0 : 1;
+	int length = mWritePos - mCommitPos;
+	if (length < 0) {
+		length += mSize;
+	}
+	length = length - typeLength - sizeof(int32_t);
+	return length > FRAME_HEADER_SIZE;
+}
+
 void Buffer::commit(const uint64_t time, const bool force) {
 	// post-populate the length, which does not include the response type length nor the length itself, i.e. only the length of the payload
 	const int typeLength = gSessionData->mLocalCapture ? 0 : 1;
@@ -263,7 +273,7 @@ void Buffer::frame() {
 	}
 }
 
-void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname) {
+void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname, const long pageSize) {
 	packInt(MESSAGE_SUMMARY);
 	writeString(NEWLINE_CANARY);
 	packInt64(timestamp);
@@ -271,6 +281,10 @@ void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int
 	packInt64(monotonicDelta);
 	writeString("uname");
 	writeString(uname);
+	writeString("PAGESIZE");
+	char buf[32];
+	snprintf(buf, sizeof(buf), "%li", pageSize);
+	writeString(buf);
 	writeString("");
 	check(currTime);
 }

@@ -28,33 +28,8 @@
 extern Child *child;
 
 DriverSource::DriverSource(sem_t *senderSem, sem_t *startProfile) : mBuffer(NULL), mFifo(NULL), mSenderSem(senderSem), mStartProfile(startProfile), mBufferSize(0), mBufferFD(0), mLength(1) {
-	int driver_version = 0;
-
 	mBuffer = new Buffer(0, FRAME_PERF_ATTRS, 4*1024*1024, senderSem);
-	if (readIntDriver("/dev/gator/version", &driver_version) == -1) {
-		logg->logError("Error reading gator driver version");
-		handleException();
-	}
-
-	// Verify the driver version matches the daemon version
-	if (driver_version != PROTOCOL_VERSION) {
-		if ((driver_version > PROTOCOL_DEV) || (PROTOCOL_VERSION > PROTOCOL_DEV)) {
-			// One of the mismatched versions is development version
-			logg->logError(
-				"DEVELOPMENT BUILD MISMATCH: gator driver version \"%d\" is not in sync with gator daemon version \"%d\".\n"
-				">> The following must be synchronized from engineering repository:\n"
-				">> * gator driver\n"
-				">> * gator daemon\n"
-				">> * Streamline", driver_version, PROTOCOL_VERSION);
-			handleException();
-		} else {
-			// Release version mismatch
-			logg->logError(
-				"gator driver version \"%d\" is different than gator daemon version \"%d\".\n"
-				">> Please upgrade the driver and daemon to the latest versions.", driver_version, PROTOCOL_VERSION);
-			handleException();
-		}
-	}
+	checkVersion();
 
 	int enable = -1;
 	if (readIntDriver("/dev/gator/enable", &enable) != 0 || enable != 0) {
@@ -82,6 +57,35 @@ DriverSource::~DriverSource() {
 	// Calls event_buffer_release in the driver
 	if (mBufferFD) {
 		close(mBufferFD);
+	}
+}
+
+void DriverSource::checkVersion() {
+	int driverVersion = 0;
+
+	if (readIntDriver("/dev/gator/version", &driverVersion) == -1) {
+		logg->logError("Error reading gator driver version");
+		handleException();
+	}
+
+	// Verify the driver version matches the daemon version
+	if (driverVersion != PROTOCOL_VERSION) {
+		if ((driverVersion > PROTOCOL_DEV) || (PROTOCOL_VERSION > PROTOCOL_DEV)) {
+			// One of the mismatched versions is development version
+			logg->logError(
+				"DEVELOPMENT BUILD MISMATCH: gator driver version \"%d\" is not in sync with gator daemon version \"%d\".\n"
+				">> The following must be synchronized from engineering repository:\n"
+				">> * gator driver\n"
+				">> * gator daemon\n"
+				">> * Streamline", driverVersion, PROTOCOL_VERSION);
+			handleException();
+		} else {
+			// Release version mismatch
+			logg->logError(
+				"gator driver version \"%d\" is different than gator daemon version \"%d\".\n"
+				">> Please upgrade the driver and daemon to the latest versions.", driverVersion, PROTOCOL_VERSION);
+			handleException();
+		}
 	}
 }
 

@@ -34,17 +34,20 @@ private:
 	void configureConnection(const int fd, const char *const handshake, size_t size);
 	bool connectMali();
 	bool connectMve();
+	void connectFtrace();
 
 	sem_t mBufferSem;
 	Buffer mBuffer;
 	Monitor mMonitor;
 	OlyServerSocket mMveStartupUds;
 	OlyServerSocket mMaliStartupUds;
+	OlyServerSocket mUtgardStartupUds;
 	OlyServerSocket mAnnotate;
 	OlyServerSocket mAnnotateUds;
 	int mInterruptFd;
 	int mMaliUds;
 	int mMveUds;
+	int mFtraceFd;
 
 	// Intentionally unimplemented
 	ExternalSource(const ExternalSource &);

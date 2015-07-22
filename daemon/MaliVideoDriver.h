@@ -30,6 +30,7 @@ public:
 	void readEvents(mxml_node_t *const root);
 
 	int writeCounters(mxml_node_t *root) const;
+	bool claimCounter(const Counter &counter) const;
 
 	bool start(const int mveUds);
 	void stop(const int mveUds);

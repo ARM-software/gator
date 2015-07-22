@@ -25,33 +25,40 @@
 
 SessionData* gSessionData = NULL;
 
+SharedData::SharedData() : mMaliUtgardCountersSize(0) {
+	memset(mCpuIds, -1, sizeof(mCpuIds));
+}
+
 SessionData::SessionData() {
-	usDrivers[0] = new HwmonDriver();
-	usDrivers[1] = new FSDriver();
-	usDrivers[2] = new MemInfoDriver();
-	usDrivers[3] = new NetDriver();
-	usDrivers[4] = new DiskIODriver();
+	mUsDrivers[0] = new HwmonDriver();
+	mUsDrivers[1] = new FSDriver();
+	mUsDrivers[2] = new MemInfoDriver();
+	mUsDrivers[3] = new NetDriver();
+	mUsDrivers[4] = new DiskIODriver();
 	initialize();
 }
 
 SessionData::~SessionData() {
 }
 
+// Needed to use placement new
+inline void *operator new(size_t, void *ptr) { return ptr; }
+
 void SessionData::initialize() {
+	mSharedData = (SharedData *)mmap(NULL, sizeof(*mSharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	if (mSharedData == MAP_FAILED) {
+		logg->logError("Unable to mmap shared memory for cpuids");
+		handleException();
+	}
+	// Use placement new to construct but not allocate the object
+	new ((char *)mSharedData) SharedData();
+
 	mWaitingOnCommand = false;
 	mSessionIsActive = false;
 	mLocalCapture = false;
 	mOneShot = false;
 	mSentSummary = false;
 	mAllowCommands = false;
-	const size_t cpuIdSize = sizeof(int)*NR_CPUS;
-	// Share mCpuIds across all instances of gatord
-	mCpuIds = (int *)mmap(NULL, cpuIdSize, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-	if (mCpuIds == MAP_FAILED) {
-		logg->logError("Unable to mmap shared memory for cpuids");
-		handleException();
-	}
-	memset(mCpuIds, -1, cpuIdSize);
 	strcpy(mCoreName, CORE_NAME_UNKNOWN);
 	readModel();
 	readCpuInfo();
@@ -83,11 +90,11 @@ void SessionData::parseSessionXML(char* xmlString) {
 
 	// Set session data values - use prime numbers just below the desired value to reduce the chance of events firing at the same time
 	if (strcmp(session.parameters.sample_rate, "high") == 0) {
-		mSampleRate = 9973; // 10000
+		mSampleRate = 10007; // 10000
 	} else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
-		mSampleRate = 997; // 1000
+		mSampleRate = 1009; // 1000
 	} else if (strcmp(session.parameters.sample_rate, "low") == 0) {
-		mSampleRate = 97; // 100
+		mSampleRate = 101; // 100
 	} else if (strcmp(session.parameters.sample_rate, "none") == 0) {
 		mSampleRate = 0;
 	} else {
@@ -126,7 +133,7 @@ void SessionData::parseSessionXML(char* xmlString) {
 }
 
 void SessionData::readModel() {
-	FILE *fh = fopen("/proc/device-tree/model", "rb");
+	FILE *fh = fopen_cloexec("/proc/device-tree/model", "rb");
 	if (fh == NULL) {
 		return;
 	}
@@ -157,7 +164,7 @@ void SessionData::readCpuInfo() {
 	char temp[256]; // arbitrarily large amount
 	mMaxCpuId = -1;
 
-	FILE *f = fopen("/proc/cpuinfo", "r");
+	FILE *f = fopen_cloexec("/proc/cpuinfo", "r");
 	if (f == NULL) {
 		logg->logMessage("Error opening /proc/cpuinfo\n"
 			"The core name in the captured xml file will be 'unknown'.");
@@ -169,15 +176,17 @@ void SessionData::readCpuInfo() {
 	while (fgets(temp, sizeof(temp), f)) {
 		const size_t len = strlen(temp);
 
+		if (len > 0) {
+			// Replace the line feed with a null
+			temp[len - 1] = '\0';
+		}
+
+		logg->logMessage("cpuinfo: %s", temp);
+
 		if (len == 1) {
 			// New section, clear the processor. Streamline will not know the cpus if the pre Linux 3.8 format of cpuinfo is encountered but also that no incorrect information will be transmitted.
 			processor = -1;
 			continue;
-		}
-
-		if (len > 0) {
-			// Replace the line feed with a null
-			temp[len - 1] = '\0';
 		}
 
 		const bool foundHardware = !foundCoreName && strstr(temp, "Hardware") != 0;
@@ -204,7 +213,7 @@ void SessionData::readCpuInfo() {
 				if (processor >= NR_CPUS) {
 					logg->logMessage("Too many processors, please increase NR_CPUS");
 				} else if (processor >= 0) {
-					setImplementer(mCpuIds[processor], implementer);
+					setImplementer(mSharedData->mCpuIds[processor], implementer);
 				} else {
 					setImplementer(mMaxCpuId, implementer);
 				}
@@ -215,7 +224,7 @@ void SessionData::readCpuInfo() {
 				if (processor >= NR_CPUS) {
 					logg->logMessage("Too many processors, please increase NR_CPUS");
 				} else if (processor >= 0) {
-					setPart(mCpuIds[processor], cpuId);
+					setPart(mSharedData->mCpuIds[processor], cpuId);
 				} else {
 					setPart(mMaxCpuId, cpuId);
 				}
@@ -229,8 +238,8 @@ void SessionData::readCpuInfo() {
 
 	// If this does not have the full topology in /proc/cpuinfo, mCpuIds[0] may not have the 1 CPU part emitted - this guarantees it's in mMaxCpuId
 	for (int i = 0; i < NR_CPUS; ++i) {
-		if (mCpuIds[i] > mMaxCpuId) {
-			mMaxCpuId = mCpuIds[i];
+		if (mSharedData->mCpuIds[i] > mMaxCpuId) {
+			mMaxCpuId = mSharedData->mCpuIds[i];
 		}
 	}
 
@@ -289,4 +298,49 @@ FILE *fopen_cloexec(const char *path, const char *mode) {
 		return NULL;
 	}
 	return fh;
+}
+
+bool setNonblock(const int fd) {
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	if (flags < 0) {
+		logg->logMessage("fcntl getfl failed");
+		return false;
+	}
+
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
+		logg->logMessage("fcntl setfl failed");
+		return false;
+	}
+
+	return true;
+}
+
+bool writeAll(const int fd, const void *const buf, const size_t pos) {
+	size_t written = 0;
+	while (written < pos) {
+		ssize_t bytes = write(fd, (const uint8_t *)buf + written, pos - written);
+		if (bytes <= 0) {
+			logg->logMessage("write failed");
+			return false;
+		}
+		written += bytes;
+	}
+
+	return true;
+}
+
+bool readAll(const int fd, void *const buf, const size_t count) {
+	size_t pos = 0;
+	while (pos < count) {
+		ssize_t bytes = read(fd, (uint8_t *)buf + pos, count - pos);
+		if (bytes <= 0) {
+			logg->logMessage("read failed");
+			return false;
+		}
+		pos += bytes;
+	}
+
+	return true;
 }

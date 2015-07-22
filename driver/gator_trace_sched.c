@@ -104,13 +104,19 @@ static void collect_counters(u64 time, struct task_struct *task, bool sched_swit
 		list_for_each_entry(gi, &gator_events, list) {
 			if (gi->read) {
 				len = gi->read(&buffer, sched_switch);
+				if (len < 0)
+					pr_err("gator: read failed for %s\n", gi->name);
 				marshal_event(len, buffer);
 			} else if (gi->read64) {
-				len = gi->read64(&buffer64);
+				len = gi->read64(&buffer64, sched_switch);
+				if (len < 0)
+					pr_err("gator: read64 failed for %s\n", gi->name);
 				marshal_event64(len, buffer64);
 			}
 			if (gi->read_proc && task != NULL) {
 				len = gi->read_proc(&buffer64, task);
+				if (len < 0)
+					pr_err("gator: read_proc failed for %s\n", gi->name);
 				marshal_event64(len, buffer64);
 			}
 		}

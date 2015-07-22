@@ -29,6 +29,7 @@ public:
 	bool isDone();
 	void write(Sender *sender);
 
+	static void checkVersion();
 	static int readIntDriver(const char *fullpath, int *value);
 	static int readInt64Driver(const char *fullpath, int64_t *value);
 	static int writeDriver(const char *fullpath, const char *data);

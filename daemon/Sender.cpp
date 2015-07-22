@@ -44,7 +44,15 @@ Sender::Sender(OlySocket* socket) {
 		logg->logMessage("Completed magic sequence");
 	}
 
-	pthread_mutex_init(&mSendMutex, NULL);
+	pthread_mutexattr_t attr;
+	if (pthread_mutexattr_init(&attr) != 0 ||
+			pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0 ||
+			pthread_mutex_init(&mSendMutex, &attr) != 0 ||
+			pthread_mutexattr_destroy(&attr) != 0 ||
+			false) {
+		logg->logError("Unable to setup mutex");
+		handleException();
+	}
 }
 
 Sender::~Sender() {
@@ -78,7 +86,10 @@ void Sender::writeData(const char* data, int length, int type) {
 	}
 
 	// Multiple threads call writeData()
-	pthread_mutex_lock(&mSendMutex);
+	if (pthread_mutex_lock(&mSendMutex) != 0) {
+		logg->logError("pthread_mutex_lock failed");
+		handleException();
+	}
 
 	// Send data over the socket connection
 	if (mDataSocket) {
@@ -100,7 +111,7 @@ void Sender::writeData(const char* data, int length, int type) {
 		const int chunkSize = 100*1000 * alarmDuration / 8;
 		int pos = 0;
 		while (true) {
-			mDataSocket->send((const char*)data + pos, min(length - pos, chunkSize));
+			mDataSocket->send(data + pos, min(length - pos, chunkSize));
 			pos += chunkSize;
 			if (pos >= length) {
 				break;
@@ -125,5 +136,8 @@ void Sender::writeData(const char* data, int length, int type) {
 		}
 	}
 
-	pthread_mutex_unlock(&mSendMutex);
+	if (pthread_mutex_unlock(&mSendMutex) != 0) {
+		logg->logError("pthread_mutex_unlock failed");
+		handleException();
+	}
 }

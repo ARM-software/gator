@@ -24,6 +24,8 @@ public:
 	int writeCounters(mxml_node_t *const root) const;
 	void writeEvents(mxml_node_t *const) const;
 
+	void validateCounters() const;
+
 private:
 	enum NodeType {
 		NT_UNKNOWN,

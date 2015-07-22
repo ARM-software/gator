@@ -44,8 +44,8 @@
 
     <event counter="ARM_Mali-Midgard_FRAG_THREADS" title="Mali Core Threads" name="Fragment threads" description="Number of fragment threads started"/>
     <event counter="ARM_Mali-Midgard_FRAG_DUMMY_THREADS" title="Mali Core Threads" name="Dummy fragment threads" description="Number of dummy fragment threads started"/>
-    <event counter="ARM_Mali-Midgard_FRAG_QUADS_LZS_TEST" title="Mali Core Threads" name="Frag threads doing late ZS quads" description="Number of threads doing late ZS test"/>
-    <event counter="ARM_Mali-Midgard_FRAG_QUADS_LZS_KILLED" title="Mali Core Threads" name="Frag threads killed late ZS quads" description="Number of threads killed by late ZS test"/>
+    <event counter="ARM_Mali-Midgard_FRAG_QUADS_LZS_TEST" title="Mali Core Threads" name="Frag threads doing late ZS" description="Number of threads doing late ZS test"/>
+    <event counter="ARM_Mali-Midgard_FRAG_QUADS_LZS_KILLED" title="Mali Core Threads" name="Frag threads killed late ZS" description="Number of threads killed by late ZS test"/>
     <event counter="ARM_Mali-Midgard_FRAG_THREADS_LZS_TEST" title="Mali Core Threads" name="Frag threads doing late ZS" description="Number of threads doing late ZS test"/>
     <event counter="ARM_Mali-Midgard_FRAG_THREADS_LZS_KILLED" title="Mali Core Threads" name="Frag threads killed late ZS" description="Number of threads killed by late ZS test"/>
 

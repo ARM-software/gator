@@ -243,3 +243,14 @@
     <event counter="ARM_Mali-4xx_SW_39" title="Geometry Statistics" name="Strip Lines" description="Number of lines passed to GLES using the mode GL_LINE_STRIP."/>
     <event counter="ARM_Mali-4xx_SW_40" title="Geometry Statistics" name="Loop Lines" description="Number of lines passed to GLES using the mode GL_LINE_LOOP."/>
   </category>
+  <category name="ARM_Mali-4xx_Total_alloc_pages" per_cpu="no">
+    <event counter="ARM_Mali-4xx_Total_alloc_pages" title="Mali GPU Alloc" name="pages" class="absolute" display="average" average_selection="yes" description="Total number of allocated pages"/>
+  </category>
+  <category name="Mali-4xx Session Memory usage" per_cpu="no">
+    <event counter="ARM_Mali-4xx_vertex_index_buffer" title="Mali Memory" name="Vertex and Index buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Vertex and index input"/>
+    <event counter="ARM_Mali-4xx_texture_buffer" title="Mali Memory" name="Texture buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Texture data"/>
+    <event counter="ARM_Mali-4xx_varying_buffer" title="Mali Memory" name="Varying buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Varying buffer"/>
+    <event counter="ARM_Mali-4xx_render_target" title="Mali Memory" name="Render target buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Render target buffer"/>
+    <event counter="ARM_Mali-4xx_plbu_heap" title="Mali Memory" name="Plbu heap" units="B" dclass="absolute" display="average" average_selection="yes" description="The memory to store commands from PLBU when Slave tilelist memory isn't enough"/>
+    <event counter="ARM_Mali-4xx_slave_tilelist" title="Mali Memory" name="Slave tilelist" units="B" dclass="absolute" display="average" average_selection="yes" description="Slave tilelist memory"/>
+  </category>

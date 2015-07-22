@@ -66,9 +66,7 @@ static unsigned long counter_event[NUMBER_OF_EVENTS];
 static unsigned long counter_key[NUMBER_OF_EVENTS];
 
 /* The data we have recorded */
-static u32 counter_data[NUMBER_OF_EVENTS];
-/* The address to sample (or 0 if samples are sent to us) */
-static u32 *counter_address[NUMBER_OF_EVENTS];
+static atomic_t counter_data[NUMBER_OF_EVENTS];
 
 /* An array used to return the data we recorded
  * as key,value pairs hence the *2
@@ -116,7 +114,7 @@ static inline int is_hw_counter(unsigned int event_id)
 GATOR_DEFINE_PROBE(mali_hw_counter, TP_PROTO(unsigned int event_id, unsigned int value))
 {
 	if (is_hw_counter(event_id))
-		counter_data[event_id] = value;
+		atomic_add(value, &counter_data[event_id]);
 }
 
 GATOR_DEFINE_PROBE(mali_sw_counters, TP_PROTO(pid_t pid, pid_t tid, void *surface_id, unsigned int *counters))
@@ -126,7 +124,7 @@ GATOR_DEFINE_PROBE(mali_sw_counters, TP_PROTO(pid_t pid, pid_t tid, void *surfac
 	/* Copy over the values for those counters which are enabled. */
 	for (i = FIRST_SW_COUNTER; i <= LAST_SW_COUNTER; i++) {
 		if (counter_enabled[i])
-			counter_data[i] = (u32)(counters[i - FIRST_SW_COUNTER]);
+			atomic_add(counters[i - FIRST_SW_COUNTER], &counter_data[i]);
 	}
 }
 
@@ -375,22 +373,22 @@ static void mali_counter_initialize(void)
 	if (mali_get_counters)
 		pr_debug("gator: mali online _mali_profiling_get_counters symbol @ %p\n", mali_get_counters);
 	else
-		pr_debug("gator WARNING: mali _mali_profiling_get_counters symbol not defined\n");
+		pr_debug("gator: mali _mali_profiling_get_counters symbol not defined\n");
 
 	mali_get_l2_counters = symbol_get(_mali_profiling_get_l2_counters);
 	if (mali_get_l2_counters)
 		pr_debug("gator: mali online _mali_profiling_get_l2_counters symbol @ %p\n", mali_get_l2_counters);
 	else
-		pr_debug("gator WARNING: mali _mali_profiling_get_l2_counters symbol not defined\n");
+		pr_debug("gator: mali _mali_profiling_get_l2_counters symbol not defined\n");
 
 	if (!mali_get_counters && !mali_get_l2_counters) {
-		pr_debug("gator: WARNING: no L2 counters available\n");
+		pr_err("gator: no L2 counters available\n");
 		n_l2_cores = 0;
 	}
 
 	/* Clear counters in the start */
 	for (i = 0; i < NUMBER_OF_EVENTS; i++) {
-		counter_data[i] = 0;
+		atomic_set(&counter_data[i], 0);
 		prev_set[i] = false;
 	}
 }
@@ -477,7 +475,6 @@ static void stop(void)
 	for (cnt = 0; cnt < NUMBER_OF_EVENTS; cnt++) {
 		counter_enabled[cnt] = 0;
 		counter_event[cnt] = 0;
-		counter_address[cnt] = NULL;
 	}
 
 	mali_counter_deinitialize();
@@ -489,10 +486,12 @@ static void dump_counters(unsigned int from_counter, unsigned int to_counter, un
 
 	for (counter_id = from_counter; counter_id <= to_counter; counter_id++) {
 		if (counter_enabled[counter_id]) {
-			counter_dump[(*len)++] = counter_key[counter_id];
-			counter_dump[(*len)++] = counter_data[counter_id];
+			unsigned int value;
 
-			counter_data[counter_id] = 0;
+			counter_dump[(*len)++] = counter_key[counter_id];
+			value = atomic_read(&counter_data[counter_id]);
+			atomic_sub(value, &counter_data[counter_id]);
+			counter_dump[(*len)++] = value;
 		}
 	}
 }
@@ -564,17 +563,19 @@ static int read(int **buffer, bool sched_switch)
 		 * Add in the voltage and frequency counters if enabled. Note
 		 * that, since these are actually passed as events, the counter
 		 * value should not be cleared.
+		 *
+		 * Intentionally use atomic_read as these are absolute counters
 		 */
 		cnt = COUNTER_FREQUENCY;
 		if (counter_enabled[cnt]) {
 			counter_dump[len++] = counter_key[cnt];
-			counter_dump[len++] = counter_data[cnt];
+			counter_dump[len++] = atomic_read(&counter_data[cnt]);
 		}
 
 		cnt = COUNTER_VOLTAGE;
 		if (counter_enabled[cnt]) {
 			counter_dump[len++] = counter_key[cnt];
-			counter_dump[len++] = counter_data[cnt];
+			counter_dump[len++] = atomic_read(&counter_data[cnt]);
 		}
 	}
 #endif
@@ -586,6 +587,7 @@ static int read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_mali_interface = {
+	.name = "mali_4xx",
 	.create_files = create_files,
 	.start = start,
 	.stop = stop,
@@ -595,8 +597,9 @@ static struct gator_interface gator_events_mali_interface = {
 extern void gator_events_mali_log_dvfs_event(unsigned int frequency_mhz, unsigned int voltage_mv)
 {
 #ifdef DVFS_REPORTED_BY_DDK
-	counter_data[COUNTER_FREQUENCY] = frequency_mhz;
-	counter_data[COUNTER_VOLTAGE] = voltage_mv;
+	/* Intentionally use atomic_set as these are absolute counters */
+	atomic_set(&counter_data[COUNTER_FREQUENCY], frequency_mhz);
+	atomic_set(&counter_data[COUNTER_VOLTAGE], voltage_mv);
 #endif
 }
 
@@ -612,8 +615,7 @@ int gator_events_mali_init(void)
 		counter_enabled[cnt] = 0;
 		counter_event[cnt] = 0;
 		counter_key[cnt] = gator_events_get_key();
-		counter_address[cnt] = NULL;
-		counter_data[cnt] = 0;
+		atomic_set(&counter_data[cnt], 0);
 	}
 
 	trace_registered = 0;

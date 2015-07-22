@@ -33,20 +33,6 @@ extern Child *child;
 
 static const int cpuIdleKey = getEventKey();
 
-static bool sendTracepointFormat(const uint64_t currTime, Buffer *const buffer, const char *const name, DynBuf *const printb, DynBuf *const b) {
-	if (!printb->printf(EVENTS_PATH "/%s/format", name)) {
-		logg->logMessage("DynBuf::printf failed");
-		return false;
-	}
-	if (!b->read(printb->getBuf())) {
-		logg->logMessage("DynBuf::read failed");
-		return false;
-	}
-	buffer->marshalFormat(currTime, b->getLength(), b->getBuf());
-
-	return true;
-}
-
 static void *syncFunc(void *arg)
 {
 	struct timespec ts;
@@ -160,17 +146,14 @@ bool PerfSource::prepare() {
 			|| !mUEvent.init()
 			|| !mMonitor.add(mUEvent.getFd())
 
-			|| !sendTracepointFormat(currTime, mBuffer, SCHED_SWITCH, &printb, &b1)
-
 			|| (cpuIdleId = PerfDriver::getTracepointId(CPU_IDLE, &printb)) < 0
-			|| !sendTracepointFormat(currTime, mBuffer, CPU_IDLE, &printb, &b1)
 
-			|| !sendTracepointFormat(currTime, mBuffer, CPU_FREQUENCY, &printb, &b1)
+			|| !gSessionData->mPerf.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
 
 			|| !mCountersGroup.createCpuGroup(currTime, mBuffer)
 			|| !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW, PERF_GROUP_LEADER | PERF_GROUP_PER_CPU)
 
-			|| !gSessionData->perf.enable(currTime, &mCountersGroup, mBuffer)
+			|| !gSessionData->mPerf.enable(currTime, &mCountersGroup, mBuffer)
 			|| 0) {
 		logg->logMessage("perf setup failed, are you running Linux 3.4 or later?");
 		return false;
@@ -194,7 +177,7 @@ bool PerfSource::prepare() {
 	}
 
 	// Send the summary right before the start so that the monotonic delta is close to the start time
-	if (!gSessionData->perf.summary(&mSummary)) {
+	if (!gSessionData->mPerf.summary(&mSummary)) {
 		logg->logError("PerfDriver::summary failed");
 		handleException();
 	}
@@ -283,7 +266,7 @@ void PerfSource::run() {
 
 		mBuffer->perfCounterHeader(currTime);
 		for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
-			gSessionData->perf.read(mBuffer, cpu);
+			gSessionData->mPerf.read(mBuffer, cpu);
 		}
 		mBuffer->perfCounterFooter(currTime);
 
@@ -396,7 +379,7 @@ bool PerfSource::handleUEvent(const uint64_t currTime) {
 			} else if (err == PG_SUCCESS) {
 				if (mCountersGroup.onlineCPU(currTime, cpu, true, mBuffer) > 0) {
 					mBuffer->perfCounterHeader(currTime);
-					gSessionData->perf.read(mBuffer, cpu);
+					gSessionData->mPerf.read(mBuffer, cpu);
 					mBuffer->perfCounterFooter(currTime);
 					ret = true;
 				}
@@ -404,7 +387,7 @@ bool PerfSource::handleUEvent(const uint64_t currTime) {
 			mBuffer->commit(currTime);
 
 			gSessionData->readCpuInfo();
-			gSessionData->perf.coreName(currTime, &mSummary, cpu);
+			gSessionData->mPerf.coreName(currTime, &mSummary, cpu);
 			mSummary.commit(currTime);
 			return ret;
 		} else if (strcmp(result.mAction, "offline") == 0) {

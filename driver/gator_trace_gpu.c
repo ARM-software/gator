@@ -132,7 +132,7 @@ static void mali_activity_stop(int core, int key)
 		gator_marshal_activity_switch(core, key, last_activity, last_pid);
 }
 
-void mali_activity_clear(struct mali_counter mali_activity[], size_t mali_activity_size)
+static void mali_activity_clear(struct mali_counter mali_activity[], size_t mali_activity_size)
 {
 	int activity;
 	int cores;

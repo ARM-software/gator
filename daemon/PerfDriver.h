@@ -13,10 +13,6 @@
 
 #include "Driver.h"
 
-// If debugfs is not mounted at /sys/kernel/debug, update DEBUGFS_PATH
-#define DEBUGFS_PATH "/sys/kernel/debug"
-#define EVENTS_PATH DEBUGFS_PATH "/tracing/events"
-
 #define SCHED_SWITCH "sched/sched_switch"
 #define CPU_IDLE "power/cpu_idle"
 #define CPU_FREQUENCY "power/cpu_frequency"
@@ -24,6 +20,7 @@
 class Buffer;
 class DynBuf;
 class PerfGroup;
+class PerfTracepoint;
 
 class PerfDriver : public SimpleDriver {
 public:
@@ -32,6 +29,7 @@ public:
 
 	bool getLegacySupport() const { return mLegacySupport; }
 
+	void readEvents(mxml_node_t *const xml);
 	bool setup();
 	bool summary(Buffer *const buffer);
 	void coreName(const uint64_t currTime, Buffer *const buffer, const int cpu);
@@ -41,6 +39,7 @@ public:
 
 	bool enable(const uint64_t currTime, PerfGroup *const group, Buffer *const buffer) const;
 	void read(Buffer *const buffer, const int cpu);
+	bool sendTracepointFormats(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b);
 
 	static long long getTracepointId(const char *const name, DynBuf *const printb);
 
@@ -50,6 +49,7 @@ private:
 
 	bool mIsSetup;
 	bool mLegacySupport;
+	PerfTracepoint *mTracepoints;
 
 	// Intentionally undefined
 	PerfDriver(const PerfDriver &);

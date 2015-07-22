@@ -153,30 +153,34 @@ void update(const char *const gatorPath) {
 		handleException();
 	}
 
-	if (KERNEL_VERSION(version[0], version[1], version[2]) < KERNEL_VERSION(2, 6, 32)) {
+	if (KERNEL_VERSION(version[0], version[1], version[2]) < KERNEL_VERSION(3, 4, 0)) {
 		logg->logError(GATOR_ERROR "Streamline can't automatically setup gator as this kernel version is not supported. Please upgrade the kernel on your device.");
 		handleException();
 	}
 
-	if (KERNEL_VERSION(version[0], version[1], version[2]) < KERNEL_VERSION(3, 4, 0)) {
-		logg->logError(GATOR_ERROR "Streamline can't automatically setup gator as gator.ko is required for this version of Linux. Please build gator.ko and gatord and install them on your device.");
-		handleException();
-	}
-
 	if (geteuid() != 0) {
-		printf(GATOR_MSG "trying sudo\n");
-		execlp("sudo", "sudo", gatorPath, "-u", NULL);
-		// Streamline will provide the password if needed
-
-		printf(GATOR_MSG "trying su\n");
 		char buf[1<<10];
+		snprintf(buf, sizeof(buf),
+			 "which sudo &&"
+			 "("
+			   "sudo -n %1$s -u ||"
+			   "("
+			     "echo " GATOR_MSG "trying sudo;"
+			     // Streamline will provide the password
+			     "sudo %1$s -u"
+			   ")"
+			 ") || ("
+			   "echo " GATOR_MSG "trying su;"
 		/*
 		 * Different versions of su handle additional -c command line options differently and expect the
 		 * arguments in different ways. Try both ways wrapped in a shell.
 		 *
 		 * Then invoke another shell after su as it avoids odd failures on some Android systems
 		 */
-		snprintf(buf, sizeof(buf), "su -c \"sh -c '%s -u'\" || su -c sh -c '%s -u'", gatorPath, gatorPath);
+			   "su -c \"sh -c '%1$s -u'\" ||"
+			   "su -c sh -c '%1$s -u'"
+			 ")",
+			 gatorPath);
 		execlp("sh", "sh", "-c", buf, NULL);
 		// Streamline will provide the password if needed
 
@@ -227,6 +231,11 @@ void update(const char *const gatorPath) {
 
 	umount("/dev/gator");
 	syscall(__NR_delete_module, "gator", O_NONBLOCK);
+
+	if (access("/sys/module/gator", F_OK) == 0) {
+		logg->logError(GATOR_ERROR "Unable to unload gator.ko, the gator module may be built into the kernel or gator.ko cannot be unloaded. Rebooting the device may resolve the issue.");
+		handleException();
+	}
 
 	rename("gatord", "gatord.old");
 	rename("gator.ko", "gator.ko.old");
@@ -314,8 +323,7 @@ void update(const char *const gatorPath) {
 	close(pipefd[1]);
 	const ssize_t bytes = read(pipefd[0], buf, sizeof(buf));
 	if (bytes > 0) {
-		logg->logError("%s", buf);
-		handleException();
+		printf("%s\n", buf);
 	}
 	close(pipefd[0]);
 

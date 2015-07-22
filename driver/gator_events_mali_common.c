@@ -25,31 +25,31 @@ extern int gator_mali_create_file_system(const char *mali_name, const char *even
 		dir = gatorfs_mkdir(sb, root, buf);
 
 		if (dir == NULL) {
-			pr_debug("gator: %s: error creating file system for: %s (%s)\n", mali_name, event_name, buf);
+			pr_err("gator: %s: error creating file system for: %s (%s)\n", mali_name, event_name, buf);
 			return -1;
 		}
 
 		err = gatorfs_create_ulong(sb, dir, "enabled", &counter->enabled);
 		if (err != 0) {
-			pr_debug("gator: %s: error calling gatorfs_create_ulong for: %s (%s)\n", mali_name, event_name, buf);
+			pr_err("gator: %s: error calling gatorfs_create_ulong for: %s (%s)\n", mali_name, event_name, buf);
 			return -1;
 		}
 		err = gatorfs_create_ro_ulong(sb, dir, "key", &counter->key);
 		if (err != 0) {
-			pr_debug("gator: %s: error calling gatorfs_create_ro_ulong for: %s (%s)\n", mali_name, event_name, buf);
+			pr_err("gator: %s: error calling gatorfs_create_ro_ulong for: %s (%s)\n", mali_name, event_name, buf);
 			return -1;
 		}
 		if (counter->cores != -1) {
 			err = gatorfs_create_ro_ulong(sb, dir, "cores", &counter->cores);
 			if (err != 0) {
-				pr_debug("gator: %s: error calling gatorfs_create_ro_ulong for: %s (%s)\n", mali_name, event_name, buf);
+				pr_err("gator: %s: error calling gatorfs_create_ro_ulong for: %s (%s)\n", mali_name, event_name, buf);
 				return -1;
 			}
 		}
 		if (event != NULL) {
 			err = gatorfs_create_ulong(sb, dir, "event", event);
 			if (err != 0) {
-				pr_debug("gator: %s: error calling gatorfs_create_ro_ulong for: %s (%s)\n", mali_name, event_name, buf);
+				pr_err("gator: %s: error calling gatorfs_create_ro_ulong for: %s (%s)\n", mali_name, event_name, buf);
 				return -1;
 			}
 		}

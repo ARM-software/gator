@@ -52,7 +52,7 @@ NetDriver::~NetDriver() {
 
 void NetDriver::readEvents(mxml_node_t *const) {
 	// Only for use with perf
-	if (!gSessionData->perf.isSetup()) {
+	if (!gSessionData->mPerf.isSetup()) {
 		return;
 	}
 

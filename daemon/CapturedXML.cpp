@@ -32,7 +32,7 @@ mxml_node_t* CapturedXML::getTree(bool includeTime) {
 
 	captured = mxmlNewElement(xml, "captured");
 	mxmlElementSetAttr(captured, "version", "1");
-	if (gSessionData->perf.isSetup()) {
+	if (gSessionData->mPerf.isSetup()) {
 		mxmlElementSetAttr(captured, "type", "Perf");
 	}
 	mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);

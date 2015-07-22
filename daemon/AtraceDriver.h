@@ -1,36 +1,39 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2015. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
-#ifndef FTRACEDRIVER_H
-#define FTRACEDRIVER_H
+#ifndef ATRACEDRIVER_H
+#define ATRACEDRIVER_H
+
+#include "mxml/mxml.h"
 
 #include "Driver.h"
 
-class FtraceDriver : public SimpleDriver {
+class AtraceDriver : public SimpleDriver {
 public:
-	FtraceDriver();
-	~FtraceDriver();
+	AtraceDriver();
+	~AtraceDriver();
 
 	void readEvents(mxml_node_t *const xml);
 
-	void prepare();
+	void start();
 	void stop();
 
 	bool isSupported() const { return mSupported; }
 
 private:
-	int64_t *mValues;
+	void setAtrace(const int flags);
+
 	bool mSupported;
-	int mTracingOn;
+	char mNotifyPath[256];
 
 	// Intentionally unimplemented
-	FtraceDriver(const FtraceDriver &);
-	FtraceDriver &operator=(const FtraceDriver &);
+	AtraceDriver(const AtraceDriver &);
+	AtraceDriver &operator=(const AtraceDriver &);
 };
 
-#endif // FTRACEDRIVER_H
+#endif // ATRACEDRIVER_H

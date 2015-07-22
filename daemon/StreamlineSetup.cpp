@@ -75,8 +75,8 @@ StreamlineSetup::StreamlineSetup(OlySocket* s) {
 		free(data);
 	}
 
-	if (gSessionData->mCounterOverflow > 0) {
-		logg->logError("Only %i performance counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, gSessionData->mCounterOverflow);
+	if (gSessionData->mCountersError != NULL) {
+		logg->logError("%s", gSessionData->mCountersError);
 		handleException();
 	}
 }
@@ -197,7 +197,7 @@ void StreamlineSetup::sendData(const char* data, uint32_t length, char type) {
 	header[0] = type;
 	Buffer::writeLEInt(header + 1, length);
 	mSocket->send((char*)&header, sizeof(header));
-	mSocket->send((const char*)data, length);
+	mSocket->send(data, length);
 }
 
 void StreamlineSetup::sendEvents() {
@@ -265,8 +265,8 @@ void StreamlineSetup::writeConfiguration(char* xml) {
 	// Re-populate gSessionData with the configuration, as it has now changed
 	{ ConfigurationXML configuration; }
 
-	if (gSessionData->mCounterOverflow > 0) {
-		logg->logError("Only %i performance counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, gSessionData->mCounterOverflow);
+	if (gSessionData->mCountersError != NULL) {
+		logg->logError("%s", gSessionData->mCountersError);
 		handleException();
 	}
 }

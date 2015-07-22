@@ -20,7 +20,6 @@
 #include "Driver.h"
 #include "DriverSource.h"
 #include "ExternalSource.h"
-#include "FtraceSource.h"
 #include "LocalCapture.h"
 #include "Logging.h"
 #include "OlySocket.h"
@@ -35,7 +34,6 @@ static sem_t haltPipeline, senderThreadStarted, startProfile, senderSem; // Shar
 static Source *primarySource = NULL;
 static Source *externalSource = NULL;
 static Source *userSpaceSource = NULL;
-static Source *ftraceSource = NULL;
 static Sender* sender = NULL;        // Shared by Child.cpp and spawned threads
 Child* child = NULL;                 // shared by Child.cpp and main.cpp
 
@@ -44,7 +42,8 @@ void handleException() {
 	if (child && child->numExceptions++ > 0) {
 		// it is possible one of the below functions itself can cause an exception, thus allow only one exception
 		logg->logMessage("Received multiple exceptions, terminating the child");
-		exit(1);
+		// Something is really wrong, exit immediately
+		_exit(1);
 	}
 	fprintf(stderr, "%s", logg->getLastError());
 
@@ -67,8 +66,9 @@ void handleException() {
 		}
 	}
 
-	if (gSessionData->mLocalCapture)
+	if (gSessionData->mLocalCapture) {
 		cleanUp();
+	}
 
 	exit(1);
 }
@@ -152,16 +152,12 @@ static void *senderThread(void *) {
 
 	while (!externalSource->isDone() ||
 	       (userSpaceSource != NULL && !userSpaceSource->isDone()) ||
-		   (ftraceSource != NULL && !ftraceSource->isDone()) ||
 	       !primarySource->isDone()) {
 		sem_wait(&senderSem);
 
 		externalSource->write(sender);
 		if (userSpaceSource != NULL) {
 			userSpaceSource->write(sender);
-		}
-		if (ftraceSource != NULL) {
-			ftraceSource->write(sender);
 		}
 		primarySource->write(sender);
 	}
@@ -213,9 +209,6 @@ void Child::endSession() {
 	if (userSpaceSource != NULL) {
 		userSpaceSource->interrupt();
 	}
-	if (ftraceSource != NULL) {
-		ftraceSource->interrupt();
-	}
 	sem_post(&haltPipeline);
 }
 
@@ -240,7 +233,7 @@ void Child::run() {
 	{ ConfigurationXML configuration; }
 
 	// Set up the driver; must be done after gSessionData->mPerfCounterType[] is populated
-	if (!gSessionData->perf.isSetup()) {
+	if (!gSessionData->mPerf.isSetup()) {
 		primarySource = new DriverSource(&senderSem, &startProfile);
 	} else {
 		primarySource = new PerfSource(&senderSem, &startProfile);
@@ -279,25 +272,24 @@ void Child::run() {
 		free(xmlString);
 	}
 
-	if (gSessionData->kmod.isMaliCapture() && (gSessionData->mSampleRate == 0)) {
+	if (gSessionData->mKmod.isMaliCapture() && (gSessionData->mSampleRate == 0)) {
 		logg->logError("Mali counters are not supported with Sample Rate: None.");
 		handleException();
 	}
 
 	// Initialize ftrace source before child as it's slow and dependens on nothing else
 	// If initialized later, us gator with ftrace has time sync issues
-	if (gSessionData->ftraceDriver.countersEnabled()) {
-		ftraceSource = new FtraceSource(&senderSem);
-		if (!ftraceSource->prepare()) {
-			logg->logError("Unable to prepare userspace source for capture");
-			handleException();
-		}
-		ftraceSource->start();
+	// Must be initialized before senderThread is started as senderThread checks externalSource
+	externalSource = new ExternalSource(&senderSem);
+	if (!externalSource->prepare()) {
+		logg->logError("Unable to prepare external source for capture");
+		handleException();
 	}
+	externalSource->start();
 
 	// Must be after session XML is parsed
 	if (!primarySource->prepare()) {
-		if (gSessionData->perf.isSetup()) {
+		if (gSessionData->mPerf.isSetup()) {
 			logg->logError("Unable to communicate with the perf API, please ensure that CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER are enabled. Please refer to README_Streamline.txt for more information.");
 		} else {
 			logg->logError("Unable to prepare gator driver for capture");
@@ -307,14 +299,6 @@ void Child::run() {
 
 	// Sender thread shall be halted until it is signaled for one shot mode
 	sem_init(&haltPipeline, 0, gSessionData->mOneShot ? 0 : 2);
-
-	// Must be initialized before senderThread is started as senderThread checks externalSource
-	externalSource = new ExternalSource(&senderSem);
-	if (!externalSource->prepare()) {
-		logg->logError("Unable to prepare external source for capture");
-		handleException();
-	}
-	externalSource->start();
 
 	// Create the duration, stop, and sender threads
 	bool thread_creation_success = true;
@@ -327,8 +311,8 @@ void Child::run() {
 	}
 
 	bool startUSSource = false;
-	for (int i = 0; i < ARRAY_LENGTH(gSessionData->usDrivers); ++i) {
-		if (gSessionData->usDrivers[i]->countersEnabled()) {
+	for (int i = 0; i < ARRAY_LENGTH(gSessionData->mUsDrivers); ++i) {
+		if (gSessionData->mUsDrivers[i]->countersEnabled()) {
 			startUSSource = true;
 		}
 	}
@@ -360,9 +344,6 @@ void Child::run() {
 	primarySource->run();
 
 	// Wait for the other threads to exit
-	if (ftraceSource != NULL) {
-		ftraceSource->join();
-	}
 	if (userSpaceSource != NULL) {
 		userSpaceSource->join();
 	}
@@ -384,7 +365,6 @@ void Child::run() {
 
 	logg->logMessage("Profiling ended.");
 
-	delete ftraceSource;
 	delete userSpaceSource;
 	delete externalSource;
 	delete primarySource;

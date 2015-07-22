@@ -80,7 +80,7 @@ static void notify(void)
 
 static unsigned int mem_event;
 static void wq_sched_handler(struct work_struct *wsptr);
-DECLARE_WORK(work, wq_sched_handler);
+static DECLARE_WORK(work, wq_sched_handler);
 static struct timer_list meminfo_wake_up_timer;
 static void meminfo_wake_up_handler(unsigned long unused_data);
 
@@ -187,7 +187,7 @@ static int gator_events_meminfo_start(void)
 	if (IS_ERR(kthread_run(gator_meminfo_func, NULL, "gator_meminfo")))
 		goto kthread_run_exit;
 #else
-	setup_timer(&meminfo_wake_up_timer, meminfo_wake_up_handler, 0);
+	setup_deferrable_timer_on_stack(&meminfo_wake_up_timer, meminfo_wake_up_handler, 0);
 #endif
 
 	return 0;
@@ -313,7 +313,7 @@ static void meminfo_wake_up_handler(unsigned long unused_data)
 
 #endif
 
-static int gator_events_meminfo_read(long long **buffer)
+static int gator_events_meminfo_read(long long **buffer, bool sched_switch)
 {
 #if !USE_THREAD
 	static unsigned int last_mem_event;
@@ -446,6 +446,7 @@ static int gator_events_meminfo_read_proc(long long **buffer, struct task_struct
 }
 
 static struct gator_interface gator_events_meminfo_interface = {
+	.name = "meminfo",
 	.create_files = gator_events_meminfo_create_files,
 	.start = gator_events_meminfo_start,
 	.stop = gator_events_meminfo_stop,

@@ -34,15 +34,15 @@ bool UserSpaceSource::prepare() {
 void UserSpaceSource::run() {
 	prctl(PR_SET_NAME, (unsigned long)&"gatord-counters", 0, 0, 0);
 
-	for (int i = 0; i < ARRAY_LENGTH(gSessionData->usDrivers); ++i) {
-		gSessionData->usDrivers[i]->start();
+	for (int i = 0; i < ARRAY_LENGTH(gSessionData->mUsDrivers); ++i) {
+		gSessionData->mUsDrivers[i]->start();
 	}
 
 	int64_t monotonicStarted = 0;
 	while (monotonicStarted <= 0 && gSessionData->mSessionIsActive) {
 		usleep(10);
 
-		if (gSessionData->perf.isSetup()) {
+		if (gSessionData->mPerf.isSetup()) {
 			monotonicStarted = gSessionData->mMonotonicStarted;
 		} else {
 			if (DriverSource::readInt64Driver("/dev/gator/started", &monotonicStarted) == -1) {
@@ -64,8 +64,8 @@ void UserSpaceSource::run() {
 		}
 
 		if (mBuffer.eventHeader(currTime)) {
-			for (int i = 0; i < ARRAY_LENGTH(gSessionData->usDrivers); ++i) {
-				gSessionData->usDrivers[i]->read(&mBuffer);
+			for (int i = 0; i < ARRAY_LENGTH(gSessionData->mUsDrivers); ++i) {
+				gSessionData->mUsDrivers[i]->read(&mBuffer);
 			}
 			// Only check after writing all counters so that time and corresponding counters appear in the same frame
 			mBuffer.check(currTime);

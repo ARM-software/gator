@@ -433,7 +433,8 @@ static unsigned int num_hardware_counters_enabled;
 static struct mali_counter *counters;
 
 /* An array used to return the data we recorded as key,value pairs */
-static int *counter_dump;
+static long long *counter_dump;
+static uint64_t last_read_time;
 
 extern struct mali_counter mali_activity[3];
 
@@ -517,31 +518,6 @@ static void clean_symbols(void)
 #endif
 }
 
-/**
- * Determines whether a read should take place
- * @param current_time The current time, obtained from getnstimeofday()
- * @param prev_time_s The number of seconds at the previous read attempt.
- * @param next_read_time_ns The time (in ns) when the next read should be allowed.
- *
- * Note that this function has been separated out here to allow it to be tested.
- */
-static int is_read_scheduled(const struct timespec *current_time, u32 *prev_time_s, s32 *next_read_time_ns)
-{
-	/* If the current ns count rolls over a second, roll the next read time too. */
-	if (current_time->tv_sec != *prev_time_s)
-		*next_read_time_ns = *next_read_time_ns - NSEC_PER_SEC;
-
-	/* Abort the read if the next read time has not arrived. */
-	if (current_time->tv_nsec < *next_read_time_ns)
-		return 0;
-
-	/* Set the next read some fixed time after this one, and update the read timestamp. */
-	*next_read_time_ns = current_time->tv_nsec + READ_INTERVAL_NSEC;
-
-	*prev_time_s = current_time->tv_sec;
-	return 1;
-}
-
 static int start(void)
 {
 #if MALI_DDK_GATOR_API_VERSION != 3
@@ -551,6 +527,8 @@ static int start(void)
 	mali_error err;
 #endif
 	int cnt;
+
+	last_read_time = 0;
 
 #if MALI_DDK_GATOR_API_VERSION == 3
 	/* Setup HW counters */
@@ -620,14 +598,14 @@ static int start(void)
 
 		/* If we already got a context, fail */
 		if (kbcontext) {
-			pr_debug("gator: Mali-Midgard: error context already present\n");
+			pr_err("gator: Mali-Midgard: error context already present\n");
 			goto out;
 		}
 
 		/* kbcontext will only be valid after all the Mali symbols are loaded successfully */
 		kbcontext = kbase_create_context_symbol(kbdevice);
 		if (!kbcontext) {
-			pr_debug("gator: Mali-Midgard: error creating kbase context\n");
+			pr_err("gator: Mali-Midgard: error creating kbase context\n");
 			goto out;
 		}
 
@@ -650,7 +628,7 @@ static int start(void)
 		kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 4096, &kernel_dump_buffer_handle);
 #endif
 		if (!kernel_dump_buffer) {
-			pr_debug("gator: Mali-Midgard: error trying to allocate va\n");
+			pr_err("gator: Mali-Midgard: error trying to allocate va\n");
 			goto destroy_context;
 		}
 
@@ -665,7 +643,7 @@ static int start(void)
 		/* Use kbase API to enable hardware counters and provide dump buffer */
 		err = kbase_instr_hwcnt_enable_symbol(kbcontext, &setup);
 		if (err != MALI_ERROR_NONE) {
-			pr_debug("gator: Mali-Midgard: can't setup hardware counters\n");
+			pr_err("gator: Mali-Midgard: can't setup hardware counters\n");
 			goto free_buffer;
 		}
 		pr_debug("gator: Mali-Midgard: hardware counters enabled\n");
@@ -813,68 +791,80 @@ static int read_counter(const int cnt, const int len, const struct mali_counter 
 	return 2;
 }
 
-static int read(int **buffer, bool sched_switch)
+static int read(long long **buffer, bool sched_switch)
 {
 	int cnt;
 	int len = 0;
 	uint32_t success;
 
-	struct timespec current_time;
-	static u32 prev_time_s;
-	static s32 next_read_time_ns;
+	uint64_t curr_time;
 
 	if (!on_primary_core() || sched_switch)
-		return 0;
-
-	getnstimeofday(&current_time);
-
-	/*
-	 * Discard reads unless a respectable time has passed. This
-	 * reduces the load on the GPU without sacrificing accuracy on
-	 * the Streamline display.
-	 */
-	if (!is_read_scheduled(&current_time, &prev_time_s, &next_read_time_ns))
 		return 0;
 
 	/*
 	 * Report the HW counters
 	 * Only process hardware counters if at least one of the hardware counters is enabled.
 	 */
-	if (num_hardware_counters_enabled > 0) {
+	if (num_hardware_counters_enabled <= 0)
+		return 0;
+
+	curr_time = gator_get_time();
+
+	/*
+	 * Discard reads unless a respectable time has passed. This
+	 * reduces the load on the GPU without sacrificing accuracy on
+	 * the Streamline display.
+	 */
+	if (curr_time - last_read_time < READ_INTERVAL_NSEC)
+		return 0;
+
 #if MALI_DDK_GATOR_API_VERSION == 3
-		if (!handles)
-			return -1;
+	if (!handles)
+		return -1;
 
-		/* Mali symbols can be called safely since a kbcontext is valid */
-		if (kbase_gator_instr_hwcnt_dump_complete_symbol(handles, &success)) {
+	/* Mali symbols can be called safely since a kbcontext is valid */
+	if (kbase_gator_instr_hwcnt_dump_complete_symbol(handles, &success)) {
 #else
-		if (!kbcontext)
-			return -1;
+	if (!kbcontext)
+		return -1;
 
-		/* Mali symbols can be called safely since a kbcontext is valid */
-		if (kbase_instr_hwcnt_dump_complete_symbol(kbcontext, &success)) {
+	/* Mali symbols can be called safely since a kbcontext is valid */
+	if (kbase_instr_hwcnt_dump_complete_symbol(kbcontext, &success)) {
 #endif
-			kbase_device_busy = false;
+		kbase_device_busy = false;
 
-			if (success) {
-				/* Cycle through hardware counters and accumulate totals */
-				for (cnt = 0; cnt < number_of_hardware_counters; cnt++) {
-					const struct mali_counter *counter = &counters[cnt];
+		/*
+		 * If last_read_time is zero, then this result is from a previous
+		 * capture or in error.
+		 */
+		if (success && last_read_time > 0) {
+			/* Backdate these events to when they were requested */
+			counter_dump[len++] = 0;
+			counter_dump[len++] = last_read_time;
 
-					if (counter->enabled)
-						len += read_counter(cnt, len, counter);
-				}
+			/* Cycle through hardware counters and accumulate totals */
+			for (cnt = 0; cnt < number_of_hardware_counters; cnt++) {
+				const struct mali_counter *counter = &counters[cnt];
+
+				if (counter->enabled)
+					len += read_counter(cnt, len, counter);
 			}
-		}
 
-		if (!kbase_device_busy) {
-			kbase_device_busy = true;
-#if MALI_DDK_GATOR_API_VERSION == 3
-			kbase_gator_instr_hwcnt_dump_irq_symbol(handles);
-#else
-			kbase_instr_hwcnt_dump_irq_symbol(kbcontext);
-#endif
+			/* Restore the timestamp */
+			counter_dump[len++] = 0;
+			counter_dump[len++] = curr_time;
 		}
+	}
+
+	if (!kbase_device_busy) {
+		kbase_device_busy = true;
+		last_read_time = curr_time;
+#if MALI_DDK_GATOR_API_VERSION == 3
+		kbase_gator_instr_hwcnt_dump_irq_symbol(handles);
+#else
+		kbase_instr_hwcnt_dump_irq_symbol(kbcontext);
+#endif
 	}
 
 	/* Update the buffer */
@@ -920,7 +910,7 @@ static void shutdown(void)
 	hardware_counter_names = NULL;
 	if (kbase_gator_hwcnt_term_names_symbol != NULL) {
 		kbase_gator_hwcnt_term_names_symbol();
-		pr_err("Released symbols\n");
+		pr_debug("gator: Released symbols\n");
 	}
 
 	SYMBOL_CLEANUP(kbase_gator_hwcnt_term_names);
@@ -928,11 +918,12 @@ static void shutdown(void)
 }
 
 static struct gator_interface gator_events_mali_midgard_interface = {
+	.name = "mali_midgard_hw",
 	.shutdown = shutdown,
 	.create_files = create_files,
 	.start = start,
 	.stop = stop,
-	.read = read
+	.read64 = read
 };
 
 int gator_events_mali_midgard_hw_init(void)
@@ -969,7 +960,7 @@ int gator_events_mali_midgard_hw_init(void)
 #endif
 
 	counters = kmalloc(sizeof(*counters)*number_of_hardware_counters, GFP_KERNEL);
-	counter_dump = kmalloc(sizeof(*counter_dump)*number_of_hardware_counters*2, GFP_KERNEL);
+	counter_dump = kmalloc(sizeof(*counter_dump)*number_of_hardware_counters*2 + 4, GFP_KERNEL);
 
 	gator_mali_initialise_counters(mali_activity, ARRAY_SIZE(mali_activity));
 	gator_mali_initialise_counters(counters, number_of_hardware_counters);

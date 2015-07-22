@@ -20,8 +20,8 @@
 #include <unistd.h>
 
 #include "AnnotateListener.h"
-#include "CCNDriver.h"
 #include "Child.h"
+#include "DriverSource.h"
 #include "EventsXML.h"
 #include "Logging.h"
 #include "Monitor.h"
@@ -297,15 +297,10 @@ static bool setupFilesystem(char* module) {
 		}
 
 		// Load driver
-		bool success = init_module(location);
-		if (!success) {
-			logg->logMessage("init_module failed, trying insmod");
-			snprintf(command, sizeof(command), "insmod %s >/dev/null 2>&1", location);
-			if (system(command) != 0) {
-				logg->logMessage("Unable to load gator.ko driver with command: %s", command);
-				logg->logError("Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
-				handleException();
-			}
+		if (!init_module(location)) {
+			logg->logMessage("Unable to load gator.ko driver with command: %s", command);
+			logg->logError("Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
+			handleException();
 		}
 
 		if (mountGatorFS() == -1) {
@@ -323,10 +318,7 @@ static int shutdownFilesystem() {
 	}
 	if (driverRunningAtStart == false) {
 		if (syscall(__NR_delete_module, "gator", O_NONBLOCK) != 0) {
-			logg->logMessage("delete_module failed, trying rmmod");
-			if (system("rmmod gator >/dev/null 2>&1") != 0) {
-				return -1;
-			}
+			return -1;
 		}
 	}
 
@@ -496,15 +488,12 @@ int main(int argc, char** argv) {
 	//   e.g. it may not be the group leader when launched as 'sudo gatord'
 	setsid();
 
-  // Set up global thread-safe logging
+	// Set up global thread-safe logging
 	logg = new Logging(hasDebugFlag(argc, argv));
 	// Global data class
 	gSessionData = new SessionData();
 	// Set up global utility class
 	util = new OlyUtility();
-
-	// Initialize drivers
-	new CCNDriver();
 
 	prctl(PR_SET_NAME, (unsigned long)&"gatord-main", 0, 0, 0);
 	pthread_mutex_init(&numSessions_mutex, NULL);
@@ -535,9 +524,11 @@ int main(int argc, char** argv) {
 	}
 
 	// Call before setting up the SIGCHLD handler, as system() spawns child processes
-	if (!setupFilesystem(cmdline.module)) {
+	if (setupFilesystem(cmdline.module)) {
+		DriverSource::checkVersion();
+	} else {
 		logg->logMessage("Unable to set up gatorfs, trying perf");
-		if (!gSessionData->perf.setup()) {
+		if (!gSessionData->mPerf.setup()) {
 			logg->logError(
 				       "Unable to locate gator.ko driver:\n"
 				       "  >>> gator.ko should be co-located with gatord in the same directory\n"

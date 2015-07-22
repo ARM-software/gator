@@ -36,5 +36,6 @@ EXTRA_CFLAGS += -I$(KBASE_DIR)/ \
                 -I$(DDK_DIR)/include \
                 -I$(KBASE_DIR)/osk/src/linux/include \
                 -I$(KBASE_DIR)/platform_dummy \
-                -I$(KBASE_DIR)/src
+                -I$(KBASE_DIR)/src \
+                -Idrivers/staging/android \
 

@@ -77,8 +77,8 @@ int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 /******************************************************************************
  * Tracepoints
  ******************************************************************************/
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
-#	error Kernels prior to 2.6.32 not supported
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#	error Kernels prior to 3.4.0 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 #	define GATOR_DEFINE_PROBE(probe_name, proto) \
 		static void probe_##probe_name(PARAMS(proto))
@@ -103,10 +103,15 @@ int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 		tracepoint_probe_unregister(gator_tracepoint_##probe_name, probe_##probe_name, NULL)
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
+#define setup_deferrable_timer_on_stack setup_timer
+#endif
+
 /******************************************************************************
  * Events
  ******************************************************************************/
 struct gator_interface {
+	const char *const name;
 	/* Complementary function to init */
 	void (*shutdown)(void);
 	int (*create_files)(struct super_block *sb, struct dentry *root);
@@ -120,11 +125,12 @@ struct gator_interface {
 	/* called in process context but may not be running on core 'cpu' */
 	void (*offline_dispatch)(int cpu, bool migrate);
 	int (*read)(int **buffer, bool sched_switch);
-	int (*read64)(long long **buffer);
+	int (*read64)(long long **buffer, bool sched_switch);
 	int (*read_proc)(long long **buffer, struct task_struct *);
 	struct list_head list;
 };
 
+u64 gator_get_time(void);
 int gator_events_install(struct gator_interface *interface);
 int gator_events_get_key(void);
 u32 gator_cpuid(void);

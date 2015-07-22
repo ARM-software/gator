@@ -144,6 +144,7 @@ static int gator_events_irq_read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_irq_interface = {
+	.name = "irq",
 	.create_files = gator_events_irq_create_files,
 	.online = gator_events_irq_online,
 	.start = gator_events_irq_start,

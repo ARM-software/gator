@@ -10,6 +10,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
@@ -23,12 +24,11 @@
 #include "SessionData.h"
 
 static const int schedSwitchKey = getEventKey();
-static const int clockKey = getEventKey();
 
 #define DEFAULT_PEA_ARGS(pea, additionalSampleType) \
 	pea.size = sizeof(pea); \
 	/* Emit time, read_format below, group leader id, and raw tracepoint info */ \
-	pea.sample_type = (gSessionData->perf.getLegacySupport() \
+	pea.sample_type = (gSessionData->mPerf.getLegacySupport() \
 			   ? PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_ID \
 			   : PERF_SAMPLE_IDENTIFIER ) | PERF_SAMPLE_TIME | additionalSampleType; \
 	/* Emit emit value in group format */ \
@@ -132,7 +132,7 @@ bool PerfGroup::createCpuGroup(const uint64_t currTime, Buffer *const buffer) {
 		return false;
 	}
 
-	if (gSessionData->mSampleRate > 0 && !gSessionData->mIsEBS && doAdd(currTime, buffer, clockKey, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, 1000000000UL / gSessionData->mSampleRate, PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ, PERF_GROUP_PER_CPU | PERF_GROUP_CPU) < 0) {
+	if (gSessionData->mSampleRate > 0 && !gSessionData->mIsEBS && doAdd(currTime, buffer, INT_MAX-PERF_TYPE_HARDWARE, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, 1000000000UL / gSessionData->mSampleRate, PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ, PERF_GROUP_PER_CPU | PERF_GROUP_CPU) < 0) {
 		return false;
 	}
 
@@ -152,8 +152,7 @@ bool PerfGroup::add(const uint64_t currTime, Buffer *const buffer, const int key
 		} else {
 			// Non-CPU PMUs are sampled every 100ms for Sample Rate: None and EBS, otherwise they would never be sampled
 			const uint64_t timeout = gSessionData->mSampleRate > 0 && !gSessionData->mIsEBS ? 1000000000UL / gSessionData->mSampleRate : 100000000UL;
-			// PERF_SAMPLE_TID | PERF_SAMPLE_IP aren't helpful on non-CPU or 'uncore' PMUs - which CPU is the right one to sample? But removing it causes problems, remove it later.
-			mLeaders[effectiveType] = doAdd(currTime, buffer, clockKey, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, timeout, PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ, PERF_GROUP_LEADER);
+			mLeaders[effectiveType] = doAdd(currTime, buffer, INT_MAX-effectiveType, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, timeout, PERF_SAMPLE_READ, PERF_GROUP_LEADER);
 			if (mLeaders[effectiveType] < 0) {
 				return false;
 			}
@@ -194,16 +193,12 @@ int PerfGroup::prepareCPU(const int cpu, Monitor *const monitor) {
 				// The core is offline
 				return PG_CPU_OFFLINE;
 			}
-#ifndef USE_STRICTER_CHECK
-			continue;
-#else
 			if (errno == ENOENT) {
 				// This event doesn't apply to this CPU but should apply to a different one, ex bL
 				continue;
 			}
 			logg->logMessage("perf_event_open failed");
 			return PG_FAILURE;
-#endif
 		}
 
 		if (!mPb->useFd(cpu, mFds[offset])) {
@@ -236,7 +231,7 @@ static bool readAndSend(const uint64_t currTime, Buffer *const buffer, const int
 int PerfGroup::onlineCPU(const uint64_t currTime, const int cpu, const bool enable, Buffer *const buffer) {
 	bool addedEvents = false;
 
-	if (!gSessionData->perf.getLegacySupport()) {
+	if (!gSessionData->mPerf.getLegacySupport()) {
 		int idCount = 0;
 		int coreKeys[ARRAY_LENGTH(mKeys)];
 		__u64 ids[ARRAY_LENGTH(mKeys)];

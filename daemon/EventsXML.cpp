@@ -50,7 +50,7 @@ mxml_node_t *EventsXML::getTree() {
 	// Load the provided or default events xml
 	if (gSessionData->mEventsXMLPath) {
 		strncpy(path, gSessionData->mEventsXMLPath, PATH_MAX);
-		fl = fopen(path, "r");
+		fl = fopen_cloexec(path, "r");
 		if (fl) {
 			xml = mxmlLoadFile(NULL, fl, MXML_NO_CALLBACK);
 			fclose(fl);
@@ -63,7 +63,7 @@ mxml_node_t *EventsXML::getTree() {
 
 	// Append additional events XML
 	if (gSessionData->mEventsXMLAppend) {
-		fl = fopen(gSessionData->mEventsXMLAppend, "r");
+		fl = fopen_cloexec(gSessionData->mEventsXMLAppend, "r");
 		if (fl == NULL) {
 			logg->logError("Unable to open additional events XML %s", gSessionData->mEventsXMLAppend);
 			handleException();

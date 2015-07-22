@@ -68,8 +68,10 @@ int ConfigurationXML::parse(const char* configurationXML) {
 	mxml_node_t *tree, *node;
 	int ret;
 
-	// clear counter overflow
-	gSessionData->mCounterOverflow = 0;
+	if (gSessionData->mCountersError != NULL) {
+		free(gSessionData->mCountersError);
+		gSessionData->mCountersError = NULL;
+	}
 	gSessionData->mIsEBS = false;
 	mIndex = 0;
 
@@ -97,6 +99,14 @@ int ConfigurationXML::parse(const char* configurationXML) {
 	}
 
 	mxmlDelete(tree);
+
+	if (gSessionData->mCountersError == NULL && mIndex > MAX_PERFORMANCE_COUNTERS) {
+		if (asprintf(&gSessionData->mCountersError, "Only %i performance counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, mIndex) <= 0) {
+			logg->logError("asprintf failed");
+			handleException();
+		}
+	}
+	gSessionData->mCcnDriver.validateCounters();
 
 	return ret;
 }
@@ -149,7 +159,6 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	// handle all other performance counters
 	if (mIndex >= MAX_PERFORMANCE_COUNTERS) {
 		mIndex++;
-		gSessionData->mCounterOverflow = mIndex;
 		return;
 	}
 

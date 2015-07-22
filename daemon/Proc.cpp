@@ -72,12 +72,7 @@ static const char *readProcExe(DynBuf *const printb, const int pid, const int ti
 	const int err = b->readlink(printb->getBuf());
 	const char *image;
 	if (err == 0) {
-		image = strrchr(b->getBuf(), '/');
-		if (image == NULL) {
-			image = b->getBuf();
-		} else {
-			++image;
-		}
+		image = b->getBuf();
 	} else if (err == -ENOENT) {
 		// readlink /proc/[pid]/exe returns ENOENT for kernel threads
 		image = "\0";
@@ -88,7 +83,7 @@ static const char *readProcExe(DynBuf *const printb, const int pid, const int ti
 
 	// Android apps are run by app_process but the cmdline is changed to reference the actual app name
 	// On 64-bit android app_process can be app_process32 or app_process64
-	if (strncmp(image, APP_PROCESS, sizeof(APP_PROCESS) - 1) != 0) {
+	if (strstr(image, APP_PROCESS) == NULL) {
 		return image;
 	}
 

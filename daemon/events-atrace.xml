@@ -1,0 +1,19 @@
+  <category name="Atrace">
+    <event counter="atrace_graphics" flag="0x2" title="Atrace" name="Graphics" description="Graphics"/>
+    <event counter="atrace_input" flag="0x4" title="Atrace" name="Input" description="Input"/>
+    <event counter="atrace_view" flag="0x8" title="Atrace" name="View" description="View"/>
+    <event counter="atrace_webview" flag="0x10" title="Atrace" name="Webview" description="Webview"/>
+    <event counter="atrace_window_manager" flag="0x20" title="Atrace" name="Window manager" description="Window manager"/>
+    <event counter="atrace_activity_manager" flag="0x40" title="Atrace" name="Activity manager" description="Activity manager"/>
+    <event counter="atrace_sync_manager" flag="0x80" title="Atrace" name="Sync manager" description="Sync manager"/>
+    <event counter="atrace_audio" flag="0x100" title="Atrace" name="Audio" description="Audio"/>
+    <event counter="atrace_video" flag="0x200" title="Atrace" name="Video" description="Video"/>
+    <event counter="atrace_camera" flag="0x400" title="Atrace" name="Camera" description="Camera"/>
+    <event counter="atrace_hal" flag="0x800" title="Atrace" name="Hal" description="Hal"/>
+    <event counter="atrace_app" flag="0x1000" title="Atrace" name="App" description="App"/>
+    <event counter="atrace_resources" flag="0x2000" title="Atrace" name="Resources" description="Resources"/>
+    <event counter="atrace_dalvik" flag="0x4000" title="Atrace" name="Dalvik" description="Dalvik"/>
+    <event counter="atrace_rs" flag="0x8000" title="Atrace" name="Rs" description="Rs"/>
+    <event counter="atrace_bionic" flag="0x10000" title="Atrace" name="Bionic" description="Bionic"/>
+    <event counter="atrace_power" flag="0x20000" title="Atrace" name="Power" description="Power"/>
+  </category>

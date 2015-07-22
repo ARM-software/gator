@@ -58,6 +58,7 @@ MaliVideoDriver::~MaliVideoDriver() {
 }
 
 void MaliVideoDriver::readEvents(mxml_node_t *const xml) {
+	// Always create the counters as /dev/mv500 may show up after gatord starts
 	mxml_node_t *node = xml;
 	while (true) {
 		node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
@@ -82,10 +83,20 @@ void MaliVideoDriver::readEvents(mxml_node_t *const xml) {
 
 int MaliVideoDriver::writeCounters(mxml_node_t *root) const {
 	if (access("/dev/mv500", F_OK) != 0) {
+		// Don't show the counters in counter configuration
 		return 0;
 	}
 
 	return super::writeCounters(root);
+}
+
+bool MaliVideoDriver::claimCounter(const Counter &counter) const {
+	if (access("/dev/mv500", F_OK) != 0) {
+		// Don't add the counters to captured XML
+		return 0;
+	}
+
+	return super::claimCounter(counter);
 }
 
 void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char *const buf, const size_t bufsize, int &pos) {
@@ -102,20 +113,6 @@ void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char *const
 			Buffer::packInt(buf, bufsize, pos, counter->getId());
 		}
 	}
-}
-
-static bool writeAll(const int mveUds, const char *const buf, const int pos) {
-	int written = 0;
-	while (written < pos) {
-		size_t bytes = ::write(mveUds, buf + written, pos - written);
-		if (bytes <= 0) {
-			logg->logMessage("write failed");
-			return false;
-		}
-		written += bytes;
-	}
-
-	return true;
 }
 
 bool MaliVideoDriver::start(const int mveUds) {
@@ -146,7 +143,7 @@ bool MaliVideoDriver::start(const int mveUds) {
 	// data_protocol_version
 	Buffer::packInt(buf, sizeof(buf), pos, 1);
 	// sample_rate - convert samples/second to ms/sample
-	Buffer::packInt(buf, sizeof(buf), pos, 1000/gSessionData->mSampleRate);
+	Buffer::packInt(buf, sizeof(buf), pos, gSessionData->mSampleRate/1000);
 	// live_rate - convert ns/flush to ms/flush
 	Buffer::packInt(buf, sizeof(buf), pos, gSessionData->mLiveRate/1000000);
 
@@ -183,7 +180,6 @@ void MaliVideoDriver::stop(const int mveUds) {
 	buf[pos++] = 'T';
 	buf[pos++] = 'O';
 	buf[pos++] = 'P';
-	marshalEnable(MVCT_COUNTER, buf, sizeof(buf), pos);
 
 	writeAll(mveUds, buf, pos);
 

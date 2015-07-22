@@ -25,6 +25,6 @@
     <event counter="ARM_Mali-V500_evn2" title="MVE-V500 Frames" name="Frame Processed" description="Generated when the MVE has finished processing a frame"/>
     <event counter="ARM_Mali-V500_evn3" title="MVE-V500 Output" name="Output buffer received" description="Generated when an an output buffer is returned to us from the MVE"/>
     <event counter="ARM_Mali-V500_evn4" title="MVE-V500 Input" name="Input buffer received" description="Generated when we an input buffer is returned to us from the MVE"/>
-    <event counter="ARM_Mali-V500_act0" title="MVE-V500 Parsed" name="Activity" class="activity" activity1="activity" activity_color1="0x000000ff" rendering_type="bar" average_selection="yes" average_cores="yes" percentage="yes" cores="8" description="Mali-V500 Activity"/>
-    <event counter="ARM_Mali-V500_act1" title="MVE-V500 Piped" name="Activity" class="activity" activity1="activity" activity_color1="0x0000ff00" rendering_type="bar" average_selection="yes" average_cores="yes" percentage="yes" cores="8" description="Mali-V500 Activity"/>
+    <event counter="ARM_Mali-V500_act0" title="MVE-V500 Parsed" name="Activity" class="activity" activity1="activity" activity_color1="0x000000ff" rendering_type="bar" average_selection="yes" average_cores="yes" percentage="yes" per_cpu="yes" cores="8" description="Mali-V500 Activity"/>
+    <event counter="ARM_Mali-V500_act1" title="MVE-V500 Piped" name="Activity" class="activity" activity1="activity" activity_color1="0x0000ff00" rendering_type="bar" average_selection="yes" average_cores="yes" percentage="yes" per_cpu="yes" cores="8" description="Mali-V500 Activity"/>
   </category>

@@ -146,6 +146,10 @@ static unsigned int accumulators_data[NUMBER_OF_ACCUMULATORS];
 /* Hold the previous timestamp, used to calculate the sample interval. */
 static struct timespec prev_timestamp;
 
+static unsigned long long previous_shader_bitmask;
+static unsigned long long previous_tiler_bitmask;
+static unsigned long long previous_l2_bitmask;
+
 /**
  * Returns the timespan (in microseconds) between the two specified timestamps.
  *
@@ -208,10 +212,6 @@ GATOR_DEFINE_PROBE(mali_pm_status, TP_PROTO(unsigned int event_id, unsigned long
 #define TILER_PRESENT_LO        0x110	/* (RO) Tiler core present bitmap, low word */
 #define L2_PRESENT_LO           0x120	/* (RO) Level 2 cache present bitmap, low word */
 #define BIT_AT(value, pos) ((value >> pos) & 1)
-
-	static unsigned long long previous_shader_bitmask;
-	static unsigned long long previous_tiler_bitmask;
-	static unsigned long long previous_l2_bitmask;
 
 	switch (event_id) {
 	case SHADER_PRESENT_LO:
@@ -324,27 +324,27 @@ static int create_files(struct super_block *sb, struct dentry *root)
 static int register_tracepoints(void)
 {
 	if (GATOR_REGISTER_TRACE(mali_pm_status)) {
-		pr_debug("gator: Mali-Midgard: mali_pm_status tracepoint failed to activate\n");
+		pr_err("gator: Mali-Midgard: mali_pm_status tracepoint failed to activate\n");
 		return 0;
 	}
 
 	if (GATOR_REGISTER_TRACE(mali_page_fault_insert_pages)) {
-		pr_debug("gator: Mali-Midgard: mali_page_fault_insert_pages tracepoint failed to activate\n");
+		pr_err("gator: Mali-Midgard: mali_page_fault_insert_pages tracepoint failed to activate\n");
 		return 0;
 	}
 
 	if (GATOR_REGISTER_TRACE(mali_mmu_as_in_use)) {
-		pr_debug("gator: Mali-Midgard: mali_mmu_as_in_use tracepoint failed to activate\n");
+		pr_err("gator: Mali-Midgard: mali_mmu_as_in_use tracepoint failed to activate\n");
 		return 0;
 	}
 
 	if (GATOR_REGISTER_TRACE(mali_mmu_as_released)) {
-		pr_debug("gator: Mali-Midgard: mali_mmu_as_released tracepoint failed to activate\n");
+		pr_err("gator: Mali-Midgard: mali_mmu_as_released tracepoint failed to activate\n");
 		return 0;
 	}
 
 	if (GATOR_REGISTER_TRACE(mali_total_alloc_pages_change)) {
-		pr_debug("gator: Mali-Midgard: mali_total_alloc_pages_change tracepoint failed to activate\n");
+		pr_err("gator: Mali-Midgard: mali_total_alloc_pages_change tracepoint failed to activate\n");
 		return 0;
 	}
 
@@ -362,6 +362,10 @@ static int start(void)
 {
 	unsigned int cnt;
 	mali_profiling_control_type *mali_control;
+
+	previous_shader_bitmask = 0;
+	previous_tiler_bitmask = 0;
+	previous_l2_bitmask = 0;
 
 	/* Clean all data for the next capture */
 	for (cnt = 0; cnt < NUMBER_OF_TIMELINE_EVENTS; cnt++) {
@@ -546,6 +550,7 @@ static int read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_mali_midgard_interface = {
+	.name = "mali_midgard",
 	.create_files = create_files,
 	.start = start,
 	.stop = stop,

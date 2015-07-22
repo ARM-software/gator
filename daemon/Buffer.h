@@ -36,11 +36,12 @@ public:
 
 	int bytesAvailable() const;
 	int contiguousSpaceAvailable() const;
+	bool hasUncommittedMessages() const;
 	void commit(const uint64_t time, const bool force = false);
 	void check(const uint64_t time);
 
 	// Summary messages
-	void summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname);
+	void summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname, const long pageSize);
 	void coreName(const uint64_t currTime, const int core, const int cpuid, const char *const name);
 
 	// Block Counter messages

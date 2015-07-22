@@ -142,6 +142,7 @@ static int gator_events_block_read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_block_interface = {
+	.name = "block",
 	.create_files = gator_events_block_create_files,
 	.start = gator_events_block_start,
 	.stop = gator_events_block_stop,

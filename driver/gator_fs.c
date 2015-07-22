@@ -18,7 +18,7 @@
 
 #define gatorfs_MAGIC 0x24051020
 #define TMPBUFSIZE 50
-DEFINE_SPINLOCK(gatorfs_lock);
+static DEFINE_SPINLOCK(gatorfs_lock);
 
 static struct inode *gatorfs_get_inode(struct super_block *sb, int mode)
 {

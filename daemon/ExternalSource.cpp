@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "Child.h"
+#include "DriverSource.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
@@ -26,25 +27,10 @@ static const char MALI_VIDEO_V1[] = "MALI_VIDEO 1\n";
 static const char MALI_GRAPHICS[] = "\0mali_thirdparty_server";
 static const char MALI_GRAPHICS_STARTUP[] = "\0mali_thirdparty_client";
 static const char MALI_GRAPHICS_V1[] = "MALI_GRAPHICS 1\n";
+static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
+static const char FTRACE_V1[] = "FTRACE 1\n";
 
-static bool setNonblock(const int fd) {
-	int flags;
-
-	flags = fcntl(fd, F_GETFL);
-	if (flags < 0) {
-		logg->logMessage("fcntl getfl failed");
-		return false;
-	}
-
-	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
-		logg->logMessage("fcntl setfl failed");
-		return false;
-	}
-
-	return true;
-}
-
-ExternalSource::ExternalSource(sem_t *senderSem) : mBuffer(0, FRAME_EXTERNAL, 128*1024, senderSem), mMonitor(), mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)), mMaliStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)), mAnnotate(8083), mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true), mInterruptFd(-1), mMaliUds(-1), mMveUds(-1) {
+ExternalSource::ExternalSource(sem_t *senderSem) : mBuffer(0, FRAME_EXTERNAL, 128*1024, senderSem), mMonitor(), mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)), mMaliStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)), mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)), mAnnotate(8083), mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true), mInterruptFd(-1), mMaliUds(-1), mMveUds(-1), mFtraceFd(-1) {
 	sem_init(&mBufferSem, 0, 0);
 }
 
@@ -91,7 +77,7 @@ bool ExternalSource::connectMali() {
 }
 
 bool ExternalSource::connectMve() {
-	if (!gSessionData->maliVideo.countersEnabled()) {
+	if (!gSessionData->mMaliVideo.countersEnabled()) {
 		return true;
 	}
 
@@ -100,7 +86,7 @@ bool ExternalSource::connectMve() {
 		return false;
 	}
 
-	if (!gSessionData->maliVideo.start(mMveUds)) {
+	if (!gSessionData->mMaliVideo.start(mMveUds)) {
 		return false;
 	}
 
@@ -109,10 +95,27 @@ bool ExternalSource::connectMve() {
 	return true;
 }
 
+void ExternalSource::connectFtrace() {
+	if (!gSessionData->mFtraceDriver.isSupported()) {
+		return;
+	}
+
+	gSessionData->mFtraceDriver.prepare();
+
+	mFtraceFd = open(TRACING_PATH "/trace_pipe", O_RDONLY | O_CLOEXEC);
+	if (mFtraceFd < 0) {
+		logg->logError("Unable to open trace_pipe");
+		handleException();
+	}
+
+	configureConnection(mFtraceFd, FTRACE_V1, sizeof(FTRACE_V1));
+}
+
 bool ExternalSource::prepare() {
 	if (!mMonitor.init() ||
 			!setNonblock(mMveStartupUds.getFd()) || !mMonitor.add(mMveStartupUds.getFd()) ||
 			!setNonblock(mMaliStartupUds.getFd()) || !mMonitor.add(mMaliStartupUds.getFd()) ||
+			!setNonblock(mUtgardStartupUds.getFd()) || !mMonitor.add(mUtgardStartupUds.getFd()) ||
 			!setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd()) ||
 			!setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd()) ||
 			false) {
@@ -121,6 +124,8 @@ bool ExternalSource::prepare() {
 
 	connectMali();
 	connectMve();
+	connectFtrace();
+	gSessionData->mExternalDriver.start();
 
 	return true;
 }
@@ -145,6 +150,30 @@ void ExternalSource::run() {
 	uint64_t val = 1;
 	if (::write(gSessionData->mAnnotateStart, &val, sizeof(val)) != sizeof(val)) {
 		logg->logMessage("Writing to annotate pipe failed");
+	}
+
+	if (mFtraceFd >= 0) {
+		gSessionData->mAtraceDriver.start();
+
+		if (DriverSource::writeDriver(TRACING_PATH "/tracing_on", "1") != 0) {
+			logg->logError("Unable to turn ftrace on");
+			handleException();
+		}
+	}
+
+	// Wait until monotonicStarted is set before sending data
+	int64_t monotonicStarted = 0;
+	while (monotonicStarted <= 0 && gSessionData->mSessionIsActive) {
+		usleep(10);
+
+		if (gSessionData->mPerf.isSetup()) {
+			monotonicStarted = gSessionData->mMonotonicStarted;
+		} else {
+			if (DriverSource::readInt64Driver("/dev/gator/started", &monotonicStarted) == -1) {
+				logg->logError("Error reading gator driver start time");
+				handleException();
+			}
+		}
 	}
 
 	while (gSessionData->mSessionIsActive) {
@@ -179,6 +208,13 @@ void ExternalSource::run() {
 					logg->logError("Unable to configure incoming Mali graphics connection");
 					handleException();
 				}
+			} else if (fd == mUtgardStartupUds.getFd()) {
+				// Mali Utgard says it's alive
+				int client = mUtgardStartupUds.acceptConnection();
+				// Don't read from this connection, configure utgard and expect them to reconnect with annotations
+				close(client);
+				gSessionData->mExternalDriver.disconnect();
+				gSessionData->mExternalDriver.start();
 			} else if (fd == mAnnotate.getFd()) {
 				int client = mAnnotate.acceptConnection();
 				if (!setNonblock(client) || !mMonitor.add(client)) {
@@ -243,8 +279,14 @@ void ExternalSource::run() {
 
 	mBuffer.setDone();
 
+	if (mFtraceFd >= 0) {
+		gSessionData->mFtraceDriver.stop();
+		gSessionData->mAtraceDriver.stop();
+		close(mFtraceFd);
+	}
+
 	if (mMveUds >= 0) {
-		gSessionData->maliVideo.stop(mMveUds);
+		gSessionData->mMaliVideo.stop(mMveUds);
 	}
 
 	mInterruptFd = -1;

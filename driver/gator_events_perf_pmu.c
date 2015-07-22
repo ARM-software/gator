@@ -153,13 +153,13 @@ static void __online_dispatch(int cpu, bool migrate, struct gator_attr *const at
 	event->pevent = perf_event_create_kernel_counter(event->pevent_attr, cpu, 0, handler, 0);
 #endif
 	if (IS_ERR(event->pevent)) {
-		pr_debug("gator: unable to online a counter on cpu %d\n", cpu);
+		pr_err("gator: unable to online a counter on cpu %d\n", cpu);
 		event->pevent = NULL;
 		return;
 	}
 
 	if (event->pevent->state != PERF_EVENT_STATE_ACTIVE) {
-		pr_debug("gator: inactive counter on cpu %d\n", cpu);
+		pr_err("gator: inactive counter on cpu %d\n", cpu);
 		perf_event_release_kernel(event->pevent);
 		event->pevent = NULL;
 		return;
@@ -369,6 +369,7 @@ static int gator_events_perf_pmu_read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_perf_pmu_interface = {
+	.name = "perf_pmu",
 	.create_files = gator_events_perf_pmu_create_files,
 	.start = gator_events_perf_pmu_start,
 	.stop = gator_events_perf_pmu_stop,
@@ -463,10 +464,10 @@ static void gator_events_perf_pmu_cci_400_init(const int type)
 		cci_name = "CCI_400";
 		break;
 	case 1:
-		cci_name = "CCI_400-r1";
+		cci_name = "CCI_400_r1";
 		break;
 	default:
-		pr_debug("gator: unrecognized cci-400 revision\n");
+		pr_err("gator: unrecognized cci-400 revision\n");
 		return;
 	}
 
@@ -536,14 +537,19 @@ int gator_events_perf_pmu_init(void)
 		}
 
 		if (pe->pmu != NULL && type == pe->pmu->type) {
-			if (strcmp("CCI", pe->pmu->name) == 0 || strcmp("CCI_400", pe->pmu->name) == 0 || strcmp("CCI_400-r1", pe->pmu->name) == 0) {
+			pr_notice("gator: perf pmu: %s\n", pe->pmu->name);
+			if (strcmp("CCI", pe->pmu->name) == 0 || strcmp("CCI_400", pe->pmu->name) == 0 || strcmp("CCI_400_r1", pe->pmu->name) == 0) {
+				pr_notice("gator: Adding CCI-400 counters with type %i\n", type);
 				gator_events_perf_pmu_cci_400_init(type);
 			} else if (strcmp("CCI_500", pe->pmu->name) == 0) {
+				pr_notice("gator: Adding CCI-500 counters with type %i\n", type);
 				gator_events_perf_pmu_uncore_init("CCI_500", type, CCI_500, false);
 			} else if (strcmp("ccn", pe->pmu->name) == 0) {
+				pr_notice("gator: Adding CCN counters with type %i\n", type);
 				gator_events_perf_pmu_uncore_init("ARM_CCN_5XX", type, CCN_5XX, true);
 			} else if ((gator_cpu = gator_find_cpu_by_pmu_name(pe->pmu->name)) != NULL) {
 				found_cpu = true;
+				pr_notice("gator: Adding cpu counters for %s with type %i\n", gator_cpu->pmnc_name, type);
 				gator_events_perf_pmu_cpu_init(gator_cpu, type);
 			}
 			/* Initialize gator_attrs for dynamic PMUs here */
@@ -562,6 +568,7 @@ int gator_events_perf_pmu_init(void)
 				return -1;
 			}
 		}
+		pr_notice("gator: Adding cpu counters (based on cpuid) for %s\n", gator_cpu->pmnc_name);
 		gator_events_perf_pmu_cpu_init(gator_cpu, PERF_TYPE_RAW);
 	}
 

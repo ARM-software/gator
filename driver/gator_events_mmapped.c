@@ -189,6 +189,7 @@ static int gator_events_mmapped_read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_mmapped_interface = {
+	.name = "mmapped",
 	.create_files = gator_events_mmapped_create_files,
 	.start = gator_events_mmapped_start,
 	.stop = gator_events_mmapped_stop,

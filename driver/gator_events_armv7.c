@@ -263,6 +263,7 @@ static int gator_events_armv7_read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_armv7_interface = {
+	.name = "armv7",
 	.create_files = gator_events_armv7_create_files,
 	.stop = gator_events_armv7_stop,
 	.online = gator_events_armv7_online,

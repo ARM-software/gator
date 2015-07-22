@@ -19,6 +19,7 @@
 #include "Config.h"
 #include "DriverSource.h"
 #include "Logging.h"
+#include "SessionData.h"
 
 static const char TAG_CATEGORY[] = "category";
 static const char TAG_COUNTER_SET[] = "counter_set";
@@ -44,6 +45,8 @@ static const char RNI_REGION[] = "RN-I_Region";
 static const char SBAS_REGION[] = "SBAS_Region";
 static const char CCN_5XX[] = "CCN-5xx";
 #define ARM_CCN_5XX "ARM_CCN_5XX_"
+#define CCN_COUNT 8
+static const char ARM_CCN_5XX_CNT[] = ARM_CCN_5XX "cnt";
 
 static const char *const VC_TYPES[] = { "REQ", "RSP", "SNP", "DAT" };
 static const char *const XP_EVENT_NAMES[] = { NULL, "H-bit", "S-bit", "P-Cnt", "TknV" };
@@ -173,12 +176,12 @@ int CCNDriver::writeCounters(mxml_node_t *const) const {
 
 void CCNDriver::writeEvents(mxml_node_t *const root) const {
 	mxml_node_t *const counter_set = mxmlNewElement(root, TAG_COUNTER_SET);
-	mxmlElementSetAttr(counter_set, ATTR_NAME, ARM_CCN_5XX "cnt");
-	mxmlElementSetAttr(counter_set, ATTR_COUNT, "8");
+	mxmlElementSetAttr(counter_set, ATTR_NAME, ARM_CCN_5XX_CNT);
+	mxmlElementSetAttr(counter_set, ATTR_COUNT, STRIFY(CCN_COUNT));
 
 	mxml_node_t *const category = mxmlNewElement(root, TAG_CATEGORY);
 	mxmlElementSetAttr(category, ATTR_NAME, CCN_5XX);
-	mxmlElementSetAttr(category, TAG_COUNTER_SET, ARM_CCN_5XX "cnt");
+	mxmlElementSetAttr(category, TAG_COUNTER_SET, ARM_CCN_5XX_CNT);
 
 	mxml_node_t *const clock_event = mxmlNewElement(category, TAG_EVENT);
 	mxmlElementSetAttr(clock_event, ATTR_COUNTER, ARM_CCN_5XX "ccnt");
@@ -289,6 +292,38 @@ void CCNDriver::writeEvents(mxml_node_t *const root) const {
 		}
 		default:
 			continue;
+		}
+	}
+}
+
+void CCNDriver::validateCounters() const {
+	int counts[CCN_COUNT][2] = { { 0 } };
+	const unsigned int mask = getConfig(0xff, 0xff, 0, 0, 0);
+
+	for (int i = 0; i < ARRAY_LENGTH(gSessionData->mCounters); ++i) {
+		const Counter *const counter = &gSessionData->mCounters[i];
+
+		if (!counter->isEnabled()) {
+			continue;
+		}
+
+		if (strncmp(counter->getType(), ARM_CCN_5XX_CNT, sizeof(ARM_CCN_5XX_CNT) - 1) == 0) {
+			const int node = counter->getEvent() & mask;
+
+			for (int j = 0; j < ARRAY_LENGTH(counts); ++j) {
+				if (counts[j][0] == 0) {
+					counts[j][0] = node;
+				}
+				if (counts[j][0] == node) {
+					++counts[j][1];
+					if (counts[j][1] > 4) {
+						if (asprintf(&gSessionData->mCountersError, "More than 4 events are assigned to the same CCN node") <= 0) {
+							logg->logError("asprintf failed");
+							handleException();
+						}
+					}
+				}
+			}
 		}
 	}
 }
