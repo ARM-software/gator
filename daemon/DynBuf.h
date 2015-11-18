@@ -9,6 +9,7 @@
 #ifndef DYNBUF_H
 #define DYNBUF_H
 
+#include <stdarg.h>
 #include <stdlib.h>
 
 class DynBuf {
@@ -32,6 +33,9 @@ public:
 	int readlink(const char *const path);
 	__attribute__ ((format(printf, 2, 3)))
 	bool printf(const char *format, ...);
+	__attribute__ ((format(printf, 2, 3)))
+	bool append(const char *format, ...);
+	bool append(const char *format, va_list ap);
 
 	size_t getLength() const { return length; }
 	const char *getBuf() const { return buf; }

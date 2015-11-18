@@ -30,10 +30,18 @@ config GATOR_MALI_MIDGARD
 
 endchoice
 
-config GATOR_MALI_PATH
+config GATOR_MALI_4XXMP_PATH
 	string "Path to Mali driver"
-	depends on GATOR_WITH_MALI_SUPPORT
+	depends on GATOR_MALI_4XXMP
 	default "drivers/gpu/arm/mali400mp"
+	help
+	  The gator code adds this to its include path so it can get the Mali
+	  trace headers with: #include "linux/mali_linux_trace.h"
+
+config GATOR_MALI_MIDGARD_PATH
+	string "Path to Mali driver"
+	depends on GATOR_MALI_MIDGARD
+	default "drivers/gpu/arm/midgard"
 	help
 	  The gator code adds this to its include path so it can get the Mali
 	  trace headers with: #include "linux/mali_linux_trace.h"

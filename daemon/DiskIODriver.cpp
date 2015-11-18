@@ -53,7 +53,7 @@ DiskIODriver::~DiskIODriver() {
 
 void DiskIODriver::readEvents(mxml_node_t *const) {
 	// Only for use with perf
-	if (!gSessionData->mPerf.isSetup()) {
+	if (!gSessionData.mPerf.isSetup()) {
 		return;
 	}
 
@@ -67,7 +67,7 @@ void DiskIODriver::doRead() {
 	}
 
 	if (!mBuf.read("/proc/diskstats")) {
-		logg->logError("Unable to read /proc/diskstats");
+		logg.logError("Unable to read /proc/diskstats");
 		handleException();
 	}
 
@@ -89,7 +89,7 @@ void DiskIODriver::doRead() {
 		int64_t writeBytes = -1;
 		const int count = sscanf(line, "%*d %*d %n%*s%n %*u %*u %" SCNu64 " %*u %*u %*u %" SCNu64, &nameStart, &nameEnd, &readBytes, &writeBytes);
 		if (count != 2) {
-			logg->logError("Unable to parse /proc/diskstats");
+			logg.logError("Unable to parse /proc/diskstats");
 			handleException();
 		}
 

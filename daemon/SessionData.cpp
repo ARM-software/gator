@@ -23,19 +23,71 @@
 
 #define CORE_NAME_UNKNOWN "unknown"
 
-SessionData* gSessionData = NULL;
+const char MALI_GRAPHICS[] = "\0mali_thirdparty_server";
+const size_t MALI_GRAPHICS_SIZE = sizeof(MALI_GRAPHICS);
+
+SessionData gSessionData;
+
+GatorCpu *GatorCpu::mHead;
+
+GatorCpu::GatorCpu(const char *const coreName, const char *const pmncName, const char *const dtName, const int cpuid, const int pmncCounters) : mNext(mHead), mCoreName(coreName), mPmncName(pmncName), mDtName(dtName), mCpuid(cpuid), mPmncCounters(pmncCounters) {
+	mHead = this;
+}
+
+static const char OLD_PMU_PREFIX[] = "ARMv7 Cortex-";
+static const char NEW_PMU_PREFIX[] = "ARMv7_Cortex_";
+
+GatorCpu *GatorCpu::find(const char *const name) {
+	GatorCpu *gatorCpu;
+
+	for (gatorCpu = mHead; gatorCpu != NULL; gatorCpu = gatorCpu->mNext) {
+		if (strcasecmp(gatorCpu->mPmncName, name) == 0 ||
+				// Do these names match but have the old vs new prefix?
+				((strncasecmp(name, OLD_PMU_PREFIX, sizeof(OLD_PMU_PREFIX) - 1) == 0 &&
+					strncasecmp(gatorCpu->mPmncName, NEW_PMU_PREFIX, sizeof(NEW_PMU_PREFIX) - 1) == 0 &&
+					strcasecmp(name + sizeof(OLD_PMU_PREFIX) - 1, gatorCpu->mPmncName + sizeof(NEW_PMU_PREFIX) - 1) == 0))) {
+			break;
+		}
+	}
+
+	return gatorCpu;
+}
+
+GatorCpu *GatorCpu::find(const int cpuid) {
+	GatorCpu *gatorCpu;
+
+	for (gatorCpu = mHead; gatorCpu != NULL; gatorCpu = gatorCpu->mNext) {
+		if (gatorCpu->mCpuid == cpuid) {
+			break;
+		}
+	}
+
+	return gatorCpu;
+}
+
+UncorePmu *UncorePmu::mHead;
+
+UncorePmu::UncorePmu(const char *const coreName, const char *const pmncName, const int pmncCounters, const bool hasCyclesCounter) : mNext(mHead), mCoreName(coreName), mPmncName(pmncName), mPmncCounters(pmncCounters), mHasCyclesCounter(hasCyclesCounter) {
+	mHead = this;
+}
+
+UncorePmu *UncorePmu::find(const char *const name) {
+	UncorePmu *gatorCpu;
+
+	for (gatorCpu = mHead; gatorCpu != NULL; gatorCpu = gatorCpu->mNext) {
+		if (strcasecmp(name, gatorCpu->mPmncName) == 0) {
+			break;
+		}
+	}
+
+	return gatorCpu;
+}
 
 SharedData::SharedData() : mMaliUtgardCountersSize(0) {
 	memset(mCpuIds, -1, sizeof(mCpuIds));
 }
 
 SessionData::SessionData() {
-	mUsDrivers[0] = new HwmonDriver();
-	mUsDrivers[1] = new FSDriver();
-	mUsDrivers[2] = new MemInfoDriver();
-	mUsDrivers[3] = new NetDriver();
-	mUsDrivers[4] = new DiskIODriver();
-	initialize();
 }
 
 SessionData::~SessionData() {
@@ -45,9 +97,15 @@ SessionData::~SessionData() {
 inline void *operator new(size_t, void *ptr) { return ptr; }
 
 void SessionData::initialize() {
+	mUsDrivers[0] = new HwmonDriver();
+	mUsDrivers[1] = new FSDriver();
+	mUsDrivers[2] = new MemInfoDriver();
+	mUsDrivers[3] = new NetDriver();
+	mUsDrivers[4] = new DiskIODriver();
+
 	mSharedData = (SharedData *)mmap(NULL, sizeof(*mSharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	if (mSharedData == MAP_FAILED) {
-		logg->logError("Unable to mmap shared memory for cpuids");
+		logg.logError("Unable to mmap shared memory for cpuids");
 		handleException();
 	}
 	// Use placement new to construct but not allocate the object
@@ -98,7 +156,7 @@ void SessionData::parseSessionXML(char* xmlString) {
 	} else if (strcmp(session.parameters.sample_rate, "none") == 0) {
 		mSampleRate = 0;
 	} else {
-		logg->logError("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
+		logg.logError("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
 		handleException();
 	}
 	mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
@@ -115,19 +173,19 @@ void SessionData::parseSessionXML(char* xmlString) {
 	} else if (strcmp(session.parameters.buffer_mode, "large") == 0) {
 		mTotalBufferSize = 16;
 	} else {
-		logg->logError("Invalid value for buffer mode in session xml.");
+		logg.logError("Invalid value for buffer mode in session xml.");
 		handleException();
 	}
 
 	// Convert milli- to nanoseconds
 	mLiveRate = session.parameters.live_rate * (int64_t)1000000;
 	if (mLiveRate > 0 && mLocalCapture) {
-		logg->logMessage("Local capture is not compatable with live, disabling live");
+		logg.logMessage("Local capture is not compatable with live, disabling live");
 		mLiveRate = 0;
 	}
 
 	if (!mAllowCommands && (mCaptureCommand != NULL)) {
-		logg->logError("Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
+		logg.logError("Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
 		handleException();
 	}
 }
@@ -166,7 +224,7 @@ void SessionData::readCpuInfo() {
 
 	FILE *f = fopen_cloexec("/proc/cpuinfo", "r");
 	if (f == NULL) {
-		logg->logMessage("Error opening /proc/cpuinfo\n"
+		logg.logMessage("Error opening /proc/cpuinfo\n"
 			"The core name in the captured xml file will be 'unknown'.");
 		return;
 	}
@@ -181,7 +239,7 @@ void SessionData::readCpuInfo() {
 			temp[len - 1] = '\0';
 		}
 
-		logg->logMessage("cpuinfo: %s", temp);
+		logg.logMessage("cpuinfo: %s", temp);
 
 		if (len == 1) {
 			// New section, clear the processor. Streamline will not know the cpus if the pre Linux 3.8 format of cpuinfo is encountered but also that no incorrect information will be transmitted.
@@ -196,7 +254,7 @@ void SessionData::readCpuInfo() {
 		if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
 			char* position = strchr(temp, ':');
 			if (position == NULL || (unsigned int)(position - temp) + 2 >= strlen(temp)) {
-				logg->logMessage("Unknown format of /proc/cpuinfo\n"
+				logg.logMessage("Unknown format of /proc/cpuinfo\n"
 					"The core name in the captured xml file will be 'unknown'.");
 				return;
 			}
@@ -211,7 +269,7 @@ void SessionData::readCpuInfo() {
 			if (foundCPUImplementer) {
 				const int implementer = strtol(position, NULL, 0);
 				if (processor >= NR_CPUS) {
-					logg->logMessage("Too many processors, please increase NR_CPUS");
+					logg.logMessage("Too many processors, please increase NR_CPUS");
 				} else if (processor >= 0) {
 					setImplementer(mSharedData->mCpuIds[processor], implementer);
 				} else {
@@ -222,7 +280,7 @@ void SessionData::readCpuInfo() {
 			if (foundCPUPart) {
 				const int cpuId = strtol(position, NULL, 0);
 				if (processor >= NR_CPUS) {
-					logg->logMessage("Too many processors, please increase NR_CPUS");
+					logg.logMessage("Too many processors, please increase NR_CPUS");
 				} else if (processor >= 0) {
 					setPart(mSharedData->mCpuIds[processor], cpuId);
 				} else {
@@ -244,7 +302,7 @@ void SessionData::readCpuInfo() {
 	}
 
 	if (!foundCoreName) {
-		logg->logMessage("Could not determine core name from /proc/cpuinfo\n"
+		logg.logMessage("Could not determine core name from /proc/cpuinfo\n"
 				 "The core name in the captured xml file will be 'unknown'.");
 	}
 	fclose(f);
@@ -253,7 +311,7 @@ void SessionData::readCpuInfo() {
 uint64_t getTime() {
 	struct timespec ts;
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0) {
-		logg->logError("Failed to get uptime");
+		logg.logError("Failed to get uptime");
 		handleException();
 	}
 	return (NS_PER_S*ts.tv_sec + ts.tv_nsec);
@@ -305,12 +363,12 @@ bool setNonblock(const int fd) {
 
 	flags = fcntl(fd, F_GETFL);
 	if (flags < 0) {
-		logg->logMessage("fcntl getfl failed");
+		logg.logMessage("fcntl getfl failed");
 		return false;
 	}
 
 	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
-		logg->logMessage("fcntl setfl failed");
+		logg.logMessage("fcntl setfl failed");
 		return false;
 	}
 
@@ -322,7 +380,7 @@ bool writeAll(const int fd, const void *const buf, const size_t pos) {
 	while (written < pos) {
 		ssize_t bytes = write(fd, (const uint8_t *)buf + written, pos - written);
 		if (bytes <= 0) {
-			logg->logMessage("write failed");
+			logg.logMessage("write failed");
 			return false;
 		}
 		written += bytes;
@@ -336,7 +394,7 @@ bool readAll(const int fd, void *const buf, const size_t count) {
 	while (pos < count) {
 		ssize_t bytes = read(fd, (uint8_t *)buf + pos, count - pos);
 		if (bytes <= 0) {
-			logg->logMessage("read failed");
+			logg.logMessage("read failed");
 			return false;
 		}
 		pos += bytes;

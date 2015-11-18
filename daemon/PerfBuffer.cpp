@@ -27,7 +27,7 @@ PerfBuffer::PerfBuffer() {
 PerfBuffer::~PerfBuffer() {
 	for (int cpu = ARRAY_LENGTH(mBuf) - 1; cpu >= 0; --cpu) {
 		if (mBuf[cpu] != MAP_FAILED) {
-			munmap(mBuf[cpu], gSessionData->mPageSize + BUF_SIZE);
+			munmap(mBuf[cpu], gSessionData.mPageSize + BUF_SIZE);
 		}
 	}
 }
@@ -35,14 +35,14 @@ PerfBuffer::~PerfBuffer() {
 bool PerfBuffer::useFd(const int cpu, const int fd) {
 	if (mFds[cpu] < 0) {
 		if (mBuf[cpu] != MAP_FAILED) {
-			logg->logMessage("cpu %i already online or not correctly cleaned up", cpu);
+			logg.logMessage("cpu %i already online or not correctly cleaned up", cpu);
 			return false;
 		}
 
 		// The buffer isn't mapped yet
-		mBuf[cpu] = mmap(NULL, gSessionData->mPageSize + BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		mBuf[cpu] = mmap(NULL, gSessionData.mPageSize + BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 		if (mBuf[cpu] == MAP_FAILED) {
-			logg->logMessage("mmap failed");
+			logg.logMessage("mmap failed");
 			return false;
 		}
 		mFds[cpu] = fd;
@@ -50,17 +50,17 @@ bool PerfBuffer::useFd(const int cpu, const int fd) {
 		// Check the version
 		struct perf_event_mmap_page *pemp = static_cast<struct perf_event_mmap_page *>(mBuf[cpu]);
 		if (pemp->compat_version != 0) {
-			logg->logMessage("Incompatible perf_event_mmap_page compat_version");
+			logg.logMessage("Incompatible perf_event_mmap_page compat_version");
 			return false;
 		}
 	} else {
 		if (mBuf[cpu] == MAP_FAILED) {
-			logg->logMessage("cpu already online or not correctly cleaned up");
+			logg.logMessage("cpu already online or not correctly cleaned up");
 			return false;
 		}
 
 		if (ioctl(fd, PERF_EVENT_IOC_SET_OUTPUT, mFds[cpu]) < 0) {
-			logg->logMessage("ioctl failed");
+			logg.logMessage("ioctl failed");
 			return false;
 		}
 	}
@@ -75,7 +75,7 @@ void PerfBuffer::discard(const int cpu) {
 }
 
 bool PerfBuffer::isEmpty() {
-	for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
+	for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
 		if (mBuf[cpu] != MAP_FAILED) {
 			// Take a snapshot of the positions
 			struct perf_event_mmap_page *pemp = static_cast<struct perf_event_mmap_page *>(mBuf[cpu]);
@@ -92,7 +92,7 @@ bool PerfBuffer::isEmpty() {
 }
 
 bool PerfBuffer::isFull() {
-	for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
+	for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
 		if (mBuf[cpu] != MAP_FAILED) {
 			// Take a snapshot of the positions
 			struct perf_event_mmap_page *pemp = static_cast<struct perf_event_mmap_page *>(mBuf[cpu]);
@@ -141,7 +141,7 @@ public:
 private:
 	void writeFrameSize() {
 		writeCpuSize();
-		const int typeLength = gSessionData->mLocalCapture ? 0 : 1;
+		const int typeLength = gSessionData.mLocalCapture ? 0 : 1;
 		Buffer::writeLEInt(reinterpret_cast<unsigned char *>(mBuf + typeLength), mWritePos - typeLength - sizeof(uint32_t));
 	}
 
@@ -149,7 +149,7 @@ private:
 		if (mWritePos < 0) {
 			mWritePos = 0;
 			mCpuSizePos = -1;
-			if (!gSessionData->mLocalCapture) {
+			if (!gSessionData.mLocalCapture) {
 				mBuf[mWritePos++] = RESPONSE_APC_DATA;
 			}
 			// Reserve space for frame size
@@ -190,7 +190,7 @@ private:
 bool PerfBuffer::send(Sender *const sender) {
 	PerfFrame frame(sender);
 
-	for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
+	for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
 		if (mBuf[cpu] == MAP_FAILED) {
 			continue;
 		}
@@ -201,7 +201,7 @@ bool PerfBuffer::send(Sender *const sender) {
 		const __u64 tail = ACCESS_ONCE(pemp->data_tail);
 
 		if (head > tail) {
-			const uint8_t *const b = static_cast<uint8_t *>(mBuf[cpu]) + gSessionData->mPageSize;
+			const uint8_t *const b = static_cast<uint8_t *>(mBuf[cpu]) + gSessionData.mPageSize;
 			frame.add(cpu, head, tail, b);
 
 			// Update tail with the data read
@@ -209,11 +209,11 @@ bool PerfBuffer::send(Sender *const sender) {
 		}
 
 		if (mDiscard[cpu]) {
-			munmap(mBuf[cpu], gSessionData->mPageSize + BUF_SIZE);
+			munmap(mBuf[cpu], gSessionData.mPageSize + BUF_SIZE);
 			mBuf[cpu] = MAP_FAILED;
 			mDiscard[cpu] = false;
 			mFds[cpu] = -1;
-			logg->logMessage("Unmaped cpu %i", cpu);
+			logg.logMessage("Unmaped cpu %i", cpu);
 		}
 	}
 

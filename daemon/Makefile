@@ -6,7 +6,7 @@
 # CROSS_COMPILE=/path/to/cross-compiler/arm-linux-gnueabihf-
 # NOTE: This toolchain uses the hardfloat abi by default. For non-hardfloat
 # targets run 'make SOFTFLOAT=1 SYSROOT=/path/to/sysroot', see
-# README_Streamline.txt for more details
+# streamline/gator/README.md for more details
 
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++

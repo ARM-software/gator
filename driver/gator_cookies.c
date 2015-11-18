@@ -22,11 +22,11 @@ static inline struct mount *real_mount(struct vfsmount *mnt)
 	return container_of(mnt, struct mount, mnt);
 }
 
-#define GET_MNT_ROOT(mount) (mount)->mnt.mnt_root
+#define GET_MNT_ROOT(mount) ((mount)->mnt.mnt_root)
 
 #else
 
-#define GET_MNT_ROOT(mount) (mount)->mnt_root
+#define GET_MNT_ROOT(mount) ((mount)->mnt_root)
 
 #endif
 

@@ -25,9 +25,9 @@ LocalCapture::LocalCapture() {}
 LocalCapture::~LocalCapture() {}
 
 void LocalCapture::createAPCDirectory(char* target_path) {
-	gSessionData->mAPCDir = createUniqueDirectory(target_path, ".apc");
-	if ((removeDirAndAllContents(gSessionData->mAPCDir) != 0 || mkdir(gSessionData->mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
-		logg->logError("Unable to create directory %s", gSessionData->mAPCDir);
+	gSessionData.mAPCDir = createUniqueDirectory(target_path, ".apc");
+	if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0 || mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
+		logg.logError("Unable to create directory %s", gSessionData.mAPCDir);
 		handleException();
 	}
 }
@@ -36,17 +36,17 @@ void LocalCapture::write(char* string) {
 	char file[PATH_MAX];
 
 	// Set full path
-	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData->mAPCDir);
+	snprintf(file, PATH_MAX, "%s/session.xml", gSessionData.mAPCDir);
 
 	// Write the file
-	if (util->writeToDisk(file, string) < 0) {
-		logg->logError("Error writing %s\nPlease verify the path.", file);
+	if (writeToDisk(file, string) < 0) {
+		logg.logError("Error writing %s\nPlease verify the path.", file);
 		handleException();
 	}
 
 	// Write events XML
 	EventsXML eventsXML;
-	eventsXML.write(gSessionData->mAPCDir);
+	eventsXML.write(gSessionData.mAPCDir);
 }
 
 char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending) {
@@ -55,11 +55,11 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
 
 	// Ensure the path is an absolute path, i.e. starts with a slash
 	if (initialPath == 0 || strlen(initialPath) == 0) {
-		logg->logError("Missing -o command line option required for a local capture.");
+		logg.logError("Missing -o command line option required for a local capture.");
 		handleException();
 	} else if (initialPath[0] != '/') {
 		if (getcwd(path, PATH_MAX) == 0) {
-			logg->logMessage("Unable to retrieve the current working directory");
+			logg.logMessage("Unable to retrieve the current working directory");
 		}
 		strncat(path, "/", PATH_MAX - strlen(path) - 1);
 		strncat(path, initialPath, PATH_MAX - strlen(path) - 1);
@@ -114,16 +114,16 @@ void LocalCapture::copyImages(ImageLinkList* ptr) {
 	char dstfilename[PATH_MAX];
 
 	while (ptr) {
-		strncpy(dstfilename, gSessionData->mAPCDir, PATH_MAX);
+		strncpy(dstfilename, gSessionData.mAPCDir, PATH_MAX);
 		dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
-		if (gSessionData->mAPCDir[strlen(gSessionData->mAPCDir) - 1] != '/') {
+		if (gSessionData.mAPCDir[strlen(gSessionData.mAPCDir) - 1] != '/') {
 			strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
 		}
-		strncat(dstfilename, util->getFilePart(ptr->path), PATH_MAX - strlen(dstfilename) - 1);
-		if (util->copyFile(ptr->path, dstfilename)) {
-			logg->logMessage("copied file %s to %s", ptr->path, dstfilename);
+		strncat(dstfilename, getFilePart(ptr->path), PATH_MAX - strlen(dstfilename) - 1);
+		if (copyFile(ptr->path, dstfilename)) {
+			logg.logMessage("copied file %s to %s", ptr->path, dstfilename);
 		} else {
-			logg->logMessage("copy of file %s to %s failed", ptr->path, dstfilename);
+			logg.logMessage("copy of file %s to %s failed", ptr->path, dstfilename);
 		}
 
 		ptr = ptr->next;

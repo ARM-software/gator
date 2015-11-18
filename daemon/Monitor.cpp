@@ -38,14 +38,14 @@ bool Monitor::init() {
 	mFd = epoll_create(16);
 #endif
 	if (mFd < 0) {
-		logg->logMessage("epoll_create1 failed");
+		logg.logMessage("epoll_create1 failed");
 		return false;
 	}
 
 #ifndef EPOLL_CLOEXEC
 	int fdf = fcntl(mFd, F_GETFD);
 	if ((fdf == -1) || (fcntl(mFd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-		logg->logMessage("fcntl failed");
+		logg.logMessage("fcntl failed");
 		::close(mFd);
 		return -1;
 	}
@@ -60,7 +60,7 @@ bool Monitor::add(const int fd) {
 	event.data.fd = fd;
 	event.events = EPOLLIN;
 	if (epoll_ctl(mFd, EPOLL_CTL_ADD, fd, &event) != 0) {
-		logg->logMessage("epoll_ctl failed");
+		logg.logMessage("epoll_ctl failed");
 		return false;
 	}
 
@@ -74,7 +74,7 @@ int Monitor::wait(struct epoll_event *const events, int maxevents, int timeout) 
 		if (errno == EINTR) {
 			result = 0;
 		} else {
-			logg->logMessage("epoll_wait failed");
+			logg.logMessage("epoll_wait failed");
 		}
 	}
 

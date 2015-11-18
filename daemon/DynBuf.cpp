@@ -10,7 +10,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -42,7 +41,7 @@ bool DynBuf::read(const char *const path) {
 
 	const int fd = open(path, O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
-		logg->logMessage("open failed");
+		logg.logMessage("open failed");
 		return false;
 	}
 
@@ -52,14 +51,14 @@ bool DynBuf::read(const char *const path) {
 		const size_t minCapacity = length + MIN_BUFFER_FREE + 1;
 		if (capacity < minCapacity) {
 			if (resize(minCapacity) != 0) {
-				logg->logMessage("DynBuf::resize failed");
+				logg.logMessage("DynBuf::resize failed");
 				goto fail;
 			}
 		}
 
 		const ssize_t bytes = ::read(fd, buf + length, capacity - length - 1);
 		if (bytes < 0) {
-			logg->logMessage("read failed");
+			logg.logMessage("read failed");
 			goto fail;
 		} else if (bytes == 0) {
 			break;
@@ -102,35 +101,58 @@ int DynBuf::readlink(const char *const path) {
 
 bool DynBuf::printf(const char *format, ...) {
 	va_list ap;
+	bool result;
+
+	length = 0;
+
+	va_start(ap, format);
+	result = append(format, ap);
+	va_end(ap);
+
+	return result;
+}
+
+bool DynBuf::append(const char *format, ...) {
+	va_list ap;
+	bool result;
+
+	va_start(ap, format);
+	result = append(format, ap);
+	va_end(ap);
+
+	return result;
+}
+
+bool DynBuf::append(const char *format, va_list ap) {
+	va_list dup;
 
 	if (capacity <= 0) {
 		if (resize(2 * MIN_BUFFER_FREE) != 0) {
-			logg->logMessage("DynBuf::resize failed");
+			logg.logMessage("DynBuf::resize failed");
 			return false;
 		}
 	}
 
-	va_start(ap, format);
-	int bytes = vsnprintf(buf, capacity, format, ap);
-	va_end(ap);
+	va_copy(dup, ap);
+	int bytes = vsnprintf(buf + length, capacity - length, format, dup);
 	if (bytes < 0) {
-		logg->logMessage("fsnprintf failed");
+		logg.logMessage("fsnprintf failed");
 		return false;
 	}
+	bytes += length;
 
-	if (static_cast<size_t>(bytes) > capacity) {
+	if (static_cast<size_t>(bytes) >= capacity) {
 		if (resize(bytes + 1) != 0) {
-			logg->logMessage("DynBuf::resize failed");
+			logg.logMessage("DynBuf::resize failed");
 			return false;
 		}
 
-		va_start(ap, format);
-		bytes = vsnprintf(buf, capacity, format, ap);
-		va_end(ap);
+		bytes = vsnprintf(buf + length, capacity - length, format, ap);
 		if (bytes < 0) {
-			logg->logMessage("fsnprintf failed");
+			logg.logMessage("fsnprintf failed");
 			return false;
 		}
+		bytes += length;
 	}
 
 	length = bytes;

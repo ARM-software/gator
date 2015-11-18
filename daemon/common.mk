@@ -5,7 +5,7 @@
 # -Werror treats warnings as errors
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
-CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MMD -DETCDIR=\"/etc\" -Ilibsensors
+CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MD -DETCDIR=\"/etc\" -Ilibsensors
 CXXFLAGS += -fno-rtti -Wextra -Wshadow # -Weffc++
 ifeq ($(WERROR),1)
 	CPPFLAGS += -Werror
@@ -24,9 +24,11 @@ events.xml: events_header.xml $(wildcard events-*.xml) events_footer.xml
 
 include $(wildcard *.d)
 include $(wildcard mxml/*.d)
+include $(wildcard libsensors/*.d)
 
 EventsXML.cpp: events_xml.h
 ConfigurationXML.cpp: defaults_xml.h
+PmuXML.cpp: pmus_xml.h
 
 # Don't regenerate conf-lex.c or conf-parse.c
 libsensors/conf-lex.c: ;
@@ -52,4 +54,4 @@ escape: escape.c
 	gcc $^ -o $@
 
 clean:
-	rm -f *.d *.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) escape events.xml events_xml.h defaults_xml.h SrcMd5.cpp
+	rm -f *.d *.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) escape events.xml *_xml.h SrcMd5.cpp

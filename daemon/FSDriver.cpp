@@ -42,7 +42,7 @@ FSCounter::FSCounter(DriverCounter *next, char *name, char *path, const char *re
 		if (result != 0) {
 			char buf[128];
 			regerror(result, &mReg, buf, sizeof(buf));
-			logg->logError("Invalid regex '%s': %s", regex, buf);
+			logg.logError("Invalid regex '%s': %s", regex, buf);
 			handleException();
 		}
 	}
@@ -89,7 +89,7 @@ int64_t FSCounter::read() {
 			errno = 0;
 			value = strtoll(buf + match[1].rm_so, NULL, 0);
 			if (errno != 0) {
-				logg->logError("Parsing %s failed: %s", mPath, strerror(errno));
+				logg.logError("Parsing %s failed: %s", mPath, strerror(errno));
 				handleException();
 			}
 		}
@@ -101,7 +101,7 @@ int64_t FSCounter::read() {
 	return value;
 
  fail:
-	logg->logError("Unable to read %s", mPath);
+	logg.logError("Unable to read %s", mPath);
 	handleException();
 }
 
@@ -124,7 +124,7 @@ void FSDriver::readEvents(mxml_node_t *const xml) {
 		}
 
 		if (counter[0] == '/') {
-			logg->logError("Old style filesystem counter (%s) detected, please create a new unique counter value and move the filename into the path attribute, see events-Filesystem.xml for examples", counter);
+			logg.logError("Old style filesystem counter (%s) detected, please create a new unique counter value and move the filename into the path attribute, see events-Filesystem.xml for examples", counter);
 			handleException();
 		}
 
@@ -134,7 +134,7 @@ void FSDriver::readEvents(mxml_node_t *const xml) {
 
 		const char *path = mxmlElementGetAttr(node, "path");
 		if (path == NULL) {
-			logg->logError("The filesystem counter %s is missing the required path attribute", counter);
+			logg.logError("The filesystem counter %s is missing the required path attribute", counter);
 			handleException();
 		}
 		const char *regex = mxmlElementGetAttr(node, "regex");

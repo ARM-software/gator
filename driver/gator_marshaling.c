@@ -63,6 +63,10 @@ static void marshal_summary(long long timestamp, long long uptime, long long mon
 	gator_buffer_write_string(cpu, SUMMARY_BUF, "unknown");
 #endif
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+	gator_buffer_write_string(cpu, SUMMARY_BUF, "nosync");
+	gator_buffer_write_string(cpu, SUMMARY_BUF, "");
+#endif
 	gator_buffer_write_string(cpu, SUMMARY_BUF, "");
 	/* Commit the buffer now so it can be one of the first frames read by Streamline */
 	local_irq_restore(flags);

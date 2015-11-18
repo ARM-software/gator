@@ -11,29 +11,39 @@
 
 #include <pthread.h>
 
+#include "DynBuf.h"
+
 #define DRIVER_ERROR "\n Driver issue:\n  >> gator.ko must be built against the current kernel version & configuration\n  >> gator.ko should be co-located with gatord in the same directory\n  >>   OR insmod gator.ko prior to launching gatord"
 
 class Logging {
 public:
-	Logging(bool debug);
+	Logging();
 	~Logging();
+
+	void setDebug(bool debug) { mDebug = debug; }
+
 #define logError(...) _logError(__func__, __FILE__, __LINE__, __VA_ARGS__)
 	__attribute__ ((format (printf, 5, 6)))
 	void _logError(const char *function, const char *file, int line, const char *fmt, ...);
+	const char *getLastError() {return mErrBuf;}
+
+#define logSetup(...) _logSetup(__func__, __FILE__, __LINE__, __VA_ARGS__)
+	__attribute__ ((format (printf, 5, 6)))
+	void _logSetup(const char *function, const char *file, int line, const char *fmt, ...);
+	const char *getSetup() {return mSetup.getBuf() == NULL ? "" : mSetup.getBuf();}
+
 #define logMessage(...) _logMessage(__func__, __FILE__, __LINE__, __VA_ARGS__)
 	__attribute__ ((format (printf, 5, 6)))
 	void _logMessage(const char *function, const char *file, int line, const char *fmt, ...);
-	char *getLastError() {return mErrBuf;}
-	char *getLastMessage() {return mLogBuf;}
 
 private:
-	char mErrBuf[4096]; // Arbitrarily large buffer to hold a string
-	char mLogBuf[4096]; // Arbitrarily large buffer to hold a string
-	bool mDebug;
+	DynBuf mSetup;
 	pthread_mutex_t mLoggingMutex;
+	bool mDebug;
+	char mErrBuf[4096]; // Arbitrarily large buffer to hold a string
 };
 
-extern Logging *logg;
+extern Logging logg;
 
 extern void handleException() __attribute__ ((noreturn));
 

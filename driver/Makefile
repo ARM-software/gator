@@ -12,7 +12,6 @@ gator-y :=	gator_main.o \
 		gator_events_meminfo.o \
 		gator_events_mmapped.o \
 		gator_events_net.o \
-		gator_events_perf_pmu.o \
 		gator_events_sched.o \
 
 # Convert the old GATOR_WITH_MALI_SUPPORT to the new kernel flags
@@ -29,6 +28,14 @@ ifneq ($(GATOR_WITH_MALI_SUPPORT),)
   ifneq ($(GATOR_MALI_INTERFACE_STYLE),)
     EXTRA_CFLAGS += -DGATOR_MALI_INTERFACE_STYLE=$(GATOR_MALI_INTERFACE_STYLE)
   endif
+  ifneq ($(GATOR_MALI_4XXMP_PATH),)
+    CONFIG_GATOR_MALI_4XXMP_PATH = $(GATOR_MALI_4XXMP_PATH)
+  endif
+  CONFIG_GATOR_MALI_4XXMP_PATH ?= drivers/gpu/arm/mali400mp
+  ifneq ($(GATOR_MALI_MIDGARD_PATH),)
+    CONFIG_GATOR_MALI_MIDGARD_PATH = $(GATOR_MALI_MIDGARD_PATH)
+  endif
+  CONFIG_GATOR_MALI_MIDGARD_PATH ?= drivers/gpu/arm/midgard
 endif
 
 ifeq ($(CONFIG_GATOR_WITH_MALI_SUPPORT),y)
@@ -41,8 +48,11 @@ ifeq ($(CONFIG_GATOR_WITH_MALI_SUPPORT),y)
   endif
   gator-y +=	gator_events_mali_common.o
 
-  ifneq ($(CONFIG_GATOR_MALI_PATH),)
-    ccflags-y += -I$(CONFIG_GATOR_MALI_PATH)
+  ifneq ($(CONFIG_GATOR_MALI_4XXMP_PATH),)
+    ccflags-$(CONFIG_GATOR_MALI_4XXMP) += -I$(CONFIG_GATOR_MALI_4XXMP_PATH)
+  endif
+  ifneq ($(CONFIG_GATOR_MALI_MIDGARD_PATH),)
+    ccflags-$(CONFIG_GATOR_MALI_MIDGARD) += -I$(CONFIG_GATOR_MALI_MIDGARD_PATH)
   endif
   ccflags-$(CONFIG_GATOR_MALI_4XXMP) += -DMALI_SUPPORT=MALI_4xx
   ccflags-$(CONFIG_GATOR_MALI_MIDGARD) += -DMALI_SUPPORT=MALI_MIDGARD

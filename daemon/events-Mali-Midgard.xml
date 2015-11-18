@@ -36,11 +36,32 @@ power management is disabled during profiling so these counters are not useful a
   <counter_set name="ARM_Mali-Midgard_Filmstrip_cnt" count="1"/>
   <category name="Mali-Midgard Filmstrip" counter_set="ARM_Mali-Midgard_Filmstrip_cnt" per_cpu="no">
     <option_set name="fs">
-      <option event_delta="0x3c" name="1:60" description="captures every 60th frame"/>
-      <option event_delta="0x1e" name="1:30" description="captures every 30th frame"/>
-      <option event_delta="0xa" name="1:10" description="captures every 10th frame"/>
+      <option event_delta="0x043c" name="1:60 s" description="captures every 60th frame at 1:4 scale"/>
+      <option event_delta="0x041e" name="1:30 s" description="captures every 30th frame at 1:4 scale"/>
+      <option event_delta="0x040a" name="1:10 s" description="captures every 10th frame at 1:4 scale"/>
+      <option event_delta="0x023c" name="1:60 m" description="captures every 60th frame at 1:2 scale"/>
+      <option event_delta="0x021e" name="1:30 m" description="captures every 30th frame at 1:2 scale"/>
+      <option event_delta="0x020a" name="1:10 m" description="captures every 10th frame at 1:2 scale"/>
+      <option event_delta="0x013c" name="1:60 l" description="captures every 60th frame at 1:1 scale"/>
+      <option event_delta="0x011e" name="1:30 l" description="captures every 30th frame at 1:1 scale"/>
+      <option event_delta="0x01-a" name="1:10 l" description="captures every 10th frame at 1:1 scale"/>
     </option_set>
-    <event event="0x0400" option_set="fs" title="ARM Mali-Midgard" name="Filmstrip" description="Scaled framebuffer"/>
+    <event event="0" option_set="fs" title="ARM Mali-Midgard" name="Filmstrip" description="Scaled framebuffer"/>
+  </category>
+  <counter_set name="ARM_Mali-Midgard_Filmstrip2_cnt" count="1"/>
+  <category name="Mali-Midgard Filmstrip" counter_set="ARM_Mali-Midgard_Filmstrip2_cnt" per_cpu="no">
+    <option_set name="fs">
+      <option event_delta="0x1400f03c" name="1:60 s" description="captures every 60th frame at ~320x240"/>
+      <option event_delta="0x1400f01e" name="1:30 s" description="captures every 30th frame at ~320x240"/>
+      <option event_delta="0x1400f00a" name="1:10 s" description="captures every 10th frame at ~320x240"/>
+      <option event_delta="0x2801e03c" name="1:60 m" description="captures every 60th frame at ~640x480"/>
+      <option event_delta="0x2801e01e" name="1:30 m" description="captures every 30th frame at ~640x480"/>
+      <option event_delta="0x2801e00a" name="1:10 m" description="captures every 10th frame at ~640x480"/>
+      <option event_delta="0x5003c03c" name="1:60 l" description="captures every 60th frame at ~1280x960"/>
+      <option event_delta="0x5003c01e" name="1:30 l" description="captures every 30th frame at ~1280x960"/>
+      <option event_delta="0x5003c00a" name="1:10 l" description="captures every 10th frame at ~1280x960"/>
+    </option_set>
+    <event event="0" option_set="fs" title="ARM Mali-Midgard" name="Filmstrip" description="Scaled framebuffer"/>
   </category>
   <category name="Mali-Midgard Activity" per_cpu="no">
     <event counter="ARM_Mali-Midgard_fragment" title="GPU Fragment" name="Activity" class="activity" activity1="Activity" activity_color1="0x00006fcc" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 0 Activity"/>

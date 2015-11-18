@@ -27,30 +27,31 @@ enum {
 static DEFINE_PER_CPU(uint64_t *, taskname_keys);
 static DEFINE_PER_CPU(int, collecting);
 
-/* this array is never read as the cpu wait charts are derived
+/* this array is never read as the cpu charts are derived
  * counters the files are needed, nonetheless, to show that these
  * counters are available
  */
-static ulong cpu_wait_enabled[CPU_WAIT_TOTAL];
-static ulong sched_cpu_key[CPU_WAIT_TOTAL];
+static const char *sched_trace_event_names[] = {
+	"Linux_cpu_wait_contention",
+	"Linux_cpu_wait_io",
+	"Linux_cpu_system",
+	"Linux_cpu_user",
+};
+static ulong sched_trace_enabled[ARRAY_SIZE(sched_trace_event_names)];
+static ulong sched_trace_keys[ARRAY_SIZE(sched_trace_event_names)];
 
 static int sched_trace_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
+	int i;
 
-	/* CPU Wait - Contention */
-	dir = gatorfs_mkdir(sb, root, "Linux_cpu_wait_contention");
-	if (!dir)
-		return -1;
-	gatorfs_create_ulong(sb, dir, "enabled", &cpu_wait_enabled[STATE_CONTENTION]);
-	gatorfs_create_ro_ulong(sb, dir, "key", &sched_cpu_key[STATE_CONTENTION]);
-
-	/* CPU Wait - I/O */
-	dir = gatorfs_mkdir(sb, root, "Linux_cpu_wait_io");
-	if (!dir)
-		return -1;
-	gatorfs_create_ulong(sb, dir, "enabled", &cpu_wait_enabled[STATE_WAIT_ON_IO]);
-	gatorfs_create_ro_ulong(sb, dir, "key", &sched_cpu_key[STATE_WAIT_ON_IO]);
+	for (i = 0; i < ARRAY_SIZE(sched_trace_event_names); ++i) {
+		dir = gatorfs_mkdir(sb, root, sched_trace_event_names[i]);
+		if (!dir)
+			return -1;
+		gatorfs_create_ulong(sb, dir, "enabled", &sched_trace_enabled[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &sched_trace_keys[i]);
+	}
 
 	return 0;
 }
@@ -320,8 +321,8 @@ static void gator_trace_sched_init(void)
 {
 	int i;
 
-	for (i = 0; i < CPU_WAIT_TOTAL; i++) {
-		cpu_wait_enabled[i] = 0;
-		sched_cpu_key[i] = gator_events_get_key();
+	for (i = 0; i < ARRAY_SIZE(sched_trace_enabled); i++) {
+		sched_trace_enabled[i] = 0;
+		sched_trace_keys[i] = gator_events_get_key();
 	}
 }

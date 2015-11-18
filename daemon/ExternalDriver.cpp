@@ -89,7 +89,7 @@ bool ExternalDriver::connect() const {
 	if (mUds < 0) {
 		mUds = OlySocket::connect(MALI_UTGARD_SETUP, sizeof(MALI_UTGARD_SETUP));
 		if (mUds >= 0 && !writeAll(mUds, SETUP_VERSION, sizeof(SETUP_VERSION) - 1)) {
-			logg->logError("Unable to send setup version");
+			logg.logError("Unable to send setup version");
 			handleException();
 		}
 	}
@@ -111,37 +111,37 @@ void ExternalDriver::query() const {
 	// Only try once even if it fails otherwise not all the possible counters may be shown
 	mQueried = true;
 
-	char *const buf = gSessionData->mSharedData->mMaliUtgardCounters;
-	const size_t bufSize = sizeof(gSessionData->mSharedData->mMaliUtgardCounters);
+	char *const buf = gSessionData.mSharedData->mMaliUtgardCounters;
+	const size_t bufSize = sizeof(gSessionData.mSharedData->mMaliUtgardCounters);
 	size_t size = 0;
 
 	if (!connect()) {
-		size = gSessionData->mSharedData->mMaliUtgardCountersSize;
-		logg->logMessage("Unable to connect, using cached version; size: %zi", size);
+		size = gSessionData.mSharedData->mMaliUtgardCountersSize;
+		logg.logMessage("Unable to connect, using cached version; size: %zi", size);
 	} else {
-		gSessionData->mSharedData->mMaliUtgardCountersSize = 0;
+		gSessionData.mSharedData->mMaliUtgardCountersSize = 0;
 
 		buf[0] = HEADER_REQUEST_COUNTERS;
 		size_t pos = HEADER_SIZE;
 		Buffer::writeLEInt((unsigned char *)(buf + 1), pos);
 		if (!writeAll(mUds, buf, pos)) {
-			logg->logError("Unable to send request counters message");
+			logg.logError("Unable to send request counters message");
 			handleException();
 		}
 
 		if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != (char)HEADER_COUNTERS) {
-			logg->logError("Unable to read request counters response header");
+			logg.logError("Unable to read request counters response header");
 			handleException();
 		}
 		size = readLEInt(buf + 1);
 		if (size > bufSize || !readAll(mUds, buf, size - HEADER_SIZE)) {
-			logg->logError("Unable to read request counters response");
+			logg.logError("Unable to read request counters response");
 			handleException();
 		}
 
 		size -= HEADER_SIZE;
-		gSessionData->mSharedData->mMaliUtgardCountersSize = size;
-		logg->logMessage("Requested counters; size: %zi", size);
+		gSessionData.mSharedData->mMaliUtgardCountersSize = size;
+		logg.logMessage("Requested counters; size: %zi", size);
 	}
 
 	size_t pos = 0;
@@ -166,7 +166,7 @@ void ExternalDriver::query() const {
 	}
 
 	if (pos != size) {
-		logg->logError("Unable to parse request counters response");
+		logg.logError("Unable to parse request counters response");
 		handleException();
 	}
 }
@@ -193,7 +193,7 @@ void ExternalDriver::start() {
 		}
 		size_t nameLen = strlen(counter->getName());
 		if (pos + nameLen + 1 + 2*Buffer::MAXSIZE_PACK32 > sizeof(buf)) {
-			logg->logError("Unable to enable counters, message is too large");
+			logg.logError("Unable to enable counters, message is too large");
 			handleException();
 		}
 		memcpy(buf + pos, counter->getName(), nameLen + 1);
@@ -203,18 +203,18 @@ void ExternalDriver::start() {
 	}
 	Buffer::writeLEInt((unsigned char *)(buf + 1), pos);
 	if (!writeAll(mUds, buf, pos)) {
-		logg->logError("Unable to send enable counters message");
+		logg.logError("Unable to send enable counters message");
 		handleException();
 	}
 
 	size_t size = 0;
 	if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != (char)HEADER_ACK) {
-		logg->logError("Unable to read enable counters response header");
+		logg.logError("Unable to read enable counters response header");
 		handleException();
 	}
 	size = readLEInt(buf + 1);
 	if (size != HEADER_SIZE) {
-		logg->logError("Unable to parse enable counters response");
+		logg.logError("Unable to parse enable counters response");
 		handleException();
 	}
 
@@ -222,22 +222,22 @@ void ExternalDriver::start() {
 	pos = HEADER_SIZE;
 	// ns/sec / samples/sec = ns/sample
 	// For sample rate of none, sample every 100ms
-	Buffer::packInt(buf, sizeof(buf), pos, NS_PER_S / (gSessionData->mSampleRate == 0 ? 10 : gSessionData->mSampleRate));
-	Buffer::packInt(buf, sizeof(buf), pos, gSessionData->mLiveRate);
+	Buffer::packInt(buf, sizeof(buf), pos, NS_PER_S / (gSessionData.mSampleRate == 0 ? 10 : gSessionData.mSampleRate));
+	Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mLiveRate);
 	Buffer::writeLEInt((unsigned char *)(buf + 1), pos);
 	if (!writeAll(mUds, buf, pos)) {
-		logg->logError("Unable to send start message");
+		logg.logError("Unable to send start message");
 		handleException();
 	}
 
 	size = 0;
 	if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != (char)HEADER_ACK) {
-		logg->logError("Unable to read start response header");
+		logg.logError("Unable to read start response header");
 		handleException();
 	}
 	size = readLEInt(buf + 1);
 	if (size != HEADER_SIZE) {
-		logg->logError("Unable to parse start response");
+		logg.logError("Unable to parse start response");
 		handleException();
 	}
 }

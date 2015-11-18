@@ -49,6 +49,11 @@
   <configuration counter="ARMv8_Cortex_A72_cnt1" event="0x16"/>
   <configuration counter="ARMv8_Cortex_A72_cnt2" event="0x10"/>
   <configuration counter="ARMv8_Cortex_A72_cnt3" event="0x19"/>
+  <configuration counter="ARMv8_Exynos_M1_ccnt" event="0x11"/>
+  <configuration counter="ARMv8_Exynos_M1_cnt0" event="0x8"/>
+  <configuration counter="ARMv8_Exynos_M1_cnt1" event="0x16"/>
+  <configuration counter="ARMv8_Exynos_M1_cnt2" event="0x10"/>
+  <configuration counter="ARMv8_Exynos_M1_cnt3" event="0x19"/>
   <configuration counter="Scorpion_ccnt" event="0xff"/>
   <configuration counter="Scorpion_cnt0" event="0x08"/>
   <configuration counter="Scorpion_cnt1" event="0x10"/>
@@ -64,6 +69,8 @@
   <configuration counter="Linux_meminfo_memused2"/>
   <configuration counter="Linux_meminfo_memfree"/>
   <configuration counter="Linux_power_cpu_freq"/>
+  <configuration counter="Linux_cpu_system"/>
+  <configuration counter="Linux_cpu_user"/>
   <configuration counter="ARM_Mali-4xx_fragment"/>
   <configuration counter="ARM_Mali-4xx_vertex"/>
   <configuration counter="ARM_Mali-Midgard_fragment" cores="1"/>

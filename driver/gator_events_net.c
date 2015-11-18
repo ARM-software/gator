@@ -95,7 +95,7 @@ static int gator_events_net_create_files(struct super_block *sb, struct dentry *
 
 static int gator_events_net_start(void)
 {
-	get_network_stats(0);
+	get_network_stats(NULL);
 	netPrev[NETRX] = rx_total;
 	netPrev[NETTX] = tx_total;
 	setup_deferrable_timer_on_stack(&net_wake_up_timer, net_wake_up_handler, 0);

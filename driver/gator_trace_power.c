@@ -79,9 +79,8 @@ GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
 	if (state == per_cpu(idle_prev_state, cpu))
 		return;
 
-	if (implements_wfi()) {
+	if (implements_wfi())
 		marshal_idle(cpu, state);
-	}
 
 	per_cpu(idle_prev_state, cpu) = state;
 }

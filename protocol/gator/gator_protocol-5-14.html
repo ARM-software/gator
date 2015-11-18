@@ -1,0 +1,1886 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en_US" lang="en_US">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style type="text/css">
+      .circle {
+        -webkit-border-radius: 999px;
+        -moz-border-radius: 999px;
+        border-radius: 999px;
+        border: 1px solid #003366;
+        padding: 2px;
+      }
+      .white {
+        color: white;
+      }
+      table {
+        border-spacing: 0px;
+        border-bottom: 1px solid gray;
+        border-right: 1px solid gray;
+      }
+      th, td {
+        padding: 2px;
+        vertical-align: text-top;
+        border-left: 1px solid gray;
+        border-top: 1px solid gray;
+      }
+      th {
+        background-color: #687684;
+      }
+      table.none {
+        border: 0px;
+      }
+      table.none td {
+        border: 0px;
+      }
+      .literal {
+        font-family: monospace;
+      }
+    </style>
+    <script type="text/javascript" src="../topbar.js"></script>
+  </head>
+  <body>
+    <div class="master">
+    <h1 id="top">Gator v13 (DS-5 v5.14) Protocol</h1>
+    <h2 id="Index">Index</h2>
+    <li>
+      <a href="#Introduction">Introduction</a>
+    </li>
+    <li><a href="#ChangesInV13">Changes in v13 (DS-5 v5.14)</a></li>
+    <li>
+      <a href="#Protocol">Target-Host Protocol</a>
+      <ul>
+	<li><a href="#Magic">Magic Exchange</a></li>
+	<li><a href="#CommandHeader">Command Header</a></li>
+	<li><a href="#CommandRequestXML">Request XML Body</a></li>
+	<li><a href="#CommandDeliverXML">Deliver XML Body</a></li>
+	<li><a href="#CommandAPCStart">APC Start Body</a></li>
+	<li><a href="#CommandAPCStop">APC Stop Body</a></li>
+	<li><a href="#CommandDisconnect">Disconnect Body</a></li>
+	<li><a href="#CommandPing">Ping Body</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#Response">Response Format</a>
+      <ul>
+	<li><a href="#ResponseHeader">Response Header</a></li>
+	<li><a href="#ResponseXML">XML Body</a></li>
+	<li><a href="#ResponseApcData">APC Data Body</a></li>
+	<li><a href="#ResponseAck">ACK Body</a></li>
+	<li><a href="#ResponseNak">NAK Body</a></li>
+	<li><a href="#ResponseError">Error Body</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#XML">XML</a>
+      <ul>
+	<li><a href="#XMLEvents">Events</a></li>
+	<li><a href="#XMLConfiguration">Configuration</a></li>
+	<li><a href="#XMLCounters">Counters</a></li>
+	<li><a href="#XMLSession">Session</a></li>
+	<li><a href="#XMLCaptured">Captured</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#Frame">APC Frame Format</a>
+      <ul>
+	<li><a href="#Overview">Overview</a></li>
+	<li><a href="#FrameTypes">Types</a></li>
+	<li><a href="#FramePacked">Packed Values</a></li>
+	<li><a href="#FrameOrdering">Ordering</a></li>
+	<li><a href="#FrameRequired">Required Messages</a></li>
+	<li><a href="#FrameHeader">Frame Header</a></li>
+	<li><a href="#FrameSummary">Summary Frame Messages</a></li>
+	<li><a href="#FrameBacktrace">Backtrace Frame Messages</a></li>
+	<li><a href="#FrameName">Name Frame Messages</a></li>
+	<li><a href="#FrameCounter">Counter Frame Messages</a></li>
+	<li><a href="#FrameBlockCounter">Block Counter Frame Messages</a></li>
+	<li><a href="#FrameAnnotate">Annotate Frame Messages</a></li>
+	<li><a href="#FrameSched">Scheduler Trace Frame Messages</a></li>
+	<li><a href="#FrameGPU">GPU Trace Frame Messages</a></li>
+	<li><a href="#FrameIdle">Idle Frame Messages</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#Sequence">Sequence Diagrams</a>
+      <ul>
+	<li><a href="#SequenceConfig">Configuration</a></li>
+	<li><a href="#SequenceCapture">Capture</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#LocalCapture">Local Capture</a>
+    </li>
+    <h2 id="Introduction">Introduction</h2>
+    <p>The purpose of this document is to describe the TCP/IP protocol used by gator or other implementing clients to communicate with Streamline version 5.14 or later. The gator source code, distributed as part of <a href="http://www.arm.com/products/tools/software-tools/ds-5/index.php">DS-5</a>, is the reference implementation of this protocol. The protocol may change with future releases of Streamline, but Streamline will maintain backwards compatibility with this version of the protocol so that clients need only implement one version of the protocol. The client is expected to be able to parse and generate simple XML as well as be able to ignore additional or unexpected nodes or attributes. Only the XML features described will be used, so the more complex features of XML, such as XML namespaces, are not required.</p>
+    <h2 id="ChangesInV13">Changes in v13 (DS-5 v5.14)</h2>
+    <p>The following changes have been made in v13 (DS-5 v5.14)</p>
+    <ul>
+      <li>Streamline no longer requests <a href="#XMLSession">Session XML</a></li>
+      <li>Added ways to reduce duplication in <a href="#XMLEvents">Events XML</a> with counter_set and option_set nodes</li>
+      <li>Added modifier attribute for <a href="#XMLEvents">Events</a>, <a href="#XMLConfiguration">Configuration</a> and <a href="#XMLCaptured">Captured</a> XML to support fixed-point math</li>
+      <li><a href="#XMLConfiguration">Configuration XML</a> version updated to 2</li>
+      <li>Added live_rate attribute on in <a href="#XMLSession">Session XML</a> for Live support</li>
+      <li>Documented new energy_capture node in <a href="#XMLSession">Session XML</a> released in DS-5 v5.13</li>
+      <li>Added cpuid attribute in <a href="#XMLCaptured">Captured XML</a></li>
+      <li>Added the Newline Canary to the <a href="#FrameSummary">Summary Frame Message</a> to detect APC corruption</li>
+      <li>Added the system uname to the <a href="#FrameSummary">Summary Frame Message</a></li>
+      <li>Added cpuid to the <a href="#FrameName">Core Name Message</a></li>
+      <li>Documented that <a href="#FrameBlockCounter">Block Counters</a> must always start with a time</li>
+      <li>Added the live_energy_delta attribute to the captured.xml file</li>
+    </ul>
+    <h2 id="Protocol">Target-Host Protocol</h2>
+    <h3 id="Magic">Magic Exchange</h3>
+    <p>A handshake so server and client recognize each other</p>
+    <ol>
+      <li>The client reads ASCII newline (\n) delimited strings until <span class="literal">STREAMLINE\n</span> is read. Anything else is discarded.</li>
+      <li>Send <span class="literal">GATOR 13\n</span></li>
+    </ol>
+    <p>Further communication from Streamline comes as <a href="#CommandHeader">Commands</a></p>
+    <h3 id="CommandHeader">Command Header</h3>
+    <p>Commands from Streamline consist of a header followed by a body. Streamline then expects a <a href="#Response">Response</a></p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td>int8</td>
+	<td>The type of command
+	  <table class="none">
+	    <tr><td>0</td><td>= <a href="#CommandRequestXML">Request XML</a></td></tr>
+            <tr><td>1</td><td>= <a href="#CommandDeliverXML">Deliver XML</a></td></tr>
+            <tr><td>2</td><td>= <a href="#CommandAPCStart">APC Start</a></td></tr>
+            <tr><td>3</td><td>= <a href="#CommandAPCStop">APC Stop</a></td></tr>
+            <tr><td>4</td><td>= <a href="#CommandDisconnect">Disconnect</a></td></tr>
+            <tr><td>5</td><td>= <a href="#CommandPing">Ping</a></td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>Little Endian int32</td>
+	<td>Number of bytes in the body</td>
+      </tr>
+    </table></p>
+    <p>If the client receives an unrecognized command, it should respond with a <a href="#ResponseNak">NAK</a>.</p>
+    <h3 id="CommandRequestXML">Request XML Body</h3>
+    <p>Represents a request from Streamline formatted as XML with the root node request and an attribute representing the type of request. For example, this is a request for <a href="#XMLEvents">Events XML</a></p>
+    <p class="literal">
+      &lt;?xml version="1.0" encoding="US-ASCII"?&gt;<br/>
+      &lt;request type="events"&gt;<br/>
+      &lt;/request&gt;
+    </p>
+    <p><table>
+      <tr>
+	<th><span class="white">Request</span></th>
+	<th><span class="white">Response Code</span></th>
+	<th><span class="white">Response Body</span></th>
+      </tr>
+      <tr>
+	<td><span class="literal">&lt;request type="events"&gt;</span></td>
+	<td>XML</td>
+	<td><a href="#XMLEvents">Events XML</a></td>
+      </tr>
+      <tr>
+	<td><span class="literal">&lt;request type="configuration"&gt;</span></td>
+	<td>XML</td>
+	<td><a href="#XMLConfiguration">Configuration XML</a></td>
+      </tr>
+      <tr>
+	<td><span class="literal">&lt;request type="counters"&gt;</span></td>
+	<td>XML</td>
+	<td><a href="#XMLCounters">Counters XML</a></td>
+      </tr>
+      <tr>
+	<td><span class="literal">&lt;request type="captured"&gt;</span></td>
+	<td>XML</td>
+	<td><a href="#XMLCaptured">Captured XML</a> Streamline requests Captured XML prior to starting a capture.</td>
+      </tr>
+      <tr>
+	<td><span class="literal">&lt;request type="defaults"&gt;</span></td>
+	<td>XML</td>
+	<td>default <a href="#XMLConfiguration">Configuration XML</a></td>
+      </tr>
+    </table></p>
+    <h3 id="CommandDeliverXML">Deliver XML Body</h3>
+    <p><table>
+      <tr>
+	<th><span class="white">Request</span></th>
+	<th><span class="white">Response Code</span></th>
+      </tr>
+      <tr>
+	<td><a href="#XMLSession">Session XML</a></td>
+	<td>ACK</td>
+      </tr>
+      <tr>
+	<td><a href="#XMLConfiguration">Configuration XML</a></td>
+	<td>ACK</td>
+      </tr>
+    </table></p>
+    <h3 id="CommandAPCStart">APC Start Body</h3>
+    <p>No Command Body. This indicates that capture should begin and Streamline now expects to receive <a href="#ResponseApcData">APC Data Responses</a>. No ACK is expected and no further XML exchange takes place. If a failure occurs, the client should send an <a href="#ResponseError">Error</a>.</p>
+    <h3 id="CommandAPCStop">APC Stop Body</h3>
+    <p>No Command Body. Capture should now end and no ACK is expected, but <a href="#ResponseApcData">APC Data Responses</a> can continue to arrive until all captured data is sent, then the connection should be closed. If a failure occurs, the client should send an <a href="#ResponseError">Error</a>.</p>
+    <h3 id="CommandDisconnect">Disconnect Body</h3>
+    <p>No Command Body. No ACK is expected, close the connection</p>
+    <h3 id="CommandPing">Ping Body</h3>
+    <p>No Command Body. Send an ACK Response</p>
+    <h2 id="Response">Response Format</h2>
+    <p>Responses consist of a header followed by a body</p>
+    <h3 id="ResponseHeader">Response Header</h3>
+    <p>Identical to the <a href="#CommandHeader">Command Header</a> but the Codes are different</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td>int8</td>
+	<td>The type of command
+	  <table class="none">
+	    <tr><td>1</td><td>= <a href="#ResponseXML">XML</a></td></tr>
+	    <tr><td>3</td><td>= <a href="#ResponseApcData">APC Data</a></td></tr>
+	    <tr><td>4</td><td>= <a href="#ResponseAck">ACK</a></td></tr>
+	    <tr><td>5</td><td>= <a href="#ResponseNak">NAK</a></td></tr>
+	    <tr><td>0xFF</td><td>= <a href="#ResponseError">Error</a></td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>Little Endian int32</td>
+	<td>Number of bytes in the body</td>
+      </tr>
+    </table></p>
+    <h3 id="ResponseXML">XML Body</h3>
+    <p>XML, format is dependent on the Request see <a href="#CommandRequestXML">Request XML Body</a></p>
+    <h3 id="ResponseApcData">APC Data Body</h3>
+    <p>An <a href="#Frame">APC Frame</a>. If the length is zero, it is the End of Sequence message which indicates that all APC Frames have been transmitted to Streamline.</p>
+    <h3 id="ResponseAck">ACK Body</h3>
+    <p>No Response Body. Indicates the <a href="#CommandHeader">Command</a> was successful</p>
+    <h3 id="ResponseNak">NAK Body</h3>
+    <p>Indicates a synchronous non-fatal error occurred when handling a request. Can contain a UTF-8 error message. The length is specified in the header, so no NULL character is expected. Indicates the <a href="#CommandHeader">Command</a> failed. The connection can continue.</p>
+    <h3 id="ResponseError">Error Body</h3>
+    <p>Indicates a synchronous fatal error occurred when responding to a request. A UTF-8 error message. The length is specified in the header, so no NULL character is expected. The error is terminal and the connection must be closed. Errors may be sent asynchronously, ie without a request, but Streamline may not process them immediately.</p>
+    <h2 id="XML">XML</h2>
+    <h3 id="XMLEvents">Events</h3>
+    <p>Listing of all possible counters</p>
+    <p><b>events</b></p>
+    <p>The events root node of Events XML can have any number of counter_set and category child nodes</p>
+    <p><b>counter_set</b></p>
+    <p>The counter_set node has no children and the following attributes. Counter sets are used when the number of counters that can be enabled in a category is restricted. Streamline will respect the restriction and assign a name from the set to a counter in <a href="#XMLConfiguration">Configuration XML</a>.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>Name of the counter_set</td>
+      </tr>
+      <tr>
+	<td>count</td>
+	<td>String</td>
+	<td>Number of counters in the set. Counter names are derived by appending a number, starting at zero, to the set name. Ex, if the set name is ARM_Cortex-A8_cnt and the count is 4, then the counter names in the set are ARM_Cortex-A8_cnt0, ARM_Cortex-A8_cnt1, ARM_Cortex-A8_cnt2 and ARM_Cortex-A8_cnt3</td>
+      </tr>
+      <tr>
+	<td>title</td>
+	<td>String</td>
+	<td>Appended to the title of the event when counter_set is a child of category, shown in Streamline before the name. Used to group counters.</td>
+      </tr>
+      <tr>
+	<td>description</td>
+	<td>String</td>
+	<td>Appended to the description to show in Streamline when counter_set is a child of category. Used as the tooltip for the counter</td>
+      </tr>
+    </table></p>
+    <p><b>category</b></p>
+    <p>The category node can have any number of event and option_set child nodes. It can also have one or more counter_set child nodes instead of the counter_set attribute if the same set of child event nodes show up for to multiple counter sets.  The category node can have the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>Name of the category show in Streamline</td>
+      </tr>
+      <tr>
+	<td>counter_set</td>
+	<td>String</td>
+	<td>Required if child event uses the event attribute and no child counter_set nodes are present, name of the related counter_set</td>
+      </tr>
+      <tr>
+	<td>per_cpu</td>
+	<td>Boolean</td>
+	<td>Defaults to false, see the per_cpu attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>supports_event_based_sampling</td>
+	<td>Boolean</td>
+	<td>Defaults to false, see the supports_event_based_sampling attribute of the event node</td>
+      </tr>
+    </table></p>
+    <p><b>option_set</b></p>
+    <p>The event node has one or more option child nodes and the following attributes. This is used when the same event is applicable for multiple devices</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>The name of this option_set</td>
+      </tr>
+    </table></p>
+    <p><b>option</b></p>
+    <p>The option node has no children and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>event_delta</td>
+	<td>Hex Integer</td>
+	<td>The offset to add to the applicable event to get the resulting event number</td>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>The device name to append to the event name</td>
+      </tr>
+      <tr>
+	<td>description</td>
+	<td>String</td>
+	<td>The device description to append to the event description</td>
+      </tr>
+    </table></p>
+    <p><b>event</b></p>
+    <p>The event node has no children and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>counter</td>
+	<td>String</td>
+	<td>Required if event is not present, name of the counter</td>
+      </tr>
+      <tr>
+	<td>event</td>
+	<td>Hex Integer</td>
+	<td>Required if counter is not present, hardware counter number</td>
+      </tr>
+      <tr>
+	<td>option_set</td>
+	<td>String</td>
+	<td>Name of the option_set to use</td>
+      </tr>
+      <tr>
+	<td>title</td>
+	<td>String</td>
+	<td>Title of the event, shown in Streamline before the name. Used to group counters.</td>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>Name of the event, shown in Streamline after the title</td>
+      </tr>
+      <tr>
+	<td>per_cpu</td>
+	<td>Boolean</td>
+	<td>Is true if this event is per cpu as opposed to global. Defaults to the per_cpu attribute of the category node</td>
+      </tr>
+      <tr>
+	<td>supports_event_based_sampling</td>
+	<td>Boolean</td>
+	<td>Is true if this event supports event base sampling. Defaults to the supports_event_based_sampling attribute of the category node</td>
+      </tr>
+      <tr>
+	<td>display</td>
+	<td>String</td>
+	<td>Optional, one of average, maximum, minimum, hertz, accumulate (Default). This is the same as adding .avg, .max, .min or .hz (accumulate is the default) to the counter name in the chart configuration panel in Streamline.</td>
+      </tr>
+      <tr>
+	<td>units</td>
+	<td>String</td>
+	<td>Optional, units to display in Streamline</td>
+      </tr>
+      <tr>
+	<td>modifier</td>
+	<td>Integer</td>
+	<td>Optional, number to divide read numbers by for fixed point math</td>
+      </tr>
+      <tr>
+	<td>average_selection</td>
+	<td>Boolean</td>
+	<td>Optional, Averages the values displayed by the Cross Section Marker in Streamline</td>
+      </tr>
+      <tr>
+	<td>description</td>
+	<td>String</td>
+	<td>Description to show in Streamline. Used as the tooltip for the counter</td>
+      </tr>
+    </table></p>
+    <p>Example:</p>
+    <p class="literal">
+      &lt;?xml version="1.0" encoding="UTF-8"?&gt;<br/>
+      &lt;events&gt;<br/>
+      &nbsp;&nbsp;&lt;counter_set name="ARM_Cortex-A8_cnt" count="4"/&gt;<br/>
+      &nbsp;&nbsp;&lt;category name="Cortex-A8" counter_set="ARM_Cortex-A8_cnt" per_cpu="yes" supports_event_based_sampling="yes"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="ARM_Cortex-A8_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x0" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x1" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&lt;/category&gt;<br/>
+      &nbsp;&nbsp;&lt;category name="CCI-400" counter_set="cci-400_cnt" supports_event_based_sampling="yes"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="cci-400_ccnt" event="0xff" title="CCI-400" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;option_set name="Slave"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;option event_delta="0x0" name="S0" description="Slave interface 0"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;option event_delta="0x20" name="S1" description="Slave interface 1"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;option event_delta="0x40" name="S2" description="Slave interface 2"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;/option_set&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x0" option_set="Slave" title="CCI-400" name="Read: any" description="Read request handshake: any"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x1" option_set="Slave" title="CCI-400" name="Read: transaction" description="Read request handshake: device transaction"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x2" option_set="Slave" title="CCI-400" name="Read: normal" description="Read request handshake: normal, non-shareable or system-shareable, but not barrier or cache maintenance operation"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;option_set name="Master"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;option event_delta="0xa0" name="M0" description="Master interface 0"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;option event_delta="0xc0" name="M1" description="Master interface 1"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;option event_delta="0xe0" name="M2" description="Master interface 2"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;/option_set&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x14" option_set="Master" title="CCI-400" name="Retry fetch" description="RETRY of speculative fetch transaction"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x15" option_set="Master" title="CCI-400" name="Read stall: address hazard" description="Read request stall cycle because of an address hazard"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x16" option_set="Master" title="CCI-400" name="Read stall: ID hazard" description="Read request stall cycle because of an ID hazard"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&lt;/category&gt;<br/>
+      &nbsp;&nbsp;&lt;category name="Mali GPU Fragment Processor"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter_set name="ARM_Mali-400_FP0_cnt" title="Mali-400 FP0" description="Mali GPU Fragment Processor 0" count="2"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter_set name="ARM_Mali-400_FP1_cnt" title="Mali-400 FP1" description="Mali GPU Fragment Processor 1" count="2"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter_set name="ARM_Mali-400_FP2_cnt" title="Mali-400 FP2" description="Mali GPU Fragment Processor 2" count="2"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x0" title="Mali-400 FP" name="Active clock cycles" description="Active clock cycles, between polygon start and IRQ."/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x2" title="Mali-400 FP" name="Total bus reads" description="Total number of 64-bit words read from the bus."/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event event="0x3" title="Mali-400 FP" name="Total bus writes" description="Total number of 64-bit words written to the bus."/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&lt;/category&gt;<br/>
+      &nbsp;&nbsp;&lt;category name="Linux"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="Linux_irq_softirq" title="Interrupts" name="SoftIRQ" per_cpu="yes" description="Linux SoftIRQ taken"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="Linux_irq_irq" title="Interrupts" name="IRQ" per_cpu="yes" description="Linux IRQ taken"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="Linux_block_rq_wr" title="Disk IO" name="Write" units="B" description="Disk IO Bytes Written"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&lt;/category&gt;<br/>
+      &nbsp;&nbsp;&lt;category name="hwmon"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="hwmon_ab8500-isa-0000_0" title="Temperature" name="ext_rtc_xtal" display="average" units="C" modifier="1000" average_selection="yes" description="libsensors Temperature sensor ext_rtc_xtal (hwmon_ab8500-isa-0000_0)"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="hwmon_ab8500-isa-0000_1" title="Temperature" name="ext_db8500" display="average" units="C" modifier="1000" average_selection="yes" description="libsensors Temperature sensor ext_db8500 (hwmon_ab8500-isa-0000_1)"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;event counter="hwmon_ab8500-isa-0000_2" title="Temperature" name="bat_temp" display="average" units="C" modifier="1000" average_selection="yes" description="libsensors Temperature sensor bat_temp (hwmon_ab8500-isa-0000_2)"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;!-- ... --&gt;<br/>
+      &nbsp;&nbsp;&lt;/category&gt;<br/>
+      &lt;/events&gt;
+    </p>
+    <h3 id="XMLConfiguration">Configuration</h3>
+    <p>List of counters that are currently enabled. Can include counters not available on the target which will be ignored</p>
+    <p><b>configurations</b></p>
+    <p>The configurations root node of Configuration XML can have any number of configuration child nodes and has the following attribute</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>revision</td>
+	<td>Integer</td>
+	<td><span class="circle">2</span></td>
+      </tr>
+    </table></p>
+    <p><b>configuration</b></p>
+    <p>The configuration node has no children and has the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>counter</td>
+	<td>String</td>
+	<td>See the counter attribute of the event node. Required, unique. If <a href="#XMLEvents">Events XML</a> did not have a counter for this event, a counter from the related counter_set can be taken, see the description of counter_set in <a href="#XMLEvents">Events XML</a></td>
+      </tr>
+      <tr>
+	<td>event</td>
+	<td>Hex Integer</td>
+	<td>See the event attribute of the event node, set if it was set in <a href="#XMLEvents">Events XML</a></td>
+      </tr>
+      <tr>
+	<td>title</td>
+	<td>String</td>
+	<td>See the title attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>See the name attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>per_cpu</td>
+	<td>Boolean</td>
+	<td>See the per_cpu attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>supports_event_based_sampling</td>
+	<td>Boolean</td>
+	<td>See the supports_event_based_sampling attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>count</td>
+	<td>Integer</td>
+	<td>Optional. How many samples to collect before the event is triggered</td>
+      </tr>
+      <tr>
+	<td>display</td>
+	<td>String</td>
+	<td>See the display attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>units</td>
+	<td>String</td>
+	<td>See the units attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>modifier</td>
+	<td>Integer</td>
+	<td>See the modifier attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>average_selection</td>
+	<td>Boolean</td>
+	<td>See the average_selection attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>description</td>
+	<td>String</td>
+	<td>See the description attribute of the event node</td>
+      </tr>
+    </table></p>
+    <p>Example:</p>
+    <p class="literal">
+      &lt;?xml version="1.0" encoding="US-ASCII"?&gt;<br/>
+      &lt;configurations revision="2"&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A8_ccnt" event="0xFF" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A8_cnt0" event="0x8" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Instruction architecturally executed"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A8_cnt1" event="0x44" title="Cache" name="L2 miss" per_cpu="yes" supports_event_based_sampling="yes" description="Any cacheable miss in the L2 cache"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A8_cnt2" event="0x43" title="Cache" name="L1 miss" per_cpu="yes" supports_event_based_sampling="yes" description="Any accesses to the L2 cache"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A8_cnt3" event="0x10" title="Branch" name="Mispredicted" per_cpu="yes" supports_event_based_sampling="yes" description="Branch mispredicted or not predicted"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A9_ccnt" event="0xFF" title="Clock" name="Cycles" per_cpu="yes" supports_event_based_sampling="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A9_cnt0" event="0x68" title="Instruction" name="Executed" per_cpu="yes" supports_event_based_sampling="yes" description="Counts the number of instructions going through the Register Renaming stage. This number is an approximate number of the total number of instructions speculatively executed, and even more approximate of the total number of instructions architecturally executed"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A9_cnt1" event="0x6" title="Instruction" name="Memory read" per_cpu="yes" supports_event_based_sampling="yes" description="Memory-reading instruction architecturally executed"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A9_cnt2" event="0x7" title="Instruction" name="Memory write" per_cpu="yes" supports_event_based_sampling="yes" description="Memory-writing instruction architecturally executed"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A9_cnt3" event="0x3" title="Cache" name="Data refill" per_cpu="yes" supports_event_based_sampling="yes" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="ARM_Cortex-A9_cnt4" event="0x4" title="Cache" name="Data access" per_cpu="yes" supports_event_based_sampling="yes" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="Linux_block_rq_wr" title="Disk IO" name="Write" units="B" description="Disk IO Bytes Written"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="Linux_block_rq_rd" title="Disk IO" name="Read" units="B" description="Disk IO Bytes Read"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="Linux_meminfo_memused" title="Memory" name="Used" display="maximum" units="B" average_selection="yes" description="Total used memory size"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="Linux_meminfo_memfree" title="Memory" name="Free" display="minimum" units="B" average_selection="yes" description="Available memory size"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="Linux_power_cpu_freq" title="Clock" name="Frequency" per_cpu="yes" display="maximum" units="Hz" average_selection="yes" description="Frequency setting of the CPU"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="cci-400_cnt0" event="0xB4" title="CCI-400" name="Retry fetch (M0)" supports_event_based_sampling="yes" description="RETRY of speculative fetch transaction"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="cci-400_cnt1" event="0xD4" title="CCI-400" name="Retry fetch (M1)" supports_event_based_sampling="yes" description="RETRY of speculative fetch transaction"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="cci-400_cnt2" event="0xB5" title="CCI-400" name="Read stall: address hazard (M0)" supports_event_based_sampling="yes" description="Read request stall cycle because of an address hazard"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="hwmon_arm,vexpress-amp-isa-0011_0" title="Current" name="A7 Icore" display="average" units="A" modifier="1000" average_selection="yes" description="libsensors Current sensor A7 Icore (hwmon_arm,vexpress-amp-isa-0011_0)"/&gt;<br/>
+      &nbsp;&nbsp;&lt;configuration counter="hwmon_arm,vexpress-amp-isa-0010_0" title="Current" name="A15 Icore" display="average" units="A" modifier="1000" average_selection="yes" description="libsensors Current sensor A15 Icore (hwmon_arm,vexpress-amp-isa-0010_0)"/&gt;<br/>
+      &lt;/configurations&gt;
+    </p>
+    <h3 id="XMLCounters">Counters</h3>
+    <p>Listing of counters available on the target</p>
+    <p><b>counters</b></p>
+    <p>The counters root node of Counters XML can have any number of counter child nodes</p>
+    <p><b>counter</b></p>
+    <p>The counter node has the following attribute</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>Available counter name from the counter_set node or the counter attribute of the event node</td>
+      </tr>
+    </table></p>
+    <p>Example:</p>
+    <p class="literal">
+      &lt;?xml version="1.0" encoding="utf-8"?&gt;<br/>
+      &lt;counters&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_power_cpu_idle"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_power_cpu_freq"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_sched_switch"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="ARM_Cortex-A8_cnt3"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="ARM_Cortex-A8_cnt2"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="ARM_Cortex-A8_cnt1"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="ARM_Cortex-A8_cnt0"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="ARM_Cortex-A8_ccnt"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_net_tx"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_net_rx"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="mmaped_cnt2"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="mmaped_cnt1"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="mmaped_cnt0"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_meminfo_bufferram"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_meminfo_memused"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_meminfo_memfree"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_irq_softirq"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_irq_irq"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_block_rq_rd"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counter name="Linux_block_rq_wr"/&gt;<br/>
+      &lt;/counters&gt;
+    </p>
+    <h3 id="XMLSession">Session</h3>
+    <p>XML representing generated by Streamline representing the Capture &amp; Analysis Options dialog. Must be sent by Streamline before it's requested by Streamline. Send back the received XML.</p>
+    <p><b>session</b></p>
+    <p>The session root node of Session XML can have any number of image child nodes, zero or one energy_capture child nodes and has the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>version</td>
+	<td>Integer</td>
+	<td><span class="circle">1</span></td>
+      </tr>
+      <tr>
+	<td>call_stack_unwinding</td>
+	<td>Boolean</td>
+	<td>If Call Stack Unwinding is selected</td>
+      </tr>
+      <tr>
+	<td>parse_debug_info</td>
+	<td>Boolean</td>
+	<td>If Process Debug Information is selected</td>
+      </tr>
+      <tr>
+	<td>high_resolution</td>
+	<td>Boolean</td>
+	<td>If High Resolution Timeline is selected</td>
+      </tr>
+      <tr>
+	<td>buffer_mode</td>
+	<td>String</td>
+	<td>One of streaming, small, normal or large</td>
+      </tr>
+      <tr>
+	<td>sample_rate</td>
+	<td>String</td>
+	<td>One of normal, low, none</td>
+      </tr>
+      <tr>
+	<td>duration</td>
+	<td>Integer</td>
+	<td>Duration of the capture in seconds</td>
+      </tr>
+      <tr>
+	<td>target_host</td>
+	<td>String</td>
+	<td>Target address</td>
+      </tr>
+      <tr>
+	<td>target_port</td>
+	<td>Integer</td>
+	<td>Target port</td>
+      </tr>
+      <tr>
+	<td>live_rate</td>
+	<td>String</td>
+	<td>Optional, how often in milliseconds the <a href="#FrameCounter">Counter</a>, <a href="#FrameBlockCounter">Block Counter</a> and <a href="#FrameSched">Scheduler Trace</a> Frames should be flushed for Live</td>
+      </tr>
+    </table></p>
+    <p><b>image</b></p>
+    <p>The image node has no child nodes and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>path</td>
+	<td>String</td>
+	<td>Program Image. Used during local capture where images may be copied into the .apc folder. Can be updated in Streamline post-capture.</td>
+      </tr>
+      <tr>
+	<td>enabled</td>
+	<td>Boolean</td>
+	<td>Defaults to false, is the Program Image is enabled</td>
+      </tr>
+    </table></p>
+    <p><b>energy_capture</b></p>
+    <p>The energy_capture node can have zero or more channel child nodes and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>version</td>
+	<td>Integer</td>
+	<td><span class="circle">1</span></td>
+      </tr>
+      <tr>
+	<td>command_path</td>
+	<td>String</td>
+	<td>Full path to the caiman executable</td>
+      </tr>
+      <tr>
+	<td>type</td>
+	<td>String</td>
+	<td>One of none, energy_probe or nidaq</td>
+      </tr>
+    </table></p>
+    <p><b>channel</b></p>
+    <p>The channel node has no child nodes and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>id</td>
+	<td>Integer</td>
+	<td>Channel number</td>
+      </tr>
+      <tr>
+	<td>resistance</td>
+	<td>Integer</td>
+	<td>Channel resistance</td>
+      </tr>
+      <tr>
+	<td>power</td>
+	<td>Boolean</td>
+	<td>True if power data is to be collected and displayed</td>
+      </tr>
+      <tr>
+	<td>voltage</td>
+	<td>Boolean</td>
+	<td>True if voltage data is to be collected and displayed</td>
+      </tr>
+      <tr>
+	<td>current</td>
+	<td>Boolean</td>
+	<td>True if current data is to be collected and displayed</td>
+      </tr>
+    </table></p>
+    <p>Example:</p>
+    <p class="literal">
+      &lt;?xml version="1.0" encoding="US-ASCII"?&gt;<br/>
+      &lt;session version="1" call_stack_unwinding="yes" parse_debug_info="yes" high_resolution="no" buffer_mode="streaming" sample_rate="low" duration="0" target_host="10.99.3.109" target_port="8080" live_rate="100"&gt;<br/>
+      &nbsp;&nbsp;&lt;image path="H:\ls"/&gt;<br/>
+      &nbsp;&nbsp;&lt;image path="H:\libc.so.6"/&gt;<br/>
+      &nbsp;&nbsp;&lt;energy_capture version="1" command_path="C:\Program Files (x86)\DS-5\bin\caiman.exe" type="none"&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;channel id="0" resistance="20" power="yes" voltage="yes" current="yes"/&gt;<br/>
+      &nbsp;&nbsp;&lt;/energy_capture&gt;<br/>
+      &lt;/session&gt;
+    </p>
+    <h3 id="XMLCaptured">Captured</h3>
+    <p>Information about a capture session. This is very similar to <a href="#XMLConfiguration">Configuration XML</a></p>
+    <p><b>captured</b></p>
+    <p>The captured root node of Captured XML has one target child node, one counters child node and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>version</td>
+	<td>Integer</td>
+	<td><span class="circle">1</span></td>
+      </tr>
+      <tr>
+	<td>live_energy_delta</td>
+	<td>Integer</td>
+	<td>This attribute is added by Streamline</td>
+      </tr>
+      <tr>
+	<td>created</td>
+	<td>Integer</td>
+	<td>Capture date in seconds since the epoch (midnight January 1, 1970 UTC). Gator populates this attribute for a local capture, otherwise Streamline adds this attribute.</td>
+      </tr>
+      <tr>
+	<td>protocol</td>
+	<td>Integer</td>
+	<td><span class="circle">13</span></td>
+      </tr>
+    </table></p>
+    <p><b>target</b></p>
+    <p>The target node as no children and the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>Target name</td>
+      </tr>
+      <tr>
+	<td>sample_rate</td>
+	<td>Integer</td>
+	<td>Number of samples collected per second</td>
+      </tr>
+      <tr>
+	<td>cores</td>
+	<td>Integer</td>
+	<td>Number of cores on the target</td>
+      </tr>
+      <tr>
+	<td>cpuid</td>
+	<td>Hex Integer</td>
+	<td>cpuid of a core, ex: 0xc08</td>
+      </tr>
+    </table></p>
+    <p><b>counters</b></p>
+    <p>The counters node can have any number of counter child nodes</p>
+    <p><b>counter</b></p>
+    <p>The counter node has the following attributes</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>title</td>
+	<td>String</td>
+	<td>See the title attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>String</td>
+	<td>See the name attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>color</td>
+	<td>Hex Integer</td>
+	<td>Color in Streamline</td>
+      </tr>
+      <tr>
+	<td>key</td>
+	<td>Hex Integer</td>
+	<td>Key for this counter in the APC data</td>
+      </tr>
+      <tr>
+	<td>type</td>
+	<td>String</td>
+	<td>See the counter attribute of the configuration node</td>
+      </tr>
+      <tr>
+	<td>event</td>
+	<td>Hex Integer</td>
+	<td>See the event attribute of the configuration node</td>
+      </tr>
+      <tr>
+	<td>per_cpu</td>
+	<td>Boolean</td>
+	<td>See the per_cpu attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>count</td>
+	<td>Integer</td>
+	<td>Can only be set on one counter. See the count attribute of the configuration node</td>
+      </tr>
+      <tr>
+	<td>display</td>
+	<td>String</td>
+	<td>See the display attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>units</td>
+	<td>String</td>
+	<td>See the units attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>modifier</td>
+	<td>Integer</td>
+	<td>See the modifier attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>average_selection</td>
+	<td>Boolean</td>
+	<td>See the average_selection attribute of the event node</td>
+      </tr>
+      <tr>
+	<td>description</td>
+	<td>String</td>
+	<td>See the description attribute of the event node</td>
+      </tr>
+    </table></p>
+    <p>Example:</p>
+    <p class="literal">
+      &lt;?xml version="1.0" encoding="utf-8"?&gt;<br/>
+      &lt;captured version="1" created="1361467764" protocol="13"&gt;<br/>
+      &nbsp;&nbsp;&lt;target name="ARM-Versatile Express" sample_rate="100" cores="5" cpuid="0xc0f"/&gt;<br/>
+      &nbsp;&nbsp;&lt;counters&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Branch" name="Mispredicted" key="0x3" type="ARM_Cortex-A7_cnt1" event="0x10" per_cpu="yes" description="Branch mispredicted or not predicted"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Cache" name="L2 data access" key="0x4" type="ARM_Cortex-A7_cnt2" event="0x16" per_cpu="yes" description="Level 2 data cache access"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Clock" name="Cycles" key="0x1" type="ARM_Cortex-A7_ccnt" event="0xff" per_cpu="yes" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Instruction" name="Executed" key="0x2" type="ARM_Cortex-A7_cnt0" event="0x8" per_cpu="yes" description="Instruction architecturally executed"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Clock" name="Frequency" key="0x15" type="Linux_power_cpu_freq" event="0x0" per_cpu="yes" display="maximum" units="Hz" average_selection="yes" description="Frequency setting of the CPU"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Disk IO" name="Read" key="0x9" type="Linux_block_rq_rd" event="0x0" units="B" description="Disk IO Bytes Read"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Disk IO" name="Write" key="0x8" type="Linux_block_rq_wr" event="0x0" units="B" description="Disk IO Bytes Written"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Memory" name="Free" key="0xc" type="Linux_meminfo_memfree" event="0x0" display="minimum" units="B" average_selection="yes" description="Available memory size"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Memory" name="Used" key="0xd" type="Linux_meminfo_memused" event="0x0" display="maximum" units="B" average_selection="yes" description="Total used memory size"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Network" name="Receive" key="0x12" type="Linux_net_rx" event="0x0" units="B" description="Receive network traffic, including effect from Streamline"/&gt;<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;&lt;counter title="Network" name="Transmit" key="0x13" type="Linux_net_tx" event="0x0" units="B" description="Transmit network traffic, including effect from Streamline"/&gt;<br/>
+      &nbsp;&nbsp;&lt;/counters&gt;<br/>
+      &lt;/captured&gt;
+    </p>
+    <h2 id="Frame">APC Frame Format</h2>
+    <h3 id="Overview">Overview</h3>
+    <p>The XML files and .apc data (ten-digit files with no extension starting with 0000000000) collected by Streamline are placed in an .apc folder. When Streamline processes this folder, it creates a 'db' folder followed by a separate .apd folder. When creating a new report from the same .apc folder, Streamline will not regenerate the 'db' folder, even if the .apc data has changed. In other words, the .apc data is ignored if a valid 'db' folder exists. In order to ensure that Streamline generates a new report from the .apc data, delete the 'db' folder so Streamline will recreate it from the .apc data files.</p>
+    <h3 id="FrameTypes">Types</h3>
+    <dl>
+      <dt>int32</dt><dd>4-byte signed little endian</dd>
+      <dt>packed32</dt><dd>variable length packed 4-byte signed value, see <a href="#FramePacked">Packed Values</a></dd>
+      <dt>packed64</dt><dd>variable length packed 8-byte signed value, see <a href="#FramePacked">Packed Values</a></dd>
+      <dt>string</dt><dd>A packed32 length followed by the specified number of characters</dd>
+      <dt><span class="circle">#</span></dt><dd>A constant packed32 value of #, ex: <span class="circle">5</span> is the packed32 number 5</dd>
+      <dt>timestamp</dt><dd>packed64 time value in nanoseconds relative to the uptime from the <a href="#FrameSummary">Summary Message</a></dd>
+    </dl>
+    <h3 id="FramePacked">Packed Values</h3>
+    <p>Integers are packed to reduce their size by avoiding sending high unset bits. The value is split into 7 bit bytes in little endian order. The most significant byte is set to 1 if there is a subsequent byte for this value or 0 if it is the last byte. This is very similar to unsigned LEB128 used in DWARF.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Bits</span></th>
+	<th><span class="white">Last value</span></th>
+	<th><span class="white">Byte 1</span></th>
+	<th><span class="white">Byte 2</span></th>
+	<th><span class="white">Byte 3</span></th>
+	<th><span class="white">Byte 4</span></th>
+	<th><span class="white">Byte 5</span></th>
+      </tr>
+      <tr>
+	<th><span class="white">7</span></th>
+	<td>0x7F</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="4"></td>
+      </tr>
+      <tr>
+	<th><span class="white">14</span></th>
+	<td>0x3FFF</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">21</span></th>
+	<td>0x1FFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="2"></td>
+      </tr>
+      <tr>
+	<th><span class="white">28</span></th>
+	<td>0xFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td></td>
+      </tr>
+      <tr>
+	<th><span class="white">32</span></th>
+	<td>0xFFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0000XXXXb</td>
+      </tr>
+    </table></p>
+    <p>For example, 0x68D4D (<span style="color:red">11010</span><span style="color:green">0011010</span><span style="color:blue">1001101</span>b) would be encoded as 0xCD (1<span style="color:blue">1001101</span>b) 0x9A (1<span style="color:green">0011010</span>b) 0x1A (000<span style="color:red">11010</span>b)</p>
+    <p>Packed 64 bit values are similar.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Bits</span></th>
+	<th><span class="white">Last value</span></th>
+	<th><span class="white">Byte 1</span></th>
+	<th><span class="white">Byte 2</span></th>
+	<th><span class="white">Byte 3</span></th>
+	<th><span class="white">Byte 4</span></th>
+	<th><span class="white">Byte 5</span></th>
+	<th><span class="white">Byte 6</span></th>
+	<th><span class="white">Byte 7</span></th>
+	<th><span class="white">Byte 8</span></th>
+	<th><span class="white">Byte 9</span></th>
+	<th><span class="white">Byte 10</span></th>
+      </tr>
+      <tr>
+	<th><span class="white">7</span></th>
+	<td>0x7F</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="9"></td>
+      </tr>
+      <tr>
+	<th><span class="white">14</span></th>
+	<td>0x3FFF</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="8"></td>
+      </tr>
+      <tr>
+	<th><span class="white">21</span></th>
+	<td>0x1FFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="7"></td>
+      </tr>
+      <tr>
+	<th><span class="white">28</span></th>
+	<td>0xFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="6"></td>
+      </tr>
+      <tr>
+	<th><span class="white">35</span></th>
+	<td>0x7FFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="5"></td>
+      </tr>
+      <tr>
+	<th><span class="white">42</span></th>
+	<td>0x3FFFFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="4"></td>
+      </tr>
+      <tr>
+	<th><span class="white">49</span></th>
+	<td>0x1FFFFFFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">56</span></th>
+	<td>0xFFFFFFFFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td colspan="2"></td>
+      </tr>
+      <tr>
+	<th><span class="white">63</span></th>
+	<td>0x7FFFFFFFFFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0XXXXXXXb</td>
+	<td></td>
+      </tr>
+      <tr>
+	<th><span class="white">64</span></th>
+	<td>0xFFFFFFFFFFFFFFFF</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0000000Xb</td>
+      </tr>
+    </table></p>
+    <p>For example, 0xBDF5FFD4E449593A would be encoded as 0xBA 0xB2 0xA5 0xA2 0xCE 0xFA 0xFF 0xFA 0xBD 0x01.</p>
+    <p>Frames consist of a header followed by a body of zero or more type specific messages</p>
+    <h3 id="FrameOrdering">Ordering</h3>
+    <p>The order of messages in a frame is significant and must be preserved. However the order of the frames is not important and will be resolved by Streamline.</p>
+    <h3 id="FrameRequired">Required Messages</h3>
+    <p>To generate a valid capture at least one <a href="#FrameSched">Sched Switch</a>, <a href="#FrameCounter">Counter</a> or <a href="#FrameBlockCounter">Block Counter</a> message must be present. All other messages are optional.</p>
+    <h3 id="FrameHeader">Frame Header</h3>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes after the length in the frame</td>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td>packed32</td>
+	<td>Indicates the type of this frame.
+	  <table class="none">
+	    <tr><td>1</td><td>= <a href="#FrameSummary">Summary</a></td></tr>
+	    <tr><td>2</td><td>= <a href="#FrameBacktrace">Backtrace</a></td></tr>
+	    <tr><td>3</td><td>= <a href="#FrameName">Name</a></td></tr>
+	    <tr><td>4</td><td>= <a href="#FrameCounter">Counter</a></td></tr>
+	    <tr><td>5</td><td>= <a href="#FrameBlockCounter">Block Counter</a></td></tr>
+	    <tr><td>6</td><td>= <a href="#FrameAnnotate">Annotate</a></td></tr>
+	    <tr><td>7</td><td>= <a href="#FrameSched">Sched Trace</a></td></tr>
+	    <tr><td>8</td><td>= <a href="#FrameGPU">GPU Trace</a></td></tr>
+	    <tr><td>9</td><td>= <a href="#FrameIdle">Idle</a></td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>The processor that originated the messages in the frame. This field must always be present but is ignored for <a href="#FrameSummary">Summary</a>, <a href="#FrameCounter">Counter</a>, <a href="#FrameAnnotate">Annotate</a>, <a href="#FrameGPU">GPU Trace</a> and <a href="#FrameIdle">Idle</a> Frames as these frames can have messages from multiple cores.</td>
+      </tr>
+    </table></p>
+    <p>If there are multiple message types for a frame, each message will start with an unique code</p>
+    <h3 id="FrameSummary">Summary Frame Messages</h3>
+    <p>The summary frame will appear only once and have only have one message. It is recommended that this is the first frame sent to Streamline so the Newline Canary can be checked for correctness before any other processing occurs.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Newline Canary</td>
+	<td>string</td>
+	<td>Always "1\n2\r\n3\r4\n\r5"</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>packed64</td>
+	<td>Current system time in nanoseconds since the epoch (midnight January 1, 1970 UTC) or 0 if the target does not have system time</td>
+      </tr>
+      <tr>
+	<td>Uptime</td>
+	<td>packed64</td>
+	<td>How long the system has been running in nanoseconds - not affected by external influences like changing the system time, ntp, hibernating, etc... Can be used to reference kernel log messages. If the target does not support uptime, send 0 and use a monotonically increasing timer for the timestamp messages.</td>
+      </tr>
+      <tr>
+	<td>uname</td>
+	<td>string</td>
+	<td>system information string similar to the output of <span class="literal">uname -a</span></td>
+      </tr>
+    </table></p>
+    <h3 id="FrameBacktrace">Backtrace Frame Messages</h3>
+    <p>This is used to populate the Call Paths tab</p>
+    <ul>
+      <li>Exec cookie vs Offset cookie
+	<ul><li>If a sample occurs in libx.so called by my-app, the exec cookie is my-app and the offset cookie is libx.so</li></ul>
+      </li>
+    </ul>
+    <p>Cookies should be positive. The special values 0 indicates kernel or idle, -1 indicate an invalid cookie and 1 is reserved to avoid confusion with End of Message, <span class="circle">1</span> below.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Exec Cookie</td>
+	<td>packed32</td>
+	<td>Cookie of the current process</td>
+      </tr>
+      <tr>
+	<td>pid</td>
+	<td>packed32</td>
+	<td>Process ID (in Linux this is the Thread Group ID)</td>
+      </tr>
+      <tr>
+	<td>tid</td>
+	<td>packed32</td>
+	<td>Thread ID (in Linux this is the PID)</td>
+      </tr>
+      <tr>
+	<td>InKernel</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>0</td><td>= not in kernel</td></tr>
+	    <tr><td>1</td><td>= in kernel</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>Body</td>
+	<td>&nbsp;</td>
+	<td>
+	  One or more repetitions of the following:
+	  <table>
+	    <tr>
+	      <th><span class="white">Name</span></th>
+	      <th><span class="white">Type</span></th>
+	      <th><span class="white">Description</span></th>
+	    </tr>
+	    <tr>
+	      <td>Offset Cookie</td>
+	      <td>packed32</td>
+	      <td>Executable or library at the offset</td>
+	    </tr>
+	    <tr>
+	      <td>Offset</td>
+	      <td>packed64</td>
+	      <td>Offset in the backtrace</td>
+	    </tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>End of Message</td>
+	<td><span class="circle">1</span></td>
+	<td>&nbsp;</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameName">Name Frame Messages</h3>
+    <p><b>Cookie Name Message</b></p>
+    <p>This is used to get the name for the Process Handle. Cookies are stored in a pseudo hashmap which limits the number of possible collisions, thus duplicate cookies may be emitted. In addition, cookies are stored per core, thus when a task migrates to a new core, a fresh cookie may be emitted for that core. However cookies are unique across all cores.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">1</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Cookie</td>
+	<td>packed32</td>
+	<td>Cookie key</td>
+      </tr>
+      <tr>
+	<td>Name</td>
+	<td>string</td>
+	<td>Cookie value</td>
+      </tr>
+    </table></p>
+    <p><b>Thread Name Message</b></p>
+    <p>This is used to show thread names in the Thread Disclosure. Thread names are stored in a pseudo hashmap which to limit the number of times the name is sent, but duplicate thread names may be emitted. Thread numbers can be reused as long as the context switch process free event is sent before it is reused.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">2</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Thread ID</td>
+	<td>packed32</td>
+	<td>tid of the named thread</td>
+      </tr>
+      <tr>
+	<td>Name</td>
+	<td>string</td>
+	<td>Name of the thread</td>
+      </tr>
+    </table></p>
+    <p><b>Core Name Message</b></p>
+    <p>This is used to identify clusters and in the tooltip in X-Ray mode</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">3</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>cpuid</td>
+	<td>packed32</td>
+	<td>cpuid of this core, ex: 0xc08</td>
+      </tr>
+      <tr>
+	<td>Name</td>
+	<td>string</td>
+	<td>Human readable name of this core, ex: Cortex-A8</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameCounter">Counter Frame Messages</h3>
+    <p>This is used to populate Charts in the Timeline view</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>Core the counter applies to</td>
+      </tr>
+      <tr>
+	<td>Key</td>
+	<td>packed32</td>
+	<td>Key in <a href="#XMLCaptured">Captured XML</a></td>
+      </tr>
+      <tr>
+	<td>Value</td>
+	<td>packed64</td>
+	<td>Value of the specified counter</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameBlockCounter">Block Counter Frame Messages</h3>
+    <p>Block counters are the same as counters, but used less space when multiple counters are sampled at the same timestamp and on the same core. To start the block, the key of 0 and a timestamp value is emitted. Then any counters sampled at that time are emitted. A block of counters (counters using the same timestamp) must all be emitted in the same frame, ie. the first block counter message emitted in a frame must be the timestamp.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Key</td>
+	<td>packed32</td>
+	<td>Zero for timestamp or key in <a href="#XMLCaptured">Captured XML</a></td>
+      </tr>
+      <tr>
+	<td>Value</td>
+	<td>packed64</td>
+	<td>Value of the specified counter</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameAnnotate">Annotate Frame Messages</h3>
+    <p>Annotations are messages sent by arbitrary userspace programs, so their format is different from other messages.</p>
+    <p>A single annotation may be broken across frame boundaries. This is why the Annotation Message has a size and the Userspace Annotations either have a size or are '\n' terminated.</p>
+    <p>To colorize any ASCII string within the annotation data, prefix the string with 0x1B (escape character) followed by a 3-byte RGB value</p>
+    <p><b>Annotate Message</b></p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>tid</td>
+	<td>packed32</td>
+	<td>Thread ID (in Linux this is the PID)</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Size</td>
+	<td>packed32</td>
+	<td>Message size</td>
+      </tr>
+      <tr>
+	<td>Body</td>
+	<td>&nbsp;</td>
+	<td>Userspace Annotation data fragment</td>
+      </tr>
+    </table></p>
+    <h4>Userspace Annotations</h4>
+    <p>Annotations belong to a channel with 0 being the default channel. Channels belong to groups with 0 as the default group.</p>
+    <p><b>ASCII String Annotation</b></p>
+    <p>This is used to add a line in the Log tab. Can also be sent from the command line, ex: <span class="literal">echo 'Hello World' &gt; /dev/gator/annotate</span></p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Color</td>
+	<td>color</td>
+	<td>Optional, <span class="circle">0x1B</span>, RR, GG, BB</td>
+      </tr>
+      <tr>
+	<td>ASCII String</td>
+	<td>zero or more ASCII characters followed by '\n'</td>
+	<td>Text annotation</td>
+      </tr>
+    </table></p>
+    <p><b>Create Group Annotation</b></p>
+    <p>This is used to name a group in the Thread Disclosure</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Escape Code</td>
+	<td><span class="circle">0x1C</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x8</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Group</td>
+	<td>Little Endian int32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>String Length</td>
+	<td>Little Endian int16</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>String Length UTF-8 bytes</td>
+	<td>Channel name</td>
+      </tr>
+    </table></p>
+    <p><b>Create Channel Annotation</b></p>
+    <p>This is used to name a channel in the Thread Disclosure</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Escape Code</td>
+	<td><span class="circle">0x1C</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x7</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Channel</td>
+	<td>Little Endian int32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Group</td>
+	<td>Little Endian int32</td>
+	<td>Group the channel belongs to</td>
+      </tr>
+      <tr>
+	<td>String Length</td>
+	<td>Little Endian int16</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>String Length UTF-8 bytes</td>
+	<td>Channel name</td>
+      </tr>
+    </table></p>
+    <p><b>UTF-8 String Annotations</b></p>
+    <p>This is used to add a line in the Log tab.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Escape Code</td>
+	<td><span class="circle">0x1C</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x6</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Channel</td>
+	<td>Little Endian int32</td>
+	<td>Channel the annotation belongs to</td>
+      </tr>
+      <tr>
+	<td>String Length</td>
+	<td>Little Endian int16</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Color</td>
+	<td>color</td>
+	<td>Optional, <span class="circle">0x1B</span>, RR, GG, BB, counts against String Length</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>String Length UTF-8 bytes</td>
+	<td>Text annotation</td>
+      </tr>
+    </table></p>
+    <p><b>Visual Annotation</b></p>
+    <p>This is used to add a line in the Log tab and an image to the Visual Annotation Chart.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Escape Code</td>
+	<td><span class="circle">0x1C</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Visual Code</td>
+	<td><span class="circle">0x4</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>String Length</td>
+	<td>Little Endian int16</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>String Length UTF-8 bytes</td>
+	<td>Text annotation</td>
+      </tr>
+      <tr>
+	<td>Image Length</td>
+	<td>Little Endian int32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Image Data</td>
+	<td>Image Length bytes</td>
+	<td>&nbsp;</td>
+      </tr>
+    </table></p>
+    <p><b>Marker Annotation</b></p>
+    <p>This is used to add a Bookmark</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Escape Code</td>
+	<td><span class="circle">0x1C</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x5</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>String Length</td>
+	<td>Little Endian int16</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Color</td>
+	<td>color</td>
+	<td>Optional, <span class="circle">0x1B</span>, RR, GG, BB, counts against String Length</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>String Length UTF-8 bytes</td>
+	<td>Text annotation</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameSched">Scheduler Trace Frame Messages</h3>
+    <p>As with <a href="#FrameBacktrace">Backtrace Frame Messages</a>, the cookies should be positive. The special cookie value 0, in conjunction of a pid of 0, indicates kernel. A cookie value of 0 and a pid of 1 indicates idle.</p>
+    <p><b>Sched Switch</b></p>
+    <p>This is used to populate the CPU Activity Chart and the Heat Map</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">1</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>pid</td>
+	<td>packed32</td>
+	<td>Process ID (in Linux this is the Thread Group ID)</td>
+      </tr>
+      <tr>
+	<td>tid</td>
+	<td>packed32</td>
+	<td>Thread ID (in Linux this is the PID)</td>
+      </tr>
+      <tr>
+	<td>Cookie</td>
+	<td>packed32</td>
+	<td>Cookie of the current process</td>
+      </tr>
+      <tr>
+	<td>State</td>
+	<td>packed32</td>
+	<td>State
+	  <table class="none">
+	    <tr><td>0</td><td>= Waiting on other event besides I/O</td></tr>
+	    <tr><td>1</td><td>= Contention/pre-emption</td></tr>
+	    <tr><td>2</td><td>= Waiting on I/O</td></tr>
+	    <tr><td>3</td><td>= Waiting on mutex</td></tr>
+	  </table>
+	</td>
+      </tr>
+    </table></p>
+    <p><b>Sched Thread Exit</b></p>
+    <p>This is used by the Heat Map to identify when a process terminates</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">2</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>tid</td>
+	<td>packed32</td>
+	<td>Thread ID (in Linux this is the PID)</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameGPU">GPU Trace Frame Messages</h3>
+    <p><b>GPU Start</b></p>
+    <p>This is used to indicate a part of the GPU has begun execution</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">1</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Unit</td>
+	<td>packed32</td>
+	<td>GPU Unit</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>GPU Unit Core</td>
+      </tr>
+      <tr>
+	<td>pid</td>
+	<td>packed32</td>
+	<td>Process ID (in Linux this is the Thread Group ID)</td>
+      </tr>
+      <tr>
+	<td>tid</td>
+	<td>packed32</td>
+	<td>Thread ID (in Linux this is the PID)</td>
+      </tr>
+    </table></p>
+    <p><b>GPU Stop</b></p>
+    <p>This is used to indicate a part of the GPU has ceased execution</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">2</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Unit</td>
+	<td>packed32</td>
+	<td>GPU Unit</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>GPU Unit Core</td>
+      </tr>
+    </table></p>
+    <h3 id="FrameIdle">Idle Frame Messages</h3>
+    <p><b>Enter Idle</b></p>
+    <p>This is used to indicate that a core has ceased execution.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">1</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+    </table></p>
+    <p><b>Exit Idle</b></p>
+    <p>This is used to indicate that a core has resumed execution.</p>
+    <p><table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Code</td>
+	<td><span class="circle">2</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+    </table></p>
+    <h2 id="Sequence">Sequence Diagrams</h2>
+    <h3 id="SequenceConfig">Configuration</h3>
+    <p>Here are the events that occur when the Counter Configuration button is clicked in Streamline. Below are the events that occur when various buttons are pressed in the dialog where $VER is 13</p>
+    <img src="config-14.png"/><br/>
+    <p>When the Load Defaults button is clicked from the Counter Configuration dialog</p>
+    <img src="config_default.png"/><br/>
+    <p>When the Cancel or close button is clicked from the Counter Configuration dialog, after which the dialog closes</p>
+    <img src="config_cancel.png"/><br/>
+    <p>When the Save button is clicked from the Counter Configuration dialog, after which the dialog closes</p>
+    <img src="config_save.png"/><br/>
+    <h3 id="SequenceCapture">Capture</h3>
+    <p>Here are the events that occur when the Start Capture button is clicked in Streamline where $VER is 13</p>
+    <img src="capture-14.png"/><br/>
+    <p>At any point during the capture Streamline can send a ping to verify that the host is still running. If the ping is not acknowledged Streamline will end the capture</p>
+    <img src="capture_ping.png"/><br/>
+    <h2 id="LocalCapture">Local Capture</h2>
+    <p>Streamline also support a local capture mode where data is collected without interaction with Streamline. In this case the <a href="#Protocol">Target-Host Protocol</a> is omitted. Instead a directory, ending in .apc, is provided to Streamline. This directory contains captured.xml containing the <a href="#XMLCaptured">Captured XML</a>, session.xml containing the <a href="#XMLSession">Session XML</a> and 0000000000 which contains the <a href="#Frame">APC Data</a> with one or more structures of the following format</p>
+    <p><table>
+
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>Little Endian int32</td>
+	<td>Number of bytes in the body</td>
+      </tr>
+      <tr>
+	<td>body</td>
+	<td><a href="#Frame">APC Data</a></td>
+	<td>&nbsp;</td>
+      </tr>
+    </table></p>
+    </div>
+  </body>
+</html>

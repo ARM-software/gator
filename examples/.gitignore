@@ -1,0 +1,7 @@
+*.d
+*.o
+/absolute
+/cam
+/delta
+/text
+/visual

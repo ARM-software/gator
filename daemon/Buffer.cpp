@@ -47,9 +47,9 @@ enum {
 	/* Add another character so the length isn't 0x0a bytes */ \
 	"5"
 
-Buffer::Buffer(const int32_t core, const int32_t buftype, const int size, sem_t *const readerSem) : mBuf(new char[size]), mReaderSem(readerSem), mCommitTime(gSessionData->mLiveRate), mSize(size), mReadPos(0), mWritePos(0), mCommitPos(0), mAvailable(true), mIsDone(false), mCore(core), mBufType(buftype) {
+Buffer::Buffer(const int32_t core, const int32_t buftype, const int size, sem_t *const readerSem) : mBuf(new char[size]), mReaderSem(readerSem), mCommitTime(gSessionData.mLiveRate), mSize(size), mReadPos(0), mWritePos(0), mCommitPos(0), mAvailable(true), mIsDone(false), mCore(core), mBufType(buftype) {
 	if ((mSize & mask) != 0) {
-		logg->logError("Buffer size is not a power of 2");
+		logg.logError("Buffer size is not a power of 2");
 		handleException();
 	}
 	sem_init(&mWriterSem, 0, 0);
@@ -80,7 +80,7 @@ void Buffer::write(Sender *const sender) {
 		length2 = commitPos;
 	}
 
-	logg->logMessage("Sending data length1: %i length2: %i", length1, length2);
+	logg.logMessage("Sending data length1: %i length2: %i", length1, length2);
 
 	// start, middle or end
 	if (length1 > 0) {
@@ -144,7 +144,7 @@ int Buffer::contiguousSpaceAvailable() const {
 }
 
 bool Buffer::hasUncommittedMessages() const {
-	const int typeLength = gSessionData->mLocalCapture ? 0 : 1;
+	const int typeLength = gSessionData.mLocalCapture ? 0 : 1;
 	int length = mWritePos - mCommitPos;
 	if (length < 0) {
 		length += mSize;
@@ -155,7 +155,7 @@ bool Buffer::hasUncommittedMessages() const {
 
 void Buffer::commit(const uint64_t time, const bool force) {
 	// post-populate the length, which does not include the response type length nor the length itself, i.e. only the length of the payload
-	const int typeLength = gSessionData->mLocalCapture ? 0 : 1;
+	const int typeLength = gSessionData.mLocalCapture ? 0 : 1;
 	int length = mWritePos - mCommitPos;
 	if (length < 0) {
 		length += mSize;
@@ -169,12 +169,12 @@ void Buffer::commit(const uint64_t time, const bool force) {
 		mBuf[(mCommitPos + typeLength + byte) & mask] = (length >> byte * 8) & 0xFF;
 	}
 
-	logg->logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i", mReadPos, mWritePos, mCommitPos);
+	logg.logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i", mReadPos, mWritePos, mCommitPos);
 	mCommitPos = mWritePos;
 
-	if (gSessionData->mLiveRate > 0) {
+	if (gSessionData.mLiveRate > 0) {
 		while (time > mCommitTime) {
-			mCommitTime += gSessionData->mLiveRate;
+			mCommitTime += gSessionData.mLiveRate;
 		}
 	}
 
@@ -191,7 +191,7 @@ void Buffer::check(const uint64_t time) {
 	if (filled < 0) {
 		filled += mSize;
 	}
-	if (filled >= ((mSize * 3) / 4) || (gSessionData->mLiveRate > 0 && time >= mCommitTime)) {
+	if (filled >= ((mSize * 3) / 4) || (gSessionData.mLiveRate > 0 && time >= mCommitTime)) {
 		commit(time);
 	}
 }
@@ -262,7 +262,7 @@ void Buffer::writeString(const char *const str) {
 }
 
 void Buffer::frame() {
-	if (!gSessionData->mLocalCapture) {
+	if (!gSessionData.mLocalCapture) {
 		packInt(RESPONSE_APC_DATA);
 	}
 	// Reserve space for the length
@@ -273,7 +273,7 @@ void Buffer::frame() {
 	}
 }
 
-void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname, const long pageSize) {
+void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname, const long pageSize, const bool nosync) {
 	packInt(MESSAGE_SUMMARY);
 	writeString(NEWLINE_CANARY);
 	packInt64(timestamp);
@@ -285,6 +285,10 @@ void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int
 	char buf[32];
 	snprintf(buf, sizeof(buf), "%li", pageSize);
 	writeString(buf);
+	if (nosync) {
+	  writeString("nosync");
+	  writeString("");
+	}
 	writeString("");
 	check(currTime);
 }

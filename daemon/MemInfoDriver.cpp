@@ -44,7 +44,7 @@ MemInfoDriver::~MemInfoDriver() {
 
 void MemInfoDriver::readEvents(mxml_node_t *const) {
 	// Only for use with perf
-	if (!gSessionData->mPerf.isSetup()) {
+	if (!gSessionData.mPerf.isSetup()) {
 		return;
 	}
 
@@ -59,7 +59,7 @@ void MemInfoDriver::read(Buffer *const buffer) {
 	}
 
 	if (!mBuf.read("/proc/meminfo")) {
-		logg->logError("Failed to read /proc/meminfo");
+		logg.logError("Failed to read /proc/meminfo");
 		handleException();
 	}
 

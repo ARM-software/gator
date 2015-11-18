@@ -7,8 +7,8 @@
     <event event="0x03" title="Cache" name="Data refill" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/>
     <event event="0x04" title="Cache" name="Data access" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/>
     <event event="0x05" title="Cache" name="Data TLB refill" description="Memory Read or Write operation that causes a TLB refill of at least the level of TLB closest to the processor"/>
-    <event event="0x06" title="Instruction" name="Memory read" description="Memory-reading instruction architecturally executed"/>
-    <event event="0x07" title="Instruction" name="Memory write" description="Memory-writing instruction architecturally executed"/>
+    <event event="0x06" title="Instruction" name="Load" description="Memory-reading instruction architecturally executed"/>
+    <event event="0x07" title="Instruction" name="Store" description="Memory-writing instruction architecturally executed"/>
     <event event="0x08" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
     <event event="0x09" title="Exception" name="Taken" description="Exceptions taken"/>
     <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed"/>

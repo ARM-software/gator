@@ -48,32 +48,40 @@ mxml_node_t *EventsXML::getTree() {
 	(void)events_xml_len;
 
 	// Load the provided or default events xml
-	if (gSessionData->mEventsXMLPath) {
-		strncpy(path, gSessionData->mEventsXMLPath, PATH_MAX);
+	if (gSessionData.mEventsXMLPath) {
+		strncpy(path, gSessionData.mEventsXMLPath, PATH_MAX);
 		fl = fopen_cloexec(path, "r");
 		if (fl) {
 			xml = mxmlLoadFile(NULL, fl, MXML_NO_CALLBACK);
+			if (xml == NULL) {
+				logg.logError("Unable to parse %s", gSessionData.mEventsXMLPath);
+				handleException();
+			}
 			fclose(fl);
 		}
 	}
 	if (xml == NULL) {
-		logg->logMessage("Unable to locate events.xml, using default");
+		logg.logMessage("Unable to locate events.xml, using default");
 		xml = mxmlLoadString(NULL, (const char *)events_xml, MXML_NO_CALLBACK);
 	}
 
 	// Append additional events XML
-	if (gSessionData->mEventsXMLAppend) {
-		fl = fopen_cloexec(gSessionData->mEventsXMLAppend, "r");
+	if (gSessionData.mEventsXMLAppend) {
+		fl = fopen_cloexec(gSessionData.mEventsXMLAppend, "r");
 		if (fl == NULL) {
-			logg->logError("Unable to open additional events XML %s", gSessionData->mEventsXMLAppend);
+			logg.logError("Unable to open additional events XML %s", gSessionData.mEventsXMLAppend);
 			handleException();
 		}
 		mxml_node_t *append = mxmlLoadFile(NULL, fl, MXML_NO_CALLBACK);
+		if (append == NULL) {
+			logg.logError("Unable to parse %s", gSessionData.mEventsXMLAppend);
+			handleException();
+		}
 		fclose(fl);
 
 		mxml_node_t *events = mxmlFindElement(xml, xml, "events", NULL, NULL, MXML_DESCEND);
 		if (!events) {
-			logg->logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML starts with:\n"
+			logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML starts with:\n"
 				       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 				       "<events>");
 			handleException();
@@ -81,6 +89,7 @@ mxml_node_t *EventsXML::getTree() {
 
 		XMLList *categoryList = NULL;
 		XMLList *eventList = NULL;
+		XMLList *counterSetList = NULL;
 		{
 			// Make list of all categories in xml
 			mxml_node_t *node = xml;
@@ -101,6 +110,16 @@ mxml_node_t *EventsXML::getTree() {
 				}
 				eventList = new XMLList(eventList, node);
 			}
+
+			// Make list of all counter_sets in xml
+			node = xml;
+			while (true) {
+				node = mxmlFindElement(node, xml, "counter_set", NULL, NULL, MXML_DESCEND);
+				if (node == NULL) {
+					break;
+				}
+				counterSetList = new XMLList(counterSetList, node);
+			}
 		}
 
 		// Handle events
@@ -112,7 +131,7 @@ mxml_node_t *EventsXML::getTree() {
 			const char *const title = mxmlElementGetAttr(node, "title");
 			const char *const name = mxmlElementGetAttr(node, "name");
 			if (category == NULL || title == NULL || name == NULL) {
-				logg->logError("Not all event XML nodes have the required title and name and parent name attributes");
+				logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
 				handleException();
 			}
 
@@ -122,12 +141,12 @@ mxml_node_t *EventsXML::getTree() {
 				const char *const title2 = mxmlElementGetAttr(event->getNode(), "title");
 				const char *const name2 = mxmlElementGetAttr(event->getNode(), "name");
 				if (category2 == NULL || title2 == NULL || name2 == NULL) {
-					logg->logError("Not all event XML nodes have the required title and name and parent name attributes");
+					logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
 					handleException();
 				}
 
 				if (strcmp(category, category2) == 0 && strcmp(title, title2) == 0 && strcmp(name, name2) == 0) {
-					logg->logMessage("Replacing counter %s %s: %s", category, title, name);
+					logg.logMessage("Replacing counter %s %s: %s", category, title, name);
 					mxml_node_t *parent = mxmlGetParent(event->getNode());
 					mxmlDelete(event->getNode());
 					mxmlAdd(parent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
@@ -149,7 +168,7 @@ mxml_node_t *EventsXML::getTree() {
 
 			const char *const name = mxmlElementGetAttr(node, "name");
 			if (name == NULL) {
-				logg->logError("Not all event XML categories have the required name attribute");
+				logg.logError("Not all event XML category nodes have the required name attribute");
 				handleException();
 			}
 
@@ -158,12 +177,12 @@ mxml_node_t *EventsXML::getTree() {
 			for (XMLList *category = categoryList; category != NULL; category = category->getPrev()) {
 				const char *const name2 = mxmlElementGetAttr(category->getNode(), "name");
 				if (name2 == NULL) {
-					logg->logError("Not all event XML categories have the required name attribute");
+					logg.logError("Not all event XML category nodes have the required name attribute");
 					handleException();
 				}
 
 				if (strcmp(name, name2) == 0) {
-					logg->logMessage("Merging category %s", name);
+					logg.logMessage("Merging category %s", name);
 					while (true) {
 						mxml_node_t *child = mxmlGetFirstChild(node);
 						if (child == NULL) {
@@ -181,12 +200,54 @@ mxml_node_t *EventsXML::getTree() {
 			}
 
 			// Add new categories
-			logg->logMessage("Appending category %s", name);
+			logg.logMessage("Appending category %s", name);
+			mxmlAdd(events, MXML_ADD_AFTER, mxmlGetLastChild(events), node);
+		}
+
+		// Handle counter_sets
+		for (mxml_node_t *node = strcmp(mxmlGetElement(append), "counter_set") == 0 ? append : mxmlFindElement(append, append, "counter_set", NULL, NULL, MXML_DESCEND),
+		       *next = mxmlFindElement(node, append, "counter_set", NULL, NULL, MXML_DESCEND);
+		     node != NULL;
+		     node = next, next = mxmlFindElement(node, append, "counter_set", NULL, NULL, MXML_DESCEND)) {
+
+			const char *const name = mxmlElementGetAttr(node, "name");
+			if (name == NULL) {
+				logg.logError("Not all event XML counter_sets have the required name attribute");
+				handleException();
+			}
+
+			// Replace any duplicate counter_sets
+			bool replaced = false;
+			for (XMLList *counterSet = counterSetList; counterSet != NULL; counterSet = counterSet->getPrev()) {
+				const char *const name2 = mxmlElementGetAttr(counterSet->getNode(), "name");
+				if (name2 == NULL) {
+					logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
+					handleException();
+				}
+
+				if (strcmp(name, name2) == 0) {
+					logg.logMessage("Replacing counter %s", name);
+					mxml_node_t *parent = mxmlGetParent(counterSet->getNode());
+					mxmlDelete(counterSet->getNode());
+					mxmlAdd(parent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
+					counterSet->setNode(node);
+					replaced = true;
+					break;
+				}
+			}
+
+			if (replaced) {
+				continue;
+			}
+
+			// Add new counter_sets
+			logg.logMessage("Appending counter_set %s", name);
 			mxmlAdd(events, MXML_ADD_AFTER, mxmlGetLastChild(events), node);
 		}
 
 		XMLList::free(eventList);
 		XMLList::free(categoryList);
+		XMLList::free(counterSetList);
 
 		mxmlDelete(append);
 	}
@@ -200,7 +261,7 @@ char *EventsXML::getXML() {
 	// Add dynamic events from the drivers
 	mxml_node_t *events = mxmlFindElement(xml, xml, "events", NULL, NULL, MXML_DESCEND);
 	if (!events) {
-		logg->logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
+		logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
 			       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 			       "<events>");
 		handleException();
@@ -222,8 +283,8 @@ void EventsXML::write(const char *path) {
 	snprintf(file, PATH_MAX, "%s/events.xml", path);
 
 	char *buf = getXML();
-	if (util->writeToDisk(file, buf) < 0) {
-		logg->logError("Error writing %s\nPlease verify the path.", file);
+	if (writeToDisk(file, buf) < 0) {
+		logg.logError("Error writing %s\nPlease verify the path.", file);
 		handleException();
 	}
 

@@ -112,7 +112,7 @@ void CCNDriver::readEvents(mxml_node_t *const) {
 
 	int type;
 	if (DriverSource::readIntDriver("/sys/bus/event_source/devices/ccn/type", &type) != 0) {
-		logg->logError("Unable to read CCN-5xx type");
+		logg.logError("Unable to read CCN-5xx type");
 		handleException();
 	}
 
@@ -300,8 +300,8 @@ void CCNDriver::validateCounters() const {
 	int counts[CCN_COUNT][2] = { { 0 } };
 	const unsigned int mask = getConfig(0xff, 0xff, 0, 0, 0);
 
-	for (int i = 0; i < ARRAY_LENGTH(gSessionData->mCounters); ++i) {
-		const Counter *const counter = &gSessionData->mCounters[i];
+	for (int i = 0; i < ARRAY_LENGTH(gSessionData.mCounters); ++i) {
+		const Counter *const counter = &gSessionData.mCounters[i];
 
 		if (!counter->isEnabled()) {
 			continue;
@@ -317,8 +317,8 @@ void CCNDriver::validateCounters() const {
 				if (counts[j][0] == node) {
 					++counts[j][1];
 					if (counts[j][1] > 4) {
-						if (asprintf(&gSessionData->mCountersError, "More than 4 events are assigned to the same CCN node") <= 0) {
-							logg->logError("asprintf failed");
+						if (asprintf(&gSessionData.mCountersError, "More than 4 events are assigned to the same CCN node") <= 0) {
+							logg.logError("asprintf failed");
 							handleException();
 						}
 					}

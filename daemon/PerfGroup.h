@@ -49,7 +49,7 @@ public:
 	// Not safe to call concurrently. Returns the number of events enabled
 	int onlineCPU(const uint64_t currTime, const int cpu, const bool enable, Buffer *const buffer);
 	bool offlineCPU(int cpu);
-	bool start();
+	void start();
 	void stop();
 
 private:

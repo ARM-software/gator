@@ -36,7 +36,7 @@ bool getLinuxVersion(int version[3]) {
 	// Check the kernel version
 	struct utsname utsname;
 	if (uname(&utsname) != 0) {
-		logg->logMessage("uname failed");
+		logg.logMessage("uname failed");
 		return false;
 	}
 
@@ -64,7 +64,7 @@ static int pgrep_gator(DynBuf *const printb) {
 
 	DIR *proc = opendir("/proc");
 	if (proc == NULL) {
-		logg->logError(GATOR_ERROR "opendir failed");
+		logg.logError(GATOR_ERROR "opendir failed");
 		handleException();
 	}
 
@@ -80,7 +80,7 @@ static int pgrep_gator(DynBuf *const printb) {
 		}
 
 		if (!printb->printf("/proc/%i/stat", pid)) {
-			logg->logError(GATOR_ERROR "DynBuf::printf failed");
+			logg.logError(GATOR_ERROR "DynBuf::printf failed");
 			handleException();
 		}
 
@@ -91,13 +91,13 @@ static int pgrep_gator(DynBuf *const printb) {
 
 		char *comm = strchr(b.getBuf(), '(');
 		if (comm == NULL) {
-			logg->logError(GATOR_ERROR "parsing stat comm begin failed");
+			logg.logError(GATOR_ERROR "parsing stat comm begin failed");
 			handleException();
 		}
 		++comm;
 		char *const str = strrchr(comm, ')');
 		if (str == NULL) {
-			logg->logError(GATOR_ERROR "parsing stat comm end failed");
+			logg.logError(GATOR_ERROR "parsing stat comm end failed");
 			handleException();
 		}
 		*str = '\0';
@@ -109,7 +109,7 @@ static int pgrep_gator(DynBuf *const printb) {
 		char state;
 		const int count = sscanf(str + 2, " %c ", &state);
 		if (count != 1) {
-			logg->logError(GATOR_ERROR "parsing stat state failed");
+			logg.logError(GATOR_ERROR "parsing stat state failed");
 			handleException();
 		}
 
@@ -149,12 +149,12 @@ void update(const char *const gatorPath) {
 
 	int version[3];
 	if (!getLinuxVersion(version)) {
-		logg->logError(GATOR_ERROR "getLinuxVersion failed");
+		logg.logError(GATOR_ERROR "getLinuxVersion failed");
 		handleException();
 	}
 
 	if (KERNEL_VERSION(version[0], version[1], version[2]) < KERNEL_VERSION(3, 4, 0)) {
-		logg->logError(GATOR_ERROR "Streamline can't automatically setup gator as this kernel version is not supported. Please upgrade the kernel on your device.");
+		logg.logError(GATOR_ERROR "Streamline can't automatically setup gator as this kernel version is not supported. Please upgrade the kernel on your device.");
 		handleException();
 	}
 
@@ -184,7 +184,7 @@ void update(const char *const gatorPath) {
 		execlp("sh", "sh", "-c", buf, NULL);
 		// Streamline will provide the password if needed
 
-		logg->logError(GATOR_ERROR "Streamline was unable to sudo to root on your device. Please double check passwords, ensure sudo or su work with this user or try a different username.");
+		logg.logError(GATOR_ERROR "Streamline was unable to sudo to root on your device. Please double check passwords, ensure sudo or su work with this user or try a different username.");
 		handleException();
 	}
 	printf(GATOR_MSG "now root\n");
@@ -203,11 +203,11 @@ void update(const char *const gatorPath) {
 	int gator_main = pgrep_gator(&printb);
 	if (gator_main > 0) {
 		if (kill(gator_main, SIGTERM) != 0) {
-			logg->logError(GATOR_ERROR "kill SIGTERM failed");
+			logg.logError(GATOR_ERROR "kill SIGTERM failed");
 			handleException();
 		}
 		if (!printb.printf("/proc/%i/exe", gator_main)) {
-			logg->logError(GATOR_ERROR "DynBuf::printf failed");
+			logg.logError(GATOR_ERROR "DynBuf::printf failed");
 			handleException();
 		}
 		for (int i = 0; ; ++i) {
@@ -217,11 +217,11 @@ void update(const char *const gatorPath) {
 			}
 			if (i == 5) {
 				if (kill(gator_main, SIGKILL) != 0) {
-					logg->logError(GATOR_ERROR "kill SIGKILL failed");
+					logg.logError(GATOR_ERROR "kill SIGKILL failed");
 					handleException();
 				}
 			} else if (i >= 10) {
-				logg->logError(GATOR_ERROR "unable to kill running gator");
+				logg.logError(GATOR_ERROR "unable to kill running gator");
 				handleException();
 			}
 			sleep(1);
@@ -233,7 +233,7 @@ void update(const char *const gatorPath) {
 	syscall(__NR_delete_module, "gator", O_NONBLOCK);
 
 	if (access("/sys/module/gator", F_OK) == 0) {
-		logg->logError(GATOR_ERROR "Unable to unload gator.ko, the gator module may be built into the kernel or gator.ko cannot be unloaded. Rebooting the device may resolve the issue.");
+		logg.logError(GATOR_ERROR "Unable to unload gator.ko, the gator module may be built into the kernel or gator.ko cannot be unloaded. Rebooting the device may resolve the issue.");
 		handleException();
 	}
 
@@ -246,7 +246,7 @@ void update(const char *const gatorPath) {
 	if (dot != NULL) {
 		*dot = '\0';
 		if (rename(gatorPath, newGatorPath) != 0) {
-			logg->logError(GATOR_ERROR "rename failed");
+			logg.logError(GATOR_ERROR "rename failed");
 			handleException();
 		}
 	}
@@ -254,14 +254,14 @@ void update(const char *const gatorPath) {
 	char buf[128];
 	int pipefd[2];
 	if (pipe_cloexec(pipefd) != 0) {
-		logg->logError(GATOR_ERROR "pipe failed");
+		logg.logError(GATOR_ERROR "pipe failed");
 		handleException();
 	}
 
 	// Fork and start gatord (redirect stdin, stdout and stderr so shell can close)
 	int child = fork();
 	if (child < 0) {
-		logg->logError(GATOR_ERROR "fork failed");
+		logg.logError(GATOR_ERROR "fork failed");
 		handleException();
 	} else if (child == 0) {
 		int inFd;

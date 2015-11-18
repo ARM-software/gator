@@ -118,6 +118,9 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
 }
 
 #if defined(__arm__) || defined(__aarch64__)
+
+#include <asm/stacktrace.h>
+
 static int report_trace(struct stackframe *frame, void *d)
 {
 	unsigned int *depth = d, cookie = NO_COOKIE;

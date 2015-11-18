@@ -32,7 +32,7 @@ public:
 private:
 	void waitFor(const int bytes);
 	void configureConnection(const int fd, const char *const handshake, size_t size);
-	bool connectMali();
+	bool connectMidgard();
 	bool connectMve();
 	void connectFtrace();
 
@@ -40,12 +40,12 @@ private:
 	Buffer mBuffer;
 	Monitor mMonitor;
 	OlyServerSocket mMveStartupUds;
-	OlyServerSocket mMaliStartupUds;
+	OlyServerSocket mMidgardStartupUds;
 	OlyServerSocket mUtgardStartupUds;
 	OlyServerSocket mAnnotate;
 	OlyServerSocket mAnnotateUds;
 	int mInterruptFd;
-	int mMaliUds;
+	int mMidgardUds;
 	int mMveUds;
 	int mFtraceFd;
 

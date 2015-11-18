@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pmus>
+  <!--
+      pmnc_name is the name used by perf (case insensitive)
+      cpuid is the Implementer and Primary part number from the Main ID Register (not required for uncore_pmu)
+      core_name is the human readable name shown in Streamline
+      dt_name is the name used in the device tree (optional)
+      pmnc_counters is the number of events that can be selected simultaneously
+
+      Adding a line in this file allows gatord to identify the PMU. A corresponding events-*.xml file should also be added to associate events with that PMU.
+  -->
+  <pmu pmnc_name="ARM_ARM11" cpuid="0x41b36" core_name="ARM1136" dt_name="arm,arm1136" pmnc_counters="3"/>
+  <pmu pmnc_name="ARM_ARM11" cpuid="0x41b56" core_name="ARM1156" dt_name="arm,arm1156" pmnc_counters="3"/>
+  <pmu pmnc_name="ARM_ARM11" cpuid="0x41b76" core_name="ARM1176" dt_name="arm,arm1176" pmnc_counters="3"/>
+  <pmu pmnc_name="ARM_ARM11MPCore" cpuid="0x41b02" core_name="ARM11MPCore" dt_name="arm,arm11mpcore" pmnc_counters="3"/>
+  <pmu pmnc_name="ARMv7_Cortex_A5" cpuid="0x41c05" core_name="Cortex-A5" dt_name="arm,cortex-a5" pmnc_counters="2"/>
+  <pmu pmnc_name="ARMv7_Cortex_A7" cpuid="0x41c07" core_name="Cortex-A7" dt_name="arm,cortex-a7" pmnc_counters="4"/>
+  <pmu pmnc_name="ARMv7_Cortex_A8" cpuid="0x41c08" core_name="Cortex-A8" dt_name="arm,cortex-a8" pmnc_counters="4"/>
+  <pmu pmnc_name="ARMv7_Cortex_A9" cpuid="0x41c09" core_name="Cortex-A9" dt_name="arm,cortex-a9" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv7_Cortex_A15" cpuid="0x41c0f" core_name="Cortex-A15" dt_name="arm,cortex-a15" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv7_Cortex_A17" cpuid="0x41c0d" core_name="Cortex-A17" dt_name="arm,cortex-a17" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv7_Cortex_A17" cpuid="0x41c0e" core_name="Cortex-A17" dt_name="arm,cortex-a17" pmnc_counters="6"/>
+  <pmu pmnc_name="Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4"/>
+  <pmu pmnc_name="ScorpionMP" cpuid="0x5102d" core_name="ScorpionMP" pmnc_counters="4"/>
+  <pmu pmnc_name="Krait" cpuid="0x51049" core_name="KraitSIM" pmnc_counters="4"/>
+  <pmu pmnc_name="Krait" cpuid="0x5104d" core_name="Krait" pmnc_counters="4"/>
+  <pmu pmnc_name="Krait" cpuid="0x5106f" core_name="Krait S4 Pro" pmnc_counters="4"/>
+  <pmu pmnc_name="ARMv8_Cortex_A53" cpuid="0x41d03" core_name="Cortex-A53" dt_name="arm,cortex-a53" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv8_Cortex_A57" cpuid="0x41d07" core_name="Cortex-A57" dt_name="arm,cortex-a57" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1" pmnc_counters="6"/>
+
+  <uncore_pmu pmnc_name="CCI_400" core_name="CCI_400" pmnc_counters="4"/>
+  <uncore_pmu pmnc_name="CCI_400_r1" core_name="CCI_400_r1" pmnc_counters="4"/>
+  <uncore_pmu pmnc_name="CCI_500" core_name="CCI_500" pmnc_counters="8" has_cycles_counter="no"/>
+  <uncore_pmu pmnc_name="ccn" core_name="ARM_CCN_5XX" pmnc_counters="8"/>
+</pmus>

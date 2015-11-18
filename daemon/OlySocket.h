@@ -17,6 +17,8 @@ typedef int socklen_t;
 #include <sys/socket.h>
 #endif
 
+#include "Config.h"
+
 class OlySocket {
 public:
 #ifndef WIN32

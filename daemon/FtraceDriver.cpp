@@ -55,7 +55,7 @@ void FtraceCounter::prepare() {
 	snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", mEnable);
 	if ((DriverSource::readIntDriver(buf, &mWasEnabled) != 0) ||
 			(DriverSource::writeDriver(buf, 1) != 0)) {
-		logg->logError("Unable to read or write to %s", buf);
+		logg.logError("Unable to read or write to %s", buf);
 		handleException();
 	}
 }
@@ -70,7 +70,7 @@ void FtraceCounter::stop() {
 	DriverSource::writeDriver(buf, mWasEnabled);
 }
 
-FtraceDriver::FtraceDriver() : mValues(NULL), mSupported(false), mTracingOn(0) {
+FtraceDriver::FtraceDriver() : mValues(NULL), mSupported(false), mMonotonicRawSupport(false), mTracingOn(0) {
 }
 
 FtraceDriver::~FtraceDriver() {
@@ -81,21 +81,23 @@ void FtraceDriver::readEvents(mxml_node_t *const xml) {
 	// Check the kernel version
 	int release[3];
 	if (!getLinuxVersion(release)) {
-		logg->logError("getLinuxVersion failed");
+		logg.logError("getLinuxVersion failed");
 		handleException();
 	}
 
 	// The perf clock was added in 3.10
-	if (KERNEL_VERSION(release[0], release[1], release[2]) < KERNEL_VERSION(3, 10, 0)) {
+	const int kernelVersion = KERNEL_VERSION(release[0], release[1], release[2]);
+	if (kernelVersion < KERNEL_VERSION(3, 10, 0)) {
 		mSupported = false;
-		logg->logMessage("Unsupported kernel version, to use ftrace please upgrade to Linux 3.10 or later");
+		logg.logSetup("Ftrace Disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With user space gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be available.");
 		return;
 	}
+	mMonotonicRawSupport = kernelVersion >= KERNEL_VERSION(4, 2, 0);
 
 	// Is debugfs or tracefs available?
 	if (access(TRACING_PATH, R_OK) != 0) {
 		mSupported = false;
-		logg->logMessage("Unable to locate the tracing directory, disabling ftrace");
+		logg.logSetup("Ftrace Disabled\nUnable to locate the tracing directory");
 		return;
 	}
 
@@ -119,7 +121,7 @@ void FtraceDriver::readEvents(mxml_node_t *const xml) {
 
 		const char *regex = mxmlElementGetAttr(node, "regex");
 		if (regex == NULL) {
-			logg->logError("The regex counter %s is missing the required regex attribute", counter);
+			logg.logError("The regex counter %s is missing the required regex attribute", counter);
 			handleException();
 		}
 
@@ -128,20 +130,20 @@ void FtraceDriver::readEvents(mxml_node_t *const xml) {
 		if (enable == NULL) {
 			enable = tracepoint;
 		}
-		if (gSessionData->mPerf.isSetup() && tracepoint != NULL) {
-			logg->logMessage("Not using ftrace for counter %s", counter);
+		if (gSessionData.mPerf.isSetup() && tracepoint != NULL) {
+			logg.logMessage("Not using ftrace for counter %s", counter);
 			continue;
 		}
 		if (enable != NULL) {
 			char buf[1<<10];
 			snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", enable);
 			if (access(buf, W_OK) != 0) {
-				logg->logMessage("Disabling counter %s, %s not found", counter, buf);
+				logg.logSetup("%s Disabled\n%s was not found", counter, buf);
 				continue;
 			}
 		}
 
-		logg->logMessage("Using ftrace for %s", counter);
+		logg.logMessage("Using ftrace for %s", counter);
 		setCounters(new FtraceCounter(getCounters(), strdup(counter), enable));
 		++count;
 	}
@@ -158,12 +160,12 @@ void FtraceDriver::prepare() {
 	}
 
 	if (DriverSource::readIntDriver(TRACING_PATH "/tracing_on", &mTracingOn)) {
-		logg->logError("Unable to read if ftrace is enabled");
+		logg.logError("Unable to read if ftrace is enabled");
 		handleException();
 	}
 
 	if (DriverSource::writeDriver(TRACING_PATH "/tracing_on", "0") != 0) {
-		logg->logError("Unable to turn ftrace off before truncating the buffer");
+		logg.logError("Unable to turn ftrace off before truncating the buffer");
 		handleException();
 	}
 
@@ -171,14 +173,15 @@ void FtraceDriver::prepare() {
 		int fd;
 		fd = open(TRACING_PATH "/trace", O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
 		if (fd < 0) {
-			logg->logError("Unable truncate ftrace buffer: %s", strerror(errno));
+			logg.logError("Unable truncate ftrace buffer: %s", strerror(errno));
 			handleException();
 		}
 		close(fd);
 	}
 
-	if (DriverSource::writeDriver(TRACING_PATH "/trace_clock", "perf") != 0) {
-		logg->logError("Unable to switch ftrace to the perf clock, please ensure you are running Linux 3.10 or later");
+	const char *const clock = mMonotonicRawSupport ? "mono_raw" : "perf";
+	if (DriverSource::writeDriver(TRACING_PATH "/trace_clock", clock) != 0) {
+		logg.logError("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later", clock, mMonotonicRawSupport ? "4.2" : "3.10");
 		handleException();
 	}
 }

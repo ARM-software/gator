@@ -41,7 +41,7 @@ public:
 	void check(const uint64_t time);
 
 	// Summary messages
-	void summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname, const long pageSize);
+	void summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta, const char *const uname, const long pageSize, const bool nosync);
 	void coreName(const uint64_t currTime, const int core, const int cpuid, const char *const name);
 
 	// Block Counter messages
@@ -77,11 +77,22 @@ public:
 	void writeBytes(const void *const data, size_t count);
 	void writeString(const char *const str);
 
-	static void writeLEInt(unsigned char *buf, int v) {
+	static void writeLEInt(unsigned char *buf, uint32_t v) {
 		buf[0] = (v >> 0) & 0xFF;
 		buf[1] = (v >> 8) & 0xFF;
 		buf[2] = (v >> 16) & 0xFF;
 		buf[3] = (v >> 24) & 0xFF;
+	}
+
+	static void writeLELong(unsigned char *buf, uint64_t v) {
+		buf[0] = (v >> 0) & 0xFF;
+		buf[1] = (v >> 8) & 0xFF;
+		buf[2] = (v >> 16) & 0xFF;
+		buf[3] = (v >> 24) & 0xFF;
+		buf[4] = (v >> 32) & 0xFF;
+		buf[5] = (v >> 40) & 0xFF;
+		buf[6] = (v >> 48) & 0xFF;
+		buf[7] = (v >> 56) & 0xFF;
 	}
 
 private:

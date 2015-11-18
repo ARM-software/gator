@@ -11,7 +11,7 @@
 
 #include "Config.h"
 
-#define BUF_SIZE (gSessionData->mTotalBufferSize * 1024 * 1024)
+#define BUF_SIZE (gSessionData.mTotalBufferSize * 1024 * 1024)
 #define BUF_MASK (BUF_SIZE - 1)
 
 class Sender;

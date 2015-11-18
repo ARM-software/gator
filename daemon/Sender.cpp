@@ -30,7 +30,7 @@ Sender::Sender(OlySocket* socket) {
 		// Streamline will send data prior to the magic sequence for legacy support, which should be ignored for v4+
 		while (strcmp("STREAMLINE", streamline) != 0) {
 			if (mDataSocket->receiveString(streamline, sizeof(streamline)) == -1) {
-				logg->logError("Socket disconnected");
+				logg.logError("Socket disconnected");
 				handleException();
 			}
 		}
@@ -40,8 +40,8 @@ Sender::Sender(OlySocket* socket) {
 		snprintf(magic, 32, "GATOR %i\n", PROTOCOL_VERSION);
 		mDataSocket->send(magic, strlen(magic));
 
-		gSessionData->mWaitingOnCommand = true;
-		logg->logMessage("Completed magic sequence");
+		gSessionData.mWaitingOnCommand = true;
+		logg.logMessage("Completed magic sequence");
 	}
 
 	pthread_mutexattr_t attr;
@@ -50,7 +50,7 @@ Sender::Sender(OlySocket* socket) {
 			pthread_mutex_init(&mSendMutex, &attr) != 0 ||
 			pthread_mutexattr_destroy(&attr) != 0 ||
 			false) {
-		logg->logError("Unable to setup mutex");
+		logg.logError("Unable to setup mutex");
 		handleException();
 	}
 }
@@ -75,19 +75,22 @@ void Sender::createDataFile(char* apcDir) {
 	sprintf(mDataFileName, "%s/0000000000", apcDir);
 	mDataFile = fopen_cloexec(mDataFileName, "wb");
 	if (!mDataFile) {
-		logg->logError("Failed to open binary file: %s", mDataFileName);
+		logg.logError("Failed to open binary file: %s", mDataFileName);
 		handleException();
 	}
 }
 
-void Sender::writeData(const char* data, int length, int type) {
+void Sender::writeData(const char* data, int length, int type, bool ignoreLockErrors) {
 	if (length < 0 || (data == NULL && length > 0)) {
 		return;
 	}
 
 	// Multiple threads call writeData()
 	if (pthread_mutex_lock(&mSendMutex) != 0) {
-		logg->logError("pthread_mutex_lock failed");
+		if (ignoreLockErrors) {
+			return;
+		}
+		logg.logError("pthread_mutex_lock failed");
 		handleException();
 	}
 
@@ -98,7 +101,7 @@ void Sender::writeData(const char* data, int length, int type) {
 		alarm(alarmDuration);
 
 		// Send data over the socket, sending the type and size first
-		logg->logMessage("Sending data with length %d", length);
+		logg.logMessage("Sending data with length %d", length);
 		if (type != RESPONSE_APC_DATA) {
 			// type and length already added by the Collector for apc data
 			unsigned char header[5];
@@ -119,7 +122,7 @@ void Sender::writeData(const char* data, int length, int type) {
 
 			// Reset the alarm
 			alarm(alarmDuration);
-			logg->logMessage("Resetting the alarm");
+			logg.logMessage("Resetting the alarm");
 		}
 
 		// Stop alarm
@@ -128,16 +131,16 @@ void Sender::writeData(const char* data, int length, int type) {
 
 	// Write data to disk as long as it is not meta data
 	if (mDataFile && type == RESPONSE_APC_DATA) {
-		logg->logMessage("Writing data with length %d", length);
+		logg.logMessage("Writing data with length %d", length);
 		// Send data to the data file
 		if (fwrite(data, 1, length, mDataFile) != (unsigned int)length) {
-			logg->logError("Failed writing binary file %s", mDataFileName);
+			logg.logError("Failed writing binary file %s", mDataFileName);
 			handleException();
 		}
 	}
 
 	if (pthread_mutex_unlock(&mSendMutex) != 0) {
-		logg->logError("pthread_mutex_unlock failed");
+		logg.logError("pthread_mutex_unlock failed");
 		handleException();
 	}
 }

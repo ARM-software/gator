@@ -52,21 +52,21 @@ AtraceDriver::~AtraceDriver() {
 }
 
 void AtraceDriver::readEvents(mxml_node_t *const xml) {
-	if (!gSessionData->mFtraceDriver.isSupported()) {
-		logg->logMessage("Atrace support disabled, ftrace support is required");
+	if (!gSessionData.mFtraceDriver.isSupported()) {
+		logg.logSetup("Atrace Disabled\nftrace support is required");
 		return;
 	}
 	if (access("/system/bin/setprop", X_OK) != 0) {
-		logg->logMessage("Atrace support disabled, setprop is not found, this is not an Android target");
+		logg.logSetup("Atrace Disabled\nsetprop is not found, this is not an Android target");
 		return;
 	}
 
-	if (util->getApplicationFullPath(mNotifyPath, sizeof(mNotifyPath)) != 0) {
-		logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
+	if (getApplicationFullPath(mNotifyPath, sizeof(mNotifyPath)) != 0) {
+		logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
 	}
 	strncat(mNotifyPath, "notify.dex", sizeof(mNotifyPath) - strlen(mNotifyPath) - 1);
 	if (access(mNotifyPath, W_OK) != 0) {
-		logg->logMessage("Atrace support disabled, unable to locate notify.dex");
+		logg.logSetup("Atrace Disabled\nunable to locate notify.dex");
 		return;
 	}
 
@@ -89,7 +89,7 @@ void AtraceDriver::readEvents(mxml_node_t *const xml) {
 
 		const char *flag = mxmlElementGetAttr(node, "flag");
 		if (flag == NULL) {
-			logg->logError("The atrace counter %s is missing the required flag attribute", counter);
+			logg.logError("The atrace counter %s is missing the required flag attribute", counter);
 			handleException();
 		}
 		setCounters(new AtraceCounter(getCounters(), strdup(counter), strtol(flag, NULL, 16)));
@@ -97,10 +97,10 @@ void AtraceDriver::readEvents(mxml_node_t *const xml) {
 }
 
 void AtraceDriver::setAtrace(const int flags) {
-	logg->logMessage("Setting atrace flags to %i\n", flags);
+	logg.logMessage("Setting atrace flags to %i", flags);
 	pid_t pid = fork();
 	if (pid < 0) {
-		logg->logError("fork failed");
+		logg.logError("fork failed");
 		handleException();
 	} else if (pid == 0) {
 		char buf[1<<10];

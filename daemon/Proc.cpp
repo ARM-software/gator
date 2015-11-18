@@ -31,20 +31,20 @@ struct ProcStat {
 
 static bool readProcStat(ProcStat *const ps, const char *const pathname, DynBuf *const b) {
 	if (!b->read(pathname)) {
-		logg->logMessage("DynBuf::read failed, likely because the thread exited");
+		logg.logMessage("DynBuf::read failed, likely because the thread exited");
 		// This is not a fatal error - the thread just doesn't exist any more
 		return true;
 	}
 
 	char *comm = strchr(b->getBuf(), '(');
 	if (comm == NULL) {
-		logg->logMessage("parsing stat failed");
+		logg.logMessage("parsing stat failed");
 		return false;
 	}
 	++comm;
 	char *const str = strrchr(comm, ')');
 	if (str == NULL) {
-		logg->logMessage("parsing stat failed");
+		logg.logMessage("parsing stat failed");
 		return false;
 	}
 	*str = '\0';
@@ -53,7 +53,7 @@ static bool readProcStat(ProcStat *const ps, const char *const pathname, DynBuf 
 
 	const int count = sscanf(str + 2, " %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %ld", &ps->numThreads);
 	if (count != 1) {
-		logg->logMessage("sscanf failed");
+		logg.logMessage("sscanf failed");
 		return false;
 	}
 
@@ -65,7 +65,7 @@ static const char APP_PROCESS[] = "app_process";
 static const char *readProcExe(DynBuf *const printb, const int pid, const int tid, DynBuf *const b) {
 	if (tid == -1 ? !printb->printf("/proc/%i/exe", pid)
 			: !printb->printf("/proc/%i/task/%i/exe", pid, tid)) {
-		logg->logMessage("DynBuf::printf failed");
+		logg.logMessage("DynBuf::printf failed");
 		return NULL;
 	}
 
@@ -77,7 +77,7 @@ static const char *readProcExe(DynBuf *const printb, const int pid, const int ti
 		// readlink /proc/[pid]/exe returns ENOENT for kernel threads
 		image = "\0";
 	} else {
-		logg->logMessage("DynBuf::readlink failed");
+		logg.logMessage("DynBuf::readlink failed");
 		return NULL;
 	}
 
@@ -89,12 +89,12 @@ static const char *readProcExe(DynBuf *const printb, const int pid, const int ti
 
 	if (tid == -1 ? !printb->printf("/proc/%i/cmdline", pid)
 			: !printb->printf("/proc/%i/task/%i/cmdline", pid, tid)) {
-		logg->logMessage("DynBuf::printf failed");
+		logg.logMessage("DynBuf::printf failed");
 		return NULL;
 	}
 
 	if (!b->read(printb->getBuf())) {
-		logg->logMessage("DynBuf::read failed, likely because the thread exited");
+		logg.logMessage("DynBuf::read failed, likely because the thread exited");
 		return NULL;
 	}
 
@@ -105,12 +105,12 @@ static bool readProcTask(const uint64_t currTime, Buffer *const buffer, const in
 	bool result = false;
 
 	if (!b1->printf("/proc/%i/task", pid)) {
-		logg->logMessage("DynBuf::printf failed");
+		logg.logMessage("DynBuf::printf failed");
 		return result;
 	}
 	DIR *task = opendir(b1->getBuf());
 	if (task == NULL) {
-		logg->logMessage("opendir failed");
+		logg.logMessage("opendir failed");
 		// This is not a fatal error - the thread just doesn't exist any more
 		return true;
 	}
@@ -125,18 +125,18 @@ static bool readProcTask(const uint64_t currTime, Buffer *const buffer, const in
 		}
 
 		if (!printb->printf("/proc/%i/task/%i/stat", pid, tid)) {
-			logg->logMessage("DynBuf::printf failed");
+			logg.logMessage("DynBuf::printf failed");
 			goto fail;
 		}
 		ProcStat ps;
 		if (!readProcStat(&ps, printb->getBuf(), b1)) {
-			logg->logMessage("readProcStat failed");
+			logg.logMessage("readProcStat failed");
 			goto fail;
 		}
 
 		const char *const image = readProcExe(printb, pid, tid, b2);
 		if (image == NULL) {
-			logg->logMessage("readImage failed");
+			logg.logMessage("readImage failed");
 			goto fail;
 		}
 
@@ -156,7 +156,7 @@ bool readProcComms(const uint64_t currTime, Buffer *const buffer, DynBuf *const 
 
 	DIR *proc = opendir("/proc");
 	if (proc == NULL) {
-		logg->logMessage("opendir failed");
+		logg.logMessage("opendir failed");
 		return result;
 	}
 
@@ -170,26 +170,26 @@ bool readProcComms(const uint64_t currTime, Buffer *const buffer, DynBuf *const 
 		}
 
 		if (!printb->printf("/proc/%i/stat", pid)) {
-			logg->logMessage("DynBuf::printf failed");
+			logg.logMessage("DynBuf::printf failed");
 			goto fail;
 		}
 		ProcStat ps;
 		if (!readProcStat(&ps, printb->getBuf(), b1)) {
-			logg->logMessage("readProcStat failed");
+			logg.logMessage("readProcStat failed");
 			goto fail;
 		}
 
 		if (ps.numThreads <= 1) {
 			const char *const image = readProcExe(printb, pid, -1, b1);
 			if (image == NULL) {
-				logg->logMessage("readImage failed");
+				logg.logMessage("readImage failed");
 				goto fail;
 			}
 
 			buffer->marshalComm(currTime, pid, pid, image, ps.comm);
 		} else {
 			if (!readProcTask(currTime, buffer, pid, printb, b1, b2)) {
-				logg->logMessage("readProcTask failed");
+				logg.logMessage("readProcTask failed");
 				goto fail;
 			}
 		}
@@ -208,7 +208,7 @@ bool readProcMaps(const uint64_t currTime, Buffer *const buffer, DynBuf *const p
 
 	DIR *proc = opendir("/proc");
 	if (proc == NULL) {
-		logg->logMessage("opendir failed");
+		logg.logMessage("opendir failed");
 		return result;
 	}
 
@@ -222,11 +222,11 @@ bool readProcMaps(const uint64_t currTime, Buffer *const buffer, DynBuf *const p
 		}
 
 		if (!printb->printf("/proc/%i/maps", pid)) {
-			logg->logMessage("DynBuf::printf failed");
+			logg.logMessage("DynBuf::printf failed");
 			goto fail;
 		}
 		if (!b->read(printb->getBuf())) {
-			logg->logMessage("DynBuf::read failed, likely because the process exited");
+			logg.logMessage("DynBuf::read failed, likely because the process exited");
 			// This is not a fatal error - the process just doesn't exist any more
 			continue;
 		}
@@ -246,16 +246,16 @@ bool readKallsyms(const uint64_t currTime, Buffer *const buffer, const bool *con
 	int fd = ::open("/proc/kallsyms", O_RDONLY | O_CLOEXEC);
 
 	if (fd < 0) {
-		logg->logMessage("open failed");
+		logg.logMessage("open failed");
 		return true;
 	};
 
 	char buf[1<<12];
 	ssize_t pos = 0;
-	while (gSessionData->mSessionIsActive && !ACCESS_ONCE(*isDone)) {
+	while (gSessionData.mSessionIsActive && !ACCESS_ONCE(*isDone)) {
 		// Assert there is still space in the buffer
 		if (sizeof(buf) - pos - 1 == 0) {
-			logg->logError("no space left in buffer");
+			logg.logError("no space left in buffer");
 			handleException();
 		}
 
@@ -263,13 +263,13 @@ bool readKallsyms(const uint64_t currTime, Buffer *const buffer, const bool *con
 			// -1 to reserve space for \0
 			const ssize_t bytes = ::read(fd, buf + pos, sizeof(buf) - pos - 1);
 			if (bytes < 0) {
-				logg->logError("read failed");
+				logg.logError("read failed");
 				handleException();
 			}
 			if (bytes == 0) {
 				// Assert the buffer is empty
 				if (pos != 0) {
-					logg->logError("buffer not empty on eof");
+					logg.logError("buffer not empty on eof");
 					handleException();
 				}
 				break;
@@ -289,7 +289,7 @@ bool readKallsyms(const uint64_t currTime, Buffer *const buffer, const bool *con
 				buf[0] = was;
 				// Assert the memory regions do not overlap
 				if (pos - newline >= newline + 1) {
-					logg->logError("memcpy src and dst overlap");
+					logg.logError("memcpy src and dst overlap");
 					handleException();
 				}
 				if (pos - newline - 2 > 0) {

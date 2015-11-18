@@ -7,8 +7,8 @@
     <event event="0x03" title="Cache" name="Data refill" description="Level 1 data cache refill"/>
     <event event="0x04" title="Cache" name="Data access" description="Level 1 data cache access"/>
     <event event="0x05" title="Cache" name="Data TLB refill" description="Level 1 data TLB refill"/>
-    <event event="0x06" title="Instruction" name="Memory read" description="Instruction architecturally executed, condition code check pass, load"/>
-    <event event="0x07" title="Instruction" name="Memory write" description="Instruction architecturally executed, condition code check pass, store"/>
+    <event event="0x06" title="Instruction" name="Load" description="Instruction architecturally executed, condition code check pass, load"/>
+    <event event="0x07" title="Instruction" name="Store" description="Instruction architecturally executed, condition code check pass, store"/>
     <event event="0x08" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
     <event event="0x09" title="Exception" name="Taken" description="Exception taken"/>
     <event event="0x0a" title="Exception" name="Return" description="Instruction architecturally executed, condition code check pass, exception return"/>

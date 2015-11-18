@@ -143,9 +143,9 @@ bool MaliVideoDriver::start(const int mveUds) {
 	// data_protocol_version
 	Buffer::packInt(buf, sizeof(buf), pos, 1);
 	// sample_rate - convert samples/second to ms/sample
-	Buffer::packInt(buf, sizeof(buf), pos, gSessionData->mSampleRate/1000);
+	Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mSampleRate/1000);
 	// live_rate - convert ns/flush to ms/flush
-	Buffer::packInt(buf, sizeof(buf), pos, gSessionData->mLiveRate/1000000);
+	Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mLiveRate/1000000);
 
 	// code - MVE_INSTR_ENABLE_COUNTERS
 	buf[pos++] = 'C';

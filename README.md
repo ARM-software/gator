@@ -74,8 +74,8 @@ If a device tree is used it must include the pmu bindings, see Documentation/dev
 
 To create the gator.ko module,
 ```
-tar xzf /path/to/DS-5/arm/gator/driver-src/gator-driver.tar.gz
-cd gator-driver
+cp -r /path/to/streamline/gator/driver .
+cd driver
 make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
 ```
 whenever possible, use the same toolchain the kernel was built with when building gator.ko
@@ -103,20 +103,20 @@ source "drivers/gator/Kconfig"
 ```
 You can now select gator when using menuconfig while configuring the kernel and rebuild as directed
 
-## Use the prebuilt gator daemon
+## Use the pre-built gator daemon
 
-A prebuilt gator daemon is provided at `/path/to/DS-5/arm/gator/gatord`. This gator daemon should work in most cases so building the gator daemon is only required if the prebuilt gator daemon doesn't work.
+The Streamline Setup Target tool will automatically install a pre-built gator daemon. This gator daemon should work in most cases so building the gator daemon is only required if the pre-built gator daemon doesn't work.
 
 To improve portablility gatord is statically compiled against musl libc from http://www.musl-libc.org/download.html instead of glibc. The gator daemon will work correctly with either glibc or musl.
 
 ## Building the gator daemon
 
 ```
-tar -xzf /path/to/DS-5/arm/gator/daemon-src/gator-daemon.tar.gz
+cp -r /path/to/streamline/gator/daemon .
 ```
 For Linux targets,
 ```
-cd gator-daemon
+cd daemon
 make CROSS_COMPILE=<...> # For ARMv7 targets
 make -f Makefile_aarch64 CROSS_COMPILE=<...> # For ARMv8 targets
 ```
@@ -124,7 +124,7 @@ gatord should now be created.
 
 For Android targets (install the Android NDK appropriate for your target (ndk32 for 32-bit targets and ndk64 for 64-bit targets), see developer.android.com)
 ```
-mv gator-daemon jni
+mv daemon jni
 ndk-build
 ```
 or execute `/path/to/ndk/ndk-build` if the ndk is not on your path.
@@ -192,7 +192,7 @@ Mali-4xx:
   CONFIG_GATOR_MALI_PATH=".../path/to/Mali_DDK_kernel_files/src/devicedrv/mali"  # gator source needs to #include "linux/mali_linux_trace.h"
   GATOR_MALI_INTERFACE_STYLE=<3|4>                                               # 3=Mali-400 DDK >= r3p0-04rel0 and < r3p2-01rel3
                                                                                  # 4=Mali-400 DDK >= r3p2-01rel3
-                                                                                 # (default of 4 set in gator-driver/gator_events_mali_4xx.c)
+                                                                                 # (default of 4 set in streamline/gator/driver/gator_events_mali_4xx.c)
   ___To add the corresponding support to Mali___
   Userspace needs MALI_TIMELINE_PROFILING_ENABLED=1 MALI_FRAMEBUFFER_DUMP_ENABLED=1 MALI_SW_COUNTERS_ENABLED=1
   Kernel driver needs USING_PROFILING=1                                          # Sets CONFIG_MALI400_PROFILING=y
@@ -293,6 +293,6 @@ update-rc.d rungator.sh defaults
 
 ## GPL License
 
-For license information, please see the file COPYING after unzipping `driver-src/gator-driver.tar.gz`.
+For license information, please see streamline/gator/daemon/COPYING and streamline/gator/driver/COPYING
 
-The prebuilt gatord uses musl from http://www.musl-libc.org/download.html for musl license information see the COPYRIGHT file in the musl tar file.
+The pre-built gatord uses musl from http://www.musl-libc.org/download.html for musl license information see the COPYRIGHT file in the musl tar file.

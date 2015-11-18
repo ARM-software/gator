@@ -1,7 +1,7 @@
 /*
     access.c - Part of libsensors, a Linux library for reading sensor data.
     Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
-    Copyright (C) 2007-2009   Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007-2010   Jean Delvare <jdelvare@suse.de>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -435,7 +435,7 @@ sensors_get_subfeature(const sensors_chip_name *name,
 }
 
 /* Evaluate an expression */
-int sensors_eval_expr(const sensors_chip_features *chip_features,
+static int sensors_eval_expr(const sensors_chip_features *chip_features,
 		      const sensors_expr *expr,
 		      double val, int depth, double *result)
 {

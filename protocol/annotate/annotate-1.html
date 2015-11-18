@@ -1,0 +1,856 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en_US" lang="en_US">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style type="text/css">
+      .circle {
+        -webkit-border-radius: 999px;
+        -moz-border-radius: 999px;
+        border-radius: 999px;
+        border: 1px solid #003366;
+        padding: 2px;
+      }
+      .white {
+        color: white;
+      }
+      table {
+        border-spacing: 0px;
+        border-bottom: 1px solid gray;
+        border-right: 1px solid gray;
+      }
+      th, td {
+        padding: 2px;
+        vertical-align: text-top;
+        border-left: 1px solid gray;
+        border-top: 1px solid gray;
+      }
+      th {
+        background-color: #687684;
+      }
+      table.none {
+        border: 0px;
+      }
+      table.none td {
+        border: 0px;
+      }
+      .literal {
+        font-family: monospace;
+      }
+    </style>
+    <script type="text/javascript" src="../topbar.js"></script>
+    <title>Annotate v1 (DS-5 v5.20) Protocol</title>
+  </head>
+  <body>
+    <div class="master">
+    <h1 id="top">Annotate v1 (DS-5 v5.20) Protocol</h1>
+    <h2 id="Index">Index</h2>
+    <ul>
+      <li><a href="#Types">Types</a></li>
+      <li>
+	<a href="#Messages">Annotation Messages</a>
+	<ul>
+	  <li><a href="#MessageId">Id Message</a></li>
+	  <li><a href="#MessageString">UTF-8 String Annotations</a></li>
+	  <li><a href="#MessageColorString">UTF-8 Color String Annotations</a></li>
+	  <li><a href="#MessageChannel">Create Channel Annotation</a></li>
+	  <li><a href="#MessageGroup">Create Group Annotation</a></li>
+	  <li><a href="#MessageVisual">Visual Annotation</a></li>
+	  <li><a href="#MessageMarker">Marker Annotation</a></li>
+	  <li><a href="#MessageColorMarker">Marker Color Annotation</a></li>
+	  <li><a href="#MessageCounter">Counter Annotation</a></li>
+	  <li><a href="#MessageValue">Counter Value Annotation</a></li>
+	</ul>
+      </li>
+    </ul>
+    <h3 id="Types">Types</h3>
+    <dl>
+      <dt>int32</dt><dd>4-byte signed little endian</dd>
+      <dt>packed32</dt><dd>variable length packed 4-byte signed value, see <a href="#FramePacked">Packed Values</a></dd>
+      <dt>packed64</dt><dd>variable length packed 8-byte signed value, see <a href="#FramePacked">Packed Values</a></dd>
+      <dt>UTF-8 chars</dt><dd>Some number of UTF-8 characters, not null terminated unless explicitly indicated. Length is usually derived from the message size.</dd>
+      <dt><span class="circle">#</span></dt><dd>A constant packed32 value of #, ex: <span class="circle">5</span> is the packed32 number 5</dd>
+      <dt>timestamp</dt><dd>packed64 monotonic time value in nanoseconds using the same monotonic clock used by the gator protocol without applying the monotonic delta.</dd>
+      <dt>color</dt><dd>four unpacked bytes, 0xRR 0xGG 0xBB 0xTT, where TT represents 4 predefined template colors (1-4); TT of 0 cycles between the template colors; TT >= 5 uses the RRGGBB component.</dd>
+    </dl>
+    <h3 id="FramePacked">Packed Values</h3>
+    <p>To reduce their size, integers are packed. This is done by avoiding the transmission of duplicate high bits. The value is split into 7 bit bytes in little endian order. The most significant bit of the byte is set to 1, if there is a subsequent byte for this value. On the last byte, the most significant bit is set to 0. For positive values, the most significant encoded bit must be 0 and for negative numbers it must be 1. This is very similar to signed LEB128 used in DWARF.</p>
+    <table>
+      <tr>
+	<th><span class="white">Bits</span></th>
+	<th><span class="white">Last value</span></th>
+	<th><span class="white">Byte 1</span></th>
+	<th><span class="white">Byte 2</span></th>
+	<th><span class="white">Byte 3</span></th>
+	<th><span class="white">Byte 4</span></th>
+	<th><span class="white">Byte 5</span></th>
+      </tr>
+      <tr>
+	<th><span class="white">31</span></th>
+	<td>-2147483648</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01111XXXb</td>
+      </tr>
+      <tr>
+	<th><span class="white">27</span></th>
+	<td>-134217728</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">20</span></th>
+	<td>-1048576</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="2"></td>
+      </tr>
+      <tr>
+	<th><span class="white">13</span></th>
+	<td>-8192</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">6</span></th>
+	<td>-64</td>
+	<td>01XXXXXXb</td>
+	<td colspan="4"></td>
+      </tr>
+      <tr>
+	<th><span class="white">6</span></th>
+	<td>63</td>
+	<td>00XXXXXXb</td>
+	<td colspan="4"></td>
+      </tr>
+      <tr>
+	<th><span class="white">13</span></th>
+	<td>8191</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">20</span></th>
+	<td>1048575</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="2"></td>
+      </tr>
+      <tr>
+	<th><span class="white">27</span></th>
+	<td>134217727</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td></td>
+      </tr>
+      <tr>
+	<th><span class="white">31</span></th>
+	<td>2147483647</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00000XXXb</td>
+      </tr>
+    </table>
+    <p>For example, 429389 (<span style="color:red">011010</span><span style="color:green">0011010</span><span style="color:blue">1001101</span>b) would be encoded as 0xCD (1<span style="color:blue">1001101</span>b) 0x9A (1<span style="color:green">0011010</span>b) 0x1A (00<span style="color:red">011010</span>b)</p>
+    <p>Packed 64 values work in much the same way:</p>
+    <table>
+      <tr>
+	<th><span class="white">Bits</span></th>
+	<th><span class="white">Last value</span></th>
+	<th><span class="white">Byte 1</span></th>
+	<th><span class="white">Byte 2</span></th>
+	<th><span class="white">Byte 3</span></th>
+	<th><span class="white">Byte 4</span></th>
+	<th><span class="white">Byte 5</span></th>
+	<th><span class="white">Byte 6</span></th>
+	<th><span class="white">Byte 7</span></th>
+	<th><span class="white">Byte 8</span></th>
+	<th><span class="white">Byte 9</span></th>
+	<th><span class="white">Byte 10</span></th>
+      </tr>
+
+      <tr>
+	<th><span class="white">63</span></th>
+	<td>-9223372036854775808</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0111111Xb</td>
+      </tr>
+      <tr>
+	<th><span class="white">62</span></th>
+	<td>-4611686018427387904</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td></td>
+      </tr>
+      <tr>
+	<th><span class="white">55</span></th>
+	<td>-36028797018963968</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="2"></td>
+      </tr>
+      <tr>
+	<th><span class="white">48</span></th>
+	<td>-281474976710656</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">41</span></th>
+	<td>-2199023255552</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="4"></td>
+      </tr>
+      <tr>
+	<th><span class="white">34</span></th>
+	<td>-17179869184</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="5"></td>
+      </tr>
+
+      <tr>
+	<th><span class="white">27</span></th>
+	<td>-134217728</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="6"></td>
+      </tr>
+      <tr>
+	<th><span class="white">20</span></th>
+	<td>-1048576</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="7"></td>
+      </tr>
+      <tr>
+	<th><span class="white">13</span></th>
+	<td>-8192</td>
+	<td>1XXXXXXXb</td>
+	<td>01XXXXXXb</td>
+	<td colspan="8"></td>
+      </tr>
+      <tr>
+	<th><span class="white">6</span></th>
+	<td>-64</td>
+	<td>01XXXXXXb</td>
+	<td colspan="9"></td>
+      </tr>
+      <tr>
+	<th><span class="white">6</span></th>
+	<td>63</td>
+	<td>00XXXXXXb</td>
+	<td colspan="9"></td>
+      </tr>
+      <tr>
+	<th><span class="white">13</span></th>
+	<td>8191</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="8"></td>
+      </tr>
+      <tr>
+	<th><span class="white">20</span></th>
+	<td>1048575</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="7"></td>
+      </tr>
+      <tr>
+	<th><span class="white">27</span></th>
+	<td>134217727</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="6"></td>
+      </tr>
+      <tr>
+	<th><span class="white">34</span></th>
+	<td>17179869183</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="5"></td>
+      </tr>
+      <tr>
+	<th><span class="white">41</span></th>
+	<td>2199023255551</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="4"></td>
+      </tr>
+      <tr>
+	<th><span class="white">48</span></th>
+	<td>281474976710655</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="3"></td>
+      </tr>
+      <tr>
+	<th><span class="white">55</span></th>
+	<td>36028797018963967</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td colspan="2"></td>
+      </tr>
+      <tr>
+	<th><span class="white">62</span></th>
+	<td>4611686018427387903</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>00XXXXXXb</td>
+	<td></td>
+      </tr>
+      <tr>
+	<th><span class="white">63</span></th>
+	<td>9223372036854775807</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>1XXXXXXXb</td>
+	<td>0000000Xb</td>
+      </tr>
+    </table>
+    <p>For example, -4758616141418899142 would be encoded as 0xBA 0xB2 0xA5 0xA2 0xCE 0xFA 0xFF 0xFA 0xBD 0x7F.</p>
+    <h2 id="Messages">Annotation Messages</h2>
+    <p>Magic string to use in the setup message for this protocol is <span class="literal">ANNOTATE 1\n</span></p>
+    <p></p>
+    <h3 id="MessageId">Id Message</h3>
+    <p>This is the first message after the Setup Message to identify the thread sending annotations</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>tid</td>
+	<td>int32</td>
+	<td>Thread ID. In the Linux kernel, this is the PID.</td>
+      </tr>
+      <tr>
+	<td>pid</td>
+	<td>int32</td>
+	<td>Process ID. In the Linux kernel, this is the Thread Group ID</td>
+      </tr>
+    </table>
+    <h3 id="MessageString">UTF-8 String Annotations</h3>
+    <p>This is used to add a line in the Log tab.</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x1</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Channel</td>
+	<td>packed32</td>
+	<td>Channel the annotation belongs to</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars</td>
+	<td>Text annotation</td>
+      </tr>
+    </table>
+    <h3 id="MessageColorString">UTF-8 Color String Annotations</h3>
+    <p>This is used to add a line in the Log tab.</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x2</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Channel</td>
+	<td>packed32</td>
+	<td>Channel the annotation belongs to</td>
+      </tr>
+      <tr>
+	<td>Color</td>
+	<td>color</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars</td>
+	<td>Text annotation</td>
+      </tr>
+    </table>
+    <h3 id="MessageChannel">Create Channel Annotation</h3>
+    <p>This is used to name a channel in the Thread Disclosure</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x3</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Channel</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Group</td>
+	<td>packed32</td>
+	<td>Group the channel belongs to</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars</td>
+	<td>Channel name</td>
+      </tr>
+    </table>
+    <h3 id="MessageGroup">Create Group Annotation</h3>
+    <p>This is used to name a group in the Thread Disclosure</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x4</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Group</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars</td>
+	<td>Group name</td>
+      </tr>
+    </table>
+    <h3 id="MessageVisual">Visual Annotation</h3>
+    <p>This is used to add a line in the Log tab and an image to the Visual Annotation Chart.</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x5</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars, null terminated</td>
+	<td>Text annotation</td>
+      </tr>
+      <tr>
+	<td>Image Data</td>
+	<td>Image bytes</td>
+	<td>&nbsp;</td>
+      </tr>
+    </table>
+    <h3 id="MessageMarker">Marker Annotation</h3>
+    <p>This is used to add a Bookmark</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x6</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars</td>
+	<td>Text annotation</td>
+      </tr>
+    </table>
+    <h3 id="MessageColorMarker">Marker Color Annotation</h3>
+    <p>This is used to add a Bookmark</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x7</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Color</td>
+	<td>color</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>UTF-8 String</td>
+	<td>UTF-8 chars</td>
+	<td>Text annotation</td>
+      </tr>
+    </table>
+    <h3 id="MessageCounter">Counter Annotation</h3>
+    <p>Create a counter to use with a counter value annotation, see the <a href="#XMLEvents">event</a> node for more details</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x8</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>key</td>
+	<td>packed32</td>
+	<td>Key for this counter, unique in the process</td>
+      </tr>
+      <tr>
+	<td>per_cpu</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>0</td><td>= false</td></tr>
+	    <tr><td>1</td><td>= true</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>class</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>1</td><td>= delta</td></tr>
+	    <tr><td>2</td><td>= absolute</td></tr>
+	    <tr><td>3</td><td>= activity</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>display</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>1</td><td>= average</td></tr>
+	    <tr><td>2</td><td>= accumulate</td></tr>
+	    <tr><td>3</td><td>= hertz</td></tr>
+	    <tr><td>4</td><td>= maximum</td></tr>
+	    <tr><td>5</td><td>= minimum</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>modifier</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>series_composition</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>1</td><td>= stacked</td></tr>
+	    <tr><td>2</td><td>= overlay</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>rendering_type</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>1</td><td>= line</td></tr>
+	    <tr><td>2</td><td>= fill</td></tr>
+	    <tr><td>3</td><td>= bar</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>average_selection</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>0</td><td>= false</td></tr>
+	    <tr><td>1</td><td>= true</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>average_cores</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>0</td><td>= false</td></tr>
+	    <tr><td>1</td><td>= true</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>percentage</td>
+	<td>packed32</td>
+	<td>
+	  <table class="none">
+	    <tr><td>0</td><td>= false</td></tr>
+	    <tr><td>1</td><td>= true</td></tr>
+	  </table>
+	</td>
+      </tr>
+      <tr>
+	<td>activity_count</td>
+	<td>packed32</td>
+	<td>Number of activities and activity_colors</td>
+      </tr>
+      <tr>
+	<td>cores</td>
+	<td>packed32</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Color</td>
+	<td>color</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>activities</td>
+	<td>activity_count occurances of UTF-8 chars, null terminated and 3 bytes (RR, GG, BB) pairs</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>title</td>
+	<td>UTF-8 chars, null terminated</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>name</td>
+	<td>UTF-8 chars, null terminated</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>units</td>
+	<td>UTF-8 chars, null terminated</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>description</td>
+	<td>UTF-8 chars</td>
+	<td>&nbsp;</td>
+      </tr>
+    </table>
+    <h3 id="MessageValue">Counter Value Annotation</h3>
+    <p>Emit a counter value similar to Counter Frame from the gator protocol</p>
+    <table>
+      <tr>
+	<th><span class="white">Name</span></th>
+	<th><span class="white">Type</span></th>
+	<th><span class="white">Description</span></th>
+      </tr>
+      <tr>
+	<td>Marker Code</td>
+	<td><span class="circle">0x9</span></td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Length</td>
+	<td>int32</td>
+	<td>Number of bytes in the body after the length</td>
+      </tr>
+      <tr>
+	<td>Timestamp</td>
+	<td>timestamp</td>
+	<td>&nbsp;</td>
+      </tr>
+      <tr>
+	<td>Core</td>
+	<td>packed32</td>
+	<td>Core to which this counter applies</td>
+      </tr>
+      <tr>
+	<td>Key</td>
+	<td>packed32</td>
+	<td>Key used when the counter was created</td>
+      </tr>
+      <tr>
+	<td>Value</td>
+	<td>packed64</td>
+	<td>Value of the specified counter</td>
+      </tr>
+    </table>
+    </div>
+  </body>
+</html>
+

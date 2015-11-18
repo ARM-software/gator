@@ -18,7 +18,7 @@ Source::~Source() {
 
 void Source::start() {
 	if (pthread_create(&mThreadID, NULL, runStatic, this)) {
-		logg->logError("Failed to create source thread");
+		logg.logError("Failed to create source thread");
 		handleException();
 	}
 }

@@ -21,11 +21,9 @@ static int __lcpu_to_pcpu[NR_CPUS];
 
 static const struct gator_cpu *gator_find_cpu_by_dt_name(const char *const name)
 {
-	int i;
+	const struct gator_cpu *gator_cpu;
 
-	for (i = 0; gator_cpus[i].cpuid != 0; ++i) {
-		const struct gator_cpu *const gator_cpu = &gator_cpus[i];
-
+	list_for_each_entry(gator_cpu, &gator_cpus, list) {
 		if (gator_cpu->dt_name != NULL && strcmp(gator_cpu->dt_name, name) == 0)
 			return gator_cpu;
 	}

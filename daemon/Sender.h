@@ -26,8 +26,9 @@ class Sender {
 public:
 	Sender(OlySocket* socket);
 	~Sender();
-	void writeData(const char* data, int length, int type);
+	void writeData(const char* data, int length, int type, bool ignoreLockErrors = false);
 	void createDataFile(char* apcDir);
+
 private:
 	OlySocket* mDataSocket;
 	FILE* mDataFile;

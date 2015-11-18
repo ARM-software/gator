@@ -36,7 +36,7 @@ static const int cpuIdleKey = getEventKey();
 static void *syncFunc(void *arg)
 {
 	struct timespec ts;
-	int64_t nextTime = gSessionData->mMonotonicStarted;
+	int64_t nextTime = gSessionData.mMonotonicStarted;
 	int err;
 	(void)arg;
 
@@ -46,18 +46,18 @@ static void *syncFunc(void *arg)
 	{
 		sigset_t set;
 		if (sigfillset(&set) != 0) {
-			logg->logError("sigfillset failed");
+			logg.logError("sigfillset failed");
 			handleException();
 		}
 		if ((err = pthread_sigmask(SIG_SETMASK, &set, NULL)) != 0) {
-			logg->logError("pthread_sigmask failed");
+			logg.logError("pthread_sigmask failed");
 			handleException();
 		}
 	}
 
 	for (;;) {
 		if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0) {
-			logg->logError("clock_gettime failed");
+			logg.logError("clock_gettime failed");
 			handleException();
 		}
 		const int64_t currTime = ts.tv_sec * NS_PER_S + ts.tv_nsec;
@@ -83,7 +83,7 @@ static void *syncFunc(void *arg)
 static long getMaxCoreNum() {
 	DIR *dir = opendir("/sys/devices/system/cpu");
 	if (dir == NULL) {
-		logg->logError("Unable to determine the number of cores on the target, opendir failed");
+		logg.logError("Unable to determine the number of cores on the target, opendir failed");
 		handleException();
 	}
 
@@ -102,12 +102,12 @@ static long getMaxCoreNum() {
 	closedir(dir);
 
 	if (maxCoreNum < 1) {
-		logg->logError("Unable to determine the number of cores on the target, no cpu# directories found");
+		logg.logError("Unable to determine the number of cores on the target, no cpu# directories found");
 		handleException();
 	}
 
 	if (maxCoreNum >= NR_CPUS) {
-		logg->logError("Too many cores on the target, please increase NR_CPUS in Config.h");
+		logg.logError("Too many cores on the target, please increase NR_CPUS in Config.h");
 		handleException();
 	}
 
@@ -117,11 +117,11 @@ static long getMaxCoreNum() {
 PerfSource::PerfSource(sem_t *senderSem, sem_t *startProfile) : mSummary(0, FRAME_SUMMARY, 1024, senderSem), mBuffer(NULL), mCountersBuf(), mCountersGroup(&mCountersBuf), mMonitor(), mUEvent(), mSenderSem(senderSem), mStartProfile(startProfile), mInterruptFd(-1), mIsDone(false) {
 	long l = sysconf(_SC_PAGE_SIZE);
 	if (l < 0) {
-		logg->logError("Unable to obtain the page size");
+		logg.logError("Unable to obtain the page size");
 		handleException();
 	}
-	gSessionData->mPageSize = static_cast<int>(l);
-	gSessionData->mCores = static_cast<int>(getMaxCoreNum());
+	gSessionData.mPageSize = static_cast<int>(l);
+	gSessionData.mCores = static_cast<int>(getMaxCoreNum());
 }
 
 PerfSource::~PerfSource() {
@@ -134,12 +134,12 @@ bool PerfSource::prepare() {
 	long long cpuIdleId;
 
 	// MonotonicStarted has not yet been assigned!
-	const uint64_t currTime = 0;//getTime() - gSessionData->mMonotonicStarted;
+	const uint64_t currTime = 0;//getTime() - gSessionData.mMonotonicStarted;
 
-	mBuffer = new Buffer(0, FRAME_PERF_ATTRS, gSessionData->mTotalBufferSize*1024*1024, mSenderSem);
+	mBuffer = new Buffer(0, FRAME_PERF_ATTRS, gSessionData.mTotalBufferSize*1024*1024, mSenderSem);
 
 	// Reread cpuinfo since cores may have changed since startup
-	gSessionData->readCpuInfo();
+	gSessionData.readCpuInfo();
 
 	if (0
 			|| !mMonitor.init()
@@ -148,51 +148,57 @@ bool PerfSource::prepare() {
 
 			|| (cpuIdleId = PerfDriver::getTracepointId(CPU_IDLE, &printb)) < 0
 
-			|| !gSessionData->mPerf.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
+			|| !gSessionData.mPerf.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
 
 			|| !mCountersGroup.createCpuGroup(currTime, mBuffer)
 			|| !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW, PERF_GROUP_LEADER | PERF_GROUP_PER_CPU)
 
-			|| !gSessionData->mPerf.enable(currTime, &mCountersGroup, mBuffer)
+			|| !gSessionData.mPerf.enable(currTime, &mCountersGroup, mBuffer)
 			|| 0) {
-		logg->logMessage("perf setup failed, are you running Linux 3.4 or later?");
+		logg.logMessage("perf setup failed, are you running Linux 3.4 or later?");
 		return false;
 	}
 
-	for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
+	for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
 		const int result = mCountersGroup.prepareCPU(cpu, &mMonitor);
 		if ((result != PG_SUCCESS) && (result != PG_CPU_OFFLINE)) {
-			logg->logError("PerfGroup::prepareCPU on mCountersGroup failed");
+			logg.logError("PerfGroup::prepareCPU on mCountersGroup failed");
 			handleException();
 		}
 	}
 
 	int numEvents = 0;
-	for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
+	for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
 		numEvents += mCountersGroup.onlineCPU(currTime, cpu, false, mBuffer);
 	}
 	if (numEvents <= 0) {
-		logg->logMessage("PerfGroup::onlineCPU failed on all cores");
+		logg.logMessage("PerfGroup::onlineCPU failed on all cores");
 		return false;
 	}
 
 	// Send the summary right before the start so that the monotonic delta is close to the start time
-	if (!gSessionData->mPerf.summary(&mSummary)) {
-		logg->logError("PerfDriver::summary failed");
+	if (!gSessionData.mPerf.summary(&mSummary)) {
+		logg.logError("PerfDriver::summary failed");
 		handleException();
 	}
 
-	// Start the timer thread to used to sync perf and monotonic raw times
-	pthread_t syncThread;
-	if (pthread_create(&syncThread, NULL, syncFunc, NULL)) {
-		logg->logError("pthread_create failed");
-		handleException();
-	}
-	struct sched_param param;
-	param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-	if (pthread_setschedparam(syncThread, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
-		logg->logError("pthread_setschedparam failed");
-		handleException();
+	if (!gSessionData.mPerf.getClockidSupport()) {
+		// Start the timer thread to used to sync perf and monotonic raw times
+		pthread_t syncThread;
+		if (pthread_create(&syncThread, NULL, syncFunc, NULL)) {
+			logg.logError("pthread_create failed");
+			handleException();
+		}
+		struct sched_param param;
+		param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+		if (pthread_setschedparam(syncThread, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
+			logg.logMessage("Unable to schedule sync thread as FIFO, trying OTHER");
+			param.sched_priority = sched_get_priority_max(SCHED_OTHER);
+			if (pthread_setschedparam(syncThread, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
+				logg.logError("pthread_setschedparam failed");
+				handleException();
+			}
+		}
 	}
 
 	mBuffer->commit(currTime);
@@ -215,17 +221,17 @@ void *procFunc(void *arg) {
 
 	// Gator runs at a high priority, reset the priority to the default
 	if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
-		logg->logError("setpriority failed");
+		logg.logError("setpriority failed");
 		handleException();
 	}
 
 	if (!readProcMaps(args->mCurrTime, args->mBuffer, &printb, &b)) {
-		logg->logError("readProcMaps failed");
+		logg.logError("readProcMaps failed");
 		handleException();
 	}
 
 	if (!readKallsyms(args->mCurrTime, args->mBuffer, &args->mIsDone)) {
-		logg->logError("readKallsyms failed");
+		logg.logError("readKallsyms failed");
 		handleException();
 	}
 	args->mBuffer->commit(args->mCurrTime);
@@ -241,13 +247,13 @@ void PerfSource::run() {
 	ProcThreadArgs procThreadArgs;
 
 	if (pipe_cloexec(pipefd) != 0) {
-		logg->logError("pipe failed");
+		logg.logError("pipe failed");
 		handleException();
 	}
 	mInterruptFd = pipefd[1];
 
 	if (!mMonitor.add(pipefd[0])) {
-		logg->logError("Monitor::add failed");
+		logg.logError("Monitor::add failed");
 		handleException();
 	}
 
@@ -256,22 +262,19 @@ void PerfSource::run() {
 		DynBuf b1;
 		DynBuf b2;
 
-		const uint64_t currTime = getTime() - gSessionData->mMonotonicStarted;
+		const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
 
 		// Start events before reading proc to avoid race conditions
-		if (!mCountersGroup.start()) {
-			logg->logError("PerfGroup::start failed");
-			handleException();
-		}
+		mCountersGroup.start();
 
 		mBuffer->perfCounterHeader(currTime);
-		for (int cpu = 0; cpu < gSessionData->mCores; ++cpu) {
-			gSessionData->mPerf.read(mBuffer, cpu);
+		for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
+			gSessionData.mPerf.read(mBuffer, cpu);
 		}
 		mBuffer->perfCounterFooter(currTime);
 
 		if (!readProcComms(currTime, mBuffer, &printb, &b1, &b2)) {
-			logg->logError("readProcComms failed");
+			logg.logError("readProcComms failed");
 			handleException();
 		}
 		mBuffer->commit(currTime);
@@ -281,7 +284,7 @@ void PerfSource::run() {
 		procThreadArgs.mCurrTime = currTime;
 		procThreadArgs.mIsDone = false;
 		if (pthread_create(&procThread, NULL, procFunc, &procThreadArgs)) {
-			logg->logError("pthread_create failed");
+			logg.logError("pthread_create failed");
 			handleException();
 		}
 	}
@@ -289,23 +292,23 @@ void PerfSource::run() {
 	sem_post(mStartProfile);
 
 	const uint64_t NO_RATE = ~0ULL;
-	const uint64_t rate = gSessionData->mLiveRate > 0 && gSessionData->mSampleRate > 0 ? gSessionData->mLiveRate : NO_RATE;
+	const uint64_t rate = gSessionData.mLiveRate > 0 && gSessionData.mSampleRate > 0 ? gSessionData.mLiveRate : NO_RATE;
 	uint64_t nextTime = 0;
 	int timeout = rate != NO_RATE ? 0 : -1;
-	while (gSessionData->mSessionIsActive) {
+	while (gSessionData.mSessionIsActive) {
 		// +1 for uevents, +1 for pipe
 		struct epoll_event events[NR_CPUS + 2];
 		int ready = mMonitor.wait(events, ARRAY_LENGTH(events), timeout);
 		if (ready < 0) {
-			logg->logError("Monitor::wait failed");
+			logg.logError("Monitor::wait failed");
 			handleException();
 		}
-		const uint64_t currTime = getTime() - gSessionData->mMonotonicStarted;
+		const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
 
 		for (int i = 0; i < ready; ++i) {
 			if (events[i].data.fd == mUEvent.getFd()) {
 				if (!handleUEvent(currTime)) {
-					logg->logError("PerfSource::handleUEvent failed");
+					logg.logError("PerfSource::handleUEvent failed");
 					handleException();
 				}
 				break;
@@ -316,8 +319,8 @@ void PerfSource::run() {
 		sem_post(mSenderSem);
 
 		// In one shot mode, stop collection once all the buffers are filled
-		if (gSessionData->mOneShot && gSessionData->mSessionIsActive && ((mSummary.bytesAvailable() <= 0) || (mBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
-			logg->logMessage("One shot (perf)");
+		if (gSessionData.mOneShot && gSessionData.mSessionIsActive && ((mSummary.bytesAvailable() <= 0) || (mBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
+			logg.logMessage("One shot (perf)");
 			child->endSession();
 		}
 
@@ -326,7 +329,7 @@ void PerfSource::run() {
 				nextTime += rate;
 			}
 			// + NS_PER_MS - 1 to ensure always rounding up
-			timeout = max(0, (int)((nextTime + NS_PER_MS - 1 - getTime() + gSessionData->mMonotonicStarted)/NS_PER_MS));
+			timeout = max(0, (int)((nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted)/NS_PER_MS));
 		}
 	}
 
@@ -347,25 +350,25 @@ void PerfSource::run() {
 bool PerfSource::handleUEvent(const uint64_t currTime) {
 	UEventResult result;
 	if (!mUEvent.read(&result)) {
-		logg->logMessage("UEvent::Read failed");
+		logg.logMessage("UEvent::Read failed");
 		return false;
 	}
 
 	if (strcmp(result.mSubsystem, "cpu") == 0) {
 		if (strncmp(result.mDevPath, CPU_DEVPATH, sizeof(CPU_DEVPATH) - 1) != 0) {
-			logg->logMessage("Unexpected cpu DEVPATH format");
+			logg.logMessage("Unexpected cpu DEVPATH format");
 			return false;
 		}
 		char *endptr;
 		errno = 0;
 		int cpu = strtol(result.mDevPath + sizeof(CPU_DEVPATH) - 1, &endptr, 10);
 		if (errno != 0 || *endptr != '\0') {
-			logg->logMessage("strtol failed");
+			logg.logMessage("strtol failed");
 			return false;
 		}
 
-		if (cpu >= gSessionData->mCores) {
-			logg->logError("Only %i cores are expected but core %i reports %s", gSessionData->mCores, cpu, result.mAction);
+		if (cpu >= gSessionData.mCores) {
+			logg.logError("Only %i cores are expected but core %i reports %s", gSessionData.mCores, cpu, result.mAction);
 			handleException();
 		}
 
@@ -379,15 +382,15 @@ bool PerfSource::handleUEvent(const uint64_t currTime) {
 			} else if (err == PG_SUCCESS) {
 				if (mCountersGroup.onlineCPU(currTime, cpu, true, mBuffer) > 0) {
 					mBuffer->perfCounterHeader(currTime);
-					gSessionData->mPerf.read(mBuffer, cpu);
+					gSessionData.mPerf.read(mBuffer, cpu);
 					mBuffer->perfCounterFooter(currTime);
 					ret = true;
 				}
 			}
 			mBuffer->commit(currTime);
 
-			gSessionData->readCpuInfo();
-			gSessionData->mPerf.coreName(currTime, &mSummary, cpu);
+			gSessionData.readCpuInfo();
+			gSessionData.mPerf.coreName(currTime, &mSummary, cpu);
 			mSummary.commit(currTime);
 			return ret;
 		} else if (strcmp(result.mAction, "offline") == 0) {
@@ -405,7 +408,7 @@ void PerfSource::interrupt() {
 		int8_t c = 0;
 		// Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
 		if (::write(mInterruptFd, &c, sizeof(c)) != sizeof(c)) {
-			logg->logError("write failed");
+			logg.logError("write failed");
 			handleException();
 		}
 	}
@@ -418,13 +421,13 @@ bool PerfSource::isDone () {
 void PerfSource::write (Sender *sender) {
 	if (!mSummary.isDone()) {
 		mSummary.write(sender);
-		gSessionData->mSentSummary = true;
+		gSessionData.mSentSummary = true;
 	}
 	if (!mBuffer->isDone()) {
 		mBuffer->write(sender);
 	}
 	if (!mCountersBuf.send(sender)) {
-		logg->logError("PerfBuffer::send failed");
+		logg.logError("PerfBuffer::send failed");
 		handleException();
 	}
 }

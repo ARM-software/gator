@@ -24,12 +24,12 @@ Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t* readerSem) {
   mEnd = false;
 
   if (mBuffer == NULL) {
-    logg->logError("failed to allocate %d bytes", bufferSize + singleBufferSize);
+    logg.logError("failed to allocate %d bytes", bufferSize + singleBufferSize);
     handleException();
   }
 
   if (sem_init(&mWaitForSpaceSem, 0, 0)) {
-    logg->logError("sem_init() failed");
+    logg.logError("sem_init() failed");
     handleException();
   }
 }

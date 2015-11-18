@@ -1,7 +1,7 @@
 /*
     sensors.h - Part of libsensors, a Linux library for reading sensor data.
     Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
-    Copyright (C) 2007, 2010  Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007-2014   Jean Delvare <jdelvare@suse.de>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -33,7 +33,7 @@
    when the API + ABI breaks), the third digit is incremented to track small
    API additions like new flags / enum values. The second digit is for tracking
    larger additions like new methods. */
-#define SENSORS_API_VERSION		0x432
+#define SENSORS_API_VERSION		0x440
 
 #define SENSORS_CHIP_NAME_PREFIX_ANY	NULL
 #define SENSORS_CHIP_NAME_ADDR_ANY	(-1)
@@ -150,6 +150,7 @@ typedef enum sensors_feature_type {
 	SENSORS_FEATURE_INTRUSION	= 0x11,
 	SENSORS_FEATURE_MAX_OTHER,
 	SENSORS_FEATURE_BEEP_ENABLE	= 0x18,
+	SENSORS_FEATURE_MAX,
 	SENSORS_FEATURE_UNKNOWN		= INT_MAX,
 } sensors_feature_type;
 
@@ -193,6 +194,8 @@ typedef enum sensors_subfeature_type {
 	SENSORS_SUBFEATURE_TEMP_EMERGENCY_HYST,
 	SENSORS_SUBFEATURE_TEMP_LOWEST,
 	SENSORS_SUBFEATURE_TEMP_HIGHEST,
+	SENSORS_SUBFEATURE_TEMP_MIN_HYST,
+	SENSORS_SUBFEATURE_TEMP_LCRIT_HYST,
 	SENSORS_SUBFEATURE_TEMP_ALARM = (SENSORS_FEATURE_TEMP << 8) | 0x80,
 	SENSORS_SUBFEATURE_TEMP_MAX_ALARM,
 	SENSORS_SUBFEATURE_TEMP_MIN_ALARM,

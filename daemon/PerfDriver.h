@@ -28,6 +28,7 @@ public:
 	~PerfDriver();
 
 	bool getLegacySupport() const { return mLegacySupport; }
+	bool getClockidSupport() const { return mClockidSupport; }
 
 	void readEvents(mxml_node_t *const xml);
 	bool setup();
@@ -42,13 +43,16 @@ public:
 	bool sendTracepointFormats(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b);
 
 	static long long getTracepointId(const char *const name, DynBuf *const printb);
+	static long long getTracepointId(const char *const counter, const char *const name, DynBuf *const printb);
 
 private:
 	void addCpuCounters(const char *const counterName, const int type, const int numCounters);
 	void addUncoreCounters(const char *const counterName, const int type, const int numCounters, const bool hasCyclesCounter);
 
-	bool mIsSetup;
-	bool mLegacySupport;
+	int mIsSetup : 1,
+	  mLegacySupport : 1,
+	  mClockidSupport : 1,
+	  mUnused0 : 29;
 	PerfTracepoint *mTracepoints;
 
 	// Intentionally undefined

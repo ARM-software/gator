@@ -21,9 +21,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-OlyUtility* util = NULL;
-
-bool OlyUtility::stringToBool(const char* string, bool defValue) {
+bool stringToBool(const char* string, bool defValue) {
   char value[32];
 
   if (string == NULL) {
@@ -52,7 +50,7 @@ bool OlyUtility::stringToBool(const char* string, bool defValue) {
   }
 }
 
-void OlyUtility::stringToLower(char* string) {
+void stringToLower(char* string) {
   if (string == NULL) {
     return;
   }
@@ -64,7 +62,7 @@ void OlyUtility::stringToLower(char* string) {
 }
 
 // Modifies fullpath with the path part including the trailing path separator
-int OlyUtility::getApplicationFullPath(char* fullpath, int sizeOfPath) {
+int getApplicationFullPath(char* fullpath, int sizeOfPath) {
   memset(fullpath, 0, sizeOfPath);
 #if defined(WIN32)
   int length = GetModuleFileName(NULL, fullpath, sizeOfPath);
@@ -88,7 +86,7 @@ int OlyUtility::getApplicationFullPath(char* fullpath, int sizeOfPath) {
   return 0;
 }
 
-char* OlyUtility::readFromDisk(const char* file, unsigned int *size, bool appendNull) {
+char* readFromDisk(const char* file, unsigned int *size, bool appendNull) {
   // Open the file
   FILE* pFile = fopen(file, "rb");
   if (pFile==NULL) {
@@ -128,7 +126,7 @@ char* OlyUtility::readFromDisk(const char* file, unsigned int *size, bool append
   return buffer;
 }
 
-int OlyUtility::writeToDisk(const char* path, const char* data) {
+int writeToDisk(const char* path, const char* data) {
   // Open the file
   FILE* pFile = fopen(path, "wb");
   if (pFile == NULL) {
@@ -146,7 +144,7 @@ int OlyUtility::writeToDisk(const char* path, const char* data) {
   return 0;
 }
 
-int OlyUtility::appendToDisk(const char* path, const char* data) {
+int appendToDisk(const char* path, const char* data) {
   // Open the file
   FILE* pFile = fopen(path, "a");
   if (pFile == NULL) {
@@ -170,7 +168,7 @@ int OlyUtility::appendToDisk(const char* path, const char* data) {
  * 0 is returned on an error; otherwise 1.
  */
 #define TRANSFER_SIZE 1024
-int OlyUtility::copyFile(const char* srcFile, const char* dstFile) {
+int copyFile(const char* srcFile, const char* dstFile) {
   char buffer[TRANSFER_SIZE];
   FILE * f_src = fopen(srcFile,"rb");
   if (!f_src) {
@@ -200,7 +198,7 @@ int OlyUtility::copyFile(const char* srcFile, const char* dstFile) {
   return 1;
 }
 
-const char* OlyUtility::getFilePart(const char* path) {
+const char* getFilePart(const char* path) {
   const char* last_sep = strrchr(path, PATH_SEPARATOR);
 
   // in case path is not a full path
@@ -213,7 +211,7 @@ const char* OlyUtility::getFilePart(const char* path) {
 
 // getPathPart may modify the contents of path
 // returns the path including the trailing path separator
-char* OlyUtility::getPathPart(char* path) {
+char* getPathPart(char* path) {
   char* last_sep = strrchr(path, PATH_SEPARATOR);
 
   // in case path is not a full path

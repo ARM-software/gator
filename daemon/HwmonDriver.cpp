@@ -23,7 +23,7 @@ static sensors_subfeature_type getInput(const sensors_feature_type type) {
 	case SENSORS_FEATURE_CURR: return SENSORS_SUBFEATURE_CURR_INPUT;
 	case SENSORS_FEATURE_HUMIDITY: return SENSORS_SUBFEATURE_HUMIDITY_INPUT;
 	default:
-		logg->logError("Unsupported hwmon feature %i", type);
+		logg.logError("Unsupported hwmon feature %i", type);
 		handleException();
 	}
 };
@@ -124,7 +124,7 @@ HwmonCounter::HwmonCounter(DriverCounter *next, char *const name, const sensors_
 		mMonotonic = false;
 		break;
 	default:
-		logg->logError("Unsupported hwmon feature %i", mFeature->type);
+		logg.logError("Unsupported hwmon feature %i", mFeature->type);
 		handleException();
 	}
 
@@ -149,12 +149,12 @@ int64_t HwmonCounter::read() {
 	// Keep in sync with the read check in HwmonDriver::readEvents
 	subfeature = sensors_get_subfeature(mChip, mFeature, getInput(mFeature->type));
 	if (!subfeature) {
-		logg->logError("No input value for hwmon sensor %s", mLabel);
+		logg.logError("No input value for hwmon sensor %s", mLabel);
 		handleException();
 	}
 
 	if (sensors_get_value(mChip, subfeature->number, &value) != 0) {
-		logg->logError("Can't get input value for hwmon sensor %s", mLabel);
+		logg.logError("Can't get input value for hwmon sensor %s", mLabel);
 		handleException();
 	}
 
@@ -174,7 +174,7 @@ HwmonDriver::~HwmonDriver() {
 void HwmonDriver::readEvents(mxml_node_t *const) {
 	int err = sensors_init(NULL);
 	if (err) {
-		logg->logMessage("Failed to initialize libsensors! (%d)", err);
+		logg.logSetup("Libsensors Disabled\nInitialize failed (%d)", err);
 		return;
 	}
 	sensors_sysfs_no_scaling = 1;
@@ -230,6 +230,8 @@ void HwmonDriver::writeEvents(mxml_node_t *root) const {
 		if (strcmp(counter->getDisplay(), "average") == 0 || strcmp(counter->getDisplay(), "maximum") == 0) {
 			mxmlElementSetAttr(node, "average_selection", "yes");
 		}
+		mxmlElementSetAttr(node, "series_composition", "overlay");
+		mxmlElementSetAttr(node, "rendering_type", "line");
 		snprintf(buf, sizeof(buf), "libsensors %s sensor %s (%s)", counter->getTitle(), counter->getLabel(), counter->getName());
 		mxmlElementSetAttr(node, "description", buf);
 	}

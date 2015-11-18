@@ -19,9 +19,10 @@
 #include "FtraceDriver.h"
 #include "KMod.h"
 #include "MaliVideoDriver.h"
+#include "MidgardDriver.h"
 #include "PerfDriver.h"
 
-#define PROTOCOL_VERSION 22
+#define PROTOCOL_VERSION 23
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 1000
 
@@ -29,9 +30,97 @@
 #define NS_PER_MS 1000000LL
 #define NS_PER_US 1000LL
 
+extern const char MALI_GRAPHICS[];
+extern const size_t MALI_GRAPHICS_SIZE;
+
 struct ImageLinkList {
 	char* path;
 	struct ImageLinkList *next;
+};
+
+class GatorCpu {
+public:
+	GatorCpu(const char *const coreName, const char *const pmncName, const char *const dtName, const int cpuid, const int pmncCounters);
+
+	static GatorCpu *getHead() {
+		return mHead;
+	}
+
+	GatorCpu *getNext() const {
+		return mNext;
+	}
+
+	const char *getCoreName() const {
+		return mCoreName;
+	}
+
+	const char *getPmncName() const {
+		return mPmncName;
+	}
+
+	const char *getDtName() const {
+		return mDtName;
+	}
+
+	int getCpuid() const {
+		return mCpuid;
+	}
+
+	int getPmncCounters() const {
+		return mPmncCounters;
+	}
+
+	static GatorCpu *find(const char *const name);
+
+	static GatorCpu *find(const int cpuid);
+
+private:
+	static GatorCpu *mHead;
+	GatorCpu *const mNext;
+	const char *const mCoreName;
+	const char *const mPmncName;
+	const char *const mDtName;
+	const int mCpuid;
+	const int mPmncCounters;
+};
+
+class UncorePmu {
+public:
+	UncorePmu(const char *const coreName, const char *const pmncName, const int pmncCounters, const bool hasCyclesCounter);
+
+	static UncorePmu *getHead() {
+		return mHead;
+	}
+
+	UncorePmu *getNext() const {
+		return mNext;
+	}
+
+	const char *getCoreName() const {
+		return mCoreName;
+	}
+
+	const char *getPmncName() const {
+		return mPmncName;
+	}
+
+	int getPmncCounters() const {
+		return mPmncCounters;
+	}
+
+	bool getHasCyclesCounter() const {
+		return mHasCyclesCounter;
+	}
+
+	static UncorePmu *find(const char *const name);
+
+private:
+	static UncorePmu *mHead;
+	UncorePmu *const mNext;
+	const char *const mCoreName;
+	const char *const mPmncName;
+	const int mPmncCounters;
+	const bool mHasCyclesCounter;
 };
 
 class SharedData {
@@ -41,6 +130,8 @@ public:
 	int mCpuIds[NR_CPUS];
 	size_t mMaliUtgardCountersSize;
 	char mMaliUtgardCounters[1<<12];
+	size_t mMaliMidgardCountersSize;
+	char mMaliMidgardCounters[1<<13];
 
 private:
 	// Intentionally unimplemented
@@ -54,6 +145,8 @@ public:
 
 	SessionData();
 	~SessionData();
+
+	void initialize();
 	void parseSessionXML(char* xmlString);
 	void readModel();
 	void readCpuInfo();
@@ -64,6 +157,7 @@ public:
 	KMod mKmod;
 	PerfDriver mPerf;
 	MaliVideoDriver mMaliVideo;
+	MidgardDriver mMidgard;
 	// Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver references AtraceDriver
 	AtraceDriver mAtraceDriver;
 	FtraceDriver mFtraceDriver;
@@ -108,14 +202,12 @@ public:
 	Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 
 private:
-	void initialize();
-
 	// Intentionally unimplemented
 	SessionData(const SessionData &);
 	SessionData &operator=(const SessionData &);
 };
 
-extern SessionData* gSessionData;
+extern SessionData gSessionData;
 extern const char *const gSrcMd5;
 
 uint64_t getTime();

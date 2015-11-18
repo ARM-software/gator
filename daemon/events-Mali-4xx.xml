@@ -197,7 +197,7 @@
     <event event="0x0400" option_set="fs" title="ARM Mali-4xx" name="Filmstrip" description="Scaled framebuffer"/>
   </category>
   <category name="ARM_Mali-4xx_Voltage" per_cpu="no">
-    <event counter="ARM_Mali-4xx_Voltage" title="Mali GPU Voltage" name="Voltage" class="absolute" display="average" average_selection="yes" units="mV" description="GPU core voltage."/>
+    <event counter="ARM_Mali-4xx_Voltage" title="Mali GPU Voltage" name="Voltage" class="absolute" display="average" average_selection="yes" units="V" multiplier="0.001" description="GPU core voltage."/>
   </category>
   <category name="ARM_Mali-4xx_Frequency" per_cpu="no">
     <event counter="ARM_Mali-4xx_Frequency" title="Mali GPU Frequency" name="Frequency" class="absolute" display="average" average_selection="yes" units="MHz" description="GPU core frequency."/>
@@ -247,10 +247,10 @@
     <event counter="ARM_Mali-4xx_Total_alloc_pages" title="Mali GPU Alloc" name="pages" class="absolute" display="average" average_selection="yes" description="Total number of allocated pages"/>
   </category>
   <category name="Mali-4xx Session Memory usage" per_cpu="no">
-    <event counter="ARM_Mali-4xx_vertex_index_buffer" title="Mali Memory" name="Vertex and Index buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Vertex and index input"/>
-    <event counter="ARM_Mali-4xx_texture_buffer" title="Mali Memory" name="Texture buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Texture data"/>
-    <event counter="ARM_Mali-4xx_varying_buffer" title="Mali Memory" name="Varying buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Varying buffer"/>
-    <event counter="ARM_Mali-4xx_render_target" title="Mali Memory" name="Render target buffer" units="B" dclass="absolute" display="average" average_selection="yes" description="Render target buffer"/>
-    <event counter="ARM_Mali-4xx_plbu_heap" title="Mali Memory" name="Plbu heap" units="B" dclass="absolute" display="average" average_selection="yes" description="The memory to store commands from PLBU when Slave tilelist memory isn't enough"/>
-    <event counter="ARM_Mali-4xx_slave_tilelist" title="Mali Memory" name="Slave tilelist" units="B" dclass="absolute" display="average" average_selection="yes" description="Slave tilelist memory"/>
+    <event counter="ARM_Mali-4xx_vertex_index_buffer" title="Mali Memory" name="Vertex and Index buffer" units="B" class="absolute" display="average" average_selection="yes" description="Vertex and index input"/>
+    <event counter="ARM_Mali-4xx_texture_buffer" title="Mali Memory" name="Texture buffer" units="B" class="absolute" display="average" average_selection="yes" description="Texture data"/>
+    <event counter="ARM_Mali-4xx_varying_buffer" title="Mali Memory" name="Varying buffer" units="B" class="absolute" display="average" average_selection="yes" description="Varying buffer"/>
+    <event counter="ARM_Mali-4xx_render_target" title="Mali Memory" name="Render target buffer" units="B" class="absolute" display="average" average_selection="yes" description="Render target buffer"/>
+    <event counter="ARM_Mali-4xx_plbu_heap" title="Mali Memory" name="Plbu heap" units="B" class="absolute" display="average" average_selection="yes" description="The memory to store commands from PLBU when Slave tilelist memory isn't enough"/>
+    <event counter="ARM_Mali-4xx_slave_tilelist" title="Mali Memory" name="Slave tilelist" units="B" class="absolute" display="average" average_selection="yes" description="Slave tilelist memory"/>
   </category>

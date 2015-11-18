@@ -29,6 +29,7 @@ LOCAL_SRC_FILES := \
 	main.cpp \
 	MaliVideoDriver.cpp \
 	MemInfoDriver.cpp\
+	MidgardDriver.cpp \
 	Monitor.cpp \
 	NetDriver.cpp \
 	OlySocket.cpp \
@@ -37,6 +38,7 @@ LOCAL_SRC_FILES := \
 	PerfDriver.cpp \
 	PerfGroup.cpp \
 	PerfSource.cpp \
+	PmuXML.cpp \
 	Proc.cpp \
 	Sender.cpp \
 	SessionData.cpp \

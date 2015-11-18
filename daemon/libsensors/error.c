@@ -1,7 +1,7 @@
 /*
     error.c - Part of libsensors, a Linux library for reading sensor data.
     Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
-    Copyright (C) 2007-2009   Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007-2010   Jean Delvare <jdelvare@suse.de>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -23,18 +23,6 @@
 #include <stdio.h>
 #include "error.h"
 #include "general.h"
-
-static void sensors_default_parse_error(const char *err, int lineno);
-static void sensors_default_parse_error_wfn(const char *err,
-					    const char *filename, int lineno);
-static void sensors_default_fatal_error(const char *proc, const char *err);
-
-void (*sensors_parse_error) (const char *err, int lineno) =
-						sensors_default_parse_error;
-void (*sensors_parse_error_wfn) (const char *err, const char *filename,
-				 int lineno) = sensors_default_parse_error_wfn;
-void (*sensors_fatal_error) (const char *proc, const char *err) =
-						sensors_default_fatal_error;
 
 static const char *errorlist[] = {
 	/* Invalid error code    */ "Unknown error",
@@ -60,7 +48,7 @@ const char *sensors_strerror(int errnum)
 	return errorlist[errnum];
 }
 
-void sensors_default_parse_error(const char *err, int lineno)
+static void sensors_default_parse_error(const char *err, int lineno)
 {
 	if (lineno)
 		fprintf(stderr, "Error: Line %d: %s\n", lineno, err);
@@ -68,7 +56,7 @@ void sensors_default_parse_error(const char *err, int lineno)
 		fprintf(stderr, "Error: %s\n", err);
 }
 
-void sensors_default_parse_error_wfn(const char *err,
+static void sensors_default_parse_error_wfn(const char *err,
 				     const char *filename, int lineno)
 {
 	/* If application provided a custom parse error reporting function
@@ -85,8 +73,15 @@ void sensors_default_parse_error_wfn(const char *err,
 		fprintf(stderr, "Error: File %s: %s\n", filename, err);
 }
 
-void sensors_default_fatal_error(const char *proc, const char *err)
+static void sensors_default_fatal_error(const char *proc, const char *err)
 {
 	fprintf(stderr, "Fatal error in `%s': %s\n", proc, err);
 	exit(1);
 }
+
+void (*sensors_parse_error) (const char *err, int lineno) =
+						sensors_default_parse_error;
+void (*sensors_parse_error_wfn) (const char *err, const char *filename,
+				 int lineno) = sensors_default_parse_error_wfn;
+void (*sensors_fatal_error) (const char *proc, const char *err) =
+						sensors_default_fatal_error;

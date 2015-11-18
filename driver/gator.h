@@ -30,16 +30,8 @@
 #define CORTEX_A8    0x41c08
 #define CORTEX_A9    0x41c09
 #define CORTEX_A15   0x41c0f
-#define CORTEX_A12   0x41c0d
-#define CORTEX_A17   0x41c0e
 #define SCORPION     0x5100f
 #define SCORPIONMP   0x5102d
-#define KRAITSIM     0x51049
-#define KRAIT        0x5104d
-#define KRAIT_S4_PRO 0x5106f
-#define CORTEX_A53   0x41d03
-#define CORTEX_A57   0x41d07
-#define CORTEX_A72   0x41d08
 #define OTHER        0xfffff
 
 /* gpu enums */
@@ -47,20 +39,6 @@
 #define MALI_MIDGARD 2
 
 #define MAXSIZE_CORE_NAME 32
-
-struct gator_cpu {
-	const int cpuid;
-	/* Human readable name */
-	const char core_name[MAXSIZE_CORE_NAME];
-	/* gatorfs event and Perf PMU name */
-	const char *const pmnc_name;
-	/* compatible from Documentation/devicetree/bindings/arm/cpus.txt */
-	const char *const dt_name;
-	const int pmnc_counters;
-};
-
-const struct gator_cpu *gator_find_cpu_by_cpuid(const u32 cpuid);
-const struct gator_cpu *gator_find_cpu_by_pmu_name(const char *const name);
 
 /******************************************************************************
  * Filesystem
@@ -134,8 +112,6 @@ u64 gator_get_time(void);
 int gator_events_install(struct gator_interface *interface);
 int gator_events_get_key(void);
 u32 gator_cpuid(void);
-
-void gator_backtrace_handler(struct pt_regs *const regs);
 
 void gator_marshal_activity_switch(int core, int key, int activity, int pid);
 

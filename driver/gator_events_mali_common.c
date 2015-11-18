@@ -11,7 +11,7 @@
 extern int gator_mali_create_file_system(const char *mali_name, const char *event_name, struct super_block *sb, struct dentry *root, struct mali_counter *counter, unsigned long *event)
 {
 	int err;
-	char buf[255];
+	char buf[50];
 	struct dentry *dir;
 
 	/* If the counter name is empty ignore it */

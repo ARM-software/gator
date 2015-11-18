@@ -1,7 +1,7 @@
 /*
     init.c - Part of libsensors, a Linux library for reading sensor data.
     Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
-    Copyright (C) 2007, 2009  Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007-2013   Jean Delvare <jdelvare@suse.de>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -20,9 +20,9 @@
 */
 
 /*** This file modified by ARM on Jan 23, 2013 to cast alphasort to supress a warning as it's prototype is different on android. ***/
+/*** This file modified by ARM on Aug 14, 2015 to comment out _BSD_SOURCE as it causes warnings with glibc 2.20 and doesn't appear to be needed. ***/
 
-/* Needed for scandir() and alphasort() */
-#define _BSD_SOURCE
+/* #define _BSD_SOURCE */
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -177,6 +177,8 @@ static int add_config_from_dir(const char *dir)
 	return res;
 }
 
+/* Ideally, initialization and configuraton file loading should be exposed
+   separately, to make it possible to load several configuration files. */
 int sensors_init(FILE *input)
 {
 	int res;

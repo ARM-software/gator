@@ -52,7 +52,7 @@ NetDriver::~NetDriver() {
 
 void NetDriver::readEvents(mxml_node_t *const) {
 	// Only for use with perf
-	if (!gSessionData->mPerf.isSetup()) {
+	if (!gSessionData.mPerf.isSetup()) {
 		return;
 	}
 
@@ -108,7 +108,7 @@ bool NetDriver::doRead() {
 
 void NetDriver::start() {
 	if (!doRead()) {
-		logg->logError("Unable to read network stats");
+		logg.logError("Unable to read network stats");
 		handleException();
 	}
 	// Initialize previous values
@@ -122,7 +122,7 @@ void NetDriver::start() {
 
 void NetDriver::read(Buffer *const buffer) {
 	if (!doRead()) {
-		logg->logError("Unable to read network stats");
+		logg.logError("Unable to read network stats");
 		handleException();
 	}
 	super::read(buffer);

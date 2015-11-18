@@ -17,11 +17,11 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
-static const char* ATTR_COUNTER            = "counter";
-static const char* ATTR_REVISION           = "revision";
-static const char* ATTR_EVENT              = "event";
-static const char* ATTR_COUNT              = "count";
-static const char* ATTR_CORES              = "cores";
+static const char ATTR_COUNTER[]            = "counter";
+static const char ATTR_REVISION[]           = "revision";
+static const char ATTR_EVENT[]              = "event";
+static const char ATTR_COUNT[]              = "count";
+static const char ATTR_CORES[]              = "cores";
 
 ConfigurationXML::ConfigurationXML() {
 	const char * configuration_xml;
@@ -31,11 +31,11 @@ ConfigurationXML::ConfigurationXML() {
 	char path[PATH_MAX];
 
 	getPath(path);
-	mConfigurationXML = util->readFromDisk(path);
+	mConfigurationXML = readFromDisk(path);
 
 	for (int retryCount = 0; retryCount < 2; ++retryCount) {
 		if (mConfigurationXML == NULL) {
-			logg->logMessage("Unable to locate configuration.xml, using default in binary");
+			logg.logMessage("Unable to locate configuration.xml, using default in binary");
 			// null-terminate configuration_xml
 			mConfigurationXML = (char*)malloc(configuration_xml_len + 1);
 			memcpy(mConfigurationXML, (const void*)configuration_xml, configuration_xml_len);
@@ -68,16 +68,16 @@ int ConfigurationXML::parse(const char* configurationXML) {
 	mxml_node_t *tree, *node;
 	int ret;
 
-	if (gSessionData->mCountersError != NULL) {
-		free(gSessionData->mCountersError);
-		gSessionData->mCountersError = NULL;
+	if (gSessionData.mCountersError != NULL) {
+		free(gSessionData.mCountersError);
+		gSessionData.mCountersError = NULL;
 	}
-	gSessionData->mIsEBS = false;
+	gSessionData.mIsEBS = false;
 	mIndex = 0;
 
 	// disable all counters prior to parsing the configuration xml
 	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
-		gSessionData->mCounters[i].setEnabled(false);
+		gSessionData.mCounters[i].setEnabled(false);
 	}
 
 	tree = mxmlLoadString(NULL, configurationXML, MXML_NO_CALLBACK);
@@ -100,33 +100,33 @@ int ConfigurationXML::parse(const char* configurationXML) {
 
 	mxmlDelete(tree);
 
-	if (gSessionData->mCountersError == NULL && mIndex > MAX_PERFORMANCE_COUNTERS) {
-		if (asprintf(&gSessionData->mCountersError, "Only %i performance counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, mIndex) <= 0) {
-			logg->logError("asprintf failed");
+	if (gSessionData.mCountersError == NULL && mIndex > MAX_PERFORMANCE_COUNTERS) {
+		if (asprintf(&gSessionData.mCountersError, "Only %i performance counters are permitted, %i are selected", MAX_PERFORMANCE_COUNTERS, mIndex) <= 0) {
+			logg.logError("asprintf failed");
 			handleException();
 		}
 	}
-	gSessionData->mCcnDriver.validateCounters();
+	gSessionData.mCcnDriver.validateCounters();
 
 	return ret;
 }
 
 void ConfigurationXML::validate(void) {
 	for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
-		const Counter & counter = gSessionData->mCounters[i];
+		const Counter & counter = gSessionData.mCounters[i];
 		if (counter.isEnabled()) {
 			if (strcmp(counter.getType(), "") == 0) {
-				logg->logError("Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  event=%d\n", counter.getType(), counter.getEvent());
+				logg.logError("Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  event=%d", counter.getType(), counter.getEvent());
 				handleException();
 			}
 
 			// iterate through the remaining enabled performance counters
 			for (int j = i + 1; j < MAX_PERFORMANCE_COUNTERS; j++) {
-				const Counter & counter2 = gSessionData->mCounters[j];
+				const Counter & counter2 = gSessionData.mCounters[j];
 				if (counter2.isEnabled()) {
 					// check if the types are the same
 					if (strcmp(counter.getType(), counter2.getType()) == 0) {
-						logg->logError("Duplicate performance counter type in configuration.xml: %s", counter.getType());
+						logg.logError("Duplicate performance counter type in configuration.xml: %s", counter.getType());
 						handleException();
 					}
 				}
@@ -163,14 +163,14 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	}
 
 	// read attributes
-	Counter & counter = gSessionData->mCounters[mIndex];
+	Counter & counter = gSessionData.mCounters[mIndex];
 	counter.clear();
 	if (mxmlElementGetAttr(node, ATTR_COUNTER)) counter.setType(mxmlElementGetAttr(node, ATTR_COUNTER));
 	if (mxmlElementGetAttr(node, ATTR_EVENT)) counter.setEvent(strtol(mxmlElementGetAttr(node, ATTR_EVENT), NULL, 16));
 	if (mxmlElementGetAttr(node, ATTR_COUNT)) counter.setCount(strtol(mxmlElementGetAttr(node, ATTR_COUNT), NULL, 10));
 	if (mxmlElementGetAttr(node, ATTR_CORES)) counter.setCores(strtol(mxmlElementGetAttr(node, ATTR_CORES), NULL, 10));
 	if (counter.getCount() > 0) {
-		gSessionData->mIsEBS = true;
+		gSessionData.mIsEBS = true;
 	}
 	counter.setEnabled(true);
 
@@ -178,7 +178,7 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
 		if (driver->claimCounter(counter)) {
 			if (counter.getDriver() != NULL) {
-				logg->logError("More than one driver has claimed %s:%i", counter.getType(), counter.getEvent());
+				logg.logError("More than one driver has claimed %s:%i", counter.getType(), counter.getEvent());
 				handleException();
 			}
 			counter.setDriver(driver);
@@ -187,7 +187,7 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 
 	// If no driver is associated with the counter, disable it
 	if (counter.getDriver() == NULL) {
-		logg->logMessage("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
+		logg.logMessage("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
 		counter.setEnabled(false);
 	}
 
@@ -204,11 +204,11 @@ void ConfigurationXML::getDefaultConfigurationXml(const char * & xml, unsigned i
 }
 
 void ConfigurationXML::getPath(char* path) {
-	if (gSessionData->mConfigurationXMLPath) {
-		strncpy(path, gSessionData->mConfigurationXMLPath, PATH_MAX);
+	if (gSessionData.mConfigurationXMLPath) {
+		strncpy(path, gSessionData.mConfigurationXMLPath, PATH_MAX);
 	} else {
-		if (util->getApplicationFullPath(path, PATH_MAX) != 0) {
-			logg->logMessage("Unable to determine the full path of gatord, the cwd will be used");
+		if (getApplicationFullPath(path, PATH_MAX) != 0) {
+			logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
 		}
 		strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
 	}
@@ -219,8 +219,8 @@ void ConfigurationXML::remove() {
 	getPath(path);
 
 	if (::remove(path) != 0) {
-		logg->logError("Invalid configuration.xml file detected and unable to delete it. To resolve, delete configuration.xml on disk");
+		logg.logError("Invalid configuration.xml file detected and unable to delete it. To resolve, delete configuration.xml on disk");
 		handleException();
 	}
-	logg->logMessage("Invalid configuration.xml file detected and removed");
+	logg.logMessage("Invalid configuration.xml file detected and removed");
 }

@@ -40,7 +40,7 @@ static int getUid(const char *const name, const char *const tmpDir, uid_t *const
 
 	const int pid = fork();
 	if (pid < 0) {
-		logg->logError("fork failed");
+		logg.logError("fork failed");
 		handleException();
 	}
 	if (pid == 0) {
@@ -51,9 +51,10 @@ static int getUid(const char *const name, const char *const tmpDir, uid_t *const
 
 	struct stat st;
 	int result = -1;
-	if (stat(gatorTemp, &st) == 0) {
-		result = st.st_uid;
+	if (stat(gatorTemp, &st) != 0) {
+	  return false;
 	}
+	result = st.st_uid;
 	unlink(gatorTemp);
 	*uid = result;
 	return true;
@@ -87,26 +88,26 @@ static bool getUid(const char *const name, uid_t *const uid, gid_t *const gid) {
 void *commandThread(void *) {
 	prctl(PR_SET_NAME, (unsigned long)&"gatord-command", 0, 0, 0);
 
-	const char *const name = gSessionData->mCaptureUser == NULL ? "nobody" : gSessionData->mCaptureUser;
+	const char *const name = gSessionData.mCaptureUser == NULL ? "nobody" : gSessionData.mCaptureUser;
 	uid_t uid;
 	gid_t gid;
 	if (!getUid(name, &uid, &gid)) {
-		logg->logError("Unable to look up the user %s, please double check that the user exists", name);
+		logg.logError("Unable to look up the user %s, please double check that the user exists", name);
 		handleException();
 	}
 
 	sleep(3);
 
-	char buf[128];
+	char buf[1<<8];
 	int pipefd[2];
 	if (pipe_cloexec(pipefd) != 0) {
-		logg->logError("pipe failed");
+		logg.logError("pipe failed");
 		handleException();
 	}
 
 	const int pid = fork();
 	if (pid < 0) {
-		logg->logError("fork failed");
+		logg.logError("fork failed");
 		handleException();
 	}
 	if (pid == 0) {
@@ -133,14 +134,14 @@ void *commandThread(void *) {
 		}
 
 		{
-			const char *const path = gSessionData->mCaptureWorkingDir == NULL ? "/" : gSessionData->mCaptureWorkingDir;
+			const char *const path = gSessionData.mCaptureWorkingDir == NULL ? "/" : gSessionData.mCaptureWorkingDir;
 			if (chdir(path) != 0) {
-				snprintf(buf, sizeof(buf), "Unable to cd to %s, please verify the directory exists and is accessable to %s", path, name);
+				snprintf(buf, sizeof(buf), "Unable to cd to %s, please verify the directory exists and is accessible to %s", path, name);
 				goto fail_exit;
 			}
 		}
 
-		execlp("sh", "sh", "-c", gSessionData->mCaptureCommand, NULL);
+		execlp("sh", "sh", "-c", gSessionData.mCaptureCommand, NULL);
 		snprintf(buf, sizeof(buf), "execv failed");
 
 	fail_exit:
@@ -156,7 +157,7 @@ void *commandThread(void *) {
 	close(pipefd[1]);
 	const ssize_t bytes = read(pipefd[0], buf, sizeof(buf));
 	if (bytes > 0) {
-		logg->logError("%s", buf);
+		logg.logError("%s", buf);
 		handleException();
 	}
 	close(pipefd[0]);

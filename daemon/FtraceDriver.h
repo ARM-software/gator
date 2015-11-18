@@ -25,7 +25,9 @@ public:
 
 private:
 	int64_t *mValues;
-	bool mSupported;
+	int mSupported : 1,
+	  mMonotonicRawSupport : 1,
+	  mUnused0 : 30;
 	int mTracingOn;
 
 	// Intentionally unimplemented
