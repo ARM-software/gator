@@ -9,8 +9,6 @@
 
 #include <linux/mount.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
-
 struct mount {
 	struct mount *mnt_parent;
 	struct dentry *mnt_mountpoint;
@@ -23,12 +21,6 @@ static inline struct mount *real_mount(struct vfsmount *mnt)
 }
 
 #define GET_MNT_ROOT(mount) ((mount)->mnt.mnt_root)
-
-#else
-
-#define GET_MNT_ROOT(mount) ((mount)->mnt_root)
-
-#endif
 
 /* must be power of 2 */
 #define COOKIEMAP_ENTRIES	1024
@@ -158,9 +150,7 @@ static void translate_buffer_write_args(int cpu, struct task_struct *task, const
 		args = &per_cpu(translate_buffer, cpu)[write];
 		args->task = task;
 		args->text = text;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
 		get_task_struct(task);
-#endif
 		per_cpu(translate_buffer_write, cpu) = next_write;
 	}
 
@@ -194,9 +184,7 @@ static void wq_cookie_handler(struct work_struct *unused)
 			translate_buffer_read_args(cpu, &args);
 			cookie = get_cookie(cpu, args.task, args.text, true);
 			marshal_link(cookie, args.task->tgid, args.task->pid);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
 			put_task_struct(args.task);
-#endif
 		}
 	}
 
@@ -333,11 +321,7 @@ static uint32_t get_cookie(int cpu, struct task_struct *task, const char *text, 
 static const char *gator_d_path(const struct path *path, char *buf, int buflen)
 {
 	struct dentry *dentry = path->dentry;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
 	struct mount *mount = real_mount(path->mnt);
-#else
-	struct vfsmount *mount = path->mnt;
-#endif
 	int pos = buflen - 1;
 	int len;
 

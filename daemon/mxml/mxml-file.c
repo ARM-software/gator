@@ -1,5 +1,5 @@
 /*
- * "$Id: mxml-file.c 455 2014-01-05 03:28:03Z msweet $"
+ * "$Id: mxml-file.c 459 2014-10-19 17:21:48Z msweet $"
  *
  * File loading code for Mini-XML, a small XML-like file parsing library.
  *
@@ -1801,6 +1801,8 @@ mxml_load_data(
 
 	    if (cb)
 	      type = (*cb)(parent);
+	    else
+	      type = MXML_TEXT;
 	  }
 	}
       }
@@ -1887,6 +1889,8 @@ mxml_load_data(
 
 	    if (cb)
 	      type = (*cb)(parent);
+	    else
+	      type = MXML_TEXT;
 	  }
 	}
       }
@@ -3052,5 +3056,5 @@ mxml_write_ws(mxml_node_t     *node,	/* I - Current node */
 
 
 /*
- * End of "$Id: mxml-file.c 455 2014-01-05 03:28:03Z msweet $".
+ * End of "$Id: mxml-file.c 459 2014-10-19 17:21:48Z msweet $".
  */

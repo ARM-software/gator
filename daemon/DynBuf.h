@@ -36,6 +36,7 @@ public:
 	__attribute__ ((format(printf, 2, 3)))
 	bool append(const char *format, ...);
 	bool append(const char *format, va_list ap);
+	bool appendStr(const char *str);
 
 	size_t getLength() const { return length; }
 	const char *getBuf() const { return buf; }

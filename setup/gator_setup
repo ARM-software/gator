@@ -1,0 +1,215 @@
+#!/bin/sh
+# Copyright (C) ARM Limited 2015. All rights reserved.
+
+confirm() {
+	echo setup: confirm: $1
+	while true; do
+		read temp
+		if [ "${temp}z" = "nz" ]; then
+			return 1
+		fi
+		if [ "${temp}z" = "yz" ]; then
+			return 0
+		fi
+	done
+}
+
+move() {
+	if [ ! -f $1 ]; then
+		restore_selinux
+		echo setup: error: Unable to move $1 as it does not exist
+		exit
+	fi
+
+	if ! mv $1 $2; then
+		restore_selinux
+		echo setup: error: Unable to move $1 to $2
+		exit
+	fi
+}
+
+restore_selinux() {
+	if [ "${SELINUX_ORIG_STATUS}z" = "Enforcingz" ]; then
+		setenforce 1
+	fi
+}
+
+ps_gator() {
+	PS_GATOR=$(echo $( (ps aux; ps) | grep '[g]atord'))
+}
+
+echo starting
+
+# Get the Linux version
+PROC_VERSION=$(cat /proc/version)
+if [ "${1}z" != "z" ]; then
+	echo setup: error: Unable to read /proc/version on the device or it is empty
+	exit
+fi
+temp=${PROC_VERSION#Linux version }
+LINUX_VERSION_FULL=${temp%% *}
+LINUX_VERSION_MAJOR=${LINUX_VERSION_FULL%%.*}
+temp=${LINUX_VERSION_FULL#$LINUX_VERSION_MAJOR.}
+LINUX_VERSION_MINOR=${temp%%.*}
+LINUX_VERSION=$((1000*$LINUX_VERSION_MAJOR+$LINUX_VERSION_MINOR))
+echo linux_version: $LINUX_VERSION
+
+# Is this running Linux 3.4 or later?
+if [ $LINUX_VERSION -lt 3004 ]; then
+	echo setup: error: Streamline can\'t automatically setup gator as this kernel version is not supported. Please upgrade the kernel on your device.
+	exit
+fi
+
+# Get the effective uid
+temp=$(cat /proc/$$/status | grep Uid)
+if [ "${1}z" != "z" ]; then
+	echo setup: error: Unable to read /proc/$$/status on the device or it is empty
+	exit
+fi
+UID_STR=${temp#Uid:	}
+UID_REAL=${UID_STR%%	*}
+temp=${UID_STR#$UID_REAL	}
+UID_EFFECTIVE=${temp%%	*}
+echo uid_effective: $UID_EFFECTIVE
+
+if [ $UID_EFFECTIVE -ne 0 ]; then
+	# Become root
+
+	# Don't override stdin so the root version of the script can still communicate with Streamline
+	sudo -p "setup: trying sudo
+" sh $0 && exit
+
+	# Normal Linux su requires the password from the terminal, but sudo should work there
+	# Other platforms that require su often don't require a password
+	echo setup: trying su
+	su -c "sh $0" && exit
+
+	echo setup: error: Unable to become root
+	exit
+fi
+echo now root
+
+if SELINUX_ORIG_STATUS=$(getenforce 2> /dev/null); then
+	setenforce 0
+fi
+
+if [ -e /sys/module/gator ]; then
+	if ! confirm "Streamline has detected that the gator kernel module is loaded on your device. Click yes to switch to user space gator, click no to abort the install."; then
+		restore_selinux
+		echo setup: cancel
+		exit
+	fi
+fi
+
+try_home() {
+	if ! [ -d $1 ]; then
+		return 1
+	fi
+	HOME=$1
+	return 0
+}
+
+while [ "${HOME}z" = "z" ]; do
+	if try_home /var/tmp; then
+		break
+	fi
+	if try_home /tmp; then
+		break
+	fi
+	if try_home /data; then
+		break
+	fi
+	HOME=/
+	break
+done
+echo home: $HOME
+
+# Go to the home directory where we can (hopefully) execute programs
+OLD_DIR=$PWD
+cd
+
+SUFFIX=.${0##*.}
+# Allow for no suffix to be specified (although it is preferred)
+if [ "$SUFFIX" = ".$0" ]; then
+	SUFFIX=
+fi
+echo suffix: $SUFFIX
+
+# Get the architecture type
+move $OLD_DIR/armv7$SUFFIX armv7
+move $OLD_DIR/aarch64$SUFFIX aarch64
+chmod 755 armv7 aarch64
+ARCH=$(./aarch64 2> /dev/null || ./armv7 2> /dev/null)
+rm -f armv7 aarch64
+if [ "${ARCH}z" = "z" ]; then
+	restore_selinux
+	echo setup: error: Device cpu type is not supported by pre-built gatord, please try building gatord from source
+	exit
+fi
+echo setup: arch: ${ARCH:-arm}
+# Wait for Streamline to copy gatord
+while true; do
+	read temp
+	if [ "${temp}z" = "donez" ]; then
+		break
+	fi
+done
+
+# Kill gatord
+while true; do
+	# Use echo to merge multiple spaces into a single one as zsh preserves them all
+	# Space is required between the open parans otherwise dash complains
+	# Android doesn't require any arguments to show all processes, but Linux does. Android ps and Linux ps aux both put the pid second so they can be parsed the same way
+	# Use brackets around the g in gatord so that the grep command doesn't match
+	ps_gator
+	if [ "${PS_GATOR}z" = "z" ]; then
+		break
+	fi
+	temp=${PS_GATOR#* }
+	GATOR_PID=${temp%% *}
+	echo killing ${GATOR_PID}
+	kill ${GATOR_PID}
+	sleep 1
+done
+
+# Ensure gator.ko is unloaded
+umount /dev/gator 2> /dev/null
+rmmod gator 2> /dev/null
+if [ -e /sys/module/gator ]; then
+	restore_selinux
+	echo setup: error: Unable to unload gator.ko, the gator module may be built into the kernel or gator.ko cannot be unloaded. Rebooting the device may resolve the issue.
+	exit
+fi
+
+mv gatord gatord.old 2> /dev/null
+mv gator.ko gator.ko.old 2> /dev/null
+
+move $OLD_DIR/gatord$SUFFIX gatord
+chmod 755 gatord
+
+# Don't fail if notify.dex isn't present
+if [ -f $OLD_DIR/notify.dex$SUFFIX ]; then
+	move $OLD_DIR/notify.dex$SUFFIX notify.dex
+	chmod 644 notify.dex
+fi
+
+# Redirect stdin/out/err so that adb will exit
+./gatord -a < /dev/null > gatord.out 2> gatord.err &
+
+# Wait a bit and verify gatord is still running
+sleep 1
+ps_gator
+if [ "${PS_GATOR}z" = "z" ]; then
+	cat gatord.err
+	cat gatord.out
+	restore_selinux
+	echo setup: error: Unable to start gatord
+	exit
+fi
+
+######################################################################
+# Run any post setup setup commands
+######################################################################
+
+restore_selinux
+echo setup: success

@@ -32,12 +32,8 @@ static void get_network_stats(struct work_struct *wsptr)
 	struct net_device *dev;
 
 	for_each_netdev(&init_net, dev) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
-		const struct net_device_stats *stats = dev_get_stats(dev);
-#else
 		struct rtnl_link_stats64 temp;
 		const struct rtnl_link_stats64 *stats = dev_get_stats(dev, &temp);
-#endif
 		rx += stats->rx_bytes;
 		tx += stats->tx_bytes;
 	}

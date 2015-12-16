@@ -86,7 +86,6 @@
 	<ul>
 	  <li><a href="#MessageTrack">Custom Activity Map Track</a></li>
 	  <li><a href="#MessageJob">Custom Activity Map Job</a></li>
-	  <li><a href="#MessageCookie">Custom Activity Map Cookie</a></li>
 	  <li><a href="#MessageName">Custom Activity Map View Name</a></li>
 	</ul>
       </li>
@@ -831,7 +830,7 @@
       </tr>
       <tr>
 	<td>activities</td>
-	<td>activity_count occurances of UTF-8 chars, null terminated and 3 bytes (RR, GG, BB) pairs</td>
+	<td>activity_count occurances of UTF-8 chars, null terminated and 4 bytes (RR, GG, BB, TT) pairs</td>
 	<td>&nbsp;</td>
       </tr>
       <tr>
@@ -1047,40 +1046,6 @@
 	<td>The string name for the job</td>
       </tr>
     </table>
-    <h3 id="MessageCookie">Custom Activity Map Cookie</h3>
-    <p>Cookies link numbers to strings.</p>
-    <table>
-      <tr>
-	<th><span class="white">Name</span></th>
-	<th><span class="white">Type</span></th>
-	<th><span class="white">Description</span></th>
-      </tr>
-      <tr>
-	<td>Marker Code</td>
-	<td><span class="circle">0xd</span></td>
-	<td>&nbsp;</td>
-      </tr>
-      <tr>
-	<td>Length</td>
-	<td>int32</td>
-	<td>Number of bytes in the body after the length</td>
-      </tr>
-      <tr>
-	<td>ViewUID</td>
-	<td>packed32</td>
-	<td>The unique id for the view, it is recommended to pick a random number to obtain the view uid</td>
-      </tr>
-      <tr>
-	<td>Cookie</td>
-	<td>packed32</td>
-	<td>Cookie key</td>
-      </tr>
-      <tr>
-	<td>Name</td>
-	<td>UTF-8 chars</td>
-	<td>Cookie value</td>
-      </tr>
-    </table>
     <h3 id="MessageName">Custom Activity Map View Name</h3>
     <p>The name for this Custom Activity Map view.</p>
     <table>
@@ -1091,7 +1056,7 @@
       </tr>
       <tr>
 	<td>Marker Code</td>
-	<td><span class="circle">0xe</span></td>
+	<td><span class="circle">0xd</span></td>
 	<td>&nbsp;</td>
       </tr>
       <tr>

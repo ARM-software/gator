@@ -14,24 +14,13 @@
 #include <linux/mm.h>
 #include <linux/list.h>
 
-#define GATOR_PERF_SUPPORT      (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
-#define GATOR_PERF_PMU_SUPPORT  (GATOR_PERF_SUPPORT && defined(CONFIG_PERF_EVENTS) && (!(defined(__arm__) || defined(__aarch64__)) || defined(CONFIG_HW_PERF_EVENTS)))
-#define GATOR_NO_PERF_SUPPORT   (!(GATOR_PERF_SUPPORT))
-#define GATOR_CPU_FREQ_SUPPORT  ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)) && defined(CONFIG_CPU_FREQ))
+#define GATOR_PERF_PMU_SUPPORT  (defined(CONFIG_PERF_EVENTS) && (!(defined(__arm__) || defined(__aarch64__)) || defined(CONFIG_HW_PERF_EVENTS)))
+#define GATOR_CPU_FREQ_SUPPORT  defined(CONFIG_CPU_FREQ)
 #define GATOR_IKS_SUPPORT       defined(CONFIG_BL_SWITCHER)
 
 /* cpu ids */
-#define ARM1136      0x41b36
-#define ARM1156      0x41b56
-#define ARM1176      0x41b76
-#define ARM11MPCORE  0x41b02
 #define CORTEX_A5    0x41c05
-#define CORTEX_A7    0x41c07
-#define CORTEX_A8    0x41c08
 #define CORTEX_A9    0x41c09
-#define CORTEX_A15   0x41c0f
-#define SCORPION     0x5100f
-#define SCORPIONMP   0x5102d
 #define OTHER        0xfffff
 
 /* gpu enums */
@@ -56,14 +45,7 @@ int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
  * Tracepoints
  ******************************************************************************/
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-#	error Kernels prior to 3.4.0 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
-#	define GATOR_DEFINE_PROBE(probe_name, proto) \
-		static void probe_##probe_name(PARAMS(proto))
-#	define GATOR_REGISTER_TRACE(probe_name) \
-		register_trace_##probe_name(probe_##probe_name)
-#	define GATOR_UNREGISTER_TRACE(probe_name) \
-		unregister_trace_##probe_name(probe_##probe_name)
+#	error Kernels prior to 3.4 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
 #	define GATOR_DEFINE_PROBE(probe_name, proto) \
 		static void probe_##probe_name(void *data, PARAMS(proto))
@@ -79,10 +61,6 @@ int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 		((gator_tracepoint_##probe_name == NULL) || tracepoint_probe_register(gator_tracepoint_##probe_name, probe_##probe_name, NULL))
 #	define GATOR_UNREGISTER_TRACE(probe_name) \
 		tracepoint_probe_unregister(gator_tracepoint_##probe_name, probe_##probe_name, NULL)
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
-#define setup_deferrable_timer_on_stack setup_timer
 #endif
 
 /******************************************************************************

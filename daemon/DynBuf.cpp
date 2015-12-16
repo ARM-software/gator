@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "Logging.h"
@@ -156,6 +157,29 @@ bool DynBuf::append(const char *format, va_list ap) {
 	}
 
 	length = bytes;
+
+	return true;
+}
+
+bool DynBuf::appendStr(const char *str) {
+	if (capacity <= 0) {
+		if (resize(2 * MIN_BUFFER_FREE) != 0) {
+			logg.logMessage("DynBuf::resize failed");
+			return false;
+		}
+	}
+
+	size_t bytes = strlen(str);
+	if (length + bytes >= capacity) {
+		if (resize(length + bytes + 1) != 0) {
+			logg.logMessage("DynBuf::resize failed");
+			return false;
+		}
+	}
+
+	memcpy(buf + length, str, bytes + 1);
+
+	length += bytes;
 
 	return true;
 }

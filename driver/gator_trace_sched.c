@@ -8,9 +8,7 @@
  */
 
 #include <trace/events/sched.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 #include <trace/events/task.h>
-#endif
 
 #include "gator.h"
 
@@ -172,7 +170,6 @@ GATOR_DEFINE_PROBE(sched_process_fork, TP_PROTO(struct task_struct *parent, stru
 	gator_trace_emit_link(child);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 GATOR_DEFINE_PROBE(sched_process_exec, TP_PROTO(struct task_struct *p, pid_t old_pid, struct linux_binprm *bprm))
 {
 	gator_trace_emit_link(p);
@@ -186,12 +183,11 @@ GATOR_DEFINE_PROBE(task_rename, TP_PROTO(struct task_struct *task, const char *c
 {
 	emit_pid_name(comm, task);
 }
-#endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
-GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct rq *rq, struct task_struct *prev, struct task_struct *next))
-#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_struct *next))
+#else
+GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(bool preempt, struct task_struct *prev, struct task_struct *next))
 #endif
 {
 	int state;
@@ -211,9 +207,6 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_
 	collect_counters(gator_get_time(), prev, true);
 	per_cpu(collecting, cpu) = 0;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-	gator_trace_emit_link(next);
-#endif
 	marshal_sched_trace_switch(next->pid, state);
 
 	per_cpu(in_scheduler_context, cpu) = false;
@@ -235,12 +228,10 @@ static int register_scheduler_tracepoints(void)
 	/* register tracepoints */
 	if (GATOR_REGISTER_TRACE(sched_process_fork))
 		goto fail_sched_process_fork;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 	if (GATOR_REGISTER_TRACE(sched_process_exec))
 		goto fail_sched_process_exec;
 	if (GATOR_REGISTER_TRACE(task_rename))
 		goto fail_task_rename;
-#endif
 	if (GATOR_REGISTER_TRACE(sched_switch))
 		goto fail_sched_switch;
 	if (GATOR_REGISTER_TRACE(sched_process_free))
@@ -258,12 +249,10 @@ static int register_scheduler_tracepoints(void)
 fail_sched_process_free:
 	GATOR_UNREGISTER_TRACE(sched_switch);
 fail_sched_switch:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 	GATOR_UNREGISTER_TRACE(task_rename);
 fail_task_rename:
 	GATOR_UNREGISTER_TRACE(sched_process_exec);
 fail_sched_process_exec:
-#endif
 	GATOR_UNREGISTER_TRACE(sched_process_fork);
 fail_sched_process_fork:
 	pr_err("gator: tracepoints failed to activate, please verify that tracepoints are enabled in the linux kernel\n");
@@ -274,10 +263,8 @@ fail_sched_process_fork:
 static void unregister_scheduler_tracepoints(void)
 {
 	GATOR_UNREGISTER_TRACE(sched_process_fork);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
 	GATOR_UNREGISTER_TRACE(sched_process_exec);
 	GATOR_UNREGISTER_TRACE(task_rename);
-#endif
 	GATOR_UNREGISTER_TRACE(sched_switch);
 	GATOR_UNREGISTER_TRACE(sched_process_free);
 	pr_debug("gator: unregistered tracepoints\n");

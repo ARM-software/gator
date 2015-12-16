@@ -43,10 +43,10 @@ LOCAL_SRC_FILES := \
 	Sender.cpp \
 	SessionData.cpp \
 	SessionXML.cpp \
-	Setup.cpp \
 	Source.cpp \
 	SrcMd5.cpp \
 	StreamlineSetup.cpp \
+	TtraceDriver.cpp \
 	UEvent.cpp \
 	UserSpaceSource.cpp \
 	libsensors/access.c \

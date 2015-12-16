@@ -66,10 +66,7 @@ EXTRA_CFLAGS +=	-DGATOR_TEST=$(GATOR_TEST)
 OLD_BLOCK_RQ_COMPLETE := $(shell grep -A3 block_rq_complete $(srctree)/include/trace/events/block.h | grep nr_bytes -q; echo $$?)
 EXTRA_CFLAGS += -DOLD_BLOCK_RQ_COMPLETE=$(OLD_BLOCK_RQ_COMPLETE)
 
-gator-$(CONFIG_ARM) +=	gator_events_armv6.o \
-			gator_events_armv7.o \
-			gator_events_l2c-310.o \
-			gator_events_scorpion.o
+gator-$(CONFIG_ARM) +=	gator_events_l2c-310.o
 
 gator-$(CONFIG_ARM64) +=
 

@@ -63,6 +63,8 @@ public:
 	void perfCounterHeader(const uint64_t time);
 	void perfCounter(const int core, const int key, const int64_t value);
 	void perfCounterFooter(const uint64_t currTime);
+	void marshalHeaderPage(const uint64_t currTime, const char *const headerPage);
+	void marshalHeaderEvent(const uint64_t currTime, const char *const headerEvent);
 
 	void setDone();
 	bool isDone() const;

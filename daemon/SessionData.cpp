@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include "DiskIODriver.h"
@@ -117,6 +118,7 @@ void SessionData::initialize() {
 	mOneShot = false;
 	mSentSummary = false;
 	mAllowCommands = false;
+	mFtraceRaw = false;
 	strcpy(mCoreName, CORE_NAME_UNKNOWN);
 	readModel();
 	readCpuInfo();
@@ -398,6 +400,33 @@ bool readAll(const int fd, void *const buf, const size_t count) {
 			return false;
 		}
 		pos += bytes;
+	}
+
+	return true;
+}
+
+bool getLinuxVersion(int version[3]) {
+	// Check the kernel version
+	struct utsname utsname;
+	if (uname(&utsname) != 0) {
+		logg.logMessage("uname failed");
+		return false;
+	}
+
+	version[0] = 0;
+	version[1] = 0;
+	version[2] = 0;
+
+	int part = 0;
+	char *ch = utsname.release;
+	while (*ch >= '0' && *ch <= '9' && part < 3) {
+		version[part] = 10*version[part] + *ch - '0';
+
+		++ch;
+		if (*ch == '.') {
+			++part;
+			++ch;
+		}
 	}
 
 	return true;

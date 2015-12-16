@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -29,7 +30,6 @@
 #include "OlyUtility.h"
 #include "PmuXML.h"
 #include "SessionData.h"
-#include "Setup.h"
 
 extern Child* child;
 static int shutdownFilesystem();
@@ -44,7 +44,6 @@ struct cmdline_t {
 	char *module;
 	char *pmuPath;
 	int port;
-	bool update;
 };
 
 #define DEFAULT_PORT 8080
@@ -57,6 +56,7 @@ void cleanUp() {
 }
 
 // CTRL C Signal Handler
+__attribute__((noreturn))
 static void handler(int signum) {
 	logg.logMessage("Received signal %d, gator daemon exiting", signum);
 
@@ -324,7 +324,7 @@ static int shutdownFilesystem() {
 	return 0; // success
 }
 
-static const char OPTSTRING[] = "hvVudap:s:c:e:E:P:m:o:";
+static const char OPTSTRING[] = "hvVdap:s:c:e:E:P:m:o:";
 
 static bool hasDebugFlag(int argc, char** argv) {
 	int c;
@@ -344,16 +344,22 @@ static struct cmdline_t parseCommandLine(int argc, char** argv) {
 	struct cmdline_t cmdline;
 	memset(&cmdline, 0, sizeof(cmdline));
 	cmdline.port = DEFAULT_PORT;
-	cmdline.update = false;
 	char version_string[256]; // arbitrary length to hold the version information
 	int c;
 
 	// build the version string
 	if (PROTOCOL_VERSION < PROTOCOL_DEV) {
-		snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d)", PROTOCOL_VERSION, PROTOCOL_VERSION);
+		const int majorVersion = PROTOCOL_VERSION/10;
+		const int minorVersion = PROTOCOL_VERSION%10;
+		if (minorVersion == 0) {
+			snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d)", PROTOCOL_VERSION, majorVersion);
+		} else {
+			snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d.%d)", PROTOCOL_VERSION, majorVersion, minorVersion);
+		}
 	} else {
 		snprintf(version_string, sizeof(version_string), "Streamline gatord development version %d", PROTOCOL_VERSION);
 	}
+	logg.logMessage("%s", version_string);
 
 	optind = 1;
 	opterr = 1;
@@ -389,9 +395,6 @@ static struct cmdline_t parseCommandLine(int argc, char** argv) {
 				break;
 			case 'o':
 				gSessionData.mTargetPath = optarg;
-				break;
-			case 'u':
-				cmdline.update = true;
 				break;
 			case 'a':
 				gSessionData.mAllowCommands = true;
@@ -510,14 +513,25 @@ int main(int argc, char** argv) {
 		logg.logMessage("setpriority() failed");
 	}
 
+	// Try to increase the maximum number of file descriptors
+	{
+		struct rlimit rlim;
+		memset(&rlim, 0, sizeof(rlim));
+		if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+			logg.logMessage("Unable to get the maximum number of files");
+			// Not good, but not a fatal error either
+		} else {
+			rlim.rlim_cur = max(((rlim_t)1)<<15, rlim.rlim_cur);
+			rlim.rlim_max = max(rlim.rlim_cur, rlim.rlim_max);
+			if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+				logg.logMessage("Unable to increase the maximum number of files");
+				// Not good, but not a fatal error either
+			}
+		}
+	}
+
 	// Parse the command line parameters
 	struct cmdline_t cmdline = parseCommandLine(argc, argv);
-
-	if (cmdline.update) {
-		update(argv[0]);
-		cmdline.update = false;
-		gSessionData.mAllowCommands = true;
-	}
 
 	// Verify root permissions
 	uid_t euid = geteuid();

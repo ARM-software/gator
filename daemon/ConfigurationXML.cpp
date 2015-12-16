@@ -24,6 +24,11 @@ static const char ATTR_COUNT[]              = "count";
 static const char ATTR_CORES[]              = "cores";
 
 ConfigurationXML::ConfigurationXML() {
+	if (gSessionData.mCountersError != NULL) {
+		free(gSessionData.mCountersError);
+		gSessionData.mCountersError = NULL;
+	}
+
 	const char * configuration_xml;
 	unsigned int configuration_xml_len;
 	getDefaultConfigurationXml(configuration_xml, configuration_xml_len);
@@ -68,10 +73,6 @@ int ConfigurationXML::parse(const char* configurationXML) {
 	mxml_node_t *tree, *node;
 	int ret;
 
-	if (gSessionData.mCountersError != NULL) {
-		free(gSessionData.mCountersError);
-		gSessionData.mCountersError = NULL;
-	}
 	gSessionData.mIsEBS = false;
 	mIndex = 0;
 
@@ -116,8 +117,11 @@ void ConfigurationXML::validate(void) {
 		const Counter & counter = gSessionData.mCounters[i];
 		if (counter.isEnabled()) {
 			if (strcmp(counter.getType(), "") == 0) {
-				logg.logError("Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  event=%d", counter.getType(), counter.getEvent());
-				handleException();
+				if (gSessionData.mCountersError == NULL && asprintf(&gSessionData.mCountersError, "Invalid required attribute in configuration.xml:\n  counter=\"%s\"\n  event=%d", counter.getType(), counter.getEvent()) <= 0) {
+					logg.logError("asprintf failed");
+					handleException();
+				}
+				return;
 			}
 
 			// iterate through the remaining enabled performance counters
@@ -126,8 +130,11 @@ void ConfigurationXML::validate(void) {
 				if (counter2.isEnabled()) {
 					// check if the types are the same
 					if (strcmp(counter.getType(), counter2.getType()) == 0) {
-						logg.logError("Duplicate performance counter type in configuration.xml: %s", counter.getType());
-						handleException();
+						if (gSessionData.mCountersError == NULL && asprintf(&gSessionData.mCountersError, "Duplicate performance counter type in configuration.xml: %s", counter.getType()) <= 0) {
+							logg.logError("asprintf failed");
+							handleException();
+						}
+						return;
 					}
 				}
 			}

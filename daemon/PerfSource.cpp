@@ -212,7 +212,7 @@ struct ProcThreadArgs {
 	bool mIsDone;
 };
 
-void *procFunc(void *arg) {
+static void *procFunc(void *arg) {
 	DynBuf printb;
 	DynBuf b;
 	const ProcThreadArgs *const args = (ProcThreadArgs *)arg;
@@ -273,8 +273,8 @@ void PerfSource::run() {
 		}
 		mBuffer->perfCounterFooter(currTime);
 
-		if (!readProcComms(currTime, mBuffer, &printb, &b1, &b2)) {
-			logg.logError("readProcComms failed");
+		if (!readProcSysDependencies(currTime, mBuffer, &printb, &b1, &b2)) {
+			logg.logError("readProcSysDependencies failed");
 			handleException();
 		}
 		mBuffer->commit(currTime);

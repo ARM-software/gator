@@ -43,7 +43,7 @@ class Driver {
 public:
 	static Driver *getHead() { return head; }
 
-	virtual ~Driver() {}
+	virtual ~Driver();
 
 	// Returns true if this driver can manage the counter
 	virtual bool claimCounter(const Counter &counter) const = 0;

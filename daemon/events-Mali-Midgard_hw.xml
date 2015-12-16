@@ -85,10 +85,10 @@
     <event counter="ARM_Mali-Midgard_LSC_SNOOPS" title="Mali Load/Store Cache Bus" name="Snoops in to LSC" description="Number of coherent memory snoops in to the Load/Store cache"/>
   </category>
   <category name="Mali-Midgard L2 and MMU" per_cpu="no">
-    <event counter="ARM_Mali-Midgard_L2_WRITE_BEATS" title="Mali L2 Cache Ext Writes" name="External write beats" description="Number of external bus write beats"/>
+    <event counter="ARM_Mali-Midgard_L2_WRITE_BEATS" title="Mali L2 Cache Ext Writes" name="External read bytes" description="Number of external bus read bytes" multiplier="16"/>
     <event counter="ARM_Mali-Midgard_L2_EXT_W_STALL" title="Mali L2 Cache Ext Writes" name="External bus stalls (W)" description="Number of cycles a valid write data (W channel) is stalled by the external interconnect"/>
 
-    <event counter="ARM_Mali-Midgard_L2_READ_BEATS" title="Mali L2 Cache Ext Reads" name="External read beats" description="Number of external bus read beats"/>
+    <event counter="ARM_Mali-Midgard_L2_READ_BEATS" title="Mali L2 Cache Ext Reads" name="External write bytes" description="Number of external bus write bytes" multiplier="16"/>
     <event counter="ARM_Mali-Midgard_L2_EXT_AR_STALL" title="Mali L2 Cache Ext Reads" name="External bus stalls (AR)" description="Number of cycles a valid read address (AR) is stalled by the external interconnect"/>
 
     <event counter="ARM_Mali-Midgard_L2_READ_SNOOP" title="Mali L2 Cache Reads" name="Read snoops" description="Number of read transaction snoops"/>

@@ -25,6 +25,7 @@
   <pmu pmnc_name="Krait" cpuid="0x51049" core_name="KraitSIM" pmnc_counters="4"/>
   <pmu pmnc_name="Krait" cpuid="0x5104d" core_name="Krait" pmnc_counters="4"/>
   <pmu pmnc_name="Krait" cpuid="0x5106f" core_name="Krait S4 Pro" pmnc_counters="4"/>
+  <pmu pmnc_name="ARMv8_Cortex_A35" cpuid="0x41d04" core_name="Cortex-A35" dt_name="arm,cortex-a35" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A53" cpuid="0x41d03" core_name="Cortex-A53" dt_name="arm,cortex-a53" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A57" cpuid="0x41d07" core_name="Cortex-A57" dt_name="arm,cortex-a57" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6"/>

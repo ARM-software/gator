@@ -7,7 +7,7 @@
     <event counter="ARM_Mali-T76x_JS0_JOBS" title="Mali Job Manager Jobs" name="JS0 jobs" description="Number of Jobs (fragment) completed in JS0"/>
     <event counter="ARM_Mali-T76x_JS1_JOBS" title="Mali Job Manager Jobs" name="JS1 jobs" description="Number of Jobs (vertex/tiler/compute) completed in JS1"/>
     <event counter="ARM_Mali-T76x_JS2_JOBS" title="Mali Job Manager Jobs" name="JS2 jobs" description="Number of Jobs (vertex/compute) completed in JS2"/>
-    <event counter="ARM_Mali-T76x_JS0_TASKS" title="Mali Job Manager Tasks" name="JS0 tasks" description="Number of Tasks completed in JS0"/>
+    <event counter="ARM_Mali-T76x_JS0_TASKS" title="Mali Job Manager" name="Pixels" description="Number of Pixels completed in JS0" multiplier="1024"/>
     <event counter="ARM_Mali-T76x_JS1_TASKS" title="Mali Job Manager Tasks" name="JS1 tasks" description="Number of Tasks completed in JS1"/>
     <event counter="ARM_Mali-T76x_JS2_TASKS" title="Mali Job Manager Tasks" name="JS2 tasks" description="Number of Tasks completed in JS2"/>
   </category>
@@ -49,7 +49,7 @@
     <event counter="ARM_Mali-T76x_FRAG_QUADS_RAST" title="Mali Fragment Quads" name="Quads rasterized" description="Number of quads rasterized"/>
     <event counter="ARM_Mali-T76x_FRAG_QUADS_EZS_TEST" title="Mali Fragment Quads" name="Quads doing early ZS" description="Number of quads doing early ZS test"/>
     <event counter="ARM_Mali-T76x_FRAG_QUADS_EZS_KILLED" title="Mali Fragment Quads" name="Quads killed early Z" description="Number of quads killed by early ZS test"/>
-    <event counter="ARM_Mali-T76x_FRAG_NUM_TILES" title="Mali Fragment Tasks" name="Tiles rendered" description="Number of tiles rendered"/>
+    <event counter="ARM_Mali-T76x_FRAG_NUM_TILES" title="Mali Fragment" name="Pixels" description="Number of pixels rendered" multiplier="1024"/>
     <event counter="ARM_Mali-T76x_FRAG_TRANS_ELIM" title="Mali Fragment Tasks" name="Tile writes killed by TE" description="Number of tile writes skipped by transaction elimination"/>
     <event counter="ARM_Mali-T76x_ARITH_WORDS" title="Mali Arithmetic Pipe" name="A instructions" description="Number of instructions completed by the the A-pipe (normalized per pipeline)"/>
     <event counter="ARM_Mali-T76x_LS_WORDS" title="Mali Load/Store Pipe" name="LS instructions" description="Number of instructions completed by the LS-pipe"/>
@@ -74,11 +74,11 @@
     <event counter="ARM_Mali-T76x_L2_WRITE_SNOOP" title="Mali L2 Cache Writes" name="Write snoops" description="Number of write transaction snoops"/>
     <event counter="ARM_Mali-T76x_L2_WRITE_HIT" title="Mali L2 Cache Writes" name="L2 write hits" description="Number of writes hitting in the L2 cache"/>
     <event counter="ARM_Mali-T76x_L2_WRITE_LOOKUP" title="Mali L2 Cache Writes" name="L2 write lookups" description="Number of writes into the L2 cache"/>
-    <event counter="ARM_Mali-T76x_L2_EXT_READ_BEATS" title="Mali L2 Cache Ext Reads" name="External read beats" description="Number of external bus read beats"/>
+    <event counter="ARM_Mali-T76x_L2_EXT_READ_BEATS" title="Mali L2 Cache Ext Reads" name="External read bytes" description="Number of external bus read bytes" multiplier="16"/>
     <event counter="ARM_Mali-T76x_L2_EXT_AR_STALL" title="Mali L2 Cache Ext Reads" name="External bus stalls (AR)" description="Number of cycles a valid read address (AR) is stalled by the external interconnect"/>
     <event counter="ARM_Mali-T76x_L2_EXT_R_BUF_FULL" title="Mali L2 Cache Ext Reads" name="External bus response buffer full" description="Number of cycles a valid request is blocked by a full response buffer"/>
     <event counter="ARM_Mali-T76x_L2_EXT_RD_BUF_FULL" title="Mali L2 Cache Ext Reads" name="External bus read data buffer full" description="Number of cycles a valid request is blocked by a full read data buffer"/>
-    <event counter="ARM_Mali-T76x_L2_EXT_WRITE_BEATS" title="Mali L2 Cache Ext Writes" name="External write beats" description="Number of external bus write beats"/>
+    <event counter="ARM_Mali-T76x_L2_EXT_WRITE_BEATS" title="Mali L2 Cache Ext Writes" name="External write bytes" description="Number of external bus write bytes" multiplier="16"/>
     <event counter="ARM_Mali-T76x_L2_EXT_W_STALL" title="Mali L2 Cache Ext Writes" name="External bus stalls (W)" description="Number of cycles a valid write data (W channel) is stalled by the external interconnect"/>
     <event counter="ARM_Mali-T76x_L2_EXT_W_BUF_FULL" title="Mali L2 Cache Ext Writes" name="External bus write buffer full" description="Number of cycles a valid request is blocked by a full write buffer"/>
   </category>

@@ -151,7 +151,7 @@ static bool readProcTask(const uint64_t currTime, Buffer *const buffer, const in
 	return result;
 }
 
-bool readProcComms(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b1, DynBuf *const b2) {
+bool readProcSysDependencies(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b1, DynBuf *const b2) {
 	bool result = false;
 
 	DIR *proc = opendir("/proc");
@@ -192,6 +192,13 @@ bool readProcComms(const uint64_t currTime, Buffer *const buffer, DynBuf *const 
 				logg.logMessage("readProcTask failed");
 				goto fail;
 			}
+		}
+	}
+
+	if (gSessionData.mFtraceRaw) {
+		if (!gSessionData.mFtraceDriver.readTracepointFormats(currTime, buffer, printb, b1)) {
+			logg.logMessage("FtraceDriver::readTracepointFormats failed");
+			goto fail;
 		}
 	}
 
@@ -302,6 +309,20 @@ bool readKallsyms(const uint64_t currTime, Buffer *const buffer, const bool *con
 	}
 
 	close(fd);
+
+	return true;
+}
+
+bool readTracepointFormat(const uint64_t currTime, Buffer *const buffer, const char *const name, DynBuf *const printb, DynBuf *const b) {
+	if (!printb->printf(EVENTS_PATH "/%s/format", name)) {
+		logg.logMessage("DynBuf::printf failed");
+		return false;
+	}
+	if (!b->read(printb->getBuf())) {
+		logg.logMessage("DynBuf::read failed");
+		return false;
+	}
+	buffer->marshalFormat(currTime, b->getLength(), b->getBuf());
 
 	return true;
 }

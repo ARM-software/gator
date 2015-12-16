@@ -30,7 +30,7 @@
  * Version number...
  */
 
-#define MXML_VERSION "Mini-XML v2.8"
+#define MXML_VERSION "Mini-XML v2.9"
 
 
 /*

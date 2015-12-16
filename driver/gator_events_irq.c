@@ -27,11 +27,7 @@ GATOR_DEFINE_PROBE(irq_handler_exit,
 	atomic_inc(&per_cpu(irqCnt, get_physical_cpu())[HARDIRQ]);
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
-GATOR_DEFINE_PROBE(softirq_exit, TP_PROTO(struct softirq_action *h, struct softirq_action *vec))
-#else
 GATOR_DEFINE_PROBE(softirq_exit, TP_PROTO(unsigned int vec_nr))
-#endif
 {
 	atomic_inc(&per_cpu(irqCnt, get_physical_cpu())[SOFTIRQ]);
 }

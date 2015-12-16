@@ -18,7 +18,7 @@ They can also be cross compiled by running
 *** Other Ways of Extending Gator ***
 
 - Regularly read the contents of a file and plot it in Streamline, see
-  streamline/gator/daemon/events-Filesystem.xml at for an example.
+  streamline/gator/daemon/events-Filesystem.xml for an example.
 
 - Regularly read the contents of the ftrace buffer and plot it in
   Streamline, see streamline/gator/daemon/events-ftrace.xml for an

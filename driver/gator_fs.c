@@ -25,9 +25,7 @@ static struct inode *gatorfs_get_inode(struct super_block *sb, int mode)
 	struct inode *inode = new_inode(sb);
 
 	if (inode) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)
 		inode->i_ino = get_next_ino();
-#endif
 		inode->i_mode = mode;
 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 	}
@@ -312,16 +310,9 @@ static int gatorfs_fill_super(struct super_block *sb, void *data, int silent)
 	root_inode->i_op = &simple_dir_inode_operations;
 	root_inode->i_fop = &simple_dir_operations;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-	root_dentry = d_alloc_root(root_inode);
-#else
 	root_dentry = d_make_root(root_inode);
-#endif
 
 	if (!root_dentry) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-		iput(root_inode);
-#endif
 		return -ENOMEM;
 	}
 
@@ -332,29 +323,16 @@ static int gatorfs_fill_super(struct super_block *sb, void *data, int silent)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
-static int gatorfs_get_sb(struct file_system_type *fs_type,
-			  int flags, const char *dev_name, void *data,
-			  struct vfsmount *mnt)
-{
-	return get_sb_single(fs_type, flags, data, gatorfs_fill_super, mnt);
-}
-#else
 static struct dentry *gatorfs_mount(struct file_system_type *fs_type,
 				    int flags, const char *dev_name, void *data)
 {
 	return mount_nodev(fs_type, flags, data, gatorfs_fill_super);
 }
-#endif
 
 static struct file_system_type gatorfs_type = {
 	.owner = THIS_MODULE,
 	.name = "gatorfs",
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
-	.get_sb = gatorfs_get_sb,
-#else
 	.mount = gatorfs_mount,
-#endif
 
 	.kill_sb = kill_litter_super,
 };

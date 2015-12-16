@@ -16,16 +16,18 @@
 #define FRAME_HEADER_SIZE 3
 
 enum {
-	CODE_PEA         =  1,
-	CODE_KEYS        =  2,
-	CODE_FORMAT      =  3,
-	CODE_MAPS        =  4,
-	CODE_COMM        =  5,
-	CODE_KEYS_OLD    =  6,
-	CODE_ONLINE_CPU  =  7,
-	CODE_OFFLINE_CPU =  8,
-	CODE_KALLSYMS    =  9,
-	CODE_COUNTERS    = 10,
+	CODE_PEA           =  1,
+	CODE_KEYS          =  2,
+	CODE_FORMAT        =  3,
+	CODE_MAPS          =  4,
+	CODE_COMM          =  5,
+	CODE_KEYS_OLD      =  6,
+	CODE_ONLINE_CPU    =  7,
+	CODE_OFFLINE_CPU   =  8,
+	CODE_KALLSYMS      =  9,
+	CODE_COUNTERS      = 10,
+	CODE_HEADER_PAGE   = 11,
+	CODE_HEADER_EVENT  = 12,
 };
 
 // Summary Frame Messages
@@ -464,6 +466,26 @@ void Buffer::perfCounterFooter(const uint64_t currTime) {
 		sem_wait(&mWriterSem);
 	}
 	packInt(-1);
+	check(currTime);
+}
+
+void Buffer::marshalHeaderPage(const uint64_t currTime, const char *const headerPage) {
+	const int headerPageLen = strlen(headerPage) + 1;
+	while (!checkSpace(MAXSIZE_PACK32 + headerPageLen)) {
+		sem_wait(&mWriterSem);
+	}
+	packInt(CODE_HEADER_PAGE);
+	writeBytes(headerPage, headerPageLen);
+	check(currTime);
+}
+
+void Buffer::marshalHeaderEvent(const uint64_t currTime, const char *const headerEvent) {
+	const int headerEventLen = strlen(headerEvent) + 1;
+	while (!checkSpace(MAXSIZE_PACK32 + headerEventLen)) {
+		sem_wait(&mWriterSem);
+	}
+	packInt(CODE_HEADER_EVENT);
+	writeBytes(headerEvent, headerEventLen);
 	check(currTime);
 }
 

@@ -15,11 +15,7 @@
 
 #define BLOCK_TOTAL		(BLOCK_RQ_RD+1)
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
-#define EVENTWRITE REQ_RW
-#else
 #define EVENTWRITE REQ_WRITE
-#endif
 
 static ulong block_rq_wr_enabled;
 static ulong block_rq_rd_enabled;

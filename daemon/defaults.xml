@@ -34,6 +34,11 @@
   <configuration counter="ARMv7_Cortex_A17_cnt1" event="0x16"/>
   <configuration counter="ARMv7_Cortex_A17_cnt2" event="0x10"/>
   <configuration counter="ARMv7_Cortex_A17_cnt3" event="0x19"/>
+  <configuration counter="ARMv8_Cortex_A35_ccnt" event="0x11"/>
+  <configuration counter="ARMv8_Cortex_A35_cnt0" event="0x8"/>
+  <configuration counter="ARMv8_Cortex_A35_cnt1" event="0x16"/>
+  <configuration counter="ARMv8_Cortex_A35_cnt2" event="0x10"/>
+  <configuration counter="ARMv8_Cortex_A35_cnt3" event="0x19"/>
   <configuration counter="ARMv8_Cortex_A53_ccnt" event="0x11"/>
   <configuration counter="ARMv8_Cortex_A53_cnt0" event="0x8"/>
   <configuration counter="ARMv8_Cortex_A53_cnt1" event="0x16"/>

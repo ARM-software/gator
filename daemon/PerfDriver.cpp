@@ -21,8 +21,8 @@
 #include "DynBuf.h"
 #include "Logging.h"
 #include "PerfGroup.h"
+#include "Proc.h"
 #include "SessionData.h"
-#include "Setup.h"
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
 
@@ -257,14 +257,12 @@ bool PerfDriver::setup() {
 		}
 	}
 
-#if defined(__arm__) || defined(__aarch64__)
 	if (!foundCpu) {
-		logg.logSetup("CPU is not recognized\nUsing the ARM architected counters");
+		logCpuNotFound();
+#if defined(__arm__) || defined(__aarch64__)
 		addCpuCounters("Other", PERF_TYPE_RAW, 6);
-	}
-#else
-	logg.logSetup("CPU is not recognized\nOmitting CPU counters");
 #endif
+	}
 
 	// Add supported software counters
 	long long id;
@@ -298,6 +296,14 @@ bool PerfDriver::setup() {
 
 	mIsSetup = true;
 	return true;
+}
+
+void logCpuNotFound() {
+#if defined(__arm__) || defined(__aarch64__)
+		logg.logSetup("CPU is not recognized\nUsing the ARM architected counters");
+#else
+		logg.logSetup("CPU is not recognized\nOmitting CPU counters");
+#endif
 }
 
 bool PerfDriver::summary(Buffer *const buffer) {
@@ -400,31 +406,17 @@ void PerfDriver::read(Buffer *const buffer, const int cpu) {
 	}
 }
 
-static bool sendTracepointFormat(const uint64_t currTime, Buffer *const buffer, const char *const name, DynBuf *const printb, DynBuf *const b) {
-	if (!printb->printf(EVENTS_PATH "/%s/format", name)) {
-		logg.logMessage("DynBuf::printf failed");
-		return false;
-	}
-	if (!b->read(printb->getBuf())) {
-		logg.logMessage("DynBuf::read failed");
-		return false;
-	}
-	buffer->marshalFormat(currTime, b->getLength(), b->getBuf());
-
-	return true;
-}
-
 bool PerfDriver::sendTracepointFormats(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b) {
 	if (
-		!sendTracepointFormat(currTime, buffer, SCHED_SWITCH, printb, b) ||
-		!sendTracepointFormat(currTime, buffer, CPU_IDLE, printb, b) ||
-		!sendTracepointFormat(currTime, buffer, CPU_FREQUENCY, printb, b) ||
+		!readTracepointFormat(currTime, buffer, SCHED_SWITCH, printb, b) ||
+		!readTracepointFormat(currTime, buffer, CPU_IDLE, printb, b) ||
+		!readTracepointFormat(currTime, buffer, CPU_FREQUENCY, printb, b) ||
 		false) {
 		return false;
 	}
 
 	for (PerfTracepoint *tracepoint = mTracepoints; tracepoint != NULL; tracepoint = tracepoint->getNext()) {
-		if (tracepoint->getCounter()->isEnabled() && !sendTracepointFormat(currTime, buffer, tracepoint->getTracepoint(), printb, b)) {
+		if (tracepoint->getCounter()->isEnabled() && !readTracepointFormat(currTime, buffer, tracepoint->getTracepoint(), printb, b)) {
 			return false;
 		}
 	}

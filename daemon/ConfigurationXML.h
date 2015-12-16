@@ -20,12 +20,12 @@ public:
 	ConfigurationXML();
 	~ConfigurationXML();
 	const char* getConfigurationXML() {return mConfigurationXML;}
-	void validate(void);
 
 private:
 	char* mConfigurationXML;
 	int mIndex;
 
+	void validate(void);
 	int parse(const char* xmlFile);
 	int configurationsTag(mxml_node_t *node);
 	void configurationTag(mxml_node_t *node);

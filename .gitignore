@@ -22,8 +22,11 @@
 /hrtimer_module/Module.symvers
 /hrtimer_module/hrtimer_module.ko
 /hrtimer_module/modules.order
-/libs
 /notify/*.class
 /notify/notify.dex
-/obj
+/setup/*.elf
+/setup/aarch64
+/setup/armv7
 jni
+libs
+obj

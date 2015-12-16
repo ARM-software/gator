@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION 23
+#define PROTOCOL_VERSION 231
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/slab.h>
@@ -29,8 +29,8 @@ static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 #include "gator.h"
 #include "gator_src_md5.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32)
-#error kernels prior to 2.6.32 are not supported
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#error Kernels prior to 3.4 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
 #endif
 
 #if defined(MODULE) && !defined(CONFIG_MODULES)
@@ -53,7 +53,7 @@ static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 #error gator requires the kernel to have CONFIG_LOCAL_TIMERS defined on SMP systems
 #endif
 
-#if (GATOR_PERF_SUPPORT) && (!(GATOR_PERF_PMU_SUPPORT))
+#if !(GATOR_PERF_PMU_SUPPORT)
 #ifndef CONFIG_PERF_EVENTS
 #error gator requires the kernel to have CONFIG_PERF_EVENTS defined to support pmu hardware counters
 #elif !defined CONFIG_HW_PERF_EVENTS
@@ -159,11 +159,7 @@ static DECLARE_WAIT_QUEUE_HEAD(gator_annotate_wait);
 static struct timer_list gator_buffer_wake_up_timer;
 static bool gator_buffer_wake_run;
 /* Initialize semaphore unlocked to initialize memory values */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
-static DECLARE_MUTEX(gator_buffer_wake_sem);
-#else
 static DEFINE_SEMAPHORE(gator_buffer_wake_sem);
-#endif
 static struct task_struct *gator_buffer_wake_thread;
 static LIST_HEAD(gator_events);
 
@@ -220,8 +216,6 @@ static DEFINE_PER_CPU(u64, gator_buffer_commit_time);
 
 /* List of all gator events - new events must be added to this list */
 #define GATOR_EVENTS_LIST \
-	GATOR_EVENT(gator_events_armv6_init) \
-	GATOR_EVENT(gator_events_armv7_init) \
 	GATOR_EVENT(gator_events_block_init) \
 	GATOR_EVENT(gator_events_ccn504_init) \
 	GATOR_EVENT(gator_events_irq_init) \
@@ -234,7 +228,6 @@ static DEFINE_PER_CPU(u64, gator_buffer_commit_time);
 	GATOR_EVENT(gator_events_net_init) \
 	GATOR_EVENT(gator_events_perf_pmu_init) \
 	GATOR_EVENT(gator_events_sched_init) \
-	GATOR_EVENT(gator_events_scorpion_init) \
 
 #define GATOR_EVENT(EVENT_INIT) __weak int EVENT_INIT(void);
 GATOR_EVENTS_LIST

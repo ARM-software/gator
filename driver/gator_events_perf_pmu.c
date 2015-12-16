@@ -97,20 +97,12 @@ static int gator_events_perf_pmu_create_files(struct super_block *sb, struct den
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-static void ebs_overflow_handler(struct perf_event *event, int unused, struct perf_sample_data *data, struct pt_regs *regs)
-#else
 static void ebs_overflow_handler(struct perf_event *event, struct perf_sample_data *data, struct pt_regs *regs)
-#endif
 {
 	gator_backtrace_handler(regs);
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-static void dummy_handler(struct perf_event *event, int unused, struct perf_sample_data *data, struct pt_regs *regs)
-#else
 static void dummy_handler(struct perf_event *event, struct perf_sample_data *data, struct pt_regs *regs)
-#endif
 {
 	/* Required as perf_event_create_kernel_counter() requires an overflow handler, even though all we do is poll */
 }
@@ -137,11 +129,7 @@ static void __online_dispatch(int cpu, bool migrate, struct gator_attr *const at
 	else
 		handler = dummy_handler;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-	pevent = perf_event_create_kernel_counter(event->pevent_attr, cpu, NULL, handler);
-#else
 	pevent = perf_event_create_kernel_counter(event->pevent_attr, cpu, NULL, handler, NULL);
-#endif
 	if (IS_ERR(pevent)) {
 		pr_err("gator: unable to online a counter on cpu %d\n", cpu);
 		return;
@@ -447,22 +435,14 @@ static int gator_events_perf_pmu_reread(void)
 		/* A particular PMU may work on some but not all cores, so try on each core */
 		pe = NULL;
 		for_each_present_cpu(cpu) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-			pe = perf_event_create_kernel_counter(&pea, cpu, NULL, dummy_handler);
-#else
 			pe = perf_event_create_kernel_counter(&pea, cpu, NULL, dummy_handler, NULL);
-#endif
 			if (!IS_ERR(pe))
 				break;
 		}
 		/* Assume that valid PMUs are contiguous */
 		if (IS_ERR(pe)) {
 			pea.config = 0xff00;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
-			pe = perf_event_create_kernel_counter(&pea, 0, NULL, dummy_handler);
-#else
 			pe = perf_event_create_kernel_counter(&pea, 0, NULL, dummy_handler, NULL);
-#endif
 			if (IS_ERR(pe))
 				break;
 		}

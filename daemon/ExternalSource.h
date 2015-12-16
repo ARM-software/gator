@@ -35,6 +35,7 @@ private:
 	bool connectMidgard();
 	bool connectMve();
 	void connectFtrace();
+	bool transfer(const uint64_t currTime, const int fd);
 
 	sem_t mBufferSem;
 	Buffer mBuffer;
@@ -47,7 +48,6 @@ private:
 	int mInterruptFd;
 	int mMidgardUds;
 	int mMveUds;
-	int mFtraceFd;
 
 	// Intentionally unimplemented
 	ExternalSource(const ExternalSource &);

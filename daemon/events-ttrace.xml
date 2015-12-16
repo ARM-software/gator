@@ -1,0 +1,17 @@
+  <category name="Ttrace">
+    <event counter="ttrace_graphics" flag="0x2" title="Ttrace" name="Graphics" description="Graphics"/>
+    <event counter="ttrace_input" flag="0x4" title="Ttrace" name="Input" description="Input"/>
+    <event counter="ttrace_view" flag="0x8" title="Ttrace" name="View" description="View"/>
+    <event counter="ttrace_web" flag="0x10" title="Ttrace" name="Web" description="Web"/>
+    <event counter="ttrace_window_manager" flag="0x20" title="Ttrace" name="Window Manager" description="Window Manager"/>
+    <event counter="ttrace_application_manager" flag="0x40" title="Ttrace" name="Application Manager" description="Application Manager"/>
+    <event counter="ttrace_image" flag="0x80" title="Ttrace" name="Image" description="Image"/>
+    <event counter="ttrace_audio" flag="0x100" title="Ttrace" name="Audio" description="Audio"/>
+    <event counter="ttrace_video" flag="0x200" title="Ttrace" name="Video" description="Video"/>
+    <event counter="ttrace_camera" flag="0x400" title="Ttrace" name="Camera" description="Camera"/>
+    <event counter="ttrace_hal" flag="0x800" title="Ttrace" name="Hal" description="Hal"/>
+    <event counter="ttrace_media_content" flag="0x1000" title="Ttrace" name="Media Content" description="Media Content"/>
+    <event counter="ttrace_media_db" flag="0x2000" title="Ttrace" name="Media DB" description="Media DB"/>
+    <event counter="ttrace_screen_mirroring" flag="0x4000" title="Ttrace" name="Screen Mirroring" description="Screen Mirroring"/>
+    <event counter="ttrace_app" flag="0x8000" title="Ttrace" name="App" description="App"/>
+  </category>

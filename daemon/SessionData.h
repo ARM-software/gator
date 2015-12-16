@@ -21,10 +21,11 @@
 #include "MaliVideoDriver.h"
 #include "MidgardDriver.h"
 #include "PerfDriver.h"
+#include "TtraceDriver.h"
 
-#define PROTOCOL_VERSION 23
+#define PROTOCOL_VERSION 231
 // Differentiates development versions (timestamp) from release versions
-#define PROTOCOL_DEV 1000
+#define PROTOCOL_DEV 10000000
 
 #define NS_PER_S 1000000000LL
 #define NS_PER_MS 1000000LL
@@ -158,8 +159,9 @@ public:
 	PerfDriver mPerf;
 	MaliVideoDriver mMaliVideo;
 	MidgardDriver mMidgard;
-	// Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver references AtraceDriver
+	// Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver and TtraceDriver references FtraceDriver
 	AtraceDriver mAtraceDriver;
+	TtraceDriver mTtraceDriver;
 	FtraceDriver mFtraceDriver;
 	ExternalDriver mExternalDriver;
 	CCNDriver mCcnDriver;
@@ -184,6 +186,7 @@ public:
 	bool mIsEBS;
 	bool mSentSummary;
 	bool mAllowCommands;
+	bool mFtraceRaw;
 
 	int64_t mMonotonicStarted;
 	int mBacktraceDepth;
@@ -217,5 +220,11 @@ FILE *fopen_cloexec(const char *path, const char *mode);
 bool setNonblock(const int fd);
 bool writeAll(const int fd, const void *const buf, const size_t pos);
 bool readAll(const int fd, void *const buf, const size_t count);
+void logCpuNotFound();
+
+// From include/generated/uapi/linux/version.h
+#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
+
+bool getLinuxVersion(int version[3]);
 
 #endif // SESSION_DATA_H

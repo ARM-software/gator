@@ -43,6 +43,9 @@ DriverCounter *SimpleDriver::findCounter(const Counter &counter) const {
 	return NULL;
 }
 
+Driver::~Driver() {
+}
+
 bool SimpleDriver::claimCounter(const Counter &counter) const {
 	return findCounter(counter) != NULL;
 }

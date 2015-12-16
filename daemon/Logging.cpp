@@ -59,7 +59,8 @@ void Logging::_logSetup(const char *function, const char *file, int line, const 
 	va_end(args);
 
 	pthread_mutex_lock(&mLoggingMutex);
-	mSetup.append("%s|", logBuf);
+	mSetup.appendStr(logBuf);
+	mSetup.appendStr("|");
 	pthread_mutex_unlock(&mLoggingMutex);
 
 	if (mDebug) {

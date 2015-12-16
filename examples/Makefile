@@ -3,7 +3,7 @@ CXX = $(CROSS_COMPILE)g++
 
 CFLAGS +=
 CXXFLAGS +=
-CPPFLAGS += -I../annotate -O0 -g3 -Wall -Wextra -Wshadow -Wc++-compat -MD -pthread -pipe
+CPPFLAGS += -I../annotate -O0 -g3 -Wall -Wextra -Wshadow -Wc++-compat -std=gnu99 -Wno-long-long -MD -pthread -pipe
 LDFLAGS += -pthread
 LDLIBS += -lrt
 

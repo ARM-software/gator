@@ -10,16 +10,6 @@
 
 #include <unistd.h>
 
-/*
-#include <regex.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#include "DriverSource.h"
-#include "Setup.h"
-*/
-
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
@@ -52,12 +42,13 @@ AtraceDriver::~AtraceDriver() {
 }
 
 void AtraceDriver::readEvents(mxml_node_t *const xml) {
-	if (!gSessionData.mFtraceDriver.isSupported()) {
-		logg.logSetup("Atrace Disabled\nftrace support is required");
+	if (access("/system/bin/setprop", X_OK) != 0) {
+		// Reduce warning noise
+		//logg.logSetup("Atrace Disabled\nsetprop is not found, this is not an Android target");
 		return;
 	}
-	if (access("/system/bin/setprop", X_OK) != 0) {
-		logg.logSetup("Atrace Disabled\nsetprop is not found, this is not an Android target");
+	if (!gSessionData.mFtraceDriver.isSupported()) {
+		logg.logSetup("Atrace Disabled\nftrace support is required");
 		return;
 	}
 

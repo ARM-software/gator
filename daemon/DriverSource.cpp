@@ -106,8 +106,8 @@ void DriverSource::bootstrapThread() {
 	// MonotonicStarted may not be not assigned yet
 	const uint64_t currTime = 0;//getTime() - gSessionData.mMonotonicStarted;
 
-	if (!readProcComms(currTime, mBuffer, &printb, &b1, &b2)) {
-		logg.logError("readProcComms failed");
+	if (!readProcSysDependencies(currTime, mBuffer, &printb, &b1, &b2)) {
+		logg.logError("readProcSysDependencies failed");
 		handleException();
 	}
 

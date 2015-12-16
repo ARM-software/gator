@@ -213,6 +213,7 @@ enum gator_annotate_rendering_type {
 void gator_annotate_setup(void);
 uint64_t gator_get_time(void);
 void gator_annotate_fork_child(void);
+void gator_annotate_flush(void);
 void gator_annotate_str(const uint32_t channel, const char *const str);
 void gator_annotate_color(const uint32_t channel, const uint32_t color, const char *const str);
 void gator_annotate_name_channel(const uint32_t channel, const uint32_t group, const char *const str);
@@ -222,7 +223,7 @@ void gator_annotate_marker(const char *const str);
 void gator_annotate_marker_color(const uint32_t color, const char *const str);
 void gator_annotate_counter(const uint32_t id, const char *const title, const char *const name, const int per_cpu, const enum gator_annotate_counter_class counter_class, const enum gator_annotate_display display, const char *const units, const uint32_t modifier, const enum gator_annotate_series_composition series_composition, const enum gator_annotate_rendering_type rendering_type, const int average_selection, const int average_cores, const int percentage, const size_t activity_count, const char *const *const activities, const uint32_t *const activity_colors, const uint32_t cores, const uint32_t color, const char *const description);
 void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const uint32_t value);
-void gator_annotate_activity_switch(const uint32_t core, uint32_t id, uint32_t activity, uint32_t tid);
+void gator_annotate_activity_switch(const uint32_t core, const uint32_t id, const uint32_t activity, const uint32_t tid);
 void gator_cam_track(const uint32_t view_uid, const uint32_t track_uid, const uint32_t parent_track, const char *const name);
 void gator_cam_job(const uint32_t view_uid, const uint32_t job_uid, const char *const name, const uint32_t track, const uint64_t start_time, const uint64_t duration, const uint32_t color, const uint32_t primary_dependency, const size_t dependency_count, const uint32_t *const dependencies);
 void gator_cam_view_name(const uint32_t view_uid, const char *const name);

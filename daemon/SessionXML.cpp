@@ -24,6 +24,7 @@ static const char ATTR_CALL_STACK_UNWINDING[] = "call_stack_unwinding";
 static const char ATTR_BUFFER_MODE[]          = "buffer_mode";
 static const char ATTR_SAMPLE_RATE[]          = "sample_rate";
 static const char ATTR_DURATION[]             = "duration";
+static const char USE_EFFICIENT_FTRACE[]      = "use_efficient_ftrace";
 static const char ATTR_PATH[]                 = "path";
 static const char ATTR_LIVE_RATE[]            = "live_rate";
 static const char ATTR_CAPTURE_WORKING_DIR[]  = "capture_working_dir";
@@ -83,6 +84,7 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node) {
 	// integers/bools
 	parameters.call_stack_unwinding = stringToBool(mxmlElementGetAttr(node, ATTR_CALL_STACK_UNWINDING), false);
 	if (mxmlElementGetAttr(node, ATTR_DURATION)) gSessionData.mDuration = strtol(mxmlElementGetAttr(node, ATTR_DURATION), NULL, 10);
+	gSessionData.mFtraceRaw = stringToBool(mxmlElementGetAttr(node, USE_EFFICIENT_FTRACE), false);
 	if (mxmlElementGetAttr(node, ATTR_LIVE_RATE)) parameters.live_rate = strtol(mxmlElementGetAttr(node, ATTR_LIVE_RATE), NULL, 10);
 
 	// parse subtags

@@ -28,8 +28,9 @@ static const char MALI_GRAPHICS_STARTUP[] = "\0mali_thirdparty_client";
 static const char MALI_GRAPHICS_V1[] = "MALI_GRAPHICS 1\n";
 static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
+static const char FTRACE_V2[] = "FTRACE 2\n";
 
-ExternalSource::ExternalSource(sem_t *senderSem) : mBuffer(0, FRAME_EXTERNAL, 128*1024, senderSem), mMonitor(), mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)), mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)), mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)), mAnnotate(8083), mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true), mInterruptFd(-1), mMidgardUds(-1), mMveUds(-1), mFtraceFd(-1) {
+ExternalSource::ExternalSource(sem_t *senderSem) : mBuffer(0, FRAME_EXTERNAL, 128*1024, senderSem), mMonitor(), mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)), mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)), mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)), mAnnotate(8083), mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true), mInterruptFd(-1), mMidgardUds(-1), mMveUds(-1) {
 	sem_init(&mBufferSem, 0, 0);
 }
 
@@ -103,15 +104,20 @@ void ExternalSource::connectFtrace() {
 		return;
 	}
 
-	gSessionData.mFtraceDriver.prepare();
-
-	mFtraceFd = open(TRACING_PATH "/trace_pipe", O_RDONLY | O_CLOEXEC);
-	if (mFtraceFd < 0) {
-		logg.logError("Unable to open trace_pipe");
-		handleException();
+	int ftraceFds[NR_CPUS + 1];
+	const char *handshake;
+	size_t size;
+	if (gSessionData.mFtraceDriver.prepare(ftraceFds)) {
+		handshake = FTRACE_V1;
+		size = sizeof(FTRACE_V1);
+	} else {
+		handshake = FTRACE_V2;
+		size = sizeof(FTRACE_V2);
 	}
 
-	configureConnection(mFtraceFd, FTRACE_V1, sizeof(FTRACE_V1));
+	for (int i = 0; i < ARRAY_LENGTH(ftraceFds) && ftraceFds[i] >= 0; ++i) {
+		configureConnection(ftraceFds[i], handshake, size);
+	}
 }
 
 bool ExternalSource::prepare() {
@@ -155,13 +161,10 @@ void ExternalSource::run() {
 		logg.logMessage("Writing to annotate pipe failed");
 	}
 
-	if (mFtraceFd >= 0) {
+	if (gSessionData.mFtraceDriver.isSupported()) {
 		gSessionData.mAtraceDriver.start();
-
-		if (DriverSource::writeDriver(TRACING_PATH "/tracing_on", "1") != 0) {
-			logg.logError("Unable to turn ftrace on");
-			handleException();
-		}
+		gSessionData.mTtraceDriver.start();
+		gSessionData.mFtraceDriver.start();
 	}
 
 	// Wait until monotonicStarted is set before sending data
@@ -239,40 +242,7 @@ void ExternalSource::run() {
 				 * starve out the gator data.
 				 */
 				while (gSessionData.mSessionIsActive) {
-					// Wait until there is enough room for the fd, two headers and two ints
-					waitFor(7*Buffer::MAXSIZE_PACK32 + 2*sizeof(uint32_t));
-					mBuffer.packInt(fd);
-					const int contiguous = mBuffer.contiguousSpaceAvailable();
-					const int bytes = read(fd, mBuffer.getWritePos(), contiguous);
-					if (bytes < 0) {
-						if (errno == EAGAIN) {
-							// Nothing left to read
-							mBuffer.commit(currTime, true);
-							break;
-						}
-						// Something else failed, close the socket
-						mBuffer.commit(currTime, true);
-						mBuffer.packInt(-1);
-						mBuffer.packInt(fd);
-						// Here and other commits, always force-flush the buffer as this frame don't work like others
-						mBuffer.commit(currTime, true);
-						close(fd);
-						break;
-					} else if (bytes == 0) {
-						// The other side is closed
-						mBuffer.commit(currTime, true);
-						mBuffer.packInt(-1);
-						mBuffer.packInt(fd);
-						mBuffer.commit(currTime, true);
-						close(fd);
-						break;
-					}
-
-					mBuffer.advanceWrite(bytes);
-					mBuffer.commit(currTime, true);
-
-					// Short reads also mean nothing is left to read
-					if (bytes < contiguous) {
+					if (!transfer(currTime, fd)) {
 						break;
 					}
 				}
@@ -280,13 +250,20 @@ void ExternalSource::run() {
 		}
 	}
 
-	mBuffer.setDone();
-
-	if (mFtraceFd >= 0) {
-		gSessionData.mFtraceDriver.stop();
+	if (gSessionData.mFtraceDriver.isSupported()) {
+		int ftraceFds[NR_CPUS + 1];
+		gSessionData.mFtraceDriver.stop(ftraceFds);
+		// Read any slop
+		const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
+		for (int i = 0; i < ARRAY_LENGTH(ftraceFds) && ftraceFds[i] >= 0; ++i) {
+			transfer(currTime, ftraceFds[i]);
+			close(ftraceFds[i]);
+		}
+		gSessionData.mTtraceDriver.stop();
 		gSessionData.mAtraceDriver.stop();
-		close(mFtraceFd);
 	}
+
+	mBuffer.setDone();
 
 	if (mMveUds >= 0) {
 		gSessionData.mMaliVideo.stop(mMveUds);
@@ -295,6 +272,43 @@ void ExternalSource::run() {
 	mInterruptFd = -1;
 	close(pipefd[0]);
 	close(pipefd[1]);
+}
+
+bool ExternalSource::transfer(const uint64_t currTime, const int fd) {
+	// Wait until there is enough room for the fd, two headers and two ints
+	waitFor(7*Buffer::MAXSIZE_PACK32 + 2*sizeof(uint32_t));
+	mBuffer.packInt(fd);
+	const int contiguous = mBuffer.contiguousSpaceAvailable();
+	const int bytes = read(fd, mBuffer.getWritePos(), contiguous);
+	if (bytes < 0) {
+		if (errno == EAGAIN) {
+			// Nothing left to read
+			mBuffer.commit(currTime, true);
+			return false;
+		}
+		// Something else failed, close the socket
+		mBuffer.commit(currTime, true);
+		mBuffer.packInt(-1);
+		mBuffer.packInt(fd);
+		// Here and other commits, always force-flush the buffer as this frame don't work like others
+		mBuffer.commit(currTime, true);
+		close(fd);
+		return false;
+	} else if (bytes == 0) {
+		// The other side is closed
+		mBuffer.commit(currTime, true);
+		mBuffer.packInt(-1);
+		mBuffer.packInt(fd);
+		mBuffer.commit(currTime, true);
+		close(fd);
+		return false;
+	}
+
+	mBuffer.advanceWrite(bytes);
+	mBuffer.commit(currTime, true);
+
+	// Short reads also mean nothing is left to read
+	return bytes >= contiguous;
 }
 
 void ExternalSource::interrupt() {

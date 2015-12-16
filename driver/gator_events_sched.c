@@ -18,10 +18,10 @@ static ulong sched_switch_key;
 static DEFINE_PER_CPU(int[SCHED_TOTAL], schedCnt);
 static DEFINE_PER_CPU(int[SCHED_TOTAL * 2], schedGet);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
-GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct rq *rq, struct task_struct *prev, struct task_struct *next))
-#else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(struct task_struct *prev, struct task_struct *next))
+#else
+GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(bool preempt, struct task_struct *prev, struct task_struct *next))
 #endif
 {
 	unsigned long flags;

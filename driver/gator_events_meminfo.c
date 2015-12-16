@@ -65,11 +65,7 @@ static void do_read(void);
 static int gator_meminfo_func(void *data);
 static bool gator_meminfo_run;
 /* Initialize semaphore unlocked to initialize memory values */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
-static DECLARE_MUTEX(gator_meminfo_sem);
-#else
 static DEFINE_SEMAPHORE(gator_meminfo_sem);
-#endif
 
 static void notify(void)
 {
@@ -91,20 +87,12 @@ static void notify(void)
 
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-GATOR_DEFINE_PROBE(mm_page_free_direct, TP_PROTO(struct page *page, unsigned int order))
-#else
 GATOR_DEFINE_PROBE(mm_page_free, TP_PROTO(struct page *page, unsigned int order))
-#endif
 {
 	notify();
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-GATOR_DEFINE_PROBE(mm_pagevec_free, TP_PROTO(struct page *page, int cold))
-#else
 GATOR_DEFINE_PROBE(mm_page_free_batched, TP_PROTO(struct page *page, int cold))
-#endif
 {
 	notify();
 }
@@ -164,17 +152,9 @@ static int gator_events_meminfo_start(void)
 	if (meminfo_global_enabled == 0)
 		return 0;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-	if (GATOR_REGISTER_TRACE(mm_page_free_direct))
-#else
 	if (GATOR_REGISTER_TRACE(mm_page_free))
-#endif
 		goto mm_page_free_exit;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-	if (GATOR_REGISTER_TRACE(mm_pagevec_free))
-#else
 	if (GATOR_REGISTER_TRACE(mm_page_free_batched))
-#endif
 		goto mm_page_free_batched_exit;
 	if (GATOR_REGISTER_TRACE(mm_page_alloc))
 		goto mm_page_alloc_exit;
@@ -197,17 +177,9 @@ kthread_run_exit:
 	GATOR_UNREGISTER_TRACE(mm_page_alloc);
 #endif
 mm_page_alloc_exit:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-	GATOR_UNREGISTER_TRACE(mm_pagevec_free);
-#else
 	GATOR_UNREGISTER_TRACE(mm_page_free_batched);
-#endif
 mm_page_free_batched_exit:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-	GATOR_UNREGISTER_TRACE(mm_page_free_direct);
-#else
 	GATOR_UNREGISTER_TRACE(mm_page_free);
-#endif
 mm_page_free_exit:
 	return -1;
 }
@@ -215,13 +187,8 @@ mm_page_free_exit:
 static void gator_events_meminfo_stop(void)
 {
 	if (meminfo_global_enabled) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-		GATOR_UNREGISTER_TRACE(mm_page_free_direct);
-		GATOR_UNREGISTER_TRACE(mm_pagevec_free);
-#else
 		GATOR_UNREGISTER_TRACE(mm_page_free);
 		GATOR_UNREGISTER_TRACE(mm_page_free_batched);
-#endif
 		GATOR_UNREGISTER_TRACE(mm_page_alloc);
 
 #if USE_THREAD
@@ -340,29 +307,6 @@ static int gator_events_meminfo_read(long long **buffer, bool sched_switch)
 	return meminfo_length;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-
-static inline unsigned long gator_get_mm_counter(struct mm_struct *mm, int member)
-{
-#ifdef SPLIT_RSS_COUNTING
-	long val = atomic_long_read(&mm->rss_stat.count[member]);
-
-	if (val < 0)
-		val = 0;
-	return (unsigned long)val;
-#else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0)
-	return mm->rss_stat.count[member];
-#else
-	return atomic_long_read(&mm->rss_stat.count[member]);
-#endif
-#endif
-}
-
-#define get_mm_counter(mm, member) gator_get_mm_counter(mm, member)
-
-#endif
-
 static int gator_events_meminfo_read_proc(long long **buffer, struct task_struct *task)
 {
 	struct mm_struct *mm;
@@ -387,13 +331,7 @@ static int gator_events_meminfo_read_proc(long long **buffer, struct task_struct
 
 	/* Derived from task_statm in fs/proc/task_mmu.c */
 	if (meminfo_enabled[MEMINFO_MEMUSED] || proc_enabled[PROC_SHARE]) {
-		share = get_mm_counter(mm,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34)
-							   file_rss
-#else
-							   MM_FILEPAGES
-#endif
-							   );
+		share = get_mm_counter(mm, MM_FILEPAGES);
 	}
 
 	/* key of 1 indicates a pid */
@@ -423,13 +361,7 @@ static int gator_events_meminfo_read_proc(long long **buffer, struct task_struct
 	}
 
 	if (meminfo_enabled[MEMINFO_MEMUSED]) {
-		value = share + get_mm_counter(mm,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34)
-									   anon_rss
-#else
-									   MM_ANONPAGES
-#endif
-									   );
+		value = share + get_mm_counter(mm, MM_ANONPAGES);
 		/* Send resident for this pid */
 		buf[len++] = meminfo_keys[MEMINFO_MEMUSED];
 		buf[len++] = value * PAGE_SIZE;

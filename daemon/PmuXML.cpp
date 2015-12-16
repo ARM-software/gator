@@ -135,4 +135,18 @@ void PmuXML::writeToKernel() {
 	}
 
 	DriverSource::writeDriver("/dev/gator/pmu_init", "1");
+
+	// Was any CPU detected?
+	bool foundCpu = false;
+	for (GatorCpu *gatorCpu = GatorCpu::getHead(); gatorCpu != NULL; gatorCpu = gatorCpu->getNext()) {
+		snprintf(buf, sizeof(buf), "/dev/gator/events/%s_cnt0", gatorCpu->getPmncName());
+		if (access(buf, X_OK) == 0) {
+			foundCpu = true;
+			break;
+		}
+	}
+
+	if (!foundCpu) {
+		logCpuNotFound();
+	}
 }
