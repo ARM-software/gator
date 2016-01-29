@@ -121,6 +121,21 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
 
 #include <asm/stacktrace.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+
+static unsigned long get_module_core(struct module *mod)
+{
+	return (unsigned long)mod->module_core;
+}
+
+#else
+
+static unsigned long get_module_core(struct module *mod)
+{
+	return (unsigned long)mod->core_layout.base;
+}
+#endif
+
 static int report_trace(struct stackframe *frame, void *d)
 {
 	unsigned int *depth = d, cookie = NO_COOKIE;
@@ -133,7 +148,7 @@ static int report_trace(struct stackframe *frame, void *d)
 
 		if (mod) {
 			cookie = get_cookie(cpu, current, mod->name, false);
-			addr = addr - (unsigned long)mod->module_core;
+			addr = addr - get_module_core(mod);
 		}
 #endif
 		marshal_backtrace(addr & ~1, cookie, 1);
