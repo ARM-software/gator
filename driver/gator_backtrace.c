@@ -133,7 +133,11 @@ static int report_trace(struct stackframe *frame, void *d)
 
 		if (mod) {
 			cookie = get_cookie(cpu, current, mod->name, false);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 			addr = addr - (unsigned long)mod->module_core;
+#else
+			addr = addr - (unsigned long)mod->core_layout.base;
+#endif
 		}
 #endif
 		marshal_backtrace(addr & ~1, cookie, 1);
@@ -176,7 +180,11 @@ static void kernel_backtrace(int cpu, struct pt_regs *const regs)
 	frame.sp = regs->sp;
 	frame.pc = regs->pc;
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	walk_stackframe(&frame, report_trace, &depth);
+#else
+	walk_stackframe(current, &frame, report_trace, &depth);
+#endif
 #else
 	marshal_backtrace(PC_REG & ~1, NO_COOKIE, 1);
 #endif

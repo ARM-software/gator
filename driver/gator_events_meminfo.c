@@ -351,7 +351,11 @@ static int gator_events_meminfo_read_proc(long long **buffer, struct task_struct
 				value = (PAGE_ALIGN(mm->end_code) - (mm->start_code & PAGE_MASK)) >> PAGE_SHIFT;
 				break;
 			case PROC_DATA:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 				value = mm->total_vm - mm->shared_vm;
+#else
+				value = mm->total_vm - mm->data_vm;
+#endif
 				break;
 			}
 
