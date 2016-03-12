@@ -121,6 +121,7 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
 
 #include <asm/stacktrace.h>
 
+#if defined(MODULE)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 
 static unsigned long get_module_core(struct module *mod)
@@ -134,6 +135,7 @@ static unsigned long get_module_core(struct module *mod)
 {
 	return (unsigned long)mod->core_layout.base;
 }
+#endif
 #endif
 
 static int report_trace(struct stackframe *frame, void *d)
