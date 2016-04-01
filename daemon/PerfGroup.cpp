@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -59,6 +59,7 @@ static int sys_perf_event_open(struct perf_event_attr *const attr, const pid_t p
 PerfGroup::PerfGroup(PerfBuffer *const pb) : mPb(pb), mSchedSwitchId(-1) {
 	memset(&mAttrs, 0, sizeof(mAttrs));
 	memset(&mFlags, 0, sizeof(mFlags));
+	memset(&mClusters, 0, sizeof(mClusters));
 	memset(&mKeys, -1, sizeof(mKeys));
 	memset(&mFds, -1, sizeof(mFds));
 	memset(&mLeaders, -1, sizeof(mLeaders));
@@ -72,7 +73,7 @@ PerfGroup::~PerfGroup() {
 	}
 }
 
-int PerfGroup::doAdd(const uint64_t currTime, Buffer *const buffer, const int key, const __u32 type, const __u64 config, const __u64 sample, const __u64 sampleType, const int flags) {
+int PerfGroup::doAdd(const uint64_t currTime, Buffer *const buffer, const int key, const __u32 type, const __u64 config, const __u64 sample, const __u64 sampleType, const int flags, const GatorCpu *const cluster) {
 	int i;
 	for (i = 0; i < ARRAY_LENGTH(mKeys); ++i) {
 		if (mKeys[i] < 0) {
@@ -97,6 +98,7 @@ int PerfGroup::doAdd(const uint64_t currTime, Buffer *const buffer, const int ke
 	mAttrs[i].task = (flags & PERF_GROUP_TASK ? 1 : 0);
 	mAttrs[i].sample_id_all = (flags & PERF_GROUP_SAMPLE_ID_ALL ? 1 : 0);
 	mFlags[i] = flags;
+	mClusters[i] = cluster;
 
 	mKeys[i] = key;
 
@@ -130,19 +132,19 @@ bool PerfGroup::createCpuGroup(const uint64_t currTime, Buffer *const buffer) {
 		}
 	}
 
-	mLeaders[PERF_TYPE_HARDWARE] = doAdd(currTime, buffer, schedSwitchKey, PERF_TYPE_TRACEPOINT, mSchedSwitchId, 1, PERF_SAMPLE_READ | PERF_SAMPLE_RAW, PERF_GROUP_MMAP | PERF_GROUP_COMM | PERF_GROUP_TASK | PERF_GROUP_SAMPLE_ID_ALL | PERF_GROUP_PER_CPU | PERF_GROUP_LEADER | PERF_GROUP_CPU);
+	mLeaders[PERF_TYPE_HARDWARE] = doAdd(currTime, buffer, schedSwitchKey, PERF_TYPE_TRACEPOINT, mSchedSwitchId, 1, PERF_SAMPLE_READ | PERF_SAMPLE_RAW, PERF_GROUP_MMAP | PERF_GROUP_COMM | PERF_GROUP_TASK | PERF_GROUP_SAMPLE_ID_ALL | PERF_GROUP_PER_CPU | PERF_GROUP_LEADER | PERF_GROUP_CPU | PERF_GROUP_ALL_CLUSTERS, NULL);
 	if (mLeaders[PERF_TYPE_HARDWARE] < 0) {
 		return false;
 	}
 
-	if (gSessionData.mSampleRate > 0 && !gSessionData.mIsEBS && doAdd(currTime, buffer, INT_MAX-PERF_TYPE_HARDWARE, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, 1000000000UL / gSessionData.mSampleRate, PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ, PERF_GROUP_PER_CPU | PERF_GROUP_CPU) < 0) {
+	if (gSessionData.mSampleRate > 0 && !gSessionData.mIsEBS && doAdd(currTime, buffer, INT_MAX-PERF_TYPE_HARDWARE, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, 1000000000UL / gSessionData.mSampleRate, PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ, PERF_GROUP_PER_CPU | PERF_GROUP_CPU | PERF_GROUP_ALL_CLUSTERS, NULL) < 0) {
 		return false;
 	}
 
 	return true;
 }
 
-bool PerfGroup::add(const uint64_t currTime, Buffer *const buffer, const int key, const __u32 type, const __u64 config, const __u64 sample, const __u64 sampleType, const int flags) {
+bool PerfGroup::add(const uint64_t currTime, Buffer *const buffer, const int key, const __u32 type, const __u64 config, const __u64 sample, const __u64 sampleType, const int flags, const GatorCpu *const cluster) {
 	const int effectiveType = getEffectiveType(type, flags);
 
 	// Does a group exist for this already?
@@ -155,7 +157,7 @@ bool PerfGroup::add(const uint64_t currTime, Buffer *const buffer, const int key
 		} else {
 			// Non-CPU PMUs are sampled every 100ms for Sample Rate: None and EBS, otherwise they would never be sampled
 			const uint64_t timeout = gSessionData.mSampleRate > 0 && !gSessionData.mIsEBS ? 1000000000UL / gSessionData.mSampleRate : 100000000UL;
-			mLeaders[effectiveType] = doAdd(currTime, buffer, INT_MAX-effectiveType, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, timeout, PERF_SAMPLE_READ, PERF_GROUP_LEADER);
+			mLeaders[effectiveType] = doAdd(currTime, buffer, INT_MAX-effectiveType, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, timeout, PERF_SAMPLE_READ, PERF_GROUP_LEADER, NULL);
 			if (mLeaders[effectiveType] < 0) {
 				return false;
 			}
@@ -167,7 +169,7 @@ bool PerfGroup::add(const uint64_t currTime, Buffer *const buffer, const int key
 		handleException();
 	}
 
-	return doAdd(currTime, buffer, key, type, config, sample, sampleType, flags) >= 0;
+	return doAdd(currTime, buffer, key, type, config, sample, sampleType, flags, cluster) >= 0;
 }
 
 int PerfGroup::prepareCPU(const int cpu, Monitor *const monitor) {
@@ -179,6 +181,10 @@ int PerfGroup::prepareCPU(const int cpu, Monitor *const monitor) {
 		}
 
 		if ((cpu != 0) && !(mFlags[i] & PERF_GROUP_PER_CPU)) {
+			continue;
+		}
+
+		if ((mFlags[i] & PERF_GROUP_PER_CPU) && !(mFlags[i] & PERF_GROUP_ALL_CLUSTERS) && gSessionData.mSharedData->mClusters[gSessionData.mSharedData->mClusterIds[cpu]] != mClusters[i]) {
 			continue;
 		}
 

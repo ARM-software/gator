@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,7 +13,7 @@
 
 class ConfigurationXML {
 public:
-	static void getDefaultConfigurationXml(const char * & xml, unsigned int & len);
+	static char *getDefaultConfigurationXml();
 	static void getPath(char* path);
 	static void remove();
 

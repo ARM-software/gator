@@ -34,6 +34,11 @@
   <configuration counter="ARMv7_Cortex_A17_cnt1" event="0x16"/>
   <configuration counter="ARMv7_Cortex_A17_cnt2" event="0x10"/>
   <configuration counter="ARMv7_Cortex_A17_cnt3" event="0x19"/>
+  <configuration counter="ARMv8_Cortex_A32_ccnt" event="0x11"/>
+  <configuration counter="ARMv8_Cortex_A32_cnt0" event="0x8"/>
+  <configuration counter="ARMv8_Cortex_A32_cnt1" event="0x16"/>
+  <configuration counter="ARMv8_Cortex_A32_cnt2" event="0x10"/>
+  <configuration counter="ARMv8_Cortex_A32_cnt3" event="0x19"/>
   <configuration counter="ARMv8_Cortex_A35_ccnt" event="0x11"/>
   <configuration counter="ARMv8_Cortex_A35_cnt0" event="0x8"/>
   <configuration counter="ARMv8_Cortex_A35_cnt1" event="0x16"/>
@@ -73,9 +78,9 @@
   <configuration counter="Linux_meminfo_memused"/>
   <configuration counter="Linux_meminfo_memused2"/>
   <configuration counter="Linux_meminfo_memfree"/>
-  <configuration counter="Linux_power_cpu_freq"/>
-  <configuration counter="Linux_cpu_system"/>
-  <configuration counter="Linux_cpu_user"/>
+  <configuration counter="${cluster}_freq"/>
+  <configuration counter="${cluster}_system"/>
+  <configuration counter="${cluster}_user"/>
   <configuration counter="ARM_Mali-4xx_fragment"/>
   <configuration counter="ARM_Mali-4xx_vertex"/>
   <configuration counter="ARM_Mali-Midgard_fragment" cores="1"/>

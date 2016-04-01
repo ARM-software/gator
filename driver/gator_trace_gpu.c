@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -93,8 +93,15 @@ static void mali_activity_enqueue(int core, int key, int activity, int pid)
 	i = mali_activity_index(core, key);
 
 	count = mali_activities[i].count;
-	BUG_ON(count < 0);
-	++mali_activities[i].count;
+	BUG_ON(count < 0 || count > 2);
+	if (count > 1)
+		/*
+		 * The last value is about to be overwritten, send it now. This
+		 * may happen if a stop message is lost.
+		 */
+		gator_marshal_activity_switch(core, key, mali_activities[i].last_activity, mali_activities[i].last_pid);
+	else
+		++mali_activities[i].count;
 	if (count) {
 		mali_activities[i].last_activity = activity;
 		mali_activities[i].last_pid = pid;

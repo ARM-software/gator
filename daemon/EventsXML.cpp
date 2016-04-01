@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,6 +12,17 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
+
+static const char TAG_EVENTS[]       = "events";
+static const char TAG_CATEGORY[]     = "category";
+static const char TAG_COUNTER_SET[]  = "counter_set";
+static const char TAG_EVENT[]        = "event";
+
+static const char ATTR_COUNTER[]     = "counter";
+static const char ATTR_TITLE[]       = "title";
+static const char ATTR_NAME[]        = "name";
+
+static const char CLUSTER_VAR[]      = "${cluster}";
 
 class XMLList {
 public:
@@ -79,7 +90,7 @@ mxml_node_t *EventsXML::getTree() {
 		}
 		fclose(fl);
 
-		mxml_node_t *events = mxmlFindElement(xml, xml, "events", NULL, NULL, MXML_DESCEND);
+		mxml_node_t *events = mxmlFindElement(xml, xml, TAG_EVENTS, NULL, NULL, MXML_DESCEND);
 		if (!events) {
 			logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML starts with:\n"
 				       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -94,7 +105,7 @@ mxml_node_t *EventsXML::getTree() {
 			// Make list of all categories in xml
 			mxml_node_t *node = xml;
 			while (true) {
-				node = mxmlFindElement(node, xml, "category", NULL, NULL, MXML_DESCEND);
+				node = mxmlFindElement(node, xml, TAG_CATEGORY, NULL, NULL, MXML_DESCEND);
 				if (node == NULL) {
 					break;
 				}
@@ -104,7 +115,7 @@ mxml_node_t *EventsXML::getTree() {
 			// Make list of all events in xml
 			node = xml;
 			while (true) {
-				node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
+				node = mxmlFindElement(node, xml, TAG_EVENT, NULL, NULL, MXML_DESCEND);
 				if (node == NULL) {
 					break;
 				}
@@ -114,7 +125,7 @@ mxml_node_t *EventsXML::getTree() {
 			// Make list of all counter_sets in xml
 			node = xml;
 			while (true) {
-				node = mxmlFindElement(node, xml, "counter_set", NULL, NULL, MXML_DESCEND);
+				node = mxmlFindElement(node, xml, TAG_COUNTER_SET, NULL, NULL, MXML_DESCEND);
 				if (node == NULL) {
 					break;
 				}
@@ -122,14 +133,55 @@ mxml_node_t *EventsXML::getTree() {
 			}
 		}
 
-		// Handle events
-		for (mxml_node_t *node = mxmlFindElement(append, append, "event", NULL, NULL, MXML_DESCEND),
-		       *next = mxmlFindElement(node, append, "event", NULL, NULL, MXML_DESCEND);
+		// Handle counter_sets
+		for (mxml_node_t *node = strcmp(mxmlGetElement(append), TAG_COUNTER_SET) == 0 ? append : mxmlFindElement(append, append, TAG_COUNTER_SET, NULL, NULL, MXML_DESCEND),
+		       *next = mxmlFindElement(node, append, TAG_COUNTER_SET, NULL, NULL, MXML_DESCEND);
 		     node != NULL;
-		     node = next, next = mxmlFindElement(node, append, "event", NULL, NULL, MXML_DESCEND)) {
-			const char *const category = mxmlElementGetAttr(mxmlGetParent(node), "name");
-			const char *const title = mxmlElementGetAttr(node, "title");
-			const char *const name = mxmlElementGetAttr(node, "name");
+		     node = next, next = mxmlFindElement(node, append, TAG_COUNTER_SET, NULL, NULL, MXML_DESCEND)) {
+
+			const char *const name = mxmlElementGetAttr(node, ATTR_NAME);
+			if (name == NULL) {
+				logg.logError("Not all event XML counter_sets have the required name attribute");
+				handleException();
+			}
+
+			// Replace any duplicate counter_sets
+			bool replaced = false;
+			for (XMLList *counterSet = counterSetList; counterSet != NULL; counterSet = counterSet->getPrev()) {
+				const char *const name2 = mxmlElementGetAttr(counterSet->getNode(), ATTR_NAME);
+				if (name2 == NULL) {
+					logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
+					handleException();
+				}
+
+				if (strcmp(name, name2) == 0) {
+					logg.logMessage("Replacing counter %s", name);
+					mxml_node_t *parent = mxmlGetParent(counterSet->getNode());
+					mxmlDelete(counterSet->getNode());
+					mxmlAdd(parent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
+					counterSet->setNode(node);
+					replaced = true;
+					break;
+				}
+			}
+
+			if (replaced) {
+				continue;
+			}
+
+			// Add new counter_sets
+			logg.logMessage("Appending counter_set %s", name);
+			mxmlAdd(events, MXML_ADD_AFTER, mxmlGetLastChild(events), node);
+		}
+
+		// Handle events
+		for (mxml_node_t *node = mxmlFindElement(append, append, TAG_EVENT, NULL, NULL, MXML_DESCEND),
+		       *next = mxmlFindElement(node, append, TAG_EVENT, NULL, NULL, MXML_DESCEND);
+		     node != NULL;
+		     node = next, next = mxmlFindElement(node, append, TAG_EVENT, NULL, NULL, MXML_DESCEND)) {
+			const char *const category = mxmlElementGetAttr(mxmlGetParent(node), ATTR_NAME);
+			const char *const title = mxmlElementGetAttr(node, ATTR_TITLE);
+			const char *const name = mxmlElementGetAttr(node, ATTR_NAME);
 			if (category == NULL || title == NULL || name == NULL) {
 				logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
 				handleException();
@@ -137,9 +189,9 @@ mxml_node_t *EventsXML::getTree() {
 
 			// Replace any duplicate events
 			for (XMLList *event = eventList; event != NULL; event = event->getPrev()) {
-				const char *const category2 = mxmlElementGetAttr(mxmlGetParent(event->getNode()), "name");
-				const char *const title2 = mxmlElementGetAttr(event->getNode(), "title");
-				const char *const name2 = mxmlElementGetAttr(event->getNode(), "name");
+				const char *const category2 = mxmlElementGetAttr(mxmlGetParent(event->getNode()), ATTR_NAME);
+				const char *const title2 = mxmlElementGetAttr(event->getNode(), ATTR_TITLE);
+				const char *const name2 = mxmlElementGetAttr(event->getNode(), ATTR_NAME);
 				if (category2 == NULL || title2 == NULL || name2 == NULL) {
 					logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
 					handleException();
@@ -157,16 +209,16 @@ mxml_node_t *EventsXML::getTree() {
 		}
 
 		// Handle categories
-		for (mxml_node_t *node = strcmp(mxmlGetElement(append), "category") == 0 ? append : mxmlFindElement(append, append, "category", NULL, NULL, MXML_DESCEND),
-		       *next = mxmlFindElement(node, append, "category", NULL, NULL, MXML_DESCEND);
+		for (mxml_node_t *node = strcmp(mxmlGetElement(append), TAG_CATEGORY) == 0 ? append : mxmlFindElement(append, append, TAG_CATEGORY, NULL, NULL, MXML_DESCEND),
+		       *next = mxmlFindElement(node, append, TAG_CATEGORY, NULL, NULL, MXML_DESCEND);
 		     node != NULL;
-		     node = next, next = mxmlFindElement(node, append, "category", NULL, NULL, MXML_DESCEND)) {
+		     node = next, next = mxmlFindElement(node, append, TAG_CATEGORY, NULL, NULL, MXML_DESCEND)) {
 			// After replacing duplicate events, a category may be empty
 			if (mxmlGetFirstChild(node) == NULL) {
 				continue;
 			}
 
-			const char *const name = mxmlElementGetAttr(node, "name");
+			const char *const name = mxmlElementGetAttr(node, ATTR_NAME);
 			if (name == NULL) {
 				logg.logError("Not all event XML category nodes have the required name attribute");
 				handleException();
@@ -175,7 +227,7 @@ mxml_node_t *EventsXML::getTree() {
 			// Merge identically named categories
 			bool merged = false;
 			for (XMLList *category = categoryList; category != NULL; category = category->getPrev()) {
-				const char *const name2 = mxmlElementGetAttr(category->getNode(), "name");
+				const char *const name2 = mxmlElementGetAttr(category->getNode(), ATTR_NAME);
 				if (name2 == NULL) {
 					logg.logError("Not all event XML category nodes have the required name attribute");
 					handleException();
@@ -204,47 +256,6 @@ mxml_node_t *EventsXML::getTree() {
 			mxmlAdd(events, MXML_ADD_AFTER, mxmlGetLastChild(events), node);
 		}
 
-		// Handle counter_sets
-		for (mxml_node_t *node = strcmp(mxmlGetElement(append), "counter_set") == 0 ? append : mxmlFindElement(append, append, "counter_set", NULL, NULL, MXML_DESCEND),
-		       *next = mxmlFindElement(node, append, "counter_set", NULL, NULL, MXML_DESCEND);
-		     node != NULL;
-		     node = next, next = mxmlFindElement(node, append, "counter_set", NULL, NULL, MXML_DESCEND)) {
-
-			const char *const name = mxmlElementGetAttr(node, "name");
-			if (name == NULL) {
-				logg.logError("Not all event XML counter_sets have the required name attribute");
-				handleException();
-			}
-
-			// Replace any duplicate counter_sets
-			bool replaced = false;
-			for (XMLList *counterSet = counterSetList; counterSet != NULL; counterSet = counterSet->getPrev()) {
-				const char *const name2 = mxmlElementGetAttr(counterSet->getNode(), "name");
-				if (name2 == NULL) {
-					logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
-					handleException();
-				}
-
-				if (strcmp(name, name2) == 0) {
-					logg.logMessage("Replacing counter %s", name);
-					mxml_node_t *parent = mxmlGetParent(counterSet->getNode());
-					mxmlDelete(counterSet->getNode());
-					mxmlAdd(parent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
-					counterSet->setNode(node);
-					replaced = true;
-					break;
-				}
-			}
-
-			if (replaced) {
-				continue;
-			}
-
-			// Add new counter_sets
-			logg.logMessage("Appending counter_set %s", name);
-			mxmlAdd(events, MXML_ADD_AFTER, mxmlGetLastChild(events), node);
-		}
-
 		XMLList::free(eventList);
 		XMLList::free(categoryList);
 		XMLList::free(counterSetList);
@@ -252,14 +263,47 @@ mxml_node_t *EventsXML::getTree() {
 		mxmlDelete(append);
 	}
 
+	// Resolve ${cluster}
+	for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_EVENT, NULL, NULL, MXML_DESCEND),
+		   *next = mxmlFindElement(node, xml, TAG_EVENT, NULL, NULL, MXML_DESCEND);
+		 node != NULL;
+		 node = next, next = mxmlFindElement(node, xml, TAG_EVENT, NULL, NULL, MXML_DESCEND)) {
+		const char *counter = mxmlElementGetAttr(node, ATTR_COUNTER);
+		if (counter != NULL && strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0) {
+			for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
+				mxml_node_t *n = mxmlNewElement(mxmlGetParent(node), TAG_EVENT);
+				copyMxmlElementAttrs(n, node);
+				char buf[1<<7];
+				snprintf(buf, sizeof(buf), "%s%s", gSessionData.mSharedData->mClusters[cluster]->getPmncName(), counter + sizeof(CLUSTER_VAR) - 1);
+				mxmlElementSetAttr(n, ATTR_COUNTER, buf);
+			}
+			mxmlDelete(node);
+		}
+	}
+
 	return xml;
+}
+
+// mxml doesn't have a function to do this, so dip into its private API
+// Copy all the attributes from src to dst
+void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src) {
+	if (dest == NULL || dest->type != MXML_ELEMENT ||
+			src == NULL || src->type != MXML_ELEMENT)
+		return;
+
+  int i;
+  mxml_attr_t *attr;
+
+  for (i = src->value.element.num_attrs, attr = src->value.element.attrs; i > 0; --i, ++attr) {
+		mxmlElementSetAttr(dest, attr->name, attr->value);
+	}
 }
 
 char *EventsXML::getXML() {
 	mxml_node_t *xml = getTree();
 
 	// Add dynamic events from the drivers
-	mxml_node_t *events = mxmlFindElement(xml, xml, "events", NULL, NULL, MXML_DESCEND);
+	mxml_node_t *events = mxmlFindElement(xml, xml, TAG_EVENTS, NULL, NULL, MXML_DESCEND);
 	if (!events) {
 		logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
 			       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"

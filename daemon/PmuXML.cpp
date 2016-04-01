@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,6 +8,8 @@
 
 #include "PmuXML.h"
 
+#include <dirent.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "mxml/mxml.h"
@@ -62,11 +64,19 @@ void PmuXML::parse(const char *const xml) {
 			 node = mxmlFindElement(node, root, TAG_PMU, NULL, NULL, MXML_DESCEND)) {
 		const char *const pmncName = mxmlElementGetAttr(node, ATTR_PMNC_NAME);
 		const char *const cpuidStr = mxmlElementGetAttr(node, ATTR_CPUID);
-		const int cpuid = strtol(cpuidStr, NULL, 0);
+		int cpuid;
+		if (!stringToInt(&cpuid, cpuidStr, 0)) {
+			logg.logError("The cpuid for '%s' in pmu XML is not an integer", pmncName);
+			handleException();
+		}
 		const char *const coreName = mxmlElementGetAttr(node, ATTR_CORE_NAME);
 		const char *const dtName = mxmlElementGetAttr(node, ATTR_DT_NAME);
 		const char *const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS);
-		const int pmncCounters = strtol(pmncCountersStr, NULL, 0);
+		int pmncCounters;
+		if (!stringToInt(&pmncCounters, pmncCountersStr, 0)) {
+			logg.logError("The pmnc_counters for '%s' in pmu XML is not an integer", pmncName);
+			handleException();
+		}
 		if (pmncName == NULL || cpuid == 0 || coreName == NULL || pmncCounters == 0) {
 			logg.logError("A pmu from the pmu XML is missing one or more of the required attributes (%s, %s, %s and %s)", ATTR_PMNC_NAME, ATTR_CPUID, ATTR_CORE_NAME, ATTR_PMNC_COUNTERS);
 			handleException();
@@ -80,7 +90,11 @@ void PmuXML::parse(const char *const xml) {
 		const char *const pmncName = mxmlElementGetAttr(node, ATTR_PMNC_NAME);
 		const char *const coreName = mxmlElementGetAttr(node, ATTR_CORE_NAME);
 		const char *const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS);
-		const int pmncCounters = strtol(pmncCountersStr, NULL, 0);
+		int pmncCounters;
+		if (!stringToInt(&pmncCounters, pmncCountersStr, 0)) {
+			logg.logError("The pmnc_counters for '%s' in pmu XML is not an integer", pmncName);
+			handleException();
+		}
 		const char *const hasCyclesCounterStr = mxmlElementGetAttr(node, ATTR_HAS_CYCLES_COUNTER);
 		const bool hasCyclesCounter = stringToBool(hasCyclesCounterStr, true);
 		if (pmncName == NULL || coreName == NULL || pmncCounters == 0) {
@@ -148,5 +162,28 @@ void PmuXML::writeToKernel() {
 
 	if (!foundCpu) {
 		logCpuNotFound();
+	}
+
+	{
+		DIR *dir = opendir("/dev/gator/clusters");
+
+		struct dirent *dirent;
+		while ((dirent = readdir(dir)) != NULL) {
+			GatorCpu *gatorCpu = GatorCpu::find(dirent->d_name);
+			if (gatorCpu != NULL) {
+				snprintf(buf, sizeof(buf), "/dev/gator/clusters/%s", dirent->d_name);
+				int clusterId;
+				if (DriverSource::readIntDriver(buf, &clusterId)) {
+					logg.logError("Unable to read cluster id");
+					handleException();
+				}
+				gSessionData.mSharedData->mClusters[clusterId] = gatorCpu;
+				gSessionData.mSharedData->mClusterCount = max(gSessionData.mSharedData->mClusterCount, clusterId + 1);
+			}
+		}
+
+		closedir(dir);
+
+		gSessionData.updateClusterIds();
 	}
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -36,7 +36,7 @@ int64_t MemInfoCounter::read() {
 	return *mValue;
 }
 
-MemInfoDriver::MemInfoDriver() : mBuf(), mMemUsed(0), mMemFree(0), mBuffers(0) {
+MemInfoDriver::MemInfoDriver() : mBuf(), mMemUsed(0), mMemFree(0), mBuffers(0), mCached(0), mSlab(0) {
 }
 
 MemInfoDriver::~MemInfoDriver() {
@@ -51,6 +51,8 @@ void MemInfoDriver::readEvents(mxml_node_t *const) {
 	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memused2"), &mMemUsed));
 	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memfree"), &mMemFree));
 	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_bufferram"), &mBuffers));
+	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_cached"), &mCached));
+	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_slab"), &mSlab));
 }
 
 void MemInfoDriver::read(Buffer *const buffer) {
@@ -79,6 +81,10 @@ void MemInfoDriver::read(Buffer *const buffer) {
 			mMemFree = strtoll(colon + 1, NULL, 10) << 10;
 		} else if (strcmp(key, "Buffers") == 0) {
 			mBuffers = strtoll(colon + 1, NULL, 10) << 10;
+		} else if (strcmp(key, "Cached") == 0) {
+			mCached = strtoll(colon + 1, NULL, 10) << 10;
+		} else if (strcmp(key, "Slab") == 0) {
+			mSlab = strtoll(colon + 1, NULL, 10) << 10;
 		}
 
 		if (end == NULL) {

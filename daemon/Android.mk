@@ -69,6 +69,7 @@ LOCAL_SRC_FILES := \
 	mxml/mxml-string.c
 
 LOCAL_CFLAGS += -Wall -O3 -fno-exceptions -pthread -DETCDIR=\"/etc\" -Ilibsensors -fPIE
+LOCAL_CXXFLAGS += -fno-rtti -Wextra -Wpointer-arith
 LOCAL_LDFLAGS += -fPIE -pie
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)

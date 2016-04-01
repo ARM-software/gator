@@ -1,4 +1,10 @@
-	/* Copyright (C) ARM Limited 2015. All rights reserved. */
+	/**
+	 * Copyright (C) ARM Limited 2015-2016. All rights reserved.
+	 *
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License version 2 as
+	 * published by the Free Software Foundation.
+	 */
 	/* ELF64 header */
 eh:
 	.byte	0x7F		/* 0x00 e_ident[EI_MAG0] */

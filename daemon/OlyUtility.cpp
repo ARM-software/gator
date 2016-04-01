@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,10 +8,11 @@
 
 #include "OlyUtility.h"
 
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 #if defined(WIN32)
 #include <windows.h>
@@ -59,6 +60,42 @@ void stringToLower(char* string) {
     *string = tolower(*string);
     string++;
   }
+}
+
+bool stringToLongLong(long long *const value, const char *str, const int base) {
+  char *endptr;
+  long long v;
+  errno = 0;
+  v = strtoll(str, &endptr, base);
+  if (errno != 0 || *endptr != '\0') {
+    return false;
+  }
+  *value = v;
+
+  return true;
+}
+
+bool stringToLong(long *const value, const char *str, const int base) {
+  char *endptr;
+  long v;
+  errno = 0;
+  v = strtol(str, &endptr, base);
+  if (errno != 0 || *endptr != '\0') {
+    return false;
+  }
+  *value = v;
+
+  return true;
+}
+
+bool stringToInt(int *const value, const char *str, const int base) {
+  long v;
+  if (!stringToLong(&v, str, base)) {
+    return false;
+  }
+  *value = v;
+
+  return true;
 }
 
 // Modifies fullpath with the path part including the trailing path separator

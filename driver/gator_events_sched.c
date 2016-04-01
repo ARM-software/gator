@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,8 +13,9 @@
 #define SCHED_SWITCH	0
 #define SCHED_TOTAL		(SCHED_SWITCH+1)
 
-static ulong sched_switch_enabled;
-static ulong sched_switch_key;
+static ulong sched_switch_enabled[GATOR_CLUSTER_COUNT];
+static bool sched_switch_enabled_any;
+static ulong sched_switch_key[GATOR_CLUSTER_COUNT];
 static DEFINE_PER_CPU(int[SCHED_TOTAL], schedCnt);
 static DEFINE_PER_CPU(int[SCHED_TOTAL * 2], schedGet);
 
@@ -37,21 +38,36 @@ GATOR_DEFINE_PROBE(sched_switch, TP_PROTO(bool preempt, struct task_struct *prev
 static int gator_events_sched_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
+	int i;
+	char buf[40];
 
 	/* switch */
-	dir = gatorfs_mkdir(sb, root, "Linux_sched_switch");
-	if (!dir)
-		return -1;
-	gatorfs_create_ulong(sb, dir, "enabled", &sched_switch_enabled);
-	gatorfs_create_ro_ulong(sb, dir, "key", &sched_switch_key);
+	for (i = 0; i < gator_cluster_count; i++) {
+		snprintf(buf, sizeof(buf), "%s_switch", gator_clusters[i]->pmnc_name);
+		dir = gatorfs_mkdir(sb, root, buf);
+		if (!dir)
+			return -1;
+		gatorfs_create_ulong(sb, dir, "enabled", &sched_switch_enabled[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &sched_switch_key[i]);
+	}
 
 	return 0;
 }
 
 static int gator_events_sched_start(void)
 {
+	int i;
+
+	sched_switch_enabled_any = false;
+	for (i = 0; i < gator_cluster_count; i++) {
+		if (sched_switch_enabled[i]) {
+			sched_switch_enabled_any = true;
+			break;
+		}
+	}
+
 	/* register tracepoints */
-	if (sched_switch_enabled)
+	if (sched_switch_enabled_any)
 		if (GATOR_REGISTER_TRACE(sched_switch))
 			goto sched_switch_exit;
 	pr_debug("gator: registered scheduler event tracepoints\n");
@@ -67,11 +83,12 @@ sched_switch_exit:
 
 static void gator_events_sched_stop(void)
 {
-	if (sched_switch_enabled)
+	if (sched_switch_enabled_any)
 		GATOR_UNREGISTER_TRACE(sched_switch);
 	pr_debug("gator: unregistered scheduler event tracepoints\n");
 
-	sched_switch_enabled = 0;
+	sched_switch_enabled_any = false;
+	memset(sched_switch_enabled, 0, sizeof(sched_switch_enabled));
 }
 
 static int gator_events_sched_read(int **buffer, bool sched_switch)
@@ -79,14 +96,15 @@ static int gator_events_sched_read(int **buffer, bool sched_switch)
 	unsigned long flags;
 	int len, value;
 	int cpu = get_physical_cpu();
+	int cluster = gator_clusterids[cpu];
 
 	len = 0;
-	if (sched_switch_enabled) {
+	if (sched_switch_enabled[cluster]) {
 		local_irq_save(flags);
 		value = per_cpu(schedCnt, cpu)[SCHED_SWITCH];
 		per_cpu(schedCnt, cpu)[SCHED_SWITCH] = 0;
 		local_irq_restore(flags);
-		per_cpu(schedGet, cpu)[len++] = sched_switch_key;
+		per_cpu(schedGet, cpu)[len++] = sched_switch_key[cluster];
 		per_cpu(schedGet, cpu)[len++] = value;
 	}
 
@@ -106,9 +124,12 @@ static struct gator_interface gator_events_sched_interface = {
 
 int gator_events_sched_init(void)
 {
-	sched_switch_enabled = 0;
+	int i;
 
-	sched_switch_key = gator_events_get_key();
+	for (i = 0; i < gator_cluster_count; i++) {
+		sched_switch_enabled[i] = 0;
+		sched_switch_key[i] = gator_events_get_key();
+	}
 
 	return gator_events_install(&gator_events_sched_interface);
 }

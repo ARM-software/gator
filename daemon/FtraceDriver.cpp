@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2014-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -298,7 +298,7 @@ void FtraceDriver::readEvents(mxml_node_t *const xml) {
 	const int kernelVersion = KERNEL_VERSION(release[0], release[1], release[2]);
 	if (kernelVersion < KERNEL_VERSION(3, 10, 0)) {
 		mSupported = false;
-		logg.logSetup("Ftrace Disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With user space gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be available.");
+		logg.logSetup("Ftrace is disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With user space gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be available.");
 		return;
 	}
 	mMonotonicRawSupport = kernelVersion >= KERNEL_VERSION(4, 2, 0);
@@ -306,7 +306,7 @@ void FtraceDriver::readEvents(mxml_node_t *const xml) {
 	// Is debugfs or tracefs available?
 	if (access(TRACING_PATH, R_OK) != 0) {
 		mSupported = false;
-		logg.logSetup("Ftrace Disabled\nUnable to locate the tracing directory");
+		logg.logSetup("Ftrace is disabled\nUnable to locate the tracing directory");
 		return;
 	}
 
@@ -347,7 +347,7 @@ void FtraceDriver::readEvents(mxml_node_t *const xml) {
 			char buf[1<<10];
 			snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", enable);
 			if (access(buf, W_OK) != 0) {
-				logg.logSetup("%s Disabled\n%s was not found", counter, buf);
+				logg.logSetup("%s is disabled\n%s was not found", counter, buf);
 				continue;
 			}
 		}

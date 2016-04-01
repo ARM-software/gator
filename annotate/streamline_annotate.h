@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015, ARM Limited
+ * Copyright (c) 2014-2016, ARM Limited
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -226,6 +226,9 @@ void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const 
 void gator_annotate_activity_switch(const uint32_t core, const uint32_t id, const uint32_t activity, const uint32_t tid);
 void gator_cam_track(const uint32_t view_uid, const uint32_t track_uid, const uint32_t parent_track, const char *const name);
 void gator_cam_job(const uint32_t view_uid, const uint32_t job_uid, const char *const name, const uint32_t track, const uint64_t start_time, const uint64_t duration, const uint32_t color, const uint32_t primary_dependency, const size_t dependency_count, const uint32_t *const dependencies);
+void gator_cam_job_start(const uint32_t view_uid, const uint32_t job_uid, const char *const name, const uint32_t track, const uint64_t time, const uint32_t color);
+void gator_cam_job_set_dependencies(const uint32_t view_uid, const uint32_t job_uid, const uint64_t time, const uint32_t primary_dependency, const size_t dependency_count, const uint32_t *const dependencies);
+void gator_cam_job_stop(const uint32_t view_uid, const uint32_t job_uid, const uint64_t time);
 void gator_cam_view_name(const uint32_t view_uid, const char *const name);
 
 #define ANNOTATE_DEFINE extern int gator_annotate_unused
@@ -255,6 +258,13 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name);
 	gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 1, &__dependency); \
 }
 #define CAM_JOB_DEPS(view_uid, job_uid, name, track, start_time, duration, color, dependency_count, dependencies) gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, dependency_count, dependencies)
+#define CAM_JOB_START(view_uid, job_uid, name, track, time, color) gator_cam_job_start(view_uid, job_uid, name, track, time, color)
+#define CAM_JOB_SET_DEP(view_uid, job_uid, time, dependency) { \
+	uint32_t __dependency = dependency; \
+	gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, 1, &__dependency); \
+}
+#define CAM_JOB_SET_DEPS(view_uid, job_uid, time, dependency_count, dependencies) gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, dependency_count, dependencies)
+#define CAM_JOB_STOP(view_uid, job_uid, time) gator_cam_job_stop(view_uid, job_uid, time)
 #define CAM_VIEW_NAME(view_uid, name) gator_cam_view_name(view_uid, name)
 
 #ifdef __cplusplus

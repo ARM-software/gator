@@ -3,7 +3,8 @@ CXX = $(CROSS_COMPILE)g++
 
 CFLAGS +=
 CXXFLAGS +=
-CPPFLAGS += -I../annotate -O0 -g3 -Wall -Wextra -Wshadow -Wc++-compat -std=gnu99 -Wno-long-long -MD -pthread -pipe
+CPPFLAGS += -I../annotate -O0 -g3 -MD -pthread -pipe
+CPPFLAGS += -Wall -Wextra -Wshadow -Wc++-compat -Wpointer-arith -Wundef -Wmissing-prototypes -Wstrict-prototypes
 LDFLAGS += -pthread
 LDLIBS += -lrt
 
@@ -12,7 +13,7 @@ COMPILE.c = $(CC) $(CFLAGS) $(CPPFLAGS) -c
 COMPILE.cpp = $(CXX) $(CXXFLAGS) $(CPPFLAGS) -c
 LINK.o = $(CC) $(LDFLAGS)
 
-TARGETS = absolute text cam delta visual
+TARGETS = absolute text cam delta visual shared
 
 all: $(TARGETS)
 
@@ -40,6 +41,9 @@ delta: delta.o streamline_annotate.o
 	$(LINK.o) $^ $(LDLIBS) $(OUTPUT_OPTION)
 
 visual: visual.o streamline_annotate.o
+	$(LINK.o) $^ $(LDLIBS) $(OUTPUT_OPTION)
+
+shared: shared.o streamline_annotate.o
 	$(LINK.o) $^ $(LDLIBS) $(OUTPUT_OPTION)
 
 clean:

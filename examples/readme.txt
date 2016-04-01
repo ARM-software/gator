@@ -5,6 +5,7 @@ visual.c:   output the ARM logo as a visual annotation.
 delta.c:    generate a custom delta counter chart by emitting annotations.
 absolute.c: generate a custom absolute counter chart by emitting annotations.
 cam.c:      generate a custom activity map (CAM) view by emitting CAM messages.
+shared.c:   generate a per-process unique counter and a counter shared by multiple processes.
 
 *** Building the examples ***
 

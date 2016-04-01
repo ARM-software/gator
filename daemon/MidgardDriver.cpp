@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -131,11 +131,9 @@ void MidgardDriver::query() const {
 			PacketHeader header;
 			const size_t bufSize = sizeof(gSessionData.mSharedData->mMaliMidgardCounters);
 			bool first = true;
-			// [DR] Do something with this
 			//uint32_t compatibilityTiebreak = 0;
 
 			while (true) {
-				// [DR] Store-and-forward data at capture start?
 				if (!readAll(uds, &header, sizeof(PacketHeader))) {
 					logg.logError("Unable to read Midgard header");
 					handleException();

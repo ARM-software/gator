@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2014-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,6 +13,7 @@
 #include "Buffer.h"
 #include "Counter.h"
 #include "Logging.h"
+#include "OlyUtility.h"
 #include "SessionData.h"
 
 // From instr/src/mve_instr_comm_protocol.h
@@ -69,13 +70,25 @@ void MaliVideoDriver::readEvents(mxml_node_t *const xml) {
 		if (counter == NULL) {
 			// Ignore
 		} else if (strncmp(counter, COUNTER, sizeof(COUNTER) - 1) == 0) {
-			const int i = strtol(counter + sizeof(COUNTER) - 1, NULL, 10);
+			int i;
+			if (!stringToInt(&i, counter + sizeof(COUNTER) - 1, 10)) {
+				logg.logError("The counter attribute of the Mali video counter %s is not an integer", counter);
+				handleException();
+			}
 			setCounters(new MaliVideoCounter(getCounters(), strdup(counter), MVCT_COUNTER, i));
 		} else if (strncmp(counter, EVENT, sizeof(EVENT) - 1) == 0) {
-			const int i = strtol(counter + sizeof(EVENT) - 1, NULL, 10);
+			int i;
+			if (!stringToInt(&i, counter + sizeof(EVENT) - 1, 10)) {
+				logg.logError("The event attribute of the Mali video counter %s is not an integer", counter);
+				handleException();
+			}
 			setCounters(new MaliVideoCounter(getCounters(), strdup(counter), MVCT_EVENT, i));
 		} else if (strncmp(counter, ACTIVITY, sizeof(ACTIVITY) - 1) == 0) {
-			const int i = strtol(counter + sizeof(ACTIVITY) - 1, NULL, 10);
+			int i;
+			if (!stringToInt(&i, counter + sizeof(ACTIVITY) - 1, 10)) {
+				logg.logError("The activity attribute of the Mali video counter %s is not an integer", counter);
+				handleException();
+			}
 			setCounters(new MaliVideoCounter(getCounters(), strdup(counter), MVCT_ACTIVITY, i));
 		}
 	}

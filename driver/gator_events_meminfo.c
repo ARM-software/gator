@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,6 +13,7 @@
 #include <linux/kthread.h>
 #include <linux/sched.h>
 #include <linux/semaphore.h>
+#include <linux/swap.h>
 #include <linux/workqueue.h>
 #include <trace/events/kmem.h>
 
@@ -22,6 +23,8 @@ enum {
 	MEMINFO_MEMFREE,
 	MEMINFO_MEMUSED,
 	MEMINFO_BUFFERRAM,
+	MEMINFO_CACHED,
+	MEMINFO_SLAB,
 	MEMINFO_TOTAL,
 };
 
@@ -37,6 +40,8 @@ static const char * const meminfo_names[] = {
 	"Linux_meminfo_memfree",
 	"Linux_meminfo_memused",
 	"Linux_meminfo_bufferram",
+	"Linux_meminfo_cached",
+	"Linux_meminfo_slab",
 };
 
 static const char * const proc_names[] = {
@@ -229,6 +234,13 @@ static void do_read(void)
 				continue;
 			case MEMINFO_BUFFERRAM:
 				value = info.bufferram * PAGE_SIZE;
+				break;
+			case MEMINFO_CACHED:
+				// total_swapcache_pages is not exported so the result is slightly different, but hopefully not too much
+				value = (global_page_state(NR_FILE_PAGES) /*- total_swapcache_pages()*/ - info.bufferram) * PAGE_SIZE;
+				break;
+			case MEMINFO_SLAB:
+				value = (global_page_state(NR_SLAB_RECLAIMABLE) + global_page_state(NR_SLAB_UNRECLAIMABLE)) * PAGE_SIZE;
 				break;
 			default:
 				value = 0;

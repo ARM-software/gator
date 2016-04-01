@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -365,7 +365,8 @@ static const char *gator_d_path(const struct path *path, char *buf, int buflen)
 			continue;
 		}
 		if (dentry == dentry->d_parent) {
-			pr_err("gator: parent is self\n");
+			/* Normal operation, at least for ashmem */
+			/* pr_err("gator: parent is self\n"); */
 			break;
 		}
 		dentry = dentry->d_parent;

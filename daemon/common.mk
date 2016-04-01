@@ -6,7 +6,7 @@
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
 CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MD -DETCDIR=\"/etc\" -Ilibsensors
-CXXFLAGS += -fno-rtti -Wextra -Wshadow # -Weffc++
+CXXFLAGS += -fno-rtti -Wextra -Wshadow -Wpointer-arith -Wundef # -Weffc++ -Wmissing-declarations
 ifeq ($(WERROR),1)
 	CPPFLAGS += -Werror
 endif
@@ -17,10 +17,27 @@ TARGET = gatord
 C_SRC = $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
 CXX_SRC = $(wildcard *.cpp)
 
+ifeq ($(V),1)
+	Q =
+	ECHO_HOSTCC =
+	ECHO_GEN =
+	ECHO_CC =
+	ECHO_CXX =
+	ECHO_CCLD =
+else
+	Q = @
+	ECHO_HOSTCC = @echo "  HOSTCC " $@
+	ECHO_GEN = @echo "  GEN    " $@
+	ECHO_CC = @echo "  CC     " $@
+	ECHO_CXX = @echo "  CXX    " $@
+	ECHO_CCLD = @echo "  CCLD   " $@
+endif
+
 all: $(TARGET)
 
 events.xml: events_header.xml $(wildcard events-*.xml) events_footer.xml
-	cat $^ > $@
+	$(ECHO_GEN)
+	$(Q)cat $^ > $@
 
 include $(wildcard *.d)
 include $(wildcard mxml/*.d)
@@ -35,23 +52,29 @@ libsensors/conf-lex.c: ;
 libsensors/conf-parse.c: ;
 
 %_xml.h: %.xml escape
-	./escape $< > $@
+	$(ECHO_GEN)
+	$(Q)./escape $< > $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(ECHO_CC)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(ECHO_CXX)
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 SrcMd5.cpp: $(wildcard *.cpp *.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
-	echo 'extern const char *const gSrcMd5 = "'`ls $^ | grep -Ev '^(.*_xml\.h|$@)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32`'";' > $@
+	$(ECHO_GEN)
+	$(Q)echo 'extern const char *const gSrcMd5 = "'`ls $^ | grep -Ev '^(.*_xml\.h|$@)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32`'";' > $@
 
 $(TARGET): $(CXX_SRC:%.cpp=%.o) $(C_SRC:%.c=%.o) SrcMd5.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(ECHO_CCLD)
+	$(Q)$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # Intentionally ignore CC as a native binary is required
 escape: escape.c
-	gcc $^ -o $@
+	$(ECHO_HOSTCC)
+	$(Q)gcc $^ -o $@
 
 clean:
 	rm -f *.d *.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) escape events.xml *_xml.h SrcMd5.cpp

@@ -1,5 +1,9 @@
 #!/bin/sh
-# Copyright (C) ARM Limited 2015. All rights reserved.
+# Copyright (C) ARM Limited 2015-2016. All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
 
 confirm() {
 	echo setup: confirm: $1
@@ -35,6 +39,10 @@ restore_selinux() {
 }
 
 ps_gator() {
+	# Use echo to merge multiple spaces into a single one as zsh preserves them all
+	# Space is required between the open parans otherwise dash complains
+	# Android doesn't require any arguments to show all processes, but Linux does. Android ps and Linux ps aux both put the pid second so they can be parsed the same way
+	# Use brackets around the g in gatord so that the grep command doesn't match
 	PS_GATOR=$(echo $( (ps aux; ps) | grep '[g]atord'))
 }
 
@@ -157,10 +165,6 @@ done
 
 # Kill gatord
 while true; do
-	# Use echo to merge multiple spaces into a single one as zsh preserves them all
-	# Space is required between the open parans otherwise dash complains
-	# Android doesn't require any arguments to show all processes, but Linux does. Android ps and Linux ps aux both put the pid second so they can be parsed the same way
-	# Use brackets around the g in gatord so that the grep command doesn't match
 	ps_gator
 	if [ "${PS_GATOR}z" = "z" ]; then
 		break
@@ -186,11 +190,13 @@ mv gator.ko gator.ko.old 2> /dev/null
 
 move $OLD_DIR/gatord$SUFFIX gatord
 chmod 755 gatord
+chown root:root gatord
 
 # Don't fail if notify.dex isn't present
 if [ -f $OLD_DIR/notify.dex$SUFFIX ]; then
 	move $OLD_DIR/notify.dex$SUFFIX notify.dex
 	chmod 644 notify.dex
+	chown root:root notify.dex
 fi
 
 # Redirect stdin/out/err so that adb will exit

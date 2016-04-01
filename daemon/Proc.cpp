@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +19,7 @@
 #include "Buffer.h"
 #include "DynBuf.h"
 #include "Logging.h"
+#include "OlyUtility.h"
 #include "SessionData.h"
 
 struct ProcStat {
@@ -117,9 +118,8 @@ static bool readProcTask(const uint64_t currTime, Buffer *const buffer, const in
 
 	struct dirent *dirent;
 	while ((dirent = readdir(task)) != NULL) {
-		char *endptr;
-		const int tid = strtol(dirent->d_name, &endptr, 10);
-		if (*endptr != '\0') {
+		int tid;
+		if (!stringToInt(&tid, dirent->d_name, 10)) {
 			// Ignore task items that are not integers like ., etc...
 			continue;
 		}
@@ -162,9 +162,8 @@ bool readProcSysDependencies(const uint64_t currTime, Buffer *const buffer, DynB
 
 	struct dirent *dirent;
 	while ((dirent = readdir(proc)) != NULL) {
-		char *endptr;
-		const int pid = strtol(dirent->d_name, &endptr, 10);
-		if (*endptr != '\0') {
+		int pid;
+		if (!stringToInt(&pid, dirent->d_name, 10)) {
 			// Ignore proc items that are not integers like ., cpuinfo, etc...
 			continue;
 		}
@@ -221,9 +220,8 @@ bool readProcMaps(const uint64_t currTime, Buffer *const buffer, DynBuf *const p
 
 	struct dirent *dirent;
 	while ((dirent = readdir(proc)) != NULL) {
-		char *endptr;
-		const int pid = strtol(dirent->d_name, &endptr, 10);
-		if (*endptr != '\0') {
+		int pid;
+		if (!stringToInt(&pid, dirent->d_name, 10)) {
 			// Ignore proc items that are not integers like ., cpuinfo, etc...
 			continue;
 		}

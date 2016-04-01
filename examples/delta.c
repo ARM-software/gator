@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2014-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,19 +17,17 @@ int main(void)
 	long long collatz = 9780657630LL;
 
 	ANNOTATE_SETUP;
-	ANNOTATE_DELTA_COUNTER(0, "collatz", "multiply");
-	ANNOTATE_DELTA_COUNTER(1, "collatz", "divide");
+	ANNOTATE_DELTA_COUNTER(0xd0, "collatz", "multiply");
+	ANNOTATE_DELTA_COUNTER(0xd1, "collatz", "divide");
 
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 
 	while (collatz != 1) {
 		if (collatz & 1) {
-			ANNOTATE_COUNTER_VALUE(0, 1);
-			printf("multiply\n");
+			ANNOTATE_COUNTER_VALUE(0xd0, 1);
 			collatz = 3*collatz + 1;
 		} else {
-			ANNOTATE_COUNTER_VALUE(1, 1);
-			printf("divide\n");
+			ANNOTATE_COUNTER_VALUE(0xd1, 1);
 			collatz = collatz/2;
 		}
 

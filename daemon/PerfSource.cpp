@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,8 +8,6 @@
 
 #include "PerfSource.h"
 
-#include <dirent.h>
-#include <errno.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/prctl.h>
@@ -21,6 +19,7 @@
 #include "Child.h"
 #include "DynBuf.h"
 #include "Logging.h"
+#include "OlyUtility.h"
 #include "PerfDriver.h"
 #include "Proc.h"
 #include "SessionData.h"
@@ -80,48 +79,7 @@ static void *syncFunc(void *arg)
 	return NULL;
 }
 
-static long getMaxCoreNum() {
-	DIR *dir = opendir("/sys/devices/system/cpu");
-	if (dir == NULL) {
-		logg.logError("Unable to determine the number of cores on the target, opendir failed");
-		handleException();
-	}
-
-	long maxCoreNum = -1;
-	struct dirent *dirent;
-	while ((dirent = readdir(dir)) != NULL) {
-		if (strncmp(dirent->d_name, "cpu", 3) == 0) {
-			char *endptr;
-			errno = 0;
-			long coreNum = strtol(dirent->d_name + 3, &endptr, 10);
-			if ((errno == 0) && (*endptr == '\0') && (coreNum >= maxCoreNum)) {
-				maxCoreNum = coreNum + 1;
-			}
-		}
-	}
-	closedir(dir);
-
-	if (maxCoreNum < 1) {
-		logg.logError("Unable to determine the number of cores on the target, no cpu# directories found");
-		handleException();
-	}
-
-	if (maxCoreNum >= NR_CPUS) {
-		logg.logError("Too many cores on the target, please increase NR_CPUS in Config.h");
-		handleException();
-	}
-
-	return maxCoreNum;
-}
-
 PerfSource::PerfSource(sem_t *senderSem, sem_t *startProfile) : mSummary(0, FRAME_SUMMARY, 1024, senderSem), mBuffer(NULL), mCountersBuf(), mCountersGroup(&mCountersBuf), mMonitor(), mUEvent(), mSenderSem(senderSem), mStartProfile(startProfile), mInterruptFd(-1), mIsDone(false) {
-	long l = sysconf(_SC_PAGE_SIZE);
-	if (l < 0) {
-		logg.logError("Unable to obtain the page size");
-		handleException();
-	}
-	gSessionData.mPageSize = static_cast<int>(l);
-	gSessionData.mCores = static_cast<int>(getMaxCoreNum());
 }
 
 PerfSource::~PerfSource() {
@@ -151,7 +109,7 @@ bool PerfSource::prepare() {
 			|| !gSessionData.mPerf.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
 
 			|| !mCountersGroup.createCpuGroup(currTime, mBuffer)
-			|| !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW, PERF_GROUP_LEADER | PERF_GROUP_PER_CPU)
+			|| !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW, PERF_GROUP_LEADER | PERF_GROUP_PER_CPU | PERF_GROUP_ALL_CLUSTERS, NULL)
 
 			|| !gSessionData.mPerf.enable(currTime, &mCountersGroup, mBuffer)
 			|| 0) {
@@ -359,11 +317,9 @@ bool PerfSource::handleUEvent(const uint64_t currTime) {
 			logg.logMessage("Unexpected cpu DEVPATH format");
 			return false;
 		}
-		char *endptr;
-		errno = 0;
-		int cpu = strtol(result.mDevPath + sizeof(CPU_DEVPATH) - 1, &endptr, 10);
-		if (errno != 0 || *endptr != '\0') {
-			logg.logMessage("strtol failed");
+		int cpu;
+		if (!stringToInt(&cpu, result.mDevPath + sizeof(CPU_DEVPATH) - 1, 10)) {
+			logg.logMessage("stringToInt failed");
 			return false;
 		}
 

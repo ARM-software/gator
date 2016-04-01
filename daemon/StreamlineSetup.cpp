@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2011-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2011-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -216,9 +216,8 @@ void StreamlineSetup::sendConfiguration() {
 
 void StreamlineSetup::sendDefaults() {
 	// Send the config built into the binary
-	const char* xml;
-	unsigned int size;
-	ConfigurationXML::getDefaultConfigurationXml(xml, size);
+	char* xml = ConfigurationXML::getDefaultConfigurationXml();
+	size_t size = strlen(xml);
 
 	// Artificial size restriction
 	if (size > 1024*1024) {
@@ -227,6 +226,7 @@ void StreamlineSetup::sendDefaults() {
 	}
 
 	sendData(xml, size, RESPONSE_XML);
+	free(xml);
 }
 
 void StreamlineSetup::sendCounters() {
@@ -240,19 +240,34 @@ void StreamlineSetup::sendCounters() {
 		count += driver->writeCounters(counters);
 	}
 
-	mxml_node_t *setup = mxmlNewElement(counters, "setup_warnings");
-	mxmlNewText(setup, 0, logg.getSetup());
-
 	if (count == 0) {
 		logg.logError("No counters found, this could be because /dev/gator/events can not be read or because perf is not working correctly");
 		handleException();
 	}
 
-	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
-	sendString(string, RESPONSE_XML);
+	mxml_node_t *setup = mxmlNewElement(counters, "setup_warnings");
+	mxmlNewText(setup, 0, logg.getSetup());
 
-	free(string);
+	if (gSessionData.mSharedData->mClustersAccurate) {
+		for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
+			mxml_node_t *node = mxmlNewElement(counters, "cluster");
+			mxmlElementSetAttrf(node, "id", "%i", cluster);
+			mxmlElementSetAttr(node, "name", gSessionData.mSharedData->mClusters[cluster]->getPmncName());
+		}
+		for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
+			if (gSessionData.mSharedData->mClusterIds[cpu] >= 0) {
+				mxml_node_t *node = mxmlNewElement(counters, "cpu");
+				mxmlElementSetAttrf(node, "id", "%i", cpu);
+				mxmlElementSetAttrf(node, "cluster", "%i", gSessionData.mSharedData->mClusterIds[cpu]);
+			}
+		}
+	}
+
+	char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
 	mxmlDelete(xml);
+
+	sendString(string, RESPONSE_XML);
+	free(string);
 }
 
 void StreamlineSetup::writeConfiguration(char* xml) {

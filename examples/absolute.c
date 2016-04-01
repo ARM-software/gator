@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2014-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -80,16 +80,16 @@ int main(void)
 	int i;
 
 	ANNOTATE_SETUP;
-	ANNOTATE_ABSOLUTE_COUNTER(0, "Simulated4", "Sine");
-	ANNOTATE_ABSOLUTE_COUNTER(1, "Simulated5", "Triangle");
-	ANNOTATE_ABSOLUTE_COUNTER(2, "Simulated6", "PWM");
+	ANNOTATE_ABSOLUTE_COUNTER(0xa0, "Simulated4", "Sine");
+	ANNOTATE_ABSOLUTE_COUNTER(0xa1, "Simulated5", "Triangle");
+	ANNOTATE_ABSOLUTE_COUNTER(0xa2, "Simulated6", "PWM");
 
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 
 	for (i = 0; i < 2000; ++i) {
-		ANNOTATE_COUNTER_VALUE(0, mmapped_simulate(0, 10000));
-		ANNOTATE_COUNTER_VALUE(1, mmapped_simulate(1, 10000));
-		ANNOTATE_COUNTER_VALUE(2, mmapped_simulate(2, 10000));
+		ANNOTATE_COUNTER_VALUE(0xa0, mmapped_simulate(0, 10000));
+		ANNOTATE_COUNTER_VALUE(0xa1, mmapped_simulate(1, 10000));
+		ANNOTATE_COUNTER_VALUE(0xa2, mmapped_simulate(2, 10000));
 
 		ts.tv_nsec += 10000000;
 		if (ts.tv_nsec > 1000000000) {
@@ -101,9 +101,9 @@ int main(void)
 
 	/* absolute counters will display the last value used, thus
 	 *   set all values to zero before exiting */
-	ANNOTATE_COUNTER_VALUE(0, 0);
-	ANNOTATE_COUNTER_VALUE(1, 0);
-	ANNOTATE_COUNTER_VALUE(2, 0);
+	ANNOTATE_COUNTER_VALUE(0xa0, 0);
+	ANNOTATE_COUNTER_VALUE(0xa1, 0);
+	ANNOTATE_COUNTER_VALUE(0xa2, 0);
 
 	return 0;
 }

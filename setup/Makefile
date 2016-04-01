@@ -1,4 +1,4 @@
-# Copyright (C) ARM Limited 2015. All rights reserved.
+# Copyright (C) ARM Limited 2015-2016. All rights reserved.
 
 CROSS_COMPILE_ARM = arm-linux-gnueabihf-
 CROSS_COMPILE_AARCH64 = aarch64-linux-gnu-

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -29,26 +29,44 @@ static DEFINE_PER_CPU(int, collecting);
  * counters the files are needed, nonetheless, to show that these
  * counters are available
  */
-static const char *sched_trace_event_names[] = {
+static const char *sched_wait_event_names[] = {
 	"Linux_cpu_wait_contention",
 	"Linux_cpu_wait_io",
-	"Linux_cpu_system",
-	"Linux_cpu_user",
 };
-static ulong sched_trace_enabled[ARRAY_SIZE(sched_trace_event_names)];
-static ulong sched_trace_keys[ARRAY_SIZE(sched_trace_event_names)];
+static ulong sched_wait_enabled[ARRAY_SIZE(sched_wait_event_names)];
+static ulong sched_wait_keys[ARRAY_SIZE(sched_wait_event_names)];
+
+static const char *sched_activity_event_names[] = {
+	"system",
+	"user",
+};
+static ulong sched_activity_enabled[ARRAY_SIZE(sched_activity_event_names)][GATOR_CLUSTER_COUNT];
+static ulong sched_activity_keys[ARRAY_SIZE(sched_activity_event_names)][GATOR_CLUSTER_COUNT];
 
 static int sched_trace_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
 	int i;
+	int j;
+	char buf[40];
 
-	for (i = 0; i < ARRAY_SIZE(sched_trace_event_names); ++i) {
-		dir = gatorfs_mkdir(sb, root, sched_trace_event_names[i]);
+	for (i = 0; i < ARRAY_SIZE(sched_wait_event_names); ++i) {
+		dir = gatorfs_mkdir(sb, root, sched_wait_event_names[i]);
 		if (!dir)
 			return -1;
-		gatorfs_create_ulong(sb, dir, "enabled", &sched_trace_enabled[i]);
-		gatorfs_create_ro_ulong(sb, dir, "key", &sched_trace_keys[i]);
+		gatorfs_create_ulong(sb, dir, "enabled", &sched_wait_enabled[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &sched_wait_keys[i]);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(sched_activity_event_names); ++i) {
+		for (j = 0; j < gator_cluster_count; j++) {
+			snprintf(buf, sizeof(buf), "%s_%s", gator_clusters[j]->pmnc_name, sched_activity_event_names[i]);
+			dir = gatorfs_mkdir(sb, root, buf);
+			if (!dir)
+				return -1;
+			gatorfs_create_ulong(sb, dir, "enabled", &sched_activity_enabled[i][j]);
+			gatorfs_create_ro_ulong(sb, dir, "key", &sched_activity_keys[i][j]);
+		}
 	}
 
 	return 0;
@@ -307,9 +325,17 @@ static void gator_trace_sched_offline(void)
 static void gator_trace_sched_init(void)
 {
 	int i;
+	int j;
 
-	for (i = 0; i < ARRAY_SIZE(sched_trace_enabled); i++) {
-		sched_trace_enabled[i] = 0;
-		sched_trace_keys[i] = gator_events_get_key();
+	for (i = 0; i < ARRAY_SIZE(sched_wait_enabled); i++) {
+		sched_wait_enabled[i] = 0;
+		sched_wait_keys[i] = gator_events_get_key();
+	}
+
+	for (i = 0; i < ARRAY_SIZE(sched_activity_enabled); i++) {
+		for (j = 0; j < gator_cluster_count; j++) {
+			sched_activity_enabled[i][j] = 0;
+			sched_activity_keys[i][j] = gator_events_get_key();
+		}
 	}
 }

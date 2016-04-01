@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -392,6 +392,9 @@ static void gator_events_perf_pmu_cpu_init(const struct gator_cpu *const gator_c
 {
 	int cnt;
 
+	if (gator_cluster_count < ARRAY_SIZE(gator_clusters))
+		gator_clusters[gator_cluster_count++] = gator_cpu;
+
 	if (attr_count < ARRAY_SIZE(attrs)) {
 		snprintf(attrs[attr_count].name, sizeof(attrs[attr_count].name), "%s_ccnt", gator_cpu->pmnc_name);
 		attrs[attr_count].type = type;
@@ -469,7 +472,7 @@ static int gator_events_perf_pmu_reread(void)
 #if defined(__arm__) || defined(__aarch64__)
 		if (gator_cpu == NULL) {
 			pr_err("gator: This CPU is not recognized, using the ARM architected counters\n");
-			gator_cpu = &(struct gator_cpu) { .pmnc_name = "Other", .cpuid = 0xfffff, .core_name = "Other", .pmnc_counters = 6 };
+			gator_cpu = &gator_pmu_other;
 		}
 #else
 		if (gator_cpu == NULL) {

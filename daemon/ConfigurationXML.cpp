@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,21 +17,21 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
+static const char TAG_CONFIGURATION[]       = "configuration";
+
 static const char ATTR_COUNTER[]            = "counter";
 static const char ATTR_REVISION[]           = "revision";
 static const char ATTR_EVENT[]              = "event";
 static const char ATTR_COUNT[]              = "count";
 static const char ATTR_CORES[]              = "cores";
 
+static const char CLUSTER_VAR[]             = "${cluster}";
+
 ConfigurationXML::ConfigurationXML() {
 	if (gSessionData.mCountersError != NULL) {
 		free(gSessionData.mCountersError);
 		gSessionData.mCountersError = NULL;
 	}
-
-	const char * configuration_xml;
-	unsigned int configuration_xml_len;
-	getDefaultConfigurationXml(configuration_xml, configuration_xml_len);
 
 	char path[PATH_MAX];
 
@@ -41,10 +41,7 @@ ConfigurationXML::ConfigurationXML() {
 	for (int retryCount = 0; retryCount < 2; ++retryCount) {
 		if (mConfigurationXML == NULL) {
 			logg.logMessage("Unable to locate configuration.xml, using default in binary");
-			// null-terminate configuration_xml
-			mConfigurationXML = (char*)malloc(configuration_xml_len + 1);
-			memcpy(mConfigurationXML, (const void*)configuration_xml, configuration_xml_len);
-			mConfigurationXML[configuration_xml_len] = 0;
+			mConfigurationXML = getDefaultConfigurationXml();
 		}
 
 		int ret = parse(mConfigurationXML);
@@ -151,7 +148,11 @@ int ConfigurationXML::configurationsTag(mxml_node_t *node) {
 		return 1; //revision issue;
 	}
 
-	int revision = strtol(revision_string, NULL, 10);
+	int revision;
+	if (!stringToInt(&revision, revision_string, 10)) {
+		logg.logError("Configuration XML revision must be an integer");
+		handleException();
+	}
 	if (revision < CONFIGURATION_REVISION) {
 		return 1; // revision issue
 	}
@@ -173,9 +174,30 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	Counter & counter = gSessionData.mCounters[mIndex];
 	counter.clear();
 	if (mxmlElementGetAttr(node, ATTR_COUNTER)) counter.setType(mxmlElementGetAttr(node, ATTR_COUNTER));
-	if (mxmlElementGetAttr(node, ATTR_EVENT)) counter.setEvent(strtol(mxmlElementGetAttr(node, ATTR_EVENT), NULL, 16));
-	if (mxmlElementGetAttr(node, ATTR_COUNT)) counter.setCount(strtol(mxmlElementGetAttr(node, ATTR_COUNT), NULL, 10));
-	if (mxmlElementGetAttr(node, ATTR_CORES)) counter.setCores(strtol(mxmlElementGetAttr(node, ATTR_CORES), NULL, 10));
+	if (mxmlElementGetAttr(node, ATTR_EVENT)) {
+		int event;
+		if (!stringToInt(&event, mxmlElementGetAttr(node, ATTR_EVENT), 16)) {
+			logg.logError("Configuration XML event must be an integer");
+			handleException();
+		}
+		counter.setEvent(event);
+	}
+	if (mxmlElementGetAttr(node, ATTR_COUNT)) {
+		int count;
+		if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), 10)) {
+			logg.logError("Configuration XML count must be an integer");
+			handleException();
+		}
+		counter.setCount(count);
+	}
+	if (mxmlElementGetAttr(node, ATTR_CORES)) {
+		int cores;
+		if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), 10)) {
+			logg.logError("Configuration XML cores must be an integer");
+			handleException();
+		}
+		counter.setCores(cores);
+	}
 	if (counter.getCount() > 0) {
 		gSessionData.mIsEBS = true;
 	}
@@ -204,10 +226,32 @@ void ConfigurationXML::configurationTag(mxml_node_t *node) {
 	}
 }
 
-void ConfigurationXML::getDefaultConfigurationXml(const char * & xml, unsigned int & len) {
+char *ConfigurationXML::getDefaultConfigurationXml() {
 #include "defaults_xml.h" // defines and initializes char defaults_xml[] and int defaults_xml_len
-	xml = (const char *)defaults_xml;
-	len = defaults_xml_len;
+	(void)defaults_xml_len;
+
+	// Resolve ${cluster}
+	mxml_node_t *xml = mxmlLoadString(NULL, (const char *)defaults_xml, MXML_NO_CALLBACK);
+	for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND),
+		   *next = mxmlFindElement(node, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND);
+		 node != NULL;
+		 node = next, next = mxmlFindElement(node, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND)) {
+		const char *counter = mxmlElementGetAttr(node, ATTR_COUNTER);
+		if (counter != NULL && strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0) {
+			for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
+				mxml_node_t *n = mxmlNewElement(mxmlGetParent(node), TAG_CONFIGURATION);
+				copyMxmlElementAttrs(n, node);
+				char buf[1<<7];
+				snprintf(buf, sizeof(buf), "%s%s", gSessionData.mSharedData->mClusters[cluster]->getPmncName(), counter + sizeof(CLUSTER_VAR) - 1);
+				mxmlElementSetAttr(n, ATTR_COUNTER, buf);
+			}
+			mxmlDelete(node);
+		}
+	}
+
+	char *str = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+	mxmlDelete(xml);
+	return str;
 }
 
 void ConfigurationXML::getPath(char* path) {

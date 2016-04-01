@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -62,7 +62,10 @@ void SessionXML::parse() {
 
 void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node) {
 	int version = 0;
-	if (mxmlElementGetAttr(node, ATTR_VERSION)) version = strtol(mxmlElementGetAttr(node, ATTR_VERSION), NULL, 10);
+	if (mxmlElementGetAttr(node, ATTR_VERSION) && !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), 10)) {
+		logg.logError("Invalid session.xml version must be an integer");
+		handleException();
+	}
 	if (version != 1) {
 		logg.logError("Invalid session.xml version: %d", version);
 		handleException();
@@ -83,9 +86,15 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node) {
 
 	// integers/bools
 	parameters.call_stack_unwinding = stringToBool(mxmlElementGetAttr(node, ATTR_CALL_STACK_UNWINDING), false);
-	if (mxmlElementGetAttr(node, ATTR_DURATION)) gSessionData.mDuration = strtol(mxmlElementGetAttr(node, ATTR_DURATION), NULL, 10);
+	if (mxmlElementGetAttr(node, ATTR_DURATION) && !stringToInt(&gSessionData.mDuration, mxmlElementGetAttr(node, ATTR_DURATION), 10)) {
+		logg.logError("Invalid session.xml duration must be an integer");
+		handleException();
+	}
 	gSessionData.mFtraceRaw = stringToBool(mxmlElementGetAttr(node, USE_EFFICIENT_FTRACE), false);
-	if (mxmlElementGetAttr(node, ATTR_LIVE_RATE)) parameters.live_rate = strtol(mxmlElementGetAttr(node, ATTR_LIVE_RATE), NULL, 10);
+	if (mxmlElementGetAttr(node, ATTR_LIVE_RATE) && !stringToInt(&parameters.live_rate, mxmlElementGetAttr(node, ATTR_LIVE_RATE), 10)) {
+		logg.logError("Invalid session.xml live_rate must be an integer");
+		handleException();
+	}
 
 	// parse subtags
 	node = mxmlGetFirstChild(node);

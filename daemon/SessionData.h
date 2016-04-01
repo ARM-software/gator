@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,7 +23,7 @@
 #include "PerfDriver.h"
 #include "TtraceDriver.h"
 
-#define PROTOCOL_VERSION 231
+#define PROTOCOL_VERSION 240
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -71,6 +71,14 @@ public:
 		return mPmncCounters;
 	}
 
+	void setType(int type) {
+		mType = type;
+	}
+
+	int getType() const {
+		return mType;
+	}
+
 	static GatorCpu *find(const char *const name);
 
 	static GatorCpu *find(const int cpuid);
@@ -83,6 +91,7 @@ private:
 	const char *const mDtName;
 	const int mCpuid;
 	const int mPmncCounters;
+	int mType;
 };
 
 class UncorePmu {
@@ -129,10 +138,14 @@ public:
 	SharedData();
 
 	int mCpuIds[NR_CPUS];
+	int mClusterIds[NR_CPUS];
+	const GatorCpu *mClusters[CLUSTER_COUNT];
+	int mClusterCount;
 	size_t mMaliUtgardCountersSize;
 	char mMaliUtgardCounters[1<<12];
 	size_t mMaliMidgardCountersSize;
 	char mMaliMidgardCounters[1<<13];
+	bool mClustersAccurate;
 
 private:
 	// Intentionally unimplemented
@@ -151,6 +164,7 @@ public:
 	void parseSessionXML(char* xmlString);
 	void readModel();
 	void readCpuInfo();
+	void updateClusterIds();
 
 	SharedData *mSharedData;
 
@@ -226,5 +240,9 @@ void logCpuNotFound();
 #define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
 
 bool getLinuxVersion(int version[3]);
+
+const char *mxmlWhitespaceCB(mxml_node_t *node, int where);
+
+void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src);
 
 #endif // SESSION_DATA_H

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2014-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -44,20 +44,19 @@ AtraceDriver::~AtraceDriver() {
 void AtraceDriver::readEvents(mxml_node_t *const xml) {
 	if (access("/system/bin/setprop", X_OK) != 0) {
 		// Reduce warning noise
-		//logg.logSetup("Atrace Disabled\nsetprop is not found, this is not an Android target");
+		//logg.logSetup("Atrace is disabled\nUnable to find setprop, this is not an Android target");
 		return;
 	}
 	if (!gSessionData.mFtraceDriver.isSupported()) {
-		logg.logSetup("Atrace Disabled\nftrace support is required");
+		logg.logSetup("Atrace is disabled\nSupport for ftrace is required");
 		return;
 	}
-
 	if (getApplicationFullPath(mNotifyPath, sizeof(mNotifyPath)) != 0) {
 		logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
 	}
 	strncat(mNotifyPath, "notify.dex", sizeof(mNotifyPath) - strlen(mNotifyPath) - 1);
 	if (access(mNotifyPath, W_OK) != 0) {
-		logg.logSetup("Atrace Disabled\nunable to locate notify.dex");
+		logg.logSetup("Atrace is disabled\nUnable to locate notify.dex");
 		return;
 	}
 
@@ -78,12 +77,17 @@ void AtraceDriver::readEvents(mxml_node_t *const xml) {
 			continue;
 		}
 
-		const char *flag = mxmlElementGetAttr(node, "flag");
-		if (flag == NULL) {
+		const char *flagStr = mxmlElementGetAttr(node, "flag");
+		if (flagStr == NULL) {
 			logg.logError("The atrace counter %s is missing the required flag attribute", counter);
 			handleException();
 		}
-		setCounters(new AtraceCounter(getCounters(), strdup(counter), strtol(flag, NULL, 16)));
+		int flag;
+		if (!stringToInt(&flag, flagStr, 16)) {
+			logg.logError("The flag attribute of the atrace counter %s is not a hex integer", counter);
+			handleException();
+		}
+		setCounters(new AtraceCounter(getCounters(), strdup(counter), flag));
 	}
 }
 
@@ -96,7 +100,7 @@ void AtraceDriver::setAtrace(const int flags) {
 	} else if (pid == 0) {
 		char buf[1<<10];
 		snprintf(buf, sizeof(buf), "setprop debug.atrace.tags.enableflags %i; "
-			 "dalvikvm -cp %s com.android.internal.util.WithFramework Notify", flags, mNotifyPath);
+			 "CLASSPATH=%s app_process /system/bin Notify", flags, mNotifyPath);
 		execlp("sh", "sh", "-c", buf, NULL);
 		exit(0);
 	}

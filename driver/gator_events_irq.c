@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,10 +14,12 @@
 #define SOFTIRQ		1
 #define TOTALIRQ	(SOFTIRQ+1)
 
-static ulong hardirq_enabled;
-static ulong softirq_enabled;
-static ulong hardirq_key;
-static ulong softirq_key;
+static ulong hardirq_enabled[GATOR_CLUSTER_COUNT];
+static bool hardirq_enabled_any;
+static ulong softirq_enabled[GATOR_CLUSTER_COUNT];
+static bool softirq_enabled_any;
+static ulong hardirq_key[GATOR_CLUSTER_COUNT];
+static ulong softirq_key[GATOR_CLUSTER_COUNT];
 static DEFINE_PER_CPU(atomic_t[TOTALIRQ], irqCnt);
 static DEFINE_PER_CPU(int[TOTALIRQ * 2], irqGet);
 
@@ -35,20 +37,28 @@ GATOR_DEFINE_PROBE(softirq_exit, TP_PROTO(unsigned int vec_nr))
 static int gator_events_irq_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
+	int i;
+	char buf[40];
 
 	/* irq */
-	dir = gatorfs_mkdir(sb, root, "Linux_irq_irq");
-	if (!dir)
-		return -1;
-	gatorfs_create_ulong(sb, dir, "enabled", &hardirq_enabled);
-	gatorfs_create_ro_ulong(sb, dir, "key", &hardirq_key);
+	for (i = 0; i < gator_cluster_count; i++) {
+		snprintf(buf, sizeof(buf), "%s_irq", gator_clusters[i]->pmnc_name);
+		dir = gatorfs_mkdir(sb, root, buf);
+		if (!dir)
+			return -1;
+		gatorfs_create_ulong(sb, dir, "enabled", &hardirq_enabled[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &hardirq_key[i]);
+	}
 
 	/* soft irq */
-	dir = gatorfs_mkdir(sb, root, "Linux_irq_softirq");
-	if (!dir)
-		return -1;
-	gatorfs_create_ulong(sb, dir, "enabled", &softirq_enabled);
-	gatorfs_create_ro_ulong(sb, dir, "key", &softirq_key);
+	for (i = 0; i < gator_cluster_count; i++) {
+		snprintf(buf, sizeof(buf), "%s_softirq", gator_clusters[i]->pmnc_name);
+		dir = gatorfs_mkdir(sb, root, buf);
+		if (!dir)
+			return -1;
+		gatorfs_create_ulong(sb, dir, "enabled", &softirq_enabled[i]);
+		gatorfs_create_ro_ulong(sb, dir, "key", &softirq_key[i]);
+	}
 
 	return 0;
 }
@@ -56,17 +66,18 @@ static int gator_events_irq_create_files(struct super_block *sb, struct dentry *
 static int gator_events_irq_online(int **buffer, bool migrate)
 {
 	int len = 0, cpu = get_physical_cpu();
+	int cluster = gator_clusterids[cpu];
 
 	/* synchronization with the irq_exit functions is not necessary as the values are being reset */
-	if (hardirq_enabled) {
+	if (hardirq_enabled[cluster]) {
 		atomic_set(&per_cpu(irqCnt, cpu)[HARDIRQ], 0);
-		per_cpu(irqGet, cpu)[len++] = hardirq_key;
+		per_cpu(irqGet, cpu)[len++] = hardirq_key[cluster];
 		per_cpu(irqGet, cpu)[len++] = 0;
 	}
 
-	if (softirq_enabled) {
+	if (softirq_enabled[cluster]) {
 		atomic_set(&per_cpu(irqCnt, cpu)[SOFTIRQ], 0);
-		per_cpu(irqGet, cpu)[len++] = softirq_key;
+		per_cpu(irqGet, cpu)[len++] = softirq_key[cluster];
 		per_cpu(irqGet, cpu)[len++] = 0;
 	}
 
@@ -78,11 +89,22 @@ static int gator_events_irq_online(int **buffer, bool migrate)
 
 static int gator_events_irq_start(void)
 {
+	int i;
+
+	hardirq_enabled_any = false;
+	softirq_enabled_any = false;
+	for (i = 0; i < gator_cluster_count; i++) {
+		if (hardirq_enabled[i])
+			hardirq_enabled_any = true;
+		if (softirq_enabled[i])
+			softirq_enabled_any = true;
+	}
+
 	/* register tracepoints */
-	if (hardirq_enabled)
+	if (hardirq_enabled_any)
 		if (GATOR_REGISTER_TRACE(irq_handler_exit))
 			goto fail_hardirq_exit;
-	if (softirq_enabled)
+	if (softirq_enabled_any)
 		if (GATOR_REGISTER_TRACE(softirq_exit))
 			goto fail_softirq_exit;
 	pr_debug("gator: registered irq tracepoints\n");
@@ -91,7 +113,7 @@ static int gator_events_irq_start(void)
 
 	/* unregister tracepoints on error */
 fail_softirq_exit:
-	if (hardirq_enabled)
+	if (hardirq_enabled_any)
 		GATOR_UNREGISTER_TRACE(irq_handler_exit);
 fail_hardirq_exit:
 	pr_err("gator: irq tracepoints failed to activate, please verify that tracepoints are enabled in the linux kernel\n");
@@ -101,35 +123,38 @@ fail_hardirq_exit:
 
 static void gator_events_irq_stop(void)
 {
-	if (hardirq_enabled)
+	if (hardirq_enabled_any)
 		GATOR_UNREGISTER_TRACE(irq_handler_exit);
-	if (softirq_enabled)
+	if (softirq_enabled_any)
 		GATOR_UNREGISTER_TRACE(softirq_exit);
 	pr_debug("gator: unregistered irq tracepoints\n");
 
-	hardirq_enabled = 0;
-	softirq_enabled = 0;
+	hardirq_enabled_any = false;
+	memset(hardirq_enabled, 0, sizeof(hardirq_enabled));
+	softirq_enabled_any = false;
+	memset(softirq_enabled, 0, sizeof(softirq_enabled));
 }
 
 static int gator_events_irq_read(int **buffer, bool sched_switch)
 {
 	int len, value;
 	int cpu = get_physical_cpu();
+	int cluster = gator_clusterids[cpu];
 
 	len = 0;
-	if (hardirq_enabled) {
+	if (hardirq_enabled[cluster]) {
 		value = atomic_read(&per_cpu(irqCnt, cpu)[HARDIRQ]);
 		atomic_sub(value, &per_cpu(irqCnt, cpu)[HARDIRQ]);
 
-		per_cpu(irqGet, cpu)[len++] = hardirq_key;
+		per_cpu(irqGet, cpu)[len++] = hardirq_key[cluster];
 		per_cpu(irqGet, cpu)[len++] = value;
 	}
 
-	if (softirq_enabled) {
+	if (softirq_enabled[cluster]) {
 		value = atomic_read(&per_cpu(irqCnt, cpu)[SOFTIRQ]);
 		atomic_sub(value, &per_cpu(irqCnt, cpu)[SOFTIRQ]);
 
-		per_cpu(irqGet, cpu)[len++] = softirq_key;
+		per_cpu(irqGet, cpu)[len++] = softirq_key[cluster];
 		per_cpu(irqGet, cpu)[len++] = value;
 	}
 
@@ -150,11 +175,15 @@ static struct gator_interface gator_events_irq_interface = {
 
 int gator_events_irq_init(void)
 {
-	hardirq_key = gator_events_get_key();
-	softirq_key = gator_events_get_key();
+	int i;
 
-	hardirq_enabled = 0;
-	softirq_enabled = 0;
+	for (i = 0; i < gator_cluster_count; i++) {
+		hardirq_key[i] = gator_events_get_key();
+		softirq_key[i] = gator_events_get_key();
+
+		hardirq_enabled[i] = 0;
+		softirq_enabled[i] = 0;
+	}
 
 	return gator_events_install(&gator_events_irq_interface);
 }

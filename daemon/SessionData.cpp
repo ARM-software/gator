@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,6 +8,7 @@
 
 #include "SessionData.h"
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -20,6 +21,7 @@
 #include "Logging.h"
 #include "MemInfoDriver.h"
 #include "NetDriver.h"
+#include "OlyUtility.h"
 #include "SessionXML.h"
 
 #define CORE_NAME_UNKNOWN "unknown"
@@ -31,7 +33,7 @@ SessionData gSessionData;
 
 GatorCpu *GatorCpu::mHead;
 
-GatorCpu::GatorCpu(const char *const coreName, const char *const pmncName, const char *const dtName, const int cpuid, const int pmncCounters) : mNext(mHead), mCoreName(coreName), mPmncName(pmncName), mDtName(dtName), mCpuid(cpuid), mPmncCounters(pmncCounters) {
+GatorCpu::GatorCpu(const char *const coreName, const char *const pmncName, const char *const dtName, const int cpuid, const int pmncCounters) : mNext(mHead), mCoreName(coreName), mPmncName(pmncName), mDtName(dtName), mCpuid(cpuid), mPmncCounters(pmncCounters), mType(-1) {
 	mHead = this;
 }
 
@@ -94,6 +96,38 @@ SessionData::SessionData() {
 SessionData::~SessionData() {
 }
 
+static long getMaxCoreNum() {
+	DIR *dir = opendir("/sys/devices/system/cpu");
+	if (dir == NULL) {
+		logg.logError("Unable to determine the number of cores on the target, opendir failed");
+		handleException();
+	}
+
+	long maxCoreNum = -1;
+	struct dirent *dirent;
+	while ((dirent = readdir(dir)) != NULL) {
+		if (strncmp(dirent->d_name, "cpu", 3) == 0) {
+			long coreNum;
+			if (stringToLong(&coreNum, dirent->d_name + 3, 10) && (coreNum >= maxCoreNum)) {
+				maxCoreNum = coreNum + 1;
+			}
+		}
+	}
+	closedir(dir);
+
+	if (maxCoreNum < 1) {
+		logg.logError("Unable to determine the number of cores on the target, no cpu# directories found");
+		handleException();
+	}
+
+	if (maxCoreNum >= NR_CPUS) {
+		logg.logError("Too many cores on the target, please increase NR_CPUS in Config.h");
+		handleException();
+	}
+
+	return maxCoreNum;
+}
+
 // Needed to use placement new
 inline void *operator new(size_t, void *ptr) { return ptr; }
 
@@ -138,9 +172,13 @@ void SessionData::initialize() {
 	mMonotonicStarted = -1;
 	mBacktraceDepth = 0;
 	mTotalBufferSize = 0;
-	// sysconf(_SC_NPROCESSORS_CONF) is unreliable on 2.6 Android, get the value from the kernel module
-	mCores = 1;
-	mPageSize = 0;
+	mCores = static_cast<int>(getMaxCoreNum());
+	long l = sysconf(_SC_PAGE_SIZE);
+	if (l < 0) {
+		logg.logError("Unable to obtain the page size");
+		handleException();
+	}
+	mPageSize = static_cast<int>(l);
 	mAnnotateStart = -1;
 }
 
@@ -206,19 +244,24 @@ void SessionData::readModel() {
 	fclose(fh);
 }
 
-static void setImplementer(int &cpuId, const int implementer) {
-	if (cpuId == -1) {
-		cpuId = 0;
+static void setImplementer(int *const cpuId, const int implementer) {
+	if (*cpuId == -1) {
+		*cpuId = 0;
 	}
-	cpuId |= implementer << 12;
+	*cpuId |= implementer << 12;
 }
 
-static void setPart(int &cpuId, const int part) {
-	if (cpuId == -1) {
-		cpuId = 0;
+static void setPart(int *const cpuId, const int part) {
+	if (*cpuId == -1) {
+		*cpuId = 0;
 	}
-	cpuId |= part;
+	*cpuId |= part;
 }
+
+static const char HARDWARE[] = "Hardware";
+static const char CPU_IMPLEMENTER[] = "CPU implementer";
+static const char CPU_PART[] = "CPU part";
+static const char PROCESSOR[] = "processor";
 
 void SessionData::readCpuInfo() {
 	char temp[256]; // arbitrarily large amount
@@ -233,6 +276,7 @@ void SessionData::readCpuInfo() {
 
 	bool foundCoreName = (strcmp(mCoreName, CORE_NAME_UNKNOWN) != 0);
 	int processor = -1;
+	bool foundProcessorInSection = false;
 	while (fgets(temp, sizeof(temp), f)) {
 		const size_t len = strlen(temp);
 
@@ -246,13 +290,14 @@ void SessionData::readCpuInfo() {
 		if (len == 1) {
 			// New section, clear the processor. Streamline will not know the cpus if the pre Linux 3.8 format of cpuinfo is encountered but also that no incorrect information will be transmitted.
 			processor = -1;
+			foundProcessorInSection = false;
 			continue;
 		}
 
-		const bool foundHardware = !foundCoreName && strstr(temp, "Hardware") != 0;
-		const bool foundCPUImplementer = strstr(temp, "CPU implementer") != 0;
-		const bool foundCPUPart = strstr(temp, "CPU part") != 0;
-		const bool foundProcessor = strstr(temp, "processor") != 0;
+		const bool foundHardware = !foundCoreName && strncmp(temp, HARDWARE, sizeof(HARDWARE) - 1) == 0;
+		const bool foundCPUImplementer = strncmp(temp, CPU_IMPLEMENTER, sizeof(CPU_IMPLEMENTER) - 1) == 0;
+		const bool foundCPUPart = strncmp(temp, CPU_PART, sizeof(CPU_PART) - 1) == 0;
+		const bool foundProcessor = strncmp(temp, PROCESSOR, sizeof(PROCESSOR) - 1) == 0;
 		if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
 			char* position = strchr(temp, ':');
 			if (position == NULL || (unsigned int)(position - temp) + 2 >= strlen(temp)) {
@@ -269,45 +314,82 @@ void SessionData::readCpuInfo() {
 			}
 
 			if (foundCPUImplementer) {
-				const int implementer = strtol(position, NULL, 0);
-				if (processor >= NR_CPUS) {
+				int implementer;
+				if (!stringToInt(&implementer, position, 0)) {
+					// Do nothing
+				} else if (processor >= NR_CPUS) {
 					logg.logMessage("Too many processors, please increase NR_CPUS");
 				} else if (processor >= 0) {
-					setImplementer(mSharedData->mCpuIds[processor], implementer);
+					setImplementer(&mSharedData->mCpuIds[processor], implementer);
 				} else {
-					setImplementer(mMaxCpuId, implementer);
+					setImplementer(&mMaxCpuId, implementer);
 				}
 			}
 
 			if (foundCPUPart) {
-				const int cpuId = strtol(position, NULL, 0);
-				if (processor >= NR_CPUS) {
+				int cpuId;
+				if (!stringToInt(&cpuId, position, 0)) {
+						// Do nothing
+				} else if (processor >= NR_CPUS) {
 					logg.logMessage("Too many processors, please increase NR_CPUS");
 				} else if (processor >= 0) {
-					setPart(mSharedData->mCpuIds[processor], cpuId);
+					setPart(&mSharedData->mCpuIds[processor], cpuId);
 				} else {
-					setPart(mMaxCpuId, cpuId);
+					setPart(&mMaxCpuId, cpuId);
 				}
 			}
 
 			if (foundProcessor) {
-				processor = strtol(position, NULL, 0);
+				if (foundProcessorInSection) {
+					// Found a second processor in this section, ignore them all
+					processor = -1;
+				} else if (stringToInt(&processor, position, 0)) {
+					foundProcessorInSection = true;
+				}
 			}
 		}
 	}
 
-	// If this does not have the full topology in /proc/cpuinfo, mCpuIds[0] may not have the 1 CPU part emitted - this guarantees it's in mMaxCpuId
-	for (int i = 0; i < NR_CPUS; ++i) {
-		if (mSharedData->mCpuIds[i] > mMaxCpuId) {
-			mMaxCpuId = mSharedData->mCpuIds[i];
-		}
-	}
+	updateClusterIds();
 
 	if (!foundCoreName) {
 		logg.logMessage("Could not determine core name from /proc/cpuinfo\n"
 				 "The core name in the captured xml file will be 'unknown'.");
 	}
 	fclose(f);
+}
+
+static int clusterCompare(const void *a, const void *b) {
+	const GatorCpu *const *const lhs = (const GatorCpu **)a;
+	const GatorCpu *const *const rhs = (const GatorCpu **)b;
+
+	return (*rhs)->getCpuid() - (*lhs)->getCpuid();
+}
+
+void SessionData::updateClusterIds() {
+	qsort(&mSharedData->mClusters, mSharedData->mClusterCount, sizeof(*mSharedData->mClusters), clusterCompare);
+	mSharedData->mClustersAccurate = true;
+	for (int i = 0; i < NR_CPUS; ++i) {
+		// If this does not have the full topology in /proc/cpuinfo, mCpuIds[0] may not have the 1 CPU part emitted - this guarantees it's in mMaxCpuId
+		if (mSharedData->mCpuIds[i] > mMaxCpuId) {
+			mMaxCpuId = mSharedData->mCpuIds[i];
+		}
+
+		int clusterId = -1;
+		for (int j = 0; j < min(mSharedData->mClusterCount, ARRAY_LENGTH(mSharedData->mClusters)); ++j) {
+			const int cpuId = mSharedData->mClusters[j]->getCpuid();
+			if (mSharedData->mCpuIds[i] == cpuId) {
+				clusterId = j;
+			}
+		}
+		if (i < mCores && clusterId == -1) {
+			// No corresponding cluster found for this CPU, most likely this is a big LITTLE system without multi-PMU support
+			mSharedData->mClusterIds[i] = 0;
+			mSharedData->mClustersAccurate = false;
+		} else {
+			mSharedData->mClusterIds[i] = clusterId;
+		}
+	}
 }
 
 uint64_t getTime() {

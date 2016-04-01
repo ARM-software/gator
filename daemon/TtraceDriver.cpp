@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2014-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2014-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -48,11 +48,11 @@ TtraceDriver::~TtraceDriver() {
 void TtraceDriver::readEvents(mxml_node_t *const xml) {
 	if (access("/etc/tizen-release", R_OK) != 0) {
 		// Reduce warning noise
-		//logg.logSetup("Ttrace Disabled\n/etc/tizen-release is not found, this is not a Tizen target");
+		//logg.logSetup("Ttrace is disabled\n/etc/tizen-release is not found, this is not a Tizen target");
 		return;
 	}
 	if (!gSessionData.mFtraceDriver.isSupported()) {
-		logg.logSetup("Ttrace Disabled\nftrace support is required");
+		logg.logSetup("Ttrace is disabled\nSupport for ftrace required");
 		return;
 	}
 
@@ -73,12 +73,17 @@ void TtraceDriver::readEvents(mxml_node_t *const xml) {
 			continue;
 		}
 
-		const char *flag = mxmlElementGetAttr(node, "flag");
-		if (flag == NULL) {
+		const char *flagStr = mxmlElementGetAttr(node, "flag");
+		if (flagStr == NULL) {
 			logg.logError("The ttrace counter %s is missing the required flag attribute", counter);
 			handleException();
 		}
-		setCounters(new TtraceCounter(getCounters(), strdup(counter), strtol(flag, NULL, 16)));
+		int flag;
+		if (!stringToInt(&flag, flagStr, 16)) {
+			logg.logError("The flag attribute of the ttrace counter %s is not a hex integer", counter);
+			handleException();
+		}
+		setCounters(new TtraceCounter(getCounters(), strdup(counter), flag));
 	}
 }
 

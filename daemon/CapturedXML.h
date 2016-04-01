@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,7 +20,5 @@ public:
 private:
 	mxml_node_t* getTree(bool includeTime);
 };
-
-const char * mxmlWhitespaceCB(mxml_node_t *node, int where);
 
 #endif //__CAPTURED_XML_H__

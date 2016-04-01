@@ -22,10 +22,10 @@ power management is disabled during profiling so these counters are not useful a
   </category>
 -->
   <category name="Mali-Midgard MMU Address Space" per_cpu="no">
-    <event counter="ARM_Mali-Midgard_MMU_AS_0" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 0" description="Mali MMU Address Space 0 usage."/>
-    <event counter="ARM_Mali-Midgard_MMU_AS_1" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 1" description="Mali MMU Address Space 1 usage."/>
-    <event counter="ARM_Mali-Midgard_MMU_AS_2" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 2" description="Mali MMU Address Space 2 usage."/>
-    <event counter="ARM_Mali-Midgard_MMU_AS_3" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 3" description="Mali MMU Address Space 3 usage."/>
+    <event counter="ARM_Mali-Midgard_MMU_AS_0" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 0" description="Mali MMU Address Space 0 usage."/>
+    <event counter="ARM_Mali-Midgard_MMU_AS_1" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 1" description="Mali MMU Address Space 1 usage."/>
+    <event counter="ARM_Mali-Midgard_MMU_AS_2" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 2" description="Mali MMU Address Space 2 usage."/>
+    <event counter="ARM_Mali-Midgard_MMU_AS_3" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 3" description="Mali MMU Address Space 3 usage."/>
   </category>
   <category name="Mali-Midgard MMU Page Fault" per_cpu="no">
     <event counter="ARM_Mali-Midgard_MMU_PAGE_FAULT_0" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 0" description="Reports the number of newly allocated pages after a MMU page fault in address space 0."/>

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -28,6 +28,8 @@ private:
 	int64_t mMemUsed;
 	int64_t mMemFree;
 	int64_t mBuffers;
+	int64_t mCached;
+	int64_t mSlab;
 
 	// Intentionally unimplemented
 	MemInfoDriver(const MemInfoDriver &);

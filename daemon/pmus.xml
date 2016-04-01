@@ -25,11 +25,14 @@
   <pmu pmnc_name="Krait" cpuid="0x51049" core_name="KraitSIM" pmnc_counters="4"/>
   <pmu pmnc_name="Krait" cpuid="0x5104d" core_name="Krait" pmnc_counters="4"/>
   <pmu pmnc_name="Krait" cpuid="0x5106f" core_name="Krait S4 Pro" pmnc_counters="4"/>
+  <pmu pmnc_name="ARMv8_Cortex_A32" cpuid="0x41d01" core_name="Cortex-A32" dt_name="arm,cortex-a32" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A35" cpuid="0x41d04" core_name="Cortex-A35" dt_name="arm,cortex-a35" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A53" cpuid="0x41d03" core_name="Cortex-A53" dt_name="arm,cortex-a53" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A57" cpuid="0x41d07" core_name="Cortex-A57" dt_name="arm,cortex-a57" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1" pmnc_counters="6"/>
+  <!-- This is a guess, but at least the CPU will be recognized -->
+  <pmu pmnc_name="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6"/>
 
   <uncore_pmu pmnc_name="CCI_400" core_name="CCI_400" pmnc_counters="4"/>
   <uncore_pmu pmnc_name="CCI_400_r1" core_name="CCI_400_r1" pmnc_counters="4"/>

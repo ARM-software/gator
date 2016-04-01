@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -384,9 +384,16 @@ static struct cmdline_t parseCommandLine(int argc, char** argv) {
 				cmdline.module = optarg;
 				break;
 			case 'p':
-				cmdline.port = strtol(optarg, NULL, 10);
+				if (!stringToInt(&cmdline.port, optarg, 10)) {
+					logg.logError("Port must be an integer");
+					handleException();
+				}
 				if ((cmdline.port == 8082) || (cmdline.port == 8083)) {
 					logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for annotations. Please select a different port.", cmdline.port);
+					handleException();
+				}
+				if (cmdline.port < 1 || cmdline.port > 65535) {
+					logg.logError("Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535", cmdline.port);
 					handleException();
 				}
 				break;

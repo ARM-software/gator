@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,11 +23,30 @@
 #define CORTEX_A9    0x41c09
 #define OTHER        0xfffff
 
+#define MAXSIZE_CORE_NAME 32
+
+struct gator_cpu {
+	struct list_head list;
+	unsigned long cpuid;
+	unsigned long pmnc_counters;
+	/* Human readable name */
+	char core_name[MAXSIZE_CORE_NAME];
+	/* gatorfs event and Perf PMU name */
+	char pmnc_name[MAXSIZE_CORE_NAME];
+	/* compatible from Documentation/devicetree/bindings/arm/cpus.txt */
+	char dt_name[MAXSIZE_CORE_NAME];
+};
+
+/* clusters */
+#define GATOR_CLUSTER_COUNT 4
+
+extern const struct gator_cpu *gator_clusters[GATOR_CLUSTER_COUNT];
+extern int gator_clusterids[NR_CPUS];
+extern int gator_cluster_count;
+
 /* gpu enums */
 #define MALI_4xx     1
 #define MALI_MIDGARD 2
-
-#define MAXSIZE_CORE_NAME 32
 
 /******************************************************************************
  * Filesystem

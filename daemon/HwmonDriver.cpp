@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -174,7 +174,7 @@ HwmonDriver::~HwmonDriver() {
 void HwmonDriver::readEvents(mxml_node_t *const) {
 	int err = sensors_init(NULL);
 	if (err) {
-		logg.logSetup("Libsensors Disabled\nInitialize failed (%d)", err);
+		logg.logSetup("Libsensors is disabled\nInitialize failed (%d)", err);
 		return;
 	}
 	sensors_sysfs_no_scaling = 1;

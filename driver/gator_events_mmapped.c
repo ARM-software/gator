@@ -1,7 +1,7 @@
 /*
  * Example events provider
  *
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -197,7 +197,7 @@ static struct gator_interface gator_events_mmapped_interface = {
 };
 
 /* Must not be static! */
-int __init gator_events_mmapped_init(void)
+int gator_events_mmapped_init(void)
 {
 	int i;
 

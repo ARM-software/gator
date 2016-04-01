@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION 231
+#define PROTOCOL_VERSION 240
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/slab.h>
@@ -168,6 +168,7 @@ static DEFINE_PER_CPU(u64, last_timestamp);
 static bool printed_monotonic_warning;
 
 static u32 gator_cpuids[NR_CPUS];
+int gator_clusterids[NR_CPUS];
 static bool sent_core_name[NR_CPUS];
 
 static DEFINE_PER_CPU(bool, in_scheduler_context);
@@ -180,6 +181,10 @@ static void gator_op_create_files(struct super_block *sb, struct dentry *root);
 static void gator_backtrace_handler(struct pt_regs *const regs);
 static int gator_events_perf_pmu_reread(void);
 static int gator_events_perf_pmu_create_files(struct super_block *sb, struct dentry *root);
+static void gator_trace_power_init(void);
+static int gator_trace_power_create_files(struct super_block *sb, struct dentry *root);
+static int sched_trace_create_files(struct super_block *sb, struct dentry *root);
+static void gator_trace_sched_init(void);
 
 /* gator_buffer is protected by being per_cpu and by having IRQs
  * disabled when writing to it. Most marshal_* calls take care of this
@@ -412,6 +417,18 @@ static void gator_timer_stop(void)
 	}
 }
 
+static int gator_get_clusterid(const u32 cpuid)
+{
+	int i;
+
+	for (i = 0; i < gator_cluster_count; i++) {
+		if (gator_clusters[i]->cpuid == cpuid)
+			return i;
+	}
+
+	return 0;
+}
+
 static void gator_send_core_name(const int cpu, const u32 cpuid)
 {
 #if defined(__arm__) || defined(__aarch64__)
@@ -422,6 +439,7 @@ static void gator_send_core_name(const int cpu, const u32 cpuid)
 
 		/* Save off this cpuid */
 		gator_cpuids[cpu] = cpuid;
+		gator_clusterids[cpu] = gator_get_clusterid(cpuid);
 		if (gator_cpu != NULL) {
 			core_name = gator_cpu->core_name;
 		} else {
@@ -440,7 +458,11 @@ static void gator_send_core_name(const int cpu, const u32 cpuid)
 
 static void gator_read_cpuid(void *arg)
 {
-	gator_cpuids[get_physical_cpu()] = gator_cpuid();
+	const u32 cpuid = gator_cpuid();
+	const int cpu = get_physical_cpu();
+
+	gator_cpuids[cpu] = cpuid;
+	gator_clusterids[cpu] = gator_get_clusterid(cpuid);
 }
 
 /* This function runs in interrupt context and on the appropriate core */
@@ -728,17 +750,7 @@ int gator_events_get_key(void)
 
 static int gator_init(void)
 {
-	int i;
-
 	calc_first_cluster_size();
-
-	/* events sources */
-	for (i = 0; i < ARRAY_SIZE(gator_events_list); i++)
-		if (gator_events_list[i])
-			gator_events_list[i]();
-
-	gator_trace_sched_init();
-	gator_trace_power_init();
 
 	return 0;
 }
@@ -1188,9 +1200,7 @@ static const struct file_operations depth_fops = {
 static void gator_op_create_files(struct super_block *sb, struct dentry *root)
 {
 	struct dentry *dir;
-	struct gator_interface *gi;
 	int cpu;
-	int err;
 
 	/* reinitialize default values */
 	gator_cpu_cores = 0;
@@ -1217,18 +1227,6 @@ static void gator_op_create_files(struct super_block *sb, struct dentry *root)
 	/* Linux Events */
 	dir = gatorfs_mkdir(sb, root, "events");
 	gator_pmu_create_files(sb, root, dir);
-	list_for_each_entry(gi, &gator_events, list)
-		if (gi->create_files) {
-			err = gi->create_files(sb, dir);
-			if (err != 0)
-				pr_err("gator: create_files failed for %s\n", gi->name);
-		}
-
-	/* Sched Events */
-	sched_trace_create_files(sb, dir);
-
-	/* Power interface */
-	gator_trace_power_create_files(sb, dir);
 }
 
 /******************************************************************************

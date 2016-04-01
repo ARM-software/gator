@@ -111,6 +111,8 @@ To improve portablility gatord is statically compiled against musl libc from htt
 
 ## Building the gator daemon
 
+Please note that Linux is required to build gatord
+
 ```
 cp -r /path/to/streamline/gator/daemon .
 ```

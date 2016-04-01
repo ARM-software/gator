@@ -3,5 +3,9 @@
 /absolute
 /cam
 /delta
+/shared
 /text
 /visual
+jni
+libs
+obj

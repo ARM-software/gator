@@ -1,14 +1,10 @@
-struct gator_cpu {
-	struct list_head list;
-	unsigned long cpuid;
-	unsigned long pmnc_counters;
-	/* Human readable name */
-	char core_name[MAXSIZE_CORE_NAME];
-	/* gatorfs event and Perf PMU name */
-	char pmnc_name[MAXSIZE_CORE_NAME];
-	/* compatible from Documentation/devicetree/bindings/arm/cpus.txt */
-	char dt_name[MAXSIZE_CORE_NAME];
-};
+/**
+ * Copyright (C) ARM Limited 2015-2016. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
 struct uncore_pmu {
 	struct list_head list;
@@ -26,6 +22,17 @@ static DEFINE_MUTEX(pmu_mutex);
 
 static struct super_block *gator_sb;
 static struct dentry *gator_events_dir;
+
+static const struct gator_cpu gator_pmu_other = {
+	.pmnc_name = "Other",
+	.cpuid = 0xfffff,
+	.core_name = "Other",
+	.pmnc_counters = 6,
+};
+
+const struct gator_cpu *gator_clusters[GATOR_CLUSTER_COUNT];
+int gator_cluster_count;
+static ulong gator_cluster_ids[GATOR_CLUSTER_COUNT];
 
 static const struct gator_cpu *gator_find_cpu_by_cpuid(const u32 cpuid)
 {
@@ -78,12 +85,49 @@ static bool gator_pmu_initialized;
 
 static ssize_t gator_pmu_init_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
+	struct gator_interface *gi;
+	int i;
+
 	if (gator_pmu_initialized)
 		return -EINVAL;
 	gator_pmu_initialized = true;
 	if (gator_events_perf_pmu_reread() != 0 ||
 			gator_events_perf_pmu_create_files(gator_sb, gator_events_dir) != 0)
 		return -EINVAL;
+
+	if (gator_cluster_count == 0)
+	  gator_clusters[gator_cluster_count++] = &gator_pmu_other;
+
+	/* cluster information */
+	{
+		struct dentry *dir;
+
+		dir = gatorfs_mkdir(gator_sb, file->f_path.dentry->d_parent, "clusters");
+		for (i = 0; i < gator_cluster_count; i++) {
+			gator_cluster_ids[i] = i;
+			gatorfs_create_ro_ulong(gator_sb, dir, gator_clusters[i]->pmnc_name, &gator_cluster_ids[i]);
+		}
+	}
+
+	/* needs PMU info, so initialize afterwards */
+	gator_trace_power_init();
+	if (gator_trace_power_create_files(gator_sb, gator_events_dir) != 0)
+		return -EINVAL;
+
+	gator_trace_sched_init();
+	if (sched_trace_create_files(gator_sb, gator_events_dir) != 0)
+		return -EINVAL;
+
+	/* events sources */
+	for (i = 0; i < ARRAY_SIZE(gator_events_list); i++)
+		if (gator_events_list[i])
+			gator_events_list[i]();
+
+	list_for_each_entry(gi, &gator_events, list)
+		if (gi->create_files)
+			if (gi->create_files(gator_sb, gator_events_dir) != 0)
+				pr_err("gator: create_files failed for %s\n", gi->name);
+
 	return count;
 }
 

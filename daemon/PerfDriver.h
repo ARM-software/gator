@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2015. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +19,7 @@
 
 class Buffer;
 class DynBuf;
+class GatorCpu;
 class PerfGroup;
 class PerfTracepoint;
 
@@ -46,7 +47,7 @@ public:
 	static long long getTracepointId(const char *const counter, const char *const name, DynBuf *const printb);
 
 private:
-	void addCpuCounters(const char *const counterName, const int type, const int numCounters);
+	void addCpuCounters(const GatorCpu *const cpu);
 	void addUncoreCounters(const char *const counterName, const int type, const int numCounters, const bool hasCyclesCounter);
 
 	int mIsSetup : 1,
