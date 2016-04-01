@@ -1240,6 +1240,7 @@ static void gator_op_create_files(struct super_block *sb, struct dentry *root)
 #define GATOR_TRACEPOINTS \
 	GATOR_HANDLE_TRACEPOINT(block_rq_complete); \
 	GATOR_HANDLE_TRACEPOINT(cpu_frequency); \
+	GATOR_HANDLE_TRACEPOINT(gpu_frequency); \
 	GATOR_HANDLE_TRACEPOINT(cpu_idle); \
 	GATOR_HANDLE_TRACEPOINT(cpu_migrate_begin); \
 	GATOR_HANDLE_TRACEPOINT(cpu_migrate_current); \

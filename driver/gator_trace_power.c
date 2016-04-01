@@ -35,6 +35,8 @@ enum {
 static DEFINE_PER_CPU(ulong, idle_prev_state);
 static ulong power_cpu_enabled[POWER_TOTAL];
 static ulong power_cpu_key[POWER_TOTAL];
+static ulong power_gpu_enabled;
+static ulong power_gpu_key;
 static ulong power_cpu_cores;
 
 static int gator_trace_power_create_files(struct super_block *sb, struct dentry *root)
@@ -62,6 +64,13 @@ static int gator_trace_power_create_files(struct super_block *sb, struct dentry 
 		gatorfs_create_ro_ulong(sb, dir, "key", &power_cpu_key[POWER_CPU_FREQ]);
 	}
 
+	/* gpu_frequency */
+	dir = gatorfs_mkdir(sb, root, "Linux_power_gpu_freq");
+	if (!dir)
+		return -1;
+	gatorfs_create_ulong(sb, dir, "enabled", &power_gpu_enabled);
+	gatorfs_create_ro_ulong(sb, dir, "key", &power_gpu_key);
+
 	return 0;
 }
 
@@ -70,6 +79,12 @@ GATOR_DEFINE_PROBE(cpu_frequency, TP_PROTO(unsigned int frequency, unsigned int 
 {
 	cpu = lcpu_to_pcpu(cpu);
 	marshal_event_single64(cpu, power_cpu_key[POWER_CPU_FREQ], frequency * 1000L);
+}
+
+GATOR_DEFINE_PROBE(gpu_frequency, TP_PROTO(unsigned int frequency))
+{
+	int pcpu = get_physical_cpu();
+	marshal_event_single64(pcpu, power_gpu_key, frequency * 1000L);
 }
 
 GATOR_DEFINE_PROBE(cpu_idle, TP_PROTO(unsigned int state, unsigned int cpu))
@@ -112,6 +127,10 @@ static int gator_trace_power_start(void)
 		if (GATOR_REGISTER_TRACE(cpu_frequency))
 			goto fail_cpu_frequency_exit;
 
+	if (power_gpu_enabled)
+		if (GATOR_REGISTER_TRACE(gpu_frequency))
+			goto fail_gpufreq_set_exit;
+
 	/* Always register for cpu_idle for detecting WFI */
 	if (GATOR_REGISTER_TRACE(cpu_idle))
 		goto fail_cpu_idle_exit;
@@ -125,6 +144,9 @@ static int gator_trace_power_start(void)
 
 	/* unregister tracepoints on error */
 fail_cpu_idle_exit:
+	if (power_gpu_enabled)
+		GATOR_UNREGISTER_TRACE(gpu_frequency);
+fail_gpufreq_set_exit:
 	if (power_cpu_enabled[POWER_CPU_FREQ])
 		GATOR_UNREGISTER_TRACE(cpu_frequency);
 fail_cpu_frequency_exit:
@@ -139,6 +161,10 @@ static void gator_trace_power_stop(void)
 
 	if (power_cpu_enabled[POWER_CPU_FREQ])
 		GATOR_UNREGISTER_TRACE(cpu_frequency);
+
+	if (power_gpu_enabled)
+		GATOR_UNREGISTER_TRACE(gpu_frequency);
+
 	GATOR_UNREGISTER_TRACE(cpu_idle);
 	pr_debug("gator: unregistered power event tracepoints\n");
 
