@@ -14,30 +14,32 @@
 
 class OlySocket;
 
-enum {
-	RESPONSE_XML = 1,
-	RESPONSE_APC_DATA = 3,
-	RESPONSE_ACK = 4,
-	RESPONSE_NAK = 5,
-	RESPONSE_ERROR = 0xFF
+enum
+{
+    RESPONSE_XML = 1,
+    RESPONSE_APC_DATA = 3,
+    RESPONSE_ACK = 4,
+    RESPONSE_NAK = 5,
+    RESPONSE_ERROR = 0xFF
 };
 
-class Sender {
+class Sender
+{
 public:
-	Sender(OlySocket* socket);
-	~Sender();
-	void writeData(const char* data, int length, int type, bool ignoreLockErrors = false);
-	void createDataFile(char* apcDir);
+    Sender(OlySocket* socket);
+    ~Sender();
+    void writeData(const char* data, int length, int type, bool ignoreLockErrors = false);
+    void createDataFile(char* apcDir);
 
 private:
-	OlySocket* mDataSocket;
-	FILE* mDataFile;
-	char* mDataFileName;
-	pthread_mutex_t mSendMutex;
+    OlySocket* mDataSocket;
+    FILE* mDataFile;
+    char* mDataFileName;
+    pthread_mutex_t mSendMutex;
 
-	// Intentionally unimplemented
-	Sender(const Sender &);
-	Sender &operator=(const Sender &);
+    // Intentionally unimplemented
+    Sender(const Sender &);
+    Sender &operator=(const Sender &);
 };
 
 #endif //__SENDER_H__

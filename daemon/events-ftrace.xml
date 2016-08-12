@@ -1,11 +1,11 @@
   <category name="Ftrace">
     <!--
-	ftrace counters require Linux 3.10 or later; if you do not see ftrace counters in counter configuration, please check your Linux version
-	'counter' attribute must start with ftrace_ and be unique
-	the regex item in () is the value shown or, if the parentheses are missing, the number of regex matches is counted
-	'enable' (optional) is the ftrace event to enable associated with the gator event
-	'tracepoint' (optional) same meaning as enable, but will use perf instead of ftrace when using user space gator
-	'arg' (optional) used in conjunction with 'tracepoint' to specify the value to show otherwise the number of tracepoint events is counted
+    ftrace counters require Linux 3.10 or later; if you do not see ftrace counters in counter configuration, please check your Linux version
+    'counter' attribute must start with ftrace_ and be unique
+    the regex item in () is the value shown or, if the parentheses are missing, the number of regex matches is counted
+    'enable' (optional) is the ftrace event to enable associated with the gator event
+    'tracepoint' (optional) same meaning as enable, but will use perf instead of ftrace when using user space gator
+    'arg' (optional) used in conjunction with 'tracepoint' to specify the value to show otherwise the number of tracepoint events is counted
     -->
     <!--
     <event counter="ftrace_trace_marker_numbers" title="ftrace" name="trace_marker" regex="^tracing_mark_write: ([0-9]+)$" class="absolute" description="Numbers written to /sys/kernel/debug/tracing/trace_marker, ex: echo 42 > /sys/kernel/debug/tracing/trace_marker"/>

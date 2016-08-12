@@ -12,28 +12,29 @@
 struct AnnotateClient;
 class OlyServerSocket;
 
-class AnnotateListener {
+class AnnotateListener
+{
 public:
-	AnnotateListener();
-	~AnnotateListener();
+    AnnotateListener();
+    ~AnnotateListener();
 
-	void setup();
-	int getSockFd();
-	int getUdsFd();
+    void setup();
+    int getSockFd();
+    int getUdsFd();
 
-	void handleSock();
-	void handleUds();
-	void close();
-	void signal();
+    void handleSock();
+    void handleUds();
+    void close();
+    void signal();
 
 private:
-	AnnotateClient *mClients;
-	OlyServerSocket *mSock;
-	OlyServerSocket *mUds;
+    AnnotateClient *mClients;
+    OlyServerSocket *mSock;
+    OlyServerSocket *mUds;
 
-	// Intentionally unimplemented
-	AnnotateListener(const AnnotateListener &);
-	AnnotateListener &operator=(const AnnotateListener &);
+    // Intentionally unimplemented
+    AnnotateListener(const AnnotateListener &);
+    AnnotateListener &operator=(const AnnotateListener &);
 };
 
 #endif // ANNOTATELISTENER_H

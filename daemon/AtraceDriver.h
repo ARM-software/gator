@@ -11,29 +11,33 @@
 
 #include "mxml/mxml.h"
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
-class AtraceDriver : public SimpleDriver {
+class AtraceDriver : public SimpleDriver
+{
 public:
-	AtraceDriver();
-	~AtraceDriver();
+    AtraceDriver();
+    ~AtraceDriver();
 
-	void readEvents(mxml_node_t *const xml);
+    void readEvents(mxml_node_t * const xml);
 
-	void start();
-	void stop();
+    void start();
+    void stop();
 
-	bool isSupported() const { return mSupported; }
+    bool isSupported() const
+    {
+        return mSupported;
+    }
 
 private:
-	void setAtrace(const int flags);
+    void setAtrace(const int flags);
 
-	bool mSupported;
-	char mNotifyPath[256];
+    bool mSupported;
+    char mNotifyPath[256];
 
-	// Intentionally unimplemented
-	AtraceDriver(const AtraceDriver &);
-	AtraceDriver &operator=(const AtraceDriver &);
+    // Intentionally unimplemented
+    AtraceDriver(const AtraceDriver &);
+    AtraceDriver &operator=(const AtraceDriver &);
 };
 
 #endif // ATRACEDRIVER_H

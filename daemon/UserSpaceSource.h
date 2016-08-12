@@ -15,24 +15,25 @@
 #include "Source.h"
 
 // User space counters
-class UserSpaceSource : public Source {
+class UserSpaceSource : public Source
+{
 public:
-	UserSpaceSource(sem_t *senderSem);
-	~UserSpaceSource();
+    UserSpaceSource(sem_t *senderSem);
+    ~UserSpaceSource();
 
-	bool prepare();
-	void run();
-	void interrupt();
+    bool prepare();
+    void run();
+    void interrupt();
 
-	bool isDone();
-	void write(Sender *sender);
+    bool isDone();
+    void write(Sender *sender);
 
 private:
-	Buffer mBuffer;
+    Buffer mBuffer;
 
-	// Intentionally unimplemented
-	UserSpaceSource(const UserSpaceSource &);
-	UserSpaceSource &operator=(const UserSpaceSource &);
+    // Intentionally unimplemented
+    UserSpaceSource(const UserSpaceSource &);
+    UserSpaceSource &operator=(const UserSpaceSource &);
 };
 
 #endif // USERSPACESOURCE_H

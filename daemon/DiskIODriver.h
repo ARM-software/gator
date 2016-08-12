@@ -9,31 +9,32 @@
 #ifndef DISKIODRIVER_H
 #define DISKIODRIVER_H
 
-#include "Driver.h"
+#include "PolledDriver.h"
 #include "DynBuf.h"
 
-class DiskIODriver : public PolledDriver {
+class DiskIODriver : public PolledDriver
+{
 private:
-	typedef PolledDriver super;
+    typedef PolledDriver super;
 
 public:
-	DiskIODriver();
-	~DiskIODriver();
+    DiskIODriver();
+    ~DiskIODriver();
 
-	void readEvents(mxml_node_t *const root);
-	void start();
-	void read(Buffer *const buffer);
+    void readEvents(mxml_node_t * const root);
+    void start();
+    void read(Buffer * const buffer);
 
 private:
-	void doRead();
+    void doRead();
 
-	DynBuf mBuf;
-	int64_t mReadBytes;
-	int64_t mWriteBytes;
+    DynBuf mBuf;
+    int64_t mReadBytes;
+    int64_t mWriteBytes;
 
-	// Intentionally unimplemented
-	DiskIODriver(const DiskIODriver &);
-	DiskIODriver &operator=(const DiskIODriver &);
+    // Intentionally unimplemented
+    DiskIODriver(const DiskIODriver &);
+    DiskIODriver &operator=(const DiskIODriver &);
 };
 
 #endif // DISKIODRIVER_H

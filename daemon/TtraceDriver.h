@@ -11,28 +11,32 @@
 
 #include "mxml/mxml.h"
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
-class TtraceDriver : public SimpleDriver {
+class TtraceDriver : public SimpleDriver
+{
 public:
-	TtraceDriver();
-	~TtraceDriver();
+    TtraceDriver();
+    ~TtraceDriver();
 
-	void readEvents(mxml_node_t *const xml);
+    void readEvents(mxml_node_t * const xml);
 
-	void start();
-	void stop();
+    void start();
+    void stop();
 
-	bool isSupported() const { return mSupported; }
+    bool isSupported() const
+    {
+        return mSupported;
+    }
 
 private:
-	void setTtrace(const int flags);
+    void setTtrace(const int flags);
 
-	bool mSupported;
+    bool mSupported;
 
-	// Intentionally unimplemented
-	TtraceDriver(const TtraceDriver &);
-	TtraceDriver &operator=(const TtraceDriver &);
+    // Intentionally unimplemented
+    TtraceDriver(const TtraceDriver &);
+    TtraceDriver &operator=(const TtraceDriver &);
 };
 
 #endif // TTRACEDRIVER_H

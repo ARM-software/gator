@@ -59,6 +59,11 @@
   <configuration counter="ARMv8_Cortex_A72_cnt1" event="0x16"/>
   <configuration counter="ARMv8_Cortex_A72_cnt2" event="0x10"/>
   <configuration counter="ARMv8_Cortex_A72_cnt3" event="0x19"/>
+  <configuration counter="ARMv8_Cortex_A73_ccnt" event="0x11"/>
+  <configuration counter="ARMv8_Cortex_A73_cnt0" event="0x8"/>
+  <configuration counter="ARMv8_Cortex_A73_cnt1" event="0x16"/>
+  <configuration counter="ARMv8_Cortex_A73_cnt2" event="0x10"/>
+  <configuration counter="ARMv8_Cortex_A73_cnt3" event="0x19"/>
   <configuration counter="ARMv8_Exynos_M1_ccnt" event="0x11"/>
   <configuration counter="ARMv8_Exynos_M1_cnt0" event="0x8"/>
   <configuration counter="ARMv8_Exynos_M1_cnt1" event="0x16"/>

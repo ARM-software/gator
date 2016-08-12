@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
 #define SCHED_SWITCH "sched/sched_switch"
 #define CPU_IDLE "power/cpu_idle"
@@ -23,42 +23,50 @@ class GatorCpu;
 class PerfGroup;
 class PerfTracepoint;
 
-class PerfDriver : public SimpleDriver {
+class PerfDriver : public SimpleDriver
+{
 public:
-	PerfDriver();
-	~PerfDriver();
+    PerfDriver();
+    ~PerfDriver();
 
-	bool getLegacySupport() const { return mLegacySupport; }
-	bool getClockidSupport() const { return mClockidSupport; }
+    bool getLegacySupport() const
+    {
+        return mLegacySupport;
+    }
+    bool getClockidSupport() const
+    {
+        return mClockidSupport;
+    }
 
-	void readEvents(mxml_node_t *const xml);
-	bool setup();
-	bool summary(Buffer *const buffer);
-	void coreName(const uint64_t currTime, Buffer *const buffer, const int cpu);
-	bool isSetup() const { return mIsSetup; }
+    void readEvents(mxml_node_t * const xml);
+    bool setup();
+    bool summary(Buffer * const buffer);
+    void coreName(const uint64_t currTime, Buffer * const buffer, const int cpu);
+    bool isSetup() const
+    {
+        return mIsSetup;
+    }
 
-	void setupCounter(Counter &counter);
+    void setupCounter(Counter &counter);
 
-	bool enable(const uint64_t currTime, PerfGroup *const group, Buffer *const buffer) const;
-	void read(Buffer *const buffer, const int cpu);
-	bool sendTracepointFormats(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b);
+    bool enable(const uint64_t currTime, PerfGroup * const group, Buffer * const buffer) const;
+    void read(Buffer * const buffer, const int cpu);
+    bool sendTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
 
-	static long long getTracepointId(const char *const name, DynBuf *const printb);
-	static long long getTracepointId(const char *const counter, const char *const name, DynBuf *const printb);
+    static long long getTracepointId(const char * const name, DynBuf * const printb);
+    static long long getTracepointId(const char * const counter, const char * const name, DynBuf * const printb);
 
 private:
-	void addCpuCounters(const GatorCpu *const cpu);
-	void addUncoreCounters(const char *const counterName, const int type, const int numCounters, const bool hasCyclesCounter);
+    void addCpuCounters(const GatorCpu * const cpu);
+    void addUncoreCounters(const char * const counterName, const int type, const int numCounters,
+                           const bool hasCyclesCounter);
 
-	int mIsSetup : 1,
-	  mLegacySupport : 1,
-	  mClockidSupport : 1,
-	  mUnused0 : 29;
-	PerfTracepoint *mTracepoints;
+    int mIsSetup :1, mLegacySupport :1, mClockidSupport :1, mUnused0 :29;
+    PerfTracepoint *mTracepoints;
 
-	// Intentionally undefined
-	PerfDriver(const PerfDriver &);
-	PerfDriver &operator=(const PerfDriver &);
+    // Intentionally undefined
+    PerfDriver(const PerfDriver &);
+    PerfDriver &operator=(const PerfDriver &);
 };
 
 #endif // PERFDRIVER_H

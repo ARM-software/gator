@@ -15,68 +15,76 @@
 
 #include "Logging.h"
 
-Monitor::Monitor() : mFd(-1) {
+Monitor::Monitor()
+        : mFd(-1)
+{
 }
 
-Monitor::~Monitor() {
-	if (mFd >= 0) {
-		::close(mFd);
-	}
+Monitor::~Monitor()
+{
+    if (mFd >= 0) {
+        ::close(mFd);
+    }
 }
 
-void Monitor::close() {
-	if (mFd >= 0) {
-		::close(mFd);
-		mFd = -1;
-	}
+void Monitor::close()
+{
+    if (mFd >= 0) {
+        ::close(mFd);
+        mFd = -1;
+    }
 }
 
-bool Monitor::init() {
+bool Monitor::init()
+{
 #ifdef EPOLL_CLOEXEC
-	mFd = epoll_create1(EPOLL_CLOEXEC);
+    mFd = epoll_create1(EPOLL_CLOEXEC);
 #else
-	mFd = epoll_create(16);
+    mFd = epoll_create(16);
 #endif
-	if (mFd < 0) {
-		logg.logMessage("epoll_create1 failed");
-		return false;
-	}
+    if (mFd < 0) {
+        logg.logMessage("epoll_create1 failed");
+        return false;
+    }
 
 #ifndef EPOLL_CLOEXEC
-	int fdf = fcntl(mFd, F_GETFD);
-	if ((fdf == -1) || (fcntl(mFd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-		logg.logMessage("fcntl failed");
-		::close(mFd);
-		return -1;
-	}
+    int fdf = fcntl(mFd, F_GETFD);
+    if ((fdf == -1) || (fcntl(mFd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
+        logg.logMessage("fcntl failed");
+        ::close(mFd);
+        return -1;
+    }
 #endif
 
-	return true;
+    return true;
 }
 
-bool Monitor::add(const int fd) {
-	struct epoll_event event;
-	memset(&event, 0, sizeof(event));
-	event.data.fd = fd;
-	event.events = EPOLLIN;
-	if (epoll_ctl(mFd, EPOLL_CTL_ADD, fd, &event) != 0) {
-		logg.logMessage("epoll_ctl failed");
-		return false;
-	}
+bool Monitor::add(const int fd)
+{
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    if (epoll_ctl(mFd, EPOLL_CTL_ADD, fd, &event) != 0) {
+        logg.logMessage("epoll_ctl failed");
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
-int Monitor::wait(struct epoll_event *const events, int maxevents, int timeout) {
-	int result = epoll_wait(mFd, events, maxevents, timeout);
-	if (result < 0) {
-		// Ignore if the call was interrupted as this will happen when SIGINT is received
-		if (errno == EINTR) {
-			result = 0;
-		} else {
-			logg.logMessage("epoll_wait failed");
-		}
-	}
+int Monitor::wait(struct epoll_event * const events, int maxevents, int timeout)
+{
+    int result = epoll_wait(mFd, events, maxevents, timeout);
+    if (result < 0) {
+        // Ignore if the call was interrupted as this will happen when SIGINT is received
+        if (errno == EINTR) {
+            result = 0;
+        }
+        else {
+            logg.logMessage("epoll_wait failed");
+        }
+    }
 
-	return result;
+    return result;
 }

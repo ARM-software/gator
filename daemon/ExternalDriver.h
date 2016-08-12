@@ -9,33 +9,34 @@
 #ifndef EXTERNALDRIVER_H
 #define EXTERNALDRIVER_H
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
-class ExternalDriver : public SimpleDriver {
+class ExternalDriver : public SimpleDriver
+{
 public:
-	ExternalDriver();
+    ExternalDriver();
 
-	bool claimCounter(const Counter &counter) const;
-	void resetCounters();
-	void setupCounter(Counter &counter);
+    bool claimCounter(const Counter &counter) const;
+    void resetCounters();
+    void setupCounter(Counter &counter);
 
-	void start();
+    void start();
 
-	void disconnect();
+    void disconnect();
 
 private:
-	typedef SimpleDriver super;
+    typedef SimpleDriver super;
 
-	bool connect() const;
-	void query() const;
+    bool connect() const;
+    void query() const;
 
-	mutable int mUds;
-	mutable bool mQueried;
-	bool mStarted;
+    mutable int mUds;
+    mutable bool mQueried;
+    bool mStarted;
 
-	// Intentionally unimplemented
-	ExternalDriver(const ExternalDriver &);
-	ExternalDriver &operator=(const ExternalDriver &);
+    // Intentionally unimplemented
+    ExternalDriver(const ExternalDriver &);
+    ExternalDriver &operator=(const ExternalDriver &);
 };
 
 #endif // EXTERNALDRIVER_H

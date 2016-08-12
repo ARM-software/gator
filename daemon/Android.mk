@@ -14,6 +14,7 @@ LOCAL_SRC_FILES := \
 	ConfigurationXML.cpp \
 	DiskIODriver.cpp \
 	Driver.cpp \
+	DriverCounter.cpp \
 	DriverSource.cpp \
 	DynBuf.cpp \
 	EventsXML.cpp \
@@ -38,11 +39,13 @@ LOCAL_SRC_FILES := \
 	PerfDriver.cpp \
 	PerfGroup.cpp \
 	PerfSource.cpp \
+	PolledDriver.cpp \
 	PmuXML.cpp \
 	Proc.cpp \
 	Sender.cpp \
 	SessionData.cpp \
 	SessionXML.cpp \
+	SimpleDriver.cpp \
 	Source.cpp \
 	SrcMd5.cpp \
 	StreamlineSetup.cpp \

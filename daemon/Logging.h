@@ -15,32 +15,42 @@
 
 #define DRIVER_ERROR "\n Driver issue:\n  >> gator.ko must be built against the current kernel version & configuration\n  >> gator.ko should be co-located with gatord in the same directory\n  >>   OR insmod gator.ko prior to launching gatord"
 
-class Logging {
+class Logging
+{
 public:
-	Logging();
-	~Logging();
+    Logging();
+    ~Logging();
 
-	void setDebug(bool debug) { mDebug = debug; }
+    void setDebug(bool debug)
+    {
+        mDebug = debug;
+    }
 
 #define logError(...) _logError(__func__, __FILE__, __LINE__, __VA_ARGS__)
-	__attribute__ ((format (printf, 5, 6)))
-	void _logError(const char *function, const char *file, int line, const char *fmt, ...);
-	const char *getLastError() {return mErrBuf;}
+    __attribute__ ((format (printf, 5, 6)))
+    void _logError(const char *function, const char *file, int line, const char *fmt, ...);
+    const char *getLastError()
+    {
+        return mErrBuf;
+    }
 
 #define logSetup(...) _logSetup(__func__, __FILE__, __LINE__, __VA_ARGS__)
-	__attribute__ ((format (printf, 5, 6)))
-	void _logSetup(const char *function, const char *file, int line, const char *fmt, ...);
-	const char *getSetup() {return mSetup.getBuf() == NULL ? "" : mSetup.getBuf();}
+    __attribute__ ((format (printf, 5, 6)))
+    void _logSetup(const char *function, const char *file, int line, const char *fmt, ...);
+    const char *getSetup()
+    {
+        return mSetup.getBuf() == NULL ? "" : mSetup.getBuf();
+    }
 
 #define logMessage(...) _logMessage(__func__, __FILE__, __LINE__, __VA_ARGS__)
-	__attribute__ ((format (printf, 5, 6)))
-	void _logMessage(const char *function, const char *file, int line, const char *fmt, ...);
+    __attribute__ ((format (printf, 5, 6)))
+    void _logMessage(const char *function, const char *file, int line, const char *fmt, ...);
 
 private:
-	DynBuf mSetup;
-	pthread_mutex_t mLoggingMutex;
-	bool mDebug;
-	char mErrBuf[4096]; // Arbitrarily large buffer to hold a string
+    DynBuf mSetup;
+    pthread_mutex_t mLoggingMutex;
+    bool mDebug;
+    char mErrBuf[4096]; // Arbitrarily large buffer to hold a string
 };
 
 extern Logging logg;

@@ -9,21 +9,22 @@
 #ifndef PMUXML_H
 #define PMUXML_H
 
-class PmuXML {
+class PmuXML
+{
 public:
-	PmuXML();
-	~PmuXML();
+    PmuXML();
+    ~PmuXML();
 
-	static void read(const char *const path);
-	static void writeToKernel();
+    static void read(const char * const path);
+    static void writeToKernel();
 
 private:
-	static void parse(const char *const xml);
-	static void getDefaultXml(const char **const xml, unsigned int *const len);
+    static void parse(const char * const xml);
+    static void getDefaultXml(const char ** const xml, unsigned int * const len);
 
-	// Intentionally unimplemented
-	PmuXML(const PmuXML &);
-	PmuXML &operator=(const PmuXML &);
+    // Intentionally unimplemented
+    PmuXML(const PmuXML &);
+    PmuXML &operator=(const PmuXML &);
 };
 
 #endif // PMUXML_H

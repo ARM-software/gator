@@ -1,18 +1,18 @@
 ifneq ($(KERNELRELEASE),)
 
 # Uncomment the following line to enable kernel stack unwinding within gator, or update gator_backtrace.c
-# EXTRA_CFLAGS +=	-DGATOR_KERNEL_STACK_UNWINDING
+# EXTRA_CFLAGS +=   -DGATOR_KERNEL_STACK_UNWINDING
 
 CONFIG_GATOR ?= m
 obj-$(CONFIG_GATOR) := gator.o
 
-gator-y :=	gator_main.o \
-		gator_events_block.o \
-		gator_events_irq.o \
-		gator_events_meminfo.o \
-		gator_events_mmapped.o \
-		gator_events_net.o \
-		gator_events_sched.o \
+gator-y :=  gator_main.o \
+            gator_events_block.o \
+            gator_events_irq.o \
+            gator_events_meminfo.o \
+            gator_events_mmapped.o \
+            gator_events_net.o \
+            gator_events_sched.o \
 
 # Convert the old GATOR_WITH_MALI_SUPPORT to the new kernel flags
 ifneq ($(GATOR_WITH_MALI_SUPPORT),)
@@ -40,13 +40,13 @@ endif
 
 ifeq ($(CONFIG_GATOR_WITH_MALI_SUPPORT),y)
   ifeq ($(CONFIG_GATOR_MALI_MIDGARD),y)
-    gator-y +=	gator_events_mali_midgard.o \
+    gator-y +=  gator_events_mali_midgard.o \
 		gator_events_mali_midgard_hw.o
     include $(src)/mali_midgard.mk
   else
-    gator-y +=	gator_events_mali_4xx.o
+    gator-y +=  gator_events_mali_4xx.o
   endif
-  gator-y +=	gator_events_mali_common.o
+  gator-y +=    gator_events_mali_common.o
 
   ifneq ($(CONFIG_GATOR_MALI_4XXMP_PATH),)
     ccflags-$(CONFIG_GATOR_MALI_4XXMP) += -I$(CONFIG_GATOR_MALI_4XXMP_PATH)
@@ -60,13 +60,13 @@ endif
 
 # GATOR_TEST controls whether to include (=1) or exclude (=0) test code.
 GATOR_TEST ?= 0
-EXTRA_CFLAGS +=	-DGATOR_TEST=$(GATOR_TEST)
+EXTRA_CFLAGS += -DGATOR_TEST=$(GATOR_TEST)
 
 # Should the original or new block_rq_complete API be used?
 OLD_BLOCK_RQ_COMPLETE := $(shell grep -A3 block_rq_complete $(srctree)/include/trace/events/block.h | grep nr_bytes -q; echo $$?)
 EXTRA_CFLAGS += -DOLD_BLOCK_RQ_COMPLETE=$(OLD_BLOCK_RQ_COMPLETE)
 
-gator-$(CONFIG_ARM) +=	gator_events_l2c-310.o
+gator-$(CONFIG_ARM) +=  gator_events_l2c-310.o
 
 gator-$(CONFIG_ARM64) +=
 

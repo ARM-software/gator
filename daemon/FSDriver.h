@@ -9,21 +9,22 @@
 #ifndef FSDRIVER_H
 #define FSDRIVER_H
 
-#include "Driver.h"
+#include "PolledDriver.h"
 
-class FSDriver : public PolledDriver {
+class FSDriver : public PolledDriver
+{
 public:
-	FSDriver();
-	~FSDriver();
+    FSDriver();
+    ~FSDriver();
 
-	void readEvents(mxml_node_t *const xml);
+    void readEvents(mxml_node_t * const xml);
 
-	int writeCounters(mxml_node_t *root) const;
+    int writeCounters(mxml_node_t *root) const;
 
 private:
-	// Intentionally unimplemented
-	FSDriver(const FSDriver &);
-	FSDriver &operator=(const FSDriver &);
+    // Intentionally unimplemented
+    FSDriver(const FSDriver &);
+    FSDriver &operator=(const FSDriver &);
 };
 
 #endif // FSDRIVER_H

@@ -19,45 +19,53 @@ typedef int socklen_t;
 
 #include "Config.h"
 
-class OlySocket {
+class OlySocket
+{
 public:
 #ifndef WIN32
-  static int connect(const char* path, const size_t pathSize, const bool calculateAddrlen = false);
+    static int connect(const char* path, const size_t pathSize, const bool calculateAddrlen = false);
 #endif
 
-  OlySocket(int socketID);
-  ~OlySocket();
+    OlySocket(int socketID);
+    ~OlySocket();
 
-  void closeSocket();
-  void shutdownConnection();
-  void send(const char* buffer, int size);
-  int receive(char* buffer, int size);
-  int receiveNBytes(char* buffer, int size);
-  int receiveString(char* buffer, int size);
+    void closeSocket();
+    void shutdownConnection();
+    void send(const char* buffer, int size);
+    int receive(char* buffer, int size);
+    int receiveNBytes(char* buffer, int size);
+    int receiveString(char* buffer, int size);
 
-  bool isValid() const { return mSocketID >= 0; }
+    bool isValid() const
+    {
+        return mSocketID >= 0;
+    }
 
 private:
-  int mSocketID;
+    int mSocketID;
 };
 
-class OlyServerSocket {
+class OlyServerSocket
+{
 public:
-  OlyServerSocket(int port);
+    OlyServerSocket(int port);
 #ifndef WIN32
-  OlyServerSocket(const char* path, const size_t pathSize, const bool calculateAddrlen = false);
+    OlyServerSocket(const char* path, const size_t pathSize, const bool calculateAddrlen = false);
 #endif
-  ~OlyServerSocket();
+    ~OlyServerSocket();
 
-  int acceptConnection();
-  void closeServerSocket();
+    int acceptConnection();
+    void closeServerSocket();
 
-  int getFd() { return mFDServer; }
+    int getFd()
+    {
+        return mFDServer;
+    }
 
 private:
-  int mFDServer;
+    int mFDServer;
 
-  void createServerSocket(int port);
+    void createServerSocket(int port);
 };
 
 int socket_cloexec(int domain, int type, int protocol);

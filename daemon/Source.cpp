@@ -10,24 +10,30 @@
 
 #include "Logging.h"
 
-Source::Source() : mThreadID() {
+Source::Source()
+        : mThreadID()
+{
 }
 
-Source::~Source() {
+Source::~Source()
+{
 }
 
-void Source::start() {
-	if (pthread_create(&mThreadID, NULL, runStatic, this)) {
-		logg.logError("Failed to create source thread");
-		handleException();
-	}
+void Source::start()
+{
+    if (pthread_create(&mThreadID, NULL, runStatic, this)) {
+        logg.logError("Failed to create source thread");
+        handleException();
+    }
 }
 
-void Source::join() {
-	pthread_join(mThreadID, NULL);
+void Source::join()
+{
+    pthread_join(mThreadID, NULL);
 }
 
-void *Source::runStatic(void *arg) {
-	static_cast<Source *>(arg)->run();
-	return NULL;
+void *Source::runStatic(void *arg)
+{
+    static_cast<Source *>(arg)->run();
+    return NULL;
 }

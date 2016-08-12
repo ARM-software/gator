@@ -9,31 +9,32 @@
 #ifndef NETDRIVER_H
 #define NETDRIVER_H
 
-#include "Driver.h"
+#include "PolledDriver.h"
 #include "DynBuf.h"
 
-class NetDriver : public PolledDriver {
+class NetDriver : public PolledDriver
+{
 private:
-	typedef PolledDriver super;
+    typedef PolledDriver super;
 
 public:
-	NetDriver();
-	~NetDriver();
+    NetDriver();
+    ~NetDriver();
 
-	void readEvents(mxml_node_t *const root);
-	void start();
-	void read(Buffer *const buffer);
+    void readEvents(mxml_node_t * const root);
+    void start();
+    void read(Buffer * const buffer);
 
 private:
-	bool doRead();
+    bool doRead();
 
-	DynBuf mBuf;
-	int64_t mReceiveBytes;
-	int64_t mTransmitBytes;
+    DynBuf mBuf;
+    int64_t mReceiveBytes;
+    int64_t mTransmitBytes;
 
-	// Intentionally unimplemented
-	NetDriver(const NetDriver &);
-	NetDriver &operator=(const NetDriver &);
+    // Intentionally unimplemented
+    NetDriver(const NetDriver &);
+    NetDriver &operator=(const NetDriver &);
 };
 
 #endif // NETDRIVER_H

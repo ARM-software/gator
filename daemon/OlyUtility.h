@@ -25,15 +25,15 @@
 
 bool stringToBool(const char* string, bool defValue);
 void stringToLower(char* string);
-bool stringToLongLong(long long *const value, const char *str, const int base);
-bool stringToLong(long *const value, const char *str, const int base);
-bool stringToInt(int *const value, const char *str, const int base);
+bool stringToLongLong(long long * const value, const char *str, const int base);
+bool stringToLong(long * const value, const char *str, const int base);
+bool stringToInt(int * const value, const char *str, const int base);
 int getApplicationFullPath(char* path, int sizeOfPath);
 char* readFromDisk(const char* file, unsigned int *size = NULL, bool appendNull = true);
 int writeToDisk(const char* path, const char* file);
 int appendToDisk(const char* path, const char* file);
 int copyFile(const char* srcFile, const char* dstFile);
-const char* getFilePart(const char* path);
-char* getPathPart(char* path);
+const char* getFilePart(const char* path, char pathSeprator = PATH_SEPARATOR);
+char* getPathPart(char* path, char pathSeprator = PATH_SEPARATOR);
 
 #endif // OLY_UTILITY_H

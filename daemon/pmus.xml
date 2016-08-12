@@ -30,6 +30,7 @@
   <pmu pmnc_name="ARMv8_Cortex_A53" cpuid="0x41d03" core_name="Cortex-A53" dt_name="arm,cortex-a53" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A57" cpuid="0x41d07" core_name="Cortex-A57" dt_name="arm,cortex-a57" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv8_Cortex_A73" cpuid="0x41d09" core_name="Cortex-A73" dt_name="arm,cortex-a73" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1" pmnc_counters="6"/>
   <!-- This is a guess, but at least the CPU will be recognized -->
   <pmu pmnc_name="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6"/>

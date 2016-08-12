@@ -10,10 +10,16 @@ CXXFLAGS += -fno-rtti -Wextra -Wshadow -Wpointer-arith -Wundef # -Weffc++ -Wmiss
 ifeq ($(WERROR),1)
 	CPPFLAGS += -Werror
 endif
+
+ifeq ($(shell expr `$(CXX) -dumpversion | cut -f1 -d.` \>= 5),1)
+	CXXFLAGS += -fno-sized-deallocation
+endif
+
 # -s strips the binary of debug info
 LDFLAGS += -s
 LDLIBS += -lrt -lm -pthread
 TARGET = gatord
+ESCAPE_EXE = escape/escape
 C_SRC = $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
 CXX_SRC = $(wildcard *.cpp)
 
@@ -51,9 +57,9 @@ PmuXML.cpp: pmus_xml.h
 libsensors/conf-lex.c: ;
 libsensors/conf-parse.c: ;
 
-%_xml.h: %.xml escape
+%_xml.h: %.xml $(ESCAPE_EXE)
 	$(ECHO_GEN)
-	$(Q)./escape $< > $@
+	$(Q)$(ESCAPE_EXE) "$(basename $<)_xml" $< $@
 
 %.o: %.c
 	$(ECHO_CC)
@@ -63,7 +69,7 @@ libsensors/conf-parse.c: ;
 	$(ECHO_CXX)
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-SrcMd5.cpp: $(wildcard *.cpp *.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
+SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(wildcard *.cpp)) $(wildcard *.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
 	$(ECHO_GEN)
 	$(Q)echo 'extern const char *const gSrcMd5 = "'`ls $^ | grep -Ev '^(.*_xml\.h|$@)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32`'";' > $@
 
@@ -72,9 +78,9 @@ $(TARGET): $(CXX_SRC:%.cpp=%.o) $(C_SRC:%.c=%.o) SrcMd5.o
 	$(Q)$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # Intentionally ignore CC as a native binary is required
-escape: escape.c
+$(ESCAPE_EXE): escape/escape.c
 	$(ECHO_HOSTCC)
 	$(Q)gcc $^ -o $@
 
 clean:
-	rm -f *.d *.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) escape events.xml *_xml.h SrcMd5.cpp
+	rm -f *.d *.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) $(ESCAPE_EXE) events.xml *_xml.h SrcMd5.cpp

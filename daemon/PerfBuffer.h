@@ -16,27 +16,28 @@
 
 class Sender;
 
-class PerfBuffer {
+class PerfBuffer
+{
 public:
-	PerfBuffer();
-	~PerfBuffer();
+    PerfBuffer();
+    ~PerfBuffer();
 
-	bool useFd(const int cpu, const int fd);
-	void discard(const int cpu);
-	bool isEmpty();
-	bool isFull();
-	bool send(Sender *const sender);
+    bool useFd(const int cpu, const int fd);
+    void discard(const int cpu);
+    bool isEmpty();
+    bool isFull();
+    bool send(Sender * const sender);
 
 private:
-	void *mBuf[NR_CPUS];
-	// After the buffer is flushed it should be unmaped
-	bool mDiscard[NR_CPUS];
-	// fd that corresponds to the mBuf
-	int mFds[NR_CPUS];
+    void *mBuf[NR_CPUS];
+    // After the buffer is flushed it should be unmaped
+    bool mDiscard[NR_CPUS];
+    // fd that corresponds to the mBuf
+    int mFds[NR_CPUS];
 
-	// Intentionally undefined
-	PerfBuffer(const PerfBuffer &);
-	PerfBuffer &operator=(const PerfBuffer &);
+    // Intentionally undefined
+    PerfBuffer(const PerfBuffer &);
+    PerfBuffer &operator=(const PerfBuffer &);
 };
 
 #endif // PERF_BUFFER

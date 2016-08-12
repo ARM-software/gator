@@ -11,50 +11,53 @@
 
 #include <pthread.h>
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
 class DynBuf;
 
 // The Android NDK doesn't provide an implementation of pthread_barrier_t, so implement our own
-class Barrier {
+class Barrier
+{
 public:
-	Barrier();
-	~Barrier();
+    Barrier();
+    ~Barrier();
 
-	void init(unsigned int count);
-	void wait();
+    void init(unsigned int count);
+    void wait();
 
 private:
-	pthread_mutex_t mMutex;
-	pthread_cond_t mCond;
-	unsigned int mCount;
+    pthread_mutex_t mMutex;
+    pthread_cond_t mCond;
+    unsigned int mCount;
 };
 
-class FtraceDriver : public SimpleDriver {
+class FtraceDriver : public SimpleDriver
+{
 public:
-	FtraceDriver();
-	~FtraceDriver();
+    FtraceDriver();
+    ~FtraceDriver();
 
-	void readEvents(mxml_node_t *const xml);
+    void readEvents(mxml_node_t * const xml);
 
-	bool prepare(int *const ftraceFds);
-	void start();
-	void stop(int *const ftraceFds);
-	bool readTracepointFormats(const uint64_t currTime, Buffer *const buffer, DynBuf *const printb, DynBuf *const b);
+    bool prepare(int * const ftraceFds);
+    void start();
+    void stop(int * const ftraceFds);
+    bool readTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
 
-	bool isSupported() const { return mSupported; }
+    bool isSupported() const
+    {
+        return mSupported;
+    }
 
 private:
-	int64_t *mValues;
-	Barrier mBarrier;
-	int mSupported : 1,
-	  mMonotonicRawSupport : 1,
-	  mUnused0 : 30;
-	int mTracingOn;
+    int64_t *mValues;
+    Barrier mBarrier;
+    int mSupported :1, mMonotonicRawSupport :1, mUnused0 :30;
+    int mTracingOn;
 
-	// Intentionally unimplemented
-	FtraceDriver(const FtraceDriver &);
-	FtraceDriver &operator=(const FtraceDriver &);
+    // Intentionally unimplemented
+    FtraceDriver(const FtraceDriver &);
+    FtraceDriver &operator=(const FtraceDriver &);
 };
 
 #endif // FTRACEDRIVER_H

@@ -9,23 +9,24 @@
 #ifndef HWMONDRIVER_H
 #define HWMONDRIVER_H
 
-#include "Driver.h"
+#include "PolledDriver.h"
 
-class HwmonDriver : public PolledDriver {
+class HwmonDriver : public PolledDriver
+{
 public:
-	HwmonDriver();
-	~HwmonDriver();
+    HwmonDriver();
+    ~HwmonDriver();
 
-	void readEvents(mxml_node_t *const root);
+    void readEvents(mxml_node_t * const root);
 
-	void writeEvents(mxml_node_t *root) const;
+    void writeEvents(mxml_node_t *root) const;
 
-	void start();
+    void start();
 
 private:
-	// Intentionally unimplemented
-	HwmonDriver(const HwmonDriver &);
-	HwmonDriver &operator=(const HwmonDriver &);
+    // Intentionally unimplemented
+    HwmonDriver(const HwmonDriver &);
+    HwmonDriver &operator=(const HwmonDriver &);
 };
 
 #endif // HWMONDRIVER_H

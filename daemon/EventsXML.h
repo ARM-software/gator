@@ -11,18 +11,21 @@
 
 #include "mxml/mxml.h"
 
-class EventsXML {
+class EventsXML
+{
 public:
-	EventsXML() {}
+    EventsXML()
+    {
+    }
 
-	mxml_node_t *getTree();
-	char *getXML();
-	void write(const char* path);
+    mxml_node_t *getTree();
+    char *getXML();
+    void write(const char* path);
 
 private:
-	// Intentionally unimplemented
-	EventsXML(const EventsXML &);
-	EventsXML &operator=(const EventsXML &);
+    // Intentionally unimplemented
+    EventsXML(const EventsXML &);
+    EventsXML &operator=(const EventsXML &);
 };
 
 #endif // EVENTS_XML

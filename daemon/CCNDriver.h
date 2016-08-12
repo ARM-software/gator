@@ -11,35 +11,37 @@
 
 #include "Driver.h"
 
-class CCNDriver : public Driver {
+class CCNDriver : public Driver
+{
 public:
-	CCNDriver();
-	~CCNDriver();
+    CCNDriver();
+    ~CCNDriver();
 
-	bool claimCounter(const Counter &counter) const;
-	void resetCounters();
-	void setupCounter(Counter &counter);
+    bool claimCounter(const Counter &counter) const;
+    void resetCounters();
+    void setupCounter(Counter &counter);
 
-	void readEvents(mxml_node_t *const);
-	int writeCounters(mxml_node_t *const root) const;
-	void writeEvents(mxml_node_t *const) const;
+    void readEvents(mxml_node_t * const);
+    int writeCounters(mxml_node_t * const root) const;
+    void writeEvents(mxml_node_t * const) const;
 
-	void validateCounters() const;
+    void validateCounters() const;
 
 private:
-	enum NodeType {
-		NT_UNKNOWN,
-		NT_HNF,
-		NT_RNI,
-		NT_SBAS,
-	};
+    enum NodeType
+    {
+        NT_UNKNOWN,
+        NT_HNF,
+        NT_RNI,
+        NT_SBAS,
+    };
 
-	NodeType *mNodeTypes;
-	int mXpCount;
+    NodeType *mNodeTypes;
+    int mXpCount;
 
-	// Intentionally unimplemented
-	CCNDriver(const CCNDriver &);
-	CCNDriver &operator=(const CCNDriver &);
+    // Intentionally unimplemented
+    CCNDriver(const CCNDriver &);
+    CCNDriver &operator=(const CCNDriver &);
 };
 
 #endif // CCNDRIVER_H

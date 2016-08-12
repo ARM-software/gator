@@ -12,21 +12,30 @@
 #include "Driver.h"
 
 // Driver for the gator kernel module
-class KMod : public Driver {
+class KMod : public Driver
+{
 public:
-	KMod() : mIsMaliCapture(false) {}
-	~KMod() {}
+    KMod()
+            : mIsMaliCapture(false)
+    {
+    }
+    ~KMod()
+    {
+    }
 
-	bool claimCounter(const Counter &counter) const;
-	void resetCounters();
-	void setupCounter(Counter &counter);
+    bool claimCounter(const Counter &counter) const;
+    void resetCounters();
+    void setupCounter(Counter &counter);
 
-	int writeCounters(mxml_node_t *root) const;
+    int writeCounters(mxml_node_t *root) const;
 
-	bool isMaliCapture() const { return mIsMaliCapture; }
+    bool isMaliCapture() const
+    {
+        return mIsMaliCapture;
+    }
 
 private:
-	bool mIsMaliCapture;
+    bool mIsMaliCapture;
 };
 
 #endif // KMOD_H

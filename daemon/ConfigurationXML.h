@@ -11,28 +11,32 @@
 
 #include "mxml/mxml.h"
 
-class ConfigurationXML {
+class ConfigurationXML
+{
 public:
-	static char *getDefaultConfigurationXml();
-	static void getPath(char* path);
-	static void remove();
+    static char *getDefaultConfigurationXml();
+    static void getPath(char* path);
+    static void remove();
 
-	ConfigurationXML();
-	~ConfigurationXML();
-	const char* getConfigurationXML() {return mConfigurationXML;}
+    ConfigurationXML();
+    ~ConfigurationXML();
+    const char* getConfigurationXML()
+    {
+        return mConfigurationXML;
+    }
 
 private:
-	char* mConfigurationXML;
-	int mIndex;
+    char* mConfigurationXML;
+    int mIndex;
 
-	void validate(void);
-	int parse(const char* xmlFile);
-	int configurationsTag(mxml_node_t *node);
-	void configurationTag(mxml_node_t *node);
+    void validate(void);
+    int parse(const char* xmlFile);
+    int configurationsTag(mxml_node_t *node);
+    void configurationTag(mxml_node_t *node);
 
-	// Intentionally unimplemented
-	ConfigurationXML(const ConfigurationXML &);
-	ConfigurationXML &operator=(const ConfigurationXML &);
+    // Intentionally unimplemented
+    ConfigurationXML(const ConfigurationXML &);
+    ConfigurationXML &operator=(const ConfigurationXML &);
 };
 
 #endif // COUNTERS_H

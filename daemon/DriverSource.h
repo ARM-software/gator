@@ -17,42 +17,43 @@
 class Buffer;
 class Fifo;
 
-class DriverSource : public Source {
+class DriverSource : public Source
+{
 public:
-	DriverSource(sem_t *senderSem, sem_t *startProfile);
-	~DriverSource();
+    DriverSource(sem_t *senderSem, sem_t *startProfile);
+    ~DriverSource();
 
-	bool prepare();
-	void run();
-	void interrupt();
+    bool prepare();
+    void run();
+    void interrupt();
 
-	bool isDone();
-	void write(Sender *sender);
+    bool isDone();
+    void write(Sender *sender);
 
-	static void checkVersion();
-	static int readIntDriver(const char *fullpath, int *value);
-	static int readInt64Driver(const char *fullpath, int64_t *value);
-	static int writeDriver(const char *fullpath, const char *data);
-	static int writeDriver(const char *path, int value);
-	static int writeDriver(const char *path, int64_t value);
-	static int writeReadDriver(const char *path, int *value);
-	static int writeReadDriver(const char *path, int64_t *value);
+    static void checkVersion();
+    static int readIntDriver(const char *fullpath, int *value);
+    static int readInt64Driver(const char *fullpath, int64_t *value);
+    static int writeDriver(const char *fullpath, const char *data);
+    static int writeDriver(const char *path, int value);
+    static int writeDriver(const char *path, int64_t value);
+    static int writeReadDriver(const char *path, int *value);
+    static int writeReadDriver(const char *path, int64_t *value);
 
 private:
-	static void *bootstrapThreadStatic(void *arg);
-	void bootstrapThread();
+    static void *bootstrapThreadStatic(void *arg);
+    void bootstrapThread();
 
-	Buffer *mBuffer;
-	Fifo *mFifo;
-	sem_t *const mSenderSem;
-	sem_t *const mStartProfile;
-	int mBufferSize;
-	int mBufferFD;
-	int mLength;
+    Buffer *mBuffer;
+    Fifo *mFifo;
+    sem_t * const mSenderSem;
+    sem_t * const mStartProfile;
+    int mBufferSize;
+    int mBufferFD;
+    int mLength;
 
-	// Intentionally unimplemented
-	DriverSource(const DriverSource &);
-	DriverSource &operator=(const DriverSource &);
+    // Intentionally unimplemented
+    DriverSource(const DriverSource &);
+    DriverSource &operator=(const DriverSource &);
 };
 
 #endif // DRIVERSOURCE_H

@@ -9,38 +9,40 @@
 #ifndef MALIVIDEODRIVER_H
 #define MALIVIDEODRIVER_H
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
 class MaliVideoCounter;
 
-enum MaliVideoCounterType {
-	MVCT_COUNTER,
-	MVCT_EVENT,
-	MVCT_ACTIVITY,
+enum MaliVideoCounterType
+{
+    MVCT_COUNTER,
+    MVCT_EVENT,
+    MVCT_ACTIVITY,
 };
 
-class MaliVideoDriver : public SimpleDriver {
+class MaliVideoDriver : public SimpleDriver
+{
 private:
-	typedef SimpleDriver super;
+    typedef SimpleDriver super;
 
 public:
-	MaliVideoDriver();
-	~MaliVideoDriver();
+    MaliVideoDriver();
+    ~MaliVideoDriver();
 
-	void readEvents(mxml_node_t *const root);
+    void readEvents(mxml_node_t * const root);
 
-	int writeCounters(mxml_node_t *root) const;
-	bool claimCounter(const Counter &counter) const;
+    int writeCounters(mxml_node_t *root) const;
+    bool claimCounter(const Counter &counter) const;
 
-	bool start(const int mveUds);
-	void stop(const int mveUds);
+    bool start(const int mveUds);
+    void stop(const int mveUds);
 
 private:
-	void marshalEnable(const MaliVideoCounterType type, char *const buf, const size_t bufsize, int &pos);
+    void marshalEnable(const MaliVideoCounterType type, char * const buf, const size_t bufsize, int &pos);
 
-	// Intentionally unimplemented
-	MaliVideoDriver(const MaliVideoDriver &);
-	MaliVideoDriver &operator=(const MaliVideoDriver &);
+    // Intentionally unimplemented
+    MaliVideoDriver(const MaliVideoDriver &);
+    MaliVideoDriver &operator=(const MaliVideoDriver &);
 };
 
 #endif // MALIVIDEODRIVER_H

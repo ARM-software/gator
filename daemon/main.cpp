@@ -40,603 +40,643 @@ static int numSessions = 0;
 static bool driverRunningAtStart = false;
 static bool driverMountedAtStart = false;
 
-struct cmdline_t {
-	char *module;
-	char *pmuPath;
-	int port;
+struct cmdline_t
+{
+    char *module;
+    char *pmuPath;
+    int port;
 };
 
 #define DEFAULT_PORT 8080
 
-void cleanUp() {
-	if (shutdownFilesystem() == -1) {
-		logg.logMessage("Error shutting down gator filesystem");
-	}
-	delete sock;
+void cleanUp()
+{
+    if (shutdownFilesystem() == -1) {
+        logg.logMessage("Error shutting down gator filesystem");
+    }
+    delete sock;
 }
 
 // CTRL C Signal Handler
 __attribute__((noreturn))
-static void handler(int signum) {
-	logg.logMessage("Received signal %d, gator daemon exiting", signum);
+static void handler(int signum)
+{
+    logg.logMessage("Received signal %d, gator daemon exiting", signum);
 
-	// Case 1: both child and parent receive the signal
-	if (numSessions > 0) {
-		// Arbitrary sleep of 1 second to give time for the child to exit;
-		// if something bad happens, continue the shutdown process regardless
-		sleep(1);
-	}
+    // Case 1: both child and parent receive the signal
+    if (numSessions > 0) {
+        // Arbitrary sleep of 1 second to give time for the child to exit;
+        // if something bad happens, continue the shutdown process regardless
+        sleep(1);
+    }
 
-	// Case 2: only the parent received the signal
-	if (numSessions > 0) {
-		// Kill child threads - the first signal exits gracefully
-		logg.logMessage("Killing process group as %d child was running when signal was received", numSessions);
-		kill(0, SIGINT);
+    // Case 2: only the parent received the signal
+    if (numSessions > 0) {
+        // Kill child threads - the first signal exits gracefully
+        logg.logMessage("Killing process group as %d child was running when signal was received", numSessions);
+        kill(0, SIGINT);
 
-		// Give time for the child to exit
-		sleep(1);
+        // Give time for the child to exit
+        sleep(1);
 
-		if (numSessions > 0) {
-			// The second signal force kills the child
-			logg.logMessage("Force kill the child");
-			kill(0, SIGINT);
-			// Again, sleep for 1 second
-			sleep(1);
+        if (numSessions > 0) {
+            // The second signal force kills the child
+            logg.logMessage("Force kill the child");
+            kill(0, SIGINT);
+            // Again, sleep for 1 second
+            sleep(1);
 
-			if (numSessions > 0) {
-				// Something bad has really happened; the child is not exiting and therefore may hold the /dev/gator resource open
-				printf("Unable to kill the gatord child process, thus gator.ko may still be loaded.\n");
-			}
-		}
-	}
+            if (numSessions > 0) {
+                // Something bad has really happened; the child is not exiting and therefore may hold the /dev/gator resource open
+                printf("Unable to kill the gatord child process, thus gator.ko may still be loaded.\n");
+            }
+        }
+    }
 
-	cleanUp();
-	exit(0);
+    cleanUp();
+    exit(0);
 }
 
 // Child exit Signal Handler
-static void child_exit(int) {
-	int status;
-	int pid = wait(&status);
-	if (pid != -1) {
-		pthread_mutex_lock(&numSessions_mutex);
-		numSessions--;
-		pthread_mutex_unlock(&numSessions_mutex);
-		logg.logMessage("Child process %d exited with status %d", pid, status);
-	}
+static void child_exit(int)
+{
+    int status;
+    int pid = wait(&status);
+    if (pid != -1) {
+        pthread_mutex_lock(&numSessions_mutex);
+        numSessions--;
+        pthread_mutex_unlock(&numSessions_mutex);
+        logg.logMessage("Child process %d exited with status %d", pid, status);
+    }
 }
 
 static const int UDP_REQ_PORT = 30001;
 
-typedef struct {
-	char rviHeader[8];
-	uint32_t messageID;
-	uint8_t ethernetAddress[8];
-	uint32_t ethernetType;
-	uint32_t dhcp;
-	char dhcpName[40];
-	uint32_t ipAddress;
-	uint32_t defaultGateway;
-	uint32_t subnetMask;
-	uint32_t activeConnections;
+typedef struct
+{
+    char rviHeader[8];
+    uint32_t messageID;
+    uint8_t ethernetAddress[8];
+    uint32_t ethernetType;
+    uint32_t dhcp;
+    char dhcpName[40];
+    uint32_t ipAddress;
+    uint32_t defaultGateway;
+    uint32_t subnetMask;
+    uint32_t activeConnections;
 } RVIConfigureInfo;
 
 static const char DST_REQ[] = { 'D', 'S', 'T', '_', 'R', 'E', 'Q', ' ', 0, 0, 0, 0x64 };
 
-class UdpListener {
+class UdpListener
+{
 public:
-	UdpListener() : mDstAns(), mReq(-1) {}
+    UdpListener()
+            : mDstAns(),
+              mReq(-1)
+    {
+    }
 
-	void setup(int port) {
-		mReq = udpPort(UDP_REQ_PORT);
+    void setup(int port)
+    {
+        mReq = udpPort(UDP_REQ_PORT);
 
-		// Format the answer buffer
-		memset(&mDstAns, 0, sizeof(mDstAns));
-		memcpy(mDstAns.rviHeader, "STR_ANS ", sizeof(mDstAns.rviHeader));
-		if (gethostname(mDstAns.dhcpName, sizeof(mDstAns.dhcpName) - 1) != 0) {
-			logg.logError("gethostname failed");
-			handleException();
-		}
-		// Subvert the defaultGateway field for the port number
-		if (port != DEFAULT_PORT) {
-			mDstAns.defaultGateway = port;
-		}
-		// Subvert the subnetMask field for the protocol version
-		mDstAns.subnetMask = PROTOCOL_VERSION;
-	}
+        // Format the answer buffer
+        memset(&mDstAns, 0, sizeof(mDstAns));
+        memcpy(mDstAns.rviHeader, "STR_ANS ", sizeof(mDstAns.rviHeader));
+        if (gethostname(mDstAns.dhcpName, sizeof(mDstAns.dhcpName) - 1) != 0) {
+            logg.logError("gethostname failed");
+            handleException();
+        }
+        // Subvert the defaultGateway field for the port number
+        if (port != DEFAULT_PORT) {
+            mDstAns.defaultGateway = port;
+        }
+        // Subvert the subnetMask field for the protocol version
+        mDstAns.subnetMask = PROTOCOL_VERSION;
+    }
 
-	int getReq() const {
-		return mReq;
-	}
+    int getReq() const
+    {
+        return mReq;
+    }
 
-	void handle() {
-		char buf[128];
-		struct sockaddr_in6 sockaddr;
-		socklen_t addrlen;
-		int read;
-		addrlen = sizeof(sockaddr);
-		read = recvfrom(mReq, &buf, sizeof(buf), 0, (struct sockaddr *)&sockaddr, &addrlen);
-		if (read < 0) {
-			logg.logError("recvfrom failed");
-			handleException();
-		} else if ((read == 12) && (memcmp(buf, DST_REQ, sizeof(DST_REQ)) == 0)) {
-			// Don't care if sendto fails - gatord shouldn't exit because of it and Streamline will retry
-			sendto(mReq, &mDstAns, sizeof(mDstAns), 0, (struct sockaddr *)&sockaddr, addrlen);
-		}
-	}
+    void handle()
+    {
+        char buf[128];
+        struct sockaddr_in6 sockaddr;
+        socklen_t addrlen;
+        int read;
+        addrlen = sizeof(sockaddr);
+        read = recvfrom(mReq, &buf, sizeof(buf), 0, (struct sockaddr *) &sockaddr, &addrlen);
+        if (read < 0) {
+            logg.logError("recvfrom failed");
+            handleException();
+        }
+        else if ((read == 12) && (memcmp(buf, DST_REQ, sizeof(DST_REQ)) == 0)) {
+            // Don't care if sendto fails - gatord shouldn't exit because of it and Streamline will retry
+            sendto(mReq, &mDstAns, sizeof(mDstAns), 0, (struct sockaddr *) &sockaddr, addrlen);
+        }
+    }
 
-	void close() {
-		::close(mReq);
-	}
+    void close()
+    {
+        ::close(mReq);
+    }
 
 private:
-	int udpPort(int port) {
-		int s;
-		struct sockaddr_in6 sockaddr;
-		int on;
-		int family = AF_INET6;
+    int udpPort(int port)
+    {
+        int s;
+        struct sockaddr_in6 sockaddr;
+        int on;
+        int family = AF_INET6;
 
-		s = socket_cloexec(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-		if (s == -1) {
-			family = AF_INET;
-			s = socket_cloexec(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-			if (s == -1) {
-				logg.logError("socket failed");
-				handleException();
-			}
-		}
+        s = socket_cloexec(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+        if (s == -1) {
+            family = AF_INET;
+            s = socket_cloexec(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            if (s == -1) {
+                logg.logError("socket failed");
+                handleException();
+            }
+        }
 
-		on = 1;
-		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)) != 0) {
-			logg.logError("setsockopt REUSEADDR failed");
-			handleException();
-		}
+        on = 1;
+        if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*) &on, sizeof(on)) != 0) {
+            logg.logError("setsockopt REUSEADDR failed");
+            handleException();
+        }
 
-		// Listen on both IPv4 and IPv6
-		on = 0;
-		if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&on, sizeof(on)) != 0) {
-			logg.logMessage("setsockopt IPV6_V6ONLY failed");
-		}
+        // Listen on both IPv4 and IPv6
+        on = 0;
+        if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char*) &on, sizeof(on)) != 0) {
+            logg.logMessage("setsockopt IPV6_V6ONLY failed");
+        }
 
-		memset((void*)&sockaddr, 0, sizeof(sockaddr));
-		sockaddr.sin6_family = family;
-		sockaddr.sin6_port = htons(port);
-		sockaddr.sin6_addr = in6addr_any;
-		if (bind(s, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) < 0) {
-			logg.logError("socket failed");
-			handleException();
-		}
+        memset((void*) &sockaddr, 0, sizeof(sockaddr));
+        sockaddr.sin6_family = family;
+        sockaddr.sin6_port = htons(port);
+        sockaddr.sin6_addr = in6addr_any;
+        if (bind(s, (struct sockaddr *) &sockaddr, sizeof(sockaddr)) < 0) {
+            logg.logError("socket failed");
+            handleException();
+        }
 
-		return s;
-	}
+        return s;
+    }
 
-	RVIConfigureInfo mDstAns;
-	int mReq;
+    RVIConfigureInfo mDstAns;
+    int mReq;
 };
 
 static UdpListener udpListener;
 
 // retval: -1 = failure; 0 = was already mounted; 1 = successfully mounted
-static int mountGatorFS() {
-	// If already mounted,
-	if (access("/dev/gator/buffer", F_OK) == 0) {
-		return 0;
-	}
+static int mountGatorFS()
+{
+    // If already mounted,
+    if (access("/dev/gator/buffer", F_OK) == 0) {
+        return 0;
+    }
 
-	// else, mount the filesystem
-	mkdir("/dev/gator", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if (mount("nodev", "/dev/gator", "gatorfs", 0, NULL) != 0) {
-		return -1;
-	} else {
-		return 1;
-	}
+    // else, mount the filesystem
+    mkdir("/dev/gator", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (mount("nodev", "/dev/gator", "gatorfs", 0, NULL) != 0) {
+        return -1;
+    }
+    else {
+        return 1;
+    }
 }
 
-static bool init_module (const char * const location) {
-	bool ret(false);
-	const int fd = open(location, O_RDONLY | O_CLOEXEC);
-	if (fd >= 0) {
-		struct stat st;
-		if (fstat(fd, &st) == 0) {
-			void * const p = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-			if (p != MAP_FAILED) {
-				if (syscall(__NR_init_module, p, (unsigned long)st.st_size, "") == 0) {
-					ret = true;
-				}
-				munmap(p, st.st_size);
-			}
-		}
-		close(fd);
-	}
+static bool init_module(const char * const location)
+{
+    bool ret(false);
+    const int fd = open(location, O_RDONLY | O_CLOEXEC);
+    if (fd >= 0) {
+        struct stat st;
+        if (fstat(fd, &st) == 0) {
+            void * const p = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            if (p != MAP_FAILED) {
+                if (syscall(__NR_init_module, p, (unsigned long) st.st_size, "") == 0) {
+                    ret = true;
+                }
+                munmap(p, st.st_size);
+            }
+        }
+        close(fd);
+    }
 
-	return ret;
+    return ret;
 }
 
-static bool setupFilesystem(char* module) {
-	if (module) {
-		// unmount and rmmod if the module was specified on the commandline, i.e. ensure that the specified module is indeed running
-		shutdownFilesystem();
+static bool setupFilesystem(char* module)
+{
+    if (module) {
+        // unmount and rmmod if the module was specified on the commandline, i.e. ensure that the specified module is indeed running
+        shutdownFilesystem();
 
-		// if still mounted
-		if (access("/dev/gator/buffer", F_OK) == 0) {
-			logg.logError("Unable to remove the running gator.ko. Manually remove the module or use the running module by not specifying one on the commandline");
-			handleException();
-		}
-	}
+        // if still mounted
+        if (access("/dev/gator/buffer", F_OK) == 0) {
+            logg.logError("Unable to remove the running gator.ko. Manually remove the module or use the running module by not specifying one on the commandline");
+            handleException();
+        }
+    }
 
-	const int retval = mountGatorFS();
-	if (retval == 1) {
-		logg.logMessage("Driver already running at startup");
-		driverRunningAtStart = true;
-	} else if (retval == 0) {
-		logg.logMessage("Driver already mounted at startup");
-		driverRunningAtStart = driverMountedAtStart = true;
-	} else {
-		char location[256]; // arbitrarily large amount
+    const int retval = mountGatorFS();
+    if (retval == 1) {
+        logg.logMessage("Driver already running at startup");
+        driverRunningAtStart = true;
+    }
+    else if (retval == 0) {
+        logg.logMessage("Driver already mounted at startup");
+        driverRunningAtStart = driverMountedAtStart = true;
+    }
+    else {
+        char location[256]; // arbitrarily large amount
 
-		if (module) {
-			strncpy(location, module, sizeof(location));
-		} else {
-			// Is the driver co-located in the same directory?
-			if (getApplicationFullPath(location, sizeof(location)) != 0) { // allow some buffer space
-				logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
-			}
-			strncat(location, "gator.ko", sizeof(location) - strlen(location) - 1);
-		}
+        if (module) {
+            strncpy(location, module, sizeof(location));
+        }
+        else {
+            // Is the driver co-located in the same directory?
+            if (getApplicationFullPath(location, sizeof(location)) != 0) { // allow some buffer space
+                logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
+            }
+            strncat(location, "gator.ko", sizeof(location) - strlen(location) - 1);
+        }
 
-		if (access(location, F_OK) == -1) {
-			if (module == NULL) {
-				// The gator kernel is not already loaded and unable to locate gator.ko in the default location
-				return false;
-			} else {
-				// gator location specified on the command line but it was not found
-				logg.logError("gator module not found at %s", location);
-				handleException();
-			}
-		}
+        if (access(location, F_OK) == -1) {
+            if (module == NULL) {
+                // The gator kernel is not already loaded and unable to locate gator.ko in the default location
+                return false;
+            }
+            else {
+                // gator location specified on the command line but it was not found
+                logg.logError("gator module not found at %s", location);
+                handleException();
+            }
+        }
 
-		// Load driver
-		if (!init_module(location)) {
-			logg.logMessage("Unable to load gator.ko driver from location %s", location);
-			logg.logError("Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
-			handleException();
-		}
+        // Load driver
+        if (!init_module(location)) {
+            logg.logMessage("Unable to load gator.ko driver from location %s", location);
+            logg.logError("Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
+            handleException();
+        }
 
-		if (mountGatorFS() == -1) {
-			logg.logError("Unable to mount the gator filesystem needed for profiling.");
-			handleException();
-		}
-	}
+        if (mountGatorFS() == -1) {
+            logg.logError("Unable to mount the gator filesystem needed for profiling.");
+            handleException();
+        }
+    }
 
-	return true;
+    return true;
 }
 
-static int shutdownFilesystem() {
-	if (driverMountedAtStart == false) {
-		umount("/dev/gator");
-	}
-	if (driverRunningAtStart == false) {
-		if (syscall(__NR_delete_module, "gator", O_NONBLOCK) != 0) {
-			return -1;
-		}
-	}
+static int shutdownFilesystem()
+{
+    if (driverMountedAtStart == false) {
+        umount("/dev/gator");
+    }
+    if (driverRunningAtStart == false) {
+        if (syscall(__NR_delete_module, "gator", O_NONBLOCK) != 0) {
+            return -1;
+        }
+    }
 
-	return 0; // success
+    return 0; // success
 }
 
 static const char OPTSTRING[] = "hvVdap:s:c:e:E:P:m:o:";
 
-static bool hasDebugFlag(int argc, char** argv) {
-	int c;
+static bool hasDebugFlag(int argc, char** argv)
+{
+    int c;
 
-	optind = 1;
-	opterr = 0;
-	while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
-		if (c == 'd') {
-			return true;
-		}
-	}
+    optind = 1;
+    opterr = 0;
+    while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
+        if (c == 'd') {
+            return true;
+        }
+    }
 
-	return false;
+    return false;
 }
 
-static struct cmdline_t parseCommandLine(int argc, char** argv) {
-	struct cmdline_t cmdline;
-	memset(&cmdline, 0, sizeof(cmdline));
-	cmdline.port = DEFAULT_PORT;
-	char version_string[256]; // arbitrary length to hold the version information
-	int c;
+static struct cmdline_t parseCommandLine(int argc, char** argv)
+{
+    struct cmdline_t cmdline;
+    memset(&cmdline, 0, sizeof(cmdline));
+    cmdline.port = DEFAULT_PORT;
+    char version_string[256]; // arbitrary length to hold the version information
+    int c;
 
-	// build the version string
-	if (PROTOCOL_VERSION < PROTOCOL_DEV) {
-		const int majorVersion = PROTOCOL_VERSION/10;
-		const int minorVersion = PROTOCOL_VERSION%10;
-		if (minorVersion == 0) {
-			snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d)", PROTOCOL_VERSION, majorVersion);
-		} else {
-			snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d.%d)", PROTOCOL_VERSION, majorVersion, minorVersion);
-		}
-	} else {
-		snprintf(version_string, sizeof(version_string), "Streamline gatord development version %d", PROTOCOL_VERSION);
-	}
-	logg.logMessage("%s", version_string);
+    // build the version string
+    if (PROTOCOL_VERSION < PROTOCOL_DEV) {
+        const int majorVersion = PROTOCOL_VERSION / 10;
+        const int minorVersion = PROTOCOL_VERSION % 10;
+        if (minorVersion == 0) {
+            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d)",
+            PROTOCOL_VERSION,
+                     majorVersion);
+        }
+        else {
+            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d.%d)",
+            PROTOCOL_VERSION,
+                     majorVersion, minorVersion);
+        }
+    }
+    else {
+        snprintf(version_string, sizeof(version_string), "Streamline gatord development version %d", PROTOCOL_VERSION);
+    }
+    logg.logMessage("%s", version_string);
 
-	optind = 1;
-	opterr = 1;
-	while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
-		switch (c) {
-			case 'c':
-				gSessionData.mConfigurationXMLPath = optarg;
-				break;
-			case 'd':
-				// Already handled
-				break;
-			case 'e':
-				gSessionData.mEventsXMLPath = optarg;
-				break;
-			case 'E':
-				gSessionData.mEventsXMLAppend = optarg;
-				break;
-			case 'P':
-				cmdline.pmuPath = optarg;
-				break;
-			case 'm':
-				cmdline.module = optarg;
-				break;
-			case 'p':
-				if (!stringToInt(&cmdline.port, optarg, 10)) {
-					logg.logError("Port must be an integer");
-					handleException();
-				}
-				if ((cmdline.port == 8082) || (cmdline.port == 8083)) {
-					logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for annotations. Please select a different port.", cmdline.port);
-					handleException();
-				}
-				if (cmdline.port < 1 || cmdline.port > 65535) {
-					logg.logError("Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535", cmdline.port);
-					handleException();
-				}
-				break;
-			case 's':
-				gSessionData.mSessionXMLPath = optarg;
-				break;
-			case 'o':
-				gSessionData.mTargetPath = optarg;
-				break;
-			case 'a':
-				gSessionData.mAllowCommands = true;
-				break;
-			case 'h':
-			case '?':
-				logg.logError(
-					"%s. All parameters are optional:\n"
-					"-c config_xml   path and filename of the configuration XML to use\n"
-					"-e events_xml   path and filename of the events XML to use\n"
-					"-E events_xml   path and filename of events XML to append\n"
-					"-P pmu_xml      path and filename of pmu XML to append\n"
-					"-h              this help page\n"
-					"-m module       path and filename of gator.ko\n"
-					"-p port_number  port upon which the server listens; default is 8080\n"
-					"-s session_xml  path and filename of a session.xml used for local capture\n"
-					"-o apc_dir      path and name of the output for a local capture\n"
-					"-v              version information\n"
-					"-d              enable debug messages\n"
-					"-a              allow the user to issue a command from Streamline"
-					, version_string);
-				handleException();
-				break;
-			case 'v':
-				logg.logError("%s", version_string);
-				handleException();
-				break;
-			case 'V':
-				logg.logError("%s\nSRC_MD5: %s", version_string, gSrcMd5);
-				handleException();
-				break;
-		}
-	}
+    optind = 1;
+    opterr = 1;
+    while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
+        switch (c) {
+        case 'c':
+            gSessionData.mConfigurationXMLPath = optarg;
+            break;
+        case 'd':
+            // Already handled
+            break;
+        case 'e':
+            gSessionData.mEventsXMLPath = optarg;
+            break;
+        case 'E':
+            gSessionData.mEventsXMLAppend = optarg;
+            break;
+        case 'P':
+            cmdline.pmuPath = optarg;
+            break;
+        case 'm':
+            cmdline.module = optarg;
+            break;
+        case 'p':
+            if (!stringToInt(&cmdline.port, optarg, 10)) {
+                logg.logError("Port must be an integer");
+                handleException();
+            }
+            if ((cmdline.port == 8082) || (cmdline.port == 8083)) {
+                logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for annotations. Please select a different port.", cmdline.port);
+                handleException();
+            }
+            if (cmdline.port < 1 || cmdline.port > 65535) {
+                logg.logError("Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535", cmdline.port);
+                handleException();
+            }
+            break;
+        case 's':
+            gSessionData.mSessionXMLPath = optarg;
+            break;
+        case 'o':
+            gSessionData.mTargetPath = optarg;
+            break;
+        case 'a':
+            gSessionData.mAllowCommands = true;
+            break;
+        case 'h':
+        case '?':
+            logg.logError(
+                    "%s. All parameters are optional:\n"
+                    "-c config_xml   path and filename of the configuration XML to use\n"
+                    "-e events_xml   path and filename of the events XML to use\n"
+                    "-E events_xml   path and filename of events XML to append\n"
+                    "-P pmu_xml      path and filename of pmu XML to append\n"
+                    "-h              this help page\n"
+                    "-m module       path and filename of gator.ko\n"
+                    "-p port_number  port upon which the server listens; default is 8080\n"
+                    "-s session_xml  path and filename of a session.xml used for local capture\n"
+                    "-o apc_dir      path and name of the output for a local capture\n"
+                    "-v              version information\n"
+                    "-d              enable debug messages\n"
+                    "-a              allow the user to issue a command from Streamline"
+                    , version_string);
+            handleException();
+            break;
+        case 'v':
+            logg.logError("%s", version_string);
+            handleException();
+            break;
+        case 'V':
+            logg.logError("%s\nSRC_MD5: %s", version_string, gSrcMd5);
+            handleException();
+            break;
+        }
+    }
 
-	// Error checking
-	if (cmdline.port != DEFAULT_PORT && gSessionData.mSessionXMLPath != NULL) {
-		logg.logError("Only a port or a session xml can be specified, not both");
-		handleException();
-	}
+    // Error checking
+    if (cmdline.port != DEFAULT_PORT && gSessionData.mSessionXMLPath != NULL) {
+        logg.logError("Only a port or a session xml can be specified, not both");
+        handleException();
+    }
 
-	if (gSessionData.mTargetPath != NULL && gSessionData.mSessionXMLPath == NULL) {
-		logg.logError("Missing -s command line option required for a local capture.");
-		handleException();
-	}
+    if (gSessionData.mTargetPath != NULL && gSessionData.mSessionXMLPath == NULL) {
+        logg.logError("Missing -s command line option required for a local capture.");
+        handleException();
+    }
 
-	if (optind < argc) {
-		logg.logError("Unknown argument: %s. Use '-h' for help.", argv[optind]);
-		handleException();
-	}
+    if (optind < argc) {
+        logg.logError("Unknown argument: %s. Use '-h' for help.", argv[optind]);
+        handleException();
+    }
 
-	return cmdline;
+    return cmdline;
 }
 
 static AnnotateListener annotateListener;
 
-static void handleClient() {
-	OlySocket client(sock->acceptConnection());
+static void handleClient()
+{
+    OlySocket client(sock->acceptConnection());
 
-	int pid = fork();
-	if (pid < 0) {
-		// Error
-		logg.logError("Fork process failed. Please power cycle the target device if this error persists.");
-		handleException();
-	} else if (pid == 0) {
-		// Child
-		sock->closeServerSocket();
-		udpListener.close();
-		monitor.close();
-		annotateListener.close();
-		child = new Child(&client, numSessions + 1);
-		child->run();
-		delete child;
-		exit(0);
-	} else {
-		// Parent
-		client.closeSocket();
+    int pid = fork();
+    if (pid < 0) {
+        // Error
+        logg.logError("Fork process failed. Please power cycle the target device if this error persists.");
+        handleException();
+    }
+    else if (pid == 0) {
+        // Child
+        sock->closeServerSocket();
+        udpListener.close();
+        monitor.close();
+        annotateListener.close();
+        child = new Child(&client, numSessions + 1);
+        child->run();
+        delete child;
+        exit(0);
+    }
+    else {
+        // Parent
+        client.closeSocket();
 
-		pthread_mutex_lock(&numSessions_mutex);
-		numSessions++;
-		pthread_mutex_unlock(&numSessions_mutex);
+        pthread_mutex_lock(&numSessions_mutex);
+        numSessions++;
+        pthread_mutex_unlock(&numSessions_mutex);
 
-		// Maximum number of connections is 2
-		int wait = 0;
-		while (numSessions > 1) {
-			// Throttle until one of the children exits before continuing to accept another socket connection
-			logg.logMessage("%d sessions active!", numSessions);
-			if (wait++ >= 10) { // Wait no more than 10 seconds
-				// Kill last created child
-				kill(pid, SIGALRM);
-				break;
-			}
-			sleep(1);
-		}
-	}
+        // Maximum number of connections is 2
+        int wait = 0;
+        while (numSessions > 1) {
+            // Throttle until one of the children exits before continuing to accept another socket connection
+            logg.logMessage("%d sessions active!", numSessions);
+            if (wait++ >= 10) { // Wait no more than 10 seconds
+                // Kill last created child
+                kill(pid, SIGALRM);
+                break;
+            }
+            sleep(1);
+        }
+    }
 }
 
 // Gator data flow: collector -> collector fifo -> sender
-int main(int argc, char** argv) {
-	// Ensure proper signal handling by making gatord the process group leader
-	//   e.g. it may not be the group leader when launched as 'sudo gatord'
-	setsid();
+int main(int argc, char** argv)
+{
+    // Ensure proper signal handling by making gatord the process group leader
+    //   e.g. it may not be the group leader when launched as 'sudo gatord'
+    setsid();
 
-	// Set up global thread-safe logging
-	logg.setDebug(hasDebugFlag(argc, argv));
-	gSessionData.initialize();
+    // Set up global thread-safe logging
+    logg.setDebug(hasDebugFlag(argc, argv));
+    gSessionData.initialize();
 
-	prctl(PR_SET_NAME, (unsigned long)&"gatord-main", 0, 0, 0);
-	pthread_mutex_init(&numSessions_mutex, NULL);
+    prctl(PR_SET_NAME, (unsigned long) &"gatord-main", 0, 0, 0);
+    pthread_mutex_init(&numSessions_mutex, NULL);
 
-	signal(SIGINT, handler);
-	signal(SIGTERM, handler);
-	signal(SIGABRT, handler);
+    signal(SIGINT, handler);
+    signal(SIGTERM, handler);
+    signal(SIGABRT, handler);
 
-	// Set to high priority
-	if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {
-		logg.logMessage("setpriority() failed");
-	}
+    // Set to high priority
+    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {
+        logg.logMessage("setpriority() failed");
+    }
 
-	// Try to increase the maximum number of file descriptors
-	{
-		struct rlimit rlim;
-		memset(&rlim, 0, sizeof(rlim));
-		if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-			logg.logMessage("Unable to get the maximum number of files");
-			// Not good, but not a fatal error either
-		} else {
-			rlim.rlim_cur = max(((rlim_t)1)<<15, rlim.rlim_cur);
-			rlim.rlim_max = max(rlim.rlim_cur, rlim.rlim_max);
-			if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-				logg.logMessage("Unable to increase the maximum number of files");
-				// Not good, but not a fatal error either
-			}
-		}
-	}
+    // Try to increase the maximum number of file descriptors
+    {
+        struct rlimit rlim;
+        memset(&rlim, 0, sizeof(rlim));
+        if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+            logg.logMessage("Unable to get the maximum number of files");
+            // Not good, but not a fatal error either
+        }
+        else {
+            rlim.rlim_cur = max(((rlim_t) 1) << 15, rlim.rlim_cur);
+            rlim.rlim_max = max(rlim.rlim_cur, rlim.rlim_max);
+            if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+                logg.logMessage("Unable to increase the maximum number of files");
+                // Not good, but not a fatal error either
+            }
+        }
+    }
 
-	// Parse the command line parameters
-	struct cmdline_t cmdline = parseCommandLine(argc, argv);
+    // Parse the command line parameters
+    struct cmdline_t cmdline = parseCommandLine(argc, argv);
 
-	// Verify root permissions
-	uid_t euid = geteuid();
-	if (euid) {
-		logg.logError("gatord must be launched with root privileges");
-		handleException();
-	}
+    // Verify root permissions
+    uid_t euid = geteuid();
+    if (euid) {
+        logg.logError("gatord must be launched with root privileges");
+        handleException();
+    }
 
-	PmuXML::read(cmdline.pmuPath);
+    PmuXML::read(cmdline.pmuPath);
 
-	// Call before setting up the SIGCHLD handler, as system() spawns child processes
-	if (setupFilesystem(cmdline.module)) {
-		DriverSource::checkVersion();
-		PmuXML::writeToKernel();
-	} else {
-		logg.logMessage("Unable to set up gatorfs, trying perf");
-		if (!gSessionData.mPerf.setup()) {
-			logg.logError(
-				       "Unable to locate gator.ko driver:\n"
-				       "  >>> gator.ko should be co-located with gatord in the same directory\n"
-				       "  >>> OR insmod gator.ko prior to launching gatord\n"
-				       "  >>> OR specify the location of gator.ko on the command line\n"
-				       "  >>> OR run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing (CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
-			handleException();
-		}
-	}
+    // Call before setting up the SIGCHLD handler, as system() spawns child processes
+    if (setupFilesystem(cmdline.module)) {
+        DriverSource::checkVersion();
+        PmuXML::writeToKernel();
+    }
+    else {
+        logg.logMessage("Unable to set up gatorfs, trying perf");
+        if (!gSessionData.mPerf.setup()) {
+            logg.logError(
+                    "Unable to locate gator.ko driver:\n"
+                    "  >>> gator.ko should be co-located with gatord in the same directory\n"
+                    "  >>> OR insmod gator.ko prior to launching gatord\n"
+                    "  >>> OR specify the location of gator.ko on the command line\n"
+                    "  >>> OR run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing (CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
+            handleException();
+        }
+    }
 
-	{
-		EventsXML eventsXML;
-		mxml_node_t *xml = eventsXML.getTree();
-		// Initialize all drivers
-		for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
-			driver->readEvents(xml);
-		}
-		mxmlDelete(xml);
-	}
+    {
+        EventsXML eventsXML;
+        mxml_node_t *xml = eventsXML.getTree();
+        // Initialize all drivers
+        for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+            driver->readEvents(xml);
+        }
+        mxmlDelete(xml);
+    }
 
-	// Handle child exit codes
-	signal(SIGCHLD, child_exit);
+    // Handle child exit codes
+    signal(SIGCHLD, child_exit);
 
-	// Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal
-	// Handling the error at the send function call is much easier than trying to do anything intelligent in the sig handler
-	signal(SIGPIPE, SIG_IGN);
+    // Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal
+    // Handling the error at the send function call is much easier than trying to do anything intelligent in the sig handler
+    signal(SIGPIPE, SIG_IGN);
 
-	// If the command line argument is a session xml file, no need to open a socket
-	if (gSessionData.mSessionXMLPath) {
-		child = new Child();
-		child->run();
-		delete child;
-	} else {
-		annotateListener.setup();
-		int pipefd[2];
-		if (pipe_cloexec(pipefd) != 0) {
-			logg.logError("Unable to set up annotate pipe");
-			handleException();
-		}
-		gSessionData.mAnnotateStart = pipefd[1];
-		sock = new OlyServerSocket(cmdline.port);
-		udpListener.setup(cmdline.port);
-		if (!monitor.init() ||
-				!monitor.add(sock->getFd()) ||
-				!monitor.add(udpListener.getReq()) ||
-				!monitor.add(annotateListener.getSockFd()) ||
-				!monitor.add(annotateListener.getUdsFd()) ||
-				!monitor.add(pipefd[0]) ||
-				false) {
-			logg.logError("Monitor setup failed");
-			handleException();
-		}
-		// Forever loop, can be exited via a signal or exception
-		while (1) {
-			struct epoll_event events[2];
-			logg.logMessage("Waiting on connection...");
-			int ready = monitor.wait(events, ARRAY_LENGTH(events), -1);
-			if (ready < 0) {
-				logg.logError("Monitor::wait failed");
-				handleException();
-			}
-			for (int i = 0; i < ready; ++i) {
-				if (events[i].data.fd == sock->getFd()) {
-					handleClient();
-				} else if (events[i].data.fd == udpListener.getReq()) {
-					udpListener.handle();
-				} else if (events[i].data.fd == annotateListener.getSockFd()) {
-					annotateListener.handleSock();
-				} else if (events[i].data.fd == annotateListener.getUdsFd()) {
-					annotateListener.handleUds();
-				} else if (events[i].data.fd == pipefd[0]) {
-					uint64_t val;
-					if (read(pipefd[0], &val, sizeof(val)) != sizeof(val)) {
-						logg.logMessage("Reading annotate pipe failed");
-					}
-					annotateListener.signal();
-				}
-			}
-		}
-	}
+    // If the command line argument is a session xml file, no need to open a socket
+    if (gSessionData.mSessionXMLPath) {
+        child = new Child();
+        child->run();
+        delete child;
+    }
+    else {
+        annotateListener.setup();
+        int pipefd[2];
+        if (pipe_cloexec(pipefd) != 0) {
+            logg.logError("Unable to set up annotate pipe");
+            handleException();
+        }
+        gSessionData.mAnnotateStart = pipefd[1];
+        sock = new OlyServerSocket(cmdline.port);
+        udpListener.setup(cmdline.port);
+        if (!monitor.init() || !monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())
+                || !monitor.add(annotateListener.getSockFd()) || !monitor.add(annotateListener.getUdsFd())
+                || !monitor.add(pipefd[0]) || false) {
+            logg.logError("Monitor setup failed");
+            handleException();
+        }
+        // Forever loop, can be exited via a signal or exception
+        while (1) {
+            struct epoll_event events[2];
+            logg.logMessage("Waiting on connection...");
+            int ready = monitor.wait(events, ARRAY_LENGTH(events), -1);
+            if (ready < 0) {
+                logg.logError("Monitor::wait failed");
+                handleException();
+            }
+            for (int i = 0; i < ready; ++i) {
+                if (events[i].data.fd == sock->getFd()) {
+                    handleClient();
+                }
+                else if (events[i].data.fd == udpListener.getReq()) {
+                    udpListener.handle();
+                }
+                else if (events[i].data.fd == annotateListener.getSockFd()) {
+                    annotateListener.handleSock();
+                }
+                else if (events[i].data.fd == annotateListener.getUdsFd()) {
+                    annotateListener.handleUds();
+                }
+                else if (events[i].data.fd == pipefd[0]) {
+                    uint64_t val;
+                    if (read(pipefd[0], &val, sizeof(val)) != sizeof(val)) {
+                        logg.logMessage("Reading annotate pipe failed");
+                    }
+                    annotateListener.signal();
+                }
+            }
+        }
+    }
 
-	cleanUp();
-	return 0;
+    cleanUp();
+    return 0;
 }

@@ -11,23 +11,24 @@
 
 #include <sys/epoll.h>
 
-class Monitor {
+class Monitor
+{
 public:
-	Monitor();
-	~Monitor();
+    Monitor();
+    ~Monitor();
 
-	void close();
-	bool init();
-	bool add(const int fd);
-	int wait(struct epoll_event *const events, int maxevents, int timeout);
+    void close();
+    bool init();
+    bool add(const int fd);
+    int wait(struct epoll_event * const events, int maxevents, int timeout);
 
 private:
 
-	int mFd;
+    int mFd;
 
-	// Intentionally unimplemented
-	Monitor(const Monitor &);
-	Monitor &operator=(const Monitor &);
+    // Intentionally unimplemented
+    Monitor(const Monitor &);
+    Monitor &operator=(const Monitor &);
 };
 
 #endif // MONITOR_H

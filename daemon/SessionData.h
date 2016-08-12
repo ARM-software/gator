@@ -23,7 +23,7 @@
 #include "PerfDriver.h"
 #include "TtraceDriver.h"
 
-#define PROTOCOL_VERSION 240
+#define PROTOCOL_VERSION 250
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -34,206 +34,230 @@
 extern const char MALI_GRAPHICS[];
 extern const size_t MALI_GRAPHICS_SIZE;
 
-struct ImageLinkList {
-	char* path;
-	struct ImageLinkList *next;
+struct ImageLinkList
+{
+    char* path;
+    struct ImageLinkList *next;
 };
 
-class GatorCpu {
+class PolledDriver;
+
+class GatorCpu
+{
 public:
-	GatorCpu(const char *const coreName, const char *const pmncName, const char *const dtName, const int cpuid, const int pmncCounters);
+    GatorCpu(const char * const coreName, const char * const pmncName, const char * const dtName, const int cpuid,
+             const int pmncCounters);
 
-	static GatorCpu *getHead() {
-		return mHead;
-	}
+    static GatorCpu *getHead()
+    {
+        return mHead;
+    }
 
-	GatorCpu *getNext() const {
-		return mNext;
-	}
+    GatorCpu *getNext() const
+    {
+        return mNext;
+    }
 
-	const char *getCoreName() const {
-		return mCoreName;
-	}
+    const char *getCoreName() const
+    {
+        return mCoreName;
+    }
 
-	const char *getPmncName() const {
-		return mPmncName;
-	}
+    const char *getPmncName() const
+    {
+        return mPmncName;
+    }
 
-	const char *getDtName() const {
-		return mDtName;
-	}
+    const char *getDtName() const
+    {
+        return mDtName;
+    }
 
-	int getCpuid() const {
-		return mCpuid;
-	}
+    int getCpuid() const
+    {
+        return mCpuid;
+    }
 
-	int getPmncCounters() const {
-		return mPmncCounters;
-	}
+    int getPmncCounters() const
+    {
+        return mPmncCounters;
+    }
 
-	void setType(int type) {
-		mType = type;
-	}
+    void setType(int type)
+    {
+        mType = type;
+    }
 
-	int getType() const {
-		return mType;
-	}
+    int getType() const
+    {
+        return mType;
+    }
 
-	static GatorCpu *find(const char *const name);
+    static GatorCpu *find(const char * const name);
 
-	static GatorCpu *find(const int cpuid);
+    static GatorCpu *find(const int cpuid);
 
 private:
-	static GatorCpu *mHead;
-	GatorCpu *const mNext;
-	const char *const mCoreName;
-	const char *const mPmncName;
-	const char *const mDtName;
-	const int mCpuid;
-	const int mPmncCounters;
-	int mType;
+    static GatorCpu *mHead;
+    GatorCpu * const mNext;
+    const char * const mCoreName;
+    const char * const mPmncName;
+    const char * const mDtName;
+    const int mCpuid;
+    const int mPmncCounters;
+    int mType;
 };
 
-class UncorePmu {
+class UncorePmu
+{
 public:
-	UncorePmu(const char *const coreName, const char *const pmncName, const int pmncCounters, const bool hasCyclesCounter);
+    UncorePmu(const char * const coreName, const char * const pmncName, const int pmncCounters,
+              const bool hasCyclesCounter);
 
-	static UncorePmu *getHead() {
-		return mHead;
-	}
+    static UncorePmu *getHead()
+    {
+        return mHead;
+    }
 
-	UncorePmu *getNext() const {
-		return mNext;
-	}
+    UncorePmu *getNext() const
+    {
+        return mNext;
+    }
 
-	const char *getCoreName() const {
-		return mCoreName;
-	}
+    const char *getCoreName() const
+    {
+        return mCoreName;
+    }
 
-	const char *getPmncName() const {
-		return mPmncName;
-	}
+    const char *getPmncName() const
+    {
+        return mPmncName;
+    }
 
-	int getPmncCounters() const {
-		return mPmncCounters;
-	}
+    int getPmncCounters() const
+    {
+        return mPmncCounters;
+    }
 
-	bool getHasCyclesCounter() const {
-		return mHasCyclesCounter;
-	}
+    bool getHasCyclesCounter() const
+    {
+        return mHasCyclesCounter;
+    }
 
-	static UncorePmu *find(const char *const name);
+    static UncorePmu *find(const char * const name);
 
 private:
-	static UncorePmu *mHead;
-	UncorePmu *const mNext;
-	const char *const mCoreName;
-	const char *const mPmncName;
-	const int mPmncCounters;
-	const bool mHasCyclesCounter;
+    static UncorePmu *mHead;
+    UncorePmu * const mNext;
+    const char * const mCoreName;
+    const char * const mPmncName;
+    const int mPmncCounters;
+    const bool mHasCyclesCounter;
 };
 
-class SharedData {
+class SharedData
+{
 public:
-	SharedData();
+    SharedData();
 
-	int mCpuIds[NR_CPUS];
-	int mClusterIds[NR_CPUS];
-	const GatorCpu *mClusters[CLUSTER_COUNT];
-	int mClusterCount;
-	size_t mMaliUtgardCountersSize;
-	char mMaliUtgardCounters[1<<12];
-	size_t mMaliMidgardCountersSize;
-	char mMaliMidgardCounters[1<<13];
-	bool mClustersAccurate;
+    int mCpuIds[NR_CPUS];
+    int mClusterIds[NR_CPUS];
+    const GatorCpu *mClusters[CLUSTER_COUNT];
+    int mClusterCount;
+    size_t mMaliUtgardCountersSize;
+    char mMaliUtgardCounters[1 << 12];
+    size_t mMaliMidgardCountersSize;
+    char mMaliMidgardCounters[1 << 13];
+    bool mClustersAccurate;
 
 private:
-	// Intentionally unimplemented
-	SharedData(const SharedData &);
-	SharedData &operator=(const SharedData &);
+    // Intentionally unimplemented
+    SharedData(const SharedData &);
+    SharedData &operator=(const SharedData &);
 };
 
-class SessionData {
+class SessionData
+{
 public:
-	static const size_t MAX_STRING_LEN = 80;
+    static const size_t MAX_STRING_LEN = 80;
 
-	SessionData();
-	~SessionData();
+    SessionData();
+    ~SessionData();
 
-	void initialize();
-	void parseSessionXML(char* xmlString);
-	void readModel();
-	void readCpuInfo();
-	void updateClusterIds();
+    void initialize();
+    void parseSessionXML(char* xmlString);
+    void readModel();
+    void readCpuInfo();
+    void updateClusterIds();
 
-	SharedData *mSharedData;
+    SharedData *mSharedData;
 
-	PolledDriver *mUsDrivers[5];
-	KMod mKmod;
-	PerfDriver mPerf;
-	MaliVideoDriver mMaliVideo;
-	MidgardDriver mMidgard;
-	// Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver and TtraceDriver references FtraceDriver
-	AtraceDriver mAtraceDriver;
-	TtraceDriver mTtraceDriver;
-	FtraceDriver mFtraceDriver;
-	ExternalDriver mExternalDriver;
-	CCNDriver mCcnDriver;
+    PolledDriver *mUsDrivers[5];
+    KMod mKmod;
+    PerfDriver mPerf;
+    MaliVideoDriver mMaliVideo;
+    MidgardDriver mMidgard;
+    // Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver and TtraceDriver references FtraceDriver
+    AtraceDriver mAtraceDriver;
+    TtraceDriver mTtraceDriver;
+    FtraceDriver mFtraceDriver;
+    ExternalDriver mExternalDriver;
+    CCNDriver mCcnDriver;
 
-	char mCoreName[MAX_STRING_LEN];
-	struct ImageLinkList *mImages;
-	char *mConfigurationXMLPath;
-	char *mSessionXMLPath;
-	char *mEventsXMLPath;
-	char *mEventsXMLAppend;
-	char *mTargetPath;
-	char *mAPCDir;
-	char *mCaptureWorkingDir;
-	char *mCaptureCommand;
-	char *mCaptureUser;
+    char mCoreName[MAX_STRING_LEN];
+    struct ImageLinkList *mImages;
+    char *mConfigurationXMLPath;
+    char *mSessionXMLPath;
+    char *mEventsXMLPath;
+    char *mEventsXMLAppend;
+    char *mTargetPath;
+    char *mAPCDir;
+    char *mCaptureWorkingDir;
+    char *mCaptureCommand;
+    char *mCaptureUser;
 
-	bool mWaitingOnCommand;
-	bool mSessionIsActive;
-	bool mLocalCapture;
-	// halt processing of the driver data until profiling is complete or the buffer is filled
-	bool mOneShot;
-	bool mIsEBS;
-	bool mSentSummary;
-	bool mAllowCommands;
-	bool mFtraceRaw;
+    bool mWaitingOnCommand;
+    bool mSessionIsActive;
+    bool mLocalCapture;
+    // halt processing of the driver data until profiling is complete or the buffer is filled
+    bool mOneShot;
+    bool mIsEBS;
+    bool mSentSummary;
+    bool mAllowCommands;
+    bool mFtraceRaw;
 
-	int64_t mMonotonicStarted;
-	int mBacktraceDepth;
-	// number of MB to use for the entire collection buffer
-	int mTotalBufferSize;
-	int mSampleRate;
-	int64_t mLiveRate;
-	int mDuration;
-	int mCores;
-	int mPageSize;
-	int mMaxCpuId;
-	int mAnnotateStart;
+    int64_t mMonotonicStarted;
+    int mBacktraceDepth;
+    // number of MB to use for the entire collection buffer
+    int mTotalBufferSize;
+    int mSampleRate;
+    int64_t mLiveRate;
+    int mDuration;
+    int mCores;
+    int mPageSize;
+    int mMaxCpuId;
+    int mAnnotateStart;
 
-	// PMU Counters
-	char *mCountersError;
-	Counter mCounters[MAX_PERFORMANCE_COUNTERS];
+    // PMU Counters
+    char *mCountersError;
+    Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 
 private:
-	// Intentionally unimplemented
-	SessionData(const SessionData &);
-	SessionData &operator=(const SessionData &);
+    // Intentionally unimplemented
+    SessionData(const SessionData &);
+    SessionData &operator=(const SessionData &);
 };
 
 extern SessionData gSessionData;
-extern const char *const gSrcMd5;
+extern const char * const gSrcMd5;
 
 uint64_t getTime();
 int getEventKey();
 int pipe_cloexec(int pipefd[2]);
 FILE *fopen_cloexec(const char *path, const char *mode);
 bool setNonblock(const int fd);
-bool writeAll(const int fd, const void *const buf, const size_t pos);
-bool readAll(const int fd, void *const buf, const size_t count);
+bool writeAll(const int fd, const void * const buf, const size_t pos);
+bool readAll(const int fd, void * const buf, const size_t count);
 void logCpuNotFound();
 
 // From include/generated/uapi/linux/version.h

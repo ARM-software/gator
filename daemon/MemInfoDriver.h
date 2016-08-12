@@ -9,31 +9,32 @@
 #ifndef MEMINFODRIVER_H
 #define MEMINFODRIVER_H
 
-#include "Driver.h"
+#include "PolledDriver.h"
 #include "DynBuf.h"
 
-class MemInfoDriver : public PolledDriver {
+class MemInfoDriver : public PolledDriver
+{
 private:
-	typedef PolledDriver super;
+    typedef PolledDriver super;
 
 public:
-	MemInfoDriver();
-	~MemInfoDriver();
+    MemInfoDriver();
+    ~MemInfoDriver();
 
-	void readEvents(mxml_node_t *const root);
-	void read(Buffer *const buffer);
+    void readEvents(mxml_node_t * const root);
+    void read(Buffer * const buffer);
 
 private:
-	DynBuf mBuf;
-	int64_t mMemUsed;
-	int64_t mMemFree;
-	int64_t mBuffers;
-	int64_t mCached;
-	int64_t mSlab;
+    DynBuf mBuf;
+    int64_t mMemUsed;
+    int64_t mMemFree;
+    int64_t mBuffers;
+    int64_t mCached;
+    int64_t mSlab;
 
-	// Intentionally unimplemented
-	MemInfoDriver(const MemInfoDriver &);
-	MemInfoDriver &operator=(const MemInfoDriver &);
+    // Intentionally unimplemented
+    MemInfoDriver(const MemInfoDriver &);
+    MemInfoDriver &operator=(const MemInfoDriver &);
 };
 
 #endif // MEMINFODRIVER_H

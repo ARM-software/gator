@@ -11,23 +11,24 @@
 
 class OlySocket;
 
-class Child {
+class Child
+{
 public:
-	Child();
-	Child(OlySocket* sock, int numConnections);
-	~Child();
-	void run();
-	OlySocket *socket;
-	void endSession();
-	int numExceptions;
+    Child();
+    Child(OlySocket* sock, int numConnections);
+    ~Child();
+    void run();
+    OlySocket *socket;
+    void endSession();
+    int numExceptions;
 private:
-	int mNumConnections;
+    int mNumConnections;
 
-	void initialization();
+    void initialization();
 
-	// Intentionally unimplemented
-	Child(const Child &);
-	Child &operator=(const Child &);
+    // Intentionally unimplemented
+    Child(const Child &);
+    Child &operator=(const Child &);
 };
 
 #endif //__CHILD_H__

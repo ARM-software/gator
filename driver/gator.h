@@ -26,15 +26,15 @@
 #define MAXSIZE_CORE_NAME 32
 
 struct gator_cpu {
-	struct list_head list;
-	unsigned long cpuid;
-	unsigned long pmnc_counters;
-	/* Human readable name */
-	char core_name[MAXSIZE_CORE_NAME];
-	/* gatorfs event and Perf PMU name */
-	char pmnc_name[MAXSIZE_CORE_NAME];
-	/* compatible from Documentation/devicetree/bindings/arm/cpus.txt */
-	char dt_name[MAXSIZE_CORE_NAME];
+    struct list_head list;
+    unsigned long cpuid;
+    unsigned long pmnc_counters;
+    /* Human readable name */
+    char core_name[MAXSIZE_CORE_NAME];
+    /* gatorfs event and Perf PMU name */
+    char pmnc_name[MAXSIZE_CORE_NAME];
+    /* compatible from Documentation/devicetree/bindings/arm/cpus.txt */
+    char dt_name[MAXSIZE_CORE_NAME];
 };
 
 /* clusters */
@@ -52,57 +52,57 @@ extern int gator_cluster_count;
  * Filesystem
  ******************************************************************************/
 struct dentry *gatorfs_mkdir(struct super_block *sb, struct dentry *root,
-			     char const *name);
+                 char const *name);
 
 int gatorfs_create_ulong(struct super_block *sb, struct dentry *root,
-			 char const *name, unsigned long *val);
+             char const *name, unsigned long *val);
 
 int gatorfs_create_ro_ulong(struct super_block *sb, struct dentry *root,
-			    char const *name, unsigned long *val);
+                char const *name, unsigned long *val);
 
 /******************************************************************************
  * Tracepoints
  ******************************************************************************/
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-#	error Kernels prior to 3.4 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
+#   error Kernels prior to 3.4 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-#	define GATOR_DEFINE_PROBE(probe_name, proto) \
-		static void probe_##probe_name(void *data, PARAMS(proto))
-#	define GATOR_REGISTER_TRACE(probe_name) \
-		register_trace_##probe_name(probe_##probe_name, NULL)
-#	define GATOR_UNREGISTER_TRACE(probe_name) \
-		unregister_trace_##probe_name(probe_##probe_name, NULL)
+#   define GATOR_DEFINE_PROBE(probe_name, proto) \
+        static void probe_##probe_name(void *data, PARAMS(proto))
+#   define GATOR_REGISTER_TRACE(probe_name) \
+        register_trace_##probe_name(probe_##probe_name, NULL)
+#   define GATOR_UNREGISTER_TRACE(probe_name) \
+        unregister_trace_##probe_name(probe_##probe_name, NULL)
 #else
-#	define GATOR_DEFINE_PROBE(probe_name, proto) \
-		extern struct tracepoint *gator_tracepoint_##probe_name; \
-		static void probe_##probe_name(void *data, PARAMS(proto))
-#	define GATOR_REGISTER_TRACE(probe_name) \
-		((gator_tracepoint_##probe_name == NULL) || tracepoint_probe_register(gator_tracepoint_##probe_name, probe_##probe_name, NULL))
-#	define GATOR_UNREGISTER_TRACE(probe_name) \
-		tracepoint_probe_unregister(gator_tracepoint_##probe_name, probe_##probe_name, NULL)
+#   define GATOR_DEFINE_PROBE(probe_name, proto) \
+        extern struct tracepoint *gator_tracepoint_##probe_name; \
+        static void probe_##probe_name(void *data, PARAMS(proto))
+#   define GATOR_REGISTER_TRACE(probe_name) \
+        ((gator_tracepoint_##probe_name == NULL) || tracepoint_probe_register(gator_tracepoint_##probe_name, probe_##probe_name, NULL))
+#   define GATOR_UNREGISTER_TRACE(probe_name) \
+        tracepoint_probe_unregister(gator_tracepoint_##probe_name, probe_##probe_name, NULL)
 #endif
 
 /******************************************************************************
  * Events
  ******************************************************************************/
 struct gator_interface {
-	const char *const name;
-	/* Complementary function to init */
-	void (*shutdown)(void);
-	int (*create_files)(struct super_block *sb, struct dentry *root);
-	int (*start)(void);
-	/* Complementary function to start */
-	void (*stop)(void);
-	int (*online)(int **buffer, bool migrate);
-	int (*offline)(int **buffer, bool migrate);
-	/* called in process context but may not be running on core 'cpu' */
-	void (*online_dispatch)(int cpu, bool migrate);
-	/* called in process context but may not be running on core 'cpu' */
-	void (*offline_dispatch)(int cpu, bool migrate);
-	int (*read)(int **buffer, bool sched_switch);
-	int (*read64)(long long **buffer, bool sched_switch);
-	int (*read_proc)(long long **buffer, struct task_struct *);
-	struct list_head list;
+    const char *const name;
+    /* Complementary function to init */
+    void (*shutdown)(void);
+    int (*create_files)(struct super_block *sb, struct dentry *root);
+    int (*start)(void);
+    /* Complementary function to start */
+    void (*stop)(void);
+    int (*online)(int **buffer, bool migrate);
+    int (*offline)(int **buffer, bool migrate);
+    /* called in process context but may not be running on core 'cpu' */
+    void (*online_dispatch)(int cpu, bool migrate);
+    /* called in process context but may not be running on core 'cpu' */
+    void (*offline_dispatch)(int cpu, bool migrate);
+    int (*read)(int **buffer, bool sched_switch);
+    int (*read64)(long long **buffer, bool sched_switch);
+    int (*read_proc)(long long **buffer, struct task_struct *);
+    struct list_head list;
 };
 
 u64 gator_get_time(void);

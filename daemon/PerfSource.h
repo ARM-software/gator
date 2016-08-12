@@ -20,35 +20,36 @@
 
 class Sender;
 
-class PerfSource : public Source {
+class PerfSource : public Source
+{
 public:
-	PerfSource(sem_t *senderSem, sem_t *startProfile);
-	~PerfSource();
+    PerfSource(sem_t *senderSem, sem_t *startProfile);
+    ~PerfSource();
 
-	bool prepare();
-	void run();
-	void interrupt();
+    bool prepare();
+    void run();
+    void interrupt();
 
-	bool isDone();
-	void write(Sender *sender);
+    bool isDone();
+    void write(Sender *sender);
 
 private:
-	bool handleUEvent(const uint64_t currTime);
+    bool handleUEvent(const uint64_t currTime);
 
-	Buffer mSummary;
-	Buffer *mBuffer;
-	PerfBuffer mCountersBuf;
-	PerfGroup mCountersGroup;
-	Monitor mMonitor;
-	UEvent mUEvent;
-	sem_t *const mSenderSem;
-	sem_t *const mStartProfile;
-	int mInterruptFd;
-	bool mIsDone;
+    Buffer mSummary;
+    Buffer *mBuffer;
+    PerfBuffer mCountersBuf;
+    PerfGroup mCountersGroup;
+    Monitor mMonitor;
+    UEvent mUEvent;
+    sem_t * const mSenderSem;
+    sem_t * const mStartProfile;
+    int mInterruptFd;
+    bool mIsDone;
 
-	// Intentionally undefined
-	PerfSource(const PerfSource &);
-	PerfSource &operator=(const PerfSource &);
+    // Intentionally undefined
+    PerfSource(const PerfSource &);
+    PerfSource &operator=(const PerfSource &);
 };
 
 #endif // PERFSOURCE_H

@@ -11,89 +11,109 @@
 #include "Logging.h"
 #include "SessionData.h"
 
-class MemInfoCounter : public DriverCounter {
+class MemInfoCounter : public DriverCounter
+{
 public:
-	MemInfoCounter(DriverCounter *next, char *const name, int64_t *const value);
-	~MemInfoCounter();
+    MemInfoCounter(DriverCounter *next, char * const name, int64_t * const value);
+    ~MemInfoCounter();
 
-	int64_t read();
+    int64_t read();
 
 private:
-	int64_t *const mValue;
+    int64_t * const mValue;
 
-	// Intentionally unimplemented
-	MemInfoCounter(const MemInfoCounter &);
-	MemInfoCounter &operator=(const MemInfoCounter &);
+    // Intentionally unimplemented
+    MemInfoCounter(const MemInfoCounter &);
+    MemInfoCounter &operator=(const MemInfoCounter &);
 };
 
-MemInfoCounter::MemInfoCounter(DriverCounter *next, char *const name, int64_t *const value) : DriverCounter(next, name), mValue(value) {
+MemInfoCounter::MemInfoCounter(DriverCounter *next, char * const name, int64_t * const value)
+        : DriverCounter(next, name),
+          mValue(value)
+{
 }
 
-MemInfoCounter::~MemInfoCounter() {
+MemInfoCounter::~MemInfoCounter()
+{
 }
 
-int64_t MemInfoCounter::read() {
-	return *mValue;
+int64_t MemInfoCounter::read()
+{
+    return *mValue;
 }
 
-MemInfoDriver::MemInfoDriver() : mBuf(), mMemUsed(0), mMemFree(0), mBuffers(0), mCached(0), mSlab(0) {
+MemInfoDriver::MemInfoDriver()
+        : mBuf(),
+          mMemUsed(0),
+          mMemFree(0),
+          mBuffers(0),
+          mCached(0),
+          mSlab(0)
+{
 }
 
-MemInfoDriver::~MemInfoDriver() {
+MemInfoDriver::~MemInfoDriver()
+{
 }
 
-void MemInfoDriver::readEvents(mxml_node_t *const) {
-	// Only for use with perf
-	if (!gSessionData.mPerf.isSetup()) {
-		return;
-	}
+void MemInfoDriver::readEvents(mxml_node_t * const)
+{
+    // Only for use with perf
+    if (!gSessionData.mPerf.isSetup()) {
+        return;
+    }
 
-	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memused2"), &mMemUsed));
-	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memfree"), &mMemFree));
-	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_bufferram"), &mBuffers));
-	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_cached"), &mCached));
-	setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_slab"), &mSlab));
+    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memused2"), &mMemUsed));
+    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memfree"), &mMemFree));
+    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_bufferram"), &mBuffers));
+    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_cached"), &mCached));
+    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_slab"), &mSlab));
 }
 
-void MemInfoDriver::read(Buffer *const buffer) {
-	if (!countersEnabled()) {
-		return;
-	}
+void MemInfoDriver::read(Buffer * const buffer)
+{
+    if (!countersEnabled()) {
+        return;
+    }
 
-	if (!mBuf.read("/proc/meminfo")) {
-		logg.logError("Failed to read /proc/meminfo");
-		handleException();
-	}
+    if (!mBuf.read("/proc/meminfo")) {
+        logg.logError("Failed to read /proc/meminfo");
+        handleException();
+    }
 
-	char *key = mBuf.getBuf();
-	char *colon;
-	int64_t memTotal = 0;
-	while ((colon = strchr(key, ':')) != NULL) {
-		char *end = strchr(colon + 1, '\n');
-		if (end != NULL) {
-			*end = '\0';
-		}
-		*colon = '\0';
+    char *key = mBuf.getBuf();
+    char *colon;
+    int64_t memTotal = 0;
+    while ((colon = strchr(key, ':')) != NULL) {
+        char *end = strchr(colon + 1, '\n');
+        if (end != NULL) {
+            *end = '\0';
+        }
+        *colon = '\0';
 
-		if (strcmp(key, "MemTotal") == 0) {
-			memTotal = strtoll(colon + 1, NULL, 10) << 10;
-		} else if (strcmp(key, "MemFree") == 0) {
-			mMemFree = strtoll(colon + 1, NULL, 10) << 10;
-		} else if (strcmp(key, "Buffers") == 0) {
-			mBuffers = strtoll(colon + 1, NULL, 10) << 10;
-		} else if (strcmp(key, "Cached") == 0) {
-			mCached = strtoll(colon + 1, NULL, 10) << 10;
-		} else if (strcmp(key, "Slab") == 0) {
-			mSlab = strtoll(colon + 1, NULL, 10) << 10;
-		}
+        if (strcmp(key, "MemTotal") == 0) {
+            memTotal = strtoll(colon + 1, NULL, 10) << 10;
+        }
+        else if (strcmp(key, "MemFree") == 0) {
+            mMemFree = strtoll(colon + 1, NULL, 10) << 10;
+        }
+        else if (strcmp(key, "Buffers") == 0) {
+            mBuffers = strtoll(colon + 1, NULL, 10) << 10;
+        }
+        else if (strcmp(key, "Cached") == 0) {
+            mCached = strtoll(colon + 1, NULL, 10) << 10;
+        }
+        else if (strcmp(key, "Slab") == 0) {
+            mSlab = strtoll(colon + 1, NULL, 10) << 10;
+        }
 
-		if (end == NULL) {
-			break;
-		}
-		key = end + 1;
-	}
+        if (end == NULL) {
+            break;
+        }
+        key = end + 1;
+    }
 
-	mMemUsed = memTotal - mMemFree;
+    mMemUsed = memTotal - mMemFree;
 
-	super::read(buffer);
+    super::read(buffer);
 }

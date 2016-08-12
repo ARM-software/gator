@@ -9,29 +9,30 @@
 #ifndef MIDGARDDRIVER_H
 #define MIDGARDDRIVER_H
 
-#include "Driver.h"
+#include "SimpleDriver.h"
 
-class MidgardDriver : public SimpleDriver {
-	typedef SimpleDriver super;
+class MidgardDriver : public SimpleDriver
+{
+    typedef SimpleDriver super;
 
 public:
-	MidgardDriver();
-	~MidgardDriver();
+    MidgardDriver();
+    ~MidgardDriver();
 
-	bool claimCounter(const Counter &counter) const;
-	void resetCounters();
-	void setupCounter(Counter &counter);
+    bool claimCounter(const Counter &counter) const;
+    void resetCounters();
+    void setupCounter(Counter &counter);
 
-	bool start(const int midgardUds);
+    bool start(const int midgardUds);
 
 private:
-	void query() const;
+    void query() const;
 
-	mutable bool mQueried;
+    mutable bool mQueried;
 
-	// Intentionally unimplemented
-	MidgardDriver(const MidgardDriver &);
-	MidgardDriver &operator=(const MidgardDriver &);
+    // Intentionally unimplemented
+    MidgardDriver(const MidgardDriver &);
+    MidgardDriver &operator=(const MidgardDriver &);
 };
 
 #endif // MIDGARDDRIVER_H

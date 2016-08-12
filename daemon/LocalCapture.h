@@ -11,16 +11,17 @@
 
 struct ImageLinkList;
 
-class LocalCapture {
+class LocalCapture
+{
 public:
-	LocalCapture();
-	~LocalCapture();
-	void write(char* string);
-	void copyImages(ImageLinkList* ptr);
-	void createAPCDirectory(char* target_path);
+    LocalCapture();
+    ~LocalCapture();
+    void write(char* string);
+    void copyImages(ImageLinkList* ptr);
+    void createAPCDirectory(char* target_path);
 private:
-	char* createUniqueDirectory(const char* path, const char* ending);
-	int removeDirAndAllContents(char* path);
+    char* createUniqueDirectory(const char* path, const char* ending);
+    int removeDirAndAllContents(char* path);
 };
 
 #endif //__LOCAL_CAPTURE_H__

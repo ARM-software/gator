@@ -13,28 +13,29 @@
 
 class Sender;
 
-class Source {
+class Source
+{
 public:
-	Source();
-	virtual ~Source();
+    Source();
+    virtual ~Source();
 
-	virtual bool prepare() = 0;
-	void start();
-	virtual void run() = 0;
-	virtual void interrupt() = 0;
-	void join();
+    virtual bool prepare() = 0;
+    void start();
+    virtual void run() = 0;
+    virtual void interrupt() = 0;
+    void join();
 
-	virtual bool isDone() = 0;
-	virtual void write(Sender *sender) = 0;
+    virtual bool isDone() = 0;
+    virtual void write(Sender *sender) = 0;
 
 private:
-	static void *runStatic(void *arg);
+    static void *runStatic(void *arg);
 
-	pthread_t mThreadID;
+    pthread_t mThreadID;
 
-	// Intentionally undefined
-	Source(const Source &);
-	Source &operator=(const Source &);
+    // Intentionally undefined
+    Source(const Source &);
+    Source &operator=(const Source &);
 };
 
 #endif // SOURCE_H
