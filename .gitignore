@@ -4,7 +4,7 @@
 /annotate/libstreamline_annotate.so
 /daemon/*_xml.h
 /daemon/SrcMd5.cpp
-/daemon/escape
+/daemon/escape/escape
 /daemon/events.xml
 /daemon/gatord
 /driver/*.ko.cmd
