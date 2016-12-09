@@ -441,6 +441,7 @@ bool FtraceDriver::prepare(int * const ftraceFds)
 
     {
         int fd;
+        // The below call can be slow on loaded high-core count systems.
         fd = open(TRACING_PATH "/trace", O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
         if (fd < 0) {
             logg.logError("Unable truncate ftrace buffer: %s", strerror(errno));
@@ -449,8 +450,42 @@ bool FtraceDriver::prepare(int * const ftraceFds)
         close(fd);
     }
 
+    const char * const trace_clock_path = TRACING_PATH "/trace_clock";
     const char * const clock = mMonotonicRawSupport ? "mono_raw" : "perf";
-    if (DriverSource::writeDriver(TRACING_PATH "/trace_clock", clock) != 0) {
+    const char * const clock_selected =
+      mMonotonicRawSupport ? "[mono_raw]" : "[perf]";
+    const size_t max_trace_clock_file_length = 200;
+    ssize_t trace_clock_file_length;
+    char trace_clock_file_content[max_trace_clock_file_length+1] = {0};
+    bool must_switch_clock = true;
+    // Only write to /trace_clock if the clock actually needs changing,
+    // as changing trace_clock can be extremely expensive, especially on large
+    // core count systems. The idea is that hopefully only on the first
+    // capture, the trace clock needs to be changed. On subsequent captures,
+    // the right clock is already being used.
+    int fd = open(trace_clock_path, O_RDONLY);
+    if (fd < 0) {
+        logg.logError("Couldn't open %s", trace_clock_path);
+        handleException();
+    }
+    if ((trace_clock_file_length =
+         ::read(fd, trace_clock_file_content, max_trace_clock_file_length-1))
+        < 0) {
+        logg.logError("Couldn't read from %s", trace_clock_path);
+        close(fd);
+        handleException();
+    }
+    close(fd);
+    trace_clock_file_content[trace_clock_file_length] = 0;
+    if (::strstr(trace_clock_file_content, clock_selected)) {
+      // the right clock was already selected :)
+      must_switch_clock = false;
+    }
+
+    // Writing to trace_clock can be very slow on loaded high core count
+    // systems.
+    if (must_switch_clock &&
+        DriverSource::writeDriver(TRACING_PATH "/trace_clock", clock) != 0) {
         logg.logError("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later", clock, mMonotonicRawSupport ? "4.2" : "3.10");
         handleException();
     }
@@ -538,9 +573,6 @@ void FtraceDriver::stop(int * const ftraceFds)
             reader->join();
         }
     }
-
-    // Reset back to local after joining with the reader threads as otherwise any remaining ftrace data is purged
-    DriverSource::writeDriver(TRACING_PATH "/trace_clock", "local");
 }
 
 bool FtraceDriver::readTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb,

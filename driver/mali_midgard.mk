@@ -1,4 +1,4 @@
-# Defines for Mali-Midgard driver
+# Defines for Mali-Midgard/Bifrost driver
 EXTRA_CFLAGS += -DMALI_USE_UMP=1 \
                 -DMALI_LICENSE_IS_GPL=1 \
                 -DMALI_BASE_TRACK_MEMLEAK=0 \

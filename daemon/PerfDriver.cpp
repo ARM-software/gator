@@ -38,6 +38,20 @@ public:
             : DriverCounter(next, name),
               mType(type),
               mConfig(config),
+              mConfigId2(~0ull),
+              mSampleType(sampleType),
+              mFlags(flags),
+              mCluster(cluster),
+              mCount(count)
+    {
+    }
+
+    PerfCounter(DriverCounter *next, const char *name, uint32_t type, uint64_t config, uint64_t sampleType,
+                uint64_t flags, const GatorCpu * const cluster, const int count, uint64_t config_id2)
+            : DriverCounter(next, name),
+              mType(type),
+              mConfig(config),
+              mConfigId2(config_id2),
               mSampleType(sampleType),
               mFlags(flags),
               mCluster(cluster),
@@ -89,9 +103,20 @@ public:
     {
     }
 
+    bool hasConfigId2() const
+    {
+        return mConfigId2 != ~0ull;
+    }
+
+    uint64_t getConfigId2() const
+    {
+        return mConfigId2;
+    }
+
 private:
     const uint32_t mType;
     uint64_t mConfig;
+    uint64_t mConfigId2;
     uint64_t mSampleType;
     const uint64_t mFlags;
     const GatorCpu * const mCluster;
@@ -286,6 +311,90 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
     }
 }
 
+#define COUNT_OF(X) (sizeof(X) / sizeof(X[0]))
+
+void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
+{
+    static const char * const MALI_MIDGARD_AS_IN_USE_RELEASED[] = {
+        "MMU_AS_0",
+        "MMU_AS_1",
+        "MMU_AS_2",
+        "MMU_AS_3"
+    };
+
+    static const char * const MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES[] = {
+        "MMU_PAGE_FAULT_0",
+        "MMU_PAGE_FAULT_1",
+        "MMU_PAGE_FAULT_2",
+        "MMU_PAGE_FAULT_3"
+    };
+
+    static const char * const MALI_MIDGARD_TOTAL_ALLOC_PAGES = "TOTAL_ALLOC_PAGES";
+
+
+    static const __u32 MALI_SAMPLE_TYPE = PERF_SAMPLE_RAW;
+    static const int MALI_FLAGS = PERF_GROUP_LEADER | PERF_GROUP_CPU | PERF_GROUP_TASK | PERF_GROUP_SAMPLE_ID_ALL | PERF_GROUP_FREQ
+            | PERF_GROUP_ALL_CLUSTERS | PERF_GROUP_PER_CPU;
+
+    DynBuf printb;
+    long long id;
+    char buf[256];
+
+    // add midgard software tracepoints
+
+#if 0 /* These are disabled because they never generate events */
+    static const char * const MALI_MIDGARD_PM_STATUS_EVENTS[] = {
+        "PM_SHADER_0",
+        "PM_SHADER_1",
+        "PM_SHADER_2",
+        "PM_SHADER_3",
+        "PM_SHADER_4",
+        "PM_SHADER_5",
+        "PM_SHADER_6",
+        "PM_SHADER_7",
+        "PM_TILER_0",
+        "PM_L2_0",
+        "PM_L2_1"
+    };
+
+    id = getTracepointId("Mali: PM Status", "mali/mali_pm_status", &printb);
+    if (id >= 0) {
+        for (size_t i = 0; i < COUNT_OF(MALI_MIDGARD_PM_STATUS_EVENTS); ++i) {
+            snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_PM_STATUS_EVENTS[i]);
+            setCounters(new PerfCounter(getCounters(), strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, NULL, 1));
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_pm_status"));
+        }
+    }
+#endif
+
+    id = getTracepointId("Mali: PM Status", "mali/mali_mmu_as_in_use", &printb);
+    if (id >= 0) {
+        const int id2 = getTracepointId("Mali: PM Status", "mali/mali_mmu_as_released", &printb);
+        for (size_t i = 0; i < COUNT_OF(MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES); ++i) {
+            snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_AS_IN_USE_RELEASED[i]);
+            setCounters(new PerfCounter(getCounters(), strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, NULL, 1, id2));
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_mmu_as_in_use"));
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_mmu_as_released"));
+        }
+    }
+
+    id = getTracepointId("Mali: PM Status", "mali/mali_page_fault_insert_pages", &printb);
+    if (id >= 0) {
+        for (size_t i = 0; i < COUNT_OF(MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES); ++i) {
+            snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES[i]);
+            setCounters(new PerfCounter(getCounters(), strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, NULL, 1));
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_page_fault_insert_pages"));
+        }
+    }
+
+    id = getTracepointId("Mali: PM Status", "mali/mali_total_alloc_pages_change", &printb);
+    if (id >= 0) {
+        snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_TOTAL_ALLOC_PAGES);
+        setCounters(new PerfCounter(getCounters(), strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, NULL, 1));
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_total_alloc_pages_change"));
+    }
+}
+
 bool PerfDriver::setup()
 {
     // Check the kernel version
@@ -348,9 +457,10 @@ bool PerfDriver::setup()
     }
     closedir(dir);
 
-    if (!foundCpu) {
-        GatorCpu *gatorCpu = GatorCpu::find(gSessionData.mMaxCpuId);
-        if (gatorCpu != NULL) {
+    // additionally add any by CPUID
+    for (int processor = 0; processor < NR_CPUS; ++processor) {
+        GatorCpu *gatorCpu = GatorCpu::find(gSessionData.mSharedData->mCpuIds[processor]);
+        if ((gatorCpu != NULL) && (!gatorCpu->isTypeValid())) {
             foundCpu = true;
             logg.logMessage("Adding cpu counters (based on cpuid) for %s", gatorCpu->getCoreName());
             gatorCpu->setType(PERF_TYPE_RAW);
@@ -425,6 +535,13 @@ bool PerfDriver::setup()
         setCounters(new PerfCounter(getCounters(), strdup(buf), TYPE_DERIVED, -1, 0, 0, NULL, 0));
         snprintf(buf, sizeof(buf), "%s_user", gSessionData.mSharedData->mClusters[cluster]->getPmncName());
         setCounters(new PerfCounter(getCounters(), strdup(buf), TYPE_DERIVED, -1, 0, 0, NULL, 0));
+    }
+
+    // add
+    const char * const maliFamilyName = gSessionData.mMaliHwCntrs.getSupportedDeviceFamilyName();
+    if (maliFamilyName != NULL) {
+        // add midgard software tracepoints
+        addMidgardHwTracepoints(maliFamilyName);
     }
 
     mIsSetup = true;
@@ -529,12 +646,24 @@ bool PerfDriver::enable(const uint64_t currTime, PerfGroup * const group, Buffer
 {
     for (PerfCounter *counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
             counter = static_cast<PerfCounter *>(counter->getNext())) {
-        if (counter->isEnabled() && (counter->getType() != TYPE_DERIVED)
-                && !group->add(currTime, buffer, counter->getKey(), counter->getType(), counter->getConfig(),
-                               counter->getCount(), counter->getSampleType(), counter->getFlags(),
-                               counter->getCluster())) {
-            logg.logMessage("PerfGroup::add failed");
-            return false;
+        if (counter->isEnabled() && (counter->getType() != TYPE_DERIVED)) {
+            if (group->add(currTime, buffer, counter->getKey(), counter->getType(), counter->getConfig(),
+                           counter->getCount(), counter->getSampleType(), counter->getFlags(),
+                           counter->getCluster()))
+            {
+                if (counter->hasConfigId2()) {
+                    if (!group->add(currTime, buffer, counter->getKey() | 0x40000000, counter->getType(), counter->getConfigId2(),
+                                   counter->getCount(), counter->getSampleType(), counter->getFlags(),
+                                   counter->getCluster())) {
+                        logg.logMessage("PerfGroup::add (2nd) failed");
+                        return false;
+                    }
+                }
+            }
+            else {
+                logg.logMessage("PerfGroup::add failed");
+                return false;
+            }
         }
     }
 

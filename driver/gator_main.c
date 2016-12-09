@@ -8,9 +8,10 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION 250
+#define PROTOCOL_VERSION 610
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
+#include <linux/version.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/sched.h>
@@ -25,6 +26,10 @@ static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 #include <linux/utsname.h>
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+#include <linux/notifier.h>
+#endif
 
 #include "gator.h"
 #include "gator_src_md5.h"
@@ -1270,6 +1275,7 @@ GATOR_TRACEPOINTS;
 
 static void gator_save_tracepoint(struct tracepoint *tp, void *priv)
 {
+    pr_debug("gator: gator_save_tracepoint(%s)\n", tp->name);
 #define GATOR_HANDLE_TRACEPOINT(probe_name) \
     do { \
         if (strcmp(tp->name, #probe_name) == 0) { \
@@ -1281,15 +1287,62 @@ GATOR_TRACEPOINTS;
 #undef GATOR_HANDLE_TRACEPOINT
 }
 
-#else
+static void gator_unsave_tracepoint(struct tracepoint *tp, void *priv)
+{
+    pr_debug("gator: gator_unsave_tracepoint(%s)\n", tp->name);
+#define GATOR_HANDLE_TRACEPOINT(probe_name) \
+    do { \
+        if (strcmp(tp->name, #probe_name) == 0) { \
+            gator_tracepoint_##probe_name = NULL; \
+            return; \
+        } \
+    } while (0)
+GATOR_TRACEPOINTS;
+#undef GATOR_HANDLE_TRACEPOINT
+}
 
-#define for_each_kernel_tracepoint(fct, priv)
+int gator_new_tracepoint_module(struct notifier_block * nb, unsigned long action, void * data)
+{
+    struct tp_module * tp_mod = (struct tp_module *) data;
+    struct tracepoint * const * begin = tp_mod->mod->tracepoints_ptrs;
+    struct tracepoint * const * end = tp_mod->mod->tracepoints_ptrs + tp_mod->mod->num_tracepoints;
+
+    pr_debug("gator: new tracepoint module registered %s\n", tp_mod->mod->name);
+
+    if (action == MODULE_STATE_COMING)
+    {
+        for (; begin != end; ++begin) {
+            gator_save_tracepoint(*begin, NULL);
+        }
+    }
+    else if (action == MODULE_STATE_GOING)
+    {
+        for (; begin != end; ++begin) {
+            gator_unsave_tracepoint(*begin, NULL);
+        }
+    }
+    else
+    {
+        pr_debug("gator: unexpected action value in gator_new_tracepoint_module: 0x%lx\n", action);
+    }
+
+    return 0;
+}
+
+static struct notifier_block tracepoint_notifier_block = {
+    .notifier_call = gator_new_tracepoint_module
+};
 
 #endif
 
 static int __init gator_module_init(void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+    /* scan kernel built in tracepoints */
     for_each_kernel_tracepoint(gator_save_tracepoint, NULL);
+    /* register for notification of new tracepoint modules */
+    register_tracepoint_module_notifier(&tracepoint_notifier_block);
+#endif
 
     if (gatorfs_register())
         return -1;
@@ -1310,6 +1363,11 @@ static int __init gator_module_init(void)
 
 static void __exit gator_module_exit(void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+    /* unregister for notification of new tracepoint modules */
+    unregister_tracepoint_module_notifier(&tracepoint_notifier_block);
+#endif
+
     del_timer_sync(&gator_buffer_wake_up_timer);
     tracepoint_synchronize_unregister();
     gator_exit();

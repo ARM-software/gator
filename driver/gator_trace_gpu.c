@@ -54,7 +54,9 @@ struct mali_activity {
     int last_pid;
 };
 
-#define NUMBER_OF_GPU_CORES 16
+// Midgard can have up to 16 cores, but Bifrost can have up to 32, so reserving the max.
+#define NUMBER_OF_GPU_CORES 32
+
 static struct mali_activity mali_activities[NUMBER_OF_GPU_UNITS*NUMBER_OF_GPU_CORES];
 static DEFINE_SPINLOCK(mali_activities_lock);
 
@@ -161,7 +163,7 @@ static void mali_activity_clear(struct mali_counter mali_activity[], size_t mali
 
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD_OR_BIFROST)
 #include "gator_events_mali_4xx.h"
 
 /*
@@ -237,7 +239,7 @@ GATOR_DEFINE_PROBE(mali_timeline_event, TP_PROTO(unsigned int event_id, unsigned
 }
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD_OR_BIFROST)
 
 struct mali_counter mali_activity[3];
 
@@ -297,13 +299,13 @@ static int gator_trace_gpu_start(void)
 #endif
     mali_timeline_trace_registered = mali_job_slots_trace_registered = 0;
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD_OR_BIFROST)
     mali_activity_clear(mali_activity, ARRAY_SIZE(mali_activity));
     if (!GATOR_REGISTER_TRACE(mali_timeline_event))
         mali_timeline_trace_registered = 1;
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD_OR_BIFROST)
     mali_activity_clear(mali_activity, ARRAY_SIZE(mali_activity));
     if (!GATOR_REGISTER_TRACE(mali_job_slots_event))
         mali_job_slots_trace_registered = 1;
@@ -314,12 +316,12 @@ static int gator_trace_gpu_start(void)
 
 static void gator_trace_gpu_stop(void)
 {
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT != MALI_MIDGARD_OR_BIFROST)
     if (mali_timeline_trace_registered)
         GATOR_UNREGISTER_TRACE(mali_timeline_event);
 #endif
 
-#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD)
+#if defined(MALI_SUPPORT) && (MALI_SUPPORT == MALI_MIDGARD_OR_BIFROST)
     if (mali_job_slots_trace_registered)
         GATOR_UNREGISTER_TRACE(mali_job_slots_event);
 #endif

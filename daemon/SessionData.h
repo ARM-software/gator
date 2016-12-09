@@ -22,8 +22,9 @@
 #include "MidgardDriver.h"
 #include "PerfDriver.h"
 #include "TtraceDriver.h"
+#include "mali_userspace/MaliHwCntrDriver.h"
 
-#define PROTOCOL_VERSION 250
+#define PROTOCOL_VERSION 610
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -91,6 +92,11 @@ public:
     int getType() const
     {
         return mType;
+    }
+
+    bool isTypeValid() const
+    {
+        return mType != -1;
     }
 
     static GatorCpu *find(const char * const name);
@@ -196,6 +202,7 @@ public:
     KMod mKmod;
     PerfDriver mPerf;
     MaliVideoDriver mMaliVideo;
+    mali_userspace::MaliHwCntrDriver mMaliHwCntrs;
     MidgardDriver mMidgard;
     // Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver and TtraceDriver references FtraceDriver
     AtraceDriver mAtraceDriver;

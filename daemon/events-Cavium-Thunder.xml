@@ -1,0 +1,201 @@
+  <counter_set name="ARMv8_Cavium_Thunder_cnt" count="6"/>
+  <category name="Cavium_Thunder" counter_set="ARMv8_Cavium_Thunder_cnt" per_cpu="yes" supports_event_based_sampling="yes">
+    <event counter="ARMv8_Cavium_Thunder_ccnt" event="0x11" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+    <event event="0x00" title="Software" name="Increment" description="Instruction architecturally executed - Software increment"/>
+    <event event="0x01" title="Cache" name="Instruction refill" description="L1 instruction cache refill"/>
+    <event event="0x02" title="Cache" name="Inst TLB refill" description="L1 instruction TLB refill"/>
+    <event event="0x03" title="Cache" name="Data refill" description="L1 data cache refills. This counter only counts refills that cause a new miss to be processed by the L2/memory system. If the miss is satisfied by a previous miss, it is not counted. This refill counter counts both LD misses and PREF misses."/>
+    <event event="0x04" title="Cache" name="Data access" description="L1 data cache access. Does not include I/O operations."/>
+    <event event="0x05" title="Cache" name="Data TLB refill" description="L1 data TLB refill"/>
+    <event event="0x06" title="Instruction" name="Data Read" description="Architecturally executed load"/>
+    <event event="0x07" title="Instruction" name="Memory write" description="Architecturally executed store. Includes DC ZVA."/>
+    <event event="0x08" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
+    <event event="0x09" title="Exception" name="Taken" description="Exception taken"/>
+    <event event="0x0a" title="Exception" name="Return" description="Architecturally executed exception return"/>
+    <event event="0x0b" title="Instruction" name="CONTEXTIDR" description="Architecturally executed write to CONTEXTIDR"/>
+    <event event="0x0c" title="Branch" name="PC change" description="Architecturally executed software change of PC"/>
+    <event event="0x0d" title="Branch" name="Immediate" description="Architecturally executed immediate branch. Specifically counts - B, B.cond, BL, CBNZ, CBZ, TBNZ, TBZ"/>
+    <event event="0x0e" title="Procedure" name="Return" description="Architecturally executed procedure return"/>
+    <event event="0x0f" title="Memory" name="Unaligned access" description="Architecturally executed unaligned load or store"/>
+    <event event="0x10" title="Branch" name="Mispredicted" description="Mispredicted or not predicted branch (speculatively executed)"/>
+    <event event="0x12" title="Branch" name="Potential prediction" description="Predictable branch (speculative executed)"/>
+    <event event="0x13" title="Memory" name="Memory access" description="Data memory access (PA&lt;47&gt;=0), does not include tables walks, cache maintenance. The access maybe cache hit or miss."/>
+    <event event="0x14" title="Cache" name="L1 inst access" description="L1 instruction cache access. Counts both hits and misses."/>
+    <event event="0x16" title="Cache" name="L2 data access" description="Number of level 2 data cache accesses. The counter counts memory-read or memory-write operations, that the PE made, that access at least the level 2 data or unified cache. Each access to a cache line is counted including refills of the level 1 data and instruction and writes from the write buffer. Each access to other level 2 data or unified memory structures, such as refill buffers, write buffers, and write-back buffers, is also counted. The counter does not count operations made by other PEs that share this cache, nor CP15 cache maintenance instructions."/>
+    <event event="0x17" title="Cache" name="L2 data refill" description="L2 data cache refills due to this AP. Counts all refills from the L2 to the icache, dcache and pwc."/>
+    <event event="0x18" title="Cache" name="L2 data write" description="L2 data cache write-back due to actions by this AP."/>
+    <event event="0x1a" title="Memory" name="Error" description="Local memory error - number of parity errors coming from the icache."/>
+    <event event="0x1b" title="Instruction" name="Speculative" description="Instruction speculatively executed"/>
+    <event event="0x1c" title="Memory" name="Translation table" description="Architecturally executed write to translation table base"/>
+    <event event="0x1d" title="Bus" name="Cycle" description="Bus cycle"/>
+    <event event="0x1e" title="Counter chain" name="Odd" description="For odd-numbered counters, counts once for each overflow of the preceding even-numbered counter"/>
+    <event event="0x1f" title="Cache" name="L1 data cache allocation" description="L1 data cache allocation without refill"/>
+    <event event="0x20" title="Cache" name="L2 data cache allocation" description="L2 data cache allocation without refill"/>
+
+    <event event="0x21" title="Branch" name="BR_RETIRED" description="Counts number of branches retired that are one of conditional, unconditional, branch and link, return and eret."/>
+    <event event="0x22" title="Branch" name="BR_MIS_PRED_RETIRED" description="Number of branches counted by BR_RETIRED that were not correctly predicted (and therefore have an associated performance loss)."/>
+    <event event="0x23" title="Other" name="STALL_FRONTEND" description="Cycles on which no operation issued because there are instructions from the fetch unit."/>
+    <event event="0x24" title="Other" name="STALL_BACKEND" description="Cycles on which no operation instructions issued, even though instructions are available from the fetch unit. Possible reasons include functional unit resource conflicts, data cache misses and similar causes."/>
+    <event event="0x25" title="Memory" name="L1D_TLB" description="Number of accesses to microtlb caused by a data reference. TLB maintenance instructions do not count."/>
+    <event event="0x26" title="Memory" name="L1I_TLB" description="Number of accesses to microtlb caused by an instruction reference."/>
+    <event event="0x27" title="Cache" name="L2I_CACHE" description="Number of accesses made to the L2 by the L1 ICache misses."/>
+    <event event="0x28" title="Cache" name="L2I_CACHE_REFILL" description="Number of refills into the L2 destined for the icache."/>
+    <event event="0x2D" title="Memory" name="L2D_TLB_REFILL" description="Number of MTLB Refills due to memory read and memory write operations."/>
+    <event event="0x2E" title="Memory" name="L2I_TLB_REFILL" description="Number of MTLB refills due to instruction TLB misses."/>
+    <event event="0x2F" title="Memory" name="L2D_TLB" description="Number of MTLB accesses due to memory read or memory write operations."/>
+    <event event="0x40" title="Cache" name="L1D_CACHE_LD" description="Number of level 1 data cache access-read operations (can be hit or miss)."/>
+    <event event="0x41" title="Cache" name="L1D_CACHE_ST" description="Number of level 1 data cache access-write operations. This counts stores that can either hit or miss in the dcache."/>
+    <event event="0x42" title="Cache" name="L1D_CACHE_REFILL_LD" description="Number of level 1 data cache refill - read operations caused by LD* instructions, does not include PREF. Counts refills that cause a new miss to be processed by the L2/memory system. If the miss is satisfied by a previous miss, it is not counted."/>
+    <event event="0x48" title="Cache" name="L1D_CACHE_INVAL" description="Number of level 1 data cache invalidates caused event outside the core."/>
+    <event event="0x4C" title="Memory" name="L1D_TLB_REFILL_LD" description="Number of level 1 data TLB refill (as in L1D_TLB_REFILL) and due to memory read operations."/>
+    <event event="0x4D" title="Memory" name="L1D_TLB_REFILL_ST" description="Number of level 1 data TLB refill (as in L1D_TLB_REFILL) and due to memory write operations."/>
+    <event event="0x4E" title="Memory" name="L1D_TLB_LD" description="Number of level 1 data TLB access due to memory read operations.."/>
+    <event event="0x4F" title="Memory" name="L1D_TLB_ST" description="Number of level 1 data access memory write operations."/>
+    <event event="0x50" title="Cache" name="L2D_CACHE_LD" description="Number of accesses to L2 cache caused by memory read operations (load instructions, page table walks). Similar to 0x16 but does not include memory write operations or instruction misses."/>
+    <event event="0x51" title="Cache" name="L2D_CACHE_ST" description="Number of accesses to L2 cache caused by memory write operations (stores from the write buffer). Similar to 0x16 but does not include memory read operations or instruciton misses."/>
+    <event event="0x52" title="Cache" name="L2D_CACHE_REFILL_LD" description="Number of accesses to L2 cache caused by memory read operations (load instructions, page table walks) that result in an L2 refill (miss)."/>
+    <event event="0x53" title="Cache" name="L2D_CACHE_REFILL_ST" description="Number of access to L2 cache caused by memory write operations (stores from the write buffer) that result in an L2 refill."/>
+    <event event="0x56" title="Cache" name="L2D_CACHE_WB_VICTIM" description="Number of accesses to L2 cache that caused a writeback to occur from the L2."/>
+    <event event="0x57" title="Cache" name="L2D_CACHE_WB_CLEAN" description="Number of accesses to L2 cache that replaced a cache line that was not dirty."/>
+    <event event="0x5C" title="Memory" name="L2D_TLB_REFILL_LD" description="Number of MTLB accesses that miss in the MTLB and were caused by memory read operations."/>
+    <event event="0x5D" title="Memory" name="L2D_TLB_REFILL_ST" description="Number of MTLB accesses that miss in the MTLB and were caused by memory write operation."/>
+    <event event="0x68" title="Memory" name="UNALIGNED_LD_SPEC" description="Number of speculative unaligned loads. A load might be counted multiple times due to replays."/>
+    <event event="0x69" title="Memory" name="UNALIGNED_ST_SPEC" description="Number of speculative unaligned stores. A store might be counted multiple times due to replays."/>
+    <event event="0x6A" title="Memory" name="UNALIGNED_LDST_SPEC" description="Number of speculative unaligned load or unaligned stores. These unaligned loads and stores might be counted multiple times due to replays."/>
+    <event event="0x6C" title="Instruction" name="LDREX_SPEC" description="Number of speculative load exclusives."/>
+    <event event="0x6D" title="Instruction" name="STREX_PASS_SPEC" description="Number of speculative store exclusive passes. might be counted multiple times due to replays."/>
+    <event event="0x6E" title="Instruction" name="STREX_FAIL_SPEC" description="Number of speculative store exclusive fails. Might be counted multiple times due to replays."/>
+    <event event="0x70" title="Instruction" name="LD_SPEC" description="Number of load instructions; same instructions as 0x6, but speculatively executed, instructions may be counted multiple times due to replays."/>
+    <event event="0x71" title="Instruction" name="ST_SPEC" description="Number of store instructions; same instructions as 0x7, but speculatively executed, instructions may be counted multiple times due to replays."/>
+    <event event="0x72" title="Instruction" name="LDST_SPEC" description="Number of load or store instructions; speculatively executed, instructions may be counted multiple times due to replays."/>
+    <event event="0x73" title="Instruction" name="DP_SPEC" description="Number of data processing instructions; speculatively executed (see ARM ARM v8 for definition of this instruction class.)"/>
+    <event event="0x74" title="Instruction" name="ASE_SPEC" description="Number of SIMD, speculatively executed (see v8 ARM ARM for definition of this class)."/>
+    <event event="0x75" title="Instruction" name="VFP_SPEC" description="Number of FP, speculatively executed (see v8 ARM ARM for definition of this class). Includes FP SIMD instructions."/>
+    <event event="0x77" title="Instruction" name="CRYPTO_SPEC" description="Number of crypto instructions (excpet PMUJLL and VMULL) speculatively executed. see v8 ARM ARM for definition of this class."/>
+    <event event="0x78" title="Branch" name="BR_IMMED_SPEC" description="Number of branch with immediate."/>
+    <event event="0x79" title="Branch" name="BR_RETURN_SPEC" description="Number of branch returns."/>
+    <event event="0x7A" title="Branch" name="BR_INDIRECT_SPEC" description="Number of indirect branches."/>
+    <event event="0x7C" title="Instruction" name="ISB_SPEC" description="Number of isb instructions."/>
+    <event event="0x7D" title="Instruction" name="DSB_SPEC" description="Number of dsb instructions."/>
+    <event event="0x7E" title="Instruction" name="DMB_SPEC" description="Number of dmb instruction."/>
+    <event event="0x81" title="Exception" name="EXC_UNDEF" description="Number of undefined instruction synchronous exceptions taken to the default EL (i.e. locally taken). Includes all exceptions with EC=0x0 to EL1 or same EL."/>
+    <event event="0x82" title="Exception" name="EXC_SVC" description="Number of SVC exceptions taken to the default EL (i.e. locally taken). Includes all exceptions with EC=0x15."/>
+    <event event="0x83" title="Exception" name="EXC_PABORT" description="Number of instruction aborts taken to the default EL (i.e. locally taken). Includes all exceptions with EC=0x20,0x21."/>
+    <event event="0x84" title="Exception" name="EXC_DABORT" description="Number of data aborts or errors taken to the default EL (i.e. locally taken)."/>
+    <event event="0x86" title="Exception" name="EXC_IRQ" description="Number of irq exceptions taken to the default EL (i.e. locally taken). Includes VIRQ."/>
+    <event event="0x87" title="Exception" name="EXC_FIQ" description="Number of fiq exceptions taken to the default EL (i.e. locally taken). Includes FIRQ."/>
+    <event event="0x88" title="Exception" name="EXC_SMC" description="Number of system monitor call exceptions taken locally. Does not count SMC exceptions that are trapped to the hypervisor. Includes all exceptions with EC=0x17."/>
+    <event event="0x8A" title="Exception" name="EXC_HVC" description="Number of hypervisor call exceptions taken locally. The counter counts for both hypervisor call exception taken locally in the hypervisor and as exceptions from nonsecure EL1. Includes all exceptions with EC=0x16."/>
+    <event event="0x8B" title="Exception" name="EXC_TRAP_PABORT" description="Number of instruction aborts not taken locally (i.e. not taken to the default EL)."/>
+    <event event="0x8C" title="Exception" name="EXC_TRAP_DABORT" description="Number of data aborts not taken locally (i.e. not taken to the default EL)."/>
+    <event event="0x8D" title="Exception" name="EXC_TRAP_OTHER" description="Number of not taken locally exceptions (i.e. not taken to the default EL) that are not covered by other counters counting non locally taken exceptions. Includes all exceptions to EL2 or EL3 from a lower level."/>
+    <event event="0x8E" title="Exception" name="EXC_TRAP_IRQ" description="Number of irq exceptions not taken locally exceptions (i.e. not taken to the default EL)."/>
+    <event event="0x8F" title="Exception" name="EXC_TRAP_FIQ" description="Number of fiq exceptions not taken locally exceptions (i.e. not taken to the default EL)."/>
+    <event event="0x90" title="Instruction" name="RC_LD_SPEC" description="Number of load-aquire instructions."/>
+    <event event="0x91" title="Instruction" name="RC_ST_SPEC" description="Number of store-release instructions."/>
+    <event event="0xC0" title="Other" name="ISSUE_ECLK" description="Cycles issue eclk is active (ie not gated)."/>
+    <event event="0xC1" title="Other" name="ISSUE" description="Number of instructions issued."/>
+    <event event="0xC2" title="Other" name="NISSUE" description="Cycles no instructions were issued."/>
+    <event event="0xC3" title="Other" name="SISSUE" description="Cycles one instruction was issued."/>
+    <event event="0xC4" title="Other" name="DISSUE" description="Cycles two instructions were issued."/>
+    <event event="0xC5" title="Branch" name="BR_FOLDED" description="Number of branch instructions that were folded and committed."/>
+    <event event="0xC6" title="Branch" name="BR_FOLDED_SPEC" description="Number of branch instructions that were folded and issued but not necessarily committed. Added in pass 2.0."/>
+    <event event="0xCB" title="Memory" name="REPLAY" description="Number of mem replays."/>
+    <event event="0xCC" title="Memory" name="IUNA" description="Number of operations taking an unaligned replay, these may be speculative. Generally this is a 8 cycle penalty."/>
+    <event event="0xCD" title="Other" name="TRAP" description="Number of traps. These include mem replays and exceptions but not mispredicts or unaligned replays"/>
+    <event event="0xCE" title="Memory" name="ULOAD" description="Number of committed loads which used the unaligned flow. Similar to UNALIGNED_LD_SPEC but this counter counts only committed loads."/>
+    <event event="0xCF" title="Memory" name="USTORE" description="Number of committed stores which used the unaligned flow. Similar to UNALIGNED_ST_SPEC but this counter counts only committed stores."/>
+    <event event="0xD1" title="Cache" name="IPREF_LDI" description="Number of Icache fills sent to memory subsystem due to a software instruction prefetch. These may be dropped and not result in a subsequent fill."/>
+    <event event="0xD3" title="Cache" name="IFILL" description="Number of Icache fills. Noncacheable pseudo fills are not counted. - same as ARM counter 0x0001."/>
+    <event event="0xD6" title="Cache" name="II" description="Number of Icache invalidates. Includes all reasons that icache may be invalidated."/>
+    <event event="0xD7" title="Cache" name="IP" description="Number of Icache parity errors."/>
+    <event event="0xD8" title="Cache" name="CIMISS" description="Cycles idle due to imiss. However, if an iprefetch is already active, the machine must wait for the iprefetch to return before starting the imiss. These lost cycles are not counted."/>
+    <event event="0xDB" title="Cache" name="WBUF" description="Number of write buffer entries created."/>
+    <event event="0xDC" title="Cache" name="WDAT" description="Number of cycles on the XMD bus which are used to transfer data from the writebuffer to the L2C."/>
+    <event event="0xDD" title="Cache" name="WBUFLD" description="Number of write buffer entries forced out by loads."/>
+    <event event="0xDE" title="Cache" name="WBUFFL" description="Number of cycles that there was no available write buffer entry."/>
+    <event event="0xDF" title="Cache" name="WBUFTR" description="Number of stores that found no available write buffer entries."/>
+    <event event="0xE6" title="Cache" name="CDMISS" description="Cycles that don't issue an instruction because the memory system is busy. This include dcache miss cycles, but also includes cycles due to uTLB misses, page table walks and write buffer full stalls. In addition, there is a fixed overhead for recovering from each dcache miss. The following formula may be used to calculate the effective memory latency: latency = [(CDMISS - L1D_TLB_REFILL * 12) - WBUFFL + (L1D_CACHE_REFILL * 8)]/L1D_CACHE_REFILL"/>
+    <event event="0xE7" title="Branch" name="ERET_MIS" description="Number of committed eret's that mispredict."/>
+    <event event="0xE8" title="Other" name="MSR_HAZTR" description="Number of hazard pipeline flushes."/>
+    <event event="0xE9" title="Cache" name="L1D_CACHE_MISS_ST" description="Number of stores that miss in the dcache. Similar to ARM house style L1D_CACHE_REFILL_ST (0x043) but we don't allocate on store misses."/>
+    <event event="0xEA" title="Cache" name="L1D_CACHE_PREF" description="Number of dcache prefetch instructions."/>
+    <event event="0xEB" title="Cache" name="L1D_CACHE_REFILL_PREF" description="Number of level 1 data cache refill-prefetch misses. Counts refills that cause a new miss to be processed by the L2/memory system. If the miss is satisfied by a previous miss, it is not counted."/>
+    <event event="0xEC" title="Cache" name="L1I_CACHE_PREF" description="Number of icache prefetch instructions."/>
+    <event event="0xED" title="Cache" name="L1I_CACHE_REFILL_PREF" description="Number of icache prefetch instructions that miss."/>
+    <event event="0xEE" title="Other" name="ISSUE_CSRCLK" description="Cycles issue csr clk is active (ie not gated)."/>
+    <event event="0xEF" title="Other" name="THROTTLE_OFF" description="Cycles execution is prevented to reduce power."/>
+    <event event="0x184" title="Memory" name="LD_NORM_IO" description="Number of committed load instructions to Normal memory - I/O space (PA&lt;47&gt;=1)."/>
+    <event event="0x185" title="Memory" name="ST_NORM_IO" description="Number of committed store instructions to Normal memory - I/ O space (PA&lt;47&gt;=1)."/>
+    <event event="0x186" title="Memory" name="LD_NORM_MEM" description="Number of committed load instructions to Normal memory - MEM space (PA&lt;47&gt;=0)."/>
+    <event event="0x187" title="Memory" name="ST_NORM_MEM" description="Number of committed store instructions to Normal memory - MEM space (PA&lt;47&gt;=0)."/>
+    <event event="0x188" title="Memory" name="LD_DEV_IO" description="Number of committed load instructions to Device memory - I/O space (PA&lt;47&gt;=1)."/>
+    <event event="0x189" title="Memory" name="ST_DEV_IO" description="Number of committed store instructions to Device memory - I/O space (PA&lt;47&gt;=1)."/>
+    <event event="0x18A" title="Memory" name="LD_DEV_MEM" description="Number of committed load instructions to Device memory - MEM space (PA&lt;47&gt;=0)."/>
+    <event event="0x18B" title="Memory" name="ST_DEV_MEM" description="Number of committed store instructions to Device memory - MEM space (PA&lt;47&gt;=0)."/>
+    <event event="0x18C" title="Memory" name="TLB_REFILL_TTBR0_ELX" description="Number of stage 1 MTLB misses TTBR0. Can filter by EL level and security state."/>
+    <event event="0x18D" title="Memory" name="TLB_REFILL_TTBR1_ELX" description="Number of stage 1 MTLB misses TRBR1. Can filter by EL level (EL1 and EL2 - ARMv8.1)."/>
+    <event event="0x18E" title="Memory" name="TLB_REFILL_VTTBR_EL2" description="Number of stage 2 MTLB misses. Only makes sense for EL0 and EL1."/>
+    <event event="0x193" title="Memory" name="PTW_CYCLES" description="Number of cycles PageTable Walker is active."/>
+    <event event="0x1B8" title="Other" name="GLBL_SYNC" description="Number of global syncs broadcast from this core."/>
+    <event event="0x1B9" title="Other" name="SEV" description="Number of SEV instructions executed."/>
+    <event event="0x1BA" title="Other" name="IC_IALLUX" description="Number of IC IALLU and IC IALLUIS executed."/>
+    <event event="0x1BB" title="Other" name="IC_IVAU" description="Number of IC IVAU executed."/>
+    <event event="0x1BC" title="Other" name="IC_IALLU_RCVD" description="Number of IC IALLUIS received."/>
+    <event event="0x1BD" title="Other" name="IC_IVAU_RCVD" description="Number of IC IVAU received."/>
+    <event event="0x1BE" title="Memory" name="DC_CIVAC" description="Number of data cache clean and invalidate by virtual address to point of coherency."/>
+    <event event="0x1BF" title="Memory" name="DC_CVAC" description="Number of data cache clean by virtual address to point of coherency."/>
+    <event event="0x1C0" title="Memory" name="DC_CVAU" description="Number of data cache clean by virtual address to point of unification."/>
+    <event event="0x1C1" title="Memory" name="DC_ISW_L1" description="Number of data cache invalidate by set/way to L1."/>
+    <event event="0x1C2" title="Memory" name="DC_ISW_L2" description="Number of data cache invalidate by set/way to L2."/>
+    <event event="0x1C3" title="Memory" name="DC_IVAC" description="Number of data cache invalidate by virtual address to point of coherency."/>
+    <event event="0x1C4" title="Memory" name="TLBI_SENT" description="Number of TLBIs sent."/>
+    <event event="0x1C5" title="Memory" name="TLBI_RCVD" description="Number of TLBIs received."/>
+    <event event="0x1C6" title="Memory" name="TLBI_ALLE1" description="Number of TLBI with ALLE1 attribute (local)."/>
+    <event event="0x1C7" title="Memory" name="TLBI_ALLE1IS" description="Number of TLBI with ALLE1IS attribute."/>
+    <event event="0x1C8" title="Memory" name="TLBI_ALLE2" description="Number of TLBI with ALLE2 attribute (local)."/>
+    <event event="0x1C9" title="Memory" name="TLBI_ALLE2IS" description="Number of TLBI with ALLE2IS attribute (local)."/>
+    <event event="0x1CA" title="Memory" name="TLBI_ALLE3" description="Number of TLBI with ALLE3 attribute (local)."/>
+    <event event="0x1CB" title="Memory" name="TLBI_ALLE3IS" description="Number of TLBI with ALLE3IS attribute."/>
+    <event event="0x1CC" title="Memory" name="TLBI_ASIDE1" description="Number of TLBI with ASIDE1 attribute (local)."/>
+    <event event="0x1CD" title="Memory" name="TLBI_ASIDE1IS" description="Number of TLBI with ASIDE1IS attribute."/>
+    <event event="0x1CE" title="Memory" name="TLBI_IPAS2E1" description="Number of TLBI with IPAS2E1 (local)."/>
+    <event event="0x1CF" title="Memory" name="TLBI_IPAS2E1IS" description="Number of TLBI with IPAS2E1IS."/>
+    <event event="0x1D0" title="Memory" name="TLBI_IPAS2LE1" description="Number of TLBI with IPAS2LE1 (local)."/>
+    <event event="0x1D1" title="Memory" name="TLBI_IPAS2LE1IS" description="Number of TLBI with IPAS2LE1IS."/>
+    <event event="0x1D2" title="Memory" name="TLBI_VAAE1" description="Number of TLBI with VAAE1 attribute (local)."/>
+    <event event="0x1D3" title="Memory" name="TLBI_VAAE1IS" description="Number of TLBI with VAAE1 attribute."/>
+    <event event="0x1D4" title="Memory" name="TLBI_VAALE1" description="Number of TLBI with VAALE1 attribute (local)."/>
+    <event event="0x1D5" title="Memory" name="TLBI_VAALE1IS" description="Number of TLBI with VAALE1IS attribute."/>
+    <event event="0x1D6" title="Memory" name="TLBI_VAE1" description="Number of TLBI with VAE1 attribute (local)."/>
+    <event event="0x1D7" title="Memory" name="TLBI_VAE1IS" description="Number of TLBI with VAE1IS attribute (local)."/>
+    <event event="0x1D8" title="Memory" name="TLBI_VAE2" description="Number of TLBI with VAE2 attribute (local)."/>
+    <event event="0x1D9" title="Memory" name="TLBI_VAE2IS" description="Number of TLBI with VAE2IS attribute."/>
+    <event event="0x1DA" title="Memory" name="TLBI_VAE3" description="Number of TLBI with VAE3 attribute (local)."/>
+    <event event="0x1DB" title="Memory" name="TLBI_VAE3IS" description="Number of TLBI with VAE3IS attribute."/>
+    <event event="0x1DC" title="Memory" name="TLBI_VALE1" description="Number of TLBI with VALE1 attribute (local)."/>
+    <event event="0x1DD" title="Memory" name="TLBI_VALE1IS" description="Number of TLBI with VALE1IS attribute."/>
+    <event event="0x1DE" title="Memory" name="TLBI_VALE2" description="Number of TLBI with VALE2 attribute (local)."/>
+    <event event="0x1DF" title="Memory" name="TLBI_VALE2IS" description="Number of TLBI with VALE2IS attribute (local)."/>
+    <event event="0x1E0" title="Memory" name="TLBI_VALE3" description="Number of TLBI with VALE3 attribute (local)."/>
+    <event event="0x1E1" title="Memory" name="TLBI_VALE3IS" description="Number of TLBI with VALE3IS attribute."/>
+    <event event="0x1E2" title="Memory" name="TLBI_VMALLE1" description="Number of TLBI with VMALLE1 attribute (local)."/>
+    <event event="0x1E3" title="Memory" name="TLBI_VMALLE1IS" description="Number of TLBI with VMALLE1 attribute."/>
+    <event event="0x1E4" title="Memory" name="TLBI_VMALLS12E1" description="Number of TLBI with VMALLS12E1 (local)."/>
+    <event event="0x1E5" title="Memory" name="TLBI_VMALLS12E1IS" description="Number of TLBI with VMALLS12E1IS."/>
+    <event event="0x1EF" title="Memory" name="TLBI_NOPS" description="Number of TLBI broadcasts that are suppressed. Added in pass 2.0."/>
+    <event event="0x1F0" title="Instruction" name="ISB" description="Number of ISB instructions retired."/>
+    <event event="0x1F1" title="Instruction" name="DMB_NSH" description="Number of DMB_NSH instructions retired."/>
+    <event event="0x1F2" title="Instruction" name="DMB_ISH" description="Number of DMB_ISH instructions retired."/>
+    <event event="0x1F3" title="Instruction" name="DMB_OSH" description="Number of DMB_OSH instructions retired."/>
+    <event event="0x1F4" title="Instruction" name="DMB_SY" description="Number of DMB_SY instructions retired."/>
+    <event event="0x1F5" title="Instruction" name="DSB_NSH" description="Number of DSB_NSH instructions retired."/>
+    <event event="0x1F6" title="Instruction" name="DSB_ISH" description="Number of DSB_ISH instructions retired."/>
+    <event event="0x1F7" title="Instruction" name="DSB_OSH" description="Number of DSB_OSH instructions retired."/>
+    <event event="0x1F8" title="Instruction" name="DSB_SY" description="Number of DSB_SY instructions retired."/>
+    <event event="0x1F9" title="Instruction" name="LDX" description="Number of load-exclusive instruction retired."/>
+    <event event="0x1FA" title="Instruction" name="STX" description="Number of store-exclusive instruction retired (may or may not succeed)."/>
+    <event event="0x1FB" title="Other" name="STX_FAIL" description="Number of store-exclusive fails."/>
+    <event event="0x302" title="Other" name="F_MASK_CYC" description="Number of cycles during which FIQ is masked"/>
+    <event event="0x303" title="Other" name="I_MASK_CYC" description="Number of cycles during which IRQ is masked"/>
+  </category>

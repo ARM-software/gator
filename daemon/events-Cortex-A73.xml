@@ -32,7 +32,7 @@
     <event event="0x51" title="Cache" name="L2 data access write" description="L2 data cache access, write"/>
     <event event="0x56" title="Cache" name="L2 data victim" description="L2 data cache write-back, victim"/>
     <event event="0x57" title="Cache" name="L2 data clean" description="L2 data cache write-back, cleaning and coherency"/>
-    <event event="0x58" title="Cache" name="L2 data invalidate" description="L2 data cache invalidate"/>
+    <event event="0x58" title="Cache" name="L2 data invalidate" description="L2 data cache invalidate" per_cpu="no"/>
     <event event="0x62" title="Bus" name="Access shared" description="Bus access, Normal, Cacheable, Shareable"/>
     <event event="0x63" title="Bus" name="Access not shared" description="Bus access, not Normal, Cacheable, or Shareable"/>
     <event event="0x64" title="Bus" name="Access normal" description="Bus access, Normal"/>

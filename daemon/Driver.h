@@ -28,8 +28,10 @@ public:
 
     // Returns true if this driver can manage the counter
     virtual bool claimCounter(const Counter &counter) const = 0;
+
     // Clears and disables all counters
     virtual void resetCounters() = 0;
+
     // Enables and prepares the counter for capture
     virtual void setupCounter(Counter &counter) = 0;
 
@@ -37,8 +39,10 @@ public:
     virtual void readEvents(mxml_node_t * const)
     {
     }
+
     // Emits available counters
     virtual int writeCounters(mxml_node_t * const root) const = 0;
+
     // Emits possible dynamically generated events/counters
     virtual void writeEvents(mxml_node_t * const) const
     {

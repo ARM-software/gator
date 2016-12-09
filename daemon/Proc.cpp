@@ -297,8 +297,6 @@ bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * c
                 const char was = buf[newline + 1];
                 buf[newline + 1] = '\0';
                 buffer->marshalKallsyms(currTime, buf);
-                // Sleep 3 ms to avoid sending out too much data too quickly
-                usleep(3000);
                 buf[0] = was;
                 // Assert the memory regions do not overlap
                 if (pos - newline >= newline + 1) {

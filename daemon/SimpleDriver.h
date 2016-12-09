@@ -33,6 +33,7 @@ protected:
     {
         return mCounters;
     }
+
     void setCounters(DriverCounter * const counter)
     {
         mCounters = counter;

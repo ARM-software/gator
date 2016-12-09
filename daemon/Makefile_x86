@@ -1,0 +1,9 @@
+#
+# Makefile for ARM Streamline - Gator Daemon
+# make -f Makefile_x86
+#
+
+CC = gcc
+CXX = g++
+
+include common.mk

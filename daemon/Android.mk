@@ -52,6 +52,11 @@ LOCAL_SRC_FILES := \
 	TtraceDriver.cpp \
 	UEvent.cpp \
 	UserSpaceSource.cpp \
+    mali_userspace/MaliDevice.cpp \
+    mali_userspace/MaliInstanceLocator.cpp \
+    mali_userspace/MaliHwCntrReader.cpp \
+    mali_userspace/MaliHwCntrDriver.cpp \
+    mali_userspace/MaliHwCntrSource.cpp \
 	libsensors/access.c \
 	libsensors/conf-lex.c \
 	libsensors/conf-parse.c \

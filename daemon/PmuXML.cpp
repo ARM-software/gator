@@ -171,6 +171,11 @@ void PmuXML::writeToKernel()
     {
         DIR *dir = opendir("/dev/gator/clusters");
 
+        if (dir == NULL) {
+            logg.logError("Unable to open /dev/gator/clusters");
+            handleException();
+        }
+
         struct dirent *dirent;
         while ((dirent = readdir(dir)) != NULL) {
             GatorCpu *gatorCpu = GatorCpu::find(dirent->d_name);

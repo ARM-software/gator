@@ -5,7 +5,7 @@
 # -Werror treats warnings as errors
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
-CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MD -DETCDIR=\"/etc\" -Ilibsensors
+CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MD -DETCDIR=\"/etc\" -Ilibsensors -I.
 CXXFLAGS += -fno-rtti -Wextra -Wshadow -Wpointer-arith -Wundef # -Weffc++ -Wmissing-declarations
 ifeq ($(WERROR),1)
 	CPPFLAGS += -Werror
@@ -21,7 +21,7 @@ LDLIBS += -lrt -lm -pthread
 TARGET = gatord
 ESCAPE_EXE = escape/escape
 C_SRC = $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
-CXX_SRC = $(wildcard *.cpp)
+CXX_SRC = $(wildcard *.cpp mali_userspace/*.cpp)
 
 ifeq ($(V),1)
 	Q =
@@ -69,7 +69,7 @@ libsensors/conf-parse.c: ;
 	$(ECHO_CXX)
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(wildcard *.cpp)) $(wildcard *.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
+SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(wildcard *.cpp mali_userspace/*.cpp)) $(wildcard *.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
 	$(ECHO_GEN)
 	$(Q)echo 'extern const char *const gSrcMd5 = "'`ls $^ | grep -Ev '^(.*_xml\.h|$@)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32`'";' > $@
 
@@ -83,4 +83,4 @@ $(ESCAPE_EXE): escape/escape.c
 	$(Q)gcc $^ -o $@
 
 clean:
-	rm -f *.d *.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) $(ESCAPE_EXE) events.xml *_xml.h SrcMd5.cpp
+	rm -f *.d *.o mali_userspace/*.d mali_userspace/*.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) $(ESCAPE_EXE) events.xml *_xml.h SrcMd5.cpp

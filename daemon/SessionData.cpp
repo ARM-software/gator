@@ -25,6 +25,8 @@
 #include "SessionXML.h"
 #include "PolledDriver.h"
 
+#include "mali_userspace/MaliInstanceLocator.h"
+
 #define CORE_NAME_UNKNOWN "unknown"
 
 const char MALI_GRAPHICS[] = "\0mali_thirdparty_server";
@@ -127,6 +129,7 @@ SessionData::SessionData()
           mKmod(),
           mPerf(),
           mMaliVideo(),
+          mMaliHwCntrs(),
           mMidgard(),
           mAtraceDriver(),
           mTtraceDriver(),

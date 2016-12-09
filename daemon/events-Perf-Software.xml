@@ -1,0 +1,12 @@
+  <counter_set name="Perf_Software_cnt" count="6"/>
+  <category name="Perf Software" counter_set="Perf_Software_cnt" per_cpu="yes" supports_event_based_sampling="yes">
+    <event counter="Perf_Software_ccnt" event="0" title="Clock" name="CPU Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+    <event event="1" title="Clock" name="Task Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of task clock cycles"/>
+    <event event="3" title="Process" name="Context Switches" display="average" units="" average_selection="yes" average_cores="yes" description="The number of context switches"/>
+    <event event="4" title="Process" name="CPU Migrations" display="average" units="" average_selection="yes" average_cores="yes" description="The number of process CPU migrations"/>
+    <event event="2" title="Page Faults" name="Faults" display="average" units="" average_selection="yes" average_cores="yes" description="The number of page faults"/>
+    <event event="5" title="Page Faults" name="Major Faults" display="average" units="" average_selection="yes" average_cores="yes" description="The number of page faults that required to read from disk"/>
+    <event event="6" title="Page Faults" name="Minor Faults" display="average" units="" average_selection="yes" average_cores="yes" description="The number of page faults that did not require to read from disk"/>
+    <event event="7" title="Alignment Faults" name="Faults" display="average" units="" average_selection="yes" average_cores="yes" description="The number of unaligned read faults"/>
+    <event event="8" title="Emulation Faults" name="Faults" display="average" units="" average_selection="yes" average_cores="yes" description="The number of emulation faults"/>
+  </category>

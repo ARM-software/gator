@@ -30,11 +30,13 @@
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
 #include "PolledDriver.h"
+#include "mali_userspace/MaliHwCntrSource.h"
 
 static sem_t haltPipeline, senderThreadStarted, startProfile, senderSem; // Shared by Child and spawned threads
 static Source *primarySource = NULL;
 static Source *externalSource = NULL;
 static Source *userSpaceSource = NULL;
+static Source *midgardHwSource = NULL;
 static Sender* sender = NULL; // Shared by Child.cpp and spawned threads
 Child* child = NULL; // shared by Child.cpp and main.cpp
 
@@ -160,11 +162,16 @@ static void *senderThread(void *)
     prctl(PR_SET_NAME, (unsigned long) &"gatord-sender", 0, 0, 0);
     sem_wait(&haltPipeline);
 
-    while (!externalSource->isDone() || (userSpaceSource != NULL && !userSpaceSource->isDone())
-            || !primarySource->isDone()) {
+    while ((!externalSource->isDone())
+            || ((midgardHwSource != NULL) && (!midgardHwSource->isDone()))
+            || ((userSpaceSource != NULL) && (!userSpaceSource->isDone()))
+            || (!primarySource->isDone())) {
         sem_wait(&senderSem);
 
         externalSource->write(sender);
+        if (midgardHwSource != NULL) {
+            midgardHwSource->write(sender);
+        }
         if (userSpaceSource != NULL) {
             userSpaceSource->write(sender);
         }
@@ -220,6 +227,9 @@ void Child::endSession()
     gSessionData.mSessionIsActive = false;
     primarySource->interrupt();
     externalSource->interrupt();
+    if (midgardHwSource != NULL) {
+        midgardHwSource->interrupt();
+    }
     if (userSpaceSource != NULL) {
         userSpaceSource->interrupt();
     }
@@ -291,6 +301,13 @@ void Child::run()
         free(xmlString);
     }
 
+    bool thread_creation_success = true;
+    // set up stop thread early, so that ping commands get replied to, even if the
+    // setup phase below takes a long time.
+    if (socket && pthread_create(&stopThreadID, NULL, stopThread, NULL)) {
+        thread_creation_success = false;
+    }
+
     if (gSessionData.mKmod.isMaliCapture() && (gSessionData.mSampleRate == 0)) {
         logg.logError("Mali counters are not supported with Sample Rate: None.");
         handleException();
@@ -317,15 +334,21 @@ void Child::run()
         handleException();
     }
 
+    // initialize midgard hardware counters
+    if (gSessionData.mMaliHwCntrs.countersEnabled()) {
+        midgardHwSource = new mali_userspace::MaliHwCntrSource(&senderSem);
+        if (!midgardHwSource->prepare()) {
+            logg.logError("Unable to prepare midgard hardware counters source for capture");
+            handleException();
+        }
+        midgardHwSource->start();
+    }
+
     // Sender thread shall be halted until it is signaled for one shot mode
     sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
 
-    // Create the duration, stop, and sender threads
-    bool thread_creation_success = true;
+    // Create the duration and sender threads
     if (gSessionData.mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThread, NULL)) {
-        thread_creation_success = false;
-    }
-    else if (socket && pthread_create(&stopThreadID, NULL, stopThread, NULL)) {
         thread_creation_success = false;
     }
     else if (pthread_create(&senderThreadID, NULL, senderThread, NULL)) {
@@ -369,6 +392,9 @@ void Child::run()
     if (userSpaceSource != NULL) {
         userSpaceSource->join();
     }
+    if (midgardHwSource != NULL) {
+        midgardHwSource->join();
+    }
     externalSource->join();
     pthread_join(senderThreadID, NULL);
 
@@ -388,6 +414,7 @@ void Child::run()
     logg.logMessage("Profiling ended.");
 
     delete userSpaceSource;
+    delete midgardHwSource;
     delete externalSource;
     delete primarySource;
     delete sender;

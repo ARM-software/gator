@@ -15,7 +15,11 @@
 
 #define BLOCK_TOTAL     (BLOCK_RQ_RD+1)
 
-#define EVENTWRITE REQ_WRITE
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#define GATOR_REQ_IS_OP_WRITE(rq)   (rq->cmd_flags & REQ_WRITE)
+#else
+#define GATOR_REQ_IS_OP_WRITE(rq)   (req_op(rq) & REQ_OP_WRITE)
+#endif
 
 static ulong block_rq_wr_enabled;
 static ulong block_rq_rd_enabled;
@@ -37,7 +41,8 @@ GATOR_DEFINE_PROBE(block_rq_complete, TP_PROTO(struct request_queue *q, struct r
     if (!rq)
         return;
 
-    write = rq->cmd_flags & EVENTWRITE;
+    write = GATOR_REQ_IS_OP_WRITE(rq);
+
 #if OLD_BLOCK_RQ_COMPLETE
     size = rq->resid_len;
 #else

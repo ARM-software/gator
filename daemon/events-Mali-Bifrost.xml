@@ -1,0 +1,70 @@
+  <category name="Mali-Bifrost Software Counters" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_TOTAL_ALLOC_PAGES" title="Mali Total Alloc Pages" name="Total number of allocated pages" description="Mali total number of allocated pages."/>
+  </category>
+<!--
+power management is disabled during profiling so these counters are not useful as they always return zero
+  <category name="Mali-Bifrost PM Shader" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_0" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 0" description="Mali PM Shader: PM Shader Core 0."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_1" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 1" description="Mali PM Shader: PM Shader Core 1."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_2" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 2" description="Mali PM Shader: PM Shader Core 2."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_3" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 3" description="Mali PM Shader: PM Shader Core 3."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_4" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 4" description="Mali PM Shader: PM Shader Core 4."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_5" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 5" description="Mali PM Shader: PM Shader Core 5."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_6" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 6" description="Mali PM Shader: PM Shader Core 6."/>
+    <event counter="ARM_Mali-Bifrost_PM_SHADER_7" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Shader" name="PM Shader Core 7" description="Mali PM Shader: PM Shader Core 7."/>
+  </category>
+  <category name="Mali-Bifrost PM Tiler" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_PM_TILER_0" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM Tiler" name="PM Tiler Core 0" description="Mali PM Tiler: PM Tiler Core 0."/>
+  </category>
+  <category name="Mali-Bifrost PM L2" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_PM_L2_0" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM L2" name="PM L2 Core 0" description="Mali PM L2: PM L2 Core 0."/>
+    <event counter="ARM_Mali-Bifrost_PM_L2_1" class="absolute" display="average" average_selection="yes" percentage="yes" title="Mali PM L2" name="PM L2 Core 1" description="Mali PM L2: PM L2 Core 1."/>
+  </category>
+-->
+  <category name="Mali-Bifrost MMU Address Space" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_MMU_AS_0" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 0" description="Mali MMU Address Space 0 usage."/>
+    <event counter="ARM_Mali-Bifrost_MMU_AS_1" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 1" description="Mali MMU Address Space 1 usage."/>
+    <event counter="ARM_Mali-Bifrost_MMU_AS_2" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 2" description="Mali MMU Address Space 2 usage."/>
+    <event counter="ARM_Mali-Bifrost_MMU_AS_3" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 3" description="Mali MMU Address Space 3 usage."/>
+  </category>
+  <category name="Mali-Bifrost MMU Page Fault" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_MMU_PAGE_FAULT_0" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 0" description="Reports the number of newly allocated pages after a MMU page fault in address space 0."/>
+    <event counter="ARM_Mali-Bifrost_MMU_PAGE_FAULT_1" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 1" description="Reports the number of newly allocated pages after a MMU page fault in address space 1."/>
+    <event counter="ARM_Mali-Bifrost_MMU_PAGE_FAULT_2" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 2" description="Reports the number of newly allocated pages after a MMU page fault in address space 2."/>
+    <event counter="ARM_Mali-Bifrost_MMU_PAGE_FAULT_3" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 3" description="Reports the number of newly allocated pages after a MMU page fault in address space 3."/>
+  </category>
+  <counter_set name="ARM_Mali-Bifrost_Filmstrip_cnt" count="1"/>
+  <category name="Mali-Bifrost Filmstrip" counter_set="ARM_Mali-Bifrost_Filmstrip_cnt" per_cpu="no">
+    <option_set name="fs">
+      <option event_delta="0x043c" name="1:60 s" description="captures every 60th frame at 1:4 scale"/>
+      <option event_delta="0x041e" name="1:30 s" description="captures every 30th frame at 1:4 scale"/>
+      <option event_delta="0x040a" name="1:10 s" description="captures every 10th frame at 1:4 scale"/>
+      <option event_delta="0x023c" name="1:60 m" description="captures every 60th frame at 1:2 scale"/>
+      <option event_delta="0x021e" name="1:30 m" description="captures every 30th frame at 1:2 scale"/>
+      <option event_delta="0x020a" name="1:10 m" description="captures every 10th frame at 1:2 scale"/>
+      <option event_delta="0x013c" name="1:60 l" description="captures every 60th frame at 1:1 scale"/>
+      <option event_delta="0x011e" name="1:30 l" description="captures every 30th frame at 1:1 scale"/>
+      <option event_delta="0x01-a" name="1:10 l" description="captures every 10th frame at 1:1 scale"/>
+    </option_set>
+    <event event="0" option_set="fs" title="ARM Mali-Bifrost" name="Filmstrip" description="Scaled framebuffer"/>
+  </category>
+  <counter_set name="ARM_Mali-Bifrost_Filmstrip2_cnt" count="1"/>
+  <category name="Mali-Bifrost Filmstrip" counter_set="ARM_Mali-Bifrost_Filmstrip2_cnt" per_cpu="no">
+    <option_set name="fs">
+      <option event_delta="0x1400f03c" name="1:60 s" description="captures every 60th frame at ~320x240"/>
+      <option event_delta="0x1400f01e" name="1:30 s" description="captures every 30th frame at ~320x240"/>
+      <option event_delta="0x1400f00a" name="1:10 s" description="captures every 10th frame at ~320x240"/>
+      <option event_delta="0x2801e03c" name="1:60 m" description="captures every 60th frame at ~640x480"/>
+      <option event_delta="0x2801e01e" name="1:30 m" description="captures every 30th frame at ~640x480"/>
+      <option event_delta="0x2801e00a" name="1:10 m" description="captures every 10th frame at ~640x480"/>
+      <option event_delta="0x5003c03c" name="1:60 l" description="captures every 60th frame at ~1280x960"/>
+      <option event_delta="0x5003c01e" name="1:30 l" description="captures every 30th frame at ~1280x960"/>
+      <option event_delta="0x5003c00a" name="1:10 l" description="captures every 10th frame at ~1280x960"/>
+    </option_set>
+    <event event="0" option_set="fs" title="ARM Mali-Bifrost" name="Filmstrip" description="Scaled framebuffer"/>
+  </category>
+  <category name="Mali-Bifrost Activity" per_cpu="no">
+    <event counter="ARM_Mali-Bifrost_fragment" title="GPU Fragment" name="Activity" class="activity" activity1="Activity" activity_color1="0x00006fcc" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 0 Activity"/>
+    <event counter="ARM_Mali-Bifrost_vertex" title="GPU Vertex-Tiling-Compute" name="Activity" class="activity" activity1="Activity" activity_color1="0x00eda000" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 1 Activity"/>
+    <event counter="ARM_Mali-Bifrost_opencl" title="GPU Vertex-Compute" name="Activity" class="activity" activity1="Activity" activity_color1="0x00ef022f" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 2 Activity"/>
+  </category>

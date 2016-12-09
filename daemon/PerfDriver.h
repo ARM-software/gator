@@ -67,6 +67,7 @@ private:
     // Intentionally undefined
     PerfDriver(const PerfDriver &);
     PerfDriver &operator=(const PerfDriver &);
+    void addMidgardHwTracepoints(const char * const maliFamilyName);
 };
 
 #endif // PERFDRIVER_H

@@ -91,5 +91,8 @@
   <configuration counter="ARM_Mali-Midgard_fragment" cores="1"/>
   <configuration counter="ARM_Mali-Midgard_vertex" cores="1"/>
   <configuration counter="ARM_Mali-Midgard_opencl" cores="1"/>
+  <configuration counter="ARM_Mali-Bifrost_fragment" cores="1"/>
+  <configuration counter="ARM_Mali-Bifrost_vertex" cores="1"/>
+  <configuration counter="ARM_Mali-Bifrost_opencl" cores="1"/>
   <configuration counter="L2C-310_cnt0" event="0x1"/>
 </configurations>

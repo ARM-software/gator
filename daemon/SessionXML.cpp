@@ -70,7 +70,10 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
         logg.logError("Invalid session.xml version must be an integer");
         handleException();
     }
-    if (version != 1) {
+
+    // Version 2 has only enum-like 'resolution_mode' attribute instead of boolean 'high_resolution' attribute taht version 1 has
+    // but none of these are used by gator, so both versions are correctly supported by this implementation.
+    if (version < 1 || version > 2) {
         logg.logError("Invalid session.xml version: %d", version);
         handleException();
     }

@@ -40,7 +40,7 @@
     <event event="0x53" title="Cache" name="L2 data refill write" description="Level 2 data cache refill - Write"/>
     <event event="0x56" title="Cache" name="L2 data victim" description="Level 2 data cache Write-back - Victim"/>
     <event event="0x57" title="Cache" name="L2 data clean" description="Level 2 data cache Write-back - Cleaning and coherency"/>
-    <event event="0x58" title="Cache" name="L2 data invalidate" description="Level 2 data cache invalidate"/>
+    <event event="0x58" title="Cache" name="L2 data invalidate" description="Level 2 data cache invalidate" per_cpu="no"/>
     <event event="0x60" title="Bus" name="Read" description="Bus access - Read"/>
     <event event="0x61" title="Bus" name="Write" description="Bus access - Write"/>
     <event event="0x62" title="Bus" name="Access shared" description="Bus access - Normal"/>

@@ -315,6 +315,7 @@ int PerfGroup::onlineCPU(const uint64_t currTime, const int cpu, const bool enab
             }
 
             const int effectiveType = getEffectiveType(mAttrs[i].type, mFlags[i]);
+
             if (mAttrs[i].pinned && mLeaders[effectiveType] != i) {
                 if (!readAndSend(currTime, buffer, fd, 1, mKeys + i)) {
                     return 0;

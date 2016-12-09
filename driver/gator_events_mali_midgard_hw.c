@@ -15,7 +15,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 
-/* Mali Midgard DDK includes */
+/* Mali Midgard/Bifrost DDK includes */
 #if defined(MALI_SIMPLE_API)
 /* Header with wrapper functions to kbase structures and functions */
 #include "mali_kbase_gator_api.h"
@@ -40,14 +40,10 @@
 #error MALI_DDK_GATOR_API_VERSION is invalid (must be 1 for r1/r2 DDK, or 2 for r3/r4 DDK, or 3 for r5 and later DDK).
 #endif
 
-#if !defined(CONFIG_MALI_GATOR_SUPPORT)
-#error CONFIG_MALI_GATOR_SUPPORT is required for GPU activity and software counters
-#endif
-
 #include "gator_events_mali_common.h"
 
 /*
- * Mali-Midgard
+ * Mali Midgard or Bifrost
  */
 #if MALI_DDK_GATOR_API_VERSION == 3
 static uint32_t (*kbase_gator_instr_hwcnt_dump_irq_symbol)(struct kbase_gator_hwcnt_handles *);
@@ -93,10 +89,6 @@ static long shader_present_low;
  */
 static const int READ_INTERVAL_NSEC = 950000;
 
-#if GATOR_TEST
-#include "gator_events_mali_midgard_hw_test.c"
-#endif
-
 #if MALI_DDK_GATOR_API_VERSION != 3
 /* Blocks for HW counters */
 enum {
@@ -107,9 +99,7 @@ enum {
 };
 #endif
 
-static const char *mali_name;
-
-/* Counters for Mali-Midgard:
+/* Counters for Mali Midgard or Bifrost:
  *
  *    For HW counters we need strings to create /dev/gator/events files.
  *    Enums are not needed because the position of the HW name in the array is the same
@@ -396,6 +386,7 @@ static const int number_of_hardware_counters = ARRAY_SIZE(hardware_counter_names
 
 #endif
 
+// We assume that there will be always not more than 4 blocks of 64 counters in each.
 #define GET_HW_BLOCK(c) (((c) >> 6) & 0x3)
 #define GET_COUNTER_OFFSET(c) ((c) & 0x3f)
 
@@ -444,27 +435,7 @@ static const char *const mali_activity_names[] = {
     "opencl",
 };
 
-#define SYMBOL_GET(FUNCTION, ERROR_COUNT) \
-    do { \
-        if (FUNCTION ## _symbol) { \
-            pr_err("gator: mali " #FUNCTION " symbol was already registered\n"); \
-            (ERROR_COUNT)++; \
-        } else { \
-            FUNCTION ## _symbol = symbol_get(FUNCTION); \
-            if (!FUNCTION ## _symbol) { \
-                pr_err("gator: mali online " #FUNCTION " symbol not found\n"); \
-                (ERROR_COUNT)++; \
-            } \
-        } \
-    } while (0)
-
-#define SYMBOL_CLEANUP(FUNCTION) \
-    do { \
-        if (FUNCTION ## _symbol) { \
-            symbol_put(FUNCTION); \
-            FUNCTION ## _symbol = NULL; \
-        } \
-    } while (0)
+#include "gator_events_mali_midgard.h"
 
 /**
  * Execute symbol_get for all the Mali symbols and check for success.
@@ -546,7 +517,7 @@ static int start(void)
             int enable_bit = GET_COUNTER_OFFSET(cnt) / 4;
 
             in_out_info->bitmask[block] |= (1 << enable_bit);
-            pr_debug("gator: Mali-Midgard: hardware counter %s selected [%d]\n", hardware_counter_names[cnt], cnt);
+            pr_debug("gator: %s: hardware counter %s selected [%d]\n", mali_name, hardware_counter_names[cnt], cnt);
             num_hardware_counters_enabled++;
         }
     }
@@ -581,7 +552,7 @@ static int start(void)
             int enable_bit = GET_COUNTER_OFFSET(cnt) / 4;
 
             bitmask[block] |= (1 << enable_bit);
-            pr_debug("gator: Mali-Midgard: hardware counter %s selected [%d]\n", hardware_counter_names[cnt], cnt);
+            pr_debug("gator: %s: hardware counter %s selected [%d]\n", mali_name, hardware_counter_names[cnt], cnt);
             num_hardware_counters_enabled++;
         }
     }
@@ -598,14 +569,14 @@ static int start(void)
 
         /* If we already got a context, fail */
         if (kbcontext) {
-            pr_err("gator: Mali-Midgard: error context already present\n");
+            pr_err("gator: Mali-%s: error context already present\n", mali_name);
             goto out;
         }
 
         /* kbcontext will only be valid after all the Mali symbols are loaded successfully */
         kbcontext = kbase_create_context_symbol(kbdevice);
         if (!kbcontext) {
-            pr_err("gator: Mali-Midgard: error creating kbase context\n");
+            pr_err("gator: Mali-%s: error creating kbase context\n", mali_name);
             goto out;
         }
 
@@ -619,8 +590,8 @@ static int start(void)
          *             * number of blocks (always 8 for midgard)
          *             * number of counters per block (always 64 for midgard)
          *             * number of bytes per counter (always 4 in midgard)
-         * For a Mali-Midgard with a single core group = 1 * 8 * 64 * 4 = 2048
-         * For a Mali-Midgard with a dual core group   = 2 * 8 * 64 * 4 = 4096
+         * For a Mali-Midgard/Bifrost with a single core group = 1 * 8 * 64 * 4 = 2048
+         * For a Mali-Midgard/Bifrost with a dual core group   = 2 * 8 * 64 * 4 = 4096
          */
 #if MALI_DDK_GATOR_API_VERSION == 1
         kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 4096);
@@ -628,7 +599,7 @@ static int start(void)
         kernel_dump_buffer = kbase_va_alloc_symbol(kbcontext, 4096, &kernel_dump_buffer_handle);
 #endif
         if (!kernel_dump_buffer) {
-            pr_err("gator: Mali-Midgard: error trying to allocate va\n");
+            pr_err("gator: Mali-%s: error trying to allocate va\n", mali_name);
             goto destroy_context;
         }
 
@@ -643,12 +614,12 @@ static int start(void)
         /* Use kbase API to enable hardware counters and provide dump buffer */
         err = kbase_instr_hwcnt_enable_symbol(kbcontext, &setup);
         if (err != MALI_ERROR_NONE) {
-            pr_err("gator: Mali-Midgard: can't setup hardware counters\n");
+            pr_err("gator: Mali-%s: can't setup hardware counters\n", mali_name);
             goto free_buffer;
         }
-        pr_debug("gator: Mali-Midgard: hardware counters enabled\n");
+        pr_debug("gator: Mali-%s: hardware counters enabled\n", mali_name);
         kbase_instr_hwcnt_clear_symbol(kbcontext);
-        pr_debug("gator: Mali-Midgard: hardware counters cleared\n");
+        pr_debug("gator: Mali-%s: hardware counters cleared\n", mali_name);
 
         kbase_device_busy = false;
     }
@@ -680,7 +651,7 @@ static void stop(void)
     struct kbase_context *temp_kbcontext;
 #endif
 
-    pr_debug("gator: Mali-Midgard: stop\n");
+    pr_debug("gator: Mali-%s: stop\n", mali_name);
 
     /* Set all counters as disabled */
     for (cnt = 0; cnt < number_of_hardware_counters; cnt++)
@@ -720,7 +691,7 @@ static void stop(void)
         kbase_destroy_context_symbol(temp_kbcontext);
 #endif
 
-        pr_debug("gator: Mali-Midgard: hardware counters stopped\n");
+        pr_debug("gator: Mali-%s: hardware counters stopped\n", mali_name);
 
         clean_symbols();
     }
@@ -728,7 +699,7 @@ static void stop(void)
 
 static int read_counter(const int cnt, const int len, const struct mali_counter *counter)
 {
-    const int block = GET_HW_BLOCK(cnt);
+    const int counter_block = GET_HW_BLOCK(cnt);
     const int counter_offset = GET_COUNTER_OFFSET(cnt);
     u32 value = 0;
 
@@ -736,12 +707,22 @@ static int read_counter(const int cnt, const int len, const struct mali_counter 
     const char *block_base_address = (char *)in_out_info->kernel_dump_buffer;
     int i;
     int shader_core_count = 0;
+    int block_type = 0;
 
-    for (i = 0; i < in_out_info->nr_hwc_blocks; i++) {
-        if (block == in_out_info->hwc_layout[i]) {
-            value += *((u32 *)(block_base_address + (0x100 * i)) + counter_offset);
-            if (block == SHADER_BLOCK)
-                ++shader_core_count;
+    for (i = 0; i < in_out_info->nr_hwc_blocks; i++)
+    {
+        block_type = in_out_info->hwc_layout[i];
+
+        // Being explicit: regardless of what's coming next
+        // make sure we do skip reserved block types when present
+        if (block_type != RESERVED_BLOCK)
+        {
+            if (counter_block == block_type)
+            {
+                value += *((u32 *)(block_base_address + (0x100 * i)) + counter_offset);
+                if (counter_block == SHADER_BLOCK)
+                    ++shader_core_count;
+            }
         }
     }
 
@@ -754,10 +735,10 @@ static int read_counter(const int cnt, const int len, const struct mali_counter 
         0x000,  /* VITHAR_SHADER_CORE,     Block 2 */
         0x500   /* VITHAR_MEMORY_SYSTEM,   Block 3 */
     };
-    const char *block_base_address = (char *)kernel_dump_buffer + vithar_blocks[block];
+    const char *block_base_address = (char *)kernel_dump_buffer + vithar_blocks[counter_block];
 
     /* If counter belongs to shader block need to take into account all cores */
-    if (block == SHADER_BLOCK) {
+    if (counter_block == SHADER_BLOCK) {
         int i = 0;
         int shader_core_count = 0;
 
@@ -877,16 +858,25 @@ static int read(long long **buffer, bool sched_switch)
 static int create_files(struct super_block *sb, struct dentry *root)
 {
     unsigned int event;
-    /*
-     * Create the filesystem for all events
-     */
+    const char* gpu_core_name = NULL;
+
+     // Create the filesystem for activity events
     for (event = 0; event < ARRAY_SIZE(mali_activity); event++) {
-        if (gator_mali_create_file_system("Midgard", mali_activity_names[event], sb, root, &mali_activity[event], NULL) != 0)
+        if (gator_mali_create_file_system(mali_name, mali_activity_names[event], sb, root, &mali_activity[event], NULL) != 0)
             return -1;
     }
 
+    // Create the filesystem for HW counters events
+#if MALI_DDK_GATOR_API_VERSION < 3
+    // On older Midgard driver versions we do not have gpu core name added to the counter names,
+    // so we use Midgard as some form of generic core name as well here.
+    gpu_core_name = mali_name;
+#else
+    // On newer Midgard and Bifrost drivers, we keep the GPU core name as NULL, because the HW counter names
+    // are already prefixed with gpu core name (as such returned by the DDK driver).
+#endif
     for (event = 0; event < number_of_hardware_counters; event++) {
-        if (gator_mali_create_file_system(mali_name, hardware_counter_names[event], sb, root, &counters[event], NULL) != 0)
+        if (gator_mali_create_file_system(gpu_core_name, hardware_counter_names[event], sb, root, &counters[event], NULL) != 0)
             return -1;
     }
 
@@ -910,7 +900,7 @@ static void shutdown(void)
     hardware_counter_names = NULL;
     if (kbase_gator_hwcnt_term_names_symbol != NULL) {
         kbase_gator_hwcnt_term_names_symbol();
-        pr_debug("gator: Released symbols\n");
+        pr_debug("gator: Mali-%s: Released symbols\n", mali_name);
     }
 
     SYMBOL_CLEANUP(kbase_gator_hwcnt_term_names);
@@ -918,7 +908,7 @@ static void shutdown(void)
 }
 
 static struct gator_interface gator_events_mali_midgard_interface = {
-    .name = "mali_midgard_hw",
+    .name = "mali_hw_counters",
     .shutdown = shutdown,
     .create_files = create_files,
     .start = start,
@@ -926,20 +916,89 @@ static struct gator_interface gator_events_mali_midgard_interface = {
     .read64 = read
 };
 
+// -----------------------------------------------------------------------------------------------
+// Some defines extracted from mali_kbase_gpu_id.h file - to make it available also when
+// compiling gator driver against older DDK driver versions that do not have this header.
+// -----------------------------------------------------------------------------------------------
+#define GPU_ID_PI_T60X                    0x6956
+#define GPU_ID_PI_NEW_FORMAT_START        0x1000
+#define GPU_ID_IS_NEW_FORMAT(product_id)  ((product_id) != GPU_ID_PI_T60X && \
+                                              (product_id) >= \
+                                              GPU_ID_PI_NEW_FORMAT_START)
+
+// Note: what we get in gpu_id field are upper 16 bits from GPU_ID register, therefore:
+// - the GPU ARCH_MAJOR value is encoded on bits [15:12]
+// - the GPU ARCH_MINOR value is encoded on bits [11:8]
+// - the GPU ARCH_REV value is encoded on bits [7:4]
+// - the GPU PRODUCT_MAJOR value is encoded on bits [3:0]
+#define GPU_ID2_ARCH_MAJOR_SHIFT          12
+// -----------------------------------------------------------------------------------------------
+
+
 int gator_events_mali_midgard_hw_init(void)
 {
-#if MALI_DDK_GATOR_API_VERSION == 3
-    const char *const *(*kbase_gator_hwcnt_init_names_symbol)(uint32_t *) = NULL;
+    // This is the place when we can safely setup a correct name for the mali architecture
+    // to make sure software counter names match the XML definitions in the daemon side.
+    // Depending on the driver interface version, we either know this already
+    // at the compile time (older interface versions) or
+    // at the runtime (from MALI_DDK_GATOR_API_VERSION == 3 on).
+
+    static const char* GPU_FAMILY_NAME_MIDGARD = "Midgard";
     int error_count = 0;
-#endif
-
-    pr_debug("gator: Mali-Midgard: sw_counters init\n");
-
-#if GATOR_TEST
-    test_all_is_read_scheduled();
-#endif
 
 #if MALI_DDK_GATOR_API_VERSION == 3
+    static const char* GPU_FAMILY_NAME_BIFROST = "Bifrost";
+    struct kbase_gator_hwcnt_info info;
+    struct kbase_gator_hwcnt_handles * result = NULL;
+    uint32_t gpu_id = 0;
+    const char *const *(*kbase_gator_hwcnt_init_names_symbol)(uint32_t *) = NULL;
+
+    // In this case, we have to use DDK driver interface and determine the actual type of the
+    // GPU architecture at the runtime. That's because the same DDK driver code base supports
+    // both: Midgards and Bifrosts now.
+    SYMBOL_GET(kbase_gator_hwcnt_init, error_count);
+    if (error_count > 0)
+    {
+        // Could not find the symbol in the kernel. Can't proceed.
+        SYMBOL_CLEANUP(kbase_gator_hwcnt_init);
+        return 1;
+    }
+
+    // a temporary structure that we'll use to obtain gpu id
+    result = kbase_gator_hwcnt_init_symbol(&info);
+    SYMBOL_CLEANUP(kbase_gator_hwcnt_init);
+    if (result == NULL)
+    {
+        // Could not get the info about the GPU. Can't proceed.
+        return 1;
+    }
+
+    // now, the info struct has a gpu_id field set to a number, that is architecture-specific
+    gpu_id = info.gpu_id;
+    pr_info("gator: Detected GPU ID: %d.\n", gpu_id);
+
+    // Identifying the GPU architecture. Version 6 Bifrost.
+    if (GPU_ID_IS_NEW_FORMAT(gpu_id) && ((gpu_id >> GPU_ID2_ARCH_MAJOR_SHIFT) & 0xF) >= 6)
+    {
+        mali_name = GPU_FAMILY_NAME_BIFROST;
+    }
+    else
+    {
+        mali_name = GPU_FAMILY_NAME_MIDGARD;
+    }
+
+    pr_info("gator: Mali-%s architecture detected.\n", mali_name);
+
+#else
+    // Older driver API versions were present only on Midgards, so that's straightforward.
+    mali_name = GPU_FAMILY_NAME_MIDGARD;
+#endif
+
+
+    pr_debug("gator: Mali-%s: hw_counters init\n", mali_name);
+
+#if MALI_DDK_GATOR_API_VERSION == 3
+
     SYMBOL_GET(kbase_gator_hwcnt_init_names, error_count);
     if (error_count > 0) {
         SYMBOL_CLEANUP(kbase_gator_hwcnt_init_names);
@@ -952,11 +1011,9 @@ int gator_events_mali_midgard_hw_init(void)
     SYMBOL_CLEANUP(kbase_gator_hwcnt_init_names);
 
     if ((hardware_counter_names == NULL) || (number_of_hardware_counters <= 0)) {
-        pr_err("gator: Error reading hardware counters names: got %d names\n", number_of_hardware_counters);
+        pr_err("gator: Mali-%s: Error reading hardware counters names: got %d names\n", mali_name, number_of_hardware_counters);
         return -1;
     }
-#else
-    mali_name = "Midgard";
 #endif
 
     counters = kmalloc(sizeof(*counters)*number_of_hardware_counters, GFP_KERNEL);

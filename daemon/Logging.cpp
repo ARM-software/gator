@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 // Global thread-safe logging
 Logging logg;
@@ -35,7 +36,9 @@ static void format(char * const buf, const size_t bufSize, const bool verbose, c
     int len;
 
     if (verbose) {
-        len = snprintf(buf, bufSize, "%s: %s(%s:%i): ", level, function, file, line);
+        struct timespec t;
+        clock_gettime(CLOCK_MONOTONIC, &t);
+        len = snprintf(buf, bufSize, "[%.7f] %s: %s(%s:%i): ", t.tv_sec + 1e-9 * t.tv_nsec, level, function, file, line);
     }
     else {
         buf[0] = 0;
@@ -83,10 +86,14 @@ void Logging::_logMessage(const char *function, const char *file, int line, cons
         char logBuf[4096]; // Arbitrarily large buffer to hold a string
         va_list args;
 
+        pthread_mutex_lock(&mLoggingMutex);
         va_start(args, fmt);
         format(logBuf, sizeof(logBuf), mDebug, "INFO", function, file, line, fmt, args);
         va_end(args);
+        pthread_mutex_unlock(&mLoggingMutex);
 
         fprintf(stderr, "%s\n", logBuf);
     }
 }
+
+

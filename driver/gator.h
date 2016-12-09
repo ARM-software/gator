@@ -46,7 +46,7 @@ extern int gator_cluster_count;
 
 /* gpu enums */
 #define MALI_4xx     1
-#define MALI_MIDGARD 2
+#define MALI_MIDGARD_OR_BIFROST 2
 
 /******************************************************************************
  * Filesystem

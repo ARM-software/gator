@@ -15,6 +15,8 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 
+#include "gator_events_mali_midgard.h"
+
 #ifdef MALI_DIR_MIDGARD
 /* New DDK Directory structure with kernel/drivers/gpu/arm/midgard*/
 #include "mali_linux_trace.h"
@@ -28,13 +30,14 @@
 /*
  * Check that the MALI_SUPPORT define is set to one of the allowable device codes.
  */
-#if (MALI_SUPPORT != MALI_MIDGARD)
-#error MALI_SUPPORT set to an invalid device code: expecting MALI_MIDGARD
+#if (MALI_SUPPORT != MALI_MIDGARD_OR_BIFROST)
+#error MALI_SUPPORT set to an invalid device code: expecting MALI_MIDGARD_OR_BIFROST
 #endif
 
-static const char mali_name[] = "Midgard";
+// This name has to be set in the runtime, since it might be Midgard or Bifrost, depending on circumstances.
+const char* mali_name = NULL;
 
-/* Counters for Mali-Midgard:
+/* Counters for Mali-Midgard/Bifrost:
  *
  *  - Timeline events
  *    They are tracepoints, but instead of reporting a number they report a START/STOP event.
@@ -324,36 +327,36 @@ static int create_files(struct super_block *sb, struct dentry *root)
 static int register_tracepoints(void)
 {
     if (GATOR_REGISTER_TRACE(mali_pm_status)) {
-        pr_err("gator: Mali-Midgard: mali_pm_status tracepoint failed to activate\n");
+        pr_err("gator: %s: mali_pm_status tracepoint failed to activate\n", mali_name);
         return 0;
     }
 
     if (GATOR_REGISTER_TRACE(mali_page_fault_insert_pages)) {
-        pr_err("gator: Mali-Midgard: mali_page_fault_insert_pages tracepoint failed to activate\n");
+        pr_err("gator: %s: mali_page_fault_insert_pages tracepoint failed to activate\n", mali_name);
         return 0;
     }
 
     if (GATOR_REGISTER_TRACE(mali_mmu_as_in_use)) {
-        pr_err("gator: Mali-Midgard: mali_mmu_as_in_use tracepoint failed to activate\n");
+        pr_err("gator: %s: mali_mmu_as_in_use tracepoint failed to activate\n", mali_name);
         return 0;
     }
 
     if (GATOR_REGISTER_TRACE(mali_mmu_as_released)) {
-        pr_err("gator: Mali-Midgard: mali_mmu_as_released tracepoint failed to activate\n");
+        pr_err("gator: %s: mali_mmu_as_released tracepoint failed to activate\n", mali_name);
         return 0;
     }
 
     if (GATOR_REGISTER_TRACE(mali_total_alloc_pages_change)) {
-        pr_err("gator: Mali-Midgard: mali_total_alloc_pages_change tracepoint failed to activate\n");
+        pr_err("gator: %s: mali_total_alloc_pages_change tracepoint failed to activate\n", mali_name);
         return 0;
     }
 
-    pr_debug("gator: Mali-Midgard: start\n");
-    pr_debug("gator: Mali-Midgard: mali_pm_status probe is at %p\n", &probe_mali_pm_status);
-    pr_debug("gator: Mali-Midgard: mali_page_fault_insert_pages probe is at %p\n", &probe_mali_page_fault_insert_pages);
-    pr_debug("gator: Mali-Midgard: mali_mmu_as_in_use probe is at %p\n", &probe_mali_mmu_as_in_use);
-    pr_debug("gator: Mali-Midgard: mali_mmu_as_released probe is at %p\n", &probe_mali_mmu_as_released);
-    pr_debug("gator: Mali-Midgard: mali_total_alloc_pages_change probe is at %p\n", &probe_mali_total_alloc_pages_change);
+    pr_debug("gator: %s: start\n", mali_name);
+    pr_debug("gator: %s: mali_pm_status probe is at %p\n", mali_name, &probe_mali_pm_status);
+    pr_debug("gator: %s: mali_page_fault_insert_pages probe is at %p\n", mali_name, &probe_mali_page_fault_insert_pages);
+    pr_debug("gator: %s: mali_mmu_as_in_use probe is at %p\n", mali_name, &probe_mali_mmu_as_in_use);
+    pr_debug("gator: %s: mali_mmu_as_released probe is at %p\n", mali_name, &probe_mali_mmu_as_released);
+    pr_debug("gator: %s: mali_total_alloc_pages_change probe is at %p\n", mali_name, &probe_mali_total_alloc_pages_change);
 
     return 1;
 }
@@ -421,26 +424,26 @@ static void stop(void)
 {
     mali_profiling_control_type *mali_control;
 
-    pr_debug("gator: Mali-Midgard: stop\n");
+    pr_debug("gator: %s: stop\n", mali_name);
 
     /*
      * It is safe to unregister traces even if they were not successfully
      * registered, so no need to check.
      */
     GATOR_UNREGISTER_TRACE(mali_pm_status);
-    pr_debug("gator: Mali-Midgard: mali_pm_status tracepoint deactivated\n");
+    pr_debug("gator: %s: mali_pm_status tracepoint deactivated\n", mali_name);
 
     GATOR_UNREGISTER_TRACE(mali_page_fault_insert_pages);
-    pr_debug("gator: Mali-Midgard: mali_page_fault_insert_pages tracepoint deactivated\n");
+    pr_debug("gator: %s: mali_page_fault_insert_pages tracepoint deactivated\n", mali_name);
 
     GATOR_UNREGISTER_TRACE(mali_mmu_as_in_use);
-    pr_debug("gator: Mali-Midgard: mali_mmu_as_in_use tracepoint deactivated\n");
+    pr_debug("gator: %s: mali_mmu_as_in_use tracepoint deactivated\n", mali_name);
 
     GATOR_UNREGISTER_TRACE(mali_mmu_as_released);
-    pr_debug("gator: Mali-Midgard: mali_mmu_as_released tracepoint deactivated\n");
+    pr_debug("gator: %s: mali_mmu_as_released tracepoint deactivated\n", mali_name);
 
     GATOR_UNREGISTER_TRACE(mali_total_alloc_pages_change);
-    pr_debug("gator: Mali-Midgard: mali_total_alloc_pages_change tracepoint deactivated\n");
+    pr_debug("gator: %s: mali_total_alloc_pages_change tracepoint deactivated\n", mali_name);
 
     /* Generic control interface for Mali DDK. */
     mali_control = symbol_get(_mali_profiling_control);
@@ -503,7 +506,7 @@ static int read(int **buffer, bool sched_switch)
                 /* Convert the counter to a percent-of-sample value */
                 value = (timeline_data[index] * 100) / sample_interval_us;
             } else {
-                pr_debug("gator: Mali-Midgard: setting value to zero\n");
+                pr_debug("gator: %s: setting value to zero\n", mali_name);
                 value = 0;
             }
 
@@ -550,7 +553,7 @@ static int read(int **buffer, bool sched_switch)
 }
 
 static struct gator_interface gator_events_mali_midgard_interface = {
-    .name = "mali_midgard",
+    .name = "mali_sw_counters",
     .create_files = create_files,
     .start = start,
     .stop = stop,
@@ -559,7 +562,7 @@ static struct gator_interface gator_events_mali_midgard_interface = {
 
 extern int gator_events_mali_midgard_init(void)
 {
-    pr_debug("gator: Mali-Midgard: sw_counters init\n");
+    pr_debug("gator: Mali-%s: sw_counters init\n", mali_name);
 
     gator_mali_initialise_counters(counters, NUMBER_OF_EVENTS);
 

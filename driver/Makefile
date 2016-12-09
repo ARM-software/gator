@@ -20,11 +20,19 @@ ifneq ($(GATOR_WITH_MALI_SUPPORT),)
   ifeq ($(GATOR_WITH_MALI_SUPPORT),MALI_MIDGARD)
     CONFIG_GATOR_MALI_4XXMP := n
     CONFIG_GATOR_MALI_MIDGARD := y
+    EXTRA_CFLAGS += -DMALI_SUPPORT=MALI_MIDGARD_OR_BIFROST
   else
-    CONFIG_GATOR_MALI_4XXMP := y
-    CONFIG_GATOR_MALI_MIDGARD := n
+    ifeq ($(GATOR_WITH_MALI_SUPPORT),MALI_BIFROST)
+      CONFIG_GATOR_MALI_4XXMP := n
+      CONFIG_GATOR_MALI_MIDGARD := y
+      EXTRA_CFLAGS += -DMALI_SUPPORT=MALI_MIDGARD_OR_BIFROST
+    else
+      # Neither Midgard, nor Bifrost, must be 4xx then
+      CONFIG_GATOR_MALI_4XXMP := y
+      CONFIG_GATOR_MALI_MIDGARD := n
+      EXTRA_CFLAGS += -DMALI_SUPPORT=$(GATOR_WITH_MALI_SUPPORT)
+    endif
   endif
-  EXTRA_CFLAGS += -DMALI_SUPPORT=$(GATOR_WITH_MALI_SUPPORT)
   ifneq ($(GATOR_MALI_INTERFACE_STYLE),)
     EXTRA_CFLAGS += -DGATOR_MALI_INTERFACE_STYLE=$(GATOR_MALI_INTERFACE_STYLE)
   endif
@@ -55,12 +63,8 @@ ifeq ($(CONFIG_GATOR_WITH_MALI_SUPPORT),y)
     ccflags-$(CONFIG_GATOR_MALI_MIDGARD) += -I$(CONFIG_GATOR_MALI_MIDGARD_PATH)
   endif
   ccflags-$(CONFIG_GATOR_MALI_4XXMP) += -DMALI_SUPPORT=MALI_4xx
-  ccflags-$(CONFIG_GATOR_MALI_MIDGARD) += -DMALI_SUPPORT=MALI_MIDGARD
+  ccflags-$(CONFIG_GATOR_MALI_MIDGARD) += -DMALI_SUPPORT=MALI_MIDGARD_OR_BIFROST
 endif
-
-# GATOR_TEST controls whether to include (=1) or exclude (=0) test code.
-GATOR_TEST ?= 0
-EXTRA_CFLAGS += -DGATOR_TEST=$(GATOR_TEST)
 
 # Should the original or new block_rq_complete API be used?
 OLD_BLOCK_RQ_COMPLETE := $(shell grep -A3 block_rq_complete $(srctree)/include/trace/events/block.h | grep nr_bytes -q; echo $$?)
