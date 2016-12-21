@@ -1287,6 +1287,8 @@ GATOR_TRACEPOINTS;
 #undef GATOR_HANDLE_TRACEPOINT
 }
 
+#if defined(CONFIG_MODULES)
+
 static void gator_unsave_tracepoint(struct tracepoint *tp, void *priv)
 {
     pr_debug("gator: gator_unsave_tracepoint(%s)\n", tp->name);
@@ -1335,13 +1337,17 @@ static struct notifier_block tracepoint_notifier_block = {
 
 #endif
 
+#endif
+
 static int __init gator_module_init(void)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
     /* scan kernel built in tracepoints */
     for_each_kernel_tracepoint(gator_save_tracepoint, NULL);
+#if defined(CONFIG_MODULES)
     /* register for notification of new tracepoint modules */
     register_tracepoint_module_notifier(&tracepoint_notifier_block);
+#endif
 #endif
 
     if (gatorfs_register())
@@ -1363,7 +1369,7 @@ static int __init gator_module_init(void)
 
 static void __exit gator_module_exit(void)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)) && defined(CONFIG_MODULES)
     /* unregister for notification of new tracepoint modules */
     unregister_tracepoint_module_notifier(&tracepoint_notifier_block);
 #endif

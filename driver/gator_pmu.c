@@ -81,16 +81,11 @@ static const struct uncore_pmu *gator_find_uncore_pmu(const char *const name)
     return NULL;
 }
 
-static bool gator_pmu_initialized;
-
 static ssize_t gator_pmu_init_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
     struct gator_interface *gi;
     int i;
 
-    if (gator_pmu_initialized)
-        return -EINVAL;
-    gator_pmu_initialized = true;
     if (gator_events_perf_pmu_reread() != 0 ||
             gator_events_perf_pmu_create_files(gator_sb, gator_events_dir) != 0)
         return -EINVAL;
