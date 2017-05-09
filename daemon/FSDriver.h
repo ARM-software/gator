@@ -9,6 +9,7 @@
 #ifndef FSDRIVER_H
 #define FSDRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "PolledDriver.h"
 
 class FSDriver : public PolledDriver
@@ -22,9 +23,9 @@ public:
     int writeCounters(mxml_node_t *root) const;
 
 private:
+
     // Intentionally unimplemented
-    FSDriver(const FSDriver &);
-    FSDriver &operator=(const FSDriver &);
+    CLASS_DELETE_COPY_MOVE(FSDriver);
 };
 
 #endif // FSDRIVER_H

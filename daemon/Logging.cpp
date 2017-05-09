@@ -12,13 +12,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+
+#include "lib/Time.h"
 
 // Global thread-safe logging
 Logging logg;
 
 Logging::Logging()
-        : mDebug(true)
+        : mSetup(),
+          mLoggingMutex(),
+          mDebug(true),
+          mErrBuf()
 {
     pthread_mutex_init(&mLoggingMutex, NULL);
 
@@ -38,7 +42,8 @@ static void format(char * const buf, const size_t bufSize, const bool verbose, c
     if (verbose) {
         struct timespec t;
         clock_gettime(CLOCK_MONOTONIC, &t);
-        len = snprintf(buf, bufSize, "[%.7f] %s: %s(%s:%i): ", t.tv_sec + 1e-9 * t.tv_nsec, level, function, file, line);
+        len = snprintf(buf, bufSize, "[%.7f] %s: %s(%s:%i): ", t.tv_sec + 1e-9 * t.tv_nsec, level, function, file,
+                       line);
     }
     else {
         buf[0] = 0;
@@ -95,5 +100,4 @@ void Logging::_logMessage(const char *function, const char *file, int line, cons
         fprintf(stderr, "%s\n", logBuf);
     }
 }
-
 

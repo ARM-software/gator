@@ -11,6 +11,7 @@
 
 #include "mxml/mxml.h"
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class TtraceDriver : public SimpleDriver
@@ -35,8 +36,7 @@ private:
     bool mSupported;
 
     // Intentionally unimplemented
-    TtraceDriver(const TtraceDriver &);
-    TtraceDriver &operator=(const TtraceDriver &);
+    CLASS_DELETE_COPY_MOVE(TtraceDriver);
 };
 
 #endif // TTRACEDRIVER_H

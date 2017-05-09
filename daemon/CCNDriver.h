@@ -40,8 +40,7 @@ private:
     int mXpCount;
 
     // Intentionally unimplemented
-    CCNDriver(const CCNDriver &);
-    CCNDriver &operator=(const CCNDriver &);
+    CLASS_DELETE_COPY_MOVE(CCNDriver);
 };
 
 #endif // CCNDRIVER_H

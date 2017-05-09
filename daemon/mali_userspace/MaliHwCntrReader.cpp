@@ -12,6 +12,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <utility>
 
 #include "Logging.h"
 
@@ -122,15 +123,26 @@ namespace mali_userspace
 
 
     SampleBuffer::SampleBuffer()
-        :   kbase_hwcnt_reader_metadata(0, 0, 0),
-            parent(NULL),
+        :   metadata(0, 0, 0),
+            parent(nullptr),
             data_size(0),
-            data(NULL)
+            data(nullptr)
     {
     }
 
+    SampleBuffer::SampleBuffer(SampleBuffer && that)
+    :   metadata(std::move(that.metadata)),
+        parent(that.parent),
+        data_size(that.data_size),
+        data(that.data)
+    {
+        that.parent = nullptr;
+        that.data_size = 0;
+        that.data = nullptr;
+    }
+
     SampleBuffer::SampleBuffer(MaliHwCntrReader & parent_, uint64_t timestamp_, uint32_t eventId_, uint32_t bufferId_, size_t size_, const uint8_t * data_)
-        :   kbase_hwcnt_reader_metadata(timestamp_, eventId_, bufferId_),
+        :   metadata(timestamp_, eventId_, bufferId_),
             parent(&parent_),
             data_size(size_),
             data(data_)
@@ -139,9 +151,22 @@ namespace mali_userspace
 
     SampleBuffer::~SampleBuffer()
     {
-        if (parent != NULL) {
-            parent->releaseBuffer(*this);
+        if (parent != nullptr) {
+            parent->releaseBuffer(metadata);
         }
+    }
+
+    SampleBuffer& SampleBuffer::operator= (SampleBuffer && that)
+    {
+        SampleBuffer tmp (std::move(that));
+
+        this->metadata = std::move(tmp.metadata);
+
+        std::swap(this->parent, tmp.parent);
+        std::swap(this->data_size, tmp.data_size);
+        std::swap(this->data, tmp.data);
+
+        return *this;
     }
 
     template<typename T>
@@ -161,34 +186,87 @@ namespace mali_userspace
 
     /* --------------------------------------------------------------------- */
 
+    unsigned MaliHwCntrReader::probeMMUCount(const MaliDevice * device)
+    {
+        // probe for the MMU/L2 block - on Freya there can be more than one.
+        // we do this by setting its mask, and clearing the other masks for the other blocks
+        // then looking for the only blocks that are set with non-zero mask
+        MaliHwCntrReader * const reader = create(device, 1, 0, 0, 0, ~0u);
+
+        if (reader == nullptr) {
+            return 0;
+        }
+
+        const unsigned result = reader->probeBlockMaskCount();
+
+        // make sure we free the reader object
+        freeReaderRetainDevice(reader);
+
+        return result;
+    }
+
+    MaliHwCntrReader * MaliHwCntrReader::create(const MaliDevice * device)
+    {
+        const unsigned mmul2count = probeMMUCount(device);
+
+        return create(device, mmul2count, ~0u, ~0u, ~0u, ~0u);
+    }
+
+    MaliHwCntrReader * MaliHwCntrReader::create(const MaliDevice * device, unsigned mmul2count, CounterBitmask jmBitmask_,
+                                     CounterBitmask shaderBitmask_, CounterBitmask tilerBitmask_, CounterBitmask mmuL2Bitmask_)
+    {
+        // we do not know the best buffer count up front, so we have to test for it by repeatedly attempting to create the
+        // reader until we succeed (or until some arbitrary limit)
+        for (unsigned bufferCount = 1; bufferCount < 1024; ++bufferCount)
+        {
+            MaliHwCntrReader * result = new MaliHwCntrReader(device, mmul2count, bufferCount, jmBitmask_, shaderBitmask_, tilerBitmask_, mmuL2Bitmask_);
+
+            if (result->isInitialized()) {
+                logg.logMessage("MaliHwCntrReader: Successfully created reader, with buffer size of %u", bufferCount);
+                return result;
+            }
+            else if (!result->failedDueToBufferCount) {
+                // the failure happened for some reason other than probing buffer count
+                return result;
+            }
+
+            // release the old reader, but keep device
+            device = freeReaderRetainDevice(result);
+        }
+
+        return nullptr;
+    }
+
     const MaliDevice * MaliHwCntrReader::freeReaderRetainDevice(MaliHwCntrReader * oldReader)
     {
         const MaliDevice * device = oldReader->device;
 
-        oldReader->device = NULL;
+        oldReader->device = nullptr;
         delete oldReader;
 
         return device;
     }
 
-    MaliHwCntrReader::MaliHwCntrReader(const MaliDevice * device_, uint32_t bufferCount_, CounterBitmask jmBitmask, CounterBitmask shaderBitmask,
+    MaliHwCntrReader::MaliHwCntrReader(const MaliDevice * device_, unsigned mmul2count_, uint32_t bufferCount_, CounterBitmask jmBitmask, CounterBitmask shaderBitmask,
                                CounterBitmask tilerBitmask, CounterBitmask mmuL2Bitmask)
 
         :   device(device_),
             devFd(-1),
             hwcntReaderFd(-1),
-            sampleMemory(NULL),
+            sampleMemory(nullptr),
             bufferCount(bufferCount_),
             sampleBufferSize(0),
             hardwareVersion(0),
+            mmuL2BlockCount(mmul2count_),
             selfPipe(),
-            initialized(false)
+            initialized(false),
+            failedDueToBufferCount(false)
     {
         // pipes are not configured yet
         selfPipe[0] = -1; selfPipe[1] = -1;
 
         // check device object
-        if (device == NULL) {
+        if (device == nullptr) {
             logg.logError("MaliHwCntrReader: Device object invalid");
             return;
         }
@@ -249,11 +327,12 @@ namespace mali_userspace
 
             if (doMaliIoctl(devFd, setup_args) != 0) {
                 if (setup_args.header.ret != 0) {
-                    logg.logError("MaliHwCntrReader: Failed sending hwcnt reader ioctl. ret = %lu", (unsigned long)(setup_args.header.ret));
+                    logg.logError("MaliHwCntrReader: Failed sending hwcnt reader ioctl. ret = %lu", static_cast<unsigned long>(setup_args.header.ret));
                 }
                 else {
                     logg.logError("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
                 }
+                failedDueToBufferCount = true;
                 return;
             }
 
@@ -270,7 +349,7 @@ namespace mali_userspace
                 return;
             }
             else if (api_version != HWCNT_READER_API) {
-                logg.logError("MaliHwCntrReader: Invalid API version (%lu)", (unsigned long)(api_version));
+                logg.logError("MaliHwCntrReader: Invalid API version (%lu)", static_cast<unsigned long>(api_version));
                 return;
             }
         }
@@ -287,10 +366,21 @@ namespace mali_userspace
             return;
         }
 
+        if ((hardwareVersion < 4) || (hardwareVersion > 6)) {
+            logg.logError("MaliHwCntrReader: Hardware version %u is not supported", hardwareVersion);
+            return;
+        }
+
+        if ((hardwareVersion > 4) && (mmuL2BlockCount < 1)) {
+            logg.logError("MaliHwCntrReader: Hardware version %u detected, but mmuL2BlockCount = %u", hardwareVersion, mmuL2BlockCount);
+            return;
+        }
+
         // mmap the data
-        sampleMemory = reinterpret_cast<uint8_t *>(mmap(NULL, bufferCount_ * sampleBufferSize, PROT_READ, MAP_PRIVATE, hwcntReaderFd, 0));
-        if ((sampleMemory == NULL) || (sampleMemory == reinterpret_cast<uint8_t *>(-1ul))) {
+        sampleMemory = reinterpret_cast<uint8_t *>(mmap(nullptr, bufferCount_ * sampleBufferSize, PROT_READ, MAP_PRIVATE, hwcntReaderFd, 0));
+        if ((sampleMemory == nullptr) || (sampleMemory == reinterpret_cast<uint8_t *>(-1ul))) {
             logg.logError("MaliHwCntrReader: Could not mmap sample buffer");
+            failedDueToBufferCount = true;
             return;
         }
 
@@ -316,7 +406,7 @@ namespace mali_userspace
             close(selfPipe[1]);
         }
 
-        if (sampleMemory != NULL) {
+        if (sampleMemory != nullptr) {
             munmap(sampleMemory, bufferCount * sampleBufferSize);
         }
 
@@ -328,7 +418,7 @@ namespace mali_userspace
             close(devFd);
         }
 
-        if (device != NULL) {
+        if (device != nullptr) {
             delete device;
         }
     }
@@ -456,5 +546,33 @@ namespace mali_userspace
     bool MaliHwCntrReader::releaseBuffer(kbase_hwcnt_reader_metadata & metadata)
     {
         return ioctl(hwcntReaderFd, KBASE_HWCNT_READER_PUT_BUFFER, &metadata) == 0;
+    }
+
+    unsigned MaliHwCntrReader::probeBlockMaskCount()
+    {
+        // version 4 hardware only ever has 1 MMU/L2 block
+        if (hardwareVersion < 5) {
+            return 1;
+        }
+
+        // probe it by looking for the block with the matching mask
+        // have to retry as sometimes the counters read zero (including the mask)
+        // until after *usually* the first read
+        for (unsigned retry = 0; retry < 10; ++retry) {
+            if (triggerCounterRead())
+            {
+                SampleBuffer sampleBuffer;
+                WaitStatus waitStatus = waitForBuffer(sampleBuffer, 10000);
+
+                if ((waitStatus == MaliHwCntrReader::WAIT_STATUS_SUCCESS) && sampleBuffer.isValid()) {
+                    const unsigned result = device->probeBlockMaskCount(reinterpret_cast<const uint32_t *>(sampleBuffer.getData()), sampleBuffer.getSize() / sizeof(uint32_t));
+                    if (result != 0) {
+                        return result;
+                    }
+                }
+            }
+        }
+
+        return 0;
     }
 }

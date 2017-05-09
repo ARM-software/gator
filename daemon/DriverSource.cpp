@@ -25,10 +25,9 @@
 #include "Sender.h"
 #include "SessionData.h"
 
-extern Child *child;
-
-DriverSource::DriverSource(sem_t *senderSem, sem_t *startProfile)
-        : mBuffer(NULL),
+DriverSource::DriverSource(Child & child, sem_t & senderSem, sem_t & startProfile)
+        : Source(child),
+          mBuffer(NULL),
           mFifo(NULL),
           mSenderSem(senderSem),
           mStartProfile(startProfile),
@@ -36,7 +35,7 @@ DriverSource::DriverSource(sem_t *senderSem, sem_t *startProfile)
           mBufferFD(0),
           mLength(1)
 {
-    mBuffer = new Buffer(0, FRAME_PERF_ATTRS, 4 * 1024 * 1024, senderSem);
+    mBuffer = new Buffer(0, FRAME_PERF_ATTRS, 4 * 1024 * 1024, &senderSem);
     checkVersion();
 
     int enable = -1;
@@ -104,22 +103,22 @@ bool DriverSource::prepare()
 {
     // Create user-space buffers, add 5 to the size to account for the 1-byte type and 4-byte length
     logg.logMessage("Created %d MB collector buffer with a %d-byte ragged end", gSessionData.mTotalBufferSize, mBufferSize);
-    mFifo = new Fifo(mBufferSize + 5, gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem);
+    mFifo = new Fifo(mBufferSize + 5, gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem);
 
     return true;
 }
 
 void DriverSource::bootstrapThread()
 {
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-proc", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-proc"), 0, 0, 0);
 
     DynBuf printb;
     DynBuf b1;
-    DynBuf b2;
+
     // MonotonicStarted may not be not assigned yet
     const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
 
-    if (!readProcSysDependencies(currTime, mBuffer, &printb, &b1, &b2)) {
+    if (!readProcSysDependencies(currTime, *mBuffer, &printb, &b1)) {
         logg.logError("readProcSysDependencies failed");
         handleException();
     }
@@ -184,7 +183,7 @@ void DriverSource::run()
 
     lseek(mBufferFD, 0, SEEK_SET);
 
-    sem_post(mStartProfile);
+    sem_post(&mStartProfile);
 
     pthread_t bootstrapThreadID;
     if (pthread_create(&bootstrapThreadID, NULL, bootstrapThreadStatic, this) != 0) {
@@ -211,7 +210,7 @@ void DriverSource::run()
         if (gSessionData.mOneShot && gSessionData.mSessionIsActive) {
             if (bytesCollected == -1 || mFifo->willFill(bytesCollected)) {
                 logg.logMessage("One shot (gator.ko)");
-                child->endSession();
+                mChild.endSession();
             }
         }
         collectBuffer = mFifo->write(bytesCollected);

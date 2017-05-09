@@ -14,9 +14,8 @@
 class Buffer;
 class DynBuf;
 
-bool readProcSysDependencies(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b1,
-                             DynBuf * const b2);
-bool readProcMaps(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
+bool readProcSysDependencies(uint64_t currTime, Buffer & buffer, DynBuf * const printb, DynBuf * const b1);
+bool readProcMaps(uint64_t currTime, Buffer & buffer);
 bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * const isDone);
 bool readTracepointFormat(const uint64_t currTime, Buffer * const buffer, const char * const name,
                           DynBuf * const printb, DynBuf * const b);

@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ClassBoilerPlate.h"
+
 class OlySocket;
 
 // Commands from Streamline
@@ -48,8 +50,7 @@ private:
     void writeConfiguration(char* xml);
 
     // Intentionally unimplemented
-    StreamlineSetup(const StreamlineSetup &);
-    StreamlineSetup &operator=(const StreamlineSetup &);
+    CLASS_DELETE_COPY_MOVE(StreamlineSetup);
 };
 
 #endif //__STREAMLINE_SETUP_H__

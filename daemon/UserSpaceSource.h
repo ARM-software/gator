@@ -11,6 +11,7 @@
 
 #include <semaphore.h>
 
+#include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Source.h"
 
@@ -18,22 +19,20 @@
 class UserSpaceSource : public Source
 {
 public:
-    UserSpaceSource(sem_t *senderSem);
+    UserSpaceSource(Child & child, sem_t *senderSem);
     ~UserSpaceSource();
 
-    bool prepare();
-    void run();
-    void interrupt();
-
-    bool isDone();
-    void write(Sender *sender);
+    virtual bool prepare() override;
+    virtual void run() override;
+    virtual void interrupt() override;
+    virtual bool isDone() override;
+    virtual void write(Sender * sender) override;
 
 private:
     Buffer mBuffer;
 
     // Intentionally unimplemented
-    UserSpaceSource(const UserSpaceSource &);
-    UserSpaceSource &operator=(const UserSpaceSource &);
+    CLASS_DELETE_COPY_MOVE(UserSpaceSource);
 };
 
 #endif // USERSPACESOURCE_H

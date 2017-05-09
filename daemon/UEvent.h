@@ -9,6 +9,8 @@
 #ifndef UEVENT_H
 #define UEVENT_H
 
+#include "ClassBoilerPlate.h"
+
 struct UEventResult
 {
     const char *mAction;
@@ -34,8 +36,7 @@ private:
     int mFd;
 
     // Intentionally undefined
-    UEvent(const UEvent &);
-    UEvent &operator=(const UEvent &);
+    CLASS_DELETE_COPY_MOVE(UEvent);
 };
 
 #endif // UEVENT_H

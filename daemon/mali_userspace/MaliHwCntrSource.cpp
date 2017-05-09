@@ -19,15 +19,15 @@
 #include "Child.h"
 #include "DriverSource.h"
 #include "Logging.h"
+#include "PrimarySourceProvider.h"
 #include "SessionData.h"
-
-extern Child * child;
 
 namespace mali_userspace
 {
 
-    MaliHwCntrSource::MaliHwCntrSource(sem_t *senderSem)
-            : mBuffer(0, FRAME_BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem)
+    MaliHwCntrSource::MaliHwCntrSource(Child & child, sem_t *senderSem)
+            : Source(child),
+              mBuffer(0, FRAME_BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem)
     {
     }
 
@@ -42,7 +42,7 @@ namespace mali_userspace
 
     void MaliHwCntrSource::run()
     {
-        prctl(PR_SET_NAME, (unsigned long) &"gatord-malihwc", 0, 0, 0);
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-malihwc"), 0, 0, 0);
 
         MaliHwCntrReader * const reader = gSessionData.mMaliHwCntrs.getReader();
 
@@ -50,17 +50,7 @@ namespace mali_userspace
             int64_t monotonicStarted = 0;
             while (monotonicStarted <= 0 && gSessionData.mSessionIsActive) {
                 usleep(1);
-
-                if (gSessionData.mPerf.isSetup()) {
-                    monotonicStarted = gSessionData.mMonotonicStarted;
-                }
-                else {
-                    if (DriverSource::readInt64Driver("/dev/gator/started", &monotonicStarted) == -1) {
-                        logg.logError("Error reading gator driver start time");
-                        handleException();
-                    }
-                    gSessionData.mMonotonicStarted = monotonicStarted;
-                }
+                monotonicStarted = gSessionData.mPrimarySource->getMonotonicStarted();
             }
 
             bool terminated = false;
@@ -88,7 +78,8 @@ namespace mali_userspace
                         const uint64_t sampleTime = sampleBuffer.getTimestamp() - monotonicStarted;
 
                         if (mBuffer.eventHeader(sampleTime)) {
-                            reader->getDevice().dumpAllCounters(countersList,
+                            reader->getDevice().dumpAllCounters(reader->getHardwareVersion(), reader->getMmuL2BlockCount(),
+                                                                countersList,
                                                                 reinterpret_cast<const uint32_t *>(sampleBuffer.getData()),
                                                                 sampleBuffer.getSize() / sizeof(uint32_t),
                                                                 *this);
@@ -111,7 +102,7 @@ namespace mali_userspace
 
                 if (gSessionData.mOneShot && gSessionData.mSessionIsActive && (mBuffer.bytesAvailable() <= 0)) {
                     logg.logMessage("One shot (malihwc)");
-                    child->endSession();
+                    mChild.endSession();
                 }
             }
 
@@ -145,7 +136,7 @@ namespace mali_userspace
         }
     }
 
-    void MaliHwCntrSource::nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t delta)
+    void MaliHwCntrSource::nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta)
     {
         const int key = gSessionData.mMaliHwCntrs.getCounterKey(nameBlockIndex, counterIndex);
 

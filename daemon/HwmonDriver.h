@@ -9,6 +9,7 @@
 #ifndef HWMONDRIVER_H
 #define HWMONDRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "PolledDriver.h"
 
 class HwmonDriver : public PolledDriver
@@ -24,9 +25,9 @@ public:
     void start();
 
 private:
+
     // Intentionally unimplemented
-    HwmonDriver(const HwmonDriver &);
-    HwmonDriver &operator=(const HwmonDriver &);
+    CLASS_DELETE_COPY_MOVE(HwmonDriver);
 };
 
 #endif // HWMONDRIVER_H

@@ -7,11 +7,12 @@
  */
 
 #include "Source.h"
-
+#include "Child.h"
 #include "Logging.h"
 
-Source::Source()
-        : mThreadID()
+Source::Source(Child & child)
+        : mChild(child),
+          mThreadID()
 {
 }
 

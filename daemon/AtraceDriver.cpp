@@ -29,8 +29,7 @@ private:
     const int mFlag;
 
     // Intentionally unimplemented
-    AtraceCounter(const AtraceCounter &);
-    AtraceCounter &operator=(const AtraceCounter &);
+    CLASS_DELETE_COPY_MOVE(AtraceCounter);
 };
 
 AtraceCounter::AtraceCounter(DriverCounter *next, char *name, int flag)
@@ -117,7 +116,7 @@ void AtraceDriver::setAtrace(const int flags)
         snprintf(buf, sizeof(buf), "setprop debug.atrace.tags.enableflags %i; "
                  "CLASSPATH=%s app_process /system/bin Notify",
                  flags, mNotifyPath);
-        execlp("sh", "sh", "-c", buf, (char*) 0);
+        execlp("sh", "sh", "-c", buf, nullptr);
         exit(0);
     }
 }

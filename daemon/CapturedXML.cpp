@@ -12,6 +12,7 @@
 #include <string.h>
 #include <dirent.h>
 
+#include "PrimarySourceProvider.h"
 #include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -35,9 +36,7 @@ mxml_node_t* CapturedXML::getTree(bool includeTime)
 
     captured = mxmlNewElement(xml, "captured");
     mxmlElementSetAttr(captured, "version", "1");
-    if (gSessionData.mPerf.isSetup()) {
-        mxmlElementSetAttr(captured, "type", "Perf");
-    }
+    mxmlElementSetAttr(captured, "type", gSessionData.mPrimarySource->getCaptureXmlTypeValue());
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
     if (includeTime) { // Send the following only after the capture is complete
         if (time(NULL) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)

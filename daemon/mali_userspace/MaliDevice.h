@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ClassBoilerPlate.h"
+
 namespace mali_userspace
 {
     /* forward declarations */
@@ -27,7 +29,7 @@ namespace mali_userspace
          * @param counterIndex
          * @param delta
          */
-        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t delta) = 0;
+        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta) = 0;
 
         /**
          * Used to check if the user selected the counter in the config dialog when building the fast lookup list
@@ -63,7 +65,7 @@ namespace mali_userspace
              * @param numWords
              */
             MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords);
-
+            MaliDeviceCounterList(MaliDeviceCounterList &&);
             ~MaliDeviceCounterList();
 
             /** @return The number of enabled counters in the list */
@@ -97,6 +99,8 @@ namespace mali_userspace
              * @param wordIndex
              */
             void enable(uint32_t blockIndex, uint32_t groupIndex, uint32_t wordIndex);
+
+            CLASS_DELETE_COPY(MaliDeviceCounterList);
     };
 
     /**
@@ -178,12 +182,23 @@ namespace mali_userspace
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
          *
+         * @param hardwareVersion
+         * @param mmul2BlockCount
          * @param counterList
          * @param buffer
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
+
+        /**
+         * Count all the blocks with the mask field set to non-zero value
+         *
+         * @param buffer
+         * @param bufferLength
+         * @param callback
+         */
+        unsigned probeBlockMaskCount(const uint32_t * buffer, size_t bufferLength) const;
 
         /**
          * @return The family name of the device
@@ -205,6 +220,29 @@ namespace mali_userspace
         const uint32_t mGpuId;
 
         MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, uint32_t numShaderCores, uint32_t gpuId);
+
+        CLASS_DELETE_COPY_MOVE(MaliDevice);
+
+        /**
+         * Dump all the counter data on V4 layout
+         *
+         * @param counterList
+         * @param buffer
+         * @param bufferLength
+         * @param callback
+         */
+        void dumpAllCounters_V4(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
+
+        /**
+         * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
+         *
+         * @param mmul2BlockCount
+         * @param counterList
+         * @param buffer
+         * @param bufferLength
+         * @param callback
+         */
+        void dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
     };
 }
 

@@ -9,6 +9,7 @@
 #ifndef MIDGARDDRIVER_H
 #define MIDGARDDRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class MidgardDriver : public SimpleDriver
@@ -31,8 +32,7 @@ private:
     mutable bool mQueried;
 
     // Intentionally unimplemented
-    MidgardDriver(const MidgardDriver &);
-    MidgardDriver &operator=(const MidgardDriver &);
+    CLASS_DELETE_COPY_MOVE(MidgardDriver);
 };
 
 #endif // MIDGARDDRIVER_H

@@ -9,6 +9,7 @@
 #ifndef PERF_BUFFER
 #define PERF_BUFFER
 
+#include "ClassBoilerPlate.h"
 #include "Config.h"
 
 #define BUF_SIZE (gSessionData.mTotalBufferSize * 1024 * 1024)
@@ -36,8 +37,7 @@ private:
     int mFds[NR_CPUS];
 
     // Intentionally undefined
-    PerfBuffer(const PerfBuffer &);
-    PerfBuffer &operator=(const PerfBuffer &);
+    CLASS_DELETE_COPY_MOVE(PerfBuffer);
 };
 
 #endif // PERF_BUFFER

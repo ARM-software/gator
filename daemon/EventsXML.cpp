@@ -60,8 +60,7 @@ private:
     mxml_node_t *mNode;
 
     // Intentionally unimplemented
-    XMLList(const XMLList &);
-    XMLList &operator=(const XMLList &);
+    CLASS_DELETE_COPY_MOVE(XMLList);
 };
 
 mxml_node_t *EventsXML::getTree()
@@ -89,7 +88,7 @@ mxml_node_t *EventsXML::getTree()
     }
     if (xml == NULL) {
         logg.logMessage("Unable to locate events.xml, using default");
-        xml = mxmlLoadString(NULL, (const char *) events_xml, MXML_NO_CALLBACK);
+        xml = mxmlLoadString(NULL, reinterpret_cast<const char *>(events_xml), MXML_NO_CALLBACK);
     }
 
     // Append additional events XML

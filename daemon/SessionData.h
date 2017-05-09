@@ -9,8 +9,12 @@
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
 
+#include <list>
+#include <memory>
+#include <string>
 #include <stdint.h>
 
+#include "ClassBoilerPlate.h"
 #include "AtraceDriver.h"
 #include "CCNDriver.h"
 #include "Config.h"
@@ -24,7 +28,7 @@
 #include "TtraceDriver.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
 
-#define PROTOCOL_VERSION 610
+#define PROTOCOL_VERSION 620
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -35,12 +39,7 @@
 extern const char MALI_GRAPHICS[];
 extern const size_t MALI_GRAPHICS_SIZE;
 
-struct ImageLinkList
-{
-    char* path;
-    struct ImageLinkList *next;
-};
-
+class PrimarySourceProvider;
 class PolledDriver;
 
 class GatorCpu
@@ -150,6 +149,21 @@ public:
         return mHasCyclesCounter;
     }
 
+    void setType(int type)
+    {
+        mType = type;
+    }
+
+    int getType() const
+    {
+        return mType;
+    }
+
+    bool isTypeValid() const
+    {
+        return mType != -1;
+    }
+
     static UncorePmu *find(const char * const name);
 
 private:
@@ -159,6 +173,7 @@ private:
     const char * const mPmncName;
     const int mPmncCounters;
     const bool mHasCyclesCounter;
+    int mType;
 };
 
 class SharedData
@@ -178,8 +193,7 @@ public:
 
 private:
     // Intentionally unimplemented
-    SharedData(const SharedData &);
-    SharedData &operator=(const SharedData &);
+    CLASS_DELETE_COPY_MOVE(SharedData);
 };
 
 class SessionData
@@ -196,11 +210,8 @@ public:
     void readCpuInfo();
     void updateClusterIds();
 
+    std::unique_ptr<PrimarySourceProvider> mPrimarySource;
     SharedData *mSharedData;
-
-    PolledDriver *mUsDrivers[5];
-    KMod mKmod;
-    PerfDriver mPerf;
     MaliVideoDriver mMaliVideo;
     mali_userspace::MaliHwCntrDriver mMaliHwCntrs;
     MidgardDriver mMidgard;
@@ -212,7 +223,7 @@ public:
     CCNDriver mCcnDriver;
 
     char mCoreName[MAX_STRING_LEN];
-    struct ImageLinkList *mImages;
+    std::list<std::string> mImages;
     char *mConfigurationXMLPath;
     char *mSessionXMLPath;
     char *mEventsXMLPath;
@@ -232,6 +243,7 @@ public:
     bool mSentSummary;
     bool mAllowCommands;
     bool mFtraceRaw;
+    int mAndroidApiLevel;
 
     int64_t mMonotonicStarted;
     int mBacktraceDepth;
@@ -251,8 +263,7 @@ public:
 
 private:
     // Intentionally unimplemented
-    SessionData(const SessionData &);
-    SessionData &operator=(const SessionData &);
+    CLASS_DELETE_COPY_MOVE(SessionData);
 };
 
 extern SessionData gSessionData;

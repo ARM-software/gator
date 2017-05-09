@@ -20,12 +20,12 @@ static const char MALI_UTGARD_SETUP[] = "\0mali-utgard-setup";
 static const char SETUP_VERSION[] = "ANNOTATE_SETUP 1\n";
 static const size_t HEADER_SIZE = 1 + sizeof(uint32_t);
 
-#define HEADER_ERROR            0x80
-#define HEADER_ACK              0x81
-#define HEADER_REQUEST_COUNTERS 0x82
-#define HEADER_COUNTERS         0x83
-#define HEADER_ENABLE_COUNTERS  0x84
-#define HEADER_START            0x85
+#define HEADER_ERROR            (char(0x80))
+#define HEADER_ACK              (char(0x81))
+#define HEADER_REQUEST_COUNTERS (char(0x82))
+#define HEADER_COUNTERS         (char(0x83))
+#define HEADER_ENABLE_COUNTERS  (char(0x84))
+#define HEADER_START            (char(0x85))
 
 static uint32_t readLEInt(char * const buf)
 {
@@ -34,7 +34,7 @@ static uint32_t readLEInt(char * const buf)
 
     v = 0;
     for (i = 0; i < sizeof(v); ++i)
-        v |= (uint32_t) buf[i] << 8 * i;
+        v |= uint32_t(buf[i]) << 8 * i;
 
     return v;
 }
@@ -51,7 +51,7 @@ static int readPackedInt(char * const buf, const size_t bufSize, size_t * const 
         }
         b = buf[*pos];
         *pos += 1;
-        *l |= (uint64_t) (b & 0x7f) << shift;
+        *l |= uint64_t(b & 0x7f) << shift;
         shift += 7;
     }
 
@@ -94,8 +94,7 @@ private:
     int mEvent;
 
     // Intentionally undefined
-    ExternalCounter(const ExternalCounter &);
-    ExternalCounter &operator=(const ExternalCounter &);
+    CLASS_DELETE_COPY_MOVE(ExternalCounter);
 };
 
 ExternalDriver::ExternalDriver()
@@ -147,13 +146,13 @@ void ExternalDriver::query() const
 
         buf[0] = HEADER_REQUEST_COUNTERS;
         size_t pos = HEADER_SIZE;
-        Buffer::writeLEInt((unsigned char *) (buf + 1), pos);
+        Buffer::writeLEInt(reinterpret_cast<unsigned char *>(buf + 1), pos);
         if (!writeAll(mUds, buf, pos)) {
             logg.logError("Unable to send request counters message");
             handleException();
         }
 
-        if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != (char) HEADER_COUNTERS) {
+        if (!readAll(mUds, buf, HEADER_SIZE) || (buf[0] != HEADER_COUNTERS)) {
             logg.logError("Unable to read request counters response header");
             handleException();
         }
@@ -184,7 +183,7 @@ void ExternalDriver::query() const
         };
         if (name != NULL && readPackedInt(buf, bufSize, &pos, &cores) == 0) {
             // Cheat so that this can be 'const'
-            ((ExternalDriver *) (this))->setCounters(new ExternalCounter(getCounters(), name, cores));
+            const_cast<ExternalDriver *>(this)->setCounters(new ExternalCounter(getCounters(), name, cores));
         }
     }
 
@@ -226,14 +225,14 @@ void ExternalDriver::start()
         Buffer::packInt(buf, sizeof(buf), pos, counter->getEvent());
         Buffer::packInt(buf, sizeof(buf), pos, counter->getKey());
     }
-    Buffer::writeLEInt((unsigned char *) (buf + 1), pos);
+    Buffer::writeLEInt(reinterpret_cast<unsigned char *>(buf + 1), pos);
     if (!writeAll(mUds, buf, pos)) {
         logg.logError("Unable to send enable counters message");
         handleException();
     }
 
     size_t size = 0;
-    if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != (char) HEADER_ACK) {
+    if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != HEADER_ACK) {
         logg.logError("Unable to read enable counters response header");
         handleException();
     }
@@ -249,14 +248,14 @@ void ExternalDriver::start()
     // For sample rate of none, sample every 100ms
     Buffer::packInt(buf, sizeof(buf), pos, NS_PER_S / (gSessionData.mSampleRate == 0 ? 10 : gSessionData.mSampleRate));
     Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mLiveRate);
-    Buffer::writeLEInt((unsigned char *) (buf + 1), pos);
+    Buffer::writeLEInt(reinterpret_cast<unsigned char *>(buf + 1), pos);
     if (!writeAll(mUds, buf, pos)) {
         logg.logError("Unable to send start message");
         handleException();
     }
 
     size = 0;
-    if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != (char) HEADER_ACK) {
+    if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != HEADER_ACK) {
         logg.logError("Unable to read start response header");
         handleException();
     }

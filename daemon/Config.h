@@ -12,8 +12,8 @@
 #define STRIFY2(ARG) #ARG
 #define STRIFY(ARG) STRIFY2(ARG)
 
-#define ARRAY_LENGTH(A) static_cast<int>(sizeof(A)/sizeof((A)[0]))
-#define ACCESS_ONCE(x) (*(volatile typeof(x)*)&(x))
+#define ARRAY_LENGTH(A) static_cast<int>(sizeof(A) / sizeof((A)[0]))
+#define ACCESS_ONCE(x)  (*reinterpret_cast<volatile __typeof(x) *>(&(x)))
 
 #define MAX_PERFORMANCE_COUNTERS 50
 #define NR_CPUS 97
@@ -23,17 +23,5 @@
 // If debugfs is not mounted at /sys/kernel/debug, update TRACING_PATH
 #define TRACING_PATH "/sys/kernel/debug/tracing"
 #define EVENTS_PATH TRACING_PATH "/events"
-
-template<typename T>
-static inline T min(const T a, const T b)
-{
-    return (a < b ? a : b);
-}
-
-template<typename T>
-static inline T max(const T a, const T b)
-{
-    return (a > b ? a : b);
-}
 
 #endif // CONFIG_H

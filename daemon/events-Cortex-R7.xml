@@ -1,0 +1,59 @@
+  <counter_set name="ARMv7R_Cortex_R7_cnt" count="8"/>
+  <category name="Cortex_R7" counter_set="ARMv7R_Cortex_R7_cnt" per_cpu="yes">
+
+    <event counter="ARMv7R_Cortex_R7_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+
+    <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
+
+    <event event="0x01" title="Cache" name="Instruction cache miss" description="Each instruction fetch from normal cacheable memory that causes a refill from the L2 memory system generates this event. Accesses that do not cause a new cache refill, but are satisfied from refilling data of a previous miss are not counted."/>
+    <event event="0x03" title="Cache" name="Data cache miss" description="Each data read from or write to normal cacheable memory that causes a refill from the L2 memory system generates this event. Accesses that do not cause a new cache refill, but are satisfied from refilling data of a previous miss are not counted."/>
+    <event event="0x04" title="Cache" name="Data access" description="Each access to a cache line is counted including the multiple transactions of an LDM, STM, or other operations. CP15 cache maintenance operations do not count as events"/>
+
+    <event event="0x06" title="Data" name="Data Read" description="Data Read architecturally executed. This event occurs for every instruction that explicitly reads data, including SWP."/>
+    <event event="0x07" title="Data" name="Data Write" description="Data Write architecturally executed. This event occurs for every instruction that explicitly writes data, including SWP."/>
+
+    <event event="0x08" title="Instruction" name="Instruction Executed" description="Instruction architecturally executed."/>
+
+    <event event="0x09" title="Exception" name="Taken" description="This event occurs on each exception taken."/>
+    <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed. This event occurs on every exception return."/>
+    <event event="0x0b" title="Context ID" name="Change" description="Change to Context ID executed."/>
+    <event event="0x0c" title="Program Counter" name="SW change" description="Software changed the PC, except by an exception, architecturally executed."/>
+    <event event="0x0d" title="Branch" name="Instruction executed" description="B immediate, BL immediate or BLX immediate instruction architecturally executed (taken or not taken)."/>
+    <event event="0x0e" title="Procedure" name="Returns" description="Procedure return architecturally executed, other than exception returns, for example, BZ Rm, LDM Rn, {..,PC}."/>
+    <event event="0x0f" title="Access" name="Unaligned" description="This event occurs for each instruction that was to an unaligned address that either triggered an alignment fault, or would have done so if the SCTLR A-bit had been set."/>
+
+    <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted."/>
+    <event event="0x12" title="Branch" name="Predicted" description="Branches or other change in program flow that could have been predicted by the branch prediction resources of the processor."/>
+    <event event="0x14" title="Cache" name="Instruction access" description=""/>
+
+    <event event="0x50" title="Interrupt" name="IRQ cycles" description="Number of cycles IRQs are interrupted"/>
+    <event event="0x51" title="Interrupt" name="FIQ cycles" description="Number of cycles IRQs are interrupted"/>
+
+    <event event="0x61" title="EEC" name="Parity error PRED" description="Parity error on PRED"/>
+    <event event="0x62" title="EEC" name="Parity error BTAC" description="Parity error on BTAC"/>
+    <event event="0x63" title="EEC" name="ITCM error" description="Detected ECC errors on ITCM"/>
+    <event event="0x64" title="EEC" name="DTCM error" description="Detected ECC errors on DTCM"/>
+    <event event="0x65" title="EEC" name="Instr cache error" description="Detected ECC errors on instruction cache"/>
+    <event event="0x66" title="EEC" name="Data cache error" description="Detected ECC errors on data cache"/>
+    <event event="0x68" title="EEC" name="Slave bus write error" description="Correctable ECC errors on slave bus, data write channel"/>
+    <event event="0x69" title="EEC" name="Periph master bus read error" description="Correctable ECC errors on peripheral master bus, data read channel"/>
+    <event event="0x6a" title="EEC" name="Master 0 bus read error" description="Correctable ECC errors on master 0 bus, data read channel"/>
+    <event event="0x6b" title="EEC" name="Master 1 bus read error" description="Correctable ECC errors on master 1 bus, data read channel"/>
+    <event event="0x6c" title="EEC" name="SCU RAM error" description="Detected ECC errors on SCU RAM"/>
+
+    <event event="0x80" title="Software" name="STREX passed" description="STREX passed"/>
+    <event event="0x81" title="Software" name="STREX failed" description="STREX failed"/>
+    <event event="0x82" title="Software" name="Literal pool" description="Literal pool in TCM region"/>
+
+    <event event="0x90" title="Microarchitecture" name="DMB stall" description=""/>
+    <event event="0x91" title="Microarchitecture" name="ITCM access" description=""/>
+    <event event="0x92" title="Microarchitecture" name="DTCM access" description=""/>
+    <event event="0x93" title="Microarchitecture" name="Data eviction" description="SCU coherency operation (CCB request)"/>
+    <event event="0x94" title="Microarchitecture" name="SCU coherency" description=""/>
+    <event event="0x95" title="Microarchitecture" name="Instriction stall" description="Instruction cache dependent stall"/>
+    <event event="0x96" title="Microarchitecture" name="Data stall" description="Data cache dependent stall"/>
+    <event event="0x97" title="Microarchitecture" name="No peripheral stall" description="Non-cacheable no peripheral dependent stall"/>
+    <event event="0x98" title="Microarchitecture" name="Peripheral stall" description="Non-cacheable peripheral dependent stall"/>
+    <event event="0x99" title="Microarchitecture" name="Data high-prio stall" description="Data cache high priority dependent stall"/>
+
+  </category>

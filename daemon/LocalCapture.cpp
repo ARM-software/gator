@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <memory>
+
 #include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -100,10 +102,9 @@ int LocalCapture::removeDirAndAllContents(char* path)
             dirent* entry = readdir(dir);
             while (entry) {
                 if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                    char* newpath = (char*) malloc(strlen(path) + strlen(entry->d_name) + 2);
-                    sprintf(newpath, "%s/%s", path, entry->d_name);
-                    error = removeDirAndAllContents(newpath);
-                    free(newpath);
+                    std::unique_ptr<char[]> newpath (new char[strlen(path) + strlen(entry->d_name) + 2]);
+                    sprintf(newpath.get(), "%s/%s", path, entry->d_name);
+                    error = removeDirAndAllContents(newpath.get());
                     if (error) {
                         break;
                     }
@@ -122,24 +123,22 @@ int LocalCapture::removeDirAndAllContents(char* path)
     return error;
 }
 
-void LocalCapture::copyImages(ImageLinkList* ptr)
+void LocalCapture::copyImages(const std::list<std::string> & list)
 {
     char dstfilename[PATH_MAX];
 
-    while (ptr) {
+    for (const auto & element : list) {
         strncpy(dstfilename, gSessionData.mAPCDir, PATH_MAX);
         dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
         if (gSessionData.mAPCDir[strlen(gSessionData.mAPCDir) - 1] != '/') {
             strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
         }
-        strncat(dstfilename, getFilePart(ptr->path), PATH_MAX - strlen(dstfilename) - 1);
-        if (copyFile(ptr->path, dstfilename)) {
-            logg.logMessage("copied file %s to %s", ptr->path, dstfilename);
+        strncat(dstfilename, getFilePart(element.c_str()), PATH_MAX - strlen(dstfilename) - 1);
+        if (copyFile(element.c_str(), dstfilename)) {
+            logg.logMessage("copied file %s to %s", element.c_str(), dstfilename);
         }
         else {
-            logg.logMessage("copy of file %s to %s failed", ptr->path, dstfilename);
+            logg.logMessage("copy of file %s to %s failed", element.c_str(), dstfilename);
         }
-
-        ptr = ptr->next;
     }
 }

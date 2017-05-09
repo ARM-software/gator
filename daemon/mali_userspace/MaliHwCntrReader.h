@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ClassBoilerPlate.h"
 #include "mali_userspace/MaliDevice.h"
 
 namespace mali_userspace
@@ -37,26 +38,30 @@ namespace mali_userspace
     /**
      * Represents a single sample object read from the counter interface
      */
-    class SampleBuffer : private kbase_hwcnt_reader_metadata
+    class SampleBuffer
     {
     public:
 
         /**
-         * Constructor
+         * Constructors
          */
         SampleBuffer();
+        SampleBuffer(SampleBuffer &&);
 
         /** Destructor */
         ~SampleBuffer();
 
+        /** move assignable */
+        SampleBuffer& operator= (SampleBuffer &&);
+
         /** @return True if the buffer is valid */
         inline bool isValid() const { return data != NULL; }
         /** @return The buffer index */
-        inline uint32_t getBufferId() const { return buffer_idx; }
+        inline uint32_t getBufferId() const { return metadata.buffer_idx; }
         /** @return The event that generated the sample */
-        inline uint32_t getEventId() const { return event_id; }
+        inline uint32_t getEventId() const { return metadata.event_id; }
         /** @return The timestamp of the event */
-        inline uint64_t getTimestamp() const { return timestamp; }
+        inline uint64_t getTimestamp() const { return metadata.timestamp; }
         /** @return The size of the sample data */
         inline size_t getSize() const { return data_size; }
         /** @return The sample data */
@@ -64,6 +69,7 @@ namespace mali_userspace
 
     private:
 
+        kbase_hwcnt_reader_metadata metadata;
         MaliHwCntrReader * parent;
         size_t data_size;
         const uint8_t * data;
@@ -82,6 +88,8 @@ namespace mali_userspace
          * @param data_         The sample data
          */
         SampleBuffer(MaliHwCntrReader & parent_, uint64_t timestamp_, uint32_t eventId_, uint32_t bufferId_, size_t size_, const uint8_t * data_);
+
+        CLASS_DELETE_COPY(SampleBuffer);
     };
 
     /**
@@ -113,6 +121,22 @@ namespace mali_userspace
         } WaitStatus;
 
         /**
+         * Probe the number of MMU blocks on V5+ device
+         *
+         * @param device
+         * @return The number of MMU blocks
+         */
+        static unsigned probeMMUCount(const MaliDevice * device);
+
+        /**
+         * Create a new instance of the MaliHwCntrReader object associated with the device object
+         *
+         * @param device
+         * @return The new reader, or NULL if not able to initialize
+         */
+        static MaliHwCntrReader * create(const MaliDevice * device);
+
+        /**
          * Free an old reader object, but retain the device object that it held (which would otherwise be deleted with the reader)
          *
          * @param oldReader The old reader to release
@@ -120,18 +144,6 @@ namespace mali_userspace
          */
         static const MaliDevice * freeReaderRetainDevice(MaliHwCntrReader * oldReader);
 
-        /**
-         * Constructor
-         *
-         * @param device_           The device to open
-         * @param bufferCount_      Number of buffers that this reader shall use. Must be a power of two.
-         * @param jmBitmask_        Counters selection bitmask (JM).
-         * @param shaderBitmask_    Counters selection bitmask (Shader).
-         * @param tilerBitmask_     Counters selection bitmask (Tiler).
-         * @param mmuL2Bitmask_     Counters selection bitmask (MMU_L2).
-         */
-        MaliHwCntrReader(const MaliDevice * device_, uint32_t bufferCount_, CounterBitmask jmBitmask_,
-                               CounterBitmask shaderBitmask_, CounterBitmask tilerBitmask_, CounterBitmask mmuL2Bitmask_);
 
         /** Destructor */
         ~MaliHwCntrReader();
@@ -160,6 +172,14 @@ namespace mali_userspace
         inline HardwareVersion getHardwareVersion() const
         {
             return hardwareVersion;
+        }
+
+        /**
+         * @return The number of mmu/l2 blocks
+         */
+        inline unsigned getMmuL2BlockCount() const
+        {
+            return mmuL2BlockCount;
         }
 
         /**
@@ -260,13 +280,45 @@ namespace mali_userspace
         uint32_t sampleBufferSize;
         /** Hardware version */
         uint32_t hardwareVersion;
+        /** Number of mmu/l2 regions on v5+ */
+        unsigned mmuL2BlockCount;
         /** Pipe to allow one thread to signal to poll to wake. Used to stop read. */
         int selfPipe[2];
         /** Set true if the reader was fully initialized */
         bool initialized;
+        /** Set true if failure relates to probing buffer count */
+        bool failedDueToBufferCount;
 
         /** The sample buffer may call putBuffer when it is destroyed */
         friend class SampleBuffer;
+
+        /**
+         * Create a new instance of the MaliHwCntrReader object associated with the device object
+         *
+         * @param device
+         * @param mmul2count        The value returned by probeMMUCount
+         * @param jmBitmask_        Counters selection bitmask (JM).
+         * @param shaderBitmask_    Counters selection bitmask (Shader).
+         * @param tilerBitmask_     Counters selection bitmask (Tiler).
+         * @param mmuL2Bitmask_     Counters selection bitmask (MMU_L2).
+         * @return The new reader, or NULL if not able to initialize
+         */
+        static MaliHwCntrReader * create(const MaliDevice * device, unsigned mmul2count, CounterBitmask jmBitmask_,
+                                         CounterBitmask shaderBitmask_, CounterBitmask tilerBitmask_, CounterBitmask mmuL2Bitmask_);
+
+        /**
+         * Constructor
+         *
+         * @param device_           The device to open
+         * @param mmul2count        The value returned by probeMMUCount
+         * @param bufferCount_      Number of buffers that this reader shall use. Must be a power of two.
+         * @param jmBitmask_        Counters selection bitmask (JM).
+         * @param shaderBitmask_    Counters selection bitmask (Shader).
+         * @param tilerBitmask_     Counters selection bitmask (Tiler).
+         * @param mmuL2Bitmask_     Counters selection bitmask (MMU_L2).
+         */
+        MaliHwCntrReader(const MaliDevice * device_, unsigned mmul2count, uint32_t bufferCount_, CounterBitmask jmBitmask_,
+                               CounterBitmask shaderBitmask_, CounterBitmask tilerBitmask_, CounterBitmask mmuL2Bitmask_);
 
         /**
          * Release hardware counters sampling buffer.
@@ -279,6 +331,15 @@ namespace mali_userspace
          * @retval  false   Failure
          */
         bool releaseBuffer(kbase_hwcnt_reader_metadata & metadata);
+
+        /**
+         * Probe the number of blocks on V5+ device with non-zero mask
+         *
+         * @return The number of matching blocks
+         */
+        unsigned probeBlockMaskCount();
+
+        CLASS_DELETE_COPY_MOVE(MaliHwCntrReader);
     };
 }
 

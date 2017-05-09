@@ -9,8 +9,11 @@
 #ifndef PERFDRIVER_H
 #define PERFDRIVER_H
 
+#include <list>
+#include <memory>
 #include <stdint.h>
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 #define SCHED_SWITCH "sched/sched_switch"
@@ -22,11 +25,34 @@ class DynBuf;
 class GatorCpu;
 class PerfGroup;
 class PerfTracepoint;
+class UncorePmu;
 
 class PerfDriver : public SimpleDriver
 {
 public:
-    PerfDriver();
+
+    /**
+     * Contains the detected parameters of perf
+     */
+    class PerfDriverConfiguration
+    {
+    private:
+
+        // opaque to everyone else
+        friend class PerfDriver;
+
+        std::list<GatorCpu *> cpuPmus;
+        std::list<UncorePmu *> uncorePmus;
+        bool foundCpu;
+        bool legacySupport;
+        bool clockidSupport;
+
+        PerfDriverConfiguration();
+    };
+
+    static std::unique_ptr<PerfDriverConfiguration> detect();
+
+    PerfDriver(const PerfDriverConfiguration & configuration);
     ~PerfDriver();
 
     bool getLegacySupport() const
@@ -39,16 +65,9 @@ public:
     }
 
     void readEvents(mxml_node_t * const xml);
-    bool setup();
     bool summary(Buffer * const buffer);
     void coreName(const uint64_t currTime, Buffer * const buffer, const int cpu);
-    bool isSetup() const
-    {
-        return mIsSetup;
-    }
-
     void setupCounter(Counter &counter);
-
     bool enable(const uint64_t currTime, PerfGroup * const group, Buffer * const buffer) const;
     void read(Buffer * const buffer, const int cpu);
     bool sendTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
@@ -60,13 +79,12 @@ private:
     void addCpuCounters(const GatorCpu * const cpu);
     void addUncoreCounters(const char * const counterName, const int type, const int numCounters,
                            const bool hasCyclesCounter);
-
-    int mIsSetup :1, mLegacySupport :1, mClockidSupport :1, mUnused0 :29;
     PerfTracepoint *mTracepoints;
+    bool mIsSetup, mLegacySupport, mClockidSupport;
 
     // Intentionally undefined
-    PerfDriver(const PerfDriver &);
-    PerfDriver &operator=(const PerfDriver &);
+    CLASS_DELETE_COPY_MOVE(PerfDriver);
+
     void addMidgardHwTracepoints(const char * const maliFamilyName);
 };
 

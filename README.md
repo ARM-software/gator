@@ -13,22 +13,23 @@ A Linux development environment with cross compiling tools is most likely requir
 - For users, the ideal environment is to be given a BSP with gatord and gator.ko already running on a properly configured kernel. In such a scenario, a development environment is not needed, root permission may or may not be needed (gatord must be executed with root permissions but can be automatically started, see below), and the user can run Streamline and profile the system without any setup.
 - The ideal development environment has the kernel source code available to be rebuilt, usually by cross-compiling on a host machine. This environment allows the greatest flexibility in configuring the kernel and building the gator driver module.
 - However, it is possible that a user/developer has a kernel but does not have the source code. In this scenario it may or may not be possible to obtain a valid profile.
-	- First, check if the kernel has the proper configuration options (see below). Profiling cannot occur using a kernel that is not configured properly, a new kernel must be created. See if `/proc/config.gz` exists on the target.
-	- Second, given a properly configured kernel, check if the filesystem contains the kernel source/headers, which can be used to re-create the gator driver. These files may be located in different areas, but common locations are `/lib/modules/` and `/usr/src/`.
-	- If the kernel is not properly configured or sources/headers are not available, the developer is on their own and kernel creation is beyond the scope of this document. Note: It is possible for a module to work when compiled against a similar kernel source code, though this is not guaranteed to work due to differences in kernel structures, exported symbols and incompatible configuration parameters.
-	- If the target is running Linux 3.4 or later the kernel driver is not required and userspace APIs will be used instead.
+    - First, check if the kernel has the proper configuration options (see below). Profiling cannot occur using a kernel that is not configured properly, a new kernel must be created. See if `/proc/config.gz` exists on the target.
+    - Second, given a properly configured kernel, check if the filesystem contains the kernel source/headers, which can be used to re-create the gator driver. These files may be located in different areas, but common locations are `/lib/modules/` and `/usr/src/`.
+    - If the kernel is not properly configured or sources/headers are not available, the developer is on their own and kernel creation is beyond the scope of this document. Note: It is possible for a module to work when compiled against a similar kernel source code, though this is not guaranteed to work due to differences in kernel structures, exported symbols and incompatible configuration parameters.
+    - If the target is running Linux 3.4 or later the kernel driver is not required and userspace APIs will be used instead.
 
 ## Kernel configuration
 
 menuconfig options (depending on the kernel version, the location of these configuration settings within menuconfig may differ)
 - General Setup
+  - Timers subsystem
+    - [*] High Resolution Timer Support (enables CONFIG_HIGH_RES_TIMERS)
   - Kernel Performance Events And Counters
     - [*] Kernel performance events and counters (enables CONFIG_PERF_EVENTS)
   - [*] Profiling Support (enables CONFIG_PROFILING)
 - [*] Enable loadable module support (enables CONFIG_MODULES, needed unless the gator driver is built into the kernel)
   - [*] Module unloading (enables MODULE_UNLOAD)
 - Kernel Features
-  - [*] High Resolution Timer Support (enables CONFIG_HIGH_RES_TIMERS)
   - [*] Use local timer interrupts (only required for SMP and for version before Linux 3.12, enables CONFIG_LOCAL_TIMERS)
   - [*] Enable hardware performance counter support for perf events (enables CONFIG_HW_PERF_EVENTS)
 - CPU Power Management
@@ -95,7 +96,7 @@ cp -r /path/to/gator/driver-src/* gator
 ```
 Edit Makefile in the kernel drivers folder and add this to the end
 ```
-obj-$(CONFIG_GATOR)		+= gator/
+obj-$(CONFIG_GATOR)     += gator/
 ```
 Edit Kconfig in the kernel drivers folder and add this before the last endmenu
 ```
@@ -111,7 +112,11 @@ To improve portablility gatord is statically compiled against musl libc from htt
 
 ## Building the gator daemon
 
-Please note that Linux is required to build gatord
+Building gatord has the following requirements:
+
+- C++11 supporting compiler; GCC-4.7 is the minimum required
+- Linux based build system
+
 
 ```
 cp -r /path/to/streamline/gator/daemon .
@@ -140,13 +145,37 @@ jni/PerfGroup.cpp:36:17: error: '__NR_perf_event_open' was not declared in this 
 ```
 To build gatord for aarch64 edit `jni/Application.mk` and replace `armeabi-v7a` with `arm64-v8a`. To build for ARM11 `jni/Application.mk` and replace `armeabi-v7a` with `armeabi`.
 
+
 ## Running gator
 
-- Load the kernel onto the target and copy gatord and gator.ko into the target's filesystem.
-- Ensure gatord has execute permissions `chmod +x gatord`
-- gator.ko must be located in the same directory as gatord on the target or the location specified with the -m option or already insmod'ed.
-- With root privileges, run the daemon `sudo ./gatord &`
-- If gator.ko is not loaded and is not in the same directory as gatord when using Linux 3.4 or later, gatord can run without gator.ko by using userspace APIs. Not all features are supported by userspace gator. If `/dev/gator/version` does not exist after starting gatord it is running userspace gator.
+### With the kernel module gator.ko
+
+- Copy gatord and gator.ko into the target's filesystem.
+- Ensure gatord has execute permissions:
+  `chmod +x gatord`
+- gator.ko must be located in the same directory as gatord on the target or the location specified with the -m option or it must already be insmod'ed.
+- The daemon must be run with root privileges:
+  `sudo ./gatord &`
+
+### With the Linux perf API
+
+- Copy gatord into the target's filesystem.
+- Ensure gatord has execute permissions:
+  `chmod +x gatord`
+- The daemon must be run with root privileges:
+  `sudo ./gatord &`
+
+This configuration requires Linux 3.4 or later with a correctly configured kernel. Not all features are supported by userspace gator.
+
+### As a non-root user
+
+- Copy gatord into the target's filesystem.
+- Ensure gatord has execute permissions:
+  `chmod +x gatord`
+- Run the daemon:
+  `./gatord &`
+
+This configuration provides a reduced set of software only CPU counters such as CPU utilization and process statistics, as well as Mali hardware counters on supported Mali platforms.
 
 ## Customizing the l2c-310 Counter
 

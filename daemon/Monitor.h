@@ -11,6 +11,8 @@
 
 #include <sys/epoll.h>
 
+#include "ClassBoilerPlate.h"
+
 class Monitor
 {
 public:
@@ -27,8 +29,7 @@ private:
     int mFd;
 
     // Intentionally unimplemented
-    Monitor(const Monitor &);
-    Monitor &operator=(const Monitor &);
+    CLASS_DELETE_COPY_MOVE(Monitor);
 };
 
 #endif // MONITOR_H

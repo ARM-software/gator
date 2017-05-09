@@ -8,6 +8,8 @@
 
 #include "PmuXML.h"
 
+#include <algorithm>
+
 #include <dirent.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -19,7 +21,6 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
-static const char TAG_PMUS[] = "pmus";
 static const char TAG_PMU[] = "pmu";
 static const char TAG_UNCORE_PMU[] = "uncore_pmu";
 
@@ -112,7 +113,7 @@ void PmuXML::parse(const char * const xml)
 void PmuXML::getDefaultXml(const char ** const xml, unsigned int * const len)
 {
 #include "pmus_xml.h" // defines and initializes char defaults_xml[] and int defaults_xml_len
-    *xml = (const char *) pmus_xml;
+    *xml = reinterpret_cast<const char *>(pmus_xml);
     *len = pmus_xml_len;
 }
 
@@ -187,7 +188,7 @@ void PmuXML::writeToKernel()
                     handleException();
                 }
                 gSessionData.mSharedData->mClusters[clusterId] = gatorCpu;
-                gSessionData.mSharedData->mClusterCount = max(gSessionData.mSharedData->mClusterCount, clusterId + 1);
+                gSessionData.mSharedData->mClusterCount = std::max(gSessionData.mSharedData->mClusterCount, clusterId + 1);
             }
         }
 

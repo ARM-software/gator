@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 
+#include "ClassBoilerPlate.h"
 #include "mxml/mxml.h"
 
 class Buffer;
@@ -61,8 +62,7 @@ private:
     Driver *next;
 
     // Intentionally unimplemented
-    Driver(const Driver &);
-    Driver &operator=(const Driver &);
+    CLASS_DELETE_COPY_MOVE(Driver);
 };
 
 #endif // DRIVER_H

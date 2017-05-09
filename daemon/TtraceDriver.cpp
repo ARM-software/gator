@@ -33,8 +33,7 @@ private:
     const int mFlag;
 
     // Intentionally unimplemented
-    TtraceCounter(const TtraceCounter &);
-    TtraceCounter &operator=(const TtraceCounter &);
+    CLASS_DELETE_COPY_MOVE(TtraceCounter);
 };
 
 TtraceCounter::TtraceCounter(DriverCounter *next, char *name, int flag)
@@ -113,7 +112,7 @@ void TtraceDriver::setTtrace(const int flags)
         handleException();
     }
 
-    uint64_t * const buf = (uint64_t *) mmap(NULL, sizeof(uint64_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    uint64_t * const buf = static_cast<uint64_t *>(mmap(NULL, sizeof(uint64_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
     if (buf == MAP_FAILED) {
         logg.logError("mmap failed");
         handleException();

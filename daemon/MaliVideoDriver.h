@@ -9,6 +9,7 @@
 #ifndef MALIVIDEODRIVER_H
 #define MALIVIDEODRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class MaliVideoCounter;
@@ -41,8 +42,7 @@ private:
     void marshalEnable(const MaliVideoCounterType type, char * const buf, const size_t bufsize, int &pos);
 
     // Intentionally unimplemented
-    MaliVideoDriver(const MaliVideoDriver &);
-    MaliVideoDriver &operator=(const MaliVideoDriver &);
+    CLASS_DELETE_COPY_MOVE(MaliVideoDriver);
 };
 
 #endif // MALIVIDEODRIVER_H

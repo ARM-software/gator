@@ -45,7 +45,7 @@ static int getUid(const char * const name, const char * const tmpDir, uid_t * co
         handleException();
     }
     if (pid == 0) {
-        execlp("sh", "sh", "-c", cmd, (char*) 0);
+        execlp("sh", "sh", "-c", cmd, nullptr);
         exit(-1);
     }
     while ((waitpid(pid, NULL, 0) < 0) && (errno == EINTR))
@@ -90,7 +90,7 @@ static bool getUid(const char * const name, uid_t * const uid, gid_t * const gid
 
 void *commandThread(void *)
 {
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-command", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
 
     const char * const name = gSessionData.mCaptureUser == NULL ? "nobody" : gSessionData.mCaptureUser;
     uid_t uid;
@@ -146,7 +146,7 @@ void *commandThread(void *)
             }
         }
 
-        execlp("sh", "sh", "-c", gSessionData.mCaptureCommand, (char*) 0);
+        execlp("sh", "sh", "-c", gSessionData.mCaptureCommand, nullptr);
         snprintf(buf, sizeof(buf), "execv failed");
 
         fail_exit: if (buf[0] != '\0') {

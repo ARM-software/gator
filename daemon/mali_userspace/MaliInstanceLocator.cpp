@@ -1,8 +1,9 @@
 /* Copyright (c) 2016 by ARM Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
+#include "lib/FsEntry.h"
+#include "lib/Optional.h"
 
-#include <dirent.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,9 +14,6 @@
 #include "DynBuf.h"
 #include "Logging.h"
 
-#define SYS_DEVICES_PLATFORM_DIR "/sys/devices/platform"
-#define SYS_DEVICES_DIR "/sys/devices/"
-
 namespace mali_userspace
 {
     static MaliDevice * enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, const char * devicePath)
@@ -23,104 +21,113 @@ namespace mali_userspace
         MaliDevice * device = MaliDevice::create(mpNumber, gpuId, devicePath);
 
         if (device != NULL) {
-            logg.logSetup("Mali Hardware Counters - '%s MP%d r%dp%d 0x%04X' @ '%s' found", model, mpNumber, rValue, pValue, gpuId, devicePath);
+            logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found", model, mpNumber, rValue, pValue, gpuId, devicePath);
         }
         else {
-            logg.logSetup("Mali Hardware Counters - '%s MP%d r%dp%d 0x%04X' @ '%s' found, but not supported", model, mpNumber, rValue, pValue, gpuId, devicePath);
+            logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found, but not supported", model, mpNumber, rValue, pValue, gpuId, devicePath);
         }
 
         return device;
     }
 
-    static MaliDevice * enumerateMaliHwCntrDriversInDir(const char * dir)
+    static MaliDevice * enumerateMaliHwCntrDriversInDir(const lib::FsEntry & sysDevicesPlatformDir)
     {
         // open sysfs directory
-        DIR * sysDevicesPlatformDir = opendir(dir);
-        if (sysDevicesPlatformDir == NULL) {
-            logg.logMessage("enumerateMaliHwCntrDrivers - failed to open '%s'", dir);
+        if (sysDevicesPlatformDir.read_stats().type() != lib::FsEntry::Type::DIR) {
+            logg.logMessage("enumerateMaliHwCntrDrivers - failed to open '%s'", sysDevicesPlatformDir.path().c_str());
             return NULL;
         }
 
         MaliDevice * result = NULL;
 
         // walk children looking for <CHILD>/gpuinfo and <CHILD>/misc/mali<%d>
-        struct dirent * deviceDirent;
-        while ((result == NULL) && ((deviceDirent = readdir(sysDevicesPlatformDir)) != NULL)) {
-            // create the <CHILD> string
-            DynBuf gpuinfoPathBuffer;
-            gpuinfoPathBuffer.append("%s/%s/gpuinfo", dir, deviceDirent->d_name);
-
-            // read the contents of 'gpuinfo' file
-            FILE * gpuinfoFile = fopen(gpuinfoPathBuffer.getBuf(), "r");
-            if (gpuinfoFile == NULL) {
-                continue;
-            }
-
-            char model[33];
-            int mpNumber, rValue, pValue, gpuId;
-            int fscanfResult = fscanf(gpuinfoFile, "%32s MP%d r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
-
-            fclose(gpuinfoFile);
-
-            if (fscanfResult != 5) {
-                logg.logError("enumerateMaliHwCntrDrivers - failed to parse '%s'", gpuinfoPathBuffer.getBuf());
-                continue;
-            }
-
-            logg.logMessage("enumerateMaliHwCntrDrivers - Detected valid gpuinfo file '%s' with '%s MP%d r%dp%d 0x%04X'",
-                    gpuinfoPathBuffer.getBuf(), model, mpNumber, rValue, pValue, gpuId);
-
-            // now check for <CHILD>/misc/mali<%d> directories
-            DynBuf miscPathBuffer;
-            miscPathBuffer.append("%s/%s/misc", dir, deviceDirent->d_name);
-
-            DIR * miscDir = opendir(miscPathBuffer.getBuf());
-            if (miscDir == NULL) {
-                logg.logError("enumerateMaliHwCntrDrivers - could not open '%s'", miscPathBuffer.getBuf());
-                continue;
-            }
-
-            bool matched = false;
-            DynBuf maliDeviceName;
-            struct dirent * miscDirent;
-            while ((!matched) && ((miscDirent = readdir(miscDir)) != NULL)) {
-                // match child against 'mali%d'
-                int ignored;
-                if (sscanf(miscDirent->d_name, "mali%d", &ignored) == 1) {
-                    matched = true;
-                    maliDeviceName.append("/dev/%s", miscDirent->d_name);
+        lib::FsEntryDirectoryIterator iterator = sysDevicesPlatformDir.children();
+        lib::Optional<lib::FsEntry> childEntry;
+        while ((childEntry = iterator.next()).valid()) {
+            // determine type
+            lib::FsEntry::Stats childStats = childEntry->read_stats();
+            if (childStats.type() == lib::FsEntry::Type::DIR) {
+                // try to recursively scan the child directory
+                if (!childStats.is_symlink()) {
+                    result = enumerateMaliHwCntrDriversInDir(*childEntry);
+                    if (result != NULL) {
+                        return result;
+                    }
                 }
-                // log a message so long as name is not '.' or '..'
-                else if ((miscDirent->d_name[0] != '.')
-                        || ((miscDirent->d_name[1] != '\0') && ((miscDirent->d_name[1] != '.') || (miscDirent->d_name[2] != '\0')))) {
-                    logg.logMessage("enumerateMaliHwCntrDrivers - skipping '%s/%s'", miscPathBuffer.getBuf(), miscDirent->d_name);
+
+                // Create the gpuinfo object
+                lib::FsEntry gpuinfoEntry = lib::FsEntry::create(*childEntry, "gpuinfo");
+
+                // read the contents of 'gpuinfo' file
+                FILE * gpuinfoFile = fopen(gpuinfoEntry.path().c_str(), "r");
+                if (gpuinfoFile == NULL) {
+                    continue;
+                }
+
+                char model[33];
+                int mpNumber, rValue, pValue;
+                unsigned int gpuId;
+                int fscanfResult = fscanf(gpuinfoFile, "%32s MP%d r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
+                if (fscanfResult != 5) {
+                    fseek(gpuinfoFile, 0, SEEK_SET);
+                    fscanfResult = fscanf(gpuinfoFile, "%32s %d cores r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
+                    if (fscanfResult != 5) {
+                        fseek(gpuinfoFile, 0, SEEK_SET);
+                        fscanfResult = fscanf(gpuinfoFile, "%32s %d core r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
+
+                        fclose(gpuinfoFile);
+
+                        if (fscanfResult != 5) {
+                            logg.logError("enumerateMaliHwCntrDrivers - failed to parse '%s'", gpuinfoEntry.path().c_str());
+                            continue;
+                        }
+                    }
+                }
+
+                logg.logMessage("enumerateMaliHwCntrDrivers - Detected valid gpuinfo file '%s' with '%s MP%d r%dp%d 0x%04X'",
+                                gpuinfoEntry.path().c_str(), model, mpNumber, rValue, pValue, gpuId);
+
+                // now check for <CHILD>/misc/mali<%d> directories
+                lib::FsEntry miscDirEntry = lib::FsEntry::create(*childEntry, "misc");
+
+                if (miscDirEntry.read_stats().type() != lib::FsEntry::Type::DIR) {
+                    logg.logError("enumerateMaliHwCntrDrivers - could not open '%s'", miscDirEntry.path().c_str());
+                    continue;
+                }
+
+                lib::Optional<lib::FsEntry> devicePath;
+                lib::Optional<lib::FsEntry> miscChildEntry;
+                lib::FsEntryDirectoryIterator miscIterator = miscDirEntry.children();
+                while ((!devicePath.valid()) && (miscChildEntry = miscIterator.next()).valid()) {
+                    // match child against 'mali%d'
+                    int ignored;
+                    if (sscanf(miscChildEntry->name().c_str(), "mali%d", &ignored) == 1) {
+                        devicePath = lib::FsEntry::create(lib::FsEntry::create("/dev"), miscChildEntry->name());
+                    }
+                    else {
+                        logg.logMessage("enumerateMaliHwCntrDrivers - skipping '%s'", miscChildEntry->path().c_str());
+                    }
+                }
+
+                if (!devicePath.valid()) {
+                    logg.logError("enumerateMaliHwCntrDrivers - could not find %s/mail<N>", miscDirEntry.path().c_str());
+                    continue;
+                }
+
+                // create the device object
+                result = enumerateMaliHwCntrDriver(model, mpNumber, rValue, pValue, gpuId, devicePath->path().c_str());
+                if (result != NULL) {
+                    return result;
                 }
             }
-
-            closedir(miscDir);
-
-            if (!matched) {
-                logg.logError("enumerateMaliHwCntrDrivers - could not find %s/mail<N>", miscPathBuffer.getBuf());
-                continue;
-            }
-
-            // create the device object
-            result = enumerateMaliHwCntrDriver(model, mpNumber, rValue, pValue, gpuId, maliDeviceName.getBuf());
         }
 
-        closedir(sysDevicesPlatformDir);
-
-        return result;
+        return NULL;
     }
 
     MaliDevice * enumerateMaliHwCntrDrivers()
     {
-        MaliDevice * result = enumerateMaliHwCntrDriversInDir(SYS_DEVICES_PLATFORM_DIR);
-        if (result != NULL) {
-            return result;
-        }
-
-        result = enumerateMaliHwCntrDriversInDir(SYS_DEVICES_DIR);
+        MaliDevice * result = enumerateMaliHwCntrDriversInDir(lib::FsEntry::create("/sys"));
         if (result != NULL) {
             return result;
         }

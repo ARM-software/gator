@@ -8,6 +8,9 @@
 
 #include "MemInfoDriver.h"
 
+#include <unistd.h>
+
+#include "ClassBoilerPlate.h"
 #include "Logging.h"
 #include "SessionData.h"
 
@@ -23,8 +26,7 @@ private:
     int64_t * const mValue;
 
     // Intentionally unimplemented
-    MemInfoCounter(const MemInfoCounter &);
-    MemInfoCounter &operator=(const MemInfoCounter &);
+    CLASS_DELETE_COPY_MOVE(MemInfoCounter);
 };
 
 MemInfoCounter::MemInfoCounter(DriverCounter *next, char * const name, int64_t * const value)
@@ -58,16 +60,16 @@ MemInfoDriver::~MemInfoDriver()
 
 void MemInfoDriver::readEvents(mxml_node_t * const)
 {
-    // Only for use with perf
-    if (!gSessionData.mPerf.isSetup()) {
-        return;
+    if (access("/proc/meminfo", R_OK) == 0) {
+        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memused2"), &mMemUsed));
+        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memfree"), &mMemFree));
+        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_bufferram"), &mBuffers));
+        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_cached"), &mCached));
+        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_slab"), &mSlab));
     }
-
-    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memused2"), &mMemUsed));
-    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memfree"), &mMemFree));
-    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_bufferram"), &mBuffers));
-    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_cached"), &mCached));
-    setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_slab"), &mSlab));
+    else {
+        logg.logSetup("Linux counters\nCannot access /proc/meminfo. Memory usage counters not available.");
+    }
 }
 
 void MemInfoDriver::read(Buffer * const buffer)

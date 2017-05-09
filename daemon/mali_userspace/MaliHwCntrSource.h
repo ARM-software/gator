@@ -13,6 +13,7 @@
 
 #include "mali_userspace/MaliDevice.h"
 
+#include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Source.h"
 
@@ -21,25 +22,23 @@ namespace mali_userspace
     class MaliHwCntrSource : public Source, private virtual IMaliDeviceCounterDumpCallback
     {
     public:
-        MaliHwCntrSource(sem_t *senderSem);
+        MaliHwCntrSource(Child & child, sem_t *senderSem);
         ~MaliHwCntrSource();
 
-        bool prepare();
-        void run();
-        void interrupt();
-
-        bool isDone();
-        void write(Sender *sender);
+        virtual bool prepare() override;
+        virtual void run() override;
+        virtual void interrupt() override;
+        virtual bool isDone() override;
+        virtual void write(Sender * sender) override;
 
     private:
 
         Buffer mBuffer;
 
         // Intentionally unimplemented
-        MaliHwCntrSource(const MaliHwCntrSource &);
-        MaliHwCntrSource &operator=(const MaliHwCntrSource &);
+        CLASS_DELETE_COPY_MOVE(MaliHwCntrSource);
 
-        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t delta);
+        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta);
         virtual bool isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex) const;
     };
 }

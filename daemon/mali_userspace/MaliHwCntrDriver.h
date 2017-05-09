@@ -9,6 +9,7 @@
 #ifndef NATIVE_GATOR_DAEMON_MIDGARDHWCOUNTERDRIVER_H_
 #define NATIVE_GATOR_DAEMON_MIDGARDHWCOUNTERDRIVER_H_
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 #include "mali_userspace/MaliHwCntrReader.h"
 
@@ -56,8 +57,7 @@ namespace mali_userspace
         bool query();
 
         // Intentionally unimplemented
-        MaliHwCntrDriver(const MaliHwCntrDriver &);
-        MaliHwCntrDriver &operator=(const MaliHwCntrDriver &);
+        CLASS_DELETE_COPY_MOVE(MaliHwCntrDriver);
     };
 }
 

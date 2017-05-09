@@ -8,6 +8,8 @@
 
 #include "SessionData.h"
 
+#include <algorithm>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <string.h>
@@ -22,8 +24,11 @@
 #include "MemInfoDriver.h"
 #include "NetDriver.h"
 #include "OlyUtility.h"
-#include "SessionXML.h"
+#include "PrimarySourceProvider.h"
 #include "PolledDriver.h"
+#include "SessionXML.h"
+
+#include "lib/Time.h"
 
 #include "mali_userspace/MaliInstanceLocator.h"
 
@@ -91,7 +96,8 @@ UncorePmu::UncorePmu(const char * const coreName, const char * const pmncName, c
           mCoreName(coreName),
           mPmncName(pmncName),
           mPmncCounters(pmncCounters),
-          mHasCyclesCounter(hasCyclesCounter)
+          mHasCyclesCounter(hasCyclesCounter),
+          mType(-1)
 {
     mHead = this;
 }
@@ -124,10 +130,8 @@ SharedData::SharedData()
 }
 
 SessionData::SessionData()
-        : mSharedData(),
-          mUsDrivers(),
-          mKmod(),
-          mPerf(),
+        : mPrimarySource(),
+          mSharedData(),
           mMaliVideo(),
           mMaliHwCntrs(),
           mMidgard(),
@@ -155,6 +159,7 @@ SessionData::SessionData()
           mSentSummary(),
           mAllowCommands(),
           mFtraceRaw(),
+          mAndroidApiLevel(),
           mMonotonicStarted(),
           mBacktraceDepth(),
           mTotalBufferSize(),
@@ -207,28 +212,16 @@ static long getMaxCoreNum()
     return maxCoreNum;
 }
 
-// Needed to use placement new
-inline void *operator new(size_t, void *ptr)
-{
-    return ptr;
-}
-
 void SessionData::initialize()
 {
-    mUsDrivers[0] = new HwmonDriver();
-    mUsDrivers[1] = new FSDriver();
-    mUsDrivers[2] = new MemInfoDriver();
-    mUsDrivers[3] = new NetDriver();
-    mUsDrivers[4] = new DiskIODriver();
-
-    mSharedData = (SharedData *) mmap(NULL, sizeof(*mSharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,
-                                      -1, 0);
+    mSharedData = reinterpret_cast<SharedData *>(mmap(NULL, sizeof(*mSharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0));
     if (mSharedData == MAP_FAILED) {
         logg.logError("Unable to mmap shared memory for cpuids");
         handleException();
     }
+
     // Use placement new to construct but not allocate the object
-    new ((char *) mSharedData) SharedData();
+    new (reinterpret_cast<void *>(mSharedData)) SharedData();
 
     mWaitingOnCommand = false;
     mSessionIsActive = false;
@@ -240,7 +233,7 @@ void SessionData::initialize()
     strcpy(mCoreName, CORE_NAME_UNKNOWN);
     readModel();
     readCpuInfo();
-    mImages = NULL;
+    mImages.clear();
     mConfigurationXMLPath = NULL;
     mSessionXMLPath = NULL;
     mEventsXMLPath = NULL;
@@ -311,7 +304,7 @@ void SessionData::parseSessionXML(char* xmlString)
     }
 
     // Convert milli- to nanoseconds
-    mLiveRate = session.parameters.live_rate * (int64_t) 1000000;
+    mLiveRate = session.parameters.live_rate * 1000000ll;
     if (mLiveRate > 0 && mLocalCapture) {
         logg.logMessage("Local capture is not compatable with live, disabling live");
         mLiveRate = 0;
@@ -373,7 +366,10 @@ void SessionData::readCpuInfo()
 
     bool foundCoreName = (strcmp(mCoreName, CORE_NAME_UNKNOWN) != 0);
     int processor = -1;
+    int minProcessor = NR_CPUS;
+    int maxProcessor = 0;
     bool foundProcessorInSection = false;
+    bool invalidFormat = false;
     while (fgets(temp, sizeof(temp), f)) {
         const size_t len = strlen(temp);
 
@@ -397,7 +393,7 @@ void SessionData::readCpuInfo()
         const bool foundProcessor = strncmp(temp, PROCESSOR, sizeof(PROCESSOR) - 1) == 0;
         if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
             char* position = strchr(temp, ':');
-            if (position == NULL || (unsigned int) (position - temp) + 2 >= strlen(temp)) {
+            if (position == NULL || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
                 logg.logMessage("Unknown format of /proc/cpuinfo\n"
                         "The core name in the captured xml file will be 'unknown'.");
                 return;
@@ -443,13 +439,36 @@ void SessionData::readCpuInfo()
             }
 
             if (foundProcessor) {
+                int processorId = -1;
+                const bool converted = stringToInt(&processorId, position, 0);
+
+                // update min and max processor ids
+                if (converted) {
+                    minProcessor = (processorId < minProcessor ? processorId : minProcessor);
+                    maxProcessor = (processorId > maxProcessor ? processorId : maxProcessor);
+                }
+
                 if (foundProcessorInSection) {
                     // Found a second processor in this section, ignore them all
                     processor = -1;
+                    invalidFormat = true;
                 }
-                else if (stringToInt(&processor, position, 0)) {
+                else if (converted) {
+                    processor = processorId;
                     foundProcessorInSection = true;
                 }
+            }
+        }
+    }
+
+    if (invalidFormat && (mMaxCpuId != -1) && (minProcessor <= maxProcessor)) {
+        minProcessor = (minProcessor > 0 ? minProcessor : 0);
+        maxProcessor = (maxProcessor < NR_CPUS ? maxProcessor + 1 : NR_CPUS);
+
+        for (processor = minProcessor; processor < maxProcessor; ++processor) {
+            if (mSharedData->mCpuIds[processor] == -1) {
+                logg.logMessage("Setting global CPUID 0x%x for processors %i ", mMaxCpuId, processor);
+                mSharedData->mCpuIds[processor] = mMaxCpuId;
             }
         }
     }
@@ -465,8 +484,8 @@ void SessionData::readCpuInfo()
 
 static int clusterCompare(const void *a, const void *b)
 {
-    const GatorCpu * const * const lhs = (const GatorCpu **) a;
-    const GatorCpu * const * const rhs = (const GatorCpu **) b;
+    const GatorCpu * const * const lhs = reinterpret_cast<const GatorCpu * const *>(a);
+    const GatorCpu * const * const rhs = reinterpret_cast<const GatorCpu * const *>(b);
 
     return (*rhs)->getCpuid() - (*lhs)->getCpuid();
 }
@@ -475,6 +494,8 @@ void SessionData::updateClusterIds()
 {
     qsort(&mSharedData->mClusters, mSharedData->mClusterCount, sizeof(*mSharedData->mClusters), clusterCompare);
     mSharedData->mClustersAccurate = true;
+
+    int lastClusterId = -1;
     for (int i = 0; i < NR_CPUS; ++i) {
         // If this does not have the full topology in /proc/cpuinfo, mCpuIds[0] may not have the 1 CPU part emitted - this guarantees it's in mMaxCpuId
         if (mSharedData->mCpuIds[i] > mMaxCpuId) {
@@ -482,7 +503,7 @@ void SessionData::updateClusterIds()
         }
 
         int clusterId = -1;
-        for (int j = 0; j < min(mSharedData->mClusterCount, ARRAY_LENGTH(mSharedData->mClusters)); ++j) {
+        for (int j = 0; j < std::min(mSharedData->mClusterCount, ARRAY_LENGTH(mSharedData->mClusters)); ++j) {
             const int cpuId = mSharedData->mClusters[j]->getCpuid();
             if (mSharedData->mCpuIds[i] == cpuId) {
                 clusterId = j;
@@ -490,11 +511,13 @@ void SessionData::updateClusterIds()
         }
         if (i < mCores && clusterId == -1) {
             // No corresponding cluster found for this CPU, most likely this is a big LITTLE system without multi-PMU support
-            mSharedData->mClusterIds[i] = 0;
+            // assume it belongs to the last cluster seen
+            mSharedData->mClusterIds[i] = lastClusterId;
             mSharedData->mClustersAccurate = false;
         }
         else {
             mSharedData->mClusterIds[i] = clusterId;
+            lastClusterId = clusterId;
         }
     }
 }
@@ -575,7 +598,7 @@ bool writeAll(const int fd, const void * const buf, const size_t pos)
 {
     size_t written = 0;
     while (written < pos) {
-        ssize_t bytes = write(fd, (const uint8_t *) buf + written, pos - written);
+        ssize_t bytes = write(fd, reinterpret_cast<const uint8_t *>(buf) + written, pos - written);
         if (bytes <= 0) {
             logg.logMessage("write failed");
             return false;
@@ -590,7 +613,7 @@ bool readAll(const int fd, void * const buf, const size_t count)
 {
     size_t pos = 0;
     while (pos < count) {
-        ssize_t bytes = read(fd, (uint8_t *) buf + pos, count - pos);
+        ssize_t bytes = read(fd, reinterpret_cast<uint8_t *>(buf) + pos, count - pos);
         if (bytes <= 0) {
             logg.logMessage("read failed");
             return false;

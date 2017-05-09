@@ -28,6 +28,8 @@ static const char ATTR_CORES[] = "cores";
 static const char CLUSTER_VAR[] = "${cluster}";
 
 ConfigurationXML::ConfigurationXML()
+        : mConfigurationXML(nullptr),
+          mIndex(0)
 {
     if (gSessionData.mCountersError != NULL) {
         free(gSessionData.mCountersError);
@@ -50,7 +52,7 @@ ConfigurationXML::ConfigurationXML()
             remove();
 
             // Free the current configuration and reload
-            free((void*) mConfigurationXML);
+            free(mConfigurationXML);
             mConfigurationXML = NULL;
             continue;
         }
@@ -64,7 +66,7 @@ ConfigurationXML::ConfigurationXML()
 ConfigurationXML::~ConfigurationXML()
 {
     if (mConfigurationXML) {
-        free((void*) mConfigurationXML);
+        free(mConfigurationXML);
     }
 }
 
@@ -247,7 +249,7 @@ char *ConfigurationXML::getDefaultConfigurationXml()
     (void) defaults_xml_len;
 
     // Resolve ${cluster}
-    mxml_node_t *xml = mxmlLoadString(NULL, (const char *) defaults_xml, MXML_NO_CALLBACK);
+    mxml_node_t *xml = mxmlLoadString(NULL, reinterpret_cast<const char *>(defaults_xml), MXML_NO_CALLBACK);
     for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND),
             *next = mxmlFindElement(node, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND); node != NULL;
             node = next, next = mxmlFindElement(node, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND)) {

@@ -16,9 +16,8 @@
 #include "DriverSource.h"
 #include "Logging.h"
 #include "OlySocket.h"
+#include "PrimarySourceProvider.h"
 #include "SessionData.h"
-
-extern Child *child;
 
 static const char STREAMLINE_ANNOTATE[] = "\0streamline-annotate";
 static const char MALI_VIDEO[] = "\0mali-video";
@@ -30,8 +29,10 @@ static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
 static const char FTRACE_V2[] = "FTRACE 2\n";
 
-ExternalSource::ExternalSource(sem_t *senderSem)
-        : mBuffer(0, FRAME_EXTERNAL, 128 * 1024, senderSem),
+ExternalSource::ExternalSource(Child & child, sem_t *senderSem)
+        : Source(child),
+          mBufferSem(),
+          mBuffer(0, FRAME_EXTERNAL, 128 * 1024, senderSem),
           mMonitor(),
           mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)),
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
@@ -54,7 +55,7 @@ void ExternalSource::waitFor(const int bytes)
     while (mBuffer.bytesAvailable() <= bytes) {
         if (gSessionData.mOneShot && gSessionData.mSessionIsActive) {
             logg.logMessage("One shot (external)");
-            child->endSession();
+            mChild.endSession();
         }
         sem_wait(&mBufferSem);
     }
@@ -160,7 +161,7 @@ void ExternalSource::run()
 {
     int pipefd[2];
 
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-external", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-external"), 0, 0, 0);
 
     if (pipe_cloexec(pipefd) != 0) {
         logg.logError("pipe failed");
@@ -188,17 +189,8 @@ void ExternalSource::run()
     // Wait until monotonicStarted is set before sending data
     int64_t monotonicStarted = 0;
     while (monotonicStarted <= 0 && gSessionData.mSessionIsActive) {
-        usleep(10);
-
-        if (gSessionData.mPerf.isSetup()) {
-            monotonicStarted = gSessionData.mMonotonicStarted;
-        }
-        else {
-            if (DriverSource::readInt64Driver("/dev/gator/started", &monotonicStarted) == -1) {
-                logg.logError("Error reading gator driver start time");
-                handleException();
-            }
-        }
+        usleep(1);
+        monotonicStarted = gSessionData.mPrimarySource->getMonotonicStarted();
     }
 
     while (gSessionData.mSessionIsActive) {

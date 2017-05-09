@@ -9,6 +9,7 @@
 #ifndef EVENTS_XML
 #define EVENTS_XML
 
+#include "ClassBoilerPlate.h"
 #include "mxml/mxml.h"
 
 class EventsXML
@@ -23,9 +24,9 @@ public:
     void write(const char* path);
 
 private:
+
     // Intentionally unimplemented
-    EventsXML(const EventsXML &);
-    EventsXML &operator=(const EventsXML &);
+    CLASS_DELETE_COPY_MOVE(EventsXML);
 };
 
 #endif // EVENTS_XML

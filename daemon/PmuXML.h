@@ -9,6 +9,8 @@
 #ifndef PMUXML_H
 #define PMUXML_H
 
+#include "ClassBoilerPlate.h"
+
 class PmuXML
 {
 public:
@@ -23,8 +25,7 @@ private:
     static void getDefaultXml(const char ** const xml, unsigned int * const len);
 
     // Intentionally unimplemented
-    PmuXML(const PmuXML &);
-    PmuXML &operator=(const PmuXML &);
+    CLASS_DELETE_COPY_MOVE(PmuXML);
 };
 
 #endif // PMUXML_H

@@ -11,6 +11,7 @@
 
 #include <semaphore.h>
 
+#include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Monitor.h"
 #include "PerfBuffer.h"
@@ -18,38 +19,38 @@
 #include "Source.h"
 #include "UEvent.h"
 
+class PerfDriver;
 class Sender;
 
 class PerfSource : public Source
 {
 public:
-    PerfSource(sem_t *senderSem, sem_t *startProfile);
+    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile);
     ~PerfSource();
 
-    bool prepare();
-    void run();
-    void interrupt();
-
-    bool isDone();
-    void write(Sender *sender);
+    virtual bool prepare() override;
+    virtual void run() override;
+    virtual void interrupt() override;
+    virtual bool isDone() override;
+    virtual void write(Sender * sender) override;
 
 private:
     bool handleUEvent(const uint64_t currTime);
 
+    PerfDriver & mDriver;
     Buffer mSummary;
     Buffer *mBuffer;
     PerfBuffer mCountersBuf;
     PerfGroup mCountersGroup;
     Monitor mMonitor;
     UEvent mUEvent;
-    sem_t * const mSenderSem;
-    sem_t * const mStartProfile;
+    sem_t & mSenderSem;
+    sem_t & mStartProfile;
     int mInterruptFd;
     bool mIsDone;
 
     // Intentionally undefined
-    PerfSource(const PerfSource &);
-    PerfSource &operator=(const PerfSource &);
+    CLASS_DELETE_COPY_MOVE(PerfSource);
 };
 
 #endif // PERFSOURCE_H

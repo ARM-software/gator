@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION 610
+#define PROTOCOL_VERSION 620
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/version.h>
@@ -26,6 +26,10 @@ static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 #include <linux/utsname.h>
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#include <linux/cpuhotplug.h>
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
 #include <linux/notifier.h>
@@ -315,20 +319,54 @@ static int gator_buffer_wake_func(void *data)
 /******************************************************************************
  * Commit interface
  ******************************************************************************/
-static bool buffer_commit_ready(int *cpu, int *buftype)
+static bool buffer_commit_ready(int prev_cpu, int prev_buftype, int *out_cpu, int * out_buftype)
 {
     int cpu_x, x;
 
-    for_each_present_cpu(cpu_x) {
-        for (x = 0; x < NUM_GATOR_BUFS; x++)
-            if (per_cpu(gator_buffer_commit, cpu_x)[x] != per_cpu(gator_buffer_read, cpu_x)[x]) {
-                *cpu = cpu_x;
-                *buftype = x;
-                return true;
+    // simple sort of QOS/fair scheduling of buffer checking. we scan starting at the next item after the last successful one
+    // up to the end, and if nothing is found from the start upto and including the last successful one.
+    // that way we do not favour lower number cpu or lower number buffer.
+
+    // do everything after (prev_cpu:prev_buftype)
+    for (x = 0; x < NUM_GATOR_BUFS; x++) {
+        for_each_present_cpu(cpu_x) {
+            if ((cpu_x > prev_cpu) || ((cpu_x == prev_cpu) && (x > prev_buftype))) {
+                if (per_cpu(gator_buffer_commit, cpu_x)[x] != per_cpu(gator_buffer_read, cpu_x)[x]) {
+                    *out_cpu = cpu_x;
+                    *out_buftype = x;
+                    return true;
+                }
             }
+            else {
+                goto low_half;
+            }
+        }
     }
-    *cpu = -1;
-    *buftype = -1;
+
+
+    // now everything upto and including (prev_cpu:prev_buftype)
+low_half:
+
+    for (x = 0; x < NUM_GATOR_BUFS; x++) {
+        for_each_present_cpu(cpu_x) {
+            if ((cpu_x < prev_cpu) || ((cpu_x == prev_cpu) && (x <= prev_buftype))) {
+                if (per_cpu(gator_buffer_commit, cpu_x)[x] != per_cpu(gator_buffer_read, cpu_x)[x]) {
+                    *out_cpu = cpu_x;
+                    *out_buftype = x;
+                    return true;
+                }
+            }
+            else {
+                goto not_found;
+            }
+        }
+    }
+
+    // nothing found
+not_found:
+
+    *out_cpu = -1;
+    *out_buftype = -1;
     return false;
 }
 
@@ -600,6 +638,43 @@ static void gator_emit_perf_time(u64 time)
 /******************************************************************************
  * cpu hotplug and pm notifiers
  ******************************************************************************/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+
+static enum cpuhp_state gator_cpuhp_online;
+
+static int gator_cpuhp_notify_online(unsigned int cpu)
+{
+    gator_timer_online_dispatch(cpu, false);
+    smp_call_function_single(cpu, gator_timer_online, NULL, 1);
+    return 0;
+}
+
+static int gator_cpuhp_notify_offline(unsigned int cpu)
+{
+    smp_call_function_single(cpu, gator_timer_offline, NULL, 1);
+    gator_timer_offline_dispatch(cpu, false);
+    return 0;
+}
+
+static int gator_register_hotcpu_notifier(void)
+{
+    int retval;
+
+    retval = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "gator/cpuhotplug:online", gator_cpuhp_notify_online, gator_cpuhp_notify_offline);
+    if (retval >= 0) {
+        gator_cpuhp_online = retval;
+        retval = 0;
+    }
+    return retval;
+}
+
+static void gator_unregister_hotcpu_notifier(void)
+{
+    cpuhp_remove_state(gator_cpuhp_online);
+}
+
+#else
+
 static int gator_hotcpu_notify(struct notifier_block *self, unsigned long action, void *hcpu)
 {
     int cpu = lcpu_to_pcpu((long)hcpu);
@@ -624,6 +699,18 @@ static struct notifier_block __refdata gator_hotcpu_notifier = {
     .notifier_call = gator_hotcpu_notify,
 };
 
+static int gator_register_hotcpu_notifier(void)
+{
+    return register_hotcpu_notifier(&gator_hotcpu_notifier);
+}
+
+static void gator_unregister_hotcpu_notifier(void)
+{
+    unregister_hotcpu_notifier(&gator_hotcpu_notifier);
+}
+
+#endif
+
 /* n.b. calling "on_each_cpu" only runs on those that are online.
  * Registered linux events are not disabled, so their counters will
  * continue to collect
@@ -636,7 +723,7 @@ static int gator_pm_notify(struct notifier_block *nb, unsigned long event, void 
     switch (event) {
     case PM_HIBERNATION_PREPARE:
     case PM_SUSPEND_PREPARE:
-        unregister_hotcpu_notifier(&gator_hotcpu_notifier);
+        gator_unregister_hotcpu_notifier();
         unregister_scheduler_tracepoints();
         on_each_cpu(gator_timer_offline, NULL, 1);
         for_each_online_cpu(cpu) {
@@ -661,7 +748,7 @@ static int gator_pm_notify(struct notifier_block *nb, unsigned long event, void 
         }
         on_each_cpu(gator_timer_online, NULL, 1);
         register_scheduler_tracepoints();
-        register_hotcpu_notifier(&gator_hotcpu_notifier);
+        gator_register_hotcpu_notifier();
         break;
     }
 
@@ -674,9 +761,7 @@ static struct notifier_block gator_pm_notifier = {
 
 static int gator_notifier_start(void)
 {
-    int retval;
-
-    retval = register_hotcpu_notifier(&gator_hotcpu_notifier);
+    int retval = gator_register_hotcpu_notifier();
     if (retval == 0)
         retval = register_pm_notifier(&gator_pm_notifier);
     return retval;
@@ -685,7 +770,7 @@ static int gator_notifier_start(void)
 static void gator_notifier_stop(void)
 {
     unregister_pm_notifier(&gator_pm_notifier);
-    unregister_hotcpu_notifier(&gator_hotcpu_notifier);
+    gator_unregister_hotcpu_notifier();
 }
 
 /******************************************************************************
@@ -1112,7 +1197,7 @@ static ssize_t userspace_buffer_read(struct file *file, char __user *buf, size_t
     /* sleep until the condition is true or a signal is received the
      * condition is checked each time gator_buffer_wait is woken up
      */
-    wait_event_interruptible(gator_buffer_wait, buffer_commit_ready(&cpu, &buftype) || !gator_started);
+    wait_event_interruptible(gator_buffer_wait, buffer_commit_ready(-1, -1, &cpu, &buftype) || !gator_started);
 
     if (signal_pending(current))
         return -EINTR;
@@ -1157,7 +1242,7 @@ static ssize_t userspace_buffer_read(struct file *file, char __user *buf, size_t
         /* Wake up annotate_write if more space is available */
         if (buftype == ANNOTATE_BUF)
             wake_up(&gator_annotate_wait);
-    } while (buffer_commit_ready(&cpu, &buftype));
+    } while (buffer_commit_ready(cpu, buftype, &cpu, &buftype));
 
     mutex_unlock(&gator_buffer_mutex);
 

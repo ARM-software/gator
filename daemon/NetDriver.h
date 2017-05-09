@@ -9,6 +9,7 @@
 #ifndef NETDRIVER_H
 #define NETDRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "PolledDriver.h"
 #include "DynBuf.h"
 
@@ -29,12 +30,11 @@ private:
     bool doRead();
 
     DynBuf mBuf;
-    int64_t mReceiveBytes;
-    int64_t mTransmitBytes;
+    uint64_t mReceiveBytes;
+    uint64_t mTransmitBytes;
 
     // Intentionally unimplemented
-    NetDriver(const NetDriver &);
-    NetDriver &operator=(const NetDriver &);
+    CLASS_DELETE_COPY_MOVE(NetDriver);
 };
 
 #endif // NETDRIVER_H

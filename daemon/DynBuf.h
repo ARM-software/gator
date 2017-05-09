@@ -12,6 +12,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include "ClassBoilerPlate.h"
+
 class DynBuf
 {
 public:
@@ -67,8 +69,7 @@ private:
     char *buf;
 
     // Intentionally undefined
-    DynBuf(const DynBuf &);
-    DynBuf &operator=(const DynBuf &);
+    CLASS_DELETE_COPY_MOVE(DynBuf);
 };
 
 #endif // DYNBUF_H

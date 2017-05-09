@@ -18,9 +18,25 @@
 #include "Logging.h"
 #include "SessionData.h"
 
+static const char ARM_MALI_MIDGARD[] = "ARM_Mali-Midgard_";
+static const char ARM_MALI_T[] = "ARM_Mali-T";
+static const char ARM_MALI_BIFROST[] = "ARM_Mali-Bifrost_";
+
+bool KMod::isMaliCounter(const Counter &counter)
+{
+    return ((strncmp(counter.getType(), ARM_MALI_MIDGARD, sizeof(ARM_MALI_MIDGARD) - 1) == 0)
+            || (strncmp(counter.getType(), ARM_MALI_BIFROST, sizeof(ARM_MALI_BIFROST) - 1) == 0)
+            || (strncmp(counter.getType(), ARM_MALI_T, sizeof(ARM_MALI_T) - 1) == 0));
+}
+
 // Claim all the counters in /dev/gator/events
 bool KMod::claimCounter(const Counter &counter) const
 {
+    if (isMaliCounter(counter) && (counter.getDriver() != NULL)) {
+        // do not claim if another driver has claimed this mali counter
+        return false;
+    }
+
     char text[128];
     snprintf(text, sizeof(text), "/dev/gator/events/%s", counter.getType());
     return access(text, F_OK) == 0;
@@ -49,17 +65,13 @@ void KMod::resetCounters()
     }
 }
 
-static const char ARM_MALI_MIDGARD[] = "ARM_Mali-Midgard_";
-static const char ARM_MALI_T[] = "ARM_Mali-T";
-
 void KMod::setupCounter(Counter &counter)
 {
     char base[128];
     char text[128];
     snprintf(base, sizeof(base), "/dev/gator/events/%s", counter.getType());
 
-    if ((strncmp(counter.getType(), ARM_MALI_MIDGARD, sizeof(ARM_MALI_MIDGARD) - 1) == 0
-            || strncmp(counter.getType(), ARM_MALI_T, sizeof(ARM_MALI_T) - 1) == 0)) {
+    if (isMaliCounter(counter)) {
         mIsMaliCapture = true;
     }
 

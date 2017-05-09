@@ -9,6 +9,7 @@
 #ifndef NATIVE_GATOR_DAEMON_POLLEDDRIVER_H_
 #define NATIVE_GATOR_DAEMON_POLLEDDRIVER_H_
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class PolledDriver : public SimpleDriver
@@ -28,8 +29,7 @@ protected:
 
 private:
     // Intentionally unimplemented
-    PolledDriver(const PolledDriver &);
-    PolledDriver &operator=(const PolledDriver &);
+    CLASS_DELETE_COPY_MOVE(PolledDriver);
 };
 
 #endif /* NATIVE_GATOR_DAEMON_POLLEDDRIVER_H_ */

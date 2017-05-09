@@ -206,8 +206,7 @@ private:
     int mCpuSizePos;
 
     // Intentionally unimplemented
-    PerfFrame(const PerfFrame &);
-    PerfFrame& operator=(const PerfFrame &);
+    CLASS_DELETE_COPY_MOVE(PerfFrame);
 };
 
 bool PerfBuffer::send(Sender * const sender)

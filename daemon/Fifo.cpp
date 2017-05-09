@@ -16,15 +16,18 @@
 // singleBufferSize is the maximum size that may be filled during a single write
 // (bufferSize + singleBufferSize) will be allocated
 Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t* readerSem)
+        : mSingleBufferSize(singleBufferSize),
+          mWrite(0),
+          mRead(0),
+          mReadCommit(0),
+          mRaggedEnd(0),
+          mWrapThreshold(bufferSize),
+          mWaitForSpaceSem(),
+          mReaderSem(readerSem),
+          mBuffer(new char[bufferSize + singleBufferSize]),
+          mEnd(false)
 {
-    mWrite = mRead = mReadCommit = mRaggedEnd = 0;
-    mWrapThreshold = bufferSize;
-    mSingleBufferSize = singleBufferSize;
-    mReaderSem = readerSem;
-    mBuffer = (char*) malloc(bufferSize + singleBufferSize);
-    mEnd = false;
-
-    if (mBuffer == NULL) {
+    if (mBuffer == nullptr) {
         logg.logError("failed to allocate %d bytes", bufferSize + singleBufferSize);
         handleException();
     }

@@ -9,6 +9,7 @@
 #ifndef MEMINFODRIVER_H
 #define MEMINFODRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "PolledDriver.h"
 #include "DynBuf.h"
 
@@ -33,8 +34,7 @@ private:
     int64_t mSlab;
 
     // Intentionally unimplemented
-    MemInfoDriver(const MemInfoDriver &);
-    MemInfoDriver &operator=(const MemInfoDriver &);
+    CLASS_DELETE_COPY_MOVE(MemInfoDriver);
 };
 
 #endif // MEMINFODRIVER_H

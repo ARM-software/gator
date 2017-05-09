@@ -6,6 +6,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <algorithm>
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -30,8 +32,8 @@
 #include "OlyUtility.h"
 #include "PmuXML.h"
 #include "SessionData.h"
+#include "PrimarySourceProvider.h"
 
-extern Child* child;
 static int shutdownFilesystem();
 static pthread_mutex_t numSessions_mutex;
 static OlyServerSocket* sock = NULL;
@@ -168,14 +170,14 @@ public:
         socklen_t addrlen;
         int read;
         addrlen = sizeof(sockaddr);
-        read = recvfrom(mReq, &buf, sizeof(buf), 0, (struct sockaddr *) &sockaddr, &addrlen);
+        read = recvfrom(mReq, &buf, sizeof(buf), 0, reinterpret_cast<struct sockaddr *>(&sockaddr), &addrlen);
         if (read < 0) {
             logg.logError("recvfrom failed");
             handleException();
         }
         else if ((read == 12) && (memcmp(buf, DST_REQ, sizeof(DST_REQ)) == 0)) {
             // Don't care if sendto fails - gatord shouldn't exit because of it and Streamline will retry
-            sendto(mReq, &mDstAns, sizeof(mDstAns), 0, (struct sockaddr *) &sockaddr, addrlen);
+            sendto(mReq, &mDstAns, sizeof(mDstAns), 0, reinterpret_cast<struct sockaddr *>(&sockaddr), addrlen);
         }
     }
 
@@ -203,22 +205,22 @@ private:
         }
 
         on = 1;
-        if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*) &on, sizeof(on)) != 0) {
+        if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) != 0) {
             logg.logError("setsockopt REUSEADDR failed");
             handleException();
         }
 
         // Listen on both IPv4 and IPv6
         on = 0;
-        if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (const char*) &on, sizeof(on)) != 0) {
+        if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) != 0) {
             logg.logMessage("setsockopt IPV6_V6ONLY failed");
         }
 
-        memset((void*) &sockaddr, 0, sizeof(sockaddr));
+        memset(&sockaddr, 0, sizeof(sockaddr));
         sockaddr.sin6_family = family;
         sockaddr.sin6_port = htons(port);
         sockaddr.sin6_addr = in6addr_any;
-        if (bind(s, (struct sockaddr *) &sockaddr, sizeof(sockaddr)) < 0) {
+        if (bind(s, reinterpret_cast<struct sockaddr *>(&sockaddr), sizeof(sockaddr)) < 0) {
             logg.logError("socket failed");
             handleException();
         }
@@ -259,7 +261,7 @@ static bool init_module(const char * const location)
         if (fstat(fd, &st) == 0) {
             void * const p = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
             if (p != MAP_FAILED) {
-                if (syscall(__NR_init_module, p, (unsigned long) st.st_size, "") == 0) {
+                if (syscall(__NR_init_module, p, static_cast<unsigned long>(st.st_size), "") == 0) {
                     ret = true;
                 }
                 munmap(p, st.st_size);
@@ -271,7 +273,7 @@ static bool init_module(const char * const location)
     return ret;
 }
 
-static bool setupFilesystem(char* module)
+bool setupFilesystem(const char * module)
 {
     if (module) {
         // unmount and rmmod if the module was specified on the commandline, i.e. ensure that the specified module is indeed running
@@ -349,7 +351,7 @@ static int shutdownFilesystem()
     return 0; // success
 }
 
-static const char OPTSTRING[] = "hvVdap:s:c:e:E:P:m:o:";
+static const char OPTSTRING[] = "hvVdap:s:c:e:E:P:m:o:A:";
 
 static bool hasDebugFlag(int argc, char** argv)
 {
@@ -376,17 +378,16 @@ static struct cmdline_t parseCommandLine(int argc, char** argv)
 
     // build the version string
     if (PROTOCOL_VERSION < PROTOCOL_DEV) {
-        const int majorVersion = PROTOCOL_VERSION / 10;
-        const int minorVersion = PROTOCOL_VERSION % 10;
-        if (minorVersion == 0) {
-            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d)",
-            PROTOCOL_VERSION,
-                     majorVersion);
+        const int majorVersion = PROTOCOL_VERSION / 100;
+        const int minorVersion = (PROTOCOL_VERSION / 10) % 10;
+        const int revisionVersion = PROTOCOL_VERSION % 10;
+        if (revisionVersion == 0) {
+            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (Streamline v%d.%d)",
+                     PROTOCOL_VERSION, majorVersion, minorVersion);
         }
         else {
-            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (DS-5 v5.%d.%d)",
-            PROTOCOL_VERSION,
-                     majorVersion, minorVersion);
+            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (Streamline v%d.%d.%d)",
+                     PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion);
         }
     }
     else {
@@ -398,6 +399,12 @@ static struct cmdline_t parseCommandLine(int argc, char** argv)
     opterr = 1;
     while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
         switch (c) {
+        case 'A':
+            if (!stringToInt(&gSessionData.mAndroidApiLevel, optarg, 10)) {
+                logg.logError("-A must be followed by an int");
+                handleException();
+            }
+            break;
         case 'c':
             gSessionData.mConfigurationXMLPath = optarg;
             break;
@@ -492,12 +499,12 @@ static AnnotateListener annotateListener;
 
 static void handleClient()
 {
-    OlySocket client(sock->acceptConnection());
+    OlySocket client (sock->acceptConnection());
 
     int pid = fork();
     if (pid < 0) {
         // Error
-        logg.logError("Fork process failed. Please power cycle the target device if this error persists.");
+        logg.logError("Fork process failed with errno: %d.", errno);
         handleException();
     }
     else if (pid == 0) {
@@ -506,9 +513,11 @@ static void handleClient()
         udpListener.close();
         monitor.close();
         annotateListener.close();
-        child = new Child(&client, numSessions + 1);
+
+        auto child = Child::createLive(*gSessionData.mPrimarySource, client, numSessions + 1);
         child->run();
-        delete child;
+        child.reset();
+
         exit(0);
     }
     else {
@@ -534,6 +543,29 @@ static void handleClient()
     }
 }
 
+static void doLocalCapture()
+{
+    numSessions++;
+
+    int pid = fork();
+    if (pid < 0) {
+        // Error
+        logg.logError("Fork process failed with errno: %d.", errno);
+        handleException();
+    }
+    else if (pid == 0) {
+        // Child
+        monitor.close();
+        annotateListener.close();
+
+        auto child = Child::createLocal(*gSessionData.mPrimarySource);
+        child->run();
+        child.reset();
+
+        exit(0);
+    }
+}
+
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char** argv)
 {
@@ -545,7 +577,7 @@ int main(int argc, char** argv)
     logg.setDebug(hasDebugFlag(argc, argv));
     gSessionData.initialize();
 
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-main", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);
     pthread_mutex_init(&numSessions_mutex, NULL);
 
     signal(SIGINT, handler);
@@ -566,8 +598,8 @@ int main(int argc, char** argv)
             // Not good, but not a fatal error either
         }
         else {
-            rlim.rlim_cur = max(((rlim_t) 1) << 15, rlim.rlim_cur);
-            rlim.rlim_max = max(rlim.rlim_cur, rlim.rlim_max);
+            rlim.rlim_cur = std::max(rlim_t(1) << 15, rlim.rlim_cur);
+            rlim.rlim_max = std::max(rlim.rlim_cur, rlim.rlim_max);
             if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
                 logg.logMessage("Unable to increase the maximum number of files");
                 // Not good, but not a fatal error either
@@ -578,31 +610,20 @@ int main(int argc, char** argv)
     // Parse the command line parameters
     struct cmdline_t cmdline = parseCommandLine(argc, argv);
 
-    // Verify root permissions
-    uid_t euid = geteuid();
-    if (euid) {
-        logg.logError("gatord must be launched with root privileges");
-        handleException();
-    }
-
     PmuXML::read(cmdline.pmuPath);
 
+    // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
-    if (setupFilesystem(cmdline.module)) {
-        DriverSource::checkVersion();
-        PmuXML::writeToKernel();
-    }
-    else {
-        logg.logMessage("Unable to set up gatorfs, trying perf");
-        if (!gSessionData.mPerf.setup()) {
-            logg.logError(
-                    "Unable to locate gator.ko driver:\n"
-                    "  >>> gator.ko should be co-located with gatord in the same directory\n"
-                    "  >>> OR insmod gator.ko prior to launching gatord\n"
-                    "  >>> OR specify the location of gator.ko on the command line\n"
-                    "  >>> OR run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing (CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
-            handleException();
-        }
+    gSessionData.mPrimarySource = PrimarySourceProvider::detect(cmdline.module);
+
+    if (gSessionData.mPrimarySource == nullptr) {
+        logg.logError(
+                "Unable to initialize primary capture source:\n"
+                "  >>> gator.ko should be co-located with gatord in the same directory\n"
+                "  >>> OR insmod gator.ko prior to launching gatord\n"
+                "  >>> OR specify the location of gator.ko on the command line\n"
+                "  >>> OR run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing (CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
+        handleException();
     }
 
     {
@@ -622,57 +643,62 @@ int main(int argc, char** argv)
     // Handling the error at the send function call is much easier than trying to do anything intelligent in the sig handler
     signal(SIGPIPE, SIG_IGN);
 
+    annotateListener.setup();
+    int pipefd[2];
+    if (pipe_cloexec(pipefd) != 0) {
+        logg.logError("Unable to set up annotate pipe");
+        handleException();
+    }
+    gSessionData.mAnnotateStart = pipefd[1];
+    if (!monitor.init() || !monitor.add(annotateListener.getSockFd())
+                        || !monitor.add(annotateListener.getUdsFd())
+                        || !monitor.add(pipefd[0])) {
+        logg.logError("Monitor setup failed");
+        handleException();
+    }
+
     // If the command line argument is a session xml file, no need to open a socket
-    if (gSessionData.mSessionXMLPath) {
-        child = new Child();
-        child->run();
-        delete child;
+    bool localCapture = gSessionData.mSessionXMLPath != NULL;
+    if (localCapture) {
+        doLocalCapture();
     }
     else {
-        annotateListener.setup();
-        int pipefd[2];
-        if (pipe_cloexec(pipefd) != 0) {
-            logg.logError("Unable to set up annotate pipe");
-            handleException();
-        }
-        gSessionData.mAnnotateStart = pipefd[1];
         sock = new OlyServerSocket(cmdline.port);
         udpListener.setup(cmdline.port);
-        if (!monitor.init() || !monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())
-                || !monitor.add(annotateListener.getSockFd()) || !monitor.add(annotateListener.getUdsFd())
-                || !monitor.add(pipefd[0]) || false) {
-            logg.logError("Monitor setup failed");
+        if (!monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())) {
+            logg.logError("Monitor setup failed: couldn't add host listeners");
             handleException();
         }
-        // Forever loop, can be exited via a signal or exception
-        while (1) {
-            struct epoll_event events[2];
-            logg.logMessage("Waiting on connection...");
-            int ready = monitor.wait(events, ARRAY_LENGTH(events), -1);
-            if (ready < 0) {
-                logg.logError("Monitor::wait failed");
-                handleException();
+    }
+
+    // Forever loop, can be exited via a signal or exception
+    while (1) {
+        struct epoll_event events[2];
+        logg.logMessage("Waiting on connection...");
+        int ready = monitor.wait(events, ARRAY_LENGTH(events), -1);
+        if (ready < 0) {
+            logg.logError("Monitor::wait failed");
+            handleException();
+        }
+        for (int i = 0; i < ready; ++i) {
+            if (!localCapture && events[i].data.fd == sock->getFd()) {
+                handleClient();
             }
-            for (int i = 0; i < ready; ++i) {
-                if (events[i].data.fd == sock->getFd()) {
-                    handleClient();
+            else if (!localCapture && events[i].data.fd == udpListener.getReq()) {
+                udpListener.handle();
+            }
+            else if (events[i].data.fd == annotateListener.getSockFd()) {
+                annotateListener.handleSock();
+            }
+            else if (events[i].data.fd == annotateListener.getUdsFd()) {
+                annotateListener.handleUds();
+            }
+            else if (events[i].data.fd == pipefd[0]) {
+                uint64_t val;
+                if (read(pipefd[0], &val, sizeof(val)) != sizeof(val)) {
+                    logg.logMessage("Reading annotate pipe failed");
                 }
-                else if (events[i].data.fd == udpListener.getReq()) {
-                    udpListener.handle();
-                }
-                else if (events[i].data.fd == annotateListener.getSockFd()) {
-                    annotateListener.handleSock();
-                }
-                else if (events[i].data.fd == annotateListener.getUdsFd()) {
-                    annotateListener.handleUds();
-                }
-                else if (events[i].data.fd == pipefd[0]) {
-                    uint64_t val;
-                    if (read(pipefd[0], &val, sizeof(val)) != sizeof(val)) {
-                        logg.logMessage("Reading annotate pipe failed");
-                    }
-                    annotateListener.signal();
-                }
+                annotateListener.signal();
             }
         }
     }

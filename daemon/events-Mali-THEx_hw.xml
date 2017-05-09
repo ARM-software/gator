@@ -1,0 +1,186 @@
+  <category name="Mali Job Manager" per_cpu="no">
+    <event counter="ARM_Mali-THEx_MESSAGES_SENT" title="Mali Job Manager Messages" name="Sent" description="Number of JCB messages sent by the job manager" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_MESSAGES_RECEIVED" title="Mali Job Manager Messages" name="Received" description="Number of JCB messages received by the job manager" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_GPU_ACTIVE" title="Mali Job Manager Cycles" name="GPU cycles" description="Number of cycles the GPU was active"/>
+    <event counter="ARM_Mali-THEx_IRQ_ACTIVE" title="Mali Job Manager Cycles" name="IRQ cycles" description="Number of cycles with active interrupts"/>
+    <event counter="ARM_Mali-THEx_JS0_JOBS" title="Mali Job Manager Cycles" name="JS0 jobs" description="Number of jobs completed for JS0 Job Slot" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS0_TASKS" title="Mali Job Manager Cycles" name="JS0 tasks" description="Number of tasks completed for JS0 Job Slot"/>
+    <event counter="ARM_Mali-THEx_JS0_ACTIVE" title="Mali Job Manager Cycles" name="JS0 cycles" description="Number of cycles JS0 Job Slot was active"/>
+    <event counter="ARM_Mali-THEx_JS0_WAIT_READ" title="Mali Job Manager Cycles" name="JS0 wait read" description="Number of cycles JS0 Job Slot stalled waiting for descriptors to be read" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS0_WAIT_ISSUE" title="Mali Job Manager Cycles" name="JS0 wait issue" description="Number of cycles JS0 Job Slot stalled unable to issue tasks because all available cores were full" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS0_WAIT_DEPEND" title="Mali Job Manager Cycles" name="JS0 wait depend" description="Number of cycles JS0 Job Slot stalled waiting for task dependencies" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS0_WAIT_FINISH" title="Mali Job Manager Cycles" name="JS0 wait finish" description="Number of cycles JS0 Job Slot stalled waiting for the last task to finish" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS1_JOBS" title="Mali Job Manager Cycles" name="JS1 jobs" description="Number of jobs completed for JS1 Job Slot" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS1_TASKS" title="Mali Job Manager Cycles" name="JS1 tasks" description="Number of tasks completed for JS1 Job Slot"/>
+    <event counter="ARM_Mali-THEx_JS1_ACTIVE" title="Mali Job Manager Cycles" name="JS1 cycles" description="Number of cycles JS1 Job Slot was active"/>
+    <event counter="ARM_Mali-THEx_JS1_WAIT_READ" title="Mali Job Manager Cycles" name="JS1 wait read" description="Number of cycles JS1 Job Slot stalled waiting for descriptors to be read" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS1_WAIT_ISSUE" title="Mali Job Manager Cycles" name="JS1 wait issue" description="Number of cycles JS1 Job Slot stalled unable to issue tasks because all available cores were full" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS1_WAIT_DEPEND" title="Mali Job Manager Cycles" name="JS1 wait depend" description="Number of cycles JS1 Job Slot stalled waiting for task dependencies" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS1_WAIT_FINISH" title="Mali Job Manager Cycles" name="JS1 wait finish" description="Number of cycles JS1 Job Slot stalled waiting for the last task to finish" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS2_JOBS" title="Mali Job Manager Cycles" name="JS2 jobs" description="Number of jobs completed for JS2 Job Slot" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS2_TASKS" title="Mali Job Manager Cycles" name="JS2 tasks" description="Number of tasks completed for JS2 Job Slot"/>
+    <event counter="ARM_Mali-THEx_JS2_ACTIVE" title="Mali Job Manager Cycles" name="JS2 cycles" description="Number of cycles JS2 Job Slot was active"/>
+    <event counter="ARM_Mali-THEx_JS2_WAIT_READ" title="Mali Job Manager Cycles" name="JS2 wait read" description="Number of cycles JS2 Job Slot stalled waiting for descriptors to be read" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS2_WAIT_ISSUE" title="Mali Job Manager Cycles" name="JS2 wait issue" description="Number of cycles JS2 Job Slot stalled unable to issue tasks because all available cores were full" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS2_WAIT_DEPEND" title="Mali Job Manager Cycles" name="JS2 wait depend" description="Number of cycles JS2 Job Slot stalled waiting for task dependencies" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_JS2_WAIT_FINISH" title="Mali Job Manager Cycles" name="JS2 wait finish" description="Number of cycles JS2 Job Slot stalled waiting for the last task to finish" advanced="yes"/>
+  </category>
+  <category name="Mali Tiler" per_cpu="no">
+    <event counter="ARM_Mali-THEx_TILER_ACTIVE" title="Mali Tiler Cycles" name="Tiler cycles" description="Number of cycles the tiler is active"/>
+    <event counter="ARM_Mali-THEx_JOBS_PROCESSED" title="Mali Tiler Cycles" name="Tiler processed" description="Number of processed tiler jobs" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_TRIANGLES" title="Mali Tiler Primitives" name="Triangles" description="Number of triangles processed"/>
+    <event counter="ARM_Mali-THEx_LINES" title="Mali Tiler Primitives" name="Lines" description="Number of lines processed"/>
+    <event counter="ARM_Mali-THEx_POINTS" title="Mali Tiler Primitives" name="Points" description="Number of points processed"/>
+    <event counter="ARM_Mali-THEx_FRONT_FACING" title="Mali Tiler Culling" name="Front facting prims" description="Number of front facing primitives"/>
+    <event counter="ARM_Mali-THEx_BACK_FACING" title="Mali Tiler Culling" name="Back facing prims" description="Number of back facing primitives"/>
+    <event counter="ARM_Mali-THEx_PRIM_VISIBLE" title="Mali Tiler Culling" name="Visible prims" description="Number of visible primitives"/>
+    <event counter="ARM_Mali-THEx_PRIM_CULLED" title="Mali Tiler Culling" name="Culled prims" description="Number of culled primitives"/>
+    <event counter="ARM_Mali-THEx_PRIM_CLIPPED" title="Mali Tiler Culling" name="Clipped prims" description="Number of clipped primitives"/>
+    <event counter="ARM_Mali-THEx_PRIM_SAT_CULLED" title="Mali Tiler Culling" name="Cullet prims SAT" description="Number of culled primitives via sample aware tiling"/>
+    <event counter="ARM_Mali-THEx_BUS_READ" title="Mali Tiler Bus" name="Tiler bus reads" description="Number of read data beats (128-bit) from the L2 cache"/>
+    <event counter="ARM_Mali-THEx_BUS_WRITE" title="Mali Tiler Bus" name="Tiler bus writes" description="Number of write data beats (128-bit) to the L2 cache"/>
+    <event counter="ARM_Mali-THEx_LOADING_DESC" title="Mali Tiler Cycles" name="Tiler loading descriptors" description="Number of cycles while waiting to load descriptors" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_POS_SHAD_REQ" title="Mali Tiler IDVS" name="Position shading requests" description="Number of IDVS position shading requests"/>
+    <event counter="ARM_Mali-THEx_IDVS_POS_SHAD_WAIT" title="Mali Tiler IDVS" name="Position shading wait" description="Number of cycles waiting for position shading" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_POS_SHAD_STALL" title="Mali Tiler IDVS" name="Position shading stall" description="Number of cycles stalled on IDVS interface requesting position shading" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_POS_FIFO_FULL" title="Mali Tiler IDVS" name="Position FIFO full" description="Number of cycles the L2 FIFO is full and blocking position shading requests" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PREFETCH_STALL" title="Mali Tiler Prefetch" name="Tiler stall" description="Number of cycles the prefetcher has valid data but is stalled by the vertex fetcher" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VCACHE_HIT" title="Mali Tiler VCache" name="VCache hit" description="Number of Vertex Cache hits" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VCACHE_MISS" title="Mali Tiler VCache" name="VCache miss" description="Number of Vertex Cache misses" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VCACHE_LINE_WAIT" title="Mali Tiler VCache" name="VCache line wait" description="Number of cycles waiting for a free line in the Vertex Cache" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VFETCH_POS_READ_WAIT" title="Mali Tiler VFetch" name="VFetch wait positions" description="Number of cycles spent reading in positions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VFETCH_VERTEX_WAIT" title="Mali Tiler VFetch" name="VFetch wait vertex" description="Number of cycles waiting for a valid vertex in the vertex fetcher" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VFETCH_STALL" title="Mali Tiler VFetch" name="VFetch stall" description="Number of cycles the vertex fetcher has valid output data but is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PRIMASSY_STALL" title="Mali Tiler Primitive Assembly" name="Assembly stall" description="Number of cycles the primitive assembly output is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_BBOX_GEN_STALL" title="Mali Tiler Bounding Box" name="Bounding Box stall" description="Number of cycles the bounding box generator output is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_VBU_HIT" title="Mali Tiler IDVS" name="VBU hits" description="Number of VBU hits (divided by 4)" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_VBU_MISS" title="Mali Tiler IDVS" name="VBU misses" description="Number of VBU misses (divided by 4)" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_VBU_LINE_DEALLOCATE" title="Mali Tiler IDVS" name="VBU deallocated" description="Number of times a line in the VBU is deallocated" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_IDVS_VAR_SHAD_REQ" title="Mali Tiler IDVS" name="Varying shading requests" description="Number of varying shading requests"/>
+    <event counter="ARM_Mali-THEx_IDVS_VAR_SHAD_STALL" title="Mali Tiler IDVS" name="Varying shading stall" description="Number of cycles stalled on IDVS interface requesting varying shading" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_BINNER_STALL" title="Mali Tiler Binner" name="Binner stall" description="Number of cycles the binner output is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_ITER_STALL" title="Mali Tiler Iterator" name="Iterator stall" description="Number of cycles the iterator output is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_COMPRESS_MISS" title="Mali Tiler Compressor" name="Compressor misses" description="Number of misses in the write compressor" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_COMPRESS_STALL" title="Mali Tiler Compressor" name="Compressor stall" description="Number of cycles the write compressor output is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PCACHE_HIT" title="Mali Tiler Pointer Cache" name="Pointer Cache hits" description="Number of Pointer Cache hits" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PCACHE_MISS" title="Mali Tiler Pointer Cache" name="Pointer Cache misses" description="Number of Pointer Cache misses" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PCACHE_MISS_STALL" title="Mali Tiler Pointer Cache" name="Pointer Cache misses stall" description="Number of cycles waiting to process a miss in the pointer cache" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PCACHE_EVICT_STALL" title="Mali Tiler Pointer Cache" name="Pointer Cache eviction stall" description="Number of cycles waiting for eviction in the pointer cache to complete" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PMGR_PTR_WR_STALL" title="Mali Tiler Pointer Manager" name="Pointer Manager wrtiteback stall" description="Number of cycles waiting for writeback pointer in the pointer manager" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PMGR_PTR_RD_STALL" title="Mali Tiler Pointer Manager" name="Pointer Manager read stall" description="Number of cycles waiting for a valid pointer in the pointer manager" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_PMGR_CMD_WR_STALL" title="Mali Tiler Pointer Manager" name="Pointer Manager write buffer stall" description="Number of cycles waiting for the WRBUF to accept" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_WRBUF_ACTIVE" title="Mali Tiler Write Buffer" name="Write Buffer active" description="Number of cycles the Write Buffer is active" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_WRBUF_HIT" title="Mali Tiler Write Buffer" name="Write Buffer hits" description="Number of Write Buffer hits" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_WRBUF_MISS" title="Mali Tiler Write Buffer" name="Write Buffer misses" description="Number of Write Buffer misses" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_WRBUF_NO_FREE_LINE_STALL" title="Mali Tiler Write Buffer" name="Write Buffer no line stall" description="Number of cycles stalled waiting for a free line in the WRBUF" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_WRBUF_NO_AXI_ID_STALL" title="Mali Tiler Write Buffer" name="Write Buffer no AXI ID stall" description="Number of cycles the AXI interface is stalled due to the max transaction limit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_WRBUF_AXI_STALL" title="Mali Tiler Write Buffer" name="Write Buffer AXI stall" description="Number of cycles the AXI write data interface is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_UTLB_TRANS" title="Mali Tiler UTLB" name="UTLB transactions" description="Number of transactions processed" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_UTLB_TRANS_HIT" title="Mali Tiler UTLB" name="UTLB transactions hits" description="Number of micro-TLB hits" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_UTLB_TRANS_STALL" title="Mali Tiler UTLB" name="UTLB transactions stall" description="Number of cycles transactions are stalled on the input" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_UTLB_TRANS_MISS_DELAY" title="Mali Tiler UTLB" name="UTLB transactions miss" description="Number of cycles transactions are delayed due to a miss divided by 64" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_UTLB_MMU_REQ" title="Mali Tiler UTLB" name="UTLB transactions MMU requests" description="Number of requests sent to the MMU" advanced="yes"/>
+  </category>
+  <category name="Mali Shader Core" per_cpu="no">
+    <event counter="ARM_Mali-THEx_FRAG_ACTIVE" title="Mali Core Cycles" name="Fragment cycles" description="Number of cycles fragment processing is active"/>
+    <event counter="ARM_Mali-THEx_FRAG_PRIMITIVES" title="Mali Fragment Primitives" name="Primitives loaded" description="Number of primitives loaded"/>
+    <event counter="ARM_Mali-THEx_FRAG_PRIM_RAST" title="Mali Fragment Primitives" name="Primitives rasterized" description="Number of rasterized primitives"/>
+    <event counter="ARM_Mali-THEx_FRAG_FPK_ACTIVE" title="Mali FPK Queue" name="FPK cycles" description="Number of cycles the forward pixel kill queue contains data"/>
+    <event counter="ARM_Mali-THEx_FRAG_STARVING" title="Mali Core Starving" name="Frameng starving" description="Number of cycles the fragment front end is starving the execution engine of new threads." advanced="yes"/>
+    <event counter="ARM_Mali-THEx_FRAG_WARPS" title="Mali Core Warps" name="Fragment warps" description="Number of fragment warps started"/>
+    <event counter="ARM_Mali-THEx_FRAG_PARTIAL_WARPS" title="Mali Core Warps" name="Fragment partial warps" description="Number of partial fragment warps started"/>
+    <event counter="ARM_Mali-THEx_FRAG_QUADS_RAST" title="0" name="Mali Fragment Quads" description="Number of quads rasterized" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_FRAG_QUADS_EZS_TEST" title="Mali Fragment Quads" name="Quads ZS test" description="Number of quads doing early ZS test"/>
+    <event counter="ARM_Mali-THEx_FRAG_QUADS_EZS_UPDATE" title="Mali Fragment Quads" name="Quads ZS update" description="Number of quads doing early ZS update"/>
+    <event counter="ARM_Mali-THEx_FRAG_QUADS_EZS_KILL" title="Mali Fragment Quads" name="Quads ZS killed" description="Number of quads killed by the early ZS test"/>
+    <event counter="ARM_Mali-THEx_FRAG_LZS_TEST" title="Mali LZS Test" name="LZS threads" description="Number of threads doing late ZS test"/>
+    <event counter="ARM_Mali-THEx_FRAG_LZS_KILL" title="Mali LZS Test" name="LZS threads killed" description="Number of threads killed by the late ZS test"/>
+    <event counter="ARM_Mali-THEx_FRAG_PTILES" title="Mali Tiles" name="Tiles rendered" description="Number of physical tiles rendered"/>
+    <event counter="ARM_Mali-THEx_FRAG_TRANS_ELIM" title="Mali Tiles" name="Tiles trans elim" description="Number of transaction elimination signature matches"/>
+    <event counter="ARM_Mali-THEx_QUAD_FPK_KILLER" title="Mali FPK Queue" name="Quads enter" description="Number of quads which enter the FPK queue and can kill other quads"/>
+    <event counter="ARM_Mali-THEx_COMPUTE_ACTIVE" title="Mali Core Cycles" name="Compute cycles" description="Number of cycles compute processing is active"/>
+    <event counter="ARM_Mali-THEx_COMPUTE_TASKS" title="Mali Core Compute" name="Compute tasks" description="Number of compute tasks" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_COMPUTE_WARPS" title="Mali Core Warps" name="Compute warps" description="Number of compute warps started"/>
+    <event counter="ARM_Mali-THEx_COMPUTE_STARVING" title="Mali Core Cycles" name="Compute starving" description="Number of cycles unable to issue new compute threads" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_EXEC_CORE_ACTIVE" title="Mali Core Cycles" name="Core cycles" description="Number of cycles the execution core is active"/>
+    <event counter="ARM_Mali-THEx_EXEC_ACTIVE" title="Mali Core Cycles" name="Engine cycles" description="Number of cycles the execution engine is active" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_EXEC_INSTR_COUNT" title="Mali Instructions" name="Instruction count" description="Number of instruction tuples executed per compute unit"/>
+    <event counter="ARM_Mali-THEx_EXEC_INSTR_DIVERGED" title="Mali Instructions" name="Instruction diverged" description="Number of diverged instruction tuples per compute unit"/>
+    <event counter="ARM_Mali-THEx_EXEC_INSTR_STARVING" title="Mali Instructions" name="Instruction starving" description="Number of instruction starvation cycles per compute unit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_ARITH_INSTR_SINGLE_FMA" title="Mali Instructions" name="Single FMA instructions" description="Number of completed single FMA arithmetic instructions per compute unit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_ARITH_INSTR_DOUBLE" title="Mali Instructions" name="Double intructions" description="Number of completed double arithmetic instructions per compute unit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_ARITH_INSTR_MSG" title="Mali Instructions" name="Arithmetic instructions" description="Number of completed arithmetic and message passing instructions per compute unit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_ARITH_INSTR_MSG_ONLY" title="Mali Instructions" name="Messages passing instructions" description="Number of completed message passing instructions per compute unit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_TEX_INSTR" title="Mali Texture Instructions" name="Completed" description="Number of TEX instructions completed"/>
+    <event counter="ARM_Mali-THEx_TEX_INSTR_MIPMAP" title="Mali Texture Instructions" name="Mipmapped" description="Number of TEX instructions accessing mipmapped textures" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_TEX_INSTR_COMPRESSED" title="Mali Texture Instructions" name="Compressed" description="Number of TEX instructions accessing compressed textures"/>
+    <event counter="ARM_Mali-THEx_TEX_INSTR_3D" title="Mali Texture Instructions" name="3D" description="Number of TEX instructions accessing 3D textures"/>
+    <event counter="ARM_Mali-THEx_TEX_INSTR_TRILINEAR" title="Mali Texture Instructions" name="Trilinear" description="Number of TEX instructions performing trilinear filtering"/>
+    <event counter="ARM_Mali-THEx_TEX_COORD_ISSUE" title="Mali Texture Threads" name="Texture threads" description="Number of threads issued to the texel coordinate stage"/>
+    <event counter="ARM_Mali-THEx_TEX_COORD_STALL" title="Mali Texture Cycles" name="Texel coordingates stage" description="Number of cycles the texel coordinate stage is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_TEX_STARVE_CACHE" title="Mali Texture Cycles" name="Cache starvation" description="Number of texture cache starvation cycles" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_TEX_STARVE_FILTER" title="Mali Texture Cycles" name="Filter starvation" description="Number of texture filter starvation cycles" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_LS_MEM_READ_FULL" title="Mali Memory" name="Full read accesses" description="Number of full memory read accesses (128-bit)"/>
+    <event counter="ARM_Mali-THEx_LS_MEM_READ_SHORT" title="Mali Memory" name="Short read accesses" description="Number of short memory read accesses (less than 128-bit)"/>
+    <event counter="ARM_Mali-THEx_LS_MEM_WRITE_FULL" title="Mali Memory" name="Full write accesses" description="Number of full memory write accesses (128-bit)"/>
+    <event counter="ARM_Mali-THEx_LS_MEM_WRITE_SHORT" title="Mali Memory" name="Short write accesses" description="Number of short memory write accesses (less than 128-bit)"/>
+    <event counter="ARM_Mali-THEx_LS_MEM_ATOMIC" title="Mali Memory" name="Atomic accesses" description="Number of atomic memory accesses" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_VARY_INSTR" title="Mali Instructions" name="Varying instructions" description="Number of varying instructions completed"/>
+    <event counter="ARM_Mali-THEx_VARY_SLOT_32" title="Mali Varying Slots" name="32-bit" description="Number of 32-bit varying slots"/>
+    <event counter="ARM_Mali-THEx_VARY_SLOT_16" title="Mali Varying Slots" name="16-bit" description="Number of 16-bit varying slots"/>
+    <event counter="ARM_Mali-THEx_ATTR_INSTR" title="Mali Instructions" name="Attribute instructions" description="Number of load/store attribute instructions completed"/>
+    <event counter="ARM_Mali-THEx_ARITH_INSTR_FP_MUL" title="Mali Instructions" name="Floating-point multiply instructions" description="Number of completed floating-point multiply instructions per compute unit" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_FTC" title="Mali Cache Thread Creator" name="Read beats" description="Number of read beats for the fragment thread creator"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_FTC_EXT" title="Mali Cache Thread Creator" name="Read beats external" description="Number of external read beats for the fragment thread creator"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_LSC" title="Mali Cache Load/Store" name="Read beats" description="Number of read beats for the load/store cache"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_LSC_EXT" title="Mali Cache Load/Store" name="Read beats external" description="Number of external read beats for the load/store cache"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_TEX" title="Mali Cache Texture" name="Read beats" description="Number of read beats for the texture cache"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_TEX_EXT" title="Mali Cache Texture" name="Read beats external" description="Number of external read beats for the texture cache"/>
+    <event counter="ARM_Mali-THEx_BEATS_RD_OTHER" title="Mali Cache Other" name="Read beats" description="Number of read beats for all other masters"/>
+    <event counter="ARM_Mali-THEx_BEATS_WR_LSC" title="Mali Cache Load/Store" name="Write Beats" description="Number of write beats for the load/store cache"/>
+    <event counter="ARM_Mali-THEx_BEATS_WR_TIB" title="Mali Cache Tile" name="Write beats" description="Number of write beats for the tile buffers"/>
+  </category>
+  <category name="Mali L2 Cache" per_cpu="no">
+    <event counter="ARM_Mali-THEx_MMU_REQUESTS" title="Mali L2 Cache Messages" name="MMU requests" description="Number of requests received by the MMU" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_RD_MSG_IN" title="Mali L2 Cache Messages" name="Reads in" description="Number of read messages received by the L2C from internal masters"/>
+    <event counter="ARM_Mali-THEx_L2_RD_MSG_IN_STALL" title="Mali L2 Cache Messages" name="Reads in stalled" description="Number of cycles input read messages are stalled by the L2C" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_WR_MSG_IN" title="Mali L2 Cache Messages" name="Writes in" description="Number of write messages received by the L2C from internal masters"/>
+    <event counter="ARM_Mali-THEx_L2_WR_MSG_IN_STALL" title="Mali L2 Cache Messages" name="Writes in stalled" description="Number of cycles input write messages are stalled by the L2C" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_SNP_MSG_IN" title="Mali L2 Cache Messages" name="Snoop in" description="Number of snoop messages received by the L2C from internal masters" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_SNP_MSG_IN_STALL" title="Mali L2 Cache Messages" name="Snoop in stalled" description="Number of cycles input snoop messages are stalled by the L2C" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_RD_MSG_OUT" title="Mali L2 Cache Messages" name="Reads out" description="Number of read messages sent by the L2C to internal masters" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_RD_MSG_OUT_STALL" title="Mali L2 Cache Messages" name="Reads out stalled" description="Number of cycles read messages are stalled by internal masters" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_WR_MSG_OUT" title="Mali L2 Cache Messages" name="Writes out" description="Number of write messages sent by the L2C to internal masters" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_ANY_LOOKUP" title="Mali L2 Cache Lookups" name="Any lookups" description="Number of L2C lookups"/>
+    <event counter="ARM_Mali-THEx_L2_READ_LOOKUP" title="Mali L2 Cache Lookups" name="Read lookups" description="Number of L2C lookups performed by read transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_WRITE_LOOKUP" title="Mali L2 Cache Lookups" name="Write lookups" description="Number of L2C lookups performed by write transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_SNOOP_LOOKUP" title="Mali L2 Cache Transactions" name="Ext snoop lookups" description="Number of L2C lookups performed by external snoop transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_READ" title="Mali L2 Cache Transactions" name="Read Transactions" description="Number of external read transactions"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_READ_NOSNP" title="Mali L2 Cache Transactions" name="Reads NoSnp" description="Number of external ReadNoSnp transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_READ_UNIQUE" title="Mali L2 Cache Transactions" name="Reads unique" description="Number of external ReadUnique transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_READ_BEATS" title="Mali L2 Cache Beats" name="Read" description="Number of external read data beats"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AR_STALL" title="Mali L2 Cache Stall" name="Read address" description="Number of cycles read address (AR) is stalled"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AR_CNT_Q1" title="Mali L2 Cache Read Outstanding" name="0-25" description="Number of external read transactions when 0-25% outstanding"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AR_CNT_Q2" title="Mali L2 Cache Read Outstanding" name="25-50" description="Number of external read transactions when 25-50% outstanding"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AR_CNT_Q3" title="Mali L2 Cache Read Outstanding" name="50-75" description="Number of external read transactions when 50-75% outstanding"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_RRESP_0_127" title="Mali L2 Cache Read Latency" name="0-127" description="Number of read responses with 0-127 cycle latency"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_RRESP_128_191" title="Mali L2 Cache Read Latency" name="128-191" description="Number of read responses with 128-191 cycle latency"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_RRESP_192_255" title="Mali L2 Cache Read Latency" name="192-255" description="Number of read responses with 192-255 cycle latency"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_RRESP_256_319" title="Mali L2 Cache Read Latency" name="256-319" description="Number of read responses with 256-319 cycle latency"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_RRESP_320_383" title="Mali L2 Cache Read Latency" name="320-383" description="Number of read responses with 320-383 cycle latency"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_WRITE" title="Mali L2 Cache Transactions" name="Write" description="Number of external write transactions"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_WRITE_NOSNP_FULL" title="Mali L2 Cache Transactions" name="Writes NoSnpFull" description="Number of external WriteNoSnpFull transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_WRITE_NOSNP_PTL" title="Mali L2 Cache Transactions" name="Writes NoSnpPtl" description="Number of external WriteNoSnpPtl transactions"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_WRITE_SNP_FULL" title="Mali L2 Cache Transactions" name="Writes BackFull" description="Number of external WriteBackFull or WriteUniqueFull transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_WRITE_SNP_PTL" title="Mali L2 Cache Transactions" name="Writes BackPtl" description="Number of external WriteBackPtl or WriteUniquePtl transactions"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_WRITE_BEATS" title="Mali L2 Cache Beats" name="Write" description="Number of external write data beats"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_W_STALL" title="Mali L2 Cache Stall" name="Write data" description="Number of cycles write data (W) is stalled"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AW_CNT_Q1" title="Mali L2 Cache Write Buffer" name="0-25" description="Number of external write transactions when the write buffer is 0-25% full"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AW_CNT_Q2" title="Mali L2 Cache Write Buffer" name="25-50" description="Number of external write transactions when the write buffer is 25-50% full"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_AW_CNT_Q3" title="Mali L2 Cache Write Buffer" name="50-75" description="Number of external write transactions when the write buffer is 50-75% full"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_SNOOP" title="Mali L2 Cache Snoop" name="Snoop transactions" description="Number of external snoop transactions" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_SNOOP_STALL" title="Mali L2 Cache Snoop" name="Cycles stalled" description="Number of cycles external snoop requests are stalled" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_SNOOP_RESP_CLEAN" title="Mali L2 Cache Snoop" name="Ext Snoop hit resp clean" description="Number of external snoops that hit a clean line in the Level 2 cache" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_SNOOP_RESP_DATA" title="Mali L2 Cache Snoop" name="Ext Snoop hit data" description="Number of external snoops that hit in the Level 2 cache and return data" advanced="yes"/>
+    <event counter="ARM_Mali-THEx_L2_EXT_SNOOP_INTERNAL" title="Mali L2 Cache Snoop" name="Ext Snoop internal" description="Number of external snoops that cause snoops to Level 1 caches" advanced="yes"/>
+  </category>

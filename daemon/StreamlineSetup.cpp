@@ -31,12 +31,11 @@ static const char VALUE_CAPTURED[] = "captured";
 static const char VALUE_DEFAULTS[] = "defaults";
 
 StreamlineSetup::StreamlineSetup(OlySocket* s)
+        : mSocket(s)
 {
     bool ready = false;
     char* data = NULL;
     int type;
-
-    mSocket = s;
 
     // Receive commands from Streamline (master)
     while (!ready) {
@@ -46,31 +45,31 @@ StreamlineSetup::StreamlineSetup(OlySocket* s)
 
         // parse and handle data
         switch (type) {
-        case COMMAND_REQUEST_XML:
-            handleRequest(data);
-            break;
-        case COMMAND_DELIVER_XML:
-            handleDeliver(data);
-            break;
-        case COMMAND_APC_START:
-            logg.logMessage("Received apc start request");
-            ready = true;
-            break;
-        case COMMAND_APC_STOP:
-            logg.logMessage("Received apc stop request before apc start request");
-            exit(0);
-            break;
-        case COMMAND_DISCONNECT:
-            logg.logMessage("Received disconnect command");
-            exit(0);
-            break;
-        case COMMAND_PING:
-            logg.logMessage("Received ping command");
-            sendData(NULL, 0, RESPONSE_ACK);
-            break;
-        default:
-            logg.logError("Target error: Unknown command type, %d", type);
-            handleException();
+            case COMMAND_REQUEST_XML:
+                handleRequest(data);
+                break;
+            case COMMAND_DELIVER_XML:
+                handleDeliver(data);
+                break;
+            case COMMAND_APC_START:
+                logg.logMessage("Received apc start request");
+                ready = true;
+                break;
+            case COMMAND_APC_STOP:
+                logg.logMessage("Received apc stop request before apc start request");
+                exit(0);
+                break;
+            case COMMAND_DISCONNECT:
+                logg.logMessage("Received disconnect command");
+                exit(0);
+                break;
+            case COMMAND_PING:
+                logg.logMessage("Received ping command");
+                sendData(NULL, 0, RESPONSE_ACK);
+                break;
+            default:
+                logg.logError("Target error: Unknown command type, %d", type);
+                handleException();
         }
 
         free(data);
@@ -93,7 +92,7 @@ char* StreamlineSetup::readCommand(int* command)
     int response;
 
     // receive type and length
-    response = mSocket->receiveNBytes((char*) &header, sizeof(header));
+    response = mSocket->receiveNBytes(reinterpret_cast<char *>(&header), sizeof(header));
 
     // After receiving a single byte, we are no longer waiting on a command
     gSessionData.mWaitingOnCommand = false;
@@ -113,7 +112,7 @@ char* StreamlineSetup::readCommand(int* command)
     }
 
     // allocate memory to contain the xml file, size of zero returns a zero size object
-    data = (char*) calloc(length + 1, 1);
+    data = static_cast<char *>(calloc(length + 1, 1));
     if (data == NULL) {
         logg.logError("Unable to allocate memory for xml");
         handleException();
@@ -209,7 +208,7 @@ void StreamlineSetup::sendData(const char* data, uint32_t length, char type)
     unsigned char header[5];
     header[0] = type;
     Buffer::writeLEInt(header + 1, length);
-    mSocket->send((char*) &header, sizeof(header));
+    mSocket->send(reinterpret_cast<char *>(&header), sizeof(header));
     mSocket->send(data, length);
 }
 
@@ -265,18 +264,17 @@ void StreamlineSetup::sendCounters()
     mxml_node_t *setup = mxmlNewElement(counters, "setup_warnings");
     mxmlNewText(setup, 0, logg.getSetup());
 
-    if (gSessionData.mSharedData->mClustersAccurate) {
-        for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
-            mxml_node_t *node = mxmlNewElement(counters, "cluster");
-            mxmlElementSetAttrf(node, "id", "%i", cluster);
-            mxmlElementSetAttr(node, "name", gSessionData.mSharedData->mClusters[cluster]->getPmncName());
-        }
-        for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
-            if (gSessionData.mSharedData->mClusterIds[cpu] >= 0) {
-                mxml_node_t *node = mxmlNewElement(counters, "cpu");
-                mxmlElementSetAttrf(node, "id", "%i", cpu);
-                mxmlElementSetAttrf(node, "cluster", "%i", gSessionData.mSharedData->mClusterIds[cpu]);
-            }
+    // always send the cluster information; even on devices where not all the information is available.
+    for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
+        mxml_node_t *node = mxmlNewElement(counters, "cluster");
+        mxmlElementSetAttrf(node, "id", "%i", cluster);
+        mxmlElementSetAttr(node, "name", gSessionData.mSharedData->mClusters[cluster]->getPmncName());
+    }
+    for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
+        if (gSessionData.mSharedData->mClusterIds[cpu] >= 0) {
+            mxml_node_t *node = mxmlNewElement(counters, "cpu");
+            mxmlElementSetAttrf(node, "id", "%i", cpu);
+            mxmlElementSetAttrf(node, "cluster", "%i", gSessionData.mSharedData->mClusterIds[cpu]);
         }
     }
 

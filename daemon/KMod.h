@@ -36,6 +36,8 @@ public:
 
 private:
     bool mIsMaliCapture;
+
+    static bool isMaliCounter(const Counter &counter);
 };
 
 #endif // KMOD_H

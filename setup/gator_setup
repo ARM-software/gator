@@ -43,7 +43,7 @@ ps_gator() {
 	# Space is required between the open parans otherwise dash complains
 	# Android doesn't require any arguments to show all processes, but Linux does. Android ps and Linux ps aux both put the pid second so they can be parsed the same way
 	# Use brackets around the g in gatord so that the grep command doesn't match
-	PS_GATOR=$(echo $( (ps aux; ps) | grep '[g]atord'))
+	PS_GATOR=$(echo $( (ps aux; ps; ps -ef) | grep '[g]atord'))
 }
 
 echo starting
@@ -89,10 +89,13 @@ if [ $UID_EFFECTIVE -ne 0 ]; then
 
 	# Normal Linux su requires the password from the terminal, but sudo should work there
 	# Other platforms that require su often don't require a password
-	echo setup: trying su
+	echo "setup: trying su -c"
 	su -c "sh $0" && exit
 
-	echo setup: error: Unable to become root
+	echo "setup: trying su root"
+	su root sh "$0" && exit
+
+	echo setup: error: Unable to become root. Android users should install the daemon APK instead.
 	exit
 fi
 echo now root
@@ -110,27 +113,21 @@ if [ -e /sys/module/gator ]; then
 fi
 
 try_home() {
-	if ! [ -d $1 ]; then
+	if ! [ -d "$1" -a -w "$1" ]; then
 		return 1
 	fi
 	HOME=$1
 	return 0
 }
 
-while [ "${HOME}z" = "z" ]; do
-	if try_home /var/tmp; then
-		break
-	fi
-	if try_home /tmp; then
-		break
-	fi
-	if try_home /data; then
-		break
-	fi
-	HOME=/
-	break
-done
-echo home: $HOME
+if try_home "$HOME" || try_home /var/tmp || try_home /tmp || try_home /data || try_home /data/local || try_home /
+then
+	echo home: $HOME
+else
+	restore_selinux
+	echo setup: error: Could not find a writeable directory to use.
+	exit
+fi
 
 # Go to the home directory where we can (hopefully) execute programs
 OLD_DIR=$PWD

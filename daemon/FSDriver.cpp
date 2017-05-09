@@ -36,13 +36,13 @@ private:
     bool mUseRegex;
 
     // Intentionally unimplemented
-    FSCounter(const FSCounter &);
-    FSCounter &operator=(const FSCounter &);
+    CLASS_DELETE_COPY_MOVE(FSCounter);
 };
 
 FSCounter::FSCounter(DriverCounter *next, char *name, char *path, const char *regex)
         : DriverCounter(next, name),
           mPath(path),
+          mReg(),
           mUseRegex(regex != NULL)
 {
     if (mUseRegex) {
@@ -113,7 +113,8 @@ int64_t FSCounter::read()
     }
     return value;
 
-    fail: logg.logError("Unable to read %s", mPath);
+fail:
+    logg.logError("Unable to read %s", mPath);
     handleException();
 }
 

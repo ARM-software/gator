@@ -20,6 +20,8 @@
 #include <semaphore.h>
 #endif
 
+#include "ClassBoilerPlate.h"
+
 class Fifo
 {
 public:
@@ -42,8 +44,7 @@ private:
     bool mEnd;
 
     // Intentionally unimplemented
-    Fifo(const Fifo &);
-    Fifo &operator=(const Fifo &);
+    CLASS_DELETE_COPY_MOVE(Fifo);
 };
 
 #endif //__FIFO_H__

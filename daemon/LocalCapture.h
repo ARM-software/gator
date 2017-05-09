@@ -9,6 +9,9 @@
 #ifndef __LOCAL_CAPTURE_H__
 #define __LOCAL_CAPTURE_H__
 
+#include <list>
+#include <string>
+
 struct ImageLinkList;
 
 class LocalCapture
@@ -17,7 +20,7 @@ public:
     LocalCapture();
     ~LocalCapture();
     void write(char* string);
-    void copyImages(ImageLinkList* ptr);
+    void copyImages(const std::list<std::string> & ptr);
     void createAPCDirectory(char* target_path);
 private:
     char* createUniqueDirectory(const char* path, const char* ending);

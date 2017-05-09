@@ -9,6 +9,7 @@
 #ifndef NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 #define NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 
+#include "ClassBoilerPlate.h"
 #include "Driver.h"
 
 class DriverCounter
@@ -49,8 +50,7 @@ private:
     bool mEnabled;
 
     // Intentionally unimplemented
-    DriverCounter(const DriverCounter &);
-    DriverCounter &operator=(const DriverCounter &);
+    CLASS_DELETE_COPY_MOVE(DriverCounter);
 };
 
 #endif /* NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_ */

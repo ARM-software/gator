@@ -11,6 +11,7 @@
 
 #include "mxml/mxml.h"
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class AtraceDriver : public SimpleDriver
@@ -36,8 +37,7 @@ private:
     char mNotifyPath[256];
 
     // Intentionally unimplemented
-    AtraceDriver(const AtraceDriver &);
-    AtraceDriver &operator=(const AtraceDriver &);
+    CLASS_DELETE_COPY_MOVE(AtraceDriver);
 };
 
 #endif // ATRACEDRIVER_H

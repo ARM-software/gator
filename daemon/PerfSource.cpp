@@ -8,6 +8,8 @@
 
 #include "PerfSource.h"
 
+#include <algorithm>
+
 #include <signal.h>
 #include <string.h>
 #include <sys/prctl.h>
@@ -23,12 +25,11 @@
 #include "PerfDriver.h"
 #include "Proc.h"
 #include "SessionData.h"
+#include "lib/Time.h"
 
 #ifndef SCHED_RESET_ON_FORK
 #define SCHED_RESET_ON_FORK 0x40000000
 #endif
-
-extern Child *child;
 
 static const int cpuIdleKey = getEventKey();
 
@@ -39,7 +40,7 @@ static void *syncFunc(void *arg)
     int err;
     (void) arg;
 
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-sync", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-sync"), 0, 0, 0);
 
     // Mask all signals so that this thread will not be woken up
     {
@@ -65,7 +66,7 @@ static void *syncFunc(void *arg)
         nextTime += NS_PER_S;
 
         // Always sleep more than 1 ms, hopefully things will line up better next time
-        const int64_t sleepTime = max(nextTime - currTime, (int64_t) (NS_PER_MS + 1));
+        const int64_t sleepTime = std::max<int64_t>(nextTime - currTime, NS_PER_MS + 1);
         ts.tv_sec = sleepTime / NS_PER_S;
         ts.tv_nsec = sleepTime % NS_PER_S;
 
@@ -79,11 +80,13 @@ static void *syncFunc(void *arg)
     return NULL;
 }
 
-PerfSource::PerfSource(sem_t *senderSem, sem_t *startProfile)
-        : mSummary(0, FRAME_SUMMARY, 1024, senderSem),
+PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile)
+        : Source(child),
+          mDriver(driver),
+          mSummary(0, FRAME_SUMMARY, 1024, &senderSem),
           mBuffer(NULL),
           mCountersBuf(),
-          mCountersGroup(&mCountersBuf),
+          mCountersGroup(&mCountersBuf, driver.getLegacySupport(), driver.getClockidSupport()),
           mMonitor(),
           mUEvent(),
           mSenderSem(senderSem),
@@ -107,7 +110,7 @@ bool PerfSource::prepare()
     // MonotonicStarted has not yet been assigned!
     const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
 
-    mBuffer = new Buffer(0, FRAME_PERF_ATTRS, gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem);
+    mBuffer = new Buffer(0, FRAME_PERF_ATTRS, gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem);
 
     // Reread cpuinfo since cores may have changed since startup
     gSessionData.readCpuInfo();
@@ -116,13 +119,13 @@ bool PerfSource::prepare()
 
     || (cpuIdleId = PerfDriver::getTracepointId(CPU_IDLE, &printb)) < 0
 
-    || !gSessionData.mPerf.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
+    || !mDriver.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
 
     || !mCountersGroup.createCpuGroup(currTime, mBuffer)
             || !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW,
                                    PERF_GROUP_LEADER | PERF_GROUP_PER_CPU | PERF_GROUP_ALL_CLUSTERS, NULL)
 
-            || !gSessionData.mPerf.enable(currTime, &mCountersGroup, mBuffer) || 0) {
+            || !mDriver.enable(currTime, &mCountersGroup, mBuffer) || 0) {
         logg.logMessage("perf setup failed, are you running Linux 3.4 or later?");
         return false;
     }
@@ -145,12 +148,12 @@ bool PerfSource::prepare()
     }
 
     // Send the summary right before the start so that the monotonic delta is close to the start time
-    if (!gSessionData.mPerf.summary(&mSummary)) {
+    if (!mDriver.summary(&mSummary)) {
         logg.logError("PerfDriver::summary failed");
         handleException();
     }
 
-    if (!gSessionData.mPerf.getClockidSupport()) {
+    if (!mDriver.getClockidSupport()) {
         // Start the timer thread to used to sync perf and monotonic raw times
         pthread_t syncThread;
         if (pthread_create(&syncThread, NULL, syncFunc, NULL)) {
@@ -185,9 +188,9 @@ static void *procFunc(void *arg)
 {
     DynBuf printb;
     DynBuf b;
-    const ProcThreadArgs * const args = (ProcThreadArgs *) arg;
+    const ProcThreadArgs * const args = reinterpret_cast<const ProcThreadArgs *>(arg);
 
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-proc", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-proc"), 0, 0, 0);
 
     // Gator runs at a high priority, reset the priority to the default
     if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
@@ -195,7 +198,7 @@ static void *procFunc(void *arg)
         handleException();
     }
 
-    if (!readProcMaps(args->mCurrTime, args->mBuffer, &printb, &b)) {
+    if (!readProcMaps(args->mCurrTime, *args->mBuffer)) {
         logg.logError("readProcMaps failed");
         handleException();
     }
@@ -231,7 +234,6 @@ void PerfSource::run()
     {
         DynBuf printb;
         DynBuf b1;
-        DynBuf b2;
 
         const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
 
@@ -240,11 +242,11 @@ void PerfSource::run()
 
         mBuffer->perfCounterHeader(currTime);
         for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
-            gSessionData.mPerf.read(mBuffer, cpu);
+            mDriver.read(mBuffer, cpu);
         }
         mBuffer->perfCounterFooter(currTime);
 
-        if (!readProcSysDependencies(currTime, mBuffer, &printb, &b1, &b2)) {
+        if (!readProcSysDependencies(currTime, *mBuffer, &printb, &b1)) {
             logg.logError("readProcSysDependencies failed");
             handleException();
         }
@@ -260,7 +262,7 @@ void PerfSource::run()
         }
     }
 
-    sem_post(mStartProfile);
+    sem_post(&mStartProfile);
 
     const uint64_t NO_RATE = ~0ULL;
     const uint64_t rate = gSessionData.mLiveRate > 0 && gSessionData.mSampleRate > 0 ? gSessionData.mLiveRate : NO_RATE;
@@ -287,13 +289,13 @@ void PerfSource::run()
         }
 
         // send a notification that data is ready
-        sem_post(mSenderSem);
+        sem_post(&mSenderSem);
 
         // In one shot mode, stop collection once all the buffers are filled
         if (gSessionData.mOneShot && gSessionData.mSessionIsActive
                 && ((mSummary.bytesAvailable() <= 0) || (mBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
             logg.logMessage("One shot (perf)");
-            child->endSession();
+            mChild.endSession();
         }
 
         if (rate != NO_RATE) {
@@ -301,8 +303,7 @@ void PerfSource::run()
                 nextTime += rate;
             }
             // + NS_PER_MS - 1 to ensure always rounding up
-            timeout = max(0,
-                          (int) ((nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS));
+            timeout = std::max<int>(0, (nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS);
         }
     }
 
@@ -313,7 +314,7 @@ void PerfSource::run()
     mIsDone = true;
 
     // send a notification that data is ready
-    sem_post(mSenderSem);
+    sem_post(&mSenderSem);
 
     mInterruptFd = -1;
     close(pipefd[0]);
@@ -355,7 +356,7 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
             else if (err == PG_SUCCESS) {
                 if (mCountersGroup.onlineCPU(currTime, cpu, true, mBuffer) > 0) {
                     mBuffer->perfCounterHeader(currTime);
-                    gSessionData.mPerf.read(mBuffer, cpu);
+                    mDriver.read(mBuffer, cpu);
                     mBuffer->perfCounterFooter(currTime);
                     ret = true;
                 }
@@ -363,7 +364,7 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
             mBuffer->commit(currTime);
 
             gSessionData.readCpuInfo();
-            gSessionData.mPerf.coreName(currTime, &mSummary, cpu);
+            mDriver.coreName(currTime, &mSummary, cpu);
             mSummary.commit(currTime);
             return ret;
         }

@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <memory>
+
 #if defined(WIN32)
 #include <windows.h>
 #elif defined(__linux__)
@@ -154,17 +156,16 @@ char* readFromDisk(const char* file, unsigned int *size, bool appendNull)
     rewind(pFile);
 
     // Allocate memory to contain the whole file
-    char* buffer = (char*) malloc(lSize + (int) appendNull);
-    if (buffer == NULL) {
+    std::unique_ptr<char[], void(*)(void *)> buffer (reinterpret_cast<char *>(malloc(lSize + (appendNull ? 1 : 0))), free);
+    if (buffer == nullptr) {
         fclose(pFile);
-        return NULL;
+        return nullptr;
     }
 
     // Copy the file into the buffer
-    if (fread(buffer, 1, lSize, pFile) != lSize) {
-        free(buffer);
+    if (fread(buffer.get(), 1, lSize, pFile) != lSize) {
         fclose(pFile);
-        return NULL;
+        return nullptr;
     }
 
     // Terminate
@@ -178,7 +179,7 @@ char* readFromDisk(const char* file, unsigned int *size, bool appendNull)
         *size = lSize;
     }
 
-    return buffer;
+    return buffer.release();
 }
 
 int writeToDisk(const char* path, const char* data)

@@ -21,11 +21,14 @@
 #include "Config.h"
 #include "DriverSource.h"
 #include "Logging.h"
+#include "PrimarySourceProvider.h"
 #include "Proc.h"
 #include "SessionData.h"
 
 Barrier::Barrier()
-        : mCount(0)
+        : mMutex(),
+          mCond(),
+          mCount(0)
 {
     pthread_mutex_init(&mMutex, NULL);
     pthread_cond_init(&mCond, NULL);
@@ -79,8 +82,8 @@ private:
     int mWasEnabled;
 
     // Intentionally unimplemented
-    FtraceCounter(const FtraceCounter &);
-    FtraceCounter &operator=(const FtraceCounter &);
+    CLASS_DELETE_COPY_MOVE(FtraceCounter)
+    ;
 };
 
 FtraceCounter::FtraceCounter(DriverCounter *next, char *name, const char *enable)
@@ -139,7 +142,7 @@ static void handlerUsr1(int signum)
     // Although this signal handler does nothing, SIG_IGN doesn't interrupt splice in all cases
 }
 
-static int pageSize;
+static ssize_t pageSize;
 
 class FtraceReader
 {
@@ -234,7 +237,7 @@ void FtraceReader::run()
     {
         char buf[16];
         snprintf(buf, sizeof(buf), "gatord-reader%02i", mCpu);
-        prctl(PR_SET_NAME, (unsigned long) &buf, 0, 0, 0);
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&buf), 0, 0, 0);
     }
 
     mBarrier->wait();
@@ -289,7 +292,7 @@ void FtraceReader::run()
         size_t size;
         char buf[1 << 16];
 
-        if (sizeof(buf) < (size_t) pageSize) {
+        if (sizeof(buf) < static_cast<size_t>(pageSize)) {
             logg.logError("ftrace slop buffer is too small");
             handleException();
         }
@@ -309,7 +312,7 @@ void FtraceReader::run()
             else {
                 size = bytes;
                 bytes = write(mPfd1, buf, size);
-                if (bytes != (ssize_t) size) {
+                if (bytes != static_cast<ssize_t>(size)) {
                     logg.logError("writing slop to ftrace pipe failed");
                     handleException();
                 }
@@ -324,10 +327,10 @@ void FtraceReader::run()
 
 FtraceDriver::FtraceDriver()
         : mValues(NULL),
+          mBarrier(),
+          mTracingOn(0),
           mSupported(false),
-          mMonotonicRawSupport(false),
-          mUnused0(false),
-          mTracingOn(0)
+          mMonotonicRawSupport(false)
 {
 }
 
@@ -361,6 +364,12 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         return;
     }
 
+    if (geteuid() != 0) {
+        mSupported = false;
+        logg.logSetup("Ftrace is disabled\nFtrace is not supported when running non-root");
+        return;
+    }
+
     mSupported = true;
 
     mxml_node_t *node = xml;
@@ -390,7 +399,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         if (enable == NULL) {
             enable = tracepoint;
         }
-        if (gSessionData.mPerf.isSetup() && tracepoint != NULL) {
+        if (gSessionData.mPrimarySource->supportsTracepointCapture() && tracepoint != NULL) {
             logg.logMessage("Not using ftrace for counter %s", counter);
             continue;
         }
@@ -452,11 +461,10 @@ bool FtraceDriver::prepare(int * const ftraceFds)
 
     const char * const trace_clock_path = TRACING_PATH "/trace_clock";
     const char * const clock = mMonotonicRawSupport ? "mono_raw" : "perf";
-    const char * const clock_selected =
-      mMonotonicRawSupport ? "[mono_raw]" : "[perf]";
+    const char * const clock_selected = mMonotonicRawSupport ? "[mono_raw]" : "[perf]";
     const size_t max_trace_clock_file_length = 200;
     ssize_t trace_clock_file_length;
-    char trace_clock_file_content[max_trace_clock_file_length+1] = {0};
+    char trace_clock_file_content[max_trace_clock_file_length + 1] = { 0 };
     bool must_switch_clock = true;
     // Only write to /trace_clock if the clock actually needs changing,
     // as changing trace_clock can be extremely expensive, especially on large
@@ -468,9 +476,7 @@ bool FtraceDriver::prepare(int * const ftraceFds)
         logg.logError("Couldn't open %s", trace_clock_path);
         handleException();
     }
-    if ((trace_clock_file_length =
-         ::read(fd, trace_clock_file_content, max_trace_clock_file_length-1))
-        < 0) {
+    if ((trace_clock_file_length = ::read(fd, trace_clock_file_content, max_trace_clock_file_length - 1)) < 0) {
         logg.logError("Couldn't read from %s", trace_clock_path);
         close(fd);
         handleException();
@@ -478,14 +484,13 @@ bool FtraceDriver::prepare(int * const ftraceFds)
     close(fd);
     trace_clock_file_content[trace_clock_file_length] = 0;
     if (::strstr(trace_clock_file_content, clock_selected)) {
-      // the right clock was already selected :)
-      must_switch_clock = false;
+        // the right clock was already selected :)
+        must_switch_clock = false;
     }
 
     // Writing to trace_clock can be very slow on loaded high core count
     // systems.
-    if (must_switch_clock &&
-        DriverSource::writeDriver(TRACING_PATH "/trace_clock", clock) != 0) {
+    if (must_switch_clock && DriverSource::writeDriver(TRACING_PATH "/trace_clock", clock) != 0) {
         logg.logError("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later", clock, mMonotonicRawSupport ? "4.2" : "3.10");
         handleException();
     }

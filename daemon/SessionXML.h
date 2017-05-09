@@ -9,6 +9,7 @@
 #ifndef SESSION_XML_H
 #define SESSION_XML_H
 
+#include "ClassBoilerPlate.h"
 #include "mxml/mxml.h"
 
 struct ImageLinkList;
@@ -22,6 +23,16 @@ struct ConfigParameters
     // whether stack unwinding is performed
     bool call_stack_unwinding;
     int live_rate;
+
+    ConfigParameters()
+            : buffer_mode(),
+              sample_rate(),
+              call_stack_unwinding(false),
+              live_rate(0)
+    {
+        buffer_mode[0] = '\0';
+        sample_rate[0] = '\0';
+    }
 };
 
 class SessionXML
@@ -37,8 +48,8 @@ private:
     void sessionImage(mxml_node_t *node);
 
     // Intentionally unimplemented
-    SessionXML(const SessionXML &);
-    SessionXML &operator=(const SessionXML &);
+    CLASS_DELETE_COPY_MOVE(SessionXML)
+    ;
 };
 
 #endif // SESSION_XML_H

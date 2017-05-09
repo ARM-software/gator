@@ -9,6 +9,7 @@
 #ifndef EXTERNALDRIVER_H
 #define EXTERNALDRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class ExternalDriver : public SimpleDriver
@@ -35,8 +36,7 @@ private:
     bool mStarted;
 
     // Intentionally unimplemented
-    ExternalDriver(const ExternalDriver &);
-    ExternalDriver &operator=(const ExternalDriver &);
+    CLASS_DELETE_COPY_MOVE(ExternalDriver);
 };
 
 #endif // EXTERNALDRIVER_H

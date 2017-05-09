@@ -8,6 +8,7 @@
 
 #include "Child.h"
 
+#include "lib/Assert.h"
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
@@ -18,13 +19,12 @@
 #include "Command.h"
 #include "ConfigurationXML.h"
 #include "Driver.h"
-#include "DriverSource.h"
+#include "PrimarySourceProvider.h"
 #include "ExternalSource.h"
 #include "LocalCapture.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
-#include "PerfSource.h"
 #include "Sender.h"
 #include "SessionData.h"
 #include "StreamlineSetup.h"
@@ -32,222 +32,150 @@
 #include "PolledDriver.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 
-static sem_t haltPipeline, senderThreadStarted, startProfile, senderSem; // Shared by Child and spawned threads
-static Source *primarySource = NULL;
-static Source *externalSource = NULL;
-static Source *userSpaceSource = NULL;
-static Source *midgardHwSource = NULL;
-static Sender* sender = NULL; // Shared by Child.cpp and spawned threads
-Child* child = NULL; // shared by Child.cpp and main.cpp
+std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
 
 extern void cleanUp();
+
 void handleException()
 {
-    if (child && child->numExceptions++ > 0) {
-        // it is possible one of the below functions itself can cause an exception, thus allow only one exception
-        logg.logMessage("Received multiple exceptions, terminating the child");
-        // Something is really wrong, exit immediately
-        _exit(1);
-    }
+    Child * const singleton = Child::getSingleton();
 
-    if (child && child->socket) {
-        if (sender) {
-            // send the error, regardless of the command sent by Streamline
-            sender->writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
-
-            // cannot close the socket before Streamline issues the command, so wait for the command before exiting
-            if (gSessionData.mWaitingOnCommand) {
-                char discard;
-                child->socket->receiveNBytes(&discard, 1);
-            }
-
-            // Ensure all data is flushed
-            child->socket->shutdownConnection();
-
-            // this indirectly calls close socket which will ensure the data has been sent
-            delete sender;
-        }
-    }
-
-    if (gSessionData.mLocalCapture) {
-        cleanUp();
+    if (singleton != nullptr) {
+        singleton->cleanupException();
     }
 
     exit(1);
 }
 
-// CTRL C Signal Handler for child process
-static void child_handler(int signum)
+std::unique_ptr<Child> Child::createLocal(PrimarySourceProvider & primarySourceProvider)
+{
+    return std::unique_ptr<Child>(new Child(primarySourceProvider));
+}
+
+std::unique_ptr<Child> Child::createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock,
+                                         int numConnections)
+{
+    return std::unique_ptr<Child>(new Child(primarySourceProvider, sock, numConnections));
+}
+
+Child * Child::getSingleton()
+{
+    return gSingleton.load(std::memory_order_acquire);
+}
+
+void Child::signalHandler(int signum)
 {
     static bool beenHere = false;
+
     if (beenHere == true) {
         logg.logMessage("Gator is being forced to shut down.");
         exit(1);
     }
-    beenHere = true;
-    logg.logMessage("Gator is shutting down.");
-    if (signum == SIGALRM || !primarySource) {
-        exit(1);
-    }
     else {
-        child->endSession();
-        alarm(5); // Safety net in case endSession does not complete within 5 seconds
-    }
-}
+        beenHere = true;
+        logg.logMessage("Gator is shutting down.");
 
-static void *durationThread(void *)
-{
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-duration", 0, 0, 0);
-    sem_wait(&startProfile);
-    if (gSessionData.mSessionIsActive) {
-        // Time out after duration seconds
-        // Add a second for host-side filtering
-        sleep(gSessionData.mDuration + 1);
-        if (gSessionData.mSessionIsActive) {
-            logg.logMessage("Duration expired.");
-            child->endSession();
+        Child * const singleton = getSingleton();
+        if ((signum == SIGALRM) || (singleton == nullptr)) {
+            exit(1);
+        }
+        else {
+            singleton->endSession();
+            alarm(5); // Safety net in case endSession does not complete within 5 seconds
         }
     }
-    logg.logMessage("Exit duration thread");
-    return 0;
 }
 
-static void *stopThread(void *)
+void * Child::durationThreadStaticEntryPoint(void * thisPtr)
 {
-    OlySocket* socket = child->socket;
+    Child * const localChild = reinterpret_cast<Child *>(thisPtr);
 
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-stopper", 0, 0, 0);
-    while (gSessionData.mSessionIsActive) {
-        // This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
-        unsigned char header[5];
-        const int result = socket->receiveNBytes((char*) &header, sizeof(header));
-        const char type = header[0];
-        const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
-        if (result == -1) {
-            child->endSession();
-        }
-        else if (result > 0) {
-            if ((type != COMMAND_APC_STOP) && (type != COMMAND_PING)) {
-                logg.logMessage("INVESTIGATE: Received unknown command type %d", type);
-            }
-            else {
-                // verify a length of zero
-                if (length == 0) {
-                    if (type == COMMAND_APC_STOP) {
-                        logg.logMessage("Stop command received.");
-                        child->endSession();
-                    }
-                    else {
-                        // Ping is used to make sure gator is alive and requires an ACK as the response
-                        logg.logMessage("Ping command received.");
-                        sender->writeData(NULL, 0, RESPONSE_ACK);
-                    }
-                }
-                else {
-                    logg.logMessage("INVESTIGATE: Received stop command but with length = %d", length);
-                }
-            }
-        }
-    }
+    runtime_assert(localChild != nullptr, "durationThreadStaticEntryPoint called with thisPtr == nullptr");
 
-    logg.logMessage("Exit stop thread");
-    return 0;
+    return localChild->durationThreadEntryPoint();
 }
 
-static void *senderThread(void *)
+void * Child::stopThreadStaticEntryPoint(void * thisPtr)
 {
-    char end_sequence[] = { RESPONSE_APC_DATA, 0, 0, 0, 0 };
+    Child * const localChild = reinterpret_cast<Child *>(thisPtr);
 
-    sem_post(&senderThreadStarted);
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-sender", 0, 0, 0);
-    sem_wait(&haltPipeline);
+    runtime_assert(localChild != nullptr, "stopThreadStaticEntryPoint called with thisPtr == nullptr");
 
-    while ((!externalSource->isDone())
-            || ((midgardHwSource != NULL) && (!midgardHwSource->isDone()))
-            || ((userSpaceSource != NULL) && (!userSpaceSource->isDone()))
-            || (!primarySource->isDone())) {
-        sem_wait(&senderSem);
-
-        externalSource->write(sender);
-        if (midgardHwSource != NULL) {
-            midgardHwSource->write(sender);
-        }
-        if (userSpaceSource != NULL) {
-            userSpaceSource->write(sender);
-        }
-        primarySource->write(sender);
-    }
-
-    // write end-of-capture sequence
-    if (!gSessionData.mLocalCapture) {
-        sender->writeData(end_sequence, sizeof(end_sequence), RESPONSE_APC_DATA);
-    }
-
-    logg.logMessage("Exit sender thread");
-    return 0;
+    return localChild->stopThreadEntryPoint();
 }
 
-Child::Child()
+void * Child::senderThreadStaticEntryPoint(void * thisPtr)
 {
-    initialization();
-    gSessionData.mLocalCapture = true;
+    Child * const localChild = reinterpret_cast<Child *>(thisPtr);
+
+    runtime_assert(localChild != nullptr, "senderThreadStaticEntryPoint called with thisPtr == nullptr");
+
+    return localChild->senderThreadEntryPoint();
 }
 
-Child::Child(OlySocket* sock, int conn)
+Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock, int numConnections)
+        : haltPipeline(),
+          senderThreadStarted(),
+          startProfile(),
+          senderSem(),
+          primarySource(),
+          externalSource(),
+          userSpaceSource(),
+          midgardHwSource(),
+          sender(),
+          primarySourceProvider(psp),
+          socket(sock),
+          numExceptions(0),
+          mNumConnections(numConnections)
 {
-    initialization();
-    socket = sock;
-    mNumConnections = conn;
-}
+    // update singleton
+    const Child * const prevSingleton = gSingleton.exchange(this, std::memory_order_acq_rel);
+    runtime_assert(prevSingleton == nullptr, "Two Child instances active concurrently");
 
-Child::~Child()
-{
-}
-
-void Child::initialization()
-{
     // Set up different handlers for signals
-    gSessionData.mSessionIsActive = true;
-    signal(SIGINT, child_handler);
-    signal(SIGTERM, child_handler);
-    signal(SIGABRT, child_handler);
-    signal(SIGALRM, child_handler);
-    socket = NULL;
-    numExceptions = 0;
-    mNumConnections = 0;
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
+    signal(SIGABRT, signalHandler);
+    signal(SIGALRM, signalHandler);
 
     // Initialize semaphores
     sem_init(&senderThreadStarted, 0, 0);
     sem_init(&startProfile, 0, 0);
     sem_init(&senderSem, 0, 0);
+
+    gSessionData.mSessionIsActive = true;
+    gSessionData.mLocalCapture = local;
 }
 
-void Child::endSession()
+Child::Child(PrimarySourceProvider & psp)
+        : Child(true, psp, nullptr, 0)
 {
-    gSessionData.mSessionIsActive = false;
-    primarySource->interrupt();
-    externalSource->interrupt();
-    if (midgardHwSource != NULL) {
-        midgardHwSource->interrupt();
-    }
-    if (userSpaceSource != NULL) {
-        userSpaceSource->interrupt();
-    }
-    sem_post(&haltPipeline);
+}
+
+Child::Child(PrimarySourceProvider & psp, OlySocket & sock, int conn)
+        : Child(false, psp, &sock, conn)
+{
+}
+
+Child::~Child()
+{
+    // update singleton
+    const Child * const prevSingleton = gSingleton.exchange(nullptr, std::memory_order_acq_rel);
+    runtime_assert(prevSingleton == this, "Exchanged Child::gSingleton with something other than this");
 }
 
 void Child::run()
 {
-    LocalCapture* localCapture = NULL;
+    std::unique_ptr<LocalCapture> localCapture;
     pthread_t durationThreadID, stopThreadID, senderThreadID;
 
-    prctl(PR_SET_NAME, (unsigned long) &"gatord-child", 0, 0, 0);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
 
     // Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
     mxmlSetWrapMargin(0);
 
     // Instantiate the Sender - must be done first, after which error messages can be sent
-    sender = new Sender(socket);
+    sender.reset(new Sender(socket));
 
     if (mNumConnections > 1) {
         logg.logError("Session already in progress");
@@ -260,11 +188,10 @@ void Child::run()
     }
 
     // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
-    if (!gSessionData.mPerf.isSetup()) {
-        primarySource = new DriverSource(&senderSem, &startProfile);
-    }
-    else {
-        primarySource = new PerfSource(&senderSem, &startProfile);
+    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, startProfile);
+    if (primarySource == nullptr) {
+        logg.logError("Failed to init primary capture source");
+        handleException();
     }
 
     // Initialize all drivers
@@ -293,7 +220,7 @@ void Child::run()
             handleException();
         }
         gSessionData.parseSessionXML(xmlString);
-        localCapture = new LocalCapture();
+        localCapture.reset(new LocalCapture());
         localCapture->createAPCDirectory(gSessionData.mTargetPath);
         localCapture->copyImages(gSessionData.mImages);
         localCapture->write(xmlString);
@@ -304,19 +231,20 @@ void Child::run()
     bool thread_creation_success = true;
     // set up stop thread early, so that ping commands get replied to, even if the
     // setup phase below takes a long time.
-    if (socket && pthread_create(&stopThreadID, NULL, stopThread, NULL)) {
+    if (socket && pthread_create(&stopThreadID, NULL, stopThreadStaticEntryPoint, this)) {
         thread_creation_success = false;
     }
 
-    if (gSessionData.mKmod.isMaliCapture() && (gSessionData.mSampleRate == 0)) {
-        logg.logError("Mali counters are not supported with Sample Rate: None.");
+    if (gSessionData.mPrimarySource->supportsMaliCapture()
+            && !gSessionData.mPrimarySource->supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
+        logg.logError("Mali counters are not supported with Sample Rate: %i.", gSessionData.mSampleRate);
         handleException();
     }
 
     // Initialize ftrace source before child as it's slow and dependens on nothing else
     // If initialized later, us gator with ftrace has time sync issues
     // Must be initialized before senderThread is started as senderThread checks externalSource
-    externalSource = new ExternalSource(&senderSem);
+    externalSource.reset(new ExternalSource(*this, &senderSem));
     if (!externalSource->prepare()) {
         logg.logError("Unable to prepare external source for capture");
         handleException();
@@ -325,18 +253,13 @@ void Child::run()
 
     // Must be after session XML is parsed
     if (!primarySource->prepare()) {
-        if (gSessionData.mPerf.isSetup()) {
-            logg.logError("Unable to communicate with the perf API, please ensure that CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER are enabled. Please refer to streamline/gator/README.md for more information.");
-        }
-        else {
-            logg.logError("Unable to prepare gator driver for capture");
-        }
+        logg.logError("%s", gSessionData.mPrimarySource->getPrepareFailedMessage());
         handleException();
     }
 
     // initialize midgard hardware counters
     if (gSessionData.mMaliHwCntrs.countersEnabled()) {
-        midgardHwSource = new mali_userspace::MaliHwCntrSource(&senderSem);
+        midgardHwSource.reset(new mali_userspace::MaliHwCntrSource(*this, &senderSem));
         if (!midgardHwSource->prepare()) {
             logg.logError("Unable to prepare midgard hardware counters source for capture");
             handleException();
@@ -348,21 +271,22 @@ void Child::run()
     sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
 
     // Create the duration and sender threads
-    if (gSessionData.mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThread, NULL)) {
+    if (gSessionData.mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThreadStaticEntryPoint, this)) {
         thread_creation_success = false;
     }
-    else if (pthread_create(&senderThreadID, NULL, senderThread, NULL)) {
+    else if (pthread_create(&senderThreadID, NULL, senderThreadStaticEntryPoint, this)) {
         thread_creation_success = false;
     }
 
     bool startUSSource = false;
-    for (int i = 0; i < ARRAY_LENGTH(gSessionData.mUsDrivers); ++i) {
-        if (gSessionData.mUsDrivers[i]->countersEnabled()) {
+    for (PolledDriver * usDriver : gSessionData.mPrimarySource->getAdditionalPolledDrivers()) {
+        if (usDriver->countersEnabled()) {
             startUSSource = true;
+            break;
         }
     }
     if (startUSSource) {
-        userSpaceSource = new UserSpaceSource(&senderSem);
+        userSpaceSource.reset(new UserSpaceSource(*this, &senderSem));
         if (!userSpaceSource->prepare()) {
             logg.logError("Unable to prepare userspace source for capture");
             handleException();
@@ -413,10 +337,146 @@ void Child::run()
 
     logg.logMessage("Profiling ended.");
 
-    delete userSpaceSource;
-    delete midgardHwSource;
-    delete externalSource;
-    delete primarySource;
-    delete sender;
-    delete localCapture;
+    userSpaceSource.reset();
+    midgardHwSource.reset();
+    externalSource.reset();
+    primarySource.reset();
+    sender.reset();
+    localCapture.reset();
+}
+
+void Child::endSession()
+{
+    gSessionData.mSessionIsActive = false;
+    if (primarySource != nullptr) {
+        primarySource->interrupt();
+    }
+    if (externalSource != nullptr) {
+        externalSource->interrupt();
+    }
+    if (midgardHwSource != nullptr) {
+        midgardHwSource->interrupt();
+    }
+    if (userSpaceSource != nullptr) {
+        userSpaceSource->interrupt();
+    }
+    sem_post(&haltPipeline);
+}
+
+void Child::cleanupException()
+{
+    if (numExceptions++ > 0) {
+        // it is possible one of the below functions itself can cause an exception, thus allow only one exception
+        logg.logMessage("Received multiple exceptions, terminating the child");
+
+        // Something is really wrong, exit immediately
+        _exit(1);
+    }
+
+    if (socket) {
+        if (sender) {
+            // send the error, regardless of the command sent by Streamline
+            sender->writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
+
+            // cannot close the socket before Streamline issues the command, so wait for the command before exiting
+            if (gSessionData.mWaitingOnCommand) {
+                char discard;
+                socket->receiveNBytes(&discard, 1);
+            }
+
+            // Ensure all data is flushed
+            socket->shutdownConnection();
+
+            // this indirectly calls close socket which will ensure the data has been sent
+            sender.reset();
+        }
+    }
+}
+
+void * Child::durationThreadEntryPoint()
+{
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-duration"), 0, 0, 0);
+    sem_wait(&startProfile);
+    if (gSessionData.mSessionIsActive) {
+        // Time out after duration seconds
+        // Add a second for host-side filtering
+        sleep(gSessionData.mDuration + 1);
+        if (gSessionData.mSessionIsActive) {
+            logg.logMessage("Duration expired.");
+            endSession();
+        }
+    }
+    logg.logMessage("Exit duration thread");
+    return nullptr;
+}
+
+void * Child::stopThreadEntryPoint()
+{
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-stopper"), 0, 0, 0);
+    while (gSessionData.mSessionIsActive) {
+        // This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
+        unsigned char header[5];
+        const int result = socket->receiveNBytes(reinterpret_cast<char *>(&header), sizeof(header));
+        const char type = header[0];
+        const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
+        if (result == -1) {
+            endSession();
+        }
+        else if (result > 0) {
+            if ((type != COMMAND_APC_STOP) && (type != COMMAND_PING)) {
+                logg.logMessage("INVESTIGATE: Received unknown command type %d", type);
+            }
+            else {
+                // verify a length of zero
+                if (length == 0) {
+                    if (type == COMMAND_APC_STOP) {
+                        logg.logMessage("Stop command received.");
+                        endSession();
+                    }
+                    else {
+                        // Ping is used to make sure gator is alive and requires an ACK as the response
+                        logg.logMessage("Ping command received.");
+                        sender->writeData(NULL, 0, RESPONSE_ACK);
+                    }
+                }
+                else {
+                    logg.logMessage("INVESTIGATE: Received stop command but with length = %d", length);
+                }
+            }
+        }
+    }
+
+    logg.logMessage("Exit stop thread");
+    return nullptr;
+}
+
+void * Child::senderThreadEntryPoint()
+{
+    char end_sequence[] = { RESPONSE_APC_DATA, 0, 0, 0, 0 };
+
+    sem_post(&senderThreadStarted);
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-sender"), 0, 0, 0);
+    sem_wait(&haltPipeline);
+
+    while ((!externalSource->isDone()) || ((midgardHwSource != NULL) && (!midgardHwSource->isDone()))
+            || ((userSpaceSource != NULL) && (!userSpaceSource->isDone())) || (!primarySource->isDone())) {
+        sem_wait(&senderSem);
+
+        externalSource->write(sender.get());
+        if (midgardHwSource != NULL) {
+            midgardHwSource->write(sender.get());
+        }
+        if (userSpaceSource != NULL) {
+            userSpaceSource->write(sender.get());
+        }
+        primarySource->write(sender.get());
+    }
+
+    // write end-of-capture sequence
+    if (!gSessionData.mLocalCapture) {
+        sender->writeData(end_sequence, sizeof(end_sequence), RESPONSE_APC_DATA);
+    }
+
+    logg.logMessage("Exit sender thread");
+    return nullptr;
 }

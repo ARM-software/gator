@@ -20,15 +20,14 @@ class Fifo;
 class DriverSource : public Source
 {
 public:
-    DriverSource(sem_t *senderSem, sem_t *startProfile);
+    DriverSource(Child & child, sem_t & senderSem, sem_t & startProfile);
     ~DriverSource();
 
-    bool prepare();
-    void run();
-    void interrupt();
-
-    bool isDone();
-    void write(Sender *sender);
+    virtual bool prepare() override;
+    virtual void run() override;
+    virtual void interrupt() override;
+    virtual bool isDone() override;
+    virtual void write(Sender * sender) override;
 
     static void checkVersion();
     static int readIntDriver(const char *fullpath, int *value);
@@ -45,15 +44,14 @@ private:
 
     Buffer *mBuffer;
     Fifo *mFifo;
-    sem_t * const mSenderSem;
-    sem_t * const mStartProfile;
+    sem_t & mSenderSem;
+    sem_t & mStartProfile;
     int mBufferSize;
     int mBufferFD;
     int mLength;
 
     // Intentionally unimplemented
-    DriverSource(const DriverSource &);
-    DriverSource &operator=(const DriverSource &);
+    CLASS_DELETE_COPY_MOVE(DriverSource);
 };
 
 #endif // DRIVERSOURCE_H

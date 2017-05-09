@@ -9,6 +9,8 @@
 #ifndef ANNOTATELISTENER_H
 #define ANNOTATELISTENER_H
 
+#include "ClassBoilerPlate.h"
+
 struct AnnotateClient;
 class OlyServerSocket;
 
@@ -33,8 +35,7 @@ private:
     OlyServerSocket *mUds;
 
     // Intentionally unimplemented
-    AnnotateListener(const AnnotateListener &);
-    AnnotateListener &operator=(const AnnotateListener &);
+    CLASS_DELETE_COPY_MOVE(AnnotateListener);
 };
 
 #endif // ANNOTATELISTENER_H

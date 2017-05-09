@@ -36,8 +36,7 @@ namespace mali_userspace
             uint32_t mCounterIndex;
 
             // Intentionally undefined
-            MaliHwCntr(const MaliHwCntr &);
-            MaliHwCntr &operator=(const MaliHwCntr &);
+            CLASS_DELETE_COPY_MOVE(MaliHwCntr);
         };
     }
 
@@ -45,6 +44,7 @@ namespace mali_userspace
         :   mReader (NULL),
             mEnabledCounterKeys (NULL)
     {
+        query();
     }
 
     MaliHwCntrDriver::~MaliHwCntrDriver()
@@ -78,8 +78,8 @@ namespace mali_userspace
         }
 
         // create reader
-        mReader = new MaliHwCntrReader(device, device->getNumberOfShaderCores() * 4, ~0u, ~0u, ~0u, ~0u);
-        if (!mReader->isInitialized()) {
+        mReader = MaliHwCntrReader::create(device);
+        if ((mReader == NULL) || (!mReader->isInitialized())) {
             return false;
         }
 
@@ -129,7 +129,10 @@ namespace mali_userspace
 
     bool MaliHwCntrDriver::claimCounter(const Counter & counter) const
     {
-        const_cast<MaliHwCntrDriver *>(this)->query();
+        // do not claim if another driver already has
+        if (counter.getDriver() != NULL) {
+            return false;
+        }
 
         return super::claimCounter(counter);
     }

@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include <memory>
+
+#include "ClassBoilerPlate.h"
+
 class OlySocket;
 
 enum
@@ -33,13 +37,12 @@ public:
 
 private:
     OlySocket* mDataSocket;
-    FILE* mDataFile;
-    char* mDataFileName;
+    std::unique_ptr<FILE, int(*)(FILE*)> mDataFile;
+    std::unique_ptr<char[]> mDataFileName;
     pthread_mutex_t mSendMutex;
 
     // Intentionally unimplemented
-    Sender(const Sender &);
-    Sender &operator=(const Sender &);
+    CLASS_DELETE_COPY_MOVE(Sender);
 };
 
 #endif //__SENDER_H__

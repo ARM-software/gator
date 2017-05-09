@@ -10,13 +10,15 @@
 #define SOURCE_H
 
 #include <pthread.h>
+#include "ClassBoilerPlate.h"
 
+class Child;
 class Sender;
 
 class Source
 {
 public:
-    Source();
+    Source(Child & child);
     virtual ~Source();
 
     virtual bool prepare() = 0;
@@ -26,7 +28,12 @@ public:
     void join();
 
     virtual bool isDone() = 0;
-    virtual void write(Sender *sender) = 0;
+    virtual void write(Sender * sender) = 0;
+
+protected:
+
+    // active child object
+    Child & mChild;
 
 private:
     static void *runStatic(void *arg);
@@ -34,8 +41,7 @@ private:
     pthread_t mThreadID;
 
     // Intentionally undefined
-    Source(const Source &);
-    Source &operator=(const Source &);
+    CLASS_DELETE_COPY_MOVE(Source);
 };
 
 #endif // SOURCE_H

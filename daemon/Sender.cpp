@@ -8,6 +8,8 @@
 
 #include "Sender.h"
 
+#include <algorithm>
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -18,10 +20,11 @@
 #include "SessionData.h"
 
 Sender::Sender(OlySocket* socket)
+        : mDataSocket(socket),
+          mDataFile(nullptr, fclose),
+          mDataFileName(nullptr),
+          mSendMutex()
 {
-    mDataFile = NULL;
-    mDataSocket = NULL;
-
     // Set up the socket connection
     if (socket) {
         char streamline[64] = { 0 };
@@ -60,9 +63,6 @@ Sender::~Sender()
         mDataSocket->closeSocket();
         mDataSocket = NULL;
     }
-    if (mDataFile != NULL) {
-        fclose(mDataFile);
-    }
 }
 
 void Sender::createDataFile(char* apcDir)
@@ -71,11 +71,11 @@ void Sender::createDataFile(char* apcDir)
         return;
     }
 
-    mDataFileName = (char*) malloc(strlen(apcDir) + 12);
-    sprintf(mDataFileName, "%s/0000000000", apcDir);
-    mDataFile = fopen_cloexec(mDataFileName, "wb");
+    mDataFileName.reset(new char[strlen(apcDir) + 12]);
+    sprintf(mDataFileName.get(), "%s/0000000000", apcDir);
+    mDataFile.reset(fopen_cloexec(mDataFileName.get(), "wb"));
     if (!mDataFile) {
-        logg.logError("Failed to open binary file: %s", mDataFileName);
+        logg.logError("Failed to open binary file: %s", mDataFileName.get());
         handleException();
     }
 }
@@ -108,14 +108,14 @@ void Sender::writeData(const char* data, int length, int type, bool ignoreLockEr
             unsigned char header[5];
             header[0] = type;
             Buffer::writeLEInt(header + 1, length);
-            mDataSocket->send((char*) &header, sizeof(header));
+            mDataSocket->send(reinterpret_cast<const char *>(&header), sizeof(header));
         }
 
         // 100Kbits/sec * alarmDuration sec / 8 bits/byte
         const int chunkSize = 100 * 1000 * alarmDuration / 8;
         int pos = 0;
         while (true) {
-            mDataSocket->send(data + pos, min(length - pos, chunkSize));
+            mDataSocket->send(data + pos, std::min(length - pos, chunkSize));
             pos += chunkSize;
             if (pos >= length) {
                 break;
@@ -134,8 +134,8 @@ void Sender::writeData(const char* data, int length, int type, bool ignoreLockEr
     if (mDataFile && type == RESPONSE_APC_DATA) {
         logg.logMessage("Writing data with length %d", length);
         // Send data to the data file
-        if (fwrite(data, 1, length, mDataFile) != (unsigned int) length) {
-            logg.logError("Failed writing binary file %s", mDataFileName);
+        if (fwrite(data, 1, length, mDataFile.get()) != static_cast<size_t>(length)) {
+            logg.logError("Failed writing binary file %s", mDataFileName.get());
             handleException();
         }
     }

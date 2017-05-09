@@ -14,6 +14,7 @@
 // Use a snapshot of perf_event.h as it may be more recent than what is on the target and if not newer features won't be supported anyways
 #include "k/perf_event.h"
 
+#include "ClassBoilerPlate.h"
 #include "Config.h"
 
 class Buffer;
@@ -44,7 +45,7 @@ enum
 class PerfGroup
 {
 public:
-    PerfGroup(PerfBuffer * const pb);
+    PerfGroup(PerfBuffer * pb, bool legacySupport, bool clockIdSupport);
     ~PerfGroup();
 
     bool createCpuGroup(const uint64_t currTime, Buffer * const buffer);
@@ -73,10 +74,11 @@ private:
     // Offset in mAttrs, mFlags, mClusters and mKeys of the group leaders for each perf type
     int mLeaders[16];
     int mSchedSwitchId;
+    bool mLegacySupport;
+    bool mClockIdSupport;
 
     // Intentionally undefined
-    PerfGroup(const PerfGroup &);
-    PerfGroup &operator=(const PerfGroup &);
+    CLASS_DELETE_COPY_MOVE(PerfGroup);
 };
 
 #endif // PERF_GROUP

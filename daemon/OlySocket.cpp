@@ -78,6 +78,7 @@ int accept_cloexec(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 }
 
 OlyServerSocket::OlyServerSocket(int port)
+        : mFDServer(0)
 {
 #ifdef WIN32
     WSADATA wsaData;
@@ -104,6 +105,7 @@ OlySocket::OlySocket(int socketID)
 })
 
 OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const bool calculateAddrlen)
+        : mFDServer(0)
 {
     // Create socket
     mFDServer = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
@@ -114,13 +116,13 @@ OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const 
 
     // Create sockaddr_in structure, ensuring non-populated fields are zero
     struct sockaddr_un sockaddr;
-    memset((void*) &sockaddr, 0, sizeof(sockaddr));
+    memset(&sockaddr, 0, sizeof(sockaddr));
     sockaddr.sun_family = AF_UNIX;
     memcpy(sockaddr.sun_path, path, MIN(pathSize, sizeof(sockaddr.sun_path)));
     sockaddr.sun_path[sizeof(sockaddr.sun_path) - 1] = '\0';
 
     // Bind the socket to an address
-    if (bind(mFDServer, (const struct sockaddr*) &sockaddr,
+    if (bind(mFDServer, reinterpret_cast<const struct sockaddr*>(&sockaddr),
              calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
         logg.logError("Binding of server socket failed.");
         handleException();
@@ -142,12 +144,12 @@ int OlySocket::connect(const char* path, const size_t pathSize, const bool calcu
 
     // Create sockaddr_in structure, ensuring non-populated fields are zero
     struct sockaddr_un sockaddr;
-    memset((void*) &sockaddr, 0, sizeof(sockaddr));
+    memset(&sockaddr, 0, sizeof(sockaddr));
     sockaddr.sun_family = AF_UNIX;
     memcpy(sockaddr.sun_path, path, MIN(pathSize, sizeof(sockaddr.sun_path)));
     sockaddr.sun_path[sizeof(sockaddr.sun_path) - 1] = '\0';
 
-    if (::connect(fd, (const struct sockaddr*) &sockaddr,
+    if (::connect(fd, reinterpret_cast<const struct sockaddr*>(&sockaddr),
                   calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
         close(fd);
         return -1;
@@ -213,26 +215,26 @@ void OlyServerSocket::createServerSocket(int port)
 
     // Enable address reuse, another solution would be to create the server socket once and only close it when the object exits
     int on = 1;
-    if (setsockopt(mFDServer, SOL_SOCKET, SO_REUSEADDR, (const char*) &on, sizeof(on)) != 0) {
+    if (setsockopt(mFDServer, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) != 0) {
         logg.logError("Setting server socket reuse option failed");
         handleException();
     }
 
     // Listen on both IPv4 and IPv6
     on = 0;
-    if (setsockopt(mFDServer, IPPROTO_IPV6, IPV6_V6ONLY, (const char*) &on, sizeof(on)) != 0) {
+    if (setsockopt(mFDServer, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) != 0) {
         logg.logMessage("setsockopt IPV6_V6ONLY failed");
     }
 
     // Create sockaddr_in structure, ensuring non-populated fields are zero
     struct sockaddr_in6 sockaddr;
-    memset((void*) &sockaddr, 0, sizeof(sockaddr));
+    memset(&sockaddr, 0, sizeof(sockaddr));
     sockaddr.sin6_family = family;
     sockaddr.sin6_port = htons(port);
     sockaddr.sin6_addr = in6addr_any;
 
     // Bind the socket to an address
-    if (bind(mFDServer, (const struct sockaddr*) &sockaddr, sizeof(sockaddr)) < 0) {
+    if (bind(mFDServer, reinterpret_cast<const struct sockaddr*>(&sockaddr), sizeof(sockaddr)) < 0) {
         logg.logError("Binding of server socket on port %i failed.\nIs an instance already running or is another application using that port?", port);
         handleException();
     }

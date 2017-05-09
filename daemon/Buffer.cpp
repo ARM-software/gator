@@ -7,54 +7,20 @@
  */
 
 #include "Buffer.h"
-
 #include "Logging.h"
 #include "Sender.h"
 #include "SessionData.h"
+#include "lib/Assert.h"
 
 #define mask (mSize - 1)
 #define FRAME_HEADER_SIZE 3
-
-enum
-{
-    CODE_PEA = 1,
-    CODE_KEYS = 2,
-    CODE_FORMAT = 3,
-    CODE_MAPS = 4,
-    CODE_COMM = 5,
-    CODE_KEYS_OLD = 6,
-    CODE_ONLINE_CPU = 7,
-    CODE_OFFLINE_CPU = 8,
-    CODE_KALLSYMS = 9,
-    CODE_COUNTERS = 10,
-    CODE_HEADER_PAGE = 11,
-    CODE_HEADER_EVENT = 12,
-};
-
-// Summary Frame Messages
-enum
-{
-    MESSAGE_SUMMARY = 1,
-    MESSAGE_CORE_NAME = 3,
-};
-
-// From gator_marshaling.c
-#define NEWLINE_CANARY \
-    /* Unix */ \
-    "1\n" \
-    /* Windows */ \
-    "2\r\n" \
-    /* Mac OS */ \
-    "3\r" \
-    /* RISC OS */ \
-    "4\n\r" \
-    /* Add another character so the length isn't 0x0a bytes */ \
-    "5"
+#define INVALID_LAST_EVENT_TIME (~0ull)
 
 Buffer::Buffer(const int32_t core, const int32_t buftype, const int size, sem_t * const readerSem)
         : mBuf(new char[size]),
           mReaderSem(readerSem),
           mCommitTime(gSessionData.mLiveRate),
+          mWriterSem(),
           mSize(size),
           mReadPos(0),
           mWritePos(0),
@@ -62,14 +28,20 @@ Buffer::Buffer(const int32_t core, const int32_t buftype, const int size, sem_t 
           mAvailable(true),
           mIsDone(false),
           mCore(core),
-          mBufType(buftype)
+          mBufType(buftype),
+          mLastEventTime(INVALID_LAST_EVENT_TIME),
+          mLastEventCore(core),
+          mLastEventTid(0)
 {
     if ((mSize & mask) != 0) {
         logg.logError("Buffer size is not a power of 2");
         handleException();
     }
     sem_init(&mWriterSem, 0, 0);
-    frame();
+
+    if (mBufType != FRAME_UNKNOWN) {
+        frame();
+    }
 }
 
 Buffer::~Buffer()
@@ -205,7 +177,7 @@ void Buffer::commit(const uint64_t time, const bool force)
         }
     }
 
-    if (!mIsDone) {
+    if ((!mIsDone) && (mBufType != FRAME_UNKNOWN)) {
         frame();
     }
 
@@ -224,7 +196,23 @@ void Buffer::check(const uint64_t time)
     }
 }
 
-void Buffer::packInt(char * const buf, const int size, int &writePos, int32_t x)
+int Buffer::sizeOfPackInt(int32_t x)
+{
+    char tmp[Buffer::MAXSIZE_PACK32];
+    int writePos = 0;
+
+    return Buffer::packInt(tmp, Buffer::MAXSIZE_PACK32, writePos, x);
+}
+
+int Buffer::sizeOfPackInt64(int64_t x)
+{
+    char tmp[Buffer::MAXSIZE_PACK64];
+    int writePos = 0;
+
+    return Buffer::packInt64(tmp, Buffer::MAXSIZE_PACK64, writePos, x);
+}
+
+int Buffer::packInt(char * const buf, const int size, int &writePos, int32_t x)
 {
     int packedBytes = 0;
     int more = true;
@@ -245,14 +233,16 @@ void Buffer::packInt(char * const buf, const int size, int &writePos, int32_t x)
     }
 
     writePos = (writePos + packedBytes) & /*mask*/(size - 1);
+
+    return packedBytes;
 }
 
-void Buffer::packInt(int32_t x)
+int Buffer::packInt(int32_t x)
 {
-    packInt(mBuf, mSize, mWritePos, x);
+    return packInt(mBuf, mSize, mWritePos, x);
 }
 
-void Buffer::packInt64(char * const buf, const int size, int &writePos, int64_t x)
+int Buffer::packInt64(char * const buf, const int size, int &writePos, int64_t x)
 {
     int packedBytes = 0;
     int more = true;
@@ -273,11 +263,13 @@ void Buffer::packInt64(char * const buf, const int size, int &writePos, int64_t 
     }
 
     writePos = (writePos + packedBytes) & /*mask*/(size - 1);
+
+    return packedBytes;
 }
 
-void Buffer::packInt64(int64_t x)
+int Buffer::packInt64(int64_t x)
 {
-    packInt64(mBuf, mSize, mWritePos, x);
+    return packInt64(mBuf, mSize, mWritePos, x);
 }
 
 void Buffer::writeBytes(const void * const data, size_t count)
@@ -299,14 +291,66 @@ void Buffer::writeString(const char * const str)
 
 void Buffer::frame()
 {
-    if (!gSessionData.mLocalCapture) {
-        packInt(RESPONSE_APC_DATA);
+    runtime_assert(mBufType != FRAME_UNKNOWN, "mBufType == FRAME_UNKNOWN");
+
+    beginFrameOrMessage(mBufType, mCore, true);
+}
+
+int Buffer::beginFrameOrMessage(int32_t frameType, int32_t core)
+{
+    runtime_assert((mBufType == frameType) || (mBufType == FRAME_UNKNOWN), "invalid frameType");
+    runtime_assert((mCore == core) || (mBufType == FRAME_UNKNOWN), "invalid core");
+
+    return beginFrameOrMessage(frameType, core, false);
+}
+
+bool Buffer::frameTypeSendsCpu(int32_t frameType)
+{
+   return ((frameType == FRAME_BLOCK_COUNTER) || (frameType == FRAME_PERF_ATTRS) || (frameType == FRAME_PERF)
+                    || (frameType == FRAME_NAME) || (frameType == FRAME_SCHED_TRACE));
+}
+
+int Buffer::beginFrameOrMessage(int32_t frameType, int32_t core, bool force)
+{
+    force |= (mBufType == FRAME_UNKNOWN);
+
+    if (force)
+    {
+        if (!gSessionData.mLocalCapture) {
+            packInt(RESPONSE_APC_DATA);
+        }
+
+        const int result = mWritePos;
+
+        // Reserve space for the length
+        mWritePos += sizeof(int32_t);
+
+        packInt(frameType);
+        if (frameTypeSendsCpu(frameType)) {
+            packInt(core);
+            mLastEventTime = INVALID_LAST_EVENT_TIME;
+            mLastEventCore = core;
+            mLastEventTid = 0;
+        }
+
+        return result;
     }
-    // Reserve space for the length
-    mWritePos += sizeof(int32_t);
-    packInt(mBufType);
-    if ((mBufType == FRAME_BLOCK_COUNTER) || (mBufType == FRAME_PERF_ATTRS) || (mBufType == FRAME_PERF)) {
-        packInt(mCore);
+    else
+    {
+        return mWritePos;
+    }
+}
+
+void Buffer::endFrame(uint64_t currTime, bool abort, int writePos)
+{
+    if (abort) {
+        mWritePos = writePos;
+    }
+    else if (mBufType == FRAME_UNKNOWN) {
+        commit(currTime);
+    }
+    else {
+        check(currTime);
     }
 }
 
@@ -345,44 +389,106 @@ void Buffer::coreName(const uint64_t currTime, const int core, const int cpuid, 
 
 bool Buffer::eventHeader(const uint64_t curr_time)
 {
-    bool retval = false;
     if (checkSpace(MAXSIZE_PACK32 + MAXSIZE_PACK64)) {
         // key of zero indicates a timestamp
         packInt(0);
         packInt64(curr_time);
-        retval = true;
+
+        mLastEventTime = curr_time;
+        mLastEventTid = 0; // this is also reset in CommonProtocolV22 when timestamp changes
+
+        return true;
     }
 
-    return retval;
+    return false;
+}
+
+bool Buffer::eventCore(const int core)
+{
+    if (checkSpace(2 * MAXSIZE_PACK32)) {
+        // key of 2 indicates a core
+        packInt(2);
+        packInt(core);
+
+        mLastEventCore = core;
+
+        return true;
+    }
+
+    return false;
 }
 
 bool Buffer::eventTid(const int tid)
 {
-    bool retval = false;
     if (checkSpace(2 * MAXSIZE_PACK32)) {
         // key of 1 indicates a tid
         packInt(1);
         packInt(tid);
-        retval = true;
+
+        mLastEventTid = tid;
+
+        return true;
     }
 
-    return retval;
+    return false;
 }
 
-void Buffer::event(const int key, const int32_t value)
+bool Buffer::event(const int key, const int32_t value)
 {
     if (checkSpace(2 * MAXSIZE_PACK32)) {
         packInt(key);
         packInt(value);
+
+        return true;
     }
+
+    return false;
 }
 
-void Buffer::event64(const int key, const int64_t value)
+bool Buffer::event64(const int key, const int64_t value)
 {
     if (checkSpace(MAXSIZE_PACK64 + MAXSIZE_PACK32)) {
         packInt(key);
         packInt64(value);
+
+        return true;
     }
+
+    return false;
+}
+
+bool Buffer::counterMessage(uint64_t curr_time, int core, int key, int64_t value)
+{
+    return threadCounterMessage(curr_time, core, 0, key, value);
+}
+
+bool Buffer::threadCounterMessage(uint64_t curr_time, int core, int tid, int key, int64_t value)
+{
+    if ((mLastEventTime != curr_time) || (mLastEventTime == INVALID_LAST_EVENT_TIME)) {
+        if (!eventHeader(curr_time)) {
+            return false;
+        }
+    }
+
+    if (mLastEventCore != core) {
+        if (!eventCore(core)) {
+            return false;
+        }
+    }
+
+    if (mLastEventTid != tid) {
+        if (!eventTid(tid)) {
+            return false;
+        }
+    }
+
+    if (!event64(key, value)) {
+        return false;
+    }
+
+    check(curr_time);
+
+    return true;
 }
 
 void Buffer::marshalPea(const uint64_t currTime, const struct perf_event_attr * const pea, int key)

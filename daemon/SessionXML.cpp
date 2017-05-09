@@ -32,12 +32,9 @@ static const char ATTR_CAPTURE_COMMAND[] = "capture_command";
 static const char ATTR_CAPTURE_USER[] = "capture_user";
 
 SessionXML::SessionXML(const char *str)
+        : parameters(),
+          mSessionXML(str)
 {
-    parameters.buffer_mode[0] = 0;
-    parameters.sample_rate[0] = 0;
-    parameters.call_stack_unwinding = false;
-    parameters.live_rate = 0;
-    mSessionXML = str;
     logg.logMessage("%s", mSessionXML);
 }
 
@@ -124,12 +121,5 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
 
 void SessionXML::sessionImage(mxml_node_t *node)
 {
-    int length = strlen(mxmlElementGetAttr(node, ATTR_PATH));
-    struct ImageLinkList *image;
-
-    image = (struct ImageLinkList *) malloc(sizeof(struct ImageLinkList));
-    image->path = (char*) malloc(length + 1);
-    image->path = strdup(mxmlElementGetAttr(node, ATTR_PATH));
-    image->next = gSessionData.mImages;
-    gSessionData.mImages = image;
+    gSessionData.mImages.emplace_back(mxmlElementGetAttr(node, ATTR_PATH));
 }

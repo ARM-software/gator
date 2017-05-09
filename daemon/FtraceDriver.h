@@ -11,6 +11,7 @@
 
 #include <pthread.h>
 
+#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class DynBuf;
@@ -52,12 +53,11 @@ public:
 private:
     int64_t *mValues;
     Barrier mBarrier;
-    int mSupported :1, mMonotonicRawSupport :1, mUnused0 :30;
     int mTracingOn;
+    bool mSupported, mMonotonicRawSupport;
 
     // Intentionally unimplemented
-    FtraceDriver(const FtraceDriver &);
-    FtraceDriver &operator=(const FtraceDriver &);
+    CLASS_DELETE_COPY_MOVE(FtraceDriver);
 };
 
 #endif // FTRACEDRIVER_H

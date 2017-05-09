@@ -11,6 +11,7 @@
 
 #include <semaphore.h>
 
+#include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Monitor.h"
 #include "OlySocket.h"
@@ -20,15 +21,14 @@
 class ExternalSource : public Source
 {
 public:
-    ExternalSource(sem_t *senderSem);
+    ExternalSource(Child & child, sem_t *senderSem);
     ~ExternalSource();
 
-    bool prepare();
-    void run();
-    void interrupt();
-
-    bool isDone();
-    void write(Sender *sender);
+    virtual bool prepare() override;
+    virtual void run() override;
+    virtual void interrupt() override;
+    virtual bool isDone() override;
+    virtual void write(Sender * sender) override;
 
 private:
     void waitFor(const int bytes);
@@ -51,8 +51,7 @@ private:
     int mMveUds;
 
     // Intentionally unimplemented
-    ExternalSource(const ExternalSource &);
-    ExternalSource &operator=(const ExternalSource &);
+    CLASS_DELETE_COPY_MOVE(ExternalSource);
 };
 
 #endif // EXTERNALSOURCE_H

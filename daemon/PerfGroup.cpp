@@ -22,13 +22,14 @@
 #include "Monitor.h"
 #include "PerfBuffer.h"
 #include "SessionData.h"
+#include "lib/Time.h"
 
 static const int schedSwitchKey = getEventKey();
 
-#define DEFAULT_PEA_ARGS(pea, additionalSampleType) \
+#define DEFAULT_PEA_ARGS(pea, additionalSampleType, legacySupport, clockIdSupport) \
     pea.size = sizeof(pea); \
     /* Emit time, read_format below, group leader id, and raw tracepoint info */ \
-    pea.sample_type = (gSessionData.mPerf.getLegacySupport() \
+    pea.sample_type = (legacySupport \
                ? PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_ID \
                : PERF_SAMPLE_IDENTIFIER ) | PERF_SAMPLE_TIME | additionalSampleType; \
     /* Emit emit value in group format */ \
@@ -40,8 +41,8 @@ static const int schedSwitchKey = getEventKey();
     /* Be conservative in flush size as only one buffer set is monitored */ \
     pea.wakeup_watermark = BUF_SIZE / 2; \
     /* Use the monotonic raw clock if possible */ \
-    pea.use_clockid = gSessionData.mPerf.getClockidSupport() ? 1 : 0; \
-    pea.clockid = gSessionData.mPerf.getClockidSupport() ? CLOCK_MONOTONIC_RAW : 0
+    pea.use_clockid = clockIdSupport ? 1 : 0; \
+    pea.clockid = clockIdSupport ? CLOCK_MONOTONIC_RAW : 0
 
 static int sys_perf_event_open(struct perf_event_attr * const attr, const pid_t pid, const int cpu, const int group_fd,
                                const unsigned long flags)
@@ -58,9 +59,11 @@ static int sys_perf_event_open(struct perf_event_attr * const attr, const pid_t 
     return fd;
 }
 
-PerfGroup::PerfGroup(PerfBuffer * const pb)
+PerfGroup::PerfGroup(PerfBuffer * pb, bool legacySupport, bool clockIdSupport)
         : mPb(pb),
-          mSchedSwitchId(-1)
+          mSchedSwitchId(-1),
+          mLegacySupport(legacySupport),
+          mClockIdSupport(clockIdSupport)
 {
     memset(&mAttrs, 0, sizeof(mAttrs));
     memset(&mFlags, 0, sizeof(mFlags));
@@ -95,7 +98,7 @@ int PerfGroup::doAdd(const uint64_t currTime, Buffer * const buffer, const int k
         return -1;
     }
 
-    DEFAULT_PEA_ARGS(mAttrs[i], sampleType);
+    DEFAULT_PEA_ARGS(mAttrs[i], sampleType, mLegacySupport, mClockIdSupport);
     mAttrs[i].type = type;
     mAttrs[i].config = config;
     mAttrs[i].sample_period = sample;
@@ -124,7 +127,7 @@ int PerfGroup::doAdd(const uint64_t currTime, Buffer * const buffer, const int k
  */
 int PerfGroup::getEffectiveType(const int type, const int flags)
 {
-    const int effectiveType = flags & PERF_GROUP_CPU ? (int) PERF_TYPE_HARDWARE : type;
+    const int effectiveType = ((flags & PERF_GROUP_CPU) ? PERF_TYPE_HARDWARE : type);
     if (effectiveType >= ARRAY_LENGTH(mLeaders)) {
         logg.logError("perf type is too large, please increase the size of PerfGroup::mLeaders");
         handleException();
@@ -281,7 +284,7 @@ int PerfGroup::onlineCPU(const uint64_t currTime, const int cpu, const bool enab
 {
     bool addedEvents = false;
 
-    if (!gSessionData.mPerf.getLegacySupport()) {
+    if (!mLegacySupport) {
         int idCount = 0;
         int coreKeys[ARRAY_LENGTH(mKeys)];
         __u64 ids[ARRAY_LENGTH(mKeys)];

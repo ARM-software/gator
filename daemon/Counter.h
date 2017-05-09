@@ -9,7 +9,10 @@
 #ifndef COUNTER_H
 #define COUNTER_H
 
+#include <new>
 #include <string.h>
+
+#include "ClassBoilerPlate.h"
 
 class Driver;
 
@@ -20,19 +23,21 @@ public:
     static const size_t MAX_DESCRIPTION_LEN = 400;
 
     Counter()
+            : mType(),
+              mEnabled(false),
+              mEvent(-1),
+              mCount(0),
+              mCores(-1),
+              mKey(0),
+              mDriver(nullptr)
     {
-        clear();
+        mType[0] = '\0';
     }
 
     void clear()
     {
-        mType[0] = '\0';
-        mEnabled = false;
-        mEvent = -1;
-        mCount = 0;
-        mCores = -1;
-        mKey = 0;
-        mDriver = NULL;
+        // use placement new to call the constructor again
+        new (static_cast<void*>(this)) Counter();
     }
 
     void setType(const char * const type)
@@ -95,9 +100,10 @@ public:
     }
 
 private:
+
     // Intentionally unimplemented
-    Counter(const Counter &);
-    Counter & operator=(const Counter &);
+    CLASS_DELETE_COPY_MOVE(Counter)
+    ;
 
     char mType[MAX_STRING_LEN];
     bool mEnabled;

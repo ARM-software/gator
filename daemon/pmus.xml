@@ -9,6 +9,10 @@
 
       Adding a line in this file allows gatord to identify the PMU. A corresponding events-*.xml file should also be added to associate events with that PMU.
   -->
+  <pmu pmnc_name="ARMv7R_Cortex_R4" cpuid="0x41c14" core_name="Cortex-R4" dt_name="arm,cortex-r4" pmnc_counters="3"/>
+  <pmu pmnc_name="ARMv7R_Cortex_R5" cpuid="0x41c15" core_name="Cortex-R5" dt_name="arm,cortex-r5" pmnc_counters="3"/>
+  <pmu pmnc_name="ARMv7R_Cortex_R7" cpuid="0x41c17" core_name="Cortex-R7" dt_name="arm,cortex-r7" pmnc_counters="8"/>
+
   <pmu pmnc_name="ARM_ARM11" cpuid="0x41b36" core_name="ARM1136" dt_name="arm,arm1136" pmnc_counters="3"/>
   <pmu pmnc_name="ARM_ARM11" cpuid="0x41b56" core_name="ARM1156" dt_name="arm,arm1156" pmnc_counters="3"/>
   <pmu pmnc_name="ARM_ARM11" cpuid="0x41b76" core_name="ARM1176" dt_name="arm,arm1176" pmnc_counters="3"/>
@@ -20,19 +24,26 @@
   <pmu pmnc_name="ARMv7_Cortex_A15" cpuid="0x41c0f" core_name="Cortex-A15" dt_name="arm,cortex-a15" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv7_Cortex_A17" cpuid="0x41c0d" core_name="Cortex-A17" dt_name="arm,cortex-a17" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv7_Cortex_A17" cpuid="0x41c0e" core_name="Cortex-A17" dt_name="arm,cortex-a17" pmnc_counters="6"/>
-  <pmu pmnc_name="Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4"/>
-  <pmu pmnc_name="ScorpionMP" cpuid="0x5102d" core_name="ScorpionMP" pmnc_counters="4"/>
-  <pmu pmnc_name="Krait" cpuid="0x51049" core_name="KraitSIM" pmnc_counters="4"/>
-  <pmu pmnc_name="Krait" cpuid="0x5104d" core_name="Krait" pmnc_counters="4"/>
-  <pmu pmnc_name="Krait" cpuid="0x5106f" core_name="Krait S4 Pro" pmnc_counters="4"/>
   <pmu pmnc_name="ARMv8_Cortex_A32" cpuid="0x41d01" core_name="Cortex-A32" dt_name="arm,cortex-a32" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A35" cpuid="0x41d04" core_name="Cortex-A35" dt_name="arm,cortex-a35" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A53" cpuid="0x41d03" core_name="Cortex-A53" dt_name="arm,cortex-a53" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A57" cpuid="0x41d07" core_name="Cortex-A57" dt_name="arm,cortex-a57" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A73" cpuid="0x41d09" core_name="Cortex-A73" dt_name="arm,cortex-a73" pmnc_counters="6"/>
+
+  <!-- Qualcomm -->
+  <pmu pmnc_name="Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4"/>
+  <pmu pmnc_name="ScorpionMP" cpuid="0x5102d" core_name="ScorpionMP" pmnc_counters="4"/>
+  <pmu pmnc_name="Krait" cpuid="0x51049" core_name="KraitSIM" pmnc_counters="4"/>
+  <pmu pmnc_name="Krait" cpuid="0x5104d" core_name="Krait" pmnc_counters="4"/>
+  <pmu pmnc_name="Krait" cpuid="0x5106f" core_name="Krait S4 Pro" pmnc_counters="4"/>
+
+  <!-- Samsung -->
   <pmu pmnc_name="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1" pmnc_counters="6"/>
+
+  <!-- Cavium -->
   <pmu pmnc_name="ARMv8_Cavium_Thunder" cpuid="0x430a1" core_name="ThunderX" pmnc_counters="6"/>
+
   <!-- This is a guess, but at least the CPU will be recognized -->
   <pmu pmnc_name="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6"/>
 

@@ -35,7 +35,6 @@ static sensors_subfeature_type getInput(const sensors_feature_type type)
         handleException();
     }
 }
-;
 
 class HwmonCounter : public DriverCounter
 {
@@ -86,11 +85,10 @@ private:
     const char *mUnit;
     double mPreviousValue;
     double mMultiplier;
-    int mMonotonic :1, mDuplicate :1;
+    bool mMonotonic, mDuplicate;
 
     // Intentionally unimplemented
-    HwmonCounter(const HwmonCounter &);
-    HwmonCounter &operator=(const HwmonCounter &);
+    CLASS_DELETE_COPY_MOVE(HwmonCounter);
 };
 
 HwmonCounter::HwmonCounter(DriverCounter *next, char * const name, const sensors_chip_name * const chip,
@@ -98,6 +96,14 @@ HwmonCounter::HwmonCounter(DriverCounter *next, char * const name, const sensors
         : DriverCounter(next, name),
           mChip(chip),
           mFeature(feature),
+          mLabel(nullptr),
+          mTitle(nullptr),
+          mDisplay(nullptr),
+          mCounterClass(nullptr),
+          mUnit(nullptr),
+          mPreviousValue(0.0),
+          mMultiplier(1.0),
+          mMonotonic(false),
           mDuplicate(false)
 {
     mLabel = sensors_get_label(mChip, mFeature);
@@ -176,7 +182,7 @@ HwmonCounter::HwmonCounter(DriverCounter *next, char * const name, const sensors
 
 HwmonCounter::~HwmonCounter()
 {
-    free((void *) mLabel);
+    free(mLabel);
 }
 
 int64_t HwmonCounter::read()
@@ -271,7 +277,7 @@ void HwmonDriver::writeEvents(mxml_node_t *root) const
         mxmlElementSetAttr(node, "class", counter->getCounterClass());
         mxmlElementSetAttr(node, "units", counter->getUnit());
         if (counter->getMultiplier() != 1.0) {
-            mxmlElementSetAttrf(node, "multiplier", "%lf", counter->getMultiplier());
+            mxmlElementSetAttrf(node, "multiplier", "%f", counter->getMultiplier());
         }
         if (strcmp(counter->getDisplay(), "average") == 0 || strcmp(counter->getDisplay(), "maximum") == 0) {
             mxmlElementSetAttr(node, "average_selection", "yes");

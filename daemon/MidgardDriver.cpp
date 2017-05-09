@@ -127,8 +127,7 @@ private:
     int mEvent;
 
     // Intentionally undefined
-    MidgardCounter(const MidgardCounter &);
-    MidgardCounter &operator=(const MidgardCounter &);
+    CLASS_DELETE_COPY_MOVE(MidgardCounter);
 };
 
 MidgardDriver::MidgardDriver()
@@ -172,7 +171,7 @@ void MidgardDriver::query() const
                     logg.logError("Unable to read Midgard header");
                     handleException();
                 }
-                if (first && ((uint8_t *) &header)[0] != 0) {
+                if (first && (reinterpret_cast<const uint8_t *>(&header)[0] != 0)) {
                     logg.logMessage("Midgard data is not in encapsulated format");
                     break;
                 }
@@ -193,7 +192,7 @@ void MidgardDriver::query() const
 
                 switch (header.mPacketIdentifier) {
                 case PACKET_SHARED_PARAMETER: {
-                    const SharedParameterPacket * const packet = (SharedParameterPacket *) buf;
+                    const SharedParameterPacket * const packet = reinterpret_cast<const SharedParameterPacket *>(buf);
                     if (header.mDataLength >= sizeof(SharedParameterPacket) && header.mImplSpec == 0
                             && packet->mReserved2 == 0) {
                         if (packet->mMaliMagic != 0x6D616C69) {
@@ -241,30 +240,30 @@ void MidgardDriver::query() const
     CounterData cd;
     cd.mType = CounterData::PERF;
     for (int i = 0; i + sizeof(MidgardCounter) < size;) {
-        const HardwareCounter *counter = (HardwareCounter *) (buf + i);
+        const HardwareCounter *counter = reinterpret_cast<const HardwareCounter *>(buf + i);
         char *name;
         if (asprintf(&name, "ARM_Mali-%s", counter->mCounterName) <= 0) {
             logg.logError("asprintf failed");
             handleException();
         }
         cd.mIndex = counter->mCounterIndex;
-        ((MidgardDriver *) (this))->setCounters(new MidgardCounter(getCounters(), name, &cd));
+        const_cast<MidgardDriver *>(this)->setCounters(new MidgardCounter(getCounters(), name, &cd));
         i += sizeof(*counter) + counter->mCounterNameLen;
     }
 
     // Should a more sophisticated check be used?
     if (size > 0) {
         cd.mType = CounterData::WINDUMP;
-        ((MidgardDriver *) (this))->setCounters(
+        const_cast<MidgardDriver *>(this)->setCounters(
                 new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_Filmstrip2_cnt0"), &cd));
 
         cd.mType = CounterData::ACTIVITY;
         cd.mCores = 1;
-        ((MidgardDriver *) (this))->setCounters(
+        const_cast<MidgardDriver *>(this)->setCounters(
                 new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_fragment"), &cd));
-        ((MidgardDriver *) (this))->setCounters(
+        const_cast<MidgardDriver *>(this)->setCounters(
                 new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_vertex"), &cd));
-        ((MidgardDriver *) (this))->setCounters(
+        const_cast<MidgardDriver *>(this)->setCounters(
                 new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_opencl"), &cd));
     }
 }
@@ -346,6 +345,11 @@ bool MidgardDriver::start(const int uds)
 
 bool MidgardDriver::claimCounter(const Counter &counter) const
 {
+    // do not claim if another driver already has
+    if (counter.getDriver() != NULL) {
+        return false;
+    }
+
     query();
     return super::claimCounter(counter);
 }

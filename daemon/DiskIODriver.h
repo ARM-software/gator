@@ -9,6 +9,7 @@
 #ifndef DISKIODRIVER_H
 #define DISKIODRIVER_H
 
+#include "ClassBoilerPlate.h"
 #include "PolledDriver.h"
 #include "DynBuf.h"
 
@@ -29,12 +30,11 @@ private:
     void doRead();
 
     DynBuf mBuf;
-    int64_t mReadBytes;
-    int64_t mWriteBytes;
+    uint64_t mReadBytes;
+    uint64_t mWriteBytes;
 
     // Intentionally unimplemented
-    DiskIODriver(const DiskIODriver &);
-    DiskIODriver &operator=(const DiskIODriver &);
+    CLASS_DELETE_COPY_MOVE(DiskIODriver);
 };
 
 #endif // DISKIODRIVER_H

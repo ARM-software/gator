@@ -12,6 +12,7 @@
 #include "NetDriver.h"
 
 #include <inttypes.h>
+#include <unistd.h>
 
 #include "Logging.h"
 #include "SessionData.h"
@@ -19,21 +20,20 @@
 class NetCounter : public DriverCounter
 {
 public:
-    NetCounter(DriverCounter *next, char * const name, int64_t * const value);
+    NetCounter(DriverCounter *next, char * const name, uint64_t * const value);
     ~NetCounter();
 
     int64_t read();
 
 private:
-    int64_t * const mValue;
-    int64_t mPrev;
+    uint64_t * const mValue;
+    uint64_t mPrev;
 
     // Intentionally unimplemented
-    NetCounter(const NetCounter &);
-    NetCounter &operator=(const NetCounter &);
+    CLASS_DELETE_COPY_MOVE(NetCounter);
 };
 
-NetCounter::NetCounter(DriverCounter *next, char * const name, int64_t * const value)
+NetCounter::NetCounter(DriverCounter *next, char * const name, uint64_t * const value)
         : DriverCounter(next, name),
           mValue(value),
           mPrev(0)
@@ -64,13 +64,13 @@ NetDriver::~NetDriver()
 
 void NetDriver::readEvents(mxml_node_t * const)
 {
-    // Only for use with perf
-    if (!gSessionData.mPerf.isSetup()) {
-        return;
+    if (access("/proc/net/dev", R_OK) == 0) {
+        setCounters(new NetCounter(getCounters(), strdup("Linux_net_rx"), &mReceiveBytes));
+        setCounters(new NetCounter(getCounters(), strdup("Linux_net_tx"), &mTransmitBytes));
     }
-
-    setCounters(new NetCounter(getCounters(), strdup("Linux_net_rx"), &mReceiveBytes));
-    setCounters(new NetCounter(getCounters(), strdup("Linux_net_tx"), &mTransmitBytes));
+    else {
+        logg.logSetup("Linux counters\nCannot access /proc/net/dev. Network transmit and receive counters not available.");
+    }
 }
 
 bool NetDriver::doRead()
@@ -101,8 +101,8 @@ bool NetDriver::doRead()
         }
         *colon = '\0';
 
-        int64_t receiveBytes;
-        int64_t transmitBytes;
+        uint64_t receiveBytes;
+        uint64_t transmitBytes;
         const int count = sscanf(colon + 1, " %" SCNu64 " %*u %*u %*u %*u %*u %*u %*u %" SCNu64, &receiveBytes,
                                  &transmitBytes);
         if (count != 2) {

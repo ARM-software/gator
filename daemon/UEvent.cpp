@@ -47,7 +47,7 @@ bool UEvent::init()
     sockaddr.nl_family = AF_NETLINK;
     sockaddr.nl_groups = 1; // bitmask: (1 << 0) == kernel events, (1 << 1) == udev events
     sockaddr.nl_pid = 0;
-    if (bind(mFd, (struct sockaddr *) &sockaddr, sizeof(sockaddr)) != 0) {
+    if (bind(mFd, reinterpret_cast<struct sockaddr *>(&sockaddr), sizeof(sockaddr)) != 0) {
         logg.logMessage("bind failed");
         return false;
     }

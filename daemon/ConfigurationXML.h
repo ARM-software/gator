@@ -9,6 +9,7 @@
 #ifndef COUNTERS_H
 #define COUNTERS_H
 
+#include "ClassBoilerPlate.h"
 #include "mxml/mxml.h"
 
 class ConfigurationXML
@@ -35,8 +36,7 @@ private:
     void configurationTag(mxml_node_t *node);
 
     // Intentionally unimplemented
-    ConfigurationXML(const ConfigurationXML &);
-    ConfigurationXML &operator=(const ConfigurationXML &);
+    CLASS_DELETE_COPY_MOVE(ConfigurationXML);
 };
 
 #endif // COUNTERS_H

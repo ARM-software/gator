@@ -6,7 +6,7 @@
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
 CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MD -DETCDIR=\"/etc\" -Ilibsensors -I.
-CXXFLAGS += -fno-rtti -Wextra -Wshadow -Wpointer-arith -Wundef # -Weffc++ -Wmissing-declarations
+CXXFLAGS += -std=c++11 -static-libstdc++ -fno-rtti -Wextra -Wshadow -Wpointer-arith -Wundef # -Weffc++ -Wmissing-declarations
 ifeq ($(WERROR),1)
 	CPPFLAGS += -Werror
 endif
@@ -21,7 +21,7 @@ LDLIBS += -lrt -lm -pthread
 TARGET = gatord
 ESCAPE_EXE = escape/escape
 C_SRC = $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
-CXX_SRC = $(wildcard *.cpp mali_userspace/*.cpp)
+CXX_SRC = $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp)
 
 ifeq ($(V),1)
 	Q =
@@ -45,7 +45,7 @@ events.xml: events_header.xml $(wildcard events-*.xml) events_footer.xml
 	$(ECHO_GEN)
 	$(Q)cat $^ > $@
 
-include $(wildcard *.d)
+include $(wildcard *.d lib/*.d linux/*.d linux/*/*.d mali_userspace/*.d non_root/*.d)
 include $(wildcard mxml/*.d)
 include $(wildcard libsensors/*.d)
 
@@ -69,13 +69,13 @@ libsensors/conf-parse.c: ;
 	$(ECHO_CXX)
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(wildcard *.cpp mali_userspace/*.cpp)) $(wildcard *.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
+SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp)) $(wildcard *.h lib/*.h linux/*.h linux/*/*.h mali_userspace/*.h non_root/*.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
 	$(ECHO_GEN)
 	$(Q)echo 'extern const char *const gSrcMd5 = "'`ls $^ | grep -Ev '^(.*_xml\.h|$@)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32`'";' > $@
 
 $(TARGET): $(CXX_SRC:%.cpp=%.o) $(C_SRC:%.c=%.o) SrcMd5.o
 	$(ECHO_CCLD)
-	$(Q)$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # Intentionally ignore CC as a native binary is required
 $(ESCAPE_EXE): escape/escape.c
@@ -83,4 +83,4 @@ $(ESCAPE_EXE): escape/escape.c
 	$(Q)gcc $^ -o $@
 
 clean:
-	rm -f *.d *.o mali_userspace/*.d mali_userspace/*.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) $(ESCAPE_EXE) events.xml *_xml.h SrcMd5.cpp
+	rm -f *.d *.o lib/*.d linux/*.d linux/*/*.d lib/*.o linux/*.o linux/*/*.o mali_userspace/*.d mali_userspace/*.o non_root/*.d non_root/*.o mxml/*.d mxml/*.o libsensors/*.d libsensors/*.o $(TARGET) $(ESCAPE_EXE) events.xml *_xml.h SrcMd5.cpp
