@@ -11,7 +11,6 @@
 #include "lib/Assert.h"
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
 #include <unistd.h>
 #include <sys/prctl.h>
 
@@ -52,10 +51,9 @@ std::unique_ptr<Child> Child::createLocal(PrimarySourceProvider & primarySourceP
     return std::unique_ptr<Child>(new Child(primarySourceProvider));
 }
 
-std::unique_ptr<Child> Child::createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock,
-                                         int numConnections)
+std::unique_ptr<Child> Child::createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock)
 {
-    return std::unique_ptr<Child>(new Child(primarySourceProvider, sock, numConnections));
+    return std::unique_ptr<Child>(new Child(primarySourceProvider, sock));
 }
 
 Child * Child::getSingleton()
@@ -113,7 +111,7 @@ void * Child::senderThreadStaticEntryPoint(void * thisPtr)
     return localChild->senderThreadEntryPoint();
 }
 
-Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock, int numConnections)
+Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock)
         : haltPipeline(),
           senderThreadStarted(),
           startProfile(),
@@ -125,8 +123,7 @@ Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock, int numC
           sender(),
           primarySourceProvider(psp),
           socket(sock),
-          numExceptions(0),
-          mNumConnections(numConnections)
+          numExceptions(0)
 {
     // update singleton
     const Child * const prevSingleton = gSingleton.exchange(this, std::memory_order_acq_rel);
@@ -148,12 +145,12 @@ Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock, int numC
 }
 
 Child::Child(PrimarySourceProvider & psp)
-        : Child(true, psp, nullptr, 0)
+        : Child(true, psp, nullptr)
 {
 }
 
-Child::Child(PrimarySourceProvider & psp, OlySocket & sock, int conn)
-        : Child(false, psp, &sock, conn)
+Child::Child(PrimarySourceProvider & psp, OlySocket & sock)
+        : Child(false, psp, &sock)
 {
 }
 
@@ -176,11 +173,6 @@ void Child::run()
 
     // Instantiate the Sender - must be done first, after which error messages can be sent
     sender.reset(new Sender(socket));
-
-    if (mNumConnections > 1) {
-        logg.logError("Session already in progress");
-        handleException();
-    }
 
     // Populate gSessionData with the configuration
     {
@@ -278,14 +270,7 @@ void Child::run()
         thread_creation_success = false;
     }
 
-    bool startUSSource = false;
-    for (PolledDriver * usDriver : gSessionData.mPrimarySource->getAdditionalPolledDrivers()) {
-        if (usDriver->countersEnabled()) {
-            startUSSource = true;
-            break;
-        }
-    }
-    if (startUSSource) {
+    if (UserSpaceSource::shouldStart()) {
         userSpaceSource.reset(new UserSpaceSource(*this, &senderSem));
         if (!userSpaceSource->prepare()) {
             logg.logError("Unable to prepare userspace source for capture");
@@ -429,6 +414,9 @@ void * Child::stopThreadEntryPoint()
             else {
                 // verify a length of zero
                 if (length == 0) {
+                    // inform the parent process that the capturing has been stopped by the host.
+                    kill(getppid(), Child::SIG_LIVE_CAPTURE_STOPPED);
+
                     if (type == COMMAND_APC_STOP) {
                         logg.logMessage("Stop command received.");
                         endSession();
@@ -440,7 +428,7 @@ void * Child::stopThreadEntryPoint()
                     }
                 }
                 else {
-                    logg.logMessage("INVESTIGATE: Received stop command but with length = %d", length);
+                    logg.logMessage("INVESTIGATE: Received APC_STOP or PING command but with length = %d", length);
                 }
             }
         }

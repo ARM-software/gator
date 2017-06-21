@@ -13,7 +13,9 @@
 #include <regex.h>
 #include <signal.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -238,6 +240,12 @@ void FtraceReader::run()
         char buf[16];
         snprintf(buf, sizeof(buf), "gatord-reader%02i", mCpu);
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&buf), 0, 0, 0);
+    }
+
+    // Gator runs at a high priority, reset the priority to the default
+    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
+        logg.logError("setpriority failed");
+        handleException();
     }
 
     mBarrier->wait();

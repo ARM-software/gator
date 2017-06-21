@@ -327,10 +327,10 @@ namespace mali_userspace
 
             if (doMaliIoctl(devFd, setup_args) != 0) {
                 if (setup_args.header.ret != 0) {
-                    logg.logError("MaliHwCntrReader: Failed sending hwcnt reader ioctl. ret = %lu", static_cast<unsigned long>(setup_args.header.ret));
+                    logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl. ret = %lu", static_cast<unsigned long>(setup_args.header.ret));
                 }
                 else {
-                    logg.logError("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
+                    logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
                 }
                 failedDueToBufferCount = true;
                 return;
@@ -379,7 +379,7 @@ namespace mali_userspace
         // mmap the data
         sampleMemory = reinterpret_cast<uint8_t *>(mmap(nullptr, bufferCount_ * sampleBufferSize, PROT_READ, MAP_PRIVATE, hwcntReaderFd, 0));
         if ((sampleMemory == nullptr) || (sampleMemory == reinterpret_cast<uint8_t *>(-1ul))) {
-            logg.logError("MaliHwCntrReader: Could not mmap sample buffer");
+            logg.logMessage("MaliHwCntrReader: Could not mmap sample buffer");
             failedDueToBufferCount = true;
             return;
         }

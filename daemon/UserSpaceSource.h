@@ -15,6 +15,11 @@
 #include "Buffer.h"
 #include "Source.h"
 
+#include <vector>
+
+// Forward decl for allPolledDrivers
+class PolledDriver;
+
 // User space counters
 class UserSpaceSource : public Source
 {
@@ -27,6 +32,9 @@ public:
     virtual void interrupt() override;
     virtual bool isDone() override;
     virtual void write(Sender * sender) override;
+
+    static bool shouldStart();
+    static std::vector<PolledDriver *> allPolledDrivers();
 
 private:
     Buffer mBuffer;

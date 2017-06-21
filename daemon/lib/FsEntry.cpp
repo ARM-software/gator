@@ -201,6 +201,18 @@ namespace lib
         return result;
     }
 
+    bool FsEntry::canAccess(bool read, bool write, bool exec) const
+    {
+        const int mode = F_OK | (read ? R_OK : 0) | (write ? W_OK : 0) | (exec ? X_OK : 0);
+
+        return access(path_.c_str(), mode) == 0;
+    }
+
+    bool FsEntry::exists() const
+    {
+        return canAccess(false, false, false);
+    }
+
     std::string readFileContents(const FsEntry & entry)
     {
         std::ifstream stream(entry.path(), std::ios::in);

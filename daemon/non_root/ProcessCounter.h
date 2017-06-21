@@ -22,6 +22,9 @@ namespace non_root
     {
         MAJOR_FAULTS = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_MAJOR_FAULTS),
         MINOR_FAULTS = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_MINOR_FAULTS),
+        UTIME = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_UTIME),
+        STIME = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_STIME),
+        GUEST_TIME = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_GUEST_TIME)
     };
 }
 

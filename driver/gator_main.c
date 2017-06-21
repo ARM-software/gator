@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION 620
+#define PROTOCOL_VERSION 630
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/version.h>
@@ -503,6 +503,8 @@ static void gator_read_cpuid(void *arg)
 {
     const u32 cpuid = gator_cpuid();
     const int cpu = get_physical_cpu();
+
+    pr_notice("gator: Detected CPUID for %i as 0x%x\n", cpu, cpuid);
 
     gator_cpuids[cpu] = cpuid;
     gator_clusterids[cpu] = gator_get_clusterid(cpuid);
@@ -1426,6 +1428,8 @@ static struct notifier_block tracepoint_notifier_block = {
 
 static int __init gator_module_init(void)
 {
+    int cpu;
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
     /* scan kernel built in tracepoints */
     for_each_kernel_tracepoint(gator_save_tracepoint, NULL);
@@ -1444,6 +1448,16 @@ static int __init gator_module_init(void)
     }
 
     setup_deferrable_timer_on_stack(&gator_buffer_wake_up_timer, gator_buffer_wake_up, 0);
+
+#if defined(CONFIG_SMP)
+    /* Online all cores */
+    for_each_present_cpu(cpu) {
+        if (!cpu_online(cpu)) {
+            pr_notice("gator: Onlining cpu %i\n", cpu);
+            cpu_up(cpu);
+        }
+    }
+#endif
 
     /* Initialize the list of cpuids */
     memset(gator_cpuids, -1, sizeof(gator_cpuids));

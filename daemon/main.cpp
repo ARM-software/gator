@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <atomic>
 
 #include "AnnotateListener.h"
 #include "Child.h"
@@ -33,14 +34,22 @@
 #include "PmuXML.h"
 #include "SessionData.h"
 #include "PrimarySourceProvider.h"
+#include "Sender.h"
 
 static int shutdownFilesystem();
-static pthread_mutex_t numSessions_mutex;
+static pthread_mutex_t numChildProcesses_mutex;
 static OlyServerSocket* sock = NULL;
 static Monitor monitor;
-static int numSessions = 0;
 static bool driverRunningAtStart = false;
 static bool driverMountedAtStart = false;
+
+enum State
+{
+    IDLE,
+    CAPTURING,
+    WAITING_FOR_TEAR_DOWN,
+};
+static std::atomic<State> state(State::IDLE);
 
 struct cmdline_t
 {
@@ -66,29 +75,29 @@ static void handler(int signum)
     logg.logMessage("Received signal %d, gator daemon exiting", signum);
 
     // Case 1: both child and parent receive the signal
-    if (numSessions > 0) {
+    if (state.load() != State::IDLE) {
         // Arbitrary sleep of 1 second to give time for the child to exit;
         // if something bad happens, continue the shutdown process regardless
         sleep(1);
     }
 
     // Case 2: only the parent received the signal
-    if (numSessions > 0) {
+    if (state.load() != State::IDLE) {
         // Kill child threads - the first signal exits gracefully
-        logg.logMessage("Killing process group as %d child was running when signal was received", numSessions);
+        logg.logMessage("Killing process group as more than one gator-child was running when signal was received");
         kill(0, SIGINT);
 
         // Give time for the child to exit
         sleep(1);
 
-        if (numSessions > 0) {
+        if (state.load() != State::IDLE) {
             // The second signal force kills the child
             logg.logMessage("Force kill the child");
             kill(0, SIGINT);
             // Again, sleep for 1 second
             sleep(1);
 
-            if (numSessions > 0) {
+            if (state.load() != State::IDLE) {
                 // Something bad has really happened; the child is not exiting and therefore may hold the /dev/gator resource open
                 printf("Unable to kill the gatord child process, thus gator.ko may still be loaded.\n");
             }
@@ -99,15 +108,18 @@ static void handler(int signum)
     exit(0);
 }
 
+static void liveCaptureStoppedSigHandler(int)
+{
+    state.store(State::WAITING_FOR_TEAR_DOWN);
+}
+
 // Child exit Signal Handler
 static void child_exit(int)
 {
     int status;
     int pid = wait(&status);
     if (pid != -1) {
-        pthread_mutex_lock(&numSessions_mutex);
-        numSessions--;
-        pthread_mutex_unlock(&numSessions_mutex);
+        state.store(State::IDLE);
         logg.logMessage("Child process %d exited with status %d", pid, status);
     }
 }
@@ -499,53 +511,53 @@ static AnnotateListener annotateListener;
 
 static void handleClient()
 {
-    OlySocket client (sock->acceptConnection());
+    assert(sock!=nullptr);
 
-    int pid = fork();
-    if (pid < 0) {
-        // Error
-        logg.logError("Fork process failed with errno: %d.", errno);
-        handleException();
-    }
-    else if (pid == 0) {
-        // Child
-        sock->closeServerSocket();
-        udpListener.close();
-        monitor.close();
-        annotateListener.close();
+    if (state.load() == State::CAPTURING)
+    {
+            // A temporary socket connection to host, to transfer error message
+            OlySocket client (sock->acceptConnection());
+            logg.logError("Session already in progress");
+            Sender sender(&client);
+            sender.writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
 
-        auto child = Child::createLive(*gSessionData.mPrimarySource, client, numSessions + 1);
-        child->run();
-        child.reset();
-
-        exit(0);
-    }
-    else {
-        // Parent
-        client.closeSocket();
-
-        pthread_mutex_lock(&numSessions_mutex);
-        numSessions++;
-        pthread_mutex_unlock(&numSessions_mutex);
-
-        // Maximum number of connections is 2
-        int wait = 0;
-        while (numSessions > 1) {
-            // Throttle until one of the children exits before continuing to accept another socket connection
-            logg.logMessage("%d sessions active!", numSessions);
-            if (wait++ >= 10) { // Wait no more than 10 seconds
-                // Kill last created child
-                kill(pid, SIGALRM);
-                break;
-            }
+            // Ensure all data is flushed the host receive the data (not closing socket too quick)
             sleep(1);
+            client.shutdownConnection();
+            client.closeSocket();
+    }
+    else
+    {
+        OlySocket client (sock->acceptConnection());
+        int pid = fork();
+        if (pid < 0) {
+            // Error
+            logg.logError("Fork process failed with errno: %d.", errno);
+            handleException();
+        }
+        else if (pid == 0) {
+            // Child
+            sock->closeServerSocket();
+            udpListener.close();
+            monitor.close();
+            annotateListener.close();
+
+            auto child = Child::createLive(*gSessionData.mPrimarySource, client);
+            child->run();
+            child.reset();
+            exit(0);
+        }
+        else {
+            // Parent
+            client.closeSocket();
+            state.store(State::CAPTURING);
         }
     }
 }
 
 static void doLocalCapture()
 {
-    numSessions++;
+    state.store(State::CAPTURING);
 
     int pid = fork();
     if (pid < 0) {
@@ -578,11 +590,14 @@ int main(int argc, char** argv)
     gSessionData.initialize();
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);
-    pthread_mutex_init(&numSessions_mutex, NULL);
+    pthread_mutex_init(&numChildProcesses_mutex, NULL);
 
     signal(SIGINT, handler);
     signal(SIGTERM, handler);
     signal(SIGABRT, handler);
+
+    // handle custom capture stop signal using dedicated handler
+    signal(Child::SIG_LIVE_CAPTURE_STOPPED, liveCaptureStoppedSigHandler);
 
     // Set to high priority
     if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {

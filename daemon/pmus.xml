@@ -9,6 +9,11 @@
 
       Adding a line in this file allows gatord to identify the PMU. A corresponding events-*.xml file should also be added to associate events with that PMU.
   -->
+  <pmu pmnc_name="DWT" cpuid="0x41c23" core_name="Cortex-M3" pmnc_counters="6"/>
+  <pmu pmnc_name="DWT" cpuid="0x41c24" core_name="Cortex-M4" pmnc_counters="6"/>
+  <pmu pmnc_name="DWT" cpuid="0x41c27" core_name="Cortex-M7" pmnc_counters="6"/>
+  <pmu pmnc_name="DWT" cpuid="0x41d21" core_name="Cortex-M33" pmnc_counters="6"/>
+
   <pmu pmnc_name="ARMv7R_Cortex_R4" cpuid="0x41c14" core_name="Cortex-R4" dt_name="arm,cortex-r4" pmnc_counters="3"/>
   <pmu pmnc_name="ARMv7R_Cortex_R5" cpuid="0x41c15" core_name="Cortex-R5" dt_name="arm,cortex-r5" pmnc_counters="3"/>
   <pmu pmnc_name="ARMv7R_Cortex_R7" cpuid="0x41c17" core_name="Cortex-R7" dt_name="arm,cortex-r7" pmnc_counters="8"/>
@@ -27,9 +32,12 @@
   <pmu pmnc_name="ARMv8_Cortex_A32" cpuid="0x41d01" core_name="Cortex-A32" dt_name="arm,cortex-a32" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A35" cpuid="0x41d04" core_name="Cortex-A35" dt_name="arm,cortex-a35" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A53" cpuid="0x41d03" core_name="Cortex-A53" dt_name="arm,cortex-a53" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv8_Cortex_A55" cpuid="0x41d05" core_name="Cortex-A55" dt_name="arm,cortex-a55" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A57" cpuid="0x41d07" core_name="Cortex-A57" dt_name="arm,cortex-a57" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6"/>
   <pmu pmnc_name="ARMv8_Cortex_A73" cpuid="0x41d09" core_name="Cortex-A73" dt_name="arm,cortex-a73" pmnc_counters="6"/>
+  <pmu pmnc_name="ARMv8_Cortex_A75" cpuid="0x41d0a" core_name="Cortex-A75" dt_name="arm,cortex-a75" pmnc_counters="6"/>
+
 
   <!-- Qualcomm -->
   <pmu pmnc_name="Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4"/>

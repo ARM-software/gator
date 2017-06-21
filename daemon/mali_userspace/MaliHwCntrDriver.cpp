@@ -6,6 +6,9 @@
 #include "Counter.h"
 #include "Logging.h"
 
+#include <cstdlib>
+#include <unistd.h>
+
 namespace mali_userspace
 {
     namespace
@@ -14,37 +17,138 @@ namespace mali_userspace
         {
         public:
 
-            MaliHwCntr(DriverCounter * next, const char * name, uint32_t nameBlockIndex, uint32_t counterIndex)
+            MaliHwCntr(DriverCounter * next, const char * name, int32_t nameBlockIndex, int32_t counterIndex)
                     : DriverCounter(next, name),
                       mNameBlockIndex(nameBlockIndex),
                       mCounterIndex(counterIndex)
             {
             }
 
-            inline uint32_t getNameBlockIndex() const
+            inline int32_t getNameBlockIndex() const
             {
                 return mNameBlockIndex;
             }
 
-            inline uint32_t getCounterIndex() const
+            inline int32_t getCounterIndex() const
             {
                 return mCounterIndex;
             }
 
         private:
-            uint32_t mNameBlockIndex;
-            uint32_t mCounterIndex;
+            int32_t mNameBlockIndex;
+            int32_t mCounterIndex;
 
             // Intentionally undefined
             CLASS_DELETE_COPY_MOVE(MaliHwCntr);
+        };
+
+        class MaliGPUClockPolledDriverCounter : public DriverCounter
+        {
+        public:
+            MaliGPUClockPolledDriverCounter(DriverCounter *next, char * const name, uint64_t & value)
+                    : DriverCounter(next, name),
+                      mValue(value)
+            {
+            }
+            ~MaliGPUClockPolledDriverCounter()
+            {
+            }
+
+            int64_t read()
+            {
+                return mValue;
+            }
+
+        private:
+            uint64_t & mValue;
+
+            // Intentionally unimplemented
+            CLASS_DELETE_COPY_MOVE(MaliGPUClockPolledDriverCounter);
+        };
+
+        class MaliGPUClockPolledDriver : public PolledDriver
+        {
+        private:
+
+            typedef PolledDriver super;
+
+        public:
+
+            MaliGPUClockPolledDriver(const char * clockPath)
+                    : mClockPath(clockPath),
+                      mClockValue(0),
+                      mBuf()
+            {
+                logg.logMessage("GPU CLOCK POLLING '%s'", clockPath);
+            }
+
+            // Intentionally unimplemented
+            CLASS_DELETE_COPY_MOVE(MaliGPUClockPolledDriver);
+
+            void readEvents(mxml_node_t * const /*root*/)
+            {
+                if (access(mClockPath, R_OK) == 0) {
+                    logg.logSetup("Mali GPU counters\nAccess %s is OK. GPU frequency counters available.", mClockPath);
+                    setCounters(new MaliGPUClockPolledDriverCounter(getCounters(), strdup("ARM_Mali-clock"), mClockValue));
+                }
+                else {
+                    logg.logSetup("Mali GPU counters\nCannot access %s. GPU frequency counters not available.", mClockPath);
+                }
+            }
+
+            void start()
+            {
+            }
+
+            void read(Buffer * const buffer)
+            {
+                if (!doRead()) {
+                    logg.logError("Unable to read GPU clock frequency");
+                    handleException();
+                }
+                super::read(buffer);
+            }
+
+        private:
+
+            const char * const mClockPath;
+            uint64_t mClockValue;
+            DynBuf mBuf;
+
+            bool doRead()
+            {
+                if (!countersEnabled()) {
+                    return true;
+                }
+
+                if (!mBuf.read(mClockPath)) {
+                    return false;
+                }
+
+                mClockValue = strtoull(mBuf.getBuf(), nullptr, 0) * 1000000ull;
+                return true;
+            }
         };
     }
 
     MaliHwCntrDriver::MaliHwCntrDriver()
         :   mReader (NULL),
-            mEnabledCounterKeys (NULL)
+            mEnabledCounterKeys (NULL),
+            mPolledDriver (nullptr)
     {
         query();
+
+        // add GPU clock driver
+        if (mReader != nullptr){
+            const MaliDevice & device = mReader->getDevice();
+            const char * const clockPath = device.getClockPath();
+            if (clockPath != nullptr) {
+                mPolledDriver = new MaliGPUClockPolledDriver(clockPath);
+            }
+            else {
+                logg.logSetup("Mali GPU counters\nGPU frequency counters not available.");
+            }
+        }
     }
 
     MaliHwCntrDriver::~MaliHwCntrDriver()
@@ -55,6 +159,10 @@ namespace mali_userspace
 
         if (mEnabledCounterKeys != NULL) {
             delete mEnabledCounterKeys;
+        }
+
+        if (mPolledDriver != nullptr) {
+            delete mPolledDriver;
         }
     }
 
@@ -156,7 +264,7 @@ namespace mali_userspace
             return;
         }
 
-        const uint32_t index = (malihwcCounter->getNameBlockIndex() * MaliDevice::NUM_COUNTERS_PER_BLOCK + malihwcCounter->getCounterIndex());
+        const int32_t index = (malihwcCounter->getNameBlockIndex() * MaliDevice::NUM_COUNTERS_PER_BLOCK + malihwcCounter->getCounterIndex());
 
         mEnabledCounterKeys[index] = malihwcCounter->getKey();
 

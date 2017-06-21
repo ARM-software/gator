@@ -378,6 +378,24 @@ namespace non_root
                                                      "The number of minor faults the process has made which have not required loading a memory page from disk. "
                                                      "See the description of /proc/[PID]/stat [minflt] in 'man proc.5' for more details.", //
                                                      "accumulate", "delta", nullptr, "overlay", 1.0, false, true));
+                setCounters(new NonRootDriverCounter(getCounters(), NonRootCounter::PROCESS_DELTA_UTIME, "nonroot_process_delta_utime", //
+                                                     "Userspace", //
+                                                     "Process (CPU Times)", //
+                                                     "Amount of time that this process has been scheduled in user mode (including guest time)." //
+                                                     "See the description of /proc/[PID]/stat [utime] in 'man proc.5' for more details.", //
+                                                     "accumulate", "delta", "s", "stacked", ticks_mult, false, true));
+                setCounters(new NonRootDriverCounter(getCounters(), NonRootCounter::PROCESS_DELTA_STIME, "nonroot_process_delta_stime", //
+                                                     "Kernel", //
+                                                     "Process (CPU Times)", //
+                                                     "Amount of time that this process has been scheduled in kernel mode. "
+                                                     "See the description of /proc/[PID]/stat [stime] in 'man proc.5' for more details.", //
+                                                     "accumulate", "delta", "s", "stacked", ticks_mult, false, true));
+                setCounters(new NonRootDriverCounter(getCounters(), NonRootCounter::PROCESS_DELTA_GUEST_TIME, "nonroot_process_delta_guest_time", //
+                                                     "Guest", //
+                                                     "Process (CPU Times)", //
+                                                     "Guest time of the process (time spent running a virtual CPU for a guest operating system). " //
+                                                     "See the description of /proc/[PID]/stat [guest_time] in 'man proc.5' for more details.", //
+                                                     "accumulate", "delta", "s", "stacked", ticks_mult, false, true));
 
                 // CPU activity charts
                 for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {

@@ -1,0 +1,14 @@
+  <counter_set name="DWT_cnt" count="6"/>
+  <category name="DWT profiling counters" counter_set="DWT_cnt" per_cpu="yes">
+    <!--
+    Important!
+    Cortex-M has separate counters for each event.
+    The event numbers correspond to the index in DWT_CTRL enable bits for the counters.
+    -->
+    <event event="0x00" title="Overhead" name="Base" description="Additional cycles required to execute multicycle instructions and instruction fetch stalls"/>
+    <event event="0x01" title="Overhead" name="Exception" description="Cycles spent in exception processing"/>
+    <event event="0x02" title="Sleep" name="Cycles" description="Cycles that the processor is sleeping"/>
+    <event event="0x03" title="Overhead" name="Load-store" description="Additional cycles required to execute all load or store instructions"/>
+    <event event="0x04" title="Instruction" name="Folded" description="Instructions that execute in zero cycles"/>
+    <event event="0x05" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="Processor cycles"/>
+  </category>

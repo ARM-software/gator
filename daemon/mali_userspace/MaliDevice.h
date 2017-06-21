@@ -129,9 +129,10 @@ namespace mali_userspace
          * @param mpNumber
          * @param gpuId
          * @param devicePath
+         * @param clockPath (Which may be null)
          * @return The MaliDevice object, or NULL on failure
          */
-        static MaliDevice * create(uint32_t mpNumber, uint32_t gpuId, const char * devicePath);
+        static MaliDevice * create(uint32_t mpNumber, uint32_t gpuId, const char * devicePath, const char * clockPath);
 
         /**
          * @return The path to the device file
@@ -139,6 +140,14 @@ namespace mali_userspace
         inline const char * getDevicePath() const
         {
             return mDevicePath;
+        }
+
+        /**
+         * @return The path to the clock file
+         */
+        inline const char * getClockPath() const
+        {
+            return mClockPath;
         }
 
         /**
@@ -213,13 +222,16 @@ namespace mali_userspace
         /** The path to the /dev/mali device */
         const char * const mDevicePath;
 
+        /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
+        const char * const mClockPath;
+
         /** The number of shader cores */
         const uint32_t mNumShaderCores;
 
         /** The GPU ID code */
         const uint32_t mGpuId;
 
-        MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, uint32_t numShaderCores, uint32_t gpuId);
+        MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t numShaderCores, uint32_t gpuId);
 
         CLASS_DELETE_COPY_MOVE(MaliDevice);
 

@@ -1,0 +1,3 @@
+  <category name="Mali Misc" per_cpu="no">
+    <event counter="ARM_Mali-clock" title="Mali Clock" name="Frequency" class="absolute" display="maximum" description="GPU clock frequency in Hz" units="Hz" />
+  </category>

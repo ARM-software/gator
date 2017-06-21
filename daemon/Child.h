@@ -14,6 +14,7 @@
 #include <atomic>
 #include <memory>
 #include <semaphore.h>
+#include <signal.h>
 
 class PrimarySourceProvider;
 class Sender;
@@ -25,7 +26,10 @@ class Child
 public:
 
     static std::unique_ptr<Child> createLocal(PrimarySourceProvider & primarySourceProvider);
-    static std::unique_ptr<Child> createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock, int numConnections);
+    static std::unique_ptr<Child> createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock);
+
+    // using one of user signals for interprocess communication based on Linux signals
+    static const int SIG_LIVE_CAPTURE_STOPPED = SIGUSR1;
 
     ~Child();
 
@@ -56,11 +60,10 @@ private:
     PrimarySourceProvider & primarySourceProvider;
     OlySocket * socket;
     int numExceptions;
-    int mNumConnections;
 
     Child(PrimarySourceProvider & primarySourceProvider);
-    Child(PrimarySourceProvider & primarySourceProvider, OlySocket & sock, int numConnections);
-    Child(bool local, PrimarySourceProvider & primarySourceProvider, OlySocket * sock, int numConnections);
+    Child(PrimarySourceProvider & primarySourceProvider, OlySocket & sock);
+    Child(bool local, PrimarySourceProvider & primarySourceProvider, OlySocket * sock);
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(Child);
 

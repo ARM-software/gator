@@ -16,9 +16,10 @@
 
 namespace mali_userspace
 {
-    static MaliDevice * enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, const char * devicePath)
+    static MaliDevice * enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, const char * devicePath, const char * /*clockPath*/)
     {
-        MaliDevice * device = MaliDevice::create(mpNumber, gpuId, devicePath);
+        // [SDDAP-8262] Disabled clock counter as currently mali hardware counters lock Mali clock frequency rendering the counter useless
+        MaliDevice * device = MaliDevice::create(mpNumber, gpuId, devicePath, /*clockPath*/ nullptr);
 
         if (device != NULL) {
             logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found", model, mpNumber, rValue, pValue, gpuId, devicePath);
@@ -95,6 +96,7 @@ namespace mali_userspace
                     continue;
                 }
 
+                lib::Optional<lib::FsEntry> clockPath;
                 lib::Optional<lib::FsEntry> devicePath;
                 lib::Optional<lib::FsEntry> miscChildEntry;
                 lib::FsEntryDirectoryIterator miscIterator = miscDirEntry.children();
@@ -103,6 +105,7 @@ namespace mali_userspace
                     int ignored;
                     if (sscanf(miscChildEntry->name().c_str(), "mali%d", &ignored) == 1) {
                         devicePath = lib::FsEntry::create(lib::FsEntry::create("/dev"), miscChildEntry->name());
+                        clockPath = lib::FsEntry::create(*miscChildEntry, "clock");
                     }
                     else {
                         logg.logMessage("enumerateMaliHwCntrDrivers - skipping '%s'", miscChildEntry->path().c_str());
@@ -114,8 +117,12 @@ namespace mali_userspace
                     continue;
                 }
 
+                if ((!clockPath.valid()) || (!clockPath->canAccess(true, false, false))) {
+                    clockPath = lib::FsEntry::create(*childEntry, "clock");
+                }
+
                 // create the device object
-                result = enumerateMaliHwCntrDriver(model, mpNumber, rValue, pValue, gpuId, devicePath->path().c_str());
+                result = enumerateMaliHwCntrDriver(model, mpNumber, rValue, pValue, gpuId, devicePath->path().c_str(), (clockPath.valid() ? clockPath->path().c_str() : nullptr));
                 if (result != NULL) {
                     return result;
                 }

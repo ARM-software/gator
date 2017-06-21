@@ -43,6 +43,9 @@ namespace non_root
 
         PROCESS_DELTA_MAJOR_FAULTS,
         PROCESS_DELTA_MINOR_FAULTS,
+        PROCESS_DELTA_UTIME,
+        PROCESS_DELTA_STIME,
+        PROCESS_DELTA_GUEST_TIME
     };
 
     static constexpr typename std::underlying_type<NonRootCounter>::type NonRootCounterValue(NonRootCounter nrc)

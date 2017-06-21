@@ -111,15 +111,6 @@
     <event counter="ARM_Mali-TSIx_ARITH_INSTR_DOUBLE" title="Mali Instructions" name="Double intructions" description="Number of completed double arithmetic instructions per compute unit" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_ARITH_INSTR_MSG" title="Mali Instructions" name="Arithmetic instructions" description="Number of completed arithmetic and message passing instructions per compute unit" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_ARITH_INSTR_MSG_ONLY" title="Mali Instructions" name="Messages passing instructions" description="Number of completed message passing instructions per compute unit" advanced="yes"/>
-    <event counter="ARM_Mali-TSIx_TEX_INSTR" title="Mali Texture Instructions" name="Completed" description="Number of TEX instructions completed"/>
-    <event counter="ARM_Mali-TSIx_TEX_INSTR_MIPMAP" title="Mali Texture Instructions" name="Mipmapped" description="Number of TEX instructions accessing mipmapped textures" advanced="yes"/>
-    <event counter="ARM_Mali-TSIx_TEX_INSTR_COMPRESSED" title="Mali Texture Instructions" name="Compressed" description="Number of TEX instructions accessing compressed textures"/>
-    <event counter="ARM_Mali-TSIx_TEX_INSTR_3D" title="Mali Texture Instructions" name="3D" description="Number of TEX instructions accessing 3D textures"/>
-    <event counter="ARM_Mali-TSIx_TEX_INSTR_TRILINEAR" title="Mali Texture Instructions" name="Trilinear" description="Number of TEX instructions performing trilinear filtering"/>
-    <event counter="ARM_Mali-TSIx_TEX_COORD_ISSUE" title="Mali Texture Threads" name="Texture threads" description="Number of threads issued to the texel coordinate stage"/>
-    <event counter="ARM_Mali-TSIx_TEX_COORD_STALL" title="Mali Texture Cycles" name="Texel coordingates stage" description="Number of cycles the texel coordinate stage is stalled" advanced="yes"/>
-    <event counter="ARM_Mali-TSIx_TEX_STARVE_CACHE" title="Mali Texture Cycles" name="Cache starvation" description="Number of texture cache starvation cycles" advanced="yes"/>
-    <event counter="ARM_Mali-TSIx_TEX_STARVE_FILTER" title="Mali Texture Cycles" name="Filter starvation" description="Number of texture filter starvation cycles" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_LS_MEM_READ_FULL" title="Mali Memory" name="Full read accesses" description="Number of full memory read accesses (128-bit)"/>
     <event counter="ARM_Mali-TSIx_LS_MEM_READ_SHORT" title="Mali Memory" name="Short read accesses" description="Number of short memory read accesses (less than 128-bit)"/>
     <event counter="ARM_Mali-TSIx_LS_MEM_WRITE_FULL" title="Mali Memory" name="Full write accesses" description="Number of full memory write accesses (128-bit)"/>
@@ -139,6 +130,15 @@
     <event counter="ARM_Mali-TSIx_BEATS_RD_OTHER" title="Mali Cache Other" name="Read beats" description="Number of read beats for all other masters"/>
     <event counter="ARM_Mali-TSIx_BEATS_WR_LSC" title="Mali Cache Load/Store" name="Write Beats" description="Number of write beats for the load/store cache"/>
     <event counter="ARM_Mali-TSIx_BEATS_WR_TIB" title="Mali Cache Tile" name="Write beats" description="Number of write beats for the tile buffers"/>
+    <event counter="ARM_Mali-TSIx_TEX_MSGI_NUM_QUADS" title="Mali Textures (Messages)" name="Request Messages" description="Number of texture request messages received."/>
+    <event counter="ARM_Mali-TSIx_TEX_DFCH_NUM_PASSES" title="Mali Textures (Passes)" name="Received" description="The number of passes received by the descriptor fetcher."/>
+    <event counter="ARM_Mali-TSIx_TEX_DFCH_NUM_PASSES_MISS" title="Mali Textures (Passes)" name="Received with Cache Miss" description="The number of the passes received by the descriptor fetcher that encountered a cache miss in the Texture Descriptor Cache or the Sampler Descriptor Cache."/>
+    <event counter="ARM_Mali-TSIx_TEX_DFCH_NUM_PASSES_MIP_MAP" title="Mali Textures (Passes)" name="Processed with Mip Maps" description="The number of passes processed by the descriptor fetcher that have mip-maps enabled."/>
+    <event counter="ARM_Mali-TSIx_TEX_TIDX_NUM_SPLIT_MIP_MAP" title="Mali Textures (Passes)" name="Passes Split" description="The number of pass splits due to accessing multiple mip-map levels."/>
+    <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_LINES_FETCHED" title="Mali Textures (Fetch)" name="Lines Fetched" description="The number of cache-lines fetched in total."/>
+    <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_LINES_FETCHED_BLOCK_COMPRESSED" title="Mali Textures (Fetch)" name="Lines Fetched from Block-Compressed Textures" description=" The number of cache-lines fetched from block-compressed textures in memory."/>
+    <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_OPERATIONS" title="Mali Textures (Fetch)" name="Texel Fetch Operations" description="The number of operations executed in the texel fetcher hit path."/>
+    <event counter="ARM_Mali-TSIx_TEX_FILT_NUM_OPERATIONS" title="Mali Textures (Filter)" name="Filter Operations" description="The number of operations executed in the primary filtering unit."/>
   </category>
   <category name="Mali L2 Cache" per_cpu="no">
     <event counter="ARM_Mali-TSIx_MMU_REQUESTS" title="Mali L2 Cache Messages" name="MMU requests" description="Number of requests received by the MMU" advanced="yes"/>

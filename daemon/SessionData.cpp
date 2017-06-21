@@ -419,6 +419,7 @@ void SessionData::readCpuInfo()
                 }
                 else {
                     setImplementer(&mMaxCpuId, implementer);
+                    invalidFormat = true;
                 }
             }
 
@@ -435,6 +436,7 @@ void SessionData::readCpuInfo()
                 }
                 else {
                     setPart(&mMaxCpuId, cpuId);
+                    invalidFormat = true;
                 }
             }
 

@@ -37,6 +37,8 @@ struct gator_attr {
     unsigned long count;
     /* Exposed as read only in gatorfs - set once in __attr_init as the key to use in the APC data */
     unsigned long key;
+    /* The gator_cpu object that it belongs to */
+    const struct gator_cpu * gator_cpu;
 };
 
 /* Per-core counter attributes */
@@ -47,6 +49,8 @@ static int attr_count;
 static struct gator_attr uc_attrs[UCCNT];
 /* Number of initialized uncore counters */
 static int uc_attr_count;
+/* Mapping from CPU to gator_cpu object */
+static const struct gator_cpu * gator_cpus_per_core[ARRAY_SIZE(gator_cpuids)];
 
 struct gator_event {
     uint32_t curr;
@@ -116,6 +120,9 @@ static int gator_events_perf_pmu_online(int **buffer, bool migrate)
 
 static void __online_dispatch(int cpu, bool migrate, struct gator_attr *const attr, struct gator_event *const event)
 {
+    const char * const cpu_core_name = (gator_cpus_per_core[cpu] != NULL ? gator_cpus_per_core[cpu]->core_name : "Unknown");
+    const u32 cpu_cpuid = (gator_cpus_per_core[cpu] != NULL ? gator_cpus_per_core[cpu]->cpuid : gator_cpuids[cpu]);
+
     perf_overflow_handler_t handler;
     struct perf_event *pevent;
 
@@ -123,6 +130,15 @@ static void __online_dispatch(int cpu, bool migrate, struct gator_attr *const at
 
     if (event->pevent != NULL || event->pevent_attr == NULL || migrate)
         return;
+
+    if ((gator_cpus_per_core[cpu] == NULL) || ((gator_cpus_per_core[cpu] != attr->gator_cpu) && (attr->gator_cpu != NULL))) {
+        pr_debug("gator: Counter %s does not apply to core %i (Core: %s 0x%x, Counter: %s 0x%lx)\n",
+                  attr->name, cpu, cpu_core_name, cpu_cpuid, attr->gator_cpu->core_name, attr->gator_cpu->cpuid);
+        return;
+    }
+    else {
+        pr_debug("gator: Counter %s applies to core %i (%s 0x%x)\n", attr->name, cpu, cpu_core_name, cpu_cpuid);
+    }
 
     if (attr->count > 0)
         handler = ebs_overflow_handler;
@@ -150,12 +166,14 @@ static void gator_events_perf_pmu_online_dispatch(int cpu, bool migrate)
 
     cpu = pcpu_to_lcpu(cpu);
 
-    for (cnt = 0; cnt < attr_count; cnt++)
+    for (cnt = 0; cnt < attr_count; cnt++) {
         __online_dispatch(cpu, migrate, &attrs[cnt], &per_cpu(events, cpu)[cnt]);
+    }
 
     if (cpu == 0) {
-        for (cnt = 0; cnt < uc_attr_count; cnt++)
+        for (cnt = 0; cnt < uc_attr_count; cnt++) {
             __online_dispatch(cpu, migrate, &uc_attrs[cnt], &uc_events[cnt]);
+        }
     }
 }
 
@@ -364,6 +382,7 @@ static void __attr_init(struct gator_attr *const attr)
     attr->event = 0;
     attr->count = 0;
     attr->key = gator_events_get_key();
+    attr->gator_cpu = NULL;
 }
 
 static void gator_events_perf_pmu_uncore_init(const struct uncore_pmu *const uncore_pmu, const int type)
@@ -374,6 +393,7 @@ static void gator_events_perf_pmu_uncore_init(const struct uncore_pmu *const unc
         if (uc_attr_count < ARRAY_SIZE(uc_attrs)) {
             snprintf(uc_attrs[uc_attr_count].name, sizeof(uc_attrs[uc_attr_count].name), "%s_ccnt", uncore_pmu->core_name);
             uc_attrs[uc_attr_count].type = type;
+            uc_attrs[uc_attr_count].gator_cpu = NULL;
         }
         ++uc_attr_count;
     }
@@ -384,6 +404,7 @@ static void gator_events_perf_pmu_uncore_init(const struct uncore_pmu *const unc
         if (uc_attr_count < ARRAY_SIZE(uc_attrs)) {
             snprintf(attr->name, sizeof(attr->name), "%s_cnt%d", uncore_pmu->core_name, cnt);
             attr->type = type;
+            attr->gator_cpu = NULL;
         }
     }
 }
@@ -392,21 +413,24 @@ static void gator_events_perf_pmu_cpu_init(const struct gator_cpu *const gator_c
 {
     int cnt;
 
-    if (gator_cluster_count < ARRAY_SIZE(gator_clusters))
+    if (gator_cluster_count < ARRAY_SIZE(gator_clusters)) {
         gator_clusters[gator_cluster_count++] = gator_cpu;
 
-    if (attr_count < ARRAY_SIZE(attrs)) {
-        snprintf(attrs[attr_count].name, sizeof(attrs[attr_count].name), "%s_ccnt", gator_cpu->pmnc_name);
-        attrs[attr_count].type = type;
-    }
-    ++attr_count;
-
-    for (cnt = 0; cnt < gator_cpu->pmnc_counters; ++cnt, ++attr_count) {
-        struct gator_attr *const attr = &attrs[attr_count];
-
         if (attr_count < ARRAY_SIZE(attrs)) {
-            snprintf(attr->name, sizeof(attr->name), "%s_cnt%d", gator_cpu->pmnc_name, cnt);
-            attr->type = type;
+            snprintf(attrs[attr_count].name, sizeof(attrs[attr_count].name), "%s_ccnt", gator_cpu->pmnc_name);
+            attrs[attr_count].type = type;
+            attrs[attr_count].gator_cpu = gator_cpu;
+        }
+        ++attr_count;
+
+        for (cnt = 0; cnt < gator_cpu->pmnc_counters; ++cnt, ++attr_count) {
+            struct gator_attr *const attr = &attrs[attr_count];
+
+            if (attr_count < ARRAY_SIZE(attrs)) {
+                snprintf(attr->name, sizeof(attr->name), "%s_cnt%d", gator_cpu->pmnc_name, cnt);
+                attr->type = type;
+                attr->gator_cpu = gator_cpu;
+            }
         }
     }
 }
@@ -420,12 +444,13 @@ static int gator_events_perf_pmu_reread(void)
     int type;
     int cpu;
     int cnt;
-    bool found_cpu = false;
 
     for (cnt = 0; cnt < ARRAY_SIZE(attrs); cnt++)
         __attr_init(&attrs[cnt]);
     for (cnt = 0; cnt < ARRAY_SIZE(uc_attrs); cnt++)
         __attr_init(&uc_attrs[cnt]);
+    for (cnt = 0; cnt < ARRAY_SIZE(gator_cpus_per_core); cnt++)
+        gator_cpus_per_core[cnt] = NULL;
 
     memset(&pea, 0, sizeof(pea));
     pea.size = sizeof(pea);
@@ -453,11 +478,10 @@ static int gator_events_perf_pmu_reread(void)
         if (pe->pmu != NULL && type == pe->pmu->type) {
             pr_notice("gator: perf pmu: %s\n", pe->pmu->name);
             if ((uncore_pmu = gator_find_uncore_pmu(pe->pmu->name)) != NULL) {
-                pr_notice("gator: Adding uncore counters for %s with type %i\n", uncore_pmu->core_name, type);
+                pr_notice("gator: Adding uncore counters for %s (%s) with type %i\n", uncore_pmu->core_name, uncore_pmu->pmnc_name, type);
                 gator_events_perf_pmu_uncore_init(uncore_pmu, type);
             } else if ((gator_cpu = gator_find_cpu_by_pmu_name(pe->pmu->name)) != NULL) {
-                found_cpu = true;
-                pr_notice("gator: Adding cpu counters for %s with type %i\n", gator_cpu->core_name, type);
+                pr_notice("gator: Adding cpu counters for %s (%s) with type %i\n", gator_cpu->core_name, gator_cpu->pmnc_name, type);
                 gator_events_perf_pmu_cpu_init(gator_cpu, type);
             }
             /* Initialize gator_attrs for dynamic PMUs here */
@@ -466,26 +490,47 @@ static int gator_events_perf_pmu_reread(void)
         perf_event_release_kernel(pe);
     }
 
-    if (!found_cpu) {
-        const struct gator_cpu *gator_cpu = gator_find_cpu_by_cpuid(gator_cpuid());
+    /* Now use CPUID to create CPU->PMU mapping, and add any missing PMUs using PERF_TYPE_RAW */
+    for (cpu = 0; cpu < ARRAY_SIZE(gator_cpuids); ++cpu) {
+        if (gator_cpuids[cpu] != ((u32) -1)) {
+            bool found_cpu = false;
+            const struct gator_cpu *gator_cpu = gator_find_cpu_by_cpuid(gator_cpuids[cpu]);
 
 #if defined(__arm__) || defined(__aarch64__)
-        if (gator_cpu == NULL) {
-            pr_err("gator: This CPU is not recognized, using the ARM architected counters\n");
-            gator_cpu = &gator_pmu_other;
-        }
+            if (gator_cpu == NULL) {
+                pr_err("gator: This CPU is not recognized, using the ARM architected counters\n");
+                gator_cpu = &gator_pmu_other;
+            }
 #else
-        if (gator_cpu == NULL) {
-            pr_err("gator: This CPU is not recognized\n");
-            return -1;
-        }
+            if (gator_cpu == NULL) {
+                pr_err("gator: This CPU is not recognized\n");
+                return -1;
+            }
 #endif
-        pr_notice("gator: Adding cpu counters (based on cpuid) for %s\n", gator_cpu->pmnc_name);
-        gator_events_perf_pmu_cpu_init(gator_cpu, PERF_TYPE_RAW);
+            for (cnt = 0; cnt < gator_cluster_count; ++cnt) {
+                if (gator_clusters[cnt] == gator_cpu) {
+                    found_cpu = true;
+                    break;
+                }
+            }
+
+            if (!found_cpu) {
+                pr_notice("gator: Adding cpu counters (based on cpuid) for %s\n", gator_cpu->core_name);
+                gator_events_perf_pmu_cpu_init(gator_cpu, PERF_TYPE_RAW);
+            }
+
+            gator_cpus_per_core[cpu] = gator_cpu;
+        }
+    }
+
+    /* Log the PMUs used per core */
+    for (cpu = 0; cpu < ARRAY_SIZE(gator_cpuids); ++cpu) {
+        if (gator_cpus_per_core[cpu] != NULL) {
+            pr_notice("gator: Using %s (0x%lx) for cpu %i\n", gator_cpus_per_core[cpu]->core_name, gator_cpus_per_core[cpu]->cpuid, cpu);
+        }
     }
 
     /* Initialize gator_attrs for non-dynamic PMUs here */
-
     if (attr_count > CNTMAX) {
         pr_err("gator: Too many perf counters, please increase CNTMAX\n");
         return -1;

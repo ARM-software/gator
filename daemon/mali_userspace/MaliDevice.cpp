@@ -125,7 +125,7 @@ namespace mali_userspace
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T86X, "T86x", "Midgard", hardware_counters_mali_t86x, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_TFRX, "T88x", "Midgard", hardware_counters_mali_t88x, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TMIX, "G71",  "Bifrost", hardware_counters_mali_tMIx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_THEX, "THEx", "Bifrost", hardware_counters_mali_tHEx, COUNTER_LAYOUT_V6 ),
+                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_THEX, "G72",  "Bifrost", hardware_counters_mali_tHEx, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TSIX, "G51",  "Bifrost", hardware_counters_mali_tSIx, COUNTER_LAYOUT_V6 ) };
 
         enum {
@@ -202,19 +202,20 @@ namespace mali_userspace
         countersList[index].wordIndex = wordIndex;
     }
 
-    MaliDevice * MaliDevice::create(uint32_t mpNumber, uint32_t gpuId, const char * devicePath)
+    MaliDevice * MaliDevice::create(uint32_t mpNumber, uint32_t gpuId, const char * devicePath, const char * clockPath)
     {
         for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
             if ((gpuId & PRODUCT_VERSIONS[index].mGpuIdMask) == PRODUCT_VERSIONS[index].mGpuIdValue) {
-                return new MaliDevice(PRODUCT_VERSIONS[index], devicePath, mpNumber, gpuId);
+                return new MaliDevice(PRODUCT_VERSIONS[index], devicePath, clockPath, mpNumber, gpuId);
             }
         }
         return NULL;
     }
 
-    MaliDevice::MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, uint32_t numShaderCores, uint32_t gpuId)
+    MaliDevice::MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t numShaderCores, uint32_t gpuId)
         :   mProductVersion (productVersion),
             mDevicePath (strdup(devicePath)),
+            mClockPath (clockPath != nullptr ? strdup(clockPath) : nullptr),
             mNumShaderCores (numShaderCores),
             mGpuId (gpuId)
     {
@@ -223,6 +224,9 @@ namespace mali_userspace
     MaliDevice::~MaliDevice()
     {
         free(const_cast<char *>(mDevicePath));
+        if (mClockPath != nullptr) {
+            free(const_cast<char *>(mClockPath));
+        }
     }
 
     uint32_t MaliDevice::getBlockCount() const

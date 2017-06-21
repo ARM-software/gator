@@ -15,6 +15,7 @@ namespace non_root
               stat_majflt(),
               stat_utime(),
               stat_stime(),
+              stat_guest_time(),
               stat_vsize(),
               stat_rss(),
               stat_rsslim(),
@@ -38,8 +39,6 @@ namespace non_root
         if (sendFakeSchedulingEvents) {
             handler.threadActivity(timestampNS, tid, stat_utime.delta(), stat_stime.delta(), stat_processor.value());
         }
-        stat_utime.done();
-        stat_stime.done();
 
         // send changed COMM
         if (comm.changed()) {
@@ -67,6 +66,9 @@ namespace non_root
         writeCounter(timestampNS, handler, AbsoluteProcessCounter::VM_SIZE, stat_vsize);
         writeCounter(timestampNS, handler, DeltaProcessCounter::MINOR_FAULTS, stat_minflt);
         writeCounter(timestampNS, handler, DeltaProcessCounter::MAJOR_FAULTS, stat_majflt);
+        writeCounter(timestampNS, handler, DeltaProcessCounter::UTIME, stat_utime);
+        writeCounter(timestampNS, handler, DeltaProcessCounter::STIME, stat_stime);
+        writeCounter(timestampNS, handler, DeltaProcessCounter::GUEST_TIME, stat_guest_time);
 
         newProcess = false;
     }
@@ -78,6 +80,7 @@ namespace non_root
         stat_majflt.update(record.getMajflt());
         stat_utime.update(record.getUtime());
         stat_stime.update(record.getStime());
+        stat_guest_time.update(record.getGuestTime());
         stat_num_threads.update(record.getNumThreads());
         stat_vsize.update(record.getVsize());
         stat_rss.update(record.getRss() * pageSize);

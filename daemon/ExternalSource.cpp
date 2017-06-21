@@ -10,6 +10,8 @@
 
 #include <fcntl.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "Child.h"
@@ -162,6 +164,12 @@ void ExternalSource::run()
     int pipefd[2];
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-external"), 0, 0, 0);
+
+    // Gator runs at a high priority, reset the priority to the default
+    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
+        logg.logError("setpriority failed");
+        handleException();
+    }
 
     if (pipe_cloexec(pipefd) != 0) {
         logg.logError("pipe failed");

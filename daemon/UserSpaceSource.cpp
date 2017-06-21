@@ -31,6 +31,28 @@ UserSpaceSource::~UserSpaceSource()
 {
 }
 
+std::vector<PolledDriver *> UserSpaceSource::allPolledDrivers()
+{
+    std::vector<PolledDriver *> result (gSessionData.mPrimarySource->getAdditionalPolledDrivers());
+
+    PolledDriver * usDriver = gSessionData.mMaliHwCntrs.getPolledDriver();
+    if (usDriver != nullptr) {
+        result.emplace_back(usDriver);
+    }
+
+    return result;
+}
+
+bool UserSpaceSource::shouldStart()
+{
+    for (PolledDriver * usDriver : allPolledDrivers()) {
+        if (usDriver->countersEnabled()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool UserSpaceSource::prepare()
 {
     return true;
@@ -40,8 +62,13 @@ void UserSpaceSource::run()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-counters"), 0, 0, 0);
 
-    for (PolledDriver * usDriver : gSessionData.mPrimarySource->getAdditionalPolledDrivers()) {
-        usDriver->start();
+    std::vector<PolledDriver *> allUserspaceDrivers;
+
+    for (PolledDriver * usDriver : allPolledDrivers()) {
+        if (usDriver->countersEnabled()) {
+            usDriver->start();
+            allUserspaceDrivers.emplace_back(usDriver);
+        }
     }
 
     int64_t monotonicStarted = 0;
@@ -61,7 +88,7 @@ void UserSpaceSource::run()
         }
 
         if (mBuffer.eventHeader(currTime)) {
-            for (PolledDriver * usDriver : gSessionData.mPrimarySource->getAdditionalPolledDrivers()) {
+            for (PolledDriver * usDriver : allUserspaceDrivers) {
                 usDriver->read(&mBuffer);
             }
             // Only check after writing all counters so that time and corresponding counters appear in the same frame

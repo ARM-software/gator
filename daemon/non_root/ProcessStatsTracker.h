@@ -80,6 +80,7 @@ namespace non_root
         DeltaCounter<unsigned long> stat_majflt;
         DeltaCounter<unsigned long> stat_utime;
         DeltaCounter<unsigned long> stat_stime;
+        DeltaCounter<unsigned long> stat_guest_time;
         AbsoluteCounter<unsigned long> stat_vsize;
         AbsoluteCounter<unsigned long> stat_rss;
         AbsoluteCounter<unsigned long> stat_rsslim;

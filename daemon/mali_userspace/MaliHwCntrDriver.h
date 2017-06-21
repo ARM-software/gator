@@ -10,6 +10,7 @@
 #define NATIVE_GATOR_DAEMON_MIDGARDHWCOUNTERDRIVER_H_
 
 #include "ClassBoilerPlate.h"
+#include "PolledDriver.h"
 #include "SimpleDriver.h"
 #include "mali_userspace/MaliHwCntrReader.h"
 
@@ -43,6 +44,11 @@ namespace mali_userspace
             return mReader;
         }
 
+        inline PolledDriver * getPolledDriver() const
+        {
+            return mPolledDriver;
+        }
+
         int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex) const;
 
         const char * getSupportedDeviceFamilyName() const;
@@ -53,6 +59,8 @@ namespace mali_userspace
         MaliHwCntrReader * mReader;
         /** For each possible counter index, contains the counter key, or 0 if not enabled */
         int * mEnabledCounterKeys;
+        /** Polling driver for GPU clock etc. */
+        PolledDriver * mPolledDriver;
 
         bool query();
 

@@ -115,6 +115,19 @@ namespace lib
         /** @return Current stats for file */
         Stats read_stats() const;
 
+        /**
+         * Check if file can be accessed for a certain kind of operation. If all arguments are false, just checks for existances
+         *
+         * @param read True to check if readable
+         * @param write True to check if writable
+         * @param exec True to check if executable
+         * @return True if *all* the requested access modes are valid (e.g. 'readable and writable' rather than 'readable or writable')
+         */
+        bool canAccess(bool read, bool write, bool exec) const;
+
+        /** @return True if the file exists */
+        bool exists() const;
+
     private:
 
         std::string path_;
