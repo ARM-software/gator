@@ -74,7 +74,7 @@
     <event event="0xe5" title="MMU" name="Preload Table Walk" description="Duration of a translation table walk requested by a Preload instruction or Prefetch request"/>
     <event event="0xe6" title="MMU" name="cp15 Table Walk" description="Duration of a translation table walk requested by a CP15 operation (maintenance by MVA and VA to PA operations)"/>
     <event event="0xe7" title="Cache" name="L1 PLD TLB refill" description="Level 1 PLD TLB refill"/>
-    <event event="0xe8" title="Cache" name="L1 CP15 TLB refill" description="Level 1 CP15 TLB refill"/>
+    <event event="0xe8" title="Cache" name="L2 PLD TLB acces" description="Level 2 preload and MMU prefetcher TLB access"/>
     <event event="0xe9" title="Cache" name="L1 TLB flush" description="Level 1 TLB flush"/>
     <event event="0xea" title="Cache" name="L2 TLB access" description="Level 2 TLB access"/>
     <event event="0xeb" title="Cache" name="L2 TLB miss" description="Level 2 TLB miss"/>

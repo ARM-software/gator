@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -15,7 +15,7 @@
 #define ARRAY_LENGTH(A) static_cast<int>(sizeof(A) / sizeof((A)[0]))
 #define ACCESS_ONCE(x)  (*reinterpret_cast<volatile __typeof(x) *>(&(x)))
 
-#define MAX_PERFORMANCE_COUNTERS 50
+#define MAX_PERFORMANCE_COUNTERS 100
 #define NR_CPUS 97
 #define CLUSTER_COUNT 4
 #define CLUSTER_MASK (CLUSTER_COUNT - 1)

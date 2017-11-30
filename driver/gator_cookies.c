@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,7 +8,9 @@
  */
 
 #include <linux/mount.h>
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#   include <linux/sched/mm.h>
+#endif
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)

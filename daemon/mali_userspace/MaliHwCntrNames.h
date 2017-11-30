@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRNAMES_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRNAMES_H_
@@ -2850,7 +2850,7 @@ namespace mali_userspace
         "TSIx_TEX_DFCH_NUM_PASSES_MIP_MAP",
         "TSIx_TEX_TIDX_NUM_SPLIT_MIP_MAP",
         "TSIx_TEX_TFCH_NUM_LINES_FETCHED",
-        "TSIx_TEX_TFCH_NUM_LINES_FETCHED_BLOCK_COMPRESSED",
+        "TSIx_TEX_TFCH_NUM_LINES_FETCHED_BLOCK",
         "TSIx_TEX_TFCH_NUM_OPERATIONS",
         "TSIx_TEX_FILT_NUM_OPERATIONS",
         "TSIx_LS_MEM_READ_FULL",

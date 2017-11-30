@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION 630
+#define PROTOCOL_VERSION    650
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/version.h>
@@ -36,7 +36,7 @@ static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 #endif
 
 #include "gator.h"
-#include "gator_src_md5.h"
+#include "generated_gator_src_md5.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
 #error Kernels prior to 3.4 not supported. DS-5 v5.21 and earlier supported 2.6.32 and later.
@@ -1126,8 +1126,8 @@ static ssize_t enable_read(struct file *file, char __user *buf, size_t count, lo
 
 static ssize_t enable_write(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
-    unsigned long val;
-    int retval;
+    unsigned long val = 0;
+    int retval = 0;
 
     if (*offset)
         return -EINVAL;
@@ -1426,10 +1426,17 @@ static struct notifier_block tracepoint_notifier_block = {
 
 #endif
 
+
+/* The user may define 'CONFIG_GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP' to prevent offline cores from being
+ * started when gator is loaded, or alternatively they can set 'disable_cpu_onlining' when module is loaded */
+#if defined(CONFIG_SMP) && !defined(CONFIG_GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP)
+MODULE_PARM_DESC(disable_cpu_onlining, "Do not online all cores when module starts");
+static bool disable_cpu_onlining;
+module_param(disable_cpu_onlining, bool, 0644);
+#endif
+
 static int __init gator_module_init(void)
 {
-    int cpu;
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
     /* scan kernel built in tracepoints */
     for_each_kernel_tracepoint(gator_save_tracepoint, NULL);
@@ -1449,12 +1456,15 @@ static int __init gator_module_init(void)
 
     setup_deferrable_timer_on_stack(&gator_buffer_wake_up_timer, gator_buffer_wake_up, 0);
 
-#if defined(CONFIG_SMP)
+#if defined(CONFIG_SMP) && !defined(CONFIG_GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP)
     /* Online all cores */
-    for_each_present_cpu(cpu) {
-        if (!cpu_online(cpu)) {
-            pr_notice("gator: Onlining cpu %i\n", cpu);
-            cpu_up(cpu);
+    if (!disable_cpu_onlining) {
+        int cpu;
+        for_each_present_cpu(cpu) {
+            if (!cpu_online(cpu)) {
+                pr_notice("gator: Onlining cpu %i\n", cpu);
+                cpu_up(cpu);
+            }
         }
     }
 #endif
@@ -1484,7 +1494,7 @@ module_init(gator_module_init);
 module_exit(gator_module_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("ARM Ltd");
+MODULE_AUTHOR("Arm Ltd");
 MODULE_DESCRIPTION("Gator system profiler");
 #define STRIFY2(ARG) #ARG
 #define STRIFY(ARG) STRIFY2(ARG)

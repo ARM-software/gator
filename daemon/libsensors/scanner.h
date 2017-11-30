@@ -18,7 +18,7 @@
     MA 02110-1301 USA.
 */
 
-/*** This file modified by ARM on Jan 23, 2013 to fix input defined but not used warning from conf-lex.c. ***/
+/*** This file modified by Arm on Jan 23, 2013 to fix input defined but not used warning from conf-lex.c. ***/
 
 #ifndef LIB_SENSORS_SCANNER_H
 #define LIB_SENSORS_SCANNER_H

@@ -1,0 +1,113 @@
+  <counter_set name="ARMv8R_Cortex_R52_cnt" count="8"/>
+  <category name="Cortex_R52" counter_set="ARMv8R_Cortex_R52_cnt" per_cpu="yes">
+
+    <event counter="ARMv8R_Cortex_R52_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+
+    <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
+
+    <event event="0x01" title="Instruction Cache" name="Miss" description="L1 instruction cache refill"/>
+    <event event="0x03" title="Data Cache" name="Miss" description="L1 data cache refill"/>
+    <event event="0x04" title="Data Cache" name="Access" description="L1 data cache access"/>
+
+    <event event="0x06" title="Data" name="Data Read" description="Data Read architecturally executed. This event occurs for every instruction that explicitly reads data, including SWP"/>
+    <event event="0x07" title="Data" name="Data Write" description="Data Write architecturally executed. This event occurs for every instruction that explicitly writes data, including SWP"/>
+
+    <event event="0x08" title="Instruction" name="Instruction Executed" description="Instruction architecturally executed"/>
+
+    <event event="0x09" title="Exception" name="Taken" description="This event occurs on each exception taken"/>
+    <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed. This event occurs on every exception return"/>
+    <event event="0x0b" title="Context ID" name="Change" description="Change to Context ID executed"/>
+    <event event="0x0c" title="Program Counter" name="SW change" description="Software changed the PC, except by an exception, architecturally executed"/>
+    <event event="0x0d" title="Branch" name="Immediate executed" description="B immediate, BL immediate or BLX immediate instruction architecturally executed (taken or not taken)"/>
+    <event event="0x0e" title="Procedure" name="Returns" description="Procedure return architecturally executed, other than exception returns, for example, BZ Rm, LDM Rn, {..,PC}"/>
+    <event event="0x0f" title="Access" name="Unaligned" description="This event occurs for each instruction that was to an unaligned address that either triggered an alignment fault, or would have done so if the SCTLR A-bit had been set"/>
+
+    <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
+    <event event="0x12" title="Branch" name="Predicted" description="Branches or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
+    <event event="0x13" title="Access" name="Data access" description="Data memory access"/>
+    <event event="0x14" title="Instruction Cache" name="Access" description="L1 instruction cache access"/>
+    <event event="0x19" title="Bus" name="Access" description="AXIM, Flash or LLPP bus access"/>
+    <event event="0x1a" title="Memory Error" name="Error" description="Local memory error (instruction cache, data cache, ATCM, BTCM, CTCM or Flash)"/>
+    <event event="0x1b" title="Instruction" name="Speculatively Executed" description="Operation speculatively executed"/>
+    <event event="0x1d" title="Bus" name="Cycles" description="AXIM bus cycles"/>
+    <event event="0x1e" title="Chain" name="Counter chain increment" description="Even numbered counter overflow"/>
+
+    <event event="0x21" title="Branch" name="Executed" description="Branch instruction executed"/>
+    <event event="0x22" title="Branch" name="Mispredicted, Executed" description="Mispredicted branch instruction executed"/>
+
+    <event event="0x23" title="Stall" name="Front End" description="No operation issued due to the front end"/>
+    <event event="0x24" title="Stall" name="Back End" description="No operation issued due to the back end"/>
+
+    <event event="0x60" title="Bus" name="Read access" description="AXIM, Flash or LLPP bus read access"/>
+    <event event="0x61" title="Bus" name="Write access" description="AXIM, Flash or LLPP bus write access"/>
+
+    <event event="0x82" title="Exception" name="SVC call" description="Number of supervisor (SVC) exceptions taken"/>
+    <event event="0x86" title="Exception" name="IRQ" description="Number of IRQ exceptions taken"/>
+    <event event="0x87" title="Exception" name="FIQ" description="Number of FIQ exceptions taken"/>
+    <event event="0x8a" title="Exception" name="HVC" description="Number of hypervisor (HVC) exceptions taken"/>
+    <event event="0x8e" title="Exception" name="Trap IRQ" description="Number of IRQ exceptions not taken locally"/>
+    <event event="0x8f" title="Exception" name="Trap FIQ" description="Number of FIQ exceptions not taken locally"/>
+
+    <event event="0xc0" title="External Memory" name="AXI read" description="External memory request, AXIM read"/>
+    <event event="0xc1" title="External Memory" name="AXI write" description="External memory request, AXIM write"/>
+    <event event="0xc2" title="External Memory" name="Flash read" description="External memory request, Flash read"/>
+    <event event="0xc3" title="External Memory" name="LLPP read" description="External memory request, LLPP read"/>
+    <event event="0xc4" title="External Memory" name="LLPP write" description="External memory request, LLPP write"/>
+    <event event="0xc5" title="External Memory" name="Non-cacheable AXI read" description="Non-cacheable external memory request, AXIM read"/>
+    <event event="0xc6" title="External Memory" name="Non-cacheable AXI write" description="Non-cacheable external memory request, AXIM write"/>
+    <event event="0xc7" title="External Memory" name="Non-cacheable Flash read" description="Non-cacheable external memory request, Flash read"/>
+    <event event="0xc8" title="Data Cache" name="Miss (prefetch)" description="L1 data cache refill due to prefetch (AXIM only)"/>
+    <event event="0xc9" title="Data Cache" name="Miss (AXI Load/Store)" description="L1 data cache refill due to load or store (AXIM)"/>
+    <event event="0xca" title="Data Cache" name="Miss (Flash Load/Store)" description="L1 data cache refill due to load or store (Flash)"/>
+    <event event="0xcb" title="Data Cache" name="Access (AXI)" description="L1 data cache access in a way reserved for AXIM"/>
+    <event event="0xcc" title="Data Cache" name="Access (Flash)" description="L1 data cache access in a way reserved for Flash"/>
+    <event event="0xcd" title="Instruction Cache" name="Access (AXI)" description="L1 instruction cache access in a way reserved for AXIM"/>
+    <event event="0xce" title="Instruction Cache" name="Access (Flash)" description="L1 instruction cache access in a way reserved for Flash"/>
+    <event event="0xcf" title="External Memory" name="Non-cacheable AXI hinted read" description="Non-cacheable external memory request because of load was hinted, AXIM"/>
+    <event event="0xd0" title="External Memory" name="Non-cacheable Flash hinted read" description="Non-cacheable external memory request because of load was hinted, Flash"/>
+    <event event="0xd1" title="Instruction Cache" name="Miss (AXI)" description="L1 instruction cache refill (AXIM)"/>
+    <event event="0xd2" title="Instruction Cache" name="Miss (Flash)" description="L1 instruction cache refill (Flash)"/>
+    <event event="0xd3" title="External Memory" name="Non-cacheable AXI load" description="Non-cacheable external memory request due to load, AXIM read"/>
+    <event event="0xd4" title="External Memory" name="Non-cacheable Flash load" description="Non-cacheable external memory request due to load, Flash read"/>
+    <event event="0xd5" title="Branch" name="Conditional executed" description="Conditional branch instruction executed"/>
+    <event event="0xd6" title="Branch" name="Conditional mispredicted" description="Conditional branch instruction mispredicted"/>
+    <event event="0xd7" title="Branch" name="BTAC executed" description="BTAC branch instruction executed"/>
+    <event event="0xd8" title="Branch" name="BTAC mispredicted" description="BTAC branch instruction mispredicted"/>
+    <event event="0xd9" title="VSCTLR" name="Change" description="MCR to VSCTLR"/>
+    <event event="0xda" title="DSB" name="DSB ALL executed" description="Strong DSB (DSB ALL) executed"/>
+    <event event="0xdb" title="Contention" name="Simultaneous I/D access (AXI)" description="Simultaneous accesses from instruction side and data side to AXIM causing contention"/>
+    <event event="0xdc" title="Contention" name="Simultaneous I/D access (Flash)" description="Simultaneous accesses from instruction side and data side to Flash causing contention"/>
+    <event event="0xdd" title="Exception" name="EL2 entry" description="Number of exceptions taken to EL2 (hyp mode entry), excluding reset"/>
+    <event event="0xde" title="Branch" name="CRS executed" description="CRS branch instruction executed"/>
+    <event event="0xdf" title="Branch" name="CRS mispredicted" description="CRS branch instruction mispredicted"/>
+    <event event="0xf0" title="Memory Error" name="Correctable" description="Correctable memory error occurred from any source (instruction cache, data cache, ATCM, BTCM, CTCM or Flash)"/>
+    <event event="0xf1" title="Memory Error" name="Fatal" description="Fatal memory error occurred from any source (instruction cache, data cache, ATCM, BTCM, CTCM or Flash)"/>
+    <event event="0xf2" title="Bus" name="Correctable Data Error" description="Correctable data payload bus error occurred from any source (AXIM or LLPP)"/>
+    <event event="0xf3" title="Bus" name="Fatal Error (Other)" description="Fatal non-protocol bus error occurred (payload errors, except data) from any source (AXIM, Flash or LLPP)"/>
+    <event event="0xf4" title="Bus" name="Fatal Error (Protocol)" description="Fatal protocol bus error occurred (LEN, ID, LAST, READY and interconnect protection errors) from any source (AXIM, Flash or LLPP)"/>
+
+    <event event="0x100" title="DPU IQ" name="Empty (No Miss) Cycles" description="Counts every cycle that the DPU IQ is empty and that is not because of a recent instruction cache miss in any way"/>
+    <event event="0x101" title="DPU IQ" name="Empty (AXI Miss) Cycles" description="Counts every cycle that the DPU IQ is empty and there is an instruction cache miss being processed for a cache way reserved for AXIM"/>
+    <event event="0x102" title="DPU IQ" name="Empty (Flash Miss) Cycles" description="Counts every cycle that the DPU IQ is empty and there is an instruction cache miss being processed for a cache way reserved for Flash"/>
+    <event event="0x103" title="Interlock" name="Other Cycles" description="Counts every cycle there is an interlock that is not because of an Advanced SIMD or floating-point instruction, and not because of a load/store instruction waiting for data to calculate the address in the AGU. Stall cycles because of a stall in Wr, typically awaiting load data, are excluded"/>
+    <event event="0x104" title="Interlock" name="AGU Cycles" description="Counts every cycle there is an interlock that is because of a load/store instruction waiting for data to calculate the address in the AGU. Stall cycles because of a stall in Wr, typically awaiting load data, are excluded"/>
+    <event event="0x105" title="Interlock" name="FP/ASIMD Cycles" description="Counts every cycle there is an interlock that is because of an Advanced SIMD or floating-point instruction. Stall cycles because of a stall in the Wr stage, typically waiting load data, are excluded"/>
+    <event event="0x106" title="Stall" name="Load (AXI)" description="Counts every cycle there is a stall in the Wr stage because of a load miss from the AXIM"/>
+    <event event="0x107" title="Stall" name="Load (Flash)" description="Counts every cycle there is a stall in the Wr stage because of a load miss from the Flash"/>
+    <event event="0x108" title="Stall" name="Store" description="Counts every cycle there is a stall in the Wr stage because of a store"/>
+    <event event="0x109" title="Stall" name="Store (AXI STB full)" description="Store stalled because the AXIM part of the store buffer was full"/>
+    <event event="0x10a" title="Stall" name="Store (TCM STB full)" description="Store stalled because the TCM part of the store buffer was full"/>
+    <event event="0x10b" title="Stall" name="Store (LLPP STB full)" description="Store stalled because the LLPP part of the store buffer was full"/>
+    <event event="0x10c" title="Stall" name="Barrier (Barrier)" description="Barrier stalled because store buffer was busy with another barrier"/>
+    <event event="0x10d" title="Stall" name="Barrier (AXI write)" description="Barrier stalled because it was waiting for a write to complete on the AXIM bus"/>
+
+    <event event="0x200" title="Instruction Cache" name="Way Tracker Hit" description="L1 instruction cache way tracker hit"/>
+    <event event="0x201" title="Data Cache" name="Way Tracker Hit" description="L1 data cache way tracker hit"/>
+    <event event="0x202" title="MPU" name="Instruction Hit" description="Instruction side μ-MPU hit"/>
+    <event event="0x203" title="MPU" name="Data Hit" description="Data side μ-MPU hit"/>
+    <event event="0x204" title="Instruction Cache" name="Hit" description="L1 instruction cache hit"/>
+    <event event="0x205" title="Instruction Cache" name="Linefill Buffer Hit" description="L1 instruction cache linefill buffer hit"/>
+    <event event="0x206" title="Instruction Cache" name="BIU Hit" description="L1 instruction cache hit on BIU response"/>
+    <event event="0x207" title="Instruction Cache" name="Hint Request" description="L1 instruction cache hint request sent"/>
+
+  </category>

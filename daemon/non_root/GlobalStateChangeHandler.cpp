@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
 
 #include "non_root/GlobalStateChangeHandler.h"
 #include "Buffer.h"

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,6 +11,7 @@
 
 #include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <stdint.h>
 
@@ -28,7 +29,7 @@
 #include "TtraceDriver.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
 
-#define PROTOCOL_VERSION 630
+#define PROTOCOL_VERSION 650
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -163,6 +164,8 @@ public:
     {
         return mType != -1;
     }
+
+    std::set<int> getCpuMask() const;
 
     static UncorePmu *find(const char * const name);
 

@@ -1,0 +1,85 @@
+  <counter_set name="DSU_cnt" count="6"/>
+  <category name="DSU" counter_set="DSU_cnt" per_cpu="no">
+    <!--CYCLES-->
+    <event counter="DSU_ccnt" title="DSU Clock" event="0x0011" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--BUS_ACCESS-->
+    <event title="DSU Bus" event="0x0019" name="Bus access" description="Counts every beat of data that is transferred over the data channels between the SCU and the interconnect. This event counts the sum of BUS_ACCESS_RD and BUS_ACCESS_WR." />
+    <!--MEMORY_ERROR-->
+    <event title="DSU Errors" event="0x001A" name="Local memory error" description="Counts every Correctable or Uncorrectable memory error (ECC or parity) in the protected RAMs." />
+    <!--BUS_CYCLES-->
+    <event title="DSU Bus Clock" event="0x001D" name="Bus cycles" description="ACE or CHI bus cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--CHAIN-->
+    <event title="DSU Chain" event="0x001E" name="Chain" description="Odd performance counter chain mode." />
+    <!--L3D_CACHE_ALLOCATE-->
+    <event title="DSU L3 Cache" event="0x0029" name="Level 3 unified cache allocation without refill" description="Counts every full cache line write into the L3 cache which does not cause a linefill." />
+    <!--L3D_CACHE_REFILL-->
+    <event title="DSU L3 Cache" event="0x002A" name="Level 3 unified cache refill" description="Counts every cacheable read transaction issued to the interconnect. This event counts the sum of L3D_CACHE_REFILL_RD and L3D_CACHE_REFILL_WR." />
+    <!--L3D_CACHE-->
+    <event title="DSU L3 Cache" event="0x002B" name="Level 3 unified cache access" description="Counts every cacheable read or write transaction issued to the SCU. This event counts the sum of L3D_CACHE_RD and L3D_CACHE_WR." />
+    <!--L3D_CACHE_WB-->
+    <event title="DSU L3 Cache" event="0x002C" name="Level 3 unified cache write-back" description="Counts every write-back from the L3 cache." />
+    <!--BUS_ACCESS_RD-->
+    <event title="DSU Bus" event="0x0060" name="Bus access, read" description="Counts every beat of data transferred over the read data channel between the SCU and the interconnect." />
+    <!--BUS_ACCESS_WR-->
+    <event title="DSU Bus" event="0x0061" name="Bus access, write" description="Counts every beat of data transferred over the write data channel between the SCU and the interconnect." />
+    <!--BUS_ACCESS_SHARED-->
+    <event title="DSU Bus" event="0x0062" name="Bus access, shared" description="Counts every beat of shared data transferred over the data channels between the SCU and the interconnect." />
+    <!--BUS_ACCESS_NOT_SHARED-->
+    <event title="DSU Bus" event="0x0063" name="Bus access, not shared" description="Counts every beat of not shared data transferred over the write data channel between the SCU and the interconnect." />
+    <!--BUS_ACCESS_NORMAL-->
+    <event title="DSU Bus" event="0x0064" name="Bus access, normal" description="Counts every beat of normal data transferred over the write data channel between the SCU and the interconnect." />
+    <!--BUS_ACCESS_PERIPH-->
+    <event title="DSU Bus" event="0x0065" name="Bus access, periph" description="Counts every beat of device data transferred over the write data channel between the SCU and the interconnect." />
+    <!--L3D_CACHE_RD-->
+    <event title="DSU L3 Cache" event="0x00A0" name="Level 3 unified cache access, read" description="Counts every cacheable read transaction that is issued to the SCU. Prefetches and stashes are not counted." />
+    <!--L3D_CACHE_WR-->
+    <event title="DSU L3 Cache" event="0x00A1" name="Level 3 unified cache access, write" description="Counts every cacheable write transaction issued to the SCU." />
+    <!--L3D_CACHE_REFILL_RD-->
+    <event title="DSU L3 Cache" event="0x00A2" name="Level 3 unified cache refill, read" description="Counts every cacheable read transaction issued to the interconnect caused by a read transaction. Prefetches and stashes are not counted." />
+    <!--L3D_CACHE_REFILL_WR-->
+    <event title="DSU L3 Cache" event="0x00A3" name="Level 3 unified cache refill, write" description="Counts every cacheable read transaction issued to the interconnect caused by a write transaction." />
+    <!--ACP_ACCESS-->
+    <event title="DSU ACP" event="0x0119" name="ACP access" description="Counts every beat of data transferred over the data channels between the SCU and the accelerated coherency port. This event counts the sum of ACP_ACCESS_RD and ACP_ACCESS_WR." />
+    <!--ACP_CYCLES-->
+    <event title="DSU ACP Clock" event="0x011D" name="ACP cycles" description="ACP cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--ACP_ACCESS_RD-->
+    <event title="DSU ACP" event="0x0160" name="ACP access, read" description="Counts every beat of data transferred over the read data channel between the SCU and the peripheral port." />
+    <!--ACP_ACCESS_WR-->
+    <event title="DSU ACP" event="0x0161" name="ACP access, write" description="Counts every beat of data transferred over the write data channel between the SCU and the peripheral port." />
+    <!--PP_ACCESS-->
+    <event title="DSU PP" event="0x0219" name="Peripheral port access" description="Counts every beat of data transferred over the data channels between the SCU and the peripheral port. This event counts the sum of PP_ACCESS_RD and PP_ACCESS_WR." />
+    <!--PP_CYCLES-->
+    <event title="DSU PP Clock" event="0x021D" name="Peripheral port cycles" description="Peripheral port cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--PP_ACCESS_RD-->
+    <event title="DSU PP" event="0x0260" name="Peripheral port access, read" description="Counts every beat of data transferred over the read data channel between the SCU and the peripheral port." />
+    <!--PP_ACCESS_WR-->
+    <event title="DSU PP" event="0x0261" name="Peripheral port access, write" description="Counts every beat of data transferred over the write data channel between the SCU and the peripheral port." />
+    <!--SCU_SNP_ACCESS-->
+    <event title="DSU SCU Snooping" event="0x00C0" name="SNP access" description="Counts every snoop request." />
+    <!--SCU_SNP_EVICT-->
+    <event title="DSU SCU Snooping" event="0x00C1" name="SNP evictions" description="Counts every invalidating snoop request that causes an L3 cache eviction." />
+    <!--SCU_SNP_NO_CPU_SNP-->
+    <event title="DSU SCU Snooping" event="0x00C2" name="SNP, no CPU snoop" description="Count for every snoop request that completes without needing to snoop a core." />
+    <!--SCU_PFTCH_CPU_ACCESS-->
+    <event title="DSU SCU Prefetch" event="0x0500" name="Prefetch access, CPU" description="Counts every stash transaction originating from a core." />
+    <!--SCU_PFTCH_CPU_MISS-->
+    <event title="DSU SCU Prefetch" event="0x0501" name="Prefetch data miss, CPU" description="Counts every stash transaction originating from a core where data was read in from outside the cluster." />
+    <!--SCU_PFTCH_CPU_HIT-->
+    <event title="DSU SCU Prefetch" event="0x0502" name="Prefetch data hit, CPU" description="Counts every stash transaction originating from a core where the stash hit in the cluster." />
+    <!--SCU_PFTCH_CPU_MATCH-->
+    <event title="DSU SCU Prefetch" event="0x0503" name="Prefetch match, CPU" description="Counts every completed stash transaction originating from a core that is matched by a compatible read request. This includes one caused by a stash to the core, before the stash times-out and is allocated into the L3 cache." />
+    <!--SCU_PFTCH_CPU_KILL-->
+    <event title="DSU SCU Prefetch" event="0x0504" name="Prefetch terminate, CPU" description="Counts every killed stash transaction originating from a core that is terminated due to an incompatible match." />
+    <!--SCU_STASH_ICN_ACCESS-->
+    <event title="DSU SCU Stash" event="0x0510" name="Stash access, ICN" description="Counts every stash transaction originating from the interconnect." />
+    <!--SCU_STASH_ICN_MISS-->
+    <event title="DSU SCU Stash" event="0x0511" name="Stash data miss, ICN" description="Counts every stash transaction originating from the interconnect which utilizes a data pull, or is added to the stash queue and later issues a read." />
+    <!--SCU_STASH_ICN_HIT-->
+    <event title="DSU SCU Stash" event="0x0512" name="Stash data hit, ICN" description="Counts every non-invalidating stash transaction originating from the interconnect which hits in the cluster." />
+    <!--SCU_STASH_ICN_MATCH-->
+    <event title="DSU SCU Stash" event="0x0513" name="Stash match, ICN" description="Counts every completed stash transaction originating from the interconnect which is matched by a compatible read request. This includes one caused by a stash to the core, before the stash times out and is allocated into the L3 cache." />
+    <!--SCU_STASH_ICN_KILL-->
+    <event title="DSU SCU Stash" event="0x0514" name="Stash terminated, ICN" description="Counts every killed stash transaction originating from the interconnect that is terminated due to an incompatible match." />
+    <!--SCU_HZD_ADDRESS-->
+    <event title="DSU SCU Hazard" event="0x00D0" name="Arbitration hazard, address" description="Counts every flush caused by an address hazard." />
+  </category>

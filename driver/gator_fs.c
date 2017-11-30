@@ -40,7 +40,11 @@ static struct inode *gatorfs_get_inode(struct super_block *sb, int mode)
     if (inode) {
         inode->i_ino = get_next_ino();
         inode->i_mode = mode;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
         inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+#else
+        inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
+#endif
     }
     return inode;
 }
@@ -269,12 +273,22 @@ static const struct file_operations atomic_ro_fops = {
     .open = default_open,
 };
 
+static int gatorfs_create_file_data(struct super_block *sb, struct dentry *root,
+                                    char const *name, const struct file_operations *fops,
+                                    void * private_data)
+{
+    struct dentry * dentry = __gatorfs_create_file(sb, root, name, fops, 0644);
+    if (!dentry)
+        return -EFAULT;
+
+    dentry->d_inode->i_private = private_data;
+    return 0;
+}
+
 static int gatorfs_create_file(struct super_block *sb, struct dentry *root,
                    char const *name, const struct file_operations *fops)
 {
-    if (!__gatorfs_create_file(sb, root, name, fops, 0644))
-        return -EFAULT;
-    return 0;
+    return gatorfs_create_file_data(sb, root, name, fops, NULL);
 }
 
 static int gatorfs_create_file_perm(struct super_block *sb, struct dentry *root,

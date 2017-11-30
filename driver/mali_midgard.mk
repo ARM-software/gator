@@ -11,22 +11,24 @@ EXTRA_CFLAGS += -DMALI_USE_UMP=1 \
 
 DDK_DIR ?= .
 
-ifneq ($(wildcard $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)/mali_kbase_gator_api.h),)
+GATOR_MALI_MIDGARD_PATH := $(shell echo $(CONFIG_GATOR_MALI_MIDGARD_PATH))
+
+ifneq ($(wildcard $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)/mali_kbase_gator_api.h),)
   # r5p0/Fluorine - ...
   EXTRA_CFLAGS += -DMALI_SIMPLE_API=1 \
                   -DMALI_DIR_MIDGARD=1 \
-                  -I$(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH) \
+                  -I$(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH) \
 
 else
-  ifneq ($(wildcard $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)/kbase),)
+  ifneq ($(wildcard $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)/kbase),)
     # ? - r3p0
-    KBASE_DIR = $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)/kbase
-    OSK_DIR = $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)/kbase/osk
+    KBASE_DIR = $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)/kbase
+    OSK_DIR = $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)/kbase/osk
   else
-    ifneq ($(wildcard $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)),)
+    ifneq ($(wildcard $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)),)
       # r4p0/Europium - r4p1/Europium-Inc
-      KBASE_DIR = $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)
-      OSK_DIR = $(DDK_DIR)/$(CONFIG_GATOR_MALI_MIDGARD_PATH)/osk
+      KBASE_DIR = $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)
+      OSK_DIR = $(DDK_DIR)/$(GATOR_MALI_MIDGARD_PATH)/osk
       EXTRA_CFLAGS += -DMALI_DIR_MIDGARD=1
     endif
   endif

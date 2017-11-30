@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
 
 #include "PrimarySourceProvider.h"
 #include "DiskIODriver.h"
@@ -73,6 +73,11 @@ namespace
         virtual bool supportsMaliCaptureSampleRate(int rate) const override
         {
             return rate > 0;
+        }
+
+        virtual bool isCapturingMaliCounters() const override
+        {
+            return driver.isMaliCapture();
         }
 
         virtual const char * getPrepareFailedMessage() const override
@@ -156,6 +161,11 @@ namespace
             return false;
         }
 
+        virtual bool isCapturingMaliCounters() const override
+        {
+            return false;
+        }
+
         virtual const char * getPrepareFailedMessage() const override
         {
             return "Unable to communicate with the perf API, please ensure that CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER are enabled. Please refer to streamline/gator/README.md for more information.";
@@ -229,6 +239,11 @@ namespace
         }
 
         virtual bool supportsMaliCaptureSampleRate(int) const override
+        {
+            return false;
+        }
+
+        virtual bool isCapturingMaliCounters() const override
         {
             return false;
         }

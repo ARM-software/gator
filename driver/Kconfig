@@ -1,47 +1,62 @@
 config GATOR
-	tristate "Gator module for ARM's Streamline Performance Analyzer"
-	default m if (ARM || ARM64)
-	depends on PROFILING
-	depends on HIGH_RES_TIMERS
-	depends on LOCAL_TIMERS || !(ARM && SMP)
-	depends on PERF_EVENTS
-	depends on HW_PERF_EVENTS || !(ARM || ARM64)
-	select TRACING
-	help
-	  Gator module for ARM's Streamline Performance Analyzer
+    tristate "Gator module for Arm's Streamline Performance Analyzer"
+    default m if (ARM || ARM64)
+    depends on PROFILING
+    depends on HIGH_RES_TIMERS
+    depends on LOCAL_TIMERS || !(ARM && SMP)
+    depends on PERF_EVENTS
+    depends on HW_PERF_EVENTS || !(ARM || ARM64)
+    select TRACING
+    help
+      Gator module for Arm's Streamline Performance Analyzer
+
+config GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP
+    bool "Disable onlining all CPU cores by default when module loads"
+    default n
+    depends on GATOR
+    help
+      Prevent gator from online all CPU cores when it first loads.
+      The default option is to online all CPU cores when gator first
+      loads. This is safe and necessary in most cases as it allows gator to correctly
+      identify all cores in the system.
+      Most users should leave this option disabled.
+      Even if the option is left disabled, it is possible to disable onlining
+      behaviour at module load time by setting the disable_cpu_onlining
+      module parameter to true.
 
 config GATOR_WITH_MALI_SUPPORT
-	bool
+    bool
+    depends on GATOR
 
 choice
-	prompt "Enable Mali GPU support in Gator"
-	depends on GATOR
-	optional
-	help
-	  Enable Mali GPU support in Gator
+    prompt "Enable Mali GPU support in Gator"
+    depends on GATOR
+    optional
+    help
+      Enable Mali GPU support in Gator
 
 config GATOR_MALI_4XXMP
-	bool "Mali-400MP or Mali-450MP"
-	select GATOR_WITH_MALI_SUPPORT
+    bool "Mali-400MP or Mali-450MP"
+    select GATOR_WITH_MALI_SUPPORT
 
 config GATOR_MALI_MIDGARD
-	bool "Mali-T60x, Mali-T62x, Mali-T72x or Mali-T76x"
-	select GATOR_WITH_MALI_SUPPORT
+    bool "Mali-T60x, Mali-T62x, Mali-T72x or Mali-T76x"
+    select GATOR_WITH_MALI_SUPPORT
 
 endchoice
 
 config GATOR_MALI_4XXMP_PATH
-	string "Path to Mali driver"
-	depends on GATOR_MALI_4XXMP
-	default "drivers/gpu/arm/mali400mp"
-	help
-	  The gator code adds this to its include path so it can get the Mali
-	  trace headers with: #include "linux/mali_linux_trace.h"
+    string "Path to Mali driver"
+    depends on GATOR_MALI_4XXMP
+    default "drivers/gpu/arm/mali400mp"
+    help
+      The gator code adds this to its include path so it can get the Mali
+      trace headers with: #include "linux/mali_linux_trace.h"
 
 config GATOR_MALI_MIDGARD_PATH
-	string "Path to Mali driver"
-	depends on GATOR_MALI_MIDGARD
-	default "drivers/gpu/arm/midgard"
-	help
-	  The gator code adds this to its include path so it can get the Mali
-	  trace headers with: #include "linux/mali_linux_trace.h"
+    string "Path to Mali driver"
+    depends on GATOR_MALI_MIDGARD
+    default "drivers/gpu/arm/midgard"
+    help
+      The gator code adds this to its include path so it can get the Mali
+      trace headers with: #include "linux/mali_linux_trace.h"

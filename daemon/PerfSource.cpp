@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -123,7 +123,7 @@ bool PerfSource::prepare()
 
     || !mCountersGroup.createCpuGroup(currTime, mBuffer)
             || !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW,
-                                   PERF_GROUP_LEADER | PERF_GROUP_PER_CPU | PERF_GROUP_ALL_CLUSTERS, NULL)
+                                   PERF_GROUP_LEADER | PERF_GROUP_PER_CPU | PERF_GROUP_ALL_CLUSTERS, NULL, {})
 
             || !mDriver.enable(currTime, &mCountersGroup, mBuffer) || 0) {
         logg.logMessage("perf setup failed, are you running Linux 3.4 or later?");

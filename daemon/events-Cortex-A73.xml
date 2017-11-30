@@ -41,7 +41,7 @@
     <event event="0x67" title="Memory" name="Write" description="Data memory access, write"/>
     <event event="0x6a" title="Memory" name="Unaligned" description="Unaligned access"/>
     <event event="0x6c" title="Intrinsic" name="LDREX" description="Exclusive operation speculatively executed, LDREX, or LDX"/>
-    <event event="0x6e" title="Intrinsic" name="STREX fail" description="Exclusive operation speculatively executed, STREX, or STX pass"/>
+    <event event="0x6e" title="Intrinsic" name="STREX fail" description="Exclusive operation speculatively executed, STREX, or STX fail"/>
     <event event="0x70" title="Instruction" name="Load" description="Operation speculatively executed, load"/>
     <event event="0x71" title="Instruction" name="Store" description="Operation speculatively executed, store"/>
     <event event="0x72" title="Instruction" name="Load/Store" description="Operation speculatively executed, load or store"/>

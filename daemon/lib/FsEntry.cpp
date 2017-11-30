@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
 
 #include "lib/FsEntry.h"
 #include "lib/Assert.h"

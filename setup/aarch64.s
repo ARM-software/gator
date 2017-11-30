@@ -1,5 +1,5 @@
 	/**
-	 * Copyright (C) ARM Limited 2015-2016. All rights reserved.
+	 * Copyright (C) Arm Limited 2015-2016. All rights reserved.
 	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License version 2 as
@@ -12,11 +12,11 @@ eh:
 	.byte	2		/* 0x04 e_ident[EI_CLASS] (1 = 32 bit, 2 = 64 bit) */
 	.byte	1		/* 0x05 e_ident[EI_DATA] (1 = LE, 2 = BE) */
 	.byte	1		/* 0x06 e_ident[EI_VERSION] */
-	.byte	0		/* 0x07 e_ident[EI_OSABI] (usually 0 for ARM) */
+	.byte	0		/* 0x07 e_ident[EI_OSABI] (usually 0 for Arm) */
 	.byte	0		/* 0x08 e_ident[EI_ABIVERSION] (usually 0) */
 	.fill	7, 1, 0		/* 0x09 e_ident[EI_PAD] */
 	.hword	2		/* 0x10 e_type (2 = Executable) */
-	.hword	0xb7		/* 0x12 e_machine (0x28 = ARM, 0xb7 = AArch64) */
+	.hword	0xb7		/* 0x12 e_machine (0x28 = Arm, 0xb7 = AArch64) */
 	.word	1		/* 0x14 e_version */
 	.xword	_start		/* 0x18 e_entry */
 	.xword	ph - eh		/* 0x20 e_phoff */

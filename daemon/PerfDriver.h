@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,6 +11,7 @@
 
 #include <list>
 #include <memory>
+#include <set>
 #include <stdint.h>
 
 #include "ClassBoilerPlate.h"
@@ -78,7 +79,7 @@ public:
 private:
     void addCpuCounters(const GatorCpu * const cpu);
     void addUncoreCounters(const char * const counterName, const int type, const int numCounters,
-                           const bool hasCyclesCounter);
+                           const bool hasCyclesCounter, const std::set<int> & cpumask);
     PerfTracepoint *mTracepoints;
     bool mIsSetup, mLegacySupport, mClockidSupport;
 

@@ -16,12 +16,12 @@ ifeq ($(shell expr `$(CXX) -dumpversion | cut -f1 -d.` \>= 5),1)
 endif
 
 # -s strips the binary of debug info
-LDFLAGS += -s
-LDLIBS += -lrt -lm -pthread
-TARGET = gatord
-ESCAPE_EXE = escape/escape
-C_SRC = $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
-CXX_SRC = $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp)
+LDFLAGS     += -s
+LDLIBS      += -lrt -lm -pthread
+TARGET      := gatord
+ESCAPE_EXE  := escape/escape
+C_SRC       := $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
+CXX_SRC     := $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp)
 
 ifeq ($(V),1)
 	Q =
@@ -69,7 +69,9 @@ libsensors/conf-parse.c: ;
 	$(ECHO_CXX)
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp)) $(wildcard *.h lib/*.h linux/*.h linux/*/*.h mali_userspace/*.h non_root/*.h mxml/*.c mxml/*.h libsensors/*.c libsensors/*.h)
+rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+
+SrcMd5.cpp: $(filter-out SrcMd5.cpp, $(sort $(call rwildcard, , *.h *.c *.cpp *.hpp *.xml)))
 	$(ECHO_GEN)
 	$(Q)echo 'extern const char *const gSrcMd5 = "'`ls $^ | grep -Ev '^(.*_xml\.h|$@)$$' | LC_ALL=C sort | xargs cat | md5sum | cut -b 1-32`'";' > $@
 

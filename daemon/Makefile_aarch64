@@ -1,5 +1,5 @@
 #
-# Makefile for ARM Streamline - Gator Daemon
+# Makefile for Arm Streamline - Gator Daemon
 # make -f Makefile_aarch64
 #
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,8 +34,6 @@ static const int schedSwitchKey = getEventKey();
                : PERF_SAMPLE_IDENTIFIER ) | PERF_SAMPLE_TIME | additionalSampleType; \
     /* Emit emit value in group format */ \
     pea.read_format = PERF_FORMAT_ID | PERF_FORMAT_GROUP; \
-    /* start out disabled */ \
-    pea.disabled = 1; \
     /* have a sampling interrupt happen when we cross the wakeup_watermark boundary */ \
     pea.watermark = 1; \
     /* Be conservative in flush size as only one buffer set is monitored */ \
@@ -61,6 +59,7 @@ static int sys_perf_event_open(struct perf_event_attr * const attr, const pid_t 
 
 PerfGroup::PerfGroup(PerfBuffer * pb, bool legacySupport, bool clockIdSupport)
         : mPb(pb),
+          mCpuMask(),
           mSchedSwitchId(-1),
           mLegacySupport(legacySupport),
           mClockIdSupport(clockIdSupport)
@@ -84,7 +83,7 @@ PerfGroup::~PerfGroup()
 
 int PerfGroup::doAdd(const uint64_t currTime, Buffer * const buffer, const int key, const __u32 type,
                      const __u64 config, const __u64 sample, const __u64 sampleType, const int flags,
-                     const GatorCpu * const cluster)
+                     const GatorCpu * const cluster, const std::set<int> & cpumask)
 {
     int i;
     for (i = 0; i < ARRAY_LENGTH(mKeys); ++i) {
@@ -104,6 +103,8 @@ int PerfGroup::doAdd(const uint64_t currTime, Buffer * const buffer, const int k
     mAttrs[i].sample_period = sample;
     // always be on the CPU but only a group leader can be pinned
     mAttrs[i].pinned = (flags & PERF_GROUP_LEADER ? 1 : 0);
+    // group leader must start disabled, all others enabled
+    mAttrs[i].disabled = (flags & PERF_GROUP_LEADER ? 1 : 0);
     mAttrs[i].mmap = (flags & PERF_GROUP_MMAP ? 1 : 0);
     mAttrs[i].comm = (flags & PERF_GROUP_COMM ? 1 : 0);
     mAttrs[i].freq = (flags & PERF_GROUP_FREQ ? 1 : 0);
@@ -111,8 +112,11 @@ int PerfGroup::doAdd(const uint64_t currTime, Buffer * const buffer, const int k
     mAttrs[i].sample_id_all = (flags & PERF_GROUP_SAMPLE_ID_ALL ? 1 : 0);
     mFlags[i] = flags;
     mClusters[i] = cluster;
-
     mKeys[i] = key;
+
+    if (flags & PERF_GROUP_USE_CPUMASK) {
+        mCpuMask[i] = cpumask;
+    }
 
     buffer->marshalPea(currTime, &mAttrs[i], key);
 
@@ -156,7 +160,8 @@ bool PerfGroup::createCpuGroup(const uint64_t currTime, Buffer * const buffer)
             PERF_SAMPLE_READ | PERF_SAMPLE_RAW,
             PERF_GROUP_MMAP | PERF_GROUP_COMM | PERF_GROUP_TASK | PERF_GROUP_SAMPLE_ID_ALL | PERF_GROUP_PER_CPU
                     | PERF_GROUP_LEADER | PERF_GROUP_CPU | PERF_GROUP_ALL_CLUSTERS,
-            NULL);
+            NULL,
+            {});
     if (mLeaders[PERF_TYPE_HARDWARE] < 0) {
         return false;
     }
@@ -164,7 +169,7 @@ bool PerfGroup::createCpuGroup(const uint64_t currTime, Buffer * const buffer)
     if (gSessionData.mSampleRate > 0 && !gSessionData.mIsEBS
             && doAdd(currTime, buffer, INT_MAX - PERF_TYPE_HARDWARE, PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK,
                      1000000000UL / gSessionData.mSampleRate, PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ,
-                     PERF_GROUP_PER_CPU | PERF_GROUP_CPU | PERF_GROUP_ALL_CLUSTERS, NULL) < 0) {
+                     PERF_GROUP_PER_CPU | PERF_GROUP_CPU | PERF_GROUP_ALL_CLUSTERS, NULL, {}) < 0) {
         return false;
     }
 
@@ -172,7 +177,8 @@ bool PerfGroup::createCpuGroup(const uint64_t currTime, Buffer * const buffer)
 }
 
 bool PerfGroup::add(const uint64_t currTime, Buffer * const buffer, const int key, const __u32 type, const __u64 config,
-                    const __u64 sample, const __u64 sampleType, const int flags, const GatorCpu * const cluster)
+                    const __u64 sample, const __u64 sampleType, const int flags, const GatorCpu * const cluster,
+                    const std::set<int> & cpumask)
 {
     const int effectiveType = getEffectiveType(type, flags);
 
@@ -191,7 +197,7 @@ bool PerfGroup::add(const uint64_t currTime, Buffer * const buffer, const int ke
                                                                            100000000UL;
             mLeaders[effectiveType] = doAdd(currTime, buffer, INT_MAX - effectiveType, PERF_TYPE_SOFTWARE,
                                             PERF_COUNT_SW_CPU_CLOCK, timeout, PERF_SAMPLE_READ, PERF_GROUP_LEADER,
-                                            NULL);
+                                            NULL, {});
             if (mLeaders[effectiveType] < 0) {
                 return false;
             }
@@ -203,7 +209,7 @@ bool PerfGroup::add(const uint64_t currTime, Buffer * const buffer, const int ke
         handleException();
     }
 
-    return doAdd(currTime, buffer, key, type, config, sample, sampleType, flags, cluster) >= 0;
+    return doAdd(currTime, buffer, key, type, config, sample, sampleType, flags, cluster, cpumask) >= 0;
 }
 
 int PerfGroup::prepareCPU(const int cpu, Monitor * const monitor)
@@ -215,7 +221,12 @@ int PerfGroup::prepareCPU(const int cpu, Monitor * const monitor)
             continue;
         }
 
-        if ((cpu != 0) && !(mFlags[i] & PERF_GROUP_PER_CPU)) {
+        if (mFlags[i] & PERF_GROUP_USE_CPUMASK) {
+            if (mCpuMask[i].count(cpu) == 0) {
+                continue;
+            }
+        }
+        else if ((cpu != 0) && !(mFlags[i] & PERF_GROUP_PER_CPU)) {
             continue;
         }
 

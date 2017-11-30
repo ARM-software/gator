@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,6 +18,15 @@
 #include <trace/events/kmem.h>
 
 #define USE_THREAD defined(CONFIG_PREEMPT_RT_FULL)
+
+/*
+ * Handle rename of global_page_state "c41f012ade0b95b0a6e25c7150673e0554736165 mm: rename global_page_state to global_zone_page_state"
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define GLOBAL_ZONE_PAGE_STATE(item)    global_page_state(item)
+#else
+#define GLOBAL_ZONE_PAGE_STATE(item)    global_zone_page_state(item)
+#endif
 
 enum {
     MEMINFO_MEMFREE,
@@ -237,10 +246,10 @@ static void do_read(void)
                 break;
             case MEMINFO_CACHED:
                 // total_swapcache_pages is not exported so the result is slightly different, but hopefully not too much
-                value = (global_page_state(NR_FILE_PAGES) /*- total_swapcache_pages()*/ - info.bufferram) * PAGE_SIZE;
+                value = (GLOBAL_ZONE_PAGE_STATE(NR_FILE_PAGES) /*- total_swapcache_pages()*/ - info.bufferram) * PAGE_SIZE;
                 break;
             case MEMINFO_SLAB:
-                value = (global_page_state(NR_SLAB_RECLAIMABLE) + global_page_state(NR_SLAB_UNRECLAIMABLE)) * PAGE_SIZE;
+                value = (GLOBAL_ZONE_PAGE_STATE(NR_SLAB_RECLAIMABLE) + GLOBAL_ZONE_PAGE_STATE(NR_SLAB_UNRECLAIMABLE)) * PAGE_SIZE;
                 break;
             default:
                 value = 0;

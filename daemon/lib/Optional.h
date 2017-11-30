@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_OPTIONAL_H
 #define INCLUDE_LIB_OPTIONAL_H

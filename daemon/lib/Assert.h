@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_ASSERT_H
 #define INCLUDE_LIB_ASSERT_H
@@ -18,7 +18,7 @@ namespace lib
          */
         extern void runtime_assert_terminate(const char * file, unsigned line, const char * func, const std::string & msg);
     }
-	
+
 /* For unit tests... */
 #if !defined(__PRETTY_FUNCTION__)
 # if defined(__FUNCSIG__)

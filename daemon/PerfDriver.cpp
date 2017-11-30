@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2013-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -43,7 +43,22 @@ public:
               mSampleType(sampleType),
               mFlags(flags),
               mCluster(cluster),
-              mCount(count)
+              mCount(count),
+              mCpuMask()
+    {
+    }
+
+    PerfCounter(DriverCounter *next, const char *name, uint32_t type, uint64_t config, uint64_t sampleType,
+                uint64_t flags, const GatorCpu * const cluster, const int count, const std::set<int> & cpumask)
+            : DriverCounter(next, name),
+              mType(type),
+              mConfig(config),
+              mConfigId2(~0ull),
+              mSampleType(sampleType),
+              mFlags(flags),
+              mCluster(cluster),
+              mCount(count),
+              mCpuMask(cpumask)
     {
     }
 
@@ -56,7 +71,8 @@ public:
               mSampleType(sampleType),
               mFlags(flags),
               mCluster(cluster),
-              mCount(count)
+              mCount(count),
+              mCpuMask()
     {
     }
 
@@ -115,6 +131,11 @@ public:
         return mConfigId2;
     }
 
+    const std::set<int> & getCpuMask() const
+    {
+        return mCpuMask;
+    }
+
 private:
     const uint32_t mType;
     uint64_t mConfig;
@@ -123,6 +144,7 @@ private:
     const uint64_t mFlags;
     const GatorCpu * const mCluster;
     int mCount;
+    std::set<int> mCpuMask;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfCounter);
@@ -283,7 +305,7 @@ PerfDriver::PerfDriver(const PerfDriverConfiguration & configuration)
 
         logg.logMessage("Adding uncore counters for %s with type %i", uncorePmu->getCoreName(), uncorePmu->getType());
         addUncoreCounters(uncorePmu->getCoreName(), uncorePmu->getType(), uncorePmu->getPmncCounters(),
-                          uncorePmu->getHasCyclesCounter());
+                          uncorePmu->getHasCyclesCounter(), uncorePmu->getCpuMask());
     }
 
     if (gSessionData.mSharedData->mClusterCount == 0) {
@@ -421,7 +443,7 @@ void PerfDriver::addCpuCounters(const GatorCpu * const cpu)
 }
 
 void PerfDriver::addUncoreCounters(const char * const counterName, const int type, const int numCounters,
-                                   const bool hasCyclesCounter)
+                                   const bool hasCyclesCounter, const std::set<int> & cpumask)
 {
     int len;
     char *name;
@@ -430,14 +452,14 @@ void PerfDriver::addUncoreCounters(const char * const counterName, const int typ
         len = snprintf(NULL, 0, "%s_ccnt", counterName) + 1;
         name = new char[len];
         snprintf(name, len, "%s_ccnt", counterName);
-        setCounters(new PerfCounter(getCounters(), name, type, -1, PERF_SAMPLE_READ, 0, NULL, 0));
+        setCounters(new PerfCounter(getCounters(), name, type, -1, PERF_SAMPLE_READ, (cpumask.empty() ? 0 : PERF_GROUP_USE_CPUMASK), NULL, 0, cpumask));
     }
 
     for (int j = 0; j < numCounters; ++j) {
         len = snprintf(NULL, 0, "%s_cnt%d", counterName, j) + 1;
         name = new char[len];
         snprintf(name, len, "%s_cnt%d", counterName, j);
-        setCounters(new PerfCounter(getCounters(), name, type, -1, PERF_SAMPLE_READ, 0, NULL, 0));
+        setCounters(new PerfCounter(getCounters(), name, type, -1, PERF_SAMPLE_READ, (cpumask.empty() ? 0 : PERF_GROUP_USE_CPUMASK), NULL, 0, cpumask));
     }
 }
 
@@ -599,7 +621,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
 void logCpuNotFound()
 {
 #if defined(__arm__) || defined(__aarch64__)
-    logg.logSetup("CPU is not recognized\nUsing the ARM architected counters");
+    logg.logSetup("CPU is not recognized\nUsing the Arm architected counters");
 #else
     logg.logSetup("CPU is not recognized\nOmitting CPU counters");
 #endif
@@ -711,11 +733,13 @@ bool PerfDriver::enable(const uint64_t currTime, PerfGroup * const group, Buffer
 
             if (!skip) {
                 if (group->add(currTime, buffer, counter->getKey(), counter->getType(), counter->getConfig(),
-                               counter->getCount(), counter->getSampleType(), counter->getFlags(), counter->getCluster())) {
+                               counter->getCount(), counter->getSampleType(), counter->getFlags(), counter->getCluster(),
+                               counter->getCpuMask())) {
                     if (counter->hasConfigId2()) {
                         if (!group->add(currTime, buffer, counter->getKey() | 0x40000000, counter->getType(),
                                         counter->getConfigId2(), counter->getCount(), counter->getSampleType(),
-                                        counter->getFlags(), counter->getCluster())) {
+                                        counter->getFlags(), counter->getCluster(),
+                                        counter->getCpuMask())) {
                             logg.logMessage("PerfGroup::add (2nd) failed");
                             return false;
                         }

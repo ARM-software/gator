@@ -1,9 +1,9 @@
 
 ## Purpose
 
-Instructions on setting up ARM Streamline on the target.
+Instructions on setting up Arm Streamline on the target.
 
-A target agent (gator) is required to run on the ARM Linux target in order for ARM Streamline to operate. Gator may run in kernel space or user space mode, though user space gator requires Linux 3.4 or later and contains reduced functionality. Furthermore, user space gator is a beta release, see the bugs section in this readme for a list of known issues.
+A target agent (gator) is required to run on the Arm Linux target in order for Arm Streamline to operate. Gator may run in kernel space or user space mode, though user space gator requires Linux 3.4 or later and contains reduced functionality. Furthermore, user space gator is a beta release, see the bugs section in this readme for a list of known issues.
 
 The driver should be built as a module and the daemon must run with root permissions on the target.
 
@@ -37,7 +37,7 @@ menuconfig options (depending on the kernel version, the location of these confi
     - [*] CPU Frequency scaling (enables CONFIG_CPU_FREQ)
 - Device Drivers
   - Graphics support
-    - ARM GPU Configuration
+    - Arm GPU Configuration
       - Mali Midgard series support
         - [*] Streamline Debug support (enables CONFIG_MALI_GATOR_SUPPORT needed as part of Mali Midgard support)
 - Kernel hacking
@@ -199,14 +199,14 @@ CCN requires a perf driver to work. The necessary perf driver has been merged in
 Recommended compiler settings:
 - `-g`: Debug information, such as line numbers, needed for best analysis results.
 - `-fno-inline`: Speed improvement when processing the image files and most accurate analysis results.
-- `-fno-omit-frame-pointer`: ARM EABI frame pointers allow recording of the call stack with each sample taken when in ARM state (i.e. not `-mthumb`).
+- `-fno-omit-frame-pointer`: Arm EABI frame pointers allow recording of the call stack with each sample taken when in Arm state (i.e. not `-mthumb`).
 - `-marm`: This option is required for ARMv7 and earlier if your compiler is configured with `--with-mode=thumb`, otherwise call stack unwinding will not work.
 
 For Android ART, passing `--no-strip-symbols` to dex2oat will result in function names but not line numbers to be included in the dex files. This can be done by running `setprop dalvik.vm.dex2oat-flags --no-strip-symbols` on the device and then regenerating the dex files.
 
 ## Hardfloat EABI
 
-Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. To see if your ARM compiler supports hardfloat, run `gcc -v` and look for `--with-float=hard`.
+Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. To see if your Arm compiler supports hardfloat, run `gcc -v` and look for `--with-float=hard`.
 
 To compile for non-hardfloat targets it is necessary to add options `-marm -march=armv4t -mfloat-abi=soft`. It may also be necessary to provide a softfloat filesystem by adding the option `--sysroot`, ex: `--sysroot=../DS-5Examples/distribution/filesystem/armv5t_mtx`. The gatord makefile will do this when run as `make SOFTFLOAT=1 SYSROOT=/path/to/sysroot`
 
@@ -243,6 +243,11 @@ Mali-T6xx/T7xx/T8xx (Midgard):
 Gator supports reading arbitrary `/dev`, `/sys` and `/proc` files 10 times a second. It will either interpret the file contents as a number or use a POSIX extended regex to extract the number, see `events-Filesystem.xml` for examples.
 
 ## Bugs
+
+Kernels with `CONFIG_CPU_PM` enabled may produce invalid results on kernel versions prior to 4.6. The problem manifests as counters not showing any data, large spikes and non-sensible values for counters (e.g. Cycle Counter reading as *very* high).
+The problem is visible with both gator.ko and user space gator. This issue stems from the fact that the kernel PMU driver does not save/restore state when the CPU is powered down/up. This issue is fixed in 4.6 so to resolve the issue either upgrade to a later kernel, or apply the fix to an older kernel.
+The patch for 4.6 that resolves the issue is found here https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=da4e4f18afe0f3729d68f3785c5802f786d36e34 - this patch has been tested as applying cleanly to 4.4 kernel and it may be possible to back port it to other versions as well.
+Users of this patch may also need to apply https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=cbcc72e037b8a3eb1fad3c1ae22021df21c97a51 as well.
 
 User space gator is in beta release with known issues. Please note that based on the kernel version and target configuration, the data presented may be incorrect and unexpected behavior can occur including crashing the target kernel. If you experience any of these issues, please use kernel space gator.
 
@@ -310,6 +315,12 @@ Use vmlinux as the image for debug symbols in Streamline.
 Drivers may be profiled using this method by statically linking the driver into the kernel image or adding the driver as an image to Streamline.
 
 To perform kernel stack unwinding and module unwinding, edit the Makefile to enable GATOR_KERNEL_STACK_UNWINDING and rebuild gator.ko or run `echo 1 > /sys/module/gator/parameters/kernel_stack_unwinding` as root on the target after gatord is started.
+
+## Preventing gator.ko from onlining all cpus
+
+By default gator.ko will automatically online all cpus in the system in order to discover their properties. This is required on systems where perf uses the generic PMU driver in order to be able to correctly map all cores to their associated set of counters.
+
+This behaviour can be disabled either by modprobing gator.ko passing the parameter `disable_cpu_onlining=1` or by enabling `CONFIG_GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP`.
 
 ## Automatically start gator on boot (optional)
 

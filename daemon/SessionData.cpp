@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -28,6 +28,8 @@
 #include "PolledDriver.h"
 #include "SessionXML.h"
 
+#include "lib/Format.h"
+#include "lib/FsEntry.h"
 #include "lib/Time.h"
 
 #include "mali_userspace/MaliInstanceLocator.h"
@@ -100,6 +102,71 @@ UncorePmu::UncorePmu(const char * const coreName, const char * const pmncName, c
           mType(-1)
 {
     mHead = this;
+}
+
+
+std::set<int> UncorePmu::getCpuMask() const
+{
+    std::set<int> result;
+
+    const lib::FsEntry fsEntry = lib::FsEntry::create(lib::Format() << "/sys/bus/event_source/devices/" << mPmncName << "/cpumask");
+
+    if (fsEntry.canAccess(true, false, false))
+    {
+        std::string contents = lib::readFileContents(fsEntry);
+
+        logg.logMessage("Reading cpumask from %s", fsEntry.path().c_str());
+
+        // split the input
+        const std::size_t length = contents.length();
+        std::size_t from = 0, split = 0, to = 0;
+
+        while (to < length) {
+            // move end pointer
+            while (to < length) {
+                if ((contents[to] >= '0') && (contents[to] <= '9')) {
+                    to += 1;
+                }
+                else if (contents[to] == '-') {
+                    split = to;
+                    to += 1;
+                }
+                else {
+                    break;
+                }
+            }
+
+            // found a valid number (or range)
+            if (from < to) {
+                if (split > from) {
+                    // found range
+                    contents[split] = 0;
+                    contents[to] = 0;
+                    int nf = (int) std::strtol(contents.c_str() + from, nullptr, 10);
+                    const int nt = (int) std::strtol(contents.c_str() + split + 1, nullptr, 10);
+                    while (nf <= nt) {
+                        logg.logMessage("    Adding cpu %d to mask", nf);
+                        result.insert(nf);
+                        nf += 1;
+                    }
+                }
+                else {
+                    // found single item
+                    contents[to] = 0;
+                    const int n = (int) std::strtol(contents.c_str() + from, nullptr, 10);
+                    logg.logMessage("    Adding cpu %d to mask", n);
+                    result.insert(n);
+                }
+            }
+
+            // move to next item
+            to += 1;
+            from = to;
+            split = to;
+        }
+    }
+
+    return result;
 }
 
 UncorePmu *UncorePmu::find(const char * const name)
@@ -497,7 +564,7 @@ void SessionData::updateClusterIds()
     qsort(&mSharedData->mClusters, mSharedData->mClusterCount, sizeof(*mSharedData->mClusters), clusterCompare);
     mSharedData->mClustersAccurate = true;
 
-    int lastClusterId = -1;
+    int lastClusterId = 0;
     for (int i = 0; i < NR_CPUS; ++i) {
         // If this does not have the full topology in /proc/cpuinfo, mCpuIds[0] may not have the 1 CPU part emitted - this guarantees it's in mMaxCpuId
         if (mSharedData->mCpuIds[i] > mMaxCpuId) {

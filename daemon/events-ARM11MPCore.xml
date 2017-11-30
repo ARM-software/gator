@@ -22,5 +22,4 @@
     <event event="0x12" title="Cache" name="Stall" description="Stall because of Load Store Unit request queue being full"/>
     <event event="0x13" title="Write Buffer" name="Drains" description="The number of times the Write Buffer was drained because of LSU ordering constraints or CP15 operations (Data Synchronization Barrier command) or Strongly Ordered operation"/>
     <event event="0x14" title="Write Buffer" name="Write Merges" description="Buffered write merged in a store buffer slot"/>
-    <event event="0xFF" title="Core" name="Cycle counter" description="An increment each cycle"/>
   </category>

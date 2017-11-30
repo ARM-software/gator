@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -227,7 +227,7 @@ void Child::run()
         thread_creation_success = false;
     }
 
-    if (gSessionData.mPrimarySource->supportsMaliCapture()
+    if (gSessionData.mPrimarySource->supportsMaliCapture() && gSessionData.mPrimarySource->isCapturingMaliCounters()
             && !gSessionData.mPrimarySource->supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
         logg.logError("Mali counters are not supported with Sample Rate: %i.", gSessionData.mSampleRate);
         handleException();

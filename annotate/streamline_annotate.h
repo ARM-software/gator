@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2016, ARM Limited
+ * Copyright (c) 2014-2016, Arm Limited
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
  *  CAM_TRACK                  Create a new custom activity map track
  *  CAM_JOB                    Add a new job to a CAM track, use gator_get_time() to obtain the time in nanoseconds
  *  CAM_VIEW_NAME              Name the custom activity map view
- *  
+ *
  *  User-space and Kernel-space macros:
  *  ANNOTATE(str)                                String annotation
  *  ANNOTATE_CHANNEL(channel, str)               String annotation on a channel
@@ -104,76 +104,76 @@ void gator_annotate_marker_color(int color);
 void gator_annotate_marker_color_str(int color, const char* str);
 
 #define ANNOTATE_INVOKE(func, args) \
-	func##_ptr = symbol_get(gator_##func); \
-	if (func##_ptr) { \
-		func##_ptr args; \
-		symbol_put(gator_##func); \
-	} \
+    func##_ptr = symbol_get(gator_##func); \
+    if (func##_ptr) { \
+        func##_ptr args; \
+        symbol_put(gator_##func); \
+    } \
 
 #define ANNOTATE(str) do { \
-	void (*annotate_ptr)(const char*); \
-	ANNOTATE_INVOKE(annotate, (str)); \
-	} while(0)
+    void (*annotate_ptr)(const char*); \
+    ANNOTATE_INVOKE(annotate, (str)); \
+    } while(0)
 
 #define ANNOTATE_CHANNEL(channel, str) do { \
-	void (*annotate_channel_ptr)(int, const char*); \
-	ANNOTATE_INVOKE(annotate_channel, (channel, str)); \
-	} while(0)
+    void (*annotate_channel_ptr)(int, const char*); \
+    ANNOTATE_INVOKE(annotate_channel, (channel, str)); \
+    } while(0)
 
 #define ANNOTATE_COLOR(color, str) do { \
-	void (*annotate_color_ptr)(int, const char*); \
-	ANNOTATE_INVOKE(annotate_color, (color, str)); \
-	} while(0)
+    void (*annotate_color_ptr)(int, const char*); \
+    ANNOTATE_INVOKE(annotate_color, (color, str)); \
+    } while(0)
 
 #define ANNOTATE_CHANNEL_COLOR(channel, color, str) do { \
-	void (*annotate_channel_color_ptr)(int, int, const char*); \
-	ANNOTATE_INVOKE(annotate_channel_color, (channel, color, str)); \
-	} while(0)
+    void (*annotate_channel_color_ptr)(int, int, const char*); \
+    ANNOTATE_INVOKE(annotate_channel_color, (channel, color, str)); \
+    } while(0)
 
 #define ANNOTATE_END() do { \
-	void (*annotate_end_ptr)(void); \
-	ANNOTATE_INVOKE(annotate_end, ()); \
-	} while(0)
+    void (*annotate_end_ptr)(void); \
+    ANNOTATE_INVOKE(annotate_end, ()); \
+    } while(0)
 
 #define ANNOTATE_CHANNEL_END(channel) do { \
-	void (*annotate_channel_end_ptr)(int); \
-	ANNOTATE_INVOKE(annotate_channel_end, (channel)); \
-	} while(0)
+    void (*annotate_channel_end_ptr)(int); \
+    ANNOTATE_INVOKE(annotate_channel_end, (channel)); \
+    } while(0)
 
 #define ANNOTATE_NAME_CHANNEL(channel, group, str) do { \
-	void (*annotate_name_channel_ptr)(int, int, const char*); \
-	ANNOTATE_INVOKE(annotate_name_channel, (channel, group, str)); \
-	} while(0)
+    void (*annotate_name_channel_ptr)(int, int, const char*); \
+    ANNOTATE_INVOKE(annotate_name_channel, (channel, group, str)); \
+    } while(0)
 
 #define ANNOTATE_NAME_GROUP(group, str) do { \
-	void (*annotate_name_group_ptr)(int, const char*); \
-	ANNOTATE_INVOKE(annotate_name_group, (group, str)); \
-	} while(0)
+    void (*annotate_name_group_ptr)(int, const char*); \
+    ANNOTATE_INVOKE(annotate_name_group, (group, str)); \
+    } while(0)
 
 #define ANNOTATE_VISUAL(data, length, str) do { \
-	void (*annotate_visual_ptr)(const char*, unsigned int, const char*); \
-	ANNOTATE_INVOKE(annotate_visual, (data, length, str)); \
-	} while(0)
+    void (*annotate_visual_ptr)(const char*, unsigned int, const char*); \
+    ANNOTATE_INVOKE(annotate_visual, (data, length, str)); \
+    } while(0)
 
 #define ANNOTATE_MARKER() do { \
-	void (*annotate_marker_ptr)(void); \
-	ANNOTATE_INVOKE(annotate_marker, ()); \
-	} while(0)
+    void (*annotate_marker_ptr)(void); \
+    ANNOTATE_INVOKE(annotate_marker, ()); \
+    } while(0)
 
 #define ANNOTATE_MARKER_STR(str) do { \
-	void (*annotate_marker_str_ptr)(const char*); \
-	ANNOTATE_INVOKE(annotate_marker_str, (str)); \
-	} while(0)
+    void (*annotate_marker_str_ptr)(const char*); \
+    ANNOTATE_INVOKE(annotate_marker_str, (str)); \
+    } while(0)
 
 #define ANNOTATE_MARKER_COLOR(color) do { \
-	void (*annotate_marker_color_ptr)(int); \
-	ANNOTATE_INVOKE(annotate_marker_color, (color)); \
-	} while(0)
+    void (*annotate_marker_color_ptr)(int); \
+    ANNOTATE_INVOKE(annotate_marker_color, (color)); \
+    } while(0)
 
 #define ANNOTATE_MARKER_COLOR_STR(color, str) do { \
-	void (*annotate_marker_color_str_ptr)(int, const char*); \
-	ANNOTATE_INVOKE(annotate_marker_color_str, (color, str)); \
-	} while(0)
+    void (*annotate_marker_color_str_ptr)(int, const char*); \
+    ANNOTATE_INVOKE(annotate_marker_color_str, (color, str)); \
+    } while(0)
 
 #else  /* Start of user-space macro definitions */
 
@@ -254,14 +254,14 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name);
 #define CAM_TRACK(view_uid, track_uid, parent_track, name) gator_cam_track(view_uid, track_uid, parent_track, name)
 #define CAM_JOB(view_uid, job_uid, name, track, start_time, duration, color) gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 0, 0)
 #define CAM_JOB_DEP(view_uid, job_uid, name, track, start_time, duration, color, dependency) { \
-	uint32_t __dependency = dependency; \
-	gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 1, &__dependency); \
+    uint32_t __dependency = dependency; \
+    gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 1, &__dependency); \
 }
 #define CAM_JOB_DEPS(view_uid, job_uid, name, track, start_time, duration, color, dependency_count, dependencies) gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, dependency_count, dependencies)
 #define CAM_JOB_START(view_uid, job_uid, name, track, time, color) gator_cam_job_start(view_uid, job_uid, name, track, time, color)
 #define CAM_JOB_SET_DEP(view_uid, job_uid, time, dependency) { \
-	uint32_t __dependency = dependency; \
-	gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, 1, &__dependency); \
+    uint32_t __dependency = dependency; \
+    gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, 1, &__dependency); \
 }
 #define CAM_JOB_SET_DEPS(view_uid, job_uid, time, dependency_count, dependencies) gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, dependency_count, dependencies)
 #define CAM_JOB_STOP(view_uid, job_uid, time) gator_cam_job_stop(view_uid, job_uid, time)

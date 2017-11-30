@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
 
 #ifndef CLASSBOILERPLATE_H_
 #define CLASSBOILERPLATE_H_

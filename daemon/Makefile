@@ -1,5 +1,5 @@
 #
-# Makefile for ARM Streamline - Gator Daemon
+# Makefile for Arm Streamline - Gator Daemon
 #
 
 # Uncomment and define CROSS_COMPILE if it is not already defined

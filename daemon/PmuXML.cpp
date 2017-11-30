@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,6 +9,7 @@
 #include "PmuXML.h"
 
 #include <algorithm>
+#include <cstring>
 
 #include <dirent.h>
 #include <sys/types.h>
@@ -30,6 +31,10 @@ static const char ATTR_CORE_NAME[] = "core_name";
 static const char ATTR_DT_NAME[] = "dt_name";
 static const char ATTR_PMNC_COUNTERS[] = "pmnc_counters";
 static const char ATTR_HAS_CYCLES_COUNTER[] = "has_cycles_counter";
+static const char UNCORE_PMNC_NAME_WILDCARD[] = "%d";
+
+#define PERF_DEVICES "/sys/bus/event_source/devices"
+
 
 PmuXML::PmuXML()
 {
@@ -60,6 +65,33 @@ void PmuXML::read(const char * const path)
     }
 }
 
+static bool matchPMUName(const char * const pmu_name, const char * const test_name)
+{
+    const char * const percent = strstr(pmu_name, UNCORE_PMNC_NAME_WILDCARD);
+
+    if (percent == NULL) {
+        return strcasecmp(pmu_name, test_name) == 0;
+    }
+
+    // match prefix up to but not including wildcard
+    const int offset = (percent != NULL ? percent - pmu_name : 0);
+    if (strncasecmp(pmu_name, test_name, offset) != 0) {
+        return false;
+    }
+
+    // find first character after wildcard in test_name
+    int test_offset;
+    for (test_offset = offset; test_name[test_offset] != 0; ++test_offset) {
+        const char c = test_name[test_offset];
+        if ((c < '0') || (c > '9')) {
+            break;
+        }
+    }
+
+    // compare suffix
+    return strcasecmp(pmu_name + offset + sizeof(UNCORE_PMNC_NAME_WILDCARD) - 1, test_name + test_offset) == 0;
+}
+
 void PmuXML::parse(const char * const xml)
 {
     mxml_node_t *root = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
@@ -85,6 +117,14 @@ void PmuXML::parse(const char * const xml)
             logg.logError("A pmu from the pmu XML is missing one or more of the required attributes (%s, %s, %s and %s)", ATTR_PMNC_NAME, ATTR_CPUID, ATTR_CORE_NAME, ATTR_PMNC_COUNTERS);
             handleException();
         }
+
+        logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"0x%06x\" %s=\"%d\" />",
+                        TAG_PMU,
+                        ATTR_CORE_NAME, coreName,
+                        ATTR_PMNC_NAME, pmncName,
+                        ATTR_CPUID, cpuid,
+                        ATTR_PMNC_COUNTERS, pmncCounters);
+
         new GatorCpu(strdup(coreName), strdup(pmncName), dtName == NULL ? NULL : strdup(dtName), cpuid, pmncCounters);
     }
 
@@ -104,7 +144,51 @@ void PmuXML::parse(const char * const xml)
             logg.logError("An uncore_pmu from the pmu XML is missing one or more of the required attributes (%s, %s and %s)", ATTR_PMNC_NAME, ATTR_CORE_NAME, ATTR_PMNC_COUNTERS);
             handleException();
         }
-        new UncorePmu(strdup(coreName), strdup(pmncName), pmncCounters, hasCyclesCounter);
+
+        // check if the path contains a wildcard
+        if (strstr(pmncName, UNCORE_PMNC_NAME_WILDCARD) == nullptr)
+        {
+            // no - just add one item
+            logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
+                            TAG_UNCORE_PMU,
+                            ATTR_CORE_NAME, coreName,
+                            ATTR_PMNC_NAME, pmncName,
+                            ATTR_HAS_CYCLES_COUNTER, hasCyclesCounter ? "true" : "false",
+                            ATTR_PMNC_COUNTERS, pmncCounters);
+
+            new UncorePmu(strdup(coreName), strdup(pmncName), pmncCounters, hasCyclesCounter);
+        }
+        else
+        {
+            // yes - add actual matching items from filesystem
+            bool matched = false;
+            std::unique_ptr<DIR, int (*)(DIR*)> dir { opendir(PERF_DEVICES), closedir };
+            if (dir != nullptr) {
+                struct dirent * dirent;
+                while ((dirent = readdir(dir.get())) != NULL) {
+                    if (matchPMUName(pmncName, dirent->d_name)) {
+                        // matched dirent
+                        logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
+                                        TAG_UNCORE_PMU,
+                                        ATTR_CORE_NAME, coreName,
+                                        ATTR_PMNC_NAME, dirent->d_name,
+                                        ATTR_HAS_CYCLES_COUNTER, hasCyclesCounter ? "true" : "false",
+                                        ATTR_PMNC_COUNTERS, pmncCounters);
+                        new UncorePmu(strdup(coreName), strdup(dirent->d_name), pmncCounters, hasCyclesCounter);
+                        matched = true;
+                    }
+                }
+            }
+
+            if (!matched) {
+                logg.logMessage("No matching devices for wildcard <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
+                                TAG_UNCORE_PMU,
+                                ATTR_CORE_NAME, coreName,
+                                ATTR_PMNC_NAME, pmncName,
+                                ATTR_HAS_CYCLES_COUNTER, hasCyclesCounter ? "true" : "false",
+                                ATTR_PMNC_COUNTERS, pmncCounters);
+            }
+        }
     }
 
     mxmlDelete(root);
@@ -151,6 +235,10 @@ void PmuXML::writeToKernel()
         DriverSource::writeDriver(buf, uncorePmu->getPmncCounters());
         snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/has_cycles_counter", uncorePmu->getPmncName());
         DriverSource::writeDriver(buf, uncorePmu->getHasCyclesCounter());
+        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/cpumask", uncorePmu->getPmncName());
+        for (int cpu : uncorePmu->getCpuMask()) {
+            DriverSource::writeDriver(buf, cpu);
+        }
     }
 
     DriverSource::writeDriver("/dev/gator/pmu_init", "1");

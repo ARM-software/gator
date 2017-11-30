@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
 #include "lib/FsEntry.h"
@@ -16,10 +16,9 @@
 
 namespace mali_userspace
 {
-    static MaliDevice * enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, const char * devicePath, const char * /*clockPath*/)
+    static MaliDevice * enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, const char * devicePath, const char * clockPath)
     {
-        // [SDDAP-8262] Disabled clock counter as currently mali hardware counters lock Mali clock frequency rendering the counter useless
-        MaliDevice * device = MaliDevice::create(mpNumber, gpuId, devicePath, /*clockPath*/ nullptr);
+        MaliDevice * device = MaliDevice::create(mpNumber, gpuId, devicePath, clockPath);
 
         if (device != NULL) {
             logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found", model, mpNumber, rValue, pValue, gpuId, devicePath);

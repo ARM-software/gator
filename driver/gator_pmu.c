@@ -1,10 +1,24 @@
 /**
- * Copyright (C) ARM Limited 2015-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2015-2016. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
+#include <linux/cpumask.h>
+
+#ifdef CONFIG_64BIT
+#   define  GATOR_ATOMIC_T          atomic64_t
+#   define  GATOR_ATOMIC_CMPXCHG    atomic64_cmpxchg
+#   define  GATOR_ATOMIC_READ       atomic64_read
+#else
+#   define  GATOR_ATOMIC_T          atomic_t
+#   define  GATOR_ATOMIC_CMPXCHG    atomic_cmpxchg
+#   define  GATOR_ATOMIC_READ       atomic_read
+#endif
+
+#define GATOR_ATOMIC_PTR_TO_COUNTER(ptr)    ((unsigned long) (ptr))
 
 struct uncore_pmu {
     struct list_head list;
@@ -14,6 +28,8 @@ struct uncore_pmu {
     char pmnc_name[MAXSIZE_CORE_NAME];
     /* gatorfs event name */
     char core_name[MAXSIZE_CORE_NAME];
+    /* cpumask - actually an atomic so we can CAS the pointer once without lock*/
+    GATOR_ATOMIC_T cpumask_atomic;
 };
 
 static LIST_HEAD(uncore_pmus);
@@ -170,6 +186,82 @@ static int gator_pmu_create_str(struct super_block *sb, struct dentry *root, cha
     return 0;
 }
 
+#define GATOR_NONE_STRING "(none)"
+
+static ssize_t gator_pmu_cpumask_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
+{
+    struct uncore_pmu * uncore_pmu = NULL;
+    struct cpumask * cpumask = NULL;
+    int cpu = 0;
+    int bpos = 0;
+    char buffer[128];
+
+    uncore_pmu = (struct uncore_pmu *) file->private_data;
+    if (!uncore_pmu)
+        return -EFAULT;
+
+    cpumask = (struct cpumask *) GATOR_ATOMIC_READ(&(uncore_pmu->cpumask_atomic));
+    if (!cpumask)
+        return simple_read_from_buffer(buf, count, offset, GATOR_NONE_STRING, strlen(GATOR_NONE_STRING));
+
+    for_each_cpu(cpu, cpumask) {
+        bpos = snprintf(buffer + bpos, sizeof(buffer) - bpos, (bpos > 0 ? ",%d" : "%d"), cpu);
+        if (bpos >= (sizeof(buffer) - 1))
+            break;
+    }
+
+    return simple_read_from_buffer(buf, count, offset, buffer, strlen(buffer));
+}
+
+static ssize_t gator_pmu_cpumask_write(struct file *file, char const __user *ubuf, size_t count, loff_t *offset)
+{
+    struct uncore_pmu * uncore_pmu = NULL;
+    struct cpumask * cpumask = NULL;
+    unsigned long value = 0;
+    int retval = 0;
+
+    uncore_pmu = (struct uncore_pmu *) file->private_data;
+    if (!uncore_pmu)
+        return -EFAULT;
+
+    /* validate args */
+    if (*offset)
+        return -EINVAL;
+
+    /* parse ulong */
+    retval = gatorfs_ulong_from_user(&value, ubuf, count);
+    if (retval)
+        return retval;
+    if (value >= nr_cpu_ids)
+        return -EINVAL;
+
+    /* allocate the mask if it does not already exist */
+    cpumask = (struct cpumask *) GATOR_ATOMIC_READ(&(uncore_pmu->cpumask_atomic));
+    if (!cpumask) {
+        struct cpumask * ret = NULL;
+
+        cpumask = kzalloc(cpumask_size(), GFP_KERNEL);
+        if (!cpumask)
+            return -ENOMEM;
+
+        ret = (struct cpumask * ) GATOR_ATOMIC_CMPXCHG(&(uncore_pmu->cpumask_atomic), GATOR_ATOMIC_PTR_TO_COUNTER(NULL), GATOR_ATOMIC_PTR_TO_COUNTER(cpumask));
+        if (ret != NULL) {
+            /* someone else got there first, free the one we allocated and use the existing instead */
+            kfree(cpumask);
+            cpumask = ret;
+        }
+    }
+
+    cpumask_set_cpu(value, cpumask);
+    return count;
+}
+
+static const struct file_operations cpumask_fops = {
+    .read = gator_pmu_cpumask_read,
+    .write = gator_pmu_cpumask_write,
+    .open = default_open,
+};
+
 static ssize_t gator_pmu_export_write(struct file *file, char const __user *ubuf, size_t count, loff_t *offset)
 {
     struct dentry *dir;
@@ -221,6 +313,7 @@ static ssize_t gator_pmu_export_write(struct file *file, char const __user *ubuf
         gator_pmu_create_str(gator_sb, dir, "core_name", uncore_pmu->core_name);
         gatorfs_create_ulong(gator_sb, dir, "pmnc_counters", &uncore_pmu->pmnc_counters);
         gatorfs_create_ulong(gator_sb, dir, "has_cycles_counter", &uncore_pmu->has_cycles_counter);
+        gatorfs_create_file_data(gator_sb, dir, "cpumask", &cpumask_fops, uncore_pmu);
 
         mutex_lock(&pmu_mutex);
         list_add_tail(&uncore_pmu->list, &uncore_pmus); /* mutex */
@@ -274,6 +367,11 @@ static void gator_pmu_exit(void)
         struct uncore_pmu *next;
 
         list_for_each_entry_safe(uncore_pmu, next, &uncore_pmus, list) {
+            struct cpumask * cpumask = (struct cpumask *) GATOR_ATOMIC_READ(&(uncore_pmu->cpumask_atomic));
+            if (cpumask) {
+                kfree(cpumask);
+            }
+
             kfree(uncore_pmu);
         }
     }

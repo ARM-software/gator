@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIINSTANCELOCATOR_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIINSTANCELOCATOR_H_

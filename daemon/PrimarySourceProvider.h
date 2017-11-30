@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by ARM Limited. All rights reserved. */
+/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
@@ -47,6 +47,9 @@ public:
 
     /** Return true if the sample rate is supported for mali counters */
     virtual bool supportsMaliCaptureSampleRate(int rate) const = 0;
+
+    /** Return true if the target is capturing mali counters */
+    virtual bool isCapturingMaliCounters() const = 0;
 
     /** Return list of additional polled drivers required for source */
     virtual const std::vector<PolledDriver *> & getAdditionalPolledDrivers() const;
