@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION    650
+#define PROTOCOL_VERSION    651
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/version.h>

@@ -29,7 +29,7 @@
 #include "TtraceDriver.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
 
-#define PROTOCOL_VERSION 650
+#define PROTOCOL_VERSION 651
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 

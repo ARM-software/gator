@@ -18,7 +18,22 @@
 
 namespace mali_userspace
 {
-    namespace
+
+#if defined(ANDROID) || defined(__ANDROID__)
+/* We use _IOR_BAD/_IOW_BAD rather than _IOR/_IOW otherwise fails to compile with NDK-BUILD because of _IOC_TYPECHECK is defined, not because the paramter is invalid */
+#define MALI_IOR(a,b,c)  _IOR_BAD(a, b, c)
+#define MALI_IOW(a,b,c)  _IOW_BAD(a, b, c)
+#define MALI_IOWR(a,b,c) _IOWR_BAD(a, b, c)
+#else
+#define MALI_IOR(a,b,c)  _IOR(a, b, c)
+#define MALI_IOW(a,b,c)  _IOW(a, b, c)
+#define MALI_IOWR(a,b,c) _IOWR(a, b, c)
+#endif
+#define MALI_IO(a,b)     _IO(a, b)
+
+    /* --------------------------------------------------------------------- */
+
+    namespace ddk_pre_r21
     {
         /** Message header */
         union kbase_uk_hwcnt_header {
@@ -63,17 +78,6 @@ namespace mali_userspace
             int32_t  fd;
         };
 
-        static const uint32_t HWCNT_READER_API = 1;
-
-#if defined(ANDROID) || defined(__ANDROID__)
-/* We use _IOR_BAD/_IOW_BAD rather than _IOR/_IOW otherwise fails to compile with NDK-BUILD because of _IOC_TYPECHECK is defined, not because the paramter is invalid */
-#define MALI_IOR(a,b,c)  _IOR_BAD(a, b, c)
-#define MALI_IOW(a,b,c)  _IOW_BAD(a, b, c)
-#else
-#define MALI_IOR(a,b,c)  _IOR(a, b, c)
-#define MALI_IOW(a,b,c)  _IOW(a, b, c)
-#endif
-
         enum {
             /* Related to mali0 ioctl interface */
             LINUX_UK_BASE_MAGIC                 = 0x80,
@@ -83,6 +87,231 @@ namespace mali_userspace
             KBASE_FUNC_HWCNT_DUMP               = KBASE_FUNC_HWCNT_UK_FUNC_ID + 11,
             KBASE_FUNC_HWCNT_CLEAR              = KBASE_FUNC_HWCNT_UK_FUNC_ID + 12,
             KBASE_FUNC_SET_FLAGS                = KBASE_FUNC_HWCNT_UK_FUNC_ID + 18,
+        };
+
+        template<typename T>
+        static int doMaliIoctl(int fd, T & arg)
+        {
+            union kbase_uk_hwcnt_header * hdr = &arg.header;
+
+            const int cmd = _IOC(_IOC_READ | _IOC_WRITE, LINUX_UK_BASE_MAGIC, hdr->id, sizeof(T));
+
+            if (ioctl(fd, cmd, &arg))
+                return -1;
+            if (hdr->ret)
+                return -1;
+
+            return 0;
+        }
+
+        /**
+         * Attempt to talk to mali kernel module, check version of mali driver
+         *
+         * @param devFd
+         * @return True if the module is supported pre-r21 version of kernel module
+         */
+        static bool version_check(int devFd)
+        {
+            struct kbase_uk_hwcnt_reader_version_check_args version_check;
+
+            memset(&version_check, 0, sizeof(version_check));
+            version_check.major = 0;
+            version_check.minor = 0;
+
+            if (doMaliIoctl(devFd, version_check) != 0) {
+                logg.logError("MaliHwCntrReader: Failed setting ABI version ioctl - may be r21p0 or later...");
+                return false;
+            }
+            else if (version_check.major < 10) {
+                logg.logError("MaliHwCntrReader: Unsupported ABI version %u.%u", version_check.major, version_check.minor);
+                return false;
+            }
+
+            logg.logMessage("MaliHwCntrReader: ABI version: %u.%u", version_check.major, version_check.minor);
+            return true;
+        }
+
+        /**
+         * Perform necessary initialisation to get hw counter reader handle
+         *
+         * @param devFd
+         * @param bufferCount
+         * @param jmBitmask
+         * @param shaderBitmask
+         * @param tilerBitmask
+         * @param mmuL2Bitmask
+         * @param failedDueToBufferCount
+         * @param hwcntReaderFd
+         * @return True if successful
+         */
+        static bool initialize(int devFd, uint32_t bufferCount, uint32_t jmBitmask, uint32_t shaderBitmask, uint32_t tilerBitmask, uint32_t mmuL2Bitmask,
+                               /* OUT */ bool & failedDueToBufferCount,
+                               /* OUT */ int & hwcntReaderFd)
+        {
+            // set the flags
+            {
+                struct kbase_uk_hwcnt_reader_set_flags flags;
+
+                memset(&flags, 0, sizeof(flags));
+                flags.header.id = KBASE_FUNC_SET_FLAGS;
+                flags.create_flags = BASE_CONTEXT_CREATE_KERNEL_FLAGS;
+
+                if (doMaliIoctl(devFd, flags) != 0) {
+                    logg.logError("MaliHwCntrReader: Failed setting flags ioctl");
+                    return false;
+                }
+            }
+
+            // probe the hwcnt file descriptor
+            {
+                struct kbase_uk_hwcnt_reader_setup setup_args;
+
+                memset(&setup_args, 0, sizeof(setup_args));
+                setup_args.header.id = KBASE_FUNC_HWCNT_READER_SETUP;
+                setup_args.buffer_count = bufferCount;
+                setup_args.jm_bm = jmBitmask;
+                setup_args.shader_bm = shaderBitmask;
+                setup_args.tiler_bm = tilerBitmask;
+                setup_args.mmu_l2_bm = mmuL2Bitmask;
+                setup_args.fd = -1;
+
+                if (doMaliIoctl(devFd, setup_args) != 0) {
+                    if (setup_args.header.ret != 0) {
+                        logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl. ret = %lu", static_cast<unsigned long>(setup_args.header.ret));
+                    }
+                    else {
+                        logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
+                    }
+                    failedDueToBufferCount = true;
+                    return false;
+                }
+
+                // we have a handle to the reader fd
+                hwcntReaderFd = setup_args.fd;
+            }
+
+            return true;
+        }
+    }
+
+    namespace ddk_post_r21
+    {
+        /** IOCTL parameters to check version */
+        struct kbase_ioctl_version_check {
+            uint16_t major;
+            uint16_t minor;
+        };
+
+        /** IOCTL parameters to set flags */
+        struct kbase_ioctl_set_flags {
+            uint32_t create_flags;
+        };
+
+        /** IOCTL parameters to configure reader */
+        struct kbase_ioctl_hwcnt_reader_setup
+        {
+            uint32_t buffer_count;
+            uint32_t jm_bm;
+            uint32_t shader_bm;
+            uint32_t tiler_bm;
+            uint32_t mmu_l2_bm;
+        };
+
+        enum {
+            /* Related to mali0 ioctl interface */
+            KBASE_IOCTL_TYPE                = 0x80,
+            BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED = 0x2,
+            KBASE_IOCTL_VERSION_CHECK       = MALI_IOWR(KBASE_IOCTL_TYPE, 0, struct kbase_ioctl_version_check),
+            KBASE_IOCTL_SET_FLAGS           = MALI_IOW(KBASE_IOCTL_TYPE, 1, struct kbase_ioctl_set_flags),
+            KBASE_IOCTL_HWCNT_READER_SETUP  = MALI_IOW(KBASE_IOCTL_TYPE, 8, struct kbase_ioctl_hwcnt_reader_setup),
+        };
+
+
+        /**
+         * Attempt to talk to mali kernel module, check version of mali driver
+         *
+         * @param devFd
+         * @return True if the module is supported post-r21 version of kernel module
+         */
+        static bool version_check(int devFd)
+        {
+            struct kbase_ioctl_version_check version_check;
+
+            version_check.major = 0;
+            version_check.minor = 0;
+
+            if (ioctl(devFd, KBASE_IOCTL_VERSION_CHECK, &version_check)) {
+                logg.logError("MaliHwCntrReader: Failed setting ABI version ioctl");
+                return false;
+            }
+            else if (version_check.major < 11) {
+                logg.logError("MaliHwCntrReader: Unsupported ABI version %u.%u", version_check.major, version_check.minor);
+                return false;
+            }
+
+            logg.logMessage("MaliHwCntrReader: ABI version: %u.%u", version_check.major, version_check.minor);
+            return true;
+        }
+
+        /**
+         * Perform necessary initialisation to get hw counter reader handle
+         *
+         * @param devFd
+         * @param bufferCount
+         * @param jmBitmask
+         * @param shaderBitmask
+         * @param tilerBitmask
+         * @param mmuL2Bitmask
+         * @param failedDueToBufferCount
+         * @param hwcntReaderFd
+         * @return True if successful
+         */
+        static bool initialize(int devFd, uint32_t bufferCount, uint32_t jmBitmask, uint32_t shaderBitmask, uint32_t tilerBitmask, uint32_t mmuL2Bitmask,
+                              /* OUT */ bool & failedDueToBufferCount,
+                              /* OUT */ int & hwcntReaderFd)
+        {
+            // set the flags
+            {
+                struct kbase_ioctl_set_flags flags;
+
+                flags.create_flags = BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED;
+
+                if (ioctl(devFd, KBASE_IOCTL_SET_FLAGS, &flags)) {
+                    logg.logError("MaliHwCntrReader: Failed setting flags ioctl");
+                    return false;
+                }
+            }
+
+            // probe the hwcnt file descriptor
+            {
+                struct kbase_ioctl_hwcnt_reader_setup setup_args;
+
+                setup_args.buffer_count = bufferCount;
+                setup_args.jm_bm = jmBitmask;
+                setup_args.shader_bm = shaderBitmask;
+                setup_args.tiler_bm = tilerBitmask;
+                setup_args.mmu_l2_bm = mmuL2Bitmask;
+
+                hwcntReaderFd = ioctl(devFd, KBASE_IOCTL_HWCNT_READER_SETUP, setup_args);
+                if (hwcntReaderFd < 0) {
+                    logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
+                    failedDueToBufferCount = true;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    /* --------------------------------------------------------------------- */
+
+    namespace
+    {
+        enum
+        {
+            /* reader API version */
+            HWCNT_READER_API                    = 1,
 
             /* The ids of ioctl commands for the reader interface */
             KBASE_HWCNT_READER                  = 0xBE,
@@ -96,7 +325,6 @@ namespace mali_userspace
             KBASE_HWCNT_READER_ENABLE_EVENT     = MALI_IOW(KBASE_HWCNT_READER, 0x40, uint32_t),
             KBASE_HWCNT_READER_DISABLE_EVENT    = MALI_IOW(KBASE_HWCNT_READER, 0x41, uint32_t),
             KBASE_HWCNT_READER_GET_API_VERSION  = MALI_IOW(KBASE_HWCNT_READER, 0xFF, uint32_t)
-
         };
 
         enum
@@ -120,7 +348,6 @@ namespace mali_userspace
     }
 
     /* --------------------------------------------------------------------- */
-
 
     SampleBuffer::SampleBuffer()
         :   metadata(0, 0, 0),
@@ -167,21 +394,6 @@ namespace mali_userspace
         std::swap(this->data, tmp.data);
 
         return *this;
-    }
-
-    template<typename T>
-    static int doMaliIoctl(int fd, T & arg)
-    {
-        union kbase_uk_hwcnt_header * hdr = &arg.header;
-
-        const int cmd = _IOC(_IOC_READ | _IOC_WRITE, LINUX_UK_BASE_MAGIC, hdr->id, sizeof(T));
-
-        if (ioctl(fd, cmd, &arg))
-            return -1;
-        if (hdr->ret)
-            return -1;
-
-        return 0;
     }
 
     /* --------------------------------------------------------------------- */
@@ -278,66 +490,22 @@ namespace mali_userspace
             return;
         }
 
-        // query/set the ABI version to the current version
+        // query/set the ABI version and initialize handle to hw counter reader
+        if (ddk_pre_r21::version_check(devFd))
         {
-            struct kbase_uk_hwcnt_reader_version_check_args version_check;
-
-            memset(&version_check, 0, sizeof(version_check));
-            version_check.major = 0;
-            version_check.minor = 0;
-
-            if (doMaliIoctl(devFd, version_check) != 0) {
-                logg.logError("MaliHwCntrReader: Failed setting ABI version ioctl");
-                return;
-            }
-            else if (version_check.major < 10) {
-                logg.logError("MaliHwCntrReader: Unsupported ABI version %u.%u", version_check.major, version_check.minor);
-                return;
-            }
-
-            logg.logMessage("MaliHwCntrReader: ABI version: %u.%u", version_check.major, version_check.minor);
-        }
-
-        // set the flags
-        {
-            struct kbase_uk_hwcnt_reader_set_flags flags;
-
-            memset(&flags, 0, sizeof(flags));
-            flags.header.id = KBASE_FUNC_SET_FLAGS;
-            flags.create_flags = BASE_CONTEXT_CREATE_KERNEL_FLAGS;
-
-            if (doMaliIoctl(devFd, flags) != 0) {
-                logg.logError("MaliHwCntrReader: Failed setting flags ioctl");
+            if (!ddk_pre_r21::initialize(devFd, bufferCount, jmBitmask, shaderBitmask, tilerBitmask, mmuL2Bitmask, failedDueToBufferCount, hwcntReaderFd)) {
                 return;
             }
         }
-
-        // probe the hwcnt file descriptor
+        else if (ddk_post_r21::version_check(devFd))
         {
-            struct kbase_uk_hwcnt_reader_setup setup_args;
-
-            memset(&setup_args, 0, sizeof(setup_args));
-            setup_args.header.id = KBASE_FUNC_HWCNT_READER_SETUP;
-            setup_args.buffer_count = bufferCount;
-            setup_args.jm_bm = jmBitmask;
-            setup_args.shader_bm = shaderBitmask;
-            setup_args.tiler_bm = tilerBitmask;
-            setup_args.mmu_l2_bm = mmuL2Bitmask;
-            setup_args.fd = -1;
-
-            if (doMaliIoctl(devFd, setup_args) != 0) {
-                if (setup_args.header.ret != 0) {
-                    logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl. ret = %lu", static_cast<unsigned long>(setup_args.header.ret));
-                }
-                else {
-                    logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
-                }
-                failedDueToBufferCount = true;
+            if (!ddk_post_r21::initialize(devFd, bufferCount, jmBitmask, shaderBitmask, tilerBitmask, mmuL2Bitmask, failedDueToBufferCount, hwcntReaderFd)) {
                 return;
             }
-
-            // we have a handle to the reader fd
-            hwcntReaderFd = setup_args.fd;
+        }
+        else
+        {
+            return;
         }
 
         // verify the API version
