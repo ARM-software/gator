@@ -6,6 +6,7 @@
     <event counter="ARM_Mali-TSIx_JS0_TASKS" title="Mali Job Manager Cycles" name="Fragment tasks" description="Number of tasks completed for Job Slot 0"/>
     <event counter="ARM_Mali-TSIx_JS0_WAIT_DEPEND" title="Mali Job Manager Cycles" name="Fragment wait depend" description="Number of cycles Job Slot 0 stalled waiting for task dependencies" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS0_WAIT_FINISH" title="Mali Job Manager Cycles" name="Fragment wait finish" description="Number of cycles Job Slot 0 stalled waiting for the last task to finish" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_JS0_WAIT_FLUSH" title="Mali Job Manager Cycles" name="Fragment wait flush" description="Number of cycles JS0 Job Slot was waiting for cache flush" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS0_WAIT_ISSUE" title="Mali Job Manager Cycles" name="Fragment wait issue" description="Number of cycles Job Slot 0 stalled unable to issue tasks because all available cores were full" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS0_WAIT_READ" title="Mali Job Manager Cycles" name="Fragment wait read" description="Number of cycles Job Slot 0 stalled waiting for descriptors to be read" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS1_ACTIVE" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute cycles" description="Number of cycles Job Slot 1 was active"/>
@@ -13,6 +14,7 @@
     <event counter="ARM_Mali-TSIx_JS1_TASKS" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute tasks" description="Number of tasks completed for JS1 Job Slot" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS1_WAIT_DEPEND" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute wait depend" description="Number of cycles JS1 Job Slot stalled waiting for task dependencies" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS1_WAIT_FINISH" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute wait finish" description="Number of cycles JS1 Job Slot stalled waiting for the last task to finish" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_JS1_WAIT_FLUSH" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute wait flush" description="Number of cycles JS1 Job Slot was waiting for cache flush" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS1_WAIT_ISSUE" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute wait issue" description="Number of cycles JS1 Job Slot stalled unable to issue tasks because all available cores were full" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS1_WAIT_READ" title="Mali Job Manager Cycles" name="Vertex-Tiling-Compute wait read" description="Number of cycles JS1 Job Slot stalled waiting for descriptors to be read" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS2_ACTIVE" title="Mali Job Manager Cycles" name="JS2 cycles" description="Number of cycles JS2 Job Slot was active" advanced="yes"/>
@@ -20,6 +22,7 @@
     <event counter="ARM_Mali-TSIx_JS2_TASKS" title="Mali Job Manager Cycles" name="JS2 tasks" description="Number of tasks completed for JS2 Job Slot" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS2_WAIT_DEPEND" title="Mali Job Manager Cycles" name="JS2 wait depend" description="Number of cycles JS2 Job Slot stalled waiting for task dependencies" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS2_WAIT_FINISH" title="Mali Job Manager Cycles" name="JS2 wait finish" description="Number of cycles JS2 Job Slot stalled waiting for the last task to finish" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_JS2_WAIT_FLUSH" title="Mali Job Manager Cycles" name="JS2 wait flush" description="Number of cycles JS2 Job Slot was waiting for cache flush" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS2_WAIT_ISSUE" title="Mali Job Manager Cycles" name="JS2 wait issue" description="Number of cycles JS2 Job Slot stalled unable to issue tasks because all available cores were full" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_JS2_WAIT_READ" title="Mali Job Manager Cycles" name="JS2 wait read" description="Number of cycles JS2 Job Slot stalled waiting for descriptors to be read" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_MESSAGES_RECEIVED" title="Mali Job Manager Messages" name="Received" description="Number of JCB messages received by the job manager" advanced="yes"/>
@@ -29,6 +32,8 @@
     <event counter="ARM_Mali-TSIx_BACK_FACING" title="Mali Tiler Facing" name="Back facing prims" description="Number of visible back facing primitives"/>
     <event counter="ARM_Mali-TSIx_BBOX_GEN_STALL" title="Mali Tiler Bounding Box" name="Bounding Box stall" description="Number of cycles the bounding box generator output is stalled" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_BINNER_STALL" title="Mali Tiler Binner" name="Binner stall" description="Number of cycles the binner output is stalled" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_BIN_ALLOC_INIT" title="Mali Tiler Bin" name="Bin init" description="Number of initial bin allocations" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_BIN_ALLOC_OVERFLOW" title="Mali Tiler Bin" name="Bin alloc overflow" description="Number of overflow bin allocations" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_BUS_READ" title="Mali Tiler Bus" name="Tiler bus reads" description="Number of read data beats (128-bit) from the L2 cache" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_BUS_WRITE" title="Mali Tiler Bus" name="Tiler bus writes" description="Number of write data beats (128-bit) to the L2 cache" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_COMPRESS_MISS" title="Mali Tiler Compressor" name="Compressor misses" description="Number of misses in the write compressor" advanced="yes"/>
@@ -95,7 +100,8 @@
     <event counter="ARM_Mali-TSIx_BEATS_RD_OTHER" title="Mali Shader Reads" name="Read beats" description="Number of read beats for all other masters" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_BEATS_RD_TEX_EXT" title="Mali Shader External Reads" name="Texture external read beats" description="Number of external read beats for the texture cache"/>
     <event counter="ARM_Mali-TSIx_BEATS_RD_TEX" title="Mali Shader Reads" name="Texture read beats" description="Number of read beats for the texture cache"/>
-    <event counter="ARM_Mali-TSIx_BEATS_WR_LSC" title="Mali Shader Writes" name="LSC write Beats" description="Number of write beats for the load/store cache"/>
+    <event counter="ARM_Mali-TSIx_BEATS_WR_LSC_OTHER" title="Mali Shader Writes" name="LSC write Beats" description="Number of write beats from the load/store cache due to other reasons"/>
+    <event counter="ARM_Mali-TSIx_BEATS_WR_LSC_WB" title="Mali Shader Writes" name="LSC write Beats" description="Number of write beats from the load/store cache due to writebacks"/>
     <event counter="ARM_Mali-TSIx_BEATS_WR_TIB" title="Mali Shader Writes" name="Tilebuffer write beats" description="Number of write beats for the tile buffers"/>
     <event counter="ARM_Mali-TSIx_COMPUTE_ACTIVE" title="Mali Core Cycles" name="Compute cycles" description="Number of cycles compute processing is active"/>
     <event counter="ARM_Mali-TSIx_COMPUTE_STARVING" title="Mali Core Cycles" name="Compute starving" description="Number of cycles unable to issue new compute threads" advanced="yes"/>
@@ -132,7 +138,7 @@
     <event counter="ARM_Mali-TSIx_TEX_DFCH_NUM_PASSES" title="Mali Texture Unit" name="Texture descriptor fetches" description="Number of texture descriptor fetches"/>
     <event counter="ARM_Mali-TSIx_TEX_FILT_NUM_OPERATIONS" title="Mali Texture Filtering" name="Number of filter operations" description="Number of filter operations"/>
     <event counter="ARM_Mali-TSIx_TEX_MSGI_NUM_QUADS" title="Mali Texture Unit" name="Texture quads" description="Number of quads textured"/>
-    <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_LINES_FETCHED_BLOCK" title="Mali Texture Loader" name="Number of compressed lines fetched" description="Number of texture lines fetched into the cache which are for compressed textures"/>
+    <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_LINES_FETCHED_BLOCK_COMPRESSED" title="Mali Texture Loader" name="Number of compressed lines fetched" description="Number of texture lines fetched into the cache which are for compressed textures"/>
     <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_LINES_FETCHED" title="Mali Texture Loader" name="Number of lines fetched" description="Number of texture lines fetched into the cache"/>
     <event counter="ARM_Mali-TSIx_TEX_TFCH_NUM_OPERATIONS" title="Mali Texture Loader" name="Number of fetch operations" description="Number of fetch operations"/>
     <event counter="ARM_Mali-TSIx_TEX_TIDX_NUM_SPLIT_MIP_MAP" title="Mali Texture Usage" name="Trilinear" description="Number of texture instruction split cycles caused by trilinear filtering"/>
@@ -182,5 +188,14 @@
     <event counter="ARM_Mali-TSIx_L2_WR_MSG_IN_STALL" title="Mali L2 Cache Lookups" name="Writes in stalled" description="Number of cycles input write messages are stalled by the L2C" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_L2_WR_MSG_IN" title="Mali L2 Cache Lookups" name="Writes" description="Number of write requests received by the L2 cache from internal masters"/>
     <event counter="ARM_Mali-TSIx_L2_WR_MSG_OUT" title="Mali L2 Cache Lookups" name="Writes out" description="Number of write messages sent by the L2C to internal masters" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_HIT_L2" title="Mali L2 Cache Lookups" name="MMU hits" description="Number of hits to level 2 page descriptors" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_HIT_L3" title="Mali L2 Cache Lookups" name="MMU hits" description="Number of hits to level 3 page descriptors" advanced="yes"/>
     <event counter="ARM_Mali-TSIx_MMU_REQUESTS" title="Mali L2 Cache Lookups" name="MMU requests" description="Number of requests received by the MMU" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_S2_HIT_L2" title="Mali L2 Cache Lookups" name="MMU S2 hits" description="Number of hits to level 2 page descriptor by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_S2_HIT_L3" title="Mali L2 Cache Lookups" name="MMU S2 hits" description="Number of hits to level 3 page descriptor by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_S2_REQUESTS" title="Mali L2 Cache Lookups" name="MMU S2 requets" description="Number of requests received by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_S2_TABLE_READS_L2" title="Mali L2 Cache Lookups" name="MMU table reads" description="Number of level 2 translation table reads by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_S2_TABLE_READS_L3" title="Mali L2 Cache Lookups" name="MMU table reads" description="Number of level 3 translation table reads by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_TABLE_READS_L3" title="Mali L2 Cache Lookups" name="MMU reads" description="Number of level 3 translation table reads" advanced="yes"/>
+    <event counter="ARM_Mali-TSIx_MMU_TABLE_READS_L2" title="Mali L2 Cache Lookups" name="MMU reads" description="Number of level 2 translation table reads" advanced="yes"/>
   </category>

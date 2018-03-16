@@ -112,7 +112,10 @@ namespace mali_userspace
             /* New style product ids */
             PRODUCT_ID_TMIX = 0x6000,
             PRODUCT_ID_THEX = 0x6001,
-            PRODUCT_ID_TSIX = 0x7000
+            PRODUCT_ID_TSIX = 0x7000,
+            PRODUCT_ID_TGOX = 0x7002,
+            PRODUCT_ID_TDVX = 0x7003
+
         };
 
         /* supported product versions */
@@ -126,7 +129,9 @@ namespace mali_userspace
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_TFRX, "T88x", "Midgard", hardware_counters_mali_t88x, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TMIX, "G71",  "Bifrost", hardware_counters_mali_tMIx, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_THEX, "G72",  "Bifrost", hardware_counters_mali_tHEx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TSIX, "G51",  "Bifrost", hardware_counters_mali_tSIx, COUNTER_LAYOUT_V6 ) };
+                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TSIX, "G51",  "Bifrost", hardware_counters_mali_tSIx, COUNTER_LAYOUT_V6 ),
+                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TGOX, "G52",  "Bifrost", hardware_counters_mali_tGOx, COUNTER_LAYOUT_V6 ),
+                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TDVX, "G31",  "Bifrost", hardware_counters_mali_tDVx, COUNTER_LAYOUT_V6 ) };
 
         enum {
             NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS)
