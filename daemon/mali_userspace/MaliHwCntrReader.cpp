@@ -292,7 +292,7 @@ namespace mali_userspace
                 setup_args.tiler_bm = tilerBitmask;
                 setup_args.mmu_l2_bm = mmuL2Bitmask;
 
-                hwcntReaderFd = ioctl(devFd, KBASE_IOCTL_HWCNT_READER_SETUP, setup_args);
+                hwcntReaderFd = ioctl(devFd, KBASE_IOCTL_HWCNT_READER_SETUP, &setup_args);
                 if (hwcntReaderFd < 0) {
                     logg.logMessage("MaliHwCntrReader: Failed sending hwcnt reader ioctl");
                     failedDueToBufferCount = true;
