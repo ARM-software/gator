@@ -11,6 +11,7 @@
 #include "Sender.h"
 #include "SessionData.h"
 #include "lib/Assert.h"
+#include  <cstring>
 
 #define mask (mSize - 1)
 #define FRAME_HEADER_SIZE 3
@@ -355,7 +356,8 @@ void Buffer::endFrame(uint64_t currTime, bool abort, int writePos)
 }
 
 void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime,
-                     const int64_t monotonicDelta, const char * const uname, const long pageSize, const bool nosync)
+                     const int64_t monotonicDelta, const char * const uname, const long pageSize, const bool nosync,
+                     const std::map<const char *, const char *> & additionalAttributes)
 {
     packInt(MESSAGE_SUMMARY);
     writeString(NEWLINE_CANARY);
@@ -371,6 +373,12 @@ void Buffer::summary(const uint64_t currTime, const int64_t timestamp, const int
     if (nosync) {
         writeString("nosync");
         writeString("");
+    }
+    for (const auto & pair : additionalAttributes) {
+        if (strlen(pair.first) > 0) {
+            writeString(pair.first);
+            writeString(pair.second);
+        }
     }
     writeString("");
     check(currTime);
@@ -502,7 +510,7 @@ void Buffer::marshalPea(const uint64_t currTime, const struct perf_event_attr * 
     check(currTime);
 }
 
-void Buffer::marshalKeys(const uint64_t currTime, const int count, const __u64 * const ids, const int * const keys)
+void Buffer::marshalKeys(const uint64_t currTime, const int count, const uint64_t * const ids, const int * const keys)
 {
     while (!checkSpace(2 * MAXSIZE_PACK32 + count * (MAXSIZE_PACK32 + MAXSIZE_PACK64))) {
         sem_wait(&mWriterSem);

@@ -129,4 +129,15 @@ int pcpu_to_lcpu(const int pcpu);
 #define get_logical_cpu() smp_processor_id()
 #define on_primary_core() (get_logical_cpu() == 0)
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+#   define setup_deferrable_timer_on_stack(TIMER, HANDLER, VALUE)   \
+        timer_setup((TIMER), (HANDLER), TIMER_DEFERRABLE)
+#   define destroy_timer_on_stack(TIMER)
+#   define DECLARE_TIMER_HANDLER(NAME)  \
+        void NAME (struct timer_list * timers)
+#else
+#   define DECLARE_TIMER_HANDLER(NAME)  \
+        void NAME (unsigned long arg)
+#endif
+
 #endif /* GATOR_H_ */

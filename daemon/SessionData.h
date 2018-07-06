@@ -10,10 +10,13 @@
 #define SESSION_DATA_H
 
 #include <list>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <stdint.h>
+#include <vector>
+#include <semaphore.h>
 
 #include "ClassBoilerPlate.h"
 #include "AtraceDriver.h"
@@ -22,14 +25,15 @@
 #include "Counter.h"
 #include "ExternalDriver.h"
 #include "FtraceDriver.h"
+#include "GatorCLIFlags.h"
 #include "KMod.h"
 #include "MaliVideoDriver.h"
 #include "MidgardDriver.h"
-#include "PerfDriver.h"
+#include "linux/perf/PerfDriver.h"
 #include "TtraceDriver.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
 
-#define PROTOCOL_VERSION 651
+#define PROTOCOL_VERSION 670
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -186,7 +190,7 @@ public:
 
     int mCpuIds[NR_CPUS];
     int mClusterIds[NR_CPUS];
-    const GatorCpu *mClusters[CLUSTER_COUNT];
+    const GatorCpu * mClusters[CLUSTER_COUNT];
     int mClusterCount;
     size_t mMaliUtgardCountersSize;
     char mMaliUtgardCounters[1 << 12];
@@ -196,7 +200,8 @@ public:
 
 private:
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(SharedData);
+    CLASS_DELETE_COPY_MOVE(SharedData)
+    ;
 };
 
 class SessionData
@@ -227,15 +232,18 @@ public:
 
     char mCoreName[MAX_STRING_LEN];
     std::list<std::string> mImages;
-    char *mConfigurationXMLPath;
-    char *mSessionXMLPath;
-    char *mEventsXMLPath;
-    char *mEventsXMLAppend;
-    char *mTargetPath;
-    char *mAPCDir;
-    char *mCaptureWorkingDir;
-    char *mCaptureCommand;
-    char *mCaptureUser;
+    const char *mConfigurationXMLPath;
+    const char *mSessionXMLPath;
+    const char *mEventsXMLPath;
+    const char *mEventsXMLAppend;
+    const char *mTargetPath;
+    const char *mAPCDir;
+    const char *mCaptureWorkingDir;
+    std::vector<std::string> mCaptureCommand;
+    const char *mCaptureUser;
+    const char *mWaitForProcessCommand;
+    std::set<int> mPids;
+    bool mStopOnExit;
 
     bool mWaitingOnCommand;
     bool mSessionIsActive;
@@ -246,6 +254,7 @@ public:
     bool mSentSummary;
     bool mAllowCommands;
     bool mFtraceRaw;
+    bool mSystemWide;
     int mAndroidApiLevel;
 
     int64_t mMonotonicStarted;
@@ -259,14 +268,20 @@ public:
     int mPageSize;
     int mMaxCpuId;
     int mAnnotateStart;
+    int64_t parameterSetFlag;
+    int mPerfMmapSizeInPages;
 
     // PMU Counters
     char *mCountersError;
     Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 
+    // map used to lookup counter names to events (e.g for cycle counters)
+    std::map<std::string, int> globalCounterToEventMap;
+
 private:
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(SessionData);
+    CLASS_DELETE_COPY_MOVE(SessionData)
+    ;
 };
 
 extern SessionData gSessionData;
@@ -279,6 +294,7 @@ FILE *fopen_cloexec(const char *path, const char *mode);
 bool setNonblock(const int fd);
 bool writeAll(const int fd, const void * const buf, const size_t pos);
 bool readAll(const int fd, void * const buf, const size_t count);
+bool skipAll(const int fd, const size_t count);
 void logCpuNotFound();
 
 // From include/generated/uapi/linux/version.h

@@ -123,7 +123,7 @@ int MaliVideoDriver::writeCounters(mxml_node_t *root) const
     return super::writeCounters(root);
 }
 
-bool MaliVideoDriver::claimCounter(const Counter &counter) const
+bool MaliVideoDriver::claimCounter(Counter &counter) const
 {
     if (access("/dev/mv500", F_OK) != 0) {
         // Don't add the counters to captured XML

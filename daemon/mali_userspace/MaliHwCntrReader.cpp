@@ -119,7 +119,7 @@ namespace mali_userspace
             version_check.minor = 0;
 
             if (doMaliIoctl(devFd, version_check) != 0) {
-                logg.logError("MaliHwCntrReader: Failed setting ABI version ioctl - may be r21p0 or later...");
+                logg.logMessage("MaliHwCntrReader: Failed setting ABI version ioctl - may be r21p0 or later...");
                 return false;
             }
             else if (version_check.major < 10) {

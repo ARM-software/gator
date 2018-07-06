@@ -266,7 +266,7 @@ void ExternalDriver::start()
     }
 }
 
-bool ExternalDriver::claimCounter(const Counter &counter) const
+bool ExternalDriver::claimCounter(Counter &counter) const
 {
     query();
     return super::claimCounter(counter);

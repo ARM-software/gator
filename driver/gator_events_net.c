@@ -43,7 +43,7 @@ static void get_network_stats(struct work_struct *wsptr)
 
 static DECLARE_WORK(wq_get_stats, get_network_stats);
 
-static void net_wake_up_handler(unsigned long unused_data)
+static DECLARE_TIMER_HANDLER(net_wake_up_handler)
 {
     /* had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater */
     schedule_work(&wq_get_stats);

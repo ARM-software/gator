@@ -37,7 +37,7 @@ static int getUid(const char * const name, const char * const tmpDir, uid_t * co
     close(fd);
 
     char cmd[128];
-    snprintf(cmd, sizeof(cmd), "chown %s %s || rm %s", name, gatorTemp, gatorTemp);
+    snprintf(cmd, sizeof(cmd), "chown %s %s || rm -f %s", name, gatorTemp, gatorTemp);
 
     const int pid = fork();
     if (pid < 0) {
@@ -88,21 +88,57 @@ static bool getUid(const char * const name, uid_t * const uid, gid_t * const gid
     return false;
 }
 
-void *commandThread(void *)
+static void checkCommandStatus(int status)
 {
-    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
+    if (WIFEXITED(status)) {
+        const int exitCode = WEXITSTATUS(status);
 
-    const char * const name = gSessionData.mCaptureUser == NULL ? "nobody" : gSessionData.mCaptureUser;
-    uid_t uid;
-    gid_t gid;
-    if (!getUid(name, &uid, &gid)) {
-        logg.logError("Unable to look up the user %s, please double check that the user exists", name);
-        handleException();
+        // add some special case handling for when we are launching via bash shell
+        if ((gSessionData.mCaptureCommand.size() == 3) && (gSessionData.mCaptureCommand[0] == "sh")
+                && (gSessionData.mCaptureCommand[1] == "-c")) {
+            if (exitCode == 126) {
+                logg.logError("Failed to run command %s: Permission denied or is a directory", gSessionData.mCaptureCommand[2].c_str());
+                handleException();
+            }
+            if (exitCode == 127) {
+                logg.logError("Failed to run command %s: Command not found", gSessionData.mCaptureCommand[2].c_str());
+                handleException();
+            }
+        }
+
+        if (exitCode != 0)
+            logg.logError("command exited with code %d", exitCode);
+    }
+    else if (WIFSIGNALED(status)) {
+        const int signal = WTERMSIG(status);
+        if (signal != SIGTERM && signal != SIGINT) // should we consider any others normal?
+            logg.logError("command terminated abnormally: %s", strsignal(signal));
+    }
+}
+
+Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallback)
+{
+    uid_t uid = geteuid();
+    gid_t gid = getegid();
+    const char * const name = gSessionData.mCaptureUser;
+
+    // if name is null then just use the current user
+    if (name != NULL) {
+        // for non root.
+        // Verify root permissions
+        const bool isRoot = (geteuid() == 0);
+        if (!isRoot) {
+            logg.logError("Unable to set user to %s for command because gatord is not running as root", name);
+            handleException();
+        }
+
+        if (!getUid(name, &uid, &gid)) {
+            logg.logError("Unable to look up the user %s, please double check that the user exists", name);
+            handleException();
+        }
     }
 
-    sleep(3);
-
-    char buf[1 << 8];
+    constexpr size_t bufSize = 1 << 8;
     int pipefd[2];
     if (pipe_cloexec(pipefd) != 0) {
         logg.logError("pipe failed");
@@ -114,9 +150,28 @@ void *commandThread(void *)
         logg.logError("fork failed");
         handleException();
     }
+
     if (pid == 0) {
+        // child
+
+        // Reset signal handlers while waiting for exec
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+        signal(SIGABRT, SIG_DFL);
+        signal(SIGALRM, SIG_DFL);
+
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
+
+        char buf[bufSize];
         buf[0] = '\0';
         close(pipefd[0]);
+
+        std::vector<char*> cmd_str { };
+        for (const auto & string : gSessionData.mCaptureCommand) {
+            cmd_str.push_back(const_cast<char *>(string.c_str()));
+        }
+        cmd_str.push_back(nullptr);
+        char * const * const commands = cmd_str.data();
 
         // Gator runs at a high priority, reset the priority to the default
         if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
@@ -124,30 +179,35 @@ void *commandThread(void *)
             goto fail_exit;
         }
 
-        if (setgroups(1, &gid) != 0) {
-            snprintf(buf, sizeof(buf), "setgroups failed");
-            goto fail_exit;
-        }
-        if (setresgid(gid, gid, gid) != 0) {
-            snprintf(buf, sizeof(buf), "setresgid failed");
-            goto fail_exit;
-        }
-        if (setresuid(uid, uid, uid) != 0) {
-            snprintf(buf, sizeof(buf), "setresuid failed");
-            goto fail_exit;
+        if (name != NULL) {
+            if (setgroups(1, &gid) != 0) {
+                snprintf(buf, sizeof(buf), "setgroups failed for user: %s, please check if the user is part of group", name );
+                goto fail_exit;
+            }
+            if (setresgid(gid, gid, gid) != 0) {
+                snprintf(buf, sizeof(buf), "setresgid failed for user: %s, please check if the user is part of GID %d", name, gid);
+                goto fail_exit;
+            }
+            if (setresuid(uid, uid, uid) != 0) {
+                snprintf(buf, sizeof(buf), "setresuid failed for user: %s, please check if the user is part of UID %d", name, uid);
+                goto fail_exit;
+            }
         }
 
         {
             const char * const path = gSessionData.mCaptureWorkingDir == NULL ? "/" : gSessionData.mCaptureWorkingDir;
             if (chdir(path) != 0) {
                 snprintf(buf, sizeof(buf),
-                         "Unable to cd to %s, please verify the directory exists and is accessible to %s", path, name);
+                         "Unable to cd to %s, please verify the directory exists and is accessible to %s", path,
+                         name != nullptr ? name : "the current user");
                 goto fail_exit;
             }
         }
+        sem_wait(&waitToStart);
+        sem_post(&waitToStart); // some other thread might be waiting on this too.
 
-        execlp("sh", "sh", "-c", gSessionData.mCaptureCommand, nullptr);
-        snprintf(buf, sizeof(buf), "execv failed");
+        execvp(commands[0], commands);
+        snprintf(buf, sizeof(buf), "Failed to run command %s\nexecvp failed: %s", commands[0], strerror(errno));
 
         fail_exit: if (buf[0] != '\0') {
             const ssize_t bytes = write(pipefd[1], buf, sizeof(buf));
@@ -157,14 +217,58 @@ void *commandThread(void *)
 
         exit(-1);
     }
+    else {
+        // parent
 
-    close(pipefd[1]);
-    const ssize_t bytes = read(pipefd[0], buf, sizeof(buf));
-    if (bytes > 0) {
-        logg.logError("%s", buf);
-        handleException();
+        close(pipefd[1]);
+
+        return {pid, std::thread {[pipefd, pid, terminationCallback]() {
+                    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command-reader"), 0, 0, 0);
+                    char buf[bufSize];
+                    ssize_t bytesRead = 0;
+                    while (true)
+                    {
+                        const ssize_t bytes = read(pipefd[0], buf + bytesRead, sizeof(buf - bytesRead));
+                        if (bytes > 0)
+                        {
+                            bytesRead += bytes;
+                        }
+                        else if (bytes == 0)
+                        {
+                            break;
+                        }
+                        else if (errno != EAGAIN) {
+                            buf[bytesRead] = '\0';
+                            logg.logError("Failed to read pipe from child: %s", strerror(errno));
+                            break;
+                        }
+                    }
+
+                    close(pipefd[0]);
+
+                    if (bytesRead > 0) {
+                        logg.logError("%s", buf);
+                        handleException();
+                    }
+                    else {
+                        // wait for the process to exit and read its status.
+                        while (true) {
+                            int status;
+                            if (waitpid(pid, &status, 0) != -1)
+                            {
+                                checkCommandStatus(status);
+                            }
+                            else if (errno == EINTR)
+                            {
+                                continue;
+                            }
+                            else {
+                                logg.logMessage("Could not waitpid on child command. (%s)", strerror(errno));
+                            }
+                            break;
+                        }
+                        terminationCallback();
+                    }
+                }}};
     }
-    close(pipefd[0]);
-
-    return NULL;
 }

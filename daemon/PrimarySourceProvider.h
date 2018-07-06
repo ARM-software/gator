@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <semaphore.h>
+#include <set>
 #include <vector>
 
 #include "ClassBoilerPlate.h"
@@ -29,12 +30,15 @@ public:
     /**
      * Static initialization / detection
      */
-    static std::unique_ptr<PrimarySourceProvider> detect(const char * module);
+    static std::unique_ptr<PrimarySourceProvider> detect(const char * module, bool systemWide);
 
     virtual ~PrimarySourceProvider();
 
     /** Return the attribute value for captured.xml type attribute */
     virtual const char * getCaptureXmlTypeValue() const = 0;
+
+    /** Return the backtrace_processing mode for captured.xml attribute */
+    virtual const char * getBacktraceProcessingMode() const = 0;
 
     /** Return the monotonic timestamp the source started */
     virtual std::int64_t getMonotonicStarted() const = 0;
@@ -65,7 +69,7 @@ public:
 
     /** Create the primary Source instance */
     virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                        sem_t & startProfile) = 0;
+                                                        sem_t & startProfile, const std::set<int> & appTids) = 0;
 
 protected:
 

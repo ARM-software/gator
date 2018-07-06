@@ -29,7 +29,7 @@ namespace mali_userspace
         MaliHwCntrDriver();
         ~MaliHwCntrDriver();
 
-        bool claimCounter(const Counter &counter) const;
+        bool claimCounter(Counter &counter) const;
         void resetCounters();
         void setupCounter(Counter &counter);
         bool start();
@@ -53,7 +53,14 @@ namespace mali_userspace
 
         const char * getSupportedDeviceFamilyName() const;
 
+        void initialize(const char * userSpecifiedDeviceType, const char * userSpecifiedDevicePath);
+
     private:
+
+        /** User specified device type string */
+        const char * mUserSpecifiedDeviceType;
+        /** User specified device path string */
+        const char * mUserSpecifiedDevicePath;
 
         /** The reader object */
         MaliHwCntrReader * mReader;

@@ -9,8 +9,8 @@
 #include "Logging.h"
 #include "MemInfoDriver.h"
 #include "NetDriver.h"
-#include "PerfDriver.h"
-#include "PerfSource.h"
+#include "linux/perf/PerfDriver.h"
+#include "linux/perf/PerfSource.h"
 #include "PmuXML.h"
 #include "SessionData.h"
 #include "non_root/NonRootDriver.h"
@@ -46,6 +46,11 @@ namespace
         virtual const char * getCaptureXmlTypeValue() const override
         {
             return "Gator";
+        }
+
+        virtual const char * getBacktraceProcessingMode() const override
+        {
+            return "gator";
         }
 
         virtual std::int64_t getMonotonicStarted() const override
@@ -96,7 +101,7 @@ namespace
         }
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                            sem_t & startProfile) override
+                                                            sem_t & startProfile, const std::set<int> &) override
         {
             return std::unique_ptr<Source>(new DriverSource(child, senderSem, startProfile));
         }
@@ -124,11 +129,11 @@ namespace
     {
     public:
 
-        static std::unique_ptr<PrimarySourceProvider> tryCreate()
+        static std::unique_ptr<PrimarySourceProvider> tryCreate(bool systemWide)
         {
             std::unique_ptr<PrimarySourceProvider> result;
 
-            std::unique_ptr<PerfDriver::PerfDriverConfiguration> configuration = PerfDriver::detect();
+            std::unique_ptr<PerfDriver::PerfDriverConfiguration> configuration = PerfDriver::detect(systemWide);
             if (configuration != nullptr) {
                 result.reset(new PerfPrimarySource(*configuration));
             }
@@ -139,6 +144,11 @@ namespace
         virtual const char * getCaptureXmlTypeValue() const override
         {
             return "Perf";
+        }
+
+        virtual const char * getBacktraceProcessingMode() const override
+        {
+            return "perf";
         }
 
         virtual std::int64_t getMonotonicStarted() const override
@@ -182,9 +192,9 @@ namespace
         }
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                            sem_t & startProfile) override
+                                                            sem_t & startProfile, const std::set<int> & appTids) override
         {
-            return std::unique_ptr<Source>(new PerfSource(driver, child, senderSem, startProfile));
+            return std::unique_ptr<Source>(new PerfSource(driver, child, senderSem, startProfile, appTids));
         }
 
     private:
@@ -204,7 +214,6 @@ namespace
         PerfDriver driver;
     };
 
-
     /**
      * Primary source that reads from top-like information from /proc and works in non-root environment
      */
@@ -221,6 +230,11 @@ namespace
         {
             // Sends data in gator format
             return "Gator";
+        }
+
+        virtual const char * getBacktraceProcessingMode() const override
+        {
+            return "none";
         }
 
         virtual std::int64_t getMonotonicStarted() const override
@@ -264,7 +278,7 @@ namespace
         }
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                            sem_t & startProfile) override
+                                                            sem_t & startProfile, const std::set<int> &) override
         {
             return std::unique_ptr<Source>(new non_root::NonRootSource(driver, child, senderSem, startProfile));
         }
@@ -304,60 +318,63 @@ const std::vector<PolledDriver *> & PrimarySourceProvider::getAdditionalPolledDr
     return polledDrivers;
 }
 
-std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(const char * module)
+std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(const char * module, bool systemWide)
 {
     std::unique_ptr<PrimarySourceProvider> result;
 
     // Verify root permissions
     const bool isRoot = (geteuid() == 0);
 
+    logg.logMessage("Determining primary source");
+
     // try gator.ko
-    if (isRoot) {
-        logg.logError("Trying gator.ko as primary source");
+    if (isRoot && systemWide) {
+        logg.logMessage("Trying gator.ko...");
         result = GatorKoPrimarySource::tryCreate(module);
+        if (result != nullptr) {
+            logg.logMessage("...Success");
+            logg.logSetup("Profiling Source\nUsing gator.ko for primary data source");
+            return result;
+        }
+        else
+            logg.logMessage("...Unable to set up gator.ko");
     }
 
     // try perf
-    if (result == nullptr) {
-        if (isRoot) {
-            logg.logError("Unable to set up gatorfs, trying perf API");
-            result = PerfPrimarySource::tryCreate();
-        }
-        else {
-            // check if possible
-            int perf_event_paranoid = 2;
-            DriverSource::readIntDriver("/proc/sys/kernel/perf_event_paranoid", &perf_event_paranoid);
+    if (isRoot)
+        logg.logMessage("Trying perf API as root...");
+    else
+        logg.logMessage("Trying perf API as non-root...");
 
-            // check can access /sys/kernel/debug and /sys/kernel/debug/tracing
-            const bool canAccessEvents = (access("/sys/kernel/debug/tracing/events", R_OK) == 0);
-
-            if ((perf_event_paranoid < 0) && canAccessEvents) {
-                logg.logError("Trying perf API from userspace");
-                result = PerfPrimarySource::tryCreate();
-            }
-            else {
-                logg.logError("Perf API is not available to non-root users. \n"
-                        "Please make sure '/proc/sys/kernel/perf_event_paranoid' is set -1, \n"
-                        "and '/sys/kernel/debug' and '/sys/kernel/debug/tracing' are mounted and accessible as this user.\n\n"
-                        "Try (as root):\n"
-                        " - mount -o remount,mode=755 /sys/kernel/debug\n"
-                        " - mount -o remount,mode=755 /sys/kernel/debug/tracing\n"
-                        " - echo -1 > /proc/sys/kernel/perf_event_paranoid\n");
-            }
-        }
+    result = PerfPrimarySource::tryCreate(systemWide);
+    if (result != nullptr) {
+        logg.logMessage("...Success");
+        logg.logSetup("Profiling Source\nUsing perf API for primary data source");
+        return result;
     }
+    else
+        logg.logMessage("...Perf API is not available to non-root users in system-wide mode.\n"
+                "To use it make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1,\n"
+                "and '/sys/kernel/debug' and '/sys/kernel/debug/tracing' are mounted and accessible as this user.\n\n"
+                "Try (as root):\n"
+                " - mount -o remount,mode=755 /sys/kernel/debug\n"
+                " - mount -o remount,mode=755 /sys/kernel/debug/tracing\n"
+                " - echo -1 > /proc/sys/kernel/perf_event_paranoid");
 
     // fall back to non-root mode
-    if (result == nullptr) {
-        if (isRoot) {
-            logg.logError("Unable to set up perf API, falling back to non-root counters");
-        }
-        else {
-            logg.logError("gatord was launched with non-root privileges; limited system profiling information available");
-        }
+    if (isRoot)
+        logg.logMessage("Trying proc counters as root...");
+    else
+        logg.logMessage("Trying proc counters as non-root; limited system profiling information available...");
 
-        result = NonRootPrimarySource::tryCreate();
+    result = NonRootPrimarySource::tryCreate();
+    if (result != nullptr) {
+        logg.logMessage("...Success");
+        logg.logSetup("Profiling Source\nUsing proc polling for primary data source");
+        return result;
     }
+    else
+        logg.logMessage("...Unable to set proc counters");
 
-    return result;
+    return nullptr;
 }

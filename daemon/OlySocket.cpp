@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -110,7 +111,7 @@ OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const 
     // Create socket
     mFDServer = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
     if (mFDServer < 0) {
-        logg.logError("Error creating server socket");
+        logg.logError("Error creating server unix socket");
         handleException();
     }
 
@@ -124,7 +125,11 @@ OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const 
     // Bind the socket to an address
     if (bind(mFDServer, reinterpret_cast<const struct sockaddr*>(&sockaddr),
              calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
-        logg.logError("Binding of server socket failed.");
+        //                                                                    use sun_path because it is null terminated
+        //                                                                    if path was actually empty string
+        //                                                                    vv
+        const char * const printablePath = path[0] != '\0' ? path : &sockaddr.sun_path[1];
+        logg.logError("Binding of server socket to '%s' failed: %s", printablePath, strerror(errno));
         handleException();
     }
 
@@ -208,7 +213,7 @@ void OlyServerSocket::createServerSocket(int port)
         family = AF_INET;
         mFDServer = socket_cloexec(PF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (mFDServer < 0) {
-            logg.logError("Error creating server socket");
+            logg.logError("Error creating server TCP socket");
             handleException();
         }
     }

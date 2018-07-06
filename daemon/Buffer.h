@@ -11,7 +11,8 @@
 
 #include "ClassBoilerPlate.h"
 
-#include <stdint.h>
+#include <cstdint>
+#include <map>
 #include <semaphore.h>
 
 #include "k/perf_event.h"
@@ -97,7 +98,8 @@ public:
 
     // Summary messages
     void summary(const uint64_t currTime, const int64_t timestamp, const int64_t uptime, const int64_t monotonicDelta,
-                 const char * const uname, const long pageSize, const bool nosync);
+                 const char * const uname, const long pageSize, const bool nosync,
+                 const std::map<const char *, const char *> & additionalAttributes);
     void coreName(const uint64_t currTime, const int core, const int cpuid, const char * const name);
 
     // Block Counter messages
@@ -112,7 +114,7 @@ public:
 
     // Perf Attrs messages
     void marshalPea(const uint64_t currTime, const struct perf_event_attr * const pea, int key);
-    void marshalKeys(const uint64_t currTime, const int count, const __u64 * const ids, const int * const keys);
+    void marshalKeys(const uint64_t currTime, const int count, const uint64_t * const ids, const int * const keys);
     void marshalKeysOld(const uint64_t currTime, const int keyCount, const int * const keys, const int bytes,
                         const char * const buf);
     void marshalFormat(const uint64_t currTime, const int length, const char * const format);

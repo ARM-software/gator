@@ -65,7 +65,7 @@ Sender::~Sender()
     }
 }
 
-void Sender::createDataFile(char* apcDir)
+void Sender::createDataFile(const char* apcDir)
 {
     if (apcDir == NULL) {
         return;

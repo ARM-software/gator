@@ -8,6 +8,7 @@ LOCAL_SRC_FILES := \
     AtraceDriver.cpp \
     Buffer.cpp \
     CapturedXML.cpp \
+    CounterXML.cpp \
     CCNDriver.cpp \
     Child.cpp \
     Command.cpp \
@@ -23,10 +24,12 @@ LOCAL_SRC_FILES := \
     Fifo.cpp \
     FSDriver.cpp \
     FtraceDriver.cpp \
+    GatorCLIParser.cpp \
     HwmonDriver.cpp \
     KMod.cpp \
     lib/Assert.cpp \
     lib/FsEntry.cpp \
+    lib/Popen.cpp \
     libsensors/access.c \
     libsensors/conf-lex.c \
     libsensors/conf-parse.c \
@@ -37,6 +40,12 @@ LOCAL_SRC_FILES := \
     libsensors/sysfs.c \
     lib/Thread.cpp \
     lib/TimestampSource.cpp \
+    linux/perf/PerfBuffer.cpp \
+    linux/perf/PerfDriver.cpp \
+    linux/perf/PerfEventGroup.cpp \
+    linux/perf/PerfEventGroupIdentifier.cpp \
+    linux/perf/PerfGroups.cpp \
+    linux/perf/PerfSource.cpp \
     linux/proc/ProcessPollerBase.cpp \
     linux/proc/ProcLoadAvgFileRecord.cpp \
     linux/proc/ProcPidStatFileRecord.cpp \
@@ -78,10 +87,6 @@ LOCAL_SRC_FILES := \
     non_root/ProcessStatsTracker.cpp \
     OlySocket.cpp \
     OlyUtility.cpp \
-    PerfBuffer.cpp \
-    PerfDriver.cpp \
-    PerfGroup.cpp \
-    PerfSource.cpp \
     PmuXML.cpp \
     PolledDriver.cpp \
     PrimarySourceProvider.cpp \
@@ -95,7 +100,8 @@ LOCAL_SRC_FILES := \
     StreamlineSetup.cpp \
     TtraceDriver.cpp \
     UEvent.cpp \
-    UserSpaceSource.cpp
+    UserSpaceSource.cpp \
+    WaitForProcessPoller.cpp
 
 LOCAL_CFLAGS += -Wall -O3 -fno-exceptions -pthread -DETCDIR=\"/etc\" -Ilibsensors -fPIE
 LOCAL_CXXFLAGS += -fno-rtti -Wextra -Wpointer-arith -std=c++11 -static-libstdc++ -fno-rtti -Wextra -Wpointer-arith

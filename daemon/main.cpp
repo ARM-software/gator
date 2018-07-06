@@ -7,9 +7,12 @@
  */
 
 #include <algorithm>
+#include <cinttypes>
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <pwd.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -20,8 +23,10 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <unistd.h>
 #include <atomic>
+#include <map>
+#include <vector>
+#include <iterator>
 
 #include "AnnotateListener.h"
 #include "Child.h"
@@ -35,6 +40,7 @@
 #include "SessionData.h"
 #include "PrimarySourceProvider.h"
 #include "Sender.h"
+#include "GatorCLIParser.h"
 
 static int shutdownFilesystem();
 static pthread_mutex_t numChildProcesses_mutex;
@@ -43,22 +49,17 @@ static Monitor monitor;
 static bool driverRunningAtStart = false;
 static bool driverMountedAtStart = false;
 
+GatorCLIParser parser;
+
 enum State
 {
     IDLE,
     CAPTURING,
     WAITING_FOR_TEAR_DOWN,
 };
+
 static std::atomic<State> state(State::IDLE);
-
-struct cmdline_t
-{
-    char *module;
-    char *pmuPath;
-    int port;
-};
-
-#define DEFAULT_PORT 8080
+static std::atomic_int localCapturePid = ATOMIC_VAR_INIT(0);
 
 void cleanUp()
 {
@@ -68,38 +69,53 @@ void cleanUp()
     delete sock;
 }
 
+// Arbitrary sleep of up to 2 seconds to give time for the child to exit;
+// if something bad happens, continue the shutdown process regardless
+static bool poll_state()
+{
+    // sleep 10ms, 200 times
+    for (int n = 0; n < 200; ++n) {
+        // check exited
+        if (state.load() == State::IDLE) {
+            return true;
+        }
+
+        // sleep for 10ms
+        usleep(10000);
+    }
+
+    return (state.load() == State::IDLE);
+}
+
 // CTRL C Signal Handler
 __attribute__((noreturn))
 static void handler(int signum)
 {
     logg.logMessage("Received signal %d, gator daemon exiting", signum);
 
-    // Case 1: both child and parent receive the signal
-    if (state.load() != State::IDLE) {
-        // Arbitrary sleep of 1 second to give time for the child to exit;
-        // if something bad happens, continue the shutdown process regardless
-        sleep(1);
-    }
-
-    // Case 2: only the parent received the signal
-    if (state.load() != State::IDLE) {
-        // Kill child threads - the first signal exits gracefully
+    // Case 1: both child and parent receive the signal, in which has poll_state will return true
+    if (!poll_state())
+    {
+        // Case 2: only the parent received the signal - Kill child threads - the first signal exits gracefully
         logg.logMessage("Killing process group as more than one gator-child was running when signal was received");
         kill(0, SIGINT);
 
         // Give time for the child to exit
-        sleep(1);
-
-        if (state.load() != State::IDLE) {
-            // The second signal force kills the child
-            logg.logMessage("Force kill the child");
+        if (!poll_state())
+        {
+            // The second signal should kill the child
+            logg.logMessage("Sending SIGINT again");
             kill(0, SIGINT);
-            // Again, sleep for 1 second
-            sleep(1);
 
-            if (state.load() != State::IDLE) {
-                // Something bad has really happened; the child is not exiting and therefore may hold the /dev/gator resource open
-                printf("Unable to kill the gatord child process, thus gator.ko may still be loaded.\n");
+            // Again, wait for status update
+            if (!poll_state())
+            {
+                // try to cleanup
+                cleanUp();
+
+                // now get terminal (this will also bring down gatord)
+                logg.logError("Failed to shut down child. Possible deadlock. Sending SIGKILL to kill everything");
+                kill(0, SIGKILL);
             }
         }
     }
@@ -119,8 +135,12 @@ static void child_exit(int)
     int status;
     int pid = wait(&status);
     if (pid != -1) {
-        state.store(State::IDLE);
         logg.logMessage("Child process %d exited with status %d", pid, status);
+        if (pid == localCapturePid.load()) {
+            cleanUp();
+            exit(0);
+        }
+        state.store(State::IDLE);
     }
 }
 
@@ -363,172 +383,26 @@ static int shutdownFilesystem()
     return 0; // success
 }
 
-static const char OPTSTRING[] = "hvVdap:s:c:e:E:P:m:o:A:";
-
-static bool hasDebugFlag(int argc, char** argv)
-{
-    int c;
-
-    optind = 1;
-    opterr = 0;
-    while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
-        if (c == 'd') {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static struct cmdline_t parseCommandLine(int argc, char** argv)
-{
-    struct cmdline_t cmdline;
-    memset(&cmdline, 0, sizeof(cmdline));
-    cmdline.port = DEFAULT_PORT;
-    char version_string[256]; // arbitrary length to hold the version information
-    int c;
-
-    // build the version string
-    if (PROTOCOL_VERSION < PROTOCOL_DEV) {
-        const int majorVersion = PROTOCOL_VERSION / 100;
-        const int minorVersion = (PROTOCOL_VERSION / 10) % 10;
-        const int revisionVersion = PROTOCOL_VERSION % 10;
-        if (revisionVersion == 0) {
-            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (Streamline v%d.%d)",
-                     PROTOCOL_VERSION, majorVersion, minorVersion);
-        }
-        else {
-            snprintf(version_string, sizeof(version_string), "Streamline gatord version %d (Streamline v%d.%d.%d)",
-                     PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion);
-        }
-    }
-    else {
-        snprintf(version_string, sizeof(version_string), "Streamline gatord development version %d", PROTOCOL_VERSION);
-    }
-    logg.logMessage("%s", version_string);
-
-    optind = 1;
-    opterr = 1;
-    while ((c = getopt(argc, argv, OPTSTRING)) != -1) {
-        switch (c) {
-        case 'A':
-            if (!stringToInt(&gSessionData.mAndroidApiLevel, optarg, 10)) {
-                logg.logError("-A must be followed by an int");
-                handleException();
-            }
-            break;
-        case 'c':
-            gSessionData.mConfigurationXMLPath = optarg;
-            break;
-        case 'd':
-            // Already handled
-            break;
-        case 'e':
-            gSessionData.mEventsXMLPath = optarg;
-            break;
-        case 'E':
-            gSessionData.mEventsXMLAppend = optarg;
-            break;
-        case 'P':
-            cmdline.pmuPath = optarg;
-            break;
-        case 'm':
-            cmdline.module = optarg;
-            break;
-        case 'p':
-            if (!stringToInt(&cmdline.port, optarg, 10)) {
-                logg.logError("Port must be an integer");
-                handleException();
-            }
-            if ((cmdline.port == 8082) || (cmdline.port == 8083)) {
-                logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for annotations. Please select a different port.", cmdline.port);
-                handleException();
-            }
-            if (cmdline.port < 1 || cmdline.port > 65535) {
-                logg.logError("Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535", cmdline.port);
-                handleException();
-            }
-            break;
-        case 's':
-            gSessionData.mSessionXMLPath = optarg;
-            break;
-        case 'o':
-            gSessionData.mTargetPath = optarg;
-            break;
-        case 'a':
-            gSessionData.mAllowCommands = true;
-            break;
-        case 'h':
-        case '?':
-            logg.logError(
-                    "%s. All parameters are optional:\n"
-                    "-c config_xml   path and filename of the configuration XML to use\n"
-                    "-e events_xml   path and filename of the events XML to use\n"
-                    "-E events_xml   path and filename of events XML to append\n"
-                    "-P pmu_xml      path and filename of pmu XML to append\n"
-                    "-h              this help page\n"
-                    "-m module       path and filename of gator.ko\n"
-                    "-p port_number  port upon which the server listens; default is 8080\n"
-                    "-s session_xml  path and filename of a session.xml used for local capture\n"
-                    "-o apc_dir      path and name of the output for a local capture\n"
-                    "-v              version information\n"
-                    "-d              enable debug messages\n"
-                    "-a              allow the user to issue a command from Streamline"
-                    , version_string);
-            handleException();
-            break;
-        case 'v':
-            logg.logError("%s", version_string);
-            handleException();
-            break;
-        case 'V':
-            logg.logError("%s\nSRC_MD5: %s", version_string, gSrcMd5);
-            handleException();
-            break;
-        }
-    }
-
-    // Error checking
-    if (cmdline.port != DEFAULT_PORT && gSessionData.mSessionXMLPath != NULL) {
-        logg.logError("Only a port or a session xml can be specified, not both");
-        handleException();
-    }
-
-    if (gSessionData.mTargetPath != NULL && gSessionData.mSessionXMLPath == NULL) {
-        logg.logError("Missing -s command line option required for a local capture.");
-        handleException();
-    }
-
-    if (optind < argc) {
-        logg.logError("Unknown argument: %s. Use '-h' for help.", argv[optind]);
-        handleException();
-    }
-
-    return cmdline;
-}
-
 static AnnotateListener annotateListener;
 
 static void handleClient()
 {
-    assert(sock!=nullptr);
+    assert(sock != nullptr);
 
-    if (state.load() == State::CAPTURING)
-    {
-            // A temporary socket connection to host, to transfer error message
-            OlySocket client (sock->acceptConnection());
-            logg.logError("Session already in progress");
-            Sender sender(&client);
-            sender.writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
+    if (state.load() == State::CAPTURING) {
+        // A temporary socket connection to host, to transfer error message
+        OlySocket client(sock->acceptConnection());
+        logg.logError("Session already in progress");
+        Sender sender(&client);
+        sender.writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
 
-            // Ensure all data is flushed the host receive the data (not closing socket too quick)
-            sleep(1);
-            client.shutdownConnection();
-            client.closeSocket();
+        // Ensure all data is flushed the host receive the data (not closing socket too quick)
+        sleep(1);
+        client.shutdownConnection();
+        client.closeSocket();
     }
-    else
-    {
-        OlySocket client (sock->acceptConnection());
+    else {
+        OlySocket client(sock->acceptConnection());
         int pid = fork();
         if (pid < 0) {
             // Error
@@ -558,7 +432,6 @@ static void handleClient()
 static void doLocalCapture()
 {
     state.store(State::CAPTURING);
-
     int pid = fork();
     if (pid < 0) {
         // Error
@@ -571,22 +444,122 @@ static void doLocalCapture()
         annotateListener.close();
 
         auto child = Child::createLocal(*gSessionData.mPrimarySource);
+        child->setEvents(parser.result.events);
         child->run();
         child.reset();
 
         exit(0);
     }
+    else {
+        localCapturePid.store(pid);
+    }
 }
 
+void setDefaults() {
+    //default system wide.
+    gSessionData.mSystemWide = false;
+    //buffer_mode is streaming
+    gSessionData.mOneShot = false;
+    gSessionData.mTotalBufferSize = 1;
+    gSessionData.mPerfMmapSizeInPages = -1;
+    //callStack unwinding default is yes
+    gSessionData.mBacktraceDepth = 128;
+    //sample rate is normal
+    gSessionData.mSampleRate = normal;
+    //duration default to 0
+    gSessionData.mDuration = 0;
+    //use_efficient_ftrace default is yes
+    gSessionData.mFtraceRaw = true;
+#if defined(WIN32)
+    //TODO
+    gSessionData.mCaptureUser = nullptr;
+    gSessionData.mCaptureWorkingDir= nullptr;
+#else
+    // default to current user
+    gSessionData.mCaptureUser = nullptr;
+
+    // use current working directory
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+        gSessionData.mCaptureWorkingDir = strdup(cwd);
+    }
+    else {
+        gSessionData.mCaptureWorkingDir = nullptr;
+    }
+#endif
+}
+
+void updateSessionData()
+{
+    gSessionData.mLocalCapture = parser.result.mIsLocalCapture;
+    gSessionData.mAndroidApiLevel = parser.result.mAndroidApiLevel;
+    gSessionData.mConfigurationXMLPath = parser.result.mConfigurationXMLPath;
+    gSessionData.mEventsXMLAppend = parser.result.mEventsXMLAppend;
+    gSessionData.mEventsXMLPath = parser.result.mEventsXMLPath;
+    gSessionData.mSessionXMLPath = parser.result.mSessionXMLPath;
+    gSessionData.mSystemWide = parser.result.mSystemWide;
+    gSessionData.mWaitForProcessCommand = parser.result.mWaitForCommand;
+    gSessionData.mPids = parser.result.mPids;
+
+    gSessionData.mTargetPath = parser.result.mTargetPath;
+    gSessionData.mAllowCommands = parser.result.mAllowCommands;
+    gSessionData.parameterSetFlag = parser.result.parameterSetFlag;
+    gSessionData.mStopOnExit = parser.result.mStopGator;
+    gSessionData.mPerfMmapSizeInPages = parser.result.mPerfMmapSizeInPages;
+
+    // use value from perf_event_mlock_kb
+    if ((gSessionData.mPerfMmapSizeInPages <= 0) && (geteuid() != 0) && (gSessionData.mPageSize >= 1024)) {
+        std::int64_t perfEventMlockKb = 0;
+        if (DriverSource::readInt64Driver("/proc/sys/kernel/perf_event_mlock_kb", &perfEventMlockKb) == 0) {
+            if (perfEventMlockKb > 0) {
+                const std::uint64_t perfEventMlockPages = (perfEventMlockKb / (gSessionData.mPageSize / 1024));
+                gSessionData.mPerfMmapSizeInPages = int(std::min<std::uint64_t>(perfEventMlockPages - 1, INT_MAX));
+                logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
+                                gSessionData.mPerfMmapSizeInPages,
+                                gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ull);
+            }
+        }
+        else {
+            // the default seen on most setups is 516kb, if user cannot read the file it is probably
+            // because they are on Android in locked down setup so use default value of 128 pages
+            gSessionData.mPerfMmapSizeInPages = 128;
+            logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
+                            gSessionData.mPerfMmapSizeInPages,
+                            gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ull);
+        }
+    }
+
+    //These values are set from command line and are alos part of session.xml
+    //and hence cannot be modified during parse session
+    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) {
+        gSessionData.mSampleRate = parser.result.mSampleRate;
+    }
+    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) {
+        gSessionData.mBacktraceDepth = parser.result.mBacktraceDepth;
+    }
+    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) {
+        gSessionData.mCaptureWorkingDir = strdup(parser.result.mCaptureWorkingDir);
+    }
+    if(parser.result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) {
+        gSessionData.mCaptureCommand  = parser.result.mCaptureCommand;
+    }
+    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_DURATION) {
+        gSessionData.mDuration = parser.result.mDuration;
+    }
+    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) {
+        gSessionData.mFtraceRaw = parser.result.mFtraceRaw;
+    }
+
+    gSessionData.mMaliHwCntrs.initialize(parser.result.mMaliType, parser.result.mMaliDevice);
+}
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char** argv)
 {
     // Ensure proper signal handling by making gatord the process group leader
     //   e.g. it may not be the group leader when launched as 'sudo gatord'
     setsid();
-
     // Set up global thread-safe logging
-    logg.setDebug(hasDebugFlag(argc, argv));
+    logg.setDebug(parser.hasDebugFlag(argc, argv));
     gSessionData.initialize();
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);
@@ -613,24 +586,47 @@ int main(int argc, char** argv)
             // Not good, but not a fatal error either
         }
         else {
-            rlim.rlim_cur = std::max(rlim_t(1) << 15, rlim.rlim_cur);
             rlim.rlim_max = std::max(rlim.rlim_cur, rlim.rlim_max);
+            rlim.rlim_cur = std::min(std::max(rlim_t(1) << 15, rlim.rlim_cur), rlim.rlim_max);
             if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-                logg.logMessage("Unable to increase the maximum number of files");
+                logg.logMessage("Unable to increase the maximum number of files (%lu, %lu)", rlim.rlim_cur, rlim.rlim_max);
                 // Not good, but not a fatal error either
             }
         }
     }
-
+    //setting default values of gSessionData
+    setDefaults();
+    char versionString[256];
+    if (PROTOCOL_VERSION < PROTOCOL_DEV) {
+        const int majorVersion = PROTOCOL_VERSION / 100;
+        const int minorVersion = (PROTOCOL_VERSION / 10) % 10;
+        const int revisionVersion = PROTOCOL_VERSION % 10;
+        if (revisionVersion == 0) {
+            snprintf(versionString, sizeof(versionString), "Streamline gatord version %d (Streamline v%d.%d)",
+            PROTOCOL_VERSION,
+                     majorVersion, minorVersion);
+        }
+        else {
+            snprintf(versionString, sizeof(versionString), "Streamline gatord version %d (Streamline v%d.%d.%d)",
+            PROTOCOL_VERSION,
+                     majorVersion, minorVersion, revisionVersion);
+        }
+    }
+    else {
+        snprintf(versionString, sizeof(versionString), "Streamline gatord development version %d", PROTOCOL_VERSION);
+    }
     // Parse the command line parameters
-    struct cmdline_t cmdline = parseCommandLine(argc, argv);
+    parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5);
+    if (parser.result.parse_error == ERROR_PARSING) {
 
-    PmuXML::read(cmdline.pmuPath);
+        handleException();
+    }
+    updateSessionData();
 
+    PmuXML::read(parser.result.pmuPath);
     // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
-    gSessionData.mPrimarySource = PrimarySourceProvider::detect(cmdline.module);
-
+    gSessionData.mPrimarySource = PrimarySourceProvider::detect(parser.result.module, gSessionData.mSystemWide);
     if (gSessionData.mPrimarySource == nullptr) {
         logg.logError(
                 "Unable to initialize primary capture source:\n"
@@ -648,7 +644,32 @@ int main(int argc, char** argv)
         for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
             driver->readEvents(xml);
         }
-        mxmlDelete(xml);
+        // build map of counter->event
+        {
+            gSessionData.globalCounterToEventMap.clear();
+
+            mxml_node_t *node = xml;
+            while (true) {
+                node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
+                if (node == nullptr) {
+                    break;
+                }
+                const char * counter = mxmlElementGetAttr(node, "counter");
+                const char * event = mxmlElementGetAttr(node, "event");
+                if (counter == nullptr) {
+                    continue;
+                }
+
+                if (event != nullptr) {
+                    const int eventNo = (int) strtol(event, nullptr, 0);
+                    gSessionData.globalCounterToEventMap[counter] = eventNo;
+                }
+                else {
+                    gSessionData.globalCounterToEventMap[counter] = -1;
+                }
+            }
+            mxmlDelete(xml);
+        }
     }
 
     // Handle child exit codes
@@ -665,21 +686,23 @@ int main(int argc, char** argv)
         handleException();
     }
     gSessionData.mAnnotateStart = pipefd[1];
-    if (!monitor.init() || !monitor.add(annotateListener.getSockFd())
-                        || !monitor.add(annotateListener.getUdsFd())
-                        || !monitor.add(pipefd[0])) {
+    if (!monitor.init()
+#ifdef TCP_ANNOTATIONS
+            || !monitor.add(annotateListener.getSockFd())
+#endif
+            || !monitor.add(annotateListener.getUdsFd())
+            || !monitor.add(pipefd[0])) {
         logg.logError("Monitor setup failed");
         handleException();
     }
 
     // If the command line argument is a session xml file, no need to open a socket
-    bool localCapture = gSessionData.mSessionXMLPath != NULL;
-    if (localCapture) {
+    if ( gSessionData.mLocalCapture) {
         doLocalCapture();
     }
     else {
-        sock = new OlyServerSocket(cmdline.port);
-        udpListener.setup(cmdline.port);
+        sock = new OlyServerSocket(parser.result.port);
+        udpListener.setup(parser.result.port);
         if (!monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())) {
             logg.logError("Monitor setup failed: couldn't add host listeners");
             handleException();
@@ -689,22 +712,23 @@ int main(int argc, char** argv)
     // Forever loop, can be exited via a signal or exception
     while (1) {
         struct epoll_event events[2];
-        logg.logMessage("Waiting on connection...");
         int ready = monitor.wait(events, ARRAY_LENGTH(events), -1);
         if (ready < 0) {
             logg.logError("Monitor::wait failed");
             handleException();
         }
         for (int i = 0; i < ready; ++i) {
-            if (!localCapture && events[i].data.fd == sock->getFd()) {
+            if (!gSessionData.mLocalCapture && events[i].data.fd == sock->getFd()) {
                 handleClient();
             }
-            else if (!localCapture && events[i].data.fd == udpListener.getReq()) {
+            else if (!gSessionData.mLocalCapture && events[i].data.fd == udpListener.getReq()) {
                 udpListener.handle();
             }
+#ifdef TCP_ANNOTATIONS
             else if (events[i].data.fd == annotateListener.getSockFd()) {
                 annotateListener.handleSock();
             }
+#endif
             else if (events[i].data.fd == annotateListener.getUdsFd()) {
                 annotateListener.handleUds();
             }

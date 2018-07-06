@@ -101,8 +101,8 @@
     <event counter="ARM_Mali-TDVx_BEATS_RD_OTHER" title="Mali Shader Reads" name="Read beats" description="Number of read beats for all other masters" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_BEATS_RD_TEX_EXT" title="Mali Shader External Reads" name="Texture external read beats" description="Number of external read beats for the texture cache"/>
     <event counter="ARM_Mali-TDVx_BEATS_RD_TEX" title="Mali Shader Reads" name="Texture read beats" description="Number of read beats for the texture cache"/>
-    <event counter="ARM_Mali-TDVx_BEATS_WR_LSC_OTHER" title="Mali Shader Writes" name="LSC write Beats" description="Number of write beats from the load/store cache due to other reasons"/>
-    <event counter="ARM_Mali-TDVx_BEATS_WR_LSC_WB" title="Mali Shader Writes" name="LSC write Beats" description="Number of write beats from the load/store cache due to writebacks"/>
+    <event counter="ARM_Mali-TDVx_BEATS_WR_LSC_OTHER" title="Mali Shader Writes" name="LSC write beats (other)" description="Number of write beats from the load/store cache due to other reasons"/>
+    <event counter="ARM_Mali-TDVx_BEATS_WR_LSC_WB" title="Mali Shader Writes" name="LSC write beats (writebacks)" description="Number of write beats from the load/store cache due to writebacks"/>
     <event counter="ARM_Mali-TDVx_BEATS_WR_TIB" title="Mali Shader Writes" name="Tilebuffer write beats" description="Number of write beats for the tile buffers"/>
     <event counter="ARM_Mali-TDVx_COMPUTE_ACTIVE" title="Mali Core Cycles" name="Compute cycles" description="Number of cycles compute processing is active"/>
     <event counter="ARM_Mali-TDVx_COMPUTE_STARVING" title="Mali Core Cycles" name="Compute starving" description="Number of cycles unable to issue new compute threads" advanced="yes"/>
@@ -190,13 +190,13 @@
     <event counter="ARM_Mali-TDVx_L2_WR_MSG_IN" title="Mali L2 Cache Lookups" name="Writes" description="Number of write requests received by the L2 cache from internal masters"/>
     <event counter="ARM_Mali-TDVx_L2_WR_MSG_OUT" title="Mali L2 Cache Lookups" name="Writes out" description="Number of write messages sent by the L2C to internal masters" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_MMU_HIT_L2" title="Mali L2 Cache Lookups" name="MMU hits" description="Number of hits to level 2 page descriptors" advanced="yes"/>
-    <event counter="ARM_Mali-TDVx_MMU_HIT_L3" title="Mali L2 Cache Lookups" name="MMU hits" description="Number of hits to level 3 page descriptors" advanced="yes"/>
+    <event counter="ARM_Mali-TDVx_MMU_HIT_L3" title="Mali L3 Cache Lookups" name="MMU hits" description="Number of hits to level 3 page descriptors" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_MMU_REQUESTS" title="Mali L2 Cache Lookups" name="MMU requests" description="Number of requests received by the MMU" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_MMU_S2_HIT_L2" title="Mali L2 Cache Lookups" name="MMU S2 hits" description="Number of hits to level 2 page descriptor by the MMU stage 2" advanced="yes"/>
-    <event counter="ARM_Mali-TDVx_MMU_S2_HIT_L3" title="Mali L2 Cache Lookups" name="MMU S2 hits" description="Number of hits to level 3 page descriptor by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TDVx_MMU_S2_HIT_L3" title="Mali L3 Cache Lookups" name="MMU S2 hits" description="Number of hits to level 3 page descriptor by the MMU stage 2" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_MMU_S2_REQUESTS" title="Mali L2 Cache Lookups" name="MMU S2 requets" description="Number of requests received by the MMU stage 2" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_MMU_S2_TABLE_READS_L2" title="Mali L2 Cache Lookups" name="MMU table reads" description="Number of level 2 translation table reads by the MMU stage 2" advanced="yes"/>
-    <event counter="ARM_Mali-TDVx_MMU_S2_TABLE_READS_L3" title="Mali L2 Cache Lookups" name="MMU table reads" description="Number of level 3 translation table reads by the MMU stage 2" advanced="yes"/>
-    <event counter="ARM_Mali-TDVx_MMU_TABLE_READS_L3" title="Mali L2 Cache Lookups" name="MMU reads" description="Number of level 3 translation table reads" advanced="yes"/>
+    <event counter="ARM_Mali-TDVx_MMU_S2_TABLE_READS_L3" title="Mali L3 Cache Lookups" name="MMU table reads" description="Number of level 3 translation table reads by the MMU stage 2" advanced="yes"/>
+    <event counter="ARM_Mali-TDVx_MMU_TABLE_READS_L3" title="Mali L3 Cache Lookups" name="MMU reads" description="Number of level 3 translation table reads" advanced="yes"/>
     <event counter="ARM_Mali-TDVx_MMU_TABLE_READS_L2" title="Mali L2 Cache Lookups" name="MMU reads" description="Number of level 2 translation table reads" advanced="yes"/>
   </category>

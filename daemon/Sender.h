@@ -33,7 +33,7 @@ public:
     Sender(OlySocket* socket);
     ~Sender();
     void writeData(const char* data, int length, int type, bool ignoreLockErrors = false);
-    void createDataFile(char* apcDir);
+    void createDataFile(const char* apcDir);
 
 private:
     OlySocket* mDataSocket;

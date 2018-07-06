@@ -18,7 +18,7 @@
     <event counter="ftrace_power_clock_set_rate" title="Power" name="clock_set_rate" regex="^clock_set_rate:.* state=([0-9]+) " tracepoint="power/clock_set_rate" arg="state" class="absolute" description="Clock rate state"/>
 
     <!-- counting ftrace counters -->
-    <event counter="ftrace_block_block_rq_complete" title="Block" name="block_rq_complete" regex="^block_rq_complete: " tracepoint="block/block_rq_complete" class="delta" description="Number of block IO operations completed by device driver"/>
-    <event counter="ftrace_block_block_rq_issue" title="Block" name="block_rq_issue" regex="^block_rq_issue: " tracepoint="block/block_rq_issue" class="delta" description="Number of block IO operations issued to device driver"/>
-    <event counter="ftrace_power_cpu_idle" title="Power" name="cpu_idle" regex="^cpu_idle: " tracepoint="power/cpu_idle" class="delta" description="Number of times cpu_idle is entered or exited"/>
+    <event counter="ftrace_block_block_rq_complete" title="Block" name="block_rq_complete" regex="^block_rq_complete: " tracepoint="block/block_rq_complete" class="incident" description="Number of block IO operations completed by device driver"/>
+    <event counter="ftrace_block_block_rq_issue" title="Block" name="block_rq_issue" regex="^block_rq_issue: " tracepoint="block/block_rq_issue" class="incident" description="Number of block IO operations issued to device driver"/>
+    <event counter="ftrace_power_cpu_idle" title="Power" name="cpu_idle" regex="^cpu_idle: " tracepoint="power/cpu_idle" class="incident" description="Number of times cpu_idle is entered or exited"/>
   </category>

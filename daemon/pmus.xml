@@ -48,6 +48,7 @@
   <pmu pmnc_name="ARMv8_Cortex_A72" cpuid="0x41d08" core_name="Cortex-A72" dt_name="arm,cortex-a72" pmnc_counters="6" profile="8a"/>
   <pmu pmnc_name="ARMv8_Cortex_A73" cpuid="0x41d09" core_name="Cortex-A73" dt_name="arm,cortex-a73" pmnc_counters="6" profile="8a"/>
   <pmu pmnc_name="ARMv8_Cortex_A75" cpuid="0x41d0a" core_name="Cortex-A75" dt_name="arm,cortex-a75" pmnc_counters="6" profile="8a"/>
+  <pmu pmnc_name="ARMv8_Cortex_A76" cpuid="0x41d0b" core_name="Cortex-A76" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
 
 
   <!-- Qualcomm -->
@@ -70,5 +71,6 @@
   <uncore_pmu pmnc_name="CCI_400_r1" core_name="CCI_400_r1" pmnc_counters="4"/>
   <uncore_pmu pmnc_name="CCI_500" core_name="CCI_500" pmnc_counters="8" has_cycles_counter="no"/>
   <uncore_pmu pmnc_name="ccn" core_name="ARM_CCN_5XX" pmnc_counters="8"/>
+  <uncore_pmu pmnc_name="l2c_310" core_name="L2C-310" pmnc_counters="2" has_cycles_counter="no"/>
   <uncore_pmu pmnc_name="arm_dsu_%d" core_name="DSU" pmnc_counters="6" />
 </pmus>

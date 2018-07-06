@@ -28,7 +28,7 @@ public:
     virtual ~Driver();
 
     // Returns true if this driver can manage the counter
-    virtual bool claimCounter(const Counter &counter) const = 0;
+    virtual bool claimCounter(Counter &counter) const = 0;
 
     // Clears and disables all counters
     virtual void resetCounters() = 0;

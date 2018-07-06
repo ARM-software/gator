@@ -19,12 +19,11 @@ class LocalCapture
 public:
     LocalCapture();
     ~LocalCapture();
-    void write(char* string);
     void copyImages(const std::list<std::string> & ptr);
-    void createAPCDirectory(char* target_path);
+    void createAPCDirectory(const char* target_path);
 private:
     char* createUniqueDirectory(const char* path, const char* ending);
-    int removeDirAndAllContents(char* path);
+    int removeDirAndAllContents(const char* path);
 };
 
 #endif //__LOCAL_CAPTURE_H__

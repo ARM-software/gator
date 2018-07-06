@@ -101,3 +101,18 @@ void Logging::_logMessage(const char *function, const char *file, int line, cons
     }
 }
 
+void Logging::_logWarning(const char *function, const char *file, int line, const char *fmt, ...)
+{
+    char logBuf[4096]; // Arbitrarily large buffer to hold a string
+    va_list args;
+
+    pthread_mutex_lock(&mLoggingMutex);
+    va_start(args, fmt);
+    format(logBuf, sizeof(logBuf), mDebug, "WARNING", function, file, line, fmt, args);
+    va_end(args);
+    pthread_mutex_unlock(&mLoggingMutex);
+
+    fprintf(stderr, "%s\n", logBuf);
+
+}
+

@@ -124,7 +124,7 @@ CCNDriver::~CCNDriver()
     delete mNodeTypes;
 }
 
-bool CCNDriver::claimCounter(const Counter &) const
+bool CCNDriver::claimCounter(Counter &) const
 {
     // Handled by PerfDriver
     return false;

@@ -19,7 +19,7 @@ SimpleDriver::~SimpleDriver()
     }
 }
 
-bool SimpleDriver::claimCounter(const Counter &counter) const
+bool SimpleDriver::claimCounter(Counter &counter) const
 {
     return findCounter(counter) != NULL;
 }

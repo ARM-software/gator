@@ -1,6 +1,5 @@
   <counter_set name="Other_cnt" count="6"/>
   <category name="Other" counter_set="Other_cnt" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="Other_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
     <event event="0x00" title="Software" name="Increment" description="Instruction architecturally executed, condition code check pass, software increment"/>
     <event event="0x01" title="Cache" name="Instruction refill" description="Level 1 instruction cache refill"/>
     <event event="0x02" title="Cache" name="Inst TLB refill" description="Level 1 instruction TLB refill"/>
@@ -18,6 +17,7 @@
     <event event="0x0e" title="Procedure" name="Return" description="Instruction architecturally executed, condition code check pass, procedure return"/>
     <event event="0x0f" title="Memory" name="Unaligned access" description="Instruction architecturally executed, condition code check pass, unaligned load or store"/>
     <event event="0x10" title="Branch" name="Mispredicted" description="Mispredicted or not predicted branch speculatively executed"/>
+    <event counter="Other_ccnt" event="0x11" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
     <event event="0x12" title="Branch" name="Potential prediction" description="Predictable branch speculatively executed"/>
     <event event="0x13" title="Memory" name="Memory access" description="Data memory access"/>
     <event event="0x14" title="Cache" name="L1 inst access" description="Level 1 instruction cache access"/>

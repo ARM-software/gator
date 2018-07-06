@@ -218,25 +218,33 @@ Attempting to run an incompatible binary often results in the confusing error me
 
 Streamline supports Mali-400, 450, T6xx, T7xx, and T8xx series GPUs with hardware activity charts, hardware & software counters and an optional Filmstrip showing periodic framebuffer snapshots. Support is chosen at build time and only one type of GPU (and version of driver) is supported at once. For best results build gator in-tree at `.../drivers/gator` and use the menuconfig options. Details of what the menuconfig options mean or how to build out of tree, if you choose, is described below.
 
-Mali-4xx:
+### Mali-4xx
+```
   GATOR_WITH_MALI_SUPPORT=MALI_4xx                                               # Set by CONFIG_GATOR_MALI_4XXMP
   CONFIG_GATOR_MALI_PATH=".../path/to/Mali_DDK_kernel_files/src/devicedrv/mali"  # gator source needs to #include "linux/mali_linux_trace.h"
   GATOR_MALI_INTERFACE_STYLE=<3|4>                                               # 3=Mali-400 DDK >= r3p0-04rel0 and < r3p2-01rel3
                                                                                  # 4=Mali-400 DDK >= r3p2-01rel3
                                                                                  # (default of 4 set in streamline/gator/driver/gator_events_mali_4xx.c)
-  ___To add the corresponding support to Mali___
+```
+To add the corresponding support to Mali:
+```
   Userspace needs MALI_TIMELINE_PROFILING_ENABLED=1 MALI_FRAMEBUFFER_DUMP_ENABLED=1 MALI_SW_COUNTERS_ENABLED=1
   Kernel driver needs USING_PROFILING=1                                          # Sets CONFIG_MALI400_PROFILING=y
   See the DDK integration guide for more details (the above are the default in later driver versions)
+```
 
-Mali-T6xx/T7xx/T8xx (Midgard):
+### Mali-T6xx/T7xx/T8xx (Midgard)
+```
   GATOR_WITH_MALI_SUPPORT=MALI_MIDGARD                                           # Set by CONFIG_GATOR_MALI_MIDGARD
   DDK_DIR=".../path/to/Mali_DDK_kernel_files"                                    # gator source needs access to headers under .../kernel/drivers/gpu/arm/...
                                                                                  # (default of . suitable for in-tree builds)
-  ___To add the corresponding support to Mali___
+```
+To add the corresponding support to Mali:
+```
   Userspace (scons) needs gator=1
   Kernel driver needs CONFIG_MALI_GATOR_SUPPORT=y
   See the DDK integration guide for more details
+```
 
 ## Polling /dev, /sys and /proc files
 

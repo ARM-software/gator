@@ -28,8 +28,8 @@ static const char ATTR_CORES[] = "cores";
 static const char CLUSTER_VAR[] = "${cluster}";
 
 ConfigurationXML::ConfigurationXML()
-        : mConfigurationXML(nullptr),
-          mIndex(0)
+        :  mConfigurationXML(nullptr),
+           mIndex(0)
 {
     if (gSessionData.mCountersError != NULL) {
         free(gSessionData.mCountersError);
@@ -42,12 +42,13 @@ ConfigurationXML::ConfigurationXML()
     mConfigurationXML = readFromDisk(path);
 
     for (int retryCount = 0; retryCount < 2; ++retryCount) {
-        if (mConfigurationXML == NULL) {
+        const bool useDefaults = mConfigurationXML == nullptr;
+        if (useDefaults) {
             logg.logMessage("Unable to locate configuration.xml, using default in binary");
             mConfigurationXML = getDefaultConfigurationXml();
         }
 
-        int ret = parse(mConfigurationXML);
+        int ret = parse(mConfigurationXML, !useDefaults);
         if (ret == 1) {
             remove();
 
@@ -70,7 +71,7 @@ ConfigurationXML::~ConfigurationXML()
     }
 }
 
-int ConfigurationXML::parse(const char* configurationXML)
+int ConfigurationXML::parse(const char* configurationXML, bool printWarningIfUnclaimed)
 {
     mxml_node_t *tree, *node;
     int ret;
@@ -97,7 +98,7 @@ int ConfigurationXML::parse(const char* configurationXML)
             node = mxmlWalkNext(node, tree, MXML_NO_DESCEND);
             continue;
         }
-        configurationTag(node);
+        configurationTag(node, printWarningIfUnclaimed);
         node = mxmlWalkNext(node, tree, MXML_NO_DESCEND);
     }
 
@@ -178,7 +179,7 @@ int ConfigurationXML::configurationsTag(mxml_node_t *node)
     return 0;
 }
 
-void ConfigurationXML::configurationTag(mxml_node_t *node)
+void ConfigurationXML::configurationTag(mxml_node_t *node, bool printWarningIfUnclaimed)
 {
     // handle all other performance counters
     if (mIndex >= MAX_PERFORMANCE_COUNTERS) {
@@ -186,19 +187,37 @@ void ConfigurationXML::configurationTag(mxml_node_t *node)
         return;
     }
 
+    const char * counterName = mxmlElementGetAttr(node, ATTR_COUNTER);
+    const char * eventStr = mxmlElementGetAttr(node, ATTR_EVENT);
+    const auto it = gSessionData.globalCounterToEventMap.find(counterName);
+    const bool hasEventsXmlCounter = (it != gSessionData.globalCounterToEventMap.end());
+    const int counterEvent = (hasEventsXmlCounter ? it->second : -1);
+
     // read attributes
     Counter & counter = gSessionData.mCounters[mIndex];
     counter.clear();
-    if (mxmlElementGetAttr(node, ATTR_COUNTER))
-        counter.setType(mxmlElementGetAttr(node, ATTR_COUNTER));
-    if (mxmlElementGetAttr(node, ATTR_EVENT)) {
+    if (counterName)
+        counter.setType(counterName);
+
+    // if hasEventsXmlCounter, then then event is defined as a counter with 'counter'/'type' attribute
+    // in events.xml. Use the specified event from events.xml (which may be -1 if not relevant)
+    // overriding anything from user map. This is necessary for cycle counters for example where
+    // they have a name "XXX_ccnt" but also often an event code. If not the event code -1 is used
+    // which is incorrect.
+    if (hasEventsXmlCounter) {
+        counter.setEvent(counterEvent);
+    }
+    // the counter is not in events.xml. This usually means it is a PMU slot counter
+    // the user specified the event code, use that
+    else if (eventStr) {
         int event;
-        if (!stringToInt(&event, mxmlElementGetAttr(node, ATTR_EVENT), 16)) {
+        if (!stringToInt(&event, eventStr, 16)) {
             logg.logError("Configuration XML event must be an integer");
             handleException();
         }
         counter.setEvent(event);
     }
+
     if (mxmlElementGetAttr(node, ATTR_COUNT)) {
         int count;
         if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), 10)) {
@@ -233,7 +252,8 @@ void ConfigurationXML::configurationTag(mxml_node_t *node)
 
     // If no driver is associated with the counter, disable it
     if (counter.getDriver() == NULL) {
-        logg.logMessage("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
+        if (printWarningIfUnclaimed)
+            logg.logWarning("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
         counter.setEnabled(false);
     }
 

@@ -11,6 +11,7 @@
 #include "Buffer.h"
 #include "CapturedXML.h"
 #include "ConfigurationXML.h"
+#include "CounterXML.h"
 #include "Driver.h"
 #include "EventsXML.h"
 #include "Logging.h"
@@ -246,41 +247,8 @@ void StreamlineSetup::sendDefaults()
 
 void StreamlineSetup::sendCounters()
 {
-    mxml_node_t *xml;
-    mxml_node_t *counters;
-
-    xml = mxmlNewXML("1.0");
-    counters = mxmlNewElement(xml, "counters");
-    int count = 0;
-    for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
-        count += driver->writeCounters(counters);
-    }
-
-    if (count == 0) {
-        logg.logError("No counters found, this could be because /dev/gator/events can not be read or because perf is not working correctly");
-        handleException();
-    }
-
-    mxml_node_t *setup = mxmlNewElement(counters, "setup_warnings");
-    mxmlNewText(setup, 0, logg.getSetup());
-
-    // always send the cluster information; even on devices where not all the information is available.
-    for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
-        mxml_node_t *node = mxmlNewElement(counters, "cluster");
-        mxmlElementSetAttrf(node, "id", "%i", cluster);
-        mxmlElementSetAttr(node, "name", gSessionData.mSharedData->mClusters[cluster]->getPmncName());
-    }
-    for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
-        if (gSessionData.mSharedData->mClusterIds[cpu] >= 0) {
-            mxml_node_t *node = mxmlNewElement(counters, "cpu");
-            mxmlElementSetAttrf(node, "id", "%i", cpu);
-            mxmlElementSetAttrf(node, "cluster", "%i", gSessionData.mSharedData->mClusterIds[cpu]);
-        }
-    }
-
-    char* string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
-    mxmlDelete(xml);
-
+    CounterXML xml;
+    char* string = xml.getXML();
     sendString(string, RESPONSE_XML);
     free(string);
 }

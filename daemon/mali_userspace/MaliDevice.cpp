@@ -3,10 +3,10 @@
 #include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/MaliHwCntrNames.h"
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 
 #include "Logging.h"
 
@@ -113,6 +113,7 @@ namespace mali_userspace
             PRODUCT_ID_TMIX = 0x6000,
             PRODUCT_ID_THEX = 0x6001,
             PRODUCT_ID_TSIX = 0x7000,
+            PRODUCT_ID_TNOX = 0x7001,
             PRODUCT_ID_TGOX = 0x7002,
             PRODUCT_ID_TDVX = 0x7003
 
@@ -131,7 +132,8 @@ namespace mali_userspace
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_THEX, "G72",  "Bifrost", hardware_counters_mali_tHEx, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TSIX, "G51",  "Bifrost", hardware_counters_mali_tSIx, COUNTER_LAYOUT_V6 ),
                                                                MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TGOX, "G52",  "Bifrost", hardware_counters_mali_tGOx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TDVX, "G31",  "Bifrost", hardware_counters_mali_tDVx, COUNTER_LAYOUT_V6 ) };
+                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TDVX, "G31",  "Bifrost", hardware_counters_mali_tDVx, COUNTER_LAYOUT_V6 ),
+                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TNOX, "G76",  "Bifrost", hardware_counters_mali_tNOx, COUNTER_LAYOUT_V6 )};
 
         enum {
             NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS)
@@ -207,21 +209,67 @@ namespace mali_userspace
         countersList[index].wordIndex = wordIndex;
     }
 
-    MaliDevice * MaliDevice::create(uint32_t mpNumber, uint32_t gpuId, const char * devicePath, const char * clockPath)
+    uint32_t MaliDevice::findProductByName(const char * productName)
+    {
+        if (productName == nullptr) {
+            return 0;
+        }
+
+        // skip prefix
+        if ((strcasestr(productName, "Mali-") == productName) || (strcasestr(productName, "Mali ") == productName)) {
+            productName += 5;
+        }
+
+        // dont bother if empty string
+        const auto plen = strlen(productName);
+        if (plen < 1) {
+            return 0;
+        }
+
+        // do search
+        for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
+            // must be same length to be equal
+            const auto len = strlen(PRODUCT_VERSIONS[index].mName);
+            if (len != plen) {
+                continue;
+            }
+
+            // Txxx names end with 'x' so treat that as a wildcard against any digit
+            if (PRODUCT_VERSIONS[index].mName[len - 1] == 'x') {
+                // validate match against digit or x
+                if ((productName[len - 1] != 'x') && (productName[len - 1] != 'X') && ((productName[len - 1] < '0') || (productName[len - 1] > '9'))) {
+                    continue;
+                }
+
+                // compare prefix
+                if (strncasecmp(PRODUCT_VERSIONS[index].mName, productName, len - 1) == 0) {
+                    return PRODUCT_VERSIONS[index].mGpuIdValue;
+                }
+            }
+
+            // other names must match in full
+            if (strcasecmp(PRODUCT_VERSIONS[index].mName, productName) == 0) {
+                return PRODUCT_VERSIONS[index].mGpuIdValue;
+            }
+        }
+
+        return 0;
+    }
+
+    MaliDevice * MaliDevice::create(uint32_t gpuId, const char * devicePath, const char * clockPath)
     {
         for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
             if ((gpuId & PRODUCT_VERSIONS[index].mGpuIdMask) == PRODUCT_VERSIONS[index].mGpuIdValue) {
-                return new MaliDevice(PRODUCT_VERSIONS[index], devicePath, clockPath, mpNumber, gpuId);
+                return new MaliDevice(PRODUCT_VERSIONS[index], devicePath, clockPath, gpuId);
             }
         }
-        return NULL;
+        return nullptr;
     }
 
-    MaliDevice::MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t numShaderCores, uint32_t gpuId)
+    MaliDevice::MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t gpuId)
         :   mProductVersion (productVersion),
             mDevicePath (strdup(devicePath)),
             mClockPath (clockPath != nullptr ? strdup(clockPath) : nullptr),
-            mNumShaderCores (numShaderCores),
             mGpuId (gpuId)
     {
     }
@@ -242,13 +290,13 @@ namespace mali_userspace
     const char * MaliDevice::getCounterName(uint32_t nameBlockIndex, uint32_t counterIndex) const
     {
         if ((nameBlockIndex >= getNameBlockCount()) || (counterIndex >= NUM_COUNTERS_PER_BLOCK)) {
-            return NULL;
+            return nullptr;
         }
 
         const char * result = mProductVersion.mCounterNames[(nameBlockIndex * NUM_COUNTERS_PER_BLOCK) + counterIndex];
 
-        if ((result == NULL) || (result[0] == 0)) {
-            return NULL;
+        if ((result == nullptr) || (result[0] == 0)) {
+            return nullptr;
         }
 
         return result;
@@ -442,6 +490,11 @@ namespace mali_userspace
         }
 
         return result;
+    }
+
+    const char * MaliDevice::getProductName() const
+    {
+        return mProductVersion.mName;
     }
 
     const char * MaliDevice::getSupportedDeviceFamilyName() const

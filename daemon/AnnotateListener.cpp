@@ -22,7 +22,9 @@ struct AnnotateClient
 
 AnnotateListener::AnnotateListener()
         : mClients(NULL),
+#ifdef TCP_ANNOTATIONS
           mSock(NULL),
+#endif
           mUds(NULL)
 {
 }
@@ -31,20 +33,27 @@ AnnotateListener::~AnnotateListener()
 {
     close();
     delete mUds;
+#ifdef TCP_ANNOTATIONS
     delete mSock;
+#endif
 }
 
 void AnnotateListener::setup()
 {
+#ifdef TCP_ANNOTATIONS
     mSock = new OlyServerSocket(8082);
+#endif
     mUds = new OlyServerSocket(STREAMLINE_ANNOTATE_PARENT, sizeof(STREAMLINE_ANNOTATE_PARENT), true);
 }
 
+#ifdef TCP_ANNOTATIONS
 int AnnotateListener::getSockFd()
 {
     return mSock->getFd();
 }
+#endif
 
+#ifdef TCP_ANNOTATIONS
 void AnnotateListener::handleSock()
 {
     AnnotateClient * const client = new AnnotateClient();
@@ -52,6 +61,7 @@ void AnnotateListener::handleSock()
     client->next = mClients;
     mClients = client;
 }
+#endif
 
 int AnnotateListener::getUdsFd()
 {
@@ -71,9 +81,11 @@ void AnnotateListener::close()
     if (mUds != NULL) {
         mUds->closeServerSocket();
     }
+#ifdef TCP_ANNOTATIONS
     if (mSock != NULL) {
         mSock->closeServerSocket();
     }
+#endif
     while (mClients != NULL) {
         ::close(mClients->fd);
         AnnotateClient *next = mClients->next;

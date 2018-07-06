@@ -9,6 +9,7 @@
 #include "MidgardDriver.h"
 
 #include <unistd.h>
+#include <cinttypes>
 
 #include "Buffer.h"
 #include "Logging.h"
@@ -147,10 +148,9 @@ void MidgardDriver::query() const
     // Only try once even if it fails otherwise not all the possible counters may be shown
     mQueried = true;
 
-    char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
     // Prefer not to requery once obtained as it could throw capture off, assume it doesn't change
     if (gSessionData.mSharedData->mMaliMidgardCountersSize > 0) {
-        logg.logMessage("Using cached Midgard counters\n");
+        logg.logMessage("Using cached Midgard counters");
     }
     else {
         int uds = OlySocket::connect(MALI_GRAPHICS, MALI_GRAPHICS_SIZE);
@@ -162,7 +162,6 @@ void MidgardDriver::query() const
             gSessionData.mSharedData->mMaliMidgardCountersSize = 0;
 
             PacketHeader header;
-            const size_t bufSize = sizeof(gSessionData.mSharedData->mMaliMidgardCounters);
             bool first = true;
             //uint32_t compatibilityTiebreak = 0;
 
@@ -176,10 +175,6 @@ void MidgardDriver::query() const
                     break;
                 }
                 first = false;
-                if (header.mDataLength > bufSize || !readAll(uds, buf, header.mDataLength)) {
-                    logg.logError("Unable to read Midgard body");
-                    handleException();
-                }
 
                 if (header.mSequenceNumbered) {
                     logg.logError("sequence_numbered is true and is unsupported");
@@ -192,10 +187,23 @@ void MidgardDriver::query() const
 
                 switch (header.mPacketIdentifier) {
                 case PACKET_SHARED_PARAMETER: {
-                    const SharedParameterPacket * const packet = reinterpret_cast<const SharedParameterPacket *>(buf);
-                    if (header.mDataLength >= sizeof(SharedParameterPacket) && header.mImplSpec == 0
-                            && packet->mReserved2 == 0) {
-                        if (packet->mMaliMagic != 0x6D616C69) {
+                    SharedParameterPacket packet;
+                    if (header.mDataLength < sizeof(packet)) {
+                        logg.logError("Unable to read Shared Parameter Packet because it's at least %zu bytes long but only %" PRIu32 " bytes were given", sizeof(packet), header.mDataLength);
+                        handleException();
+                    }
+                    if (!readAll(uds, &packet, sizeof(packet))) {
+                        logg.logError("Unable to read Shared Parameter Packet");
+                        handleException();
+                    }
+                    if (!skipAll(uds, header.mDataLength - sizeof(packet))) {
+                        logg.logError("Unable to skip Shared Parameter Packet pool");
+                        handleException();
+                    }
+
+
+                    if (header.mImplSpec == 0 && packet.mReserved2 == 0) {
+                        if (packet.mMaliMagic != 0x6D616C69) {
                             logg.logError("mali_magic does not match expected value");
                             handleException();
                         }
@@ -213,17 +221,35 @@ void MidgardDriver::query() const
 
                 case PACKET_HARDWARE_COUNTER_DIRECTORY: {
                     if (header.mImplSpec == 0) {
+                        constexpr size_t buffSize = sizeof(gSessionData.mSharedData->mMaliMidgardCounters);
+                        if (header.mDataLength > buffSize) {
+                            logg.logError("Unable to read Hardware Counter Directory Packet because it's %" PRIu32 " bytes but no more than %zu bytes was expected", header.mDataLength, buffSize);
+                            handleException();
+                        }
+
+                        char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
+                        if (!readAll(uds, buf, header.mDataLength)) {
+                            logg.logError("Unable to read Hardware Counter Directory Packet");
+                            handleException();
+                        }
                         gSessionData.mSharedData->mMaliMidgardCountersSize = header.mDataLength;
                         goto allDone;
                     }
-                    break;
                 }
+                // fall through
+                /* no break */
 
                 case 0x0400:
                 case 0x0402:
-                case 0x0408:
+                case 0x0408: {
                     // Ignore
+                    if (!skipAll(uds, header.mDataLength)) {
+                        logg.logError("Unable to skip packet body");
+                        handleException();
+                    }
+
                     break;
+                }
 
                 default:
                     // Unrecognized packet, give up
@@ -236,10 +262,11 @@ void MidgardDriver::query() const
         }
     }
 
+    char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
     const size_t size = gSessionData.mSharedData->mMaliMidgardCountersSize;
     CounterData cd;
     cd.mType = CounterData::PERF;
-    for (int i = 0; i + sizeof(MidgardCounter) < size;) {
+    for (int i = 0; i + sizeof(HardwareCounter) < size;) {
         const HardwareCounter *counter = reinterpret_cast<const HardwareCounter *>(buf + i);
         char *name;
         if (asprintf(&name, "ARM_Mali-%s", counter->mCounterName) <= 0) {
@@ -343,7 +370,7 @@ bool MidgardDriver::start(const int uds)
     return true;
 }
 
-bool MidgardDriver::claimCounter(const Counter &counter) const
+bool MidgardDriver::claimCounter(Counter &counter) const
 {
     // do not claim if another driver already has
     if (counter.getDriver() != NULL) {

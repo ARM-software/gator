@@ -39,7 +39,9 @@ ExternalSource::ExternalSource(Child & child, sem_t *senderSem)
           mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)),
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
           mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
+#ifdef TCP_ANNOTATIONS
           mAnnotate(8083),
+#endif
           mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true),
           mInterruptFd(-1),
           mMidgardUds(-1),
@@ -146,8 +148,10 @@ bool ExternalSource::prepare()
     if (!mMonitor.init() || !setNonblock(mMveStartupUds.getFd()) || !mMonitor.add(mMveStartupUds.getFd())
             || !setNonblock(mMidgardStartupUds.getFd()) || !mMonitor.add(mMidgardStartupUds.getFd())
             || !setNonblock(mUtgardStartupUds.getFd()) || !mMonitor.add(mUtgardStartupUds.getFd())
-            || !setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd()) || !setNonblock(mAnnotateUds.getFd())
-            || !mMonitor.add(mAnnotateUds.getFd()) || false) {
+#ifdef TCP_ANNOTATIONS
+            || !setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
+#endif
+            || !setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd())) {
         return false;
     }
 
@@ -244,6 +248,7 @@ void ExternalSource::run()
                 gSessionData.mExternalDriver.disconnect();
                 gSessionData.mExternalDriver.start();
             }
+#ifdef TCP_ANNOTATIONS
             else if (fd == mAnnotate.getFd()) {
                 int client = mAnnotate.acceptConnection();
                 if (!setNonblock(client) || !mMonitor.add(client)) {
@@ -251,6 +256,7 @@ void ExternalSource::run()
                     handleException();
                 }
             }
+#endif
             else if (fd == mAnnotateUds.getFd()) {
                 int client = mAnnotateUds.acceptConnection();
                 if (!setNonblock(client) || !mMonitor.add(client)) {

@@ -10,12 +10,13 @@
 #define PERFSOURCE_H
 
 #include <semaphore.h>
+#include <set>
 
 #include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Monitor.h"
-#include "PerfBuffer.h"
-#include "PerfGroup.h"
+#include "linux/perf/PerfBuffer.h"
+#include "linux/perf/PerfGroups.h"
 #include "Source.h"
 #include "UEvent.h"
 
@@ -25,7 +26,7 @@ class Sender;
 class PerfSource : public Source
 {
 public:
-    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile);
+    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids);
     ~PerfSource();
 
     virtual bool prepare() override;
@@ -41,13 +42,14 @@ private:
     Buffer mSummary;
     Buffer *mBuffer;
     PerfBuffer mCountersBuf;
-    PerfGroup mCountersGroup;
+    PerfGroups mCountersGroup;
     Monitor mMonitor;
     UEvent mUEvent;
     sem_t & mSenderSem;
     sem_t & mStartProfile;
     int mInterruptFd;
     bool mIsDone;
+    const std::set<int> mAppTids;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfSource);

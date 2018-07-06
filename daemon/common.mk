@@ -6,7 +6,7 @@
 # -std=c++0x is the planned new c++ standard
 # -std=c++98 is the 1998 c++ standard
 CPPFLAGS += -O3 -Wall -fno-exceptions -pthread -MD -DETCDIR=\"/etc\" -Ilibsensors -I.
-CXXFLAGS += -std=c++11 -static-libstdc++ -fno-rtti -Wextra -Wshadow -Wpointer-arith -Wundef # -Weffc++ -Wmissing-declarations
+CXXFLAGS += -std=c++11 -static-libstdc++ -fno-rtti -Wextra -Wno-shadow -Wpointer-arith -Wundef # -Weffc++ -Wmissing-declarations
 ifeq ($(WERROR),1)
 	CPPFLAGS += -Werror
 endif

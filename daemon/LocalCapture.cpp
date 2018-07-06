@@ -20,7 +20,6 @@
 #include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "EventsXML.h"
 
 LocalCapture::LocalCapture()
 {
@@ -30,7 +29,7 @@ LocalCapture::~LocalCapture()
 {
 }
 
-void LocalCapture::createAPCDirectory(char* target_path)
+void LocalCapture::createAPCDirectory(const char* target_path)
 {
     gSessionData.mAPCDir = createUniqueDirectory(target_path, ".apc");
     if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0
@@ -38,24 +37,6 @@ void LocalCapture::createAPCDirectory(char* target_path)
         logg.logError("Unable to create directory %s", gSessionData.mAPCDir);
         handleException();
     }
-}
-
-void LocalCapture::write(char* string)
-{
-    char file[PATH_MAX];
-
-    // Set full path
-    snprintf(file, PATH_MAX, "%s/session.xml", gSessionData.mAPCDir);
-
-    // Write the file
-    if (writeToDisk(file, string) < 0) {
-        logg.logError("Error writing %s\nPlease verify the path.", file);
-        handleException();
-    }
-
-    // Write events XML
-    EventsXML eventsXML;
-    eventsXML.write(gSessionData.mAPCDir);
 }
 
 char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending)
@@ -90,7 +71,7 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
     return output;
 }
 
-int LocalCapture::removeDirAndAllContents(char* path)
+int LocalCapture::removeDirAndAllContents(const char* path)
 {
     int error = 0;
     struct stat mFileInfo;
@@ -102,7 +83,7 @@ int LocalCapture::removeDirAndAllContents(char* path)
             dirent* entry = readdir(dir);
             while (entry) {
                 if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                    std::unique_ptr<char[]> newpath (new char[strlen(path) + strlen(entry->d_name) + 2]);
+                    std::unique_ptr<char[]> newpath(new char[strlen(path) + strlen(entry->d_name) + 2]);
                     sprintf(newpath.get(), "%s/%s", path, entry->d_name);
                     error = removeDirAndAllContents(newpath.get());
                     if (error) {

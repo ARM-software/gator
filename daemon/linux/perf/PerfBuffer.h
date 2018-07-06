@@ -9,32 +9,40 @@
 #ifndef PERF_BUFFER
 #define PERF_BUFFER
 
+#include <map>
+#include <set>
+
 #include "ClassBoilerPlate.h"
 #include "Config.h"
-
-#define BUF_SIZE (gSessionData.mTotalBufferSize * 1024 * 1024)
-#define BUF_MASK (BUF_SIZE - 1)
 
 class Sender;
 
 class PerfBuffer
 {
 public:
+
+    static std::size_t calculateBufferLength();
+    static std::size_t calculateMMapLength();
+
     PerfBuffer();
     ~PerfBuffer();
 
-    bool useFd(const int cpu, const int fd);
-    void discard(const int cpu);
+    bool useFd(const int fd, int cpu);
+    void discard(int cpu);
     bool isEmpty();
     bool isFull();
     bool send(Sender * const sender);
 
 private:
-    void *mBuf[NR_CPUS];
-    // After the buffer is flushed it should be unmaped
-    bool mDiscard[NR_CPUS];
-    // fd that corresponds to the mBuf
-    int mFds[NR_CPUS];
+    struct Buffer
+    {
+        int fd;
+        void * buffer;
+    };
+
+    std::map<int, Buffer> mBuffers;
+    // After the buffer is flushed it should be unmapped
+    std::set<int> mDiscard;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfBuffer);

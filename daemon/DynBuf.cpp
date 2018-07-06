@@ -44,7 +44,7 @@ bool DynBuf::read(const char * const path)
 
     const int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
-        logg.logMessage("open failed");
+        logg.logMessage("open '%s' failed", path);
         return false;
     }
 

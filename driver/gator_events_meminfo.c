@@ -92,7 +92,7 @@ static unsigned int mem_event;
 static void wq_sched_handler(struct work_struct *wsptr);
 static DECLARE_WORK(work, wq_sched_handler);
 static struct timer_list meminfo_wake_up_timer;
-static void meminfo_wake_up_handler(unsigned long unused_data);
+static DECLARE_TIMER_HANDLER(meminfo_wake_up_handler);
 
 static void notify(void)
 {
@@ -293,7 +293,7 @@ static void wq_sched_handler(struct work_struct *wsptr)
     do_read();
 }
 
-static void meminfo_wake_up_handler(unsigned long unused_data)
+static DECLARE_TIMER_HANDLER(meminfo_wake_up_handler)
 {
     /* had to delay scheduling work as attempting to schedule work during the context switch is illegal in kernel versions 3.5 and greater */
     schedule_work(&work);

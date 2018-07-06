@@ -21,17 +21,23 @@ public:
     ~AnnotateListener();
 
     void setup();
+#ifdef TCP_ANNOTATIONS
     int getSockFd();
+#endif
     int getUdsFd();
 
+#ifdef TCP_ANNOTATIONS
     void handleSock();
+#endif
     void handleUds();
     void close();
     void signal();
 
 private:
     AnnotateClient *mClients;
+#ifdef TCP_ANNOTATIONS
     OlyServerSocket *mSock;
+#endif
     OlyServerSocket *mUds;
 
     // Intentionally unimplemented

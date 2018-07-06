@@ -95,7 +95,7 @@
     <event counter="ARM_Mali-G72_BEATS_RD_OTHER" title="Mali Cache Other" name="Read beats" description="Number of read beats for all other masters" advanced="yes"/>
     <event counter="ARM_Mali-G72_BEATS_RD_TEX_EXT" title="Mali Shader External Reads" name="Texture external read beats" description="Number of external read beats for the texture cache"/>
     <event counter="ARM_Mali-G72_BEATS_RD_TEX" title="Mali Shader Reads" name="Texture read beats" description="Number of read beats for the texture cache"/>
-    <event counter="ARM_Mali-G72_BEATS_WR_LSC" title="Mali Shader Writes" name="LSC write Beats" description="Number of write beats for the load/store cache"/>
+    <event counter="ARM_Mali-G72_BEATS_WR_LSC" title="Mali Shader Writes" name="LSC write beats" description="Number of write beats for the load/store cache"/>
     <event counter="ARM_Mali-G72_BEATS_WR_TIB" title="Mali Shader Writes" name="Tilebuffer write beats" description="Number of write beats for the tile buffers"/>
     <event counter="ARM_Mali-G72_COMPUTE_ACTIVE" title="Mali Core Cycles" name="Compute cycles" description="Number of cycles compute processing is active"/>
     <event counter="ARM_Mali-G72_COMPUTE_STARVING" title="Mali Core Cycles" name="Compute starving" description="Number of cycles unable to issue new compute threads" advanced="yes"/>

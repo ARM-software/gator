@@ -104,15 +104,14 @@ UncorePmu::UncorePmu(const char * const coreName, const char * const pmncName, c
     mHead = this;
 }
 
-
 std::set<int> UncorePmu::getCpuMask() const
 {
     std::set<int> result;
 
-    const lib::FsEntry fsEntry = lib::FsEntry::create(lib::Format() << "/sys/bus/event_source/devices/" << mPmncName << "/cpumask");
+    const lib::FsEntry fsEntry = lib::FsEntry::create(
+            lib::Format() << "/sys/bus/event_source/devices/" << mPmncName << "/cpumask");
 
-    if (fsEntry.canAccess(true, false, false))
-    {
+    if (fsEntry.canAccess(true, false, false)) {
         std::string contents = lib::readFileContents(fsEntry);
 
         logg.logMessage("Reading cpumask from %s", fsEntry.path().c_str());
@@ -192,6 +191,7 @@ SharedData::SharedData()
           mMaliMidgardCountersSize(0),
           mMaliMidgardCounters(),
           mClustersAccurate(false)
+
 {
     memset(mCpuIds, -1, sizeof(mCpuIds));
 }
@@ -218,6 +218,9 @@ SessionData::SessionData()
           mCaptureWorkingDir(),
           mCaptureCommand(),
           mCaptureUser(),
+          mWaitForProcessCommand(),
+          mPids(),
+          mStopOnExit(),
           mWaitingOnCommand(),
           mSessionIsActive(),
           mLocalCapture(),
@@ -226,6 +229,7 @@ SessionData::SessionData()
           mSentSummary(),
           mAllowCommands(),
           mFtraceRaw(),
+          mSystemWide(),
           mAndroidApiLevel(),
           mMonotonicStarted(),
           mBacktraceDepth(),
@@ -237,8 +241,11 @@ SessionData::SessionData()
           mPageSize(),
           mMaxCpuId(),
           mAnnotateStart(),
+          parameterSetFlag(),
+          mPerfMmapSizeInPages(),
           mCountersError(),
-          mCounters()
+          mCounters(),
+          globalCounterToEventMap()
 {
 }
 
@@ -281,7 +288,8 @@ static long getMaxCoreNum()
 
 void SessionData::initialize()
 {
-    mSharedData = reinterpret_cast<SharedData *>(mmap(NULL, sizeof(*mSharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+    mSharedData = reinterpret_cast<SharedData *>(mmap(NULL, sizeof(*mSharedData), PROT_READ | PROT_WRITE,
+                                                      MAP_SHARED | MAP_ANONYMOUS, -1, 0));
     if (mSharedData == MAP_FAILED) {
         logg.logError("Unable to mmap shared memory for cpuids");
         handleException();
@@ -297,6 +305,7 @@ void SessionData::initialize()
     mSentSummary = false;
     mAllowCommands = false;
     mFtraceRaw = false;
+    mSystemWide = false;
     strcpy(mCoreName, CORE_NAME_UNKNOWN);
     readModel();
     readCpuInfo();
@@ -308,7 +317,6 @@ void SessionData::initialize()
     mTargetPath = NULL;
     mAPCDir = NULL;
     mCaptureWorkingDir = NULL;
-    mCaptureCommand = NULL;
     mCaptureUser = NULL;
     mSampleRate = 0;
     mLiveRate = 0;
@@ -324,6 +332,7 @@ void SessionData::initialize()
     }
     mPageSize = static_cast<int>(l);
     mAnnotateStart = -1;
+    parameterSetFlag = 0;
 }
 
 void SessionData::parseSessionXML(char* xmlString)
@@ -332,23 +341,28 @@ void SessionData::parseSessionXML(char* xmlString)
     session.parse();
 
     // Set session data values - use prime numbers just below the desired value to reduce the chance of events firing at the same time
-    if (strcmp(session.parameters.sample_rate, "high") == 0) {
-        mSampleRate = 10007; // 10000
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0) {
+        if (strcmp(session.parameters.sample_rate, "high") == 0) {
+            mSampleRate = 10007; // 10000
+        }
+        else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
+            mSampleRate = 1009; // 1000
+        }
+        else if (strcmp(session.parameters.sample_rate, "low") == 0) {
+            mSampleRate = 101; // 100
+        }
+        else if (strcmp(session.parameters.sample_rate, "none") == 0) {
+            mSampleRate = 0;
+        }
+        else {
+
+            logg.logError("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
+            handleException();
+        }
     }
-    else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
-        mSampleRate = 1009; // 1000
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) == 0) {
+        mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
     }
-    else if (strcmp(session.parameters.sample_rate, "low") == 0) {
-        mSampleRate = 101; // 100
-    }
-    else if (strcmp(session.parameters.sample_rate, "none") == 0) {
-        mSampleRate = 0;
-    }
-    else {
-        logg.logError("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
-        handleException();
-    }
-    mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
 
     // Determine buffer size (in MB) based on buffer mode
     mOneShot = true;
@@ -376,8 +390,12 @@ void SessionData::parseSessionXML(char* xmlString)
         logg.logMessage("Local capture is not compatable with live, disabling live");
         mLiveRate = 0;
     }
+    if ((!mSystemWide) && (mWaitForProcessCommand == nullptr) && mCaptureCommand.empty() && mPids.empty()) {
+        logg.logError("No command specified in Capture & Analysis Options.");
+        handleException();
+    }
 
-    if (!mAllowCommands && (mCaptureCommand != NULL)) {
+    if ((!mAllowCommands) && (!mCaptureCommand.empty()) && ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)) {
         logg.logError("Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
         handleException();
     }
@@ -685,6 +703,22 @@ bool readAll(const int fd, void * const buf, const size_t count)
         ssize_t bytes = read(fd, reinterpret_cast<uint8_t *>(buf) + pos, count - pos);
         if (bytes <= 0) {
             logg.logMessage("read failed");
+            return false;
+        }
+        pos += bytes;
+    }
+
+    return true;
+}
+
+bool skipAll(const int fd, const size_t count)
+{
+    uint8_t buf[256];
+    size_t pos = 0;
+    while (pos < count) {
+        ssize_t bytes = read(fd, buf, sizeof(buf));
+        if (bytes <= 0) {
+            logg.logMessage("skip failed");
             return false;
         }
         pos += bytes;

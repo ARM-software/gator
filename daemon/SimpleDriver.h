@@ -18,7 +18,7 @@ class SimpleDriver : public Driver
 public:
     virtual ~SimpleDriver();
 
-    bool claimCounter(const Counter &counter) const;
+    bool claimCounter(Counter &counter) const;
     bool countersEnabled() const;
     void resetCounters();
     void setupCounter(Counter &counter);
@@ -40,7 +40,7 @@ protected:
         mCounters = counter;
     }
 
-    DriverCounter *findCounter(const Counter &counter) const;
+    DriverCounter *findCounter(Counter &counter) const;
 
 private:
     DriverCounter *mCounters;

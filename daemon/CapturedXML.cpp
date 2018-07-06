@@ -36,6 +36,8 @@ mxml_node_t* CapturedXML::getTree(bool includeTime)
 
     captured = mxmlNewElement(xml, "captured");
     mxmlElementSetAttr(captured, "version", "1");
+    mxmlElementSetAttr(captured, "backtrace_processing", (gSessionData.mBacktraceDepth > 0) ? gSessionData.mPrimarySource->getBacktraceProcessingMode()
+                                                                                            : "none");
     mxmlElementSetAttr(captured, "type", gSessionData.mPrimarySource->getCaptureXmlTypeValue());
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
     if (includeTime) { // Send the following only after the capture is complete
@@ -92,7 +94,7 @@ char* CapturedXML::getXML(bool includeTime)
     return xml_string;
 }
 
-void CapturedXML::write(char* path)
+void CapturedXML::write(const char* path)
 {
     char file[PATH_MAX];
 

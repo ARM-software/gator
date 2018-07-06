@@ -16,7 +16,7 @@
 #define ACCESS_ONCE(x)  (*reinterpret_cast<volatile __typeof(x) *>(&(x)))
 
 #define MAX_PERFORMANCE_COUNTERS 100
-#define NR_CPUS 97
+#define NR_CPUS 128
 #define CLUSTER_COUNT 4
 #define CLUSTER_MASK (CLUSTER_COUNT - 1)
 

@@ -32,12 +32,6 @@ move() {
 	fi
 }
 
-restore_selinux() {
-	if [ "${SELINUX_ORIG_STATUS}z" = "Enforcingz" ]; then
-		setenforce 1
-	fi
-}
-
 ps_gator() {
 	# Use echo to merge multiple spaces into a single one as zsh preserves them all
 	# Space is required between the open parans otherwise dash complains
@@ -99,10 +93,6 @@ if [ $UID_EFFECTIVE -ne 0 ]; then
 	exit
 fi
 echo now root
-
-if SELINUX_ORIG_STATUS=$(getenforce 2> /dev/null); then
-	setenforce 0
-fi
 
 if [ -e /sys/module/gator ]; then
 	if ! confirm "Streamline has detected that the gator kernel module is loaded on your device. Click yes to switch to user space gator, click no to abort the install."; then

@@ -30,7 +30,7 @@ bool KMod::isMaliCounter(const Counter &counter)
 }
 
 // Claim all the counters in /dev/gator/events
-bool KMod::claimCounter(const Counter &counter) const
+bool KMod::claimCounter(Counter &counter) const
 {
     if (isMaliCounter(counter) && (counter.getDriver() != NULL)) {
         // do not claim if another driver has claimed this mali counter

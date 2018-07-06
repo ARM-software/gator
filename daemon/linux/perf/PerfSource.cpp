@@ -6,12 +6,13 @@
  * published by the Free Software Foundation.
  */
 
-#include "PerfSource.h"
+#include "linux/perf/PerfSource.h"
 
 #include <algorithm>
+#include <cstring>
+#include <cinttypes>
 
 #include <signal.h>
-#include <string.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
@@ -22,7 +23,7 @@
 #include "DynBuf.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "PerfDriver.h"
+#include "linux/perf/PerfDriver.h"
 #include "Proc.h"
 #include "SessionData.h"
 #include "lib/Time.h"
@@ -30,8 +31,6 @@
 #ifndef SCHED_RESET_ON_FORK
 #define SCHED_RESET_ON_FORK 0x40000000
 #endif
-
-static const int cpuIdleKey = getEventKey();
 
 static void *syncFunc(void *arg)
 {
@@ -66,7 +65,7 @@ static void *syncFunc(void *arg)
         nextTime += NS_PER_S;
 
         // Always sleep more than 1 ms, hopefully things will line up better next time
-        const int64_t sleepTime = std::max<int64_t>(nextTime - currTime, NS_PER_MS + 1);
+        const int64_t sleepTime = std::max < int64_t > (nextTime - currTime, NS_PER_MS + 1);
         ts.tv_sec = sleepTime / NS_PER_S;
         ts.tv_nsec = sleepTime % NS_PER_S;
 
@@ -80,19 +79,20 @@ static void *syncFunc(void *arg)
     return NULL;
 }
 
-PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile)
+PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids)
         : Source(child),
           mDriver(driver),
           mSummary(0, FRAME_SUMMARY, 1024, &senderSem),
           mBuffer(NULL),
           mCountersBuf(),
-          mCountersGroup(&mCountersBuf, driver.getLegacySupport(), driver.getClockidSupport()),
+          mCountersGroup(&mCountersBuf, driver.getConfig()),
           mMonitor(),
           mUEvent(),
           mSenderSem(senderSem),
           mStartProfile(startProfile),
           mInterruptFd(-1),
-          mIsDone(false)
+          mIsDone(false),
+          mAppTids(appTids)
 {
 }
 
@@ -105,7 +105,8 @@ bool PerfSource::prepare()
 {
     DynBuf printb;
     DynBuf b1;
-    long long cpuIdleId;
+
+    const PerfConfig & mConfig = mDriver.getConfig();
 
     // MonotonicStarted has not yet been assigned!
     const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
@@ -115,36 +116,49 @@ bool PerfSource::prepare()
     // Reread cpuinfo since cores may have changed since startup
     gSessionData.readCpuInfo();
 
-    if (0 || !mMonitor.init() || !mUEvent.init() || !mMonitor.add(mUEvent.getFd())
+    if (!mMonitor.init()) {
+        logg.logMessage("monitor setup failed");
+        return false;
+    }
 
-    || (cpuIdleId = PerfDriver::getTracepointId(CPU_IDLE, &printb)) < 0
+    if (mConfig.is_system_wide && (!mUEvent.init() || !mMonitor.add(mUEvent.getFd())))
+    {
+        logg.logMessage("uevent setup failed");
+        return false;
+    }
 
-    || !mDriver.sendTracepointFormats(currTime, mBuffer, &printb, &b1)
+    if (mConfig.can_access_tracepoints && !mDriver.sendTracepointFormats(currTime, mBuffer, &printb, &b1)) {
+        logg.logMessage("could not send tracepoint formats");
+        return false;
+    }
 
-    || !mCountersGroup.createCpuGroup(currTime, mBuffer)
-            || !mCountersGroup.add(currTime, mBuffer, cpuIdleKey, PERF_TYPE_TRACEPOINT, cpuIdleId, 1, PERF_SAMPLE_RAW,
-                                   PERF_GROUP_LEADER | PERF_GROUP_PER_CPU | PERF_GROUP_ALL_CLUSTERS, NULL, {})
-
-            || !mDriver.enable(currTime, &mCountersGroup, mBuffer) || 0) {
+    if (!mDriver.enable(currTime, &mCountersGroup, mBuffer)) {
         logg.logMessage("perf setup failed, are you running Linux 3.4 or later?");
         return false;
     }
 
+    int numOnlined = 0;
+
     for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
-        const int result = mCountersGroup.prepareCPU(cpu, &mMonitor);
-        if ((result != PG_SUCCESS) && (result != PG_CPU_OFFLINE)) {
-            logg.logError("PerfGroup::prepareCPU on mCountersGroup failed");
+        using Result = OnlineResult;
+        const Result result = mCountersGroup.onlineCPU(currTime, cpu, mAppTids, false, mBuffer, &mMonitor);
+        switch (result) {
+        case Result::FAILURE:
+            logg.logError("PerfGroups::prepareCPU on mCountersGroup failed");
             handleException();
+            break;
+        case Result::SUCCESS:
+            numOnlined++;
+            break;
+        default:
+            // do nothing
+            // why distinguish between FAILURE and OTHER_FAILURE?
+            break;
         }
     }
 
-    int numEvents = 0;
-    for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
-        numEvents += mCountersGroup.onlineCPU(currTime, cpu, false, mBuffer);
-    }
-    if (numEvents <= 0) {
-        logg.logMessage("PerfGroup::onlineCPU failed on all cores");
-        return false;
+    if (numOnlined <= 0) {
+        logg.logMessage("PerfGroups::onlineCPU failed on all cores");
     }
 
     // Send the summary right before the start so that the monotonic delta is close to the start time
@@ -153,7 +167,7 @@ bool PerfSource::prepare()
         handleException();
     }
 
-    if (!mDriver.getClockidSupport()) {
+    if (!mConfig.has_attr_clockid_support) {
         // Start the timer thread to used to sync perf and monotonic raw times
         pthread_t syncThread;
         if (pthread_create(&syncThread, NULL, syncFunc, NULL)) {
@@ -236,6 +250,7 @@ void PerfSource::run()
         DynBuf b1;
 
         const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
+        logg.logMessage("run at current time: %" PRIu64, currTime);
 
         // Start events before reading proc to avoid race conditions
         mCountersGroup.start();
@@ -247,8 +262,13 @@ void PerfSource::run()
         mBuffer->perfCounterFooter(currTime);
 
         if (!readProcSysDependencies(currTime, *mBuffer, &printb, &b1)) {
-            logg.logError("readProcSysDependencies failed");
-            handleException();
+            if (mDriver.getConfig().is_system_wide) {
+                logg.logError("readProcSysDependencies failed");
+                handleException();
+            }
+            else {
+                logg.logMessage("readProcSysDependencies failed");
+            }
         }
         mBuffer->commit(currTime);
 
@@ -303,7 +323,8 @@ void PerfSource::run()
                 nextTime += rate;
             }
             // + NS_PER_MS - 1 to ensure always rounding up
-            timeout = std::max<int>(0, (nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS);
+            timeout = std::max<int>(
+                    0, (nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS);
         }
     }
 
@@ -347,19 +368,21 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
 
         if (strcmp(result.mAction, "online") == 0) {
             mBuffer->onlineCPU(currTime, cpu);
-            // Only call onlineCPU if prepareCPU succeeded
-            bool ret = false;
-            int err = mCountersGroup.prepareCPU(cpu, &mMonitor);
-            if (err == PG_CPU_OFFLINE) {
+            using Result = OnlineResult;
+            bool ret;
+            switch (mCountersGroup.onlineCPU(currTime, cpu, mAppTids, true, mBuffer, &mMonitor)) {
+            case Result::SUCCESS:
+                mBuffer->perfCounterHeader(currTime);
+                mDriver.read(mBuffer, cpu);
+                mBuffer->perfCounterFooter(currTime);
+                // fall through
+                /* no break */
+            case Result::CPU_OFFLINE:
                 ret = true;
-            }
-            else if (err == PG_SUCCESS) {
-                if (mCountersGroup.onlineCPU(currTime, cpu, true, mBuffer) > 0) {
-                    mBuffer->perfCounterHeader(currTime);
-                    mDriver.read(mBuffer, cpu);
-                    mBuffer->perfCounterFooter(currTime);
-                    ret = true;
-                }
+                break;
+            default:
+                ret = false;
+                break;
             }
             mBuffer->commit(currTime);
 

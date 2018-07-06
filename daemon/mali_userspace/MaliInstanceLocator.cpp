@@ -4,9 +4,10 @@
 #include "lib/FsEntry.h"
 #include "lib/Optional.h"
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstring>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -18,9 +19,9 @@ namespace mali_userspace
 {
     static MaliDevice * enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, const char * devicePath, const char * clockPath)
     {
-        MaliDevice * device = MaliDevice::create(mpNumber, gpuId, devicePath, clockPath);
+        MaliDevice * device = MaliDevice::create(gpuId, devicePath, clockPath);
 
-        if (device != NULL) {
+        if (device != nullptr) {
             logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found", model, mpNumber, rValue, pValue, gpuId, devicePath);
         }
         else {
@@ -35,10 +36,10 @@ namespace mali_userspace
         // open sysfs directory
         if (sysDevicesPlatformDir.read_stats().type() != lib::FsEntry::Type::DIR) {
             logg.logMessage("enumerateMaliHwCntrDrivers - failed to open '%s'", sysDevicesPlatformDir.path().c_str());
-            return NULL;
+            return nullptr;
         }
 
-        MaliDevice * result = NULL;
+        MaliDevice * result = nullptr;
 
         // walk children looking for <CHILD>/gpuinfo and <CHILD>/misc/mali<%d>
         lib::FsEntryDirectoryIterator iterator = sysDevicesPlatformDir.children();
@@ -50,7 +51,7 @@ namespace mali_userspace
                 // try to recursively scan the child directory
                 if (!childStats.is_symlink()) {
                     result = enumerateMaliHwCntrDriversInDir(*childEntry);
-                    if (result != NULL) {
+                    if (result != nullptr) {
                         return result;
                     }
                 }
@@ -60,28 +61,45 @@ namespace mali_userspace
 
                 // read the contents of 'gpuinfo' file
                 FILE * gpuinfoFile = fopen(gpuinfoEntry.path().c_str(), "r");
-                if (gpuinfoFile == NULL) {
+                if (gpuinfoFile == nullptr) {
                     continue;
                 }
 
                 char model[33];
                 int mpNumber, rValue, pValue;
                 unsigned int gpuId;
-                int fscanfResult = fscanf(gpuinfoFile, "%32s MP%d r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
+                int fscanfResult = fscanf(gpuinfoFile, "%32s MP%d r%dp%d 0x%04x", model, &mpNumber, &rValue, &pValue, &gpuId);
                 if (fscanfResult != 5) {
                     fseek(gpuinfoFile, 0, SEEK_SET);
-                    fscanfResult = fscanf(gpuinfoFile, "%32s %d cores r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
-                    if (fscanfResult != 5) {
-                        fseek(gpuinfoFile, 0, SEEK_SET);
-                        fscanfResult = fscanf(gpuinfoFile, "%32s %d core r%dp%d 0x%04X", model, &mpNumber, &rValue, &pValue, &gpuId);
+                    fscanfResult = fscanf(gpuinfoFile, "(Unknown Mali GPU) %d cores r%dp%d 0x%04x",  &mpNumber, &rValue, &pValue, &gpuId);
+                    fscanfResult = (fscanfResult == 4 ? 5 : fscanfResult);
+                    std::strcpy(model, "Unknown Mali GPU");
 
-                        fclose(gpuinfoFile);
-
-                        if (fscanfResult != 5) {
-                            logg.logError("enumerateMaliHwCntrDrivers - failed to parse '%s'", gpuinfoEntry.path().c_str());
-                            continue;
-                        }
-                    }
+                }
+                if (fscanfResult != 5) {
+                    fseek(gpuinfoFile, 0, SEEK_SET);
+                    fscanfResult = fscanf(gpuinfoFile, "%32s %d cores r%dp%d 0x%04x", model, &mpNumber, &rValue, &pValue, &gpuId);
+                }
+                if (fscanfResult != 5) {
+                    fseek(gpuinfoFile, 0, SEEK_SET);
+                    fscanfResult = fscanf(gpuinfoFile, "(Unknown Mali GPU) %d cores r%dp%d 0x%04x", &mpNumber, &rValue, &pValue, &gpuId);
+                    fscanfResult = (fscanfResult == 4 ? 5 : fscanfResult);
+                    std::strcpy(model, "Unknown Mali GPU");
+                }
+                if (fscanfResult != 5) {
+                    fseek(gpuinfoFile, 0, SEEK_SET);
+                    fscanfResult = fscanf(gpuinfoFile, "%32s %d core r%dp%d 0x%04x", model, &mpNumber, &rValue, &pValue, &gpuId);
+                }
+                if (fscanfResult != 5) {
+                    fseek(gpuinfoFile, 0, SEEK_SET);
+                    fscanfResult = fscanf(gpuinfoFile, "(Unknown Mali GPU) %d core r%dp%d 0x%04x", &mpNumber, &rValue, &pValue, &gpuId);
+                    fscanfResult = (fscanfResult == 4 ? 5 : fscanfResult);
+                    std::strcpy(model, "Unknown Mali GPU");
+                }
+                fclose(gpuinfoFile);
+                if (fscanfResult != 5) {
+                    logg.logError("enumerateMaliHwCntrDrivers - failed to parse '%s'", gpuinfoEntry.path().c_str());
+                    continue;
                 }
 
                 logg.logMessage("enumerateMaliHwCntrDrivers - Detected valid gpuinfo file '%s' with '%s MP%d r%dp%d 0x%04X'",
@@ -122,22 +140,58 @@ namespace mali_userspace
 
                 // create the device object
                 result = enumerateMaliHwCntrDriver(model, mpNumber, rValue, pValue, gpuId, devicePath->path().c_str(), (clockPath.valid() ? clockPath->path().c_str() : nullptr));
-                if (result != NULL) {
+                if (result != nullptr) {
                     return result;
                 }
             }
         }
 
-        return NULL;
+        return nullptr;
     }
 
-    MaliDevice * enumerateMaliHwCntrDrivers()
+    MaliDevice * enumerateMaliHwCntrDrivers(const char * userSpecifiedDeviceType, const char * userSpecifiedDevicePath)
     {
-        MaliDevice * result = enumerateMaliHwCntrDriversInDir(lib::FsEntry::create("/sys"));
-        if (result != NULL) {
+        MaliDevice * result;
+
+        // scan first as scan always overrides user settings
+        result = enumerateMaliHwCntrDriversInDir(lib::FsEntry::create("/sys"));
+        if (result != nullptr) {
+            if (userSpecifiedDeviceType != nullptr) {
+                logg.logError("Ignoring user provided Mali device type");
+            }
             return result;
         }
 
-        return NULL;
+        // try user provided value
+        if (userSpecifiedDeviceType != nullptr) {
+            // validate path first
+            if ((userSpecifiedDevicePath == nullptr) || (strlen(userSpecifiedDevicePath) == 0)) {
+                userSpecifiedDevicePath = "/dev/mali0";
+            }
+
+            lib::FsEntry deviceFsEntry = lib::FsEntry::create(userSpecifiedDevicePath);
+            if (!deviceFsEntry.canAccess(true, true, false)) {
+                logg.logError("Cannot access mali device path '%s'", userSpecifiedDevicePath);
+                return nullptr;
+            }
+
+            // try to find a gpuID by name
+            uint32_t gpuId = MaliDevice::findProductByName(userSpecifiedDeviceType);
+            // then by hex code
+            if (gpuId == 0) {
+                gpuId = strtoul(userSpecifiedDeviceType, nullptr, 0);
+            }
+
+            result = MaliDevice::create(gpuId, userSpecifiedDevicePath, nullptr);
+            if (result == nullptr) {
+                logg.logError("Did not recognise Mali product name '%s'", userSpecifiedDeviceType);
+                return nullptr;
+            }
+
+            logg.logSetup("Mali Hardware Counters\nUsing user provided Arm Mali GPU driver for Mali-%s at %s", result->getProductName(), userSpecifiedDevicePath);
+            return result;
+        }
+
+        return nullptr;
     }
 }

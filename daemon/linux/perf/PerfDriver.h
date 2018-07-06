@@ -16,6 +16,7 @@
 
 #include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
+#include "linux/perf/PerfConfig.h"
 
 #define SCHED_SWITCH "sched/sched_switch"
 #define CPU_IDLE "power/cpu_idle"
@@ -24,7 +25,7 @@
 class Buffer;
 class DynBuf;
 class GatorCpu;
-class PerfGroup;
+class PerfGroups;
 class PerfTracepoint;
 class UncorePmu;
 
@@ -45,31 +46,27 @@ public:
         std::list<GatorCpu *> cpuPmus;
         std::list<UncorePmu *> uncorePmus;
         bool foundCpu;
-        bool legacySupport;
-        bool clockidSupport;
+        PerfConfig config;
 
         PerfDriverConfiguration();
     };
 
-    static std::unique_ptr<PerfDriverConfiguration> detect();
+    static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide);
 
     PerfDriver(const PerfDriverConfiguration & configuration);
     ~PerfDriver();
 
-    bool getLegacySupport() const
+    const PerfConfig & getConfig() const
     {
-        return mLegacySupport;
+        return mConfig;
     }
-    bool getClockidSupport() const
-    {
-        return mClockidSupport;
-    }
+
 
     void readEvents(mxml_node_t * const xml);
     bool summary(Buffer * const buffer);
     void coreName(const uint64_t currTime, Buffer * const buffer, const int cpu);
     void setupCounter(Counter &counter);
-    bool enable(const uint64_t currTime, PerfGroup * const group, Buffer * const buffer) const;
+    bool enable(const uint64_t currTime, PerfGroups * const group, Buffer * const buffer) const;
     void read(Buffer * const buffer, const int cpu);
     bool sendTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
 
@@ -77,11 +74,11 @@ public:
     static long long getTracepointId(const char * const counter, const char * const name, DynBuf * const printb);
 
 private:
-    void addCpuCounters(const GatorCpu * const cpu);
-    void addUncoreCounters(const char * const counterName, const int type, const int numCounters,
-                           const bool hasCyclesCounter, const std::set<int> & cpumask);
+    void addCpuCounters(const GatorCpu * cpu);
+    void addUncoreCounters(const UncorePmu * pmu);
     PerfTracepoint *mTracepoints;
-    bool mIsSetup, mLegacySupport, mClockidSupport;
+    bool mIsSetup;
+    PerfConfig mConfig;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfDriver);

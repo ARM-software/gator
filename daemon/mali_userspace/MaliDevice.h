@@ -124,15 +124,24 @@ namespace mali_userspace
         ~MaliDevice();
 
         /**
+         * Using the provided product name string, attempt to map it to some recognized product GPU ID.
+         * The name provided must match the pattern /(Mali[ -])?([GT]\d+)/
+         * Matching is case insensitive.
+         *
+         * @param productName The name to look up
+         * @return The matched product GPU ID, or 0 if not found
+         */
+        static uint32_t findProductByName(const char * productName);
+
+        /**
          * Factory method, returns a pointer to a heap allocated object which the caller must take ownership of.
          *
-         * @param mpNumber
          * @param gpuId
          * @param devicePath
          * @param clockPath (Which may be null)
          * @return The MaliDevice object, or NULL on failure
          */
-        static MaliDevice * create(uint32_t mpNumber, uint32_t gpuId, const char * devicePath, const char * clockPath);
+        static MaliDevice * create(uint32_t gpuId, const char * devicePath, const char * clockPath);
 
         /**
          * @return The path to the device file
@@ -148,14 +157,6 @@ namespace mali_userspace
         inline const char * getClockPath() const
         {
             return mClockPath;
-        }
-
-        /**
-         * @return The number of shader cores
-         */
-        inline uint32_t getNumberOfShaderCores() const
-        {
-            return mNumShaderCores;
         }
 
         /**
@@ -212,6 +213,11 @@ namespace mali_userspace
         /**
          * @return The family name of the device
          */
+        const char * getProductName() const;
+
+        /**
+         * @return The family name of the device
+         */
         const char * getSupportedDeviceFamilyName() const;
 
     private:
@@ -225,13 +231,10 @@ namespace mali_userspace
         /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
         const char * const mClockPath;
 
-        /** The number of shader cores */
-        const uint32_t mNumShaderCores;
-
         /** The GPU ID code */
         const uint32_t mGpuId;
 
-        MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t numShaderCores, uint32_t gpuId);
+        MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t gpuId);
 
         CLASS_DELETE_COPY_MOVE(MaliDevice);
 

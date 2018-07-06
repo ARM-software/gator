@@ -66,6 +66,9 @@ static int report_trace(struct stackframe *frame, void *d)
               (unsigned long)mod->core_layout.base;
 #endif
         }
+        else {
+            cookie = NO_COOKIE;
+        }
 #endif
         marshal_backtrace(addr & ~1, cookie, 1);
         (*depth)--;
@@ -128,6 +131,9 @@ static void report_trace(unsigned int cpu, struct stack_trace * trace)
 #else
               (unsigned long) mod->core_layout.base;
 #endif
+        }
+        else {
+            cookie = NO_COOKIE;
         }
 #endif
         marshal_backtrace(addr & ~1, cookie, 1);

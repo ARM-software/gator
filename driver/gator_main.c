@@ -8,7 +8,7 @@
  */
 
 /* This version must match the gator daemon version */
-#define PROTOCOL_VERSION    651
+#define PROTOCOL_VERSION    670
 static unsigned long gator_protocol_version = PROTOCOL_VERSION;
 
 #include <linux/version.h>
@@ -292,7 +292,7 @@ u32 gator_cpuid(void)
 #endif
 }
 
-static void gator_buffer_wake_up(unsigned long data)
+static DECLARE_TIMER_HANDLER(gator_buffer_wake_up)
 {
     wake_up(&gator_buffer_wait);
 }

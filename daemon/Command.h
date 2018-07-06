@@ -9,6 +9,16 @@
 #ifndef COMMAND_H
 #define COMMAND_H
 
-void *commandThread(void *);
+#include <semaphore.h>
+#include <thread>
+#include <functional>
+
+struct Command
+{
+    int pid;
+    std::thread thread;
+};
+
+Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallback);
 
 #endif // COMMAND_H

@@ -46,11 +46,15 @@ public:
     __attribute__ ((format (printf, 5, 6)))
     void _logMessage(const char *function, const char *file, int line, const char *fmt, ...);
 
+#define logWarning(...) _logWarning(__func__, __FILE__, __LINE__, __VA_ARGS__)
+    __attribute__ ((format (printf, 5, 6)))
+    void _logWarning(const char *function, const char *file, int line, const char *fmt, ...);
+
 private:
     DynBuf mSetup;
     pthread_mutex_t mLoggingMutex;
     bool mDebug;
-    char mErrBuf[4096]; // Arbitrarily large buffer to hold a string
+    char mErrBuf[8192]; // Arbitrarily large buffer to hold a string
 };
 
 extern Logging logg;

@@ -9,12 +9,18 @@
 #include "Child.h"
 
 #include "lib/Assert.h"
+#include "lib/SharedMemory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
+
+#include <algorithm>
+#include <thread>
 
 #include "CapturedXML.h"
+#include "CounterXML.h"
 #include "Command.h"
 #include "ConfigurationXML.h"
 #include "Driver.h"
@@ -29,11 +35,19 @@
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
 #include "PolledDriver.h"
+#include "EventsXML.h"
+#include "WaitForProcessPoller.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
 
 extern void cleanUp();
+
+constexpr int exceptionExitCode = 1;
+constexpr int secondExceptionExitCode = 2;
+constexpr int secondSignalExitCode = 3;
+constexpr int alarmExitCode = 4;
+constexpr int noSingletonExitCode = 5;
 
 void handleException()
 {
@@ -43,17 +57,19 @@ void handleException()
         singleton->cleanupException();
     }
 
-    exit(1);
+    // don't call exit handlers / global destructors
+    // because other threads may be still running
+    _exit(exceptionExitCode);
 }
 
 std::unique_ptr<Child> Child::createLocal(PrimarySourceProvider & primarySourceProvider)
 {
-    return std::unique_ptr<Child>(new Child(primarySourceProvider));
+    return std::unique_ptr < Child > (new Child(primarySourceProvider));
 }
 
 std::unique_ptr<Child> Child::createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock)
 {
-    return std::unique_ptr<Child>(new Child(primarySourceProvider, sock));
+    return std::unique_ptr < Child > (new Child(primarySourceProvider, sock));
 }
 
 Child * Child::getSingleton()
@@ -65,56 +81,31 @@ void Child::signalHandler(int signum)
 {
     static bool beenHere = false;
 
-    if (beenHere == true) {
-        logg.logMessage("Gator is being forced to shut down.");
-        exit(1);
+    Child * const singleton = getSingleton();
+    if (singleton == nullptr) {
+        exit(noSingletonExitCode);
+    }
+
+    if (beenHere || signum == SIGALRM) {
+        logg.logError("Gator child is being forced to shut down: %s", strsignal(signum));
+        if (!singleton->commandTerminated)
+            logg.logError("Failed to terminate command (%d)", singleton->commandPid);
+        if (signum == SIGALRM)
+            exit(alarmExitCode);
+        else
+            exit(secondSignalExitCode);
     }
     else {
         beenHere = true;
-        logg.logMessage("Gator is shutting down.");
+        logg.logMessage("Gator child is shutting down: %s", strsignal(signum));
 
-        Child * const singleton = getSingleton();
-        if ((signum == SIGALRM) || (singleton == nullptr)) {
-            exit(1);
-        }
-        else {
-            singleton->endSession();
-            alarm(5); // Safety net in case endSession does not complete within 5 seconds
-        }
+        singleton->endSession();
     }
-}
-
-void * Child::durationThreadStaticEntryPoint(void * thisPtr)
-{
-    Child * const localChild = reinterpret_cast<Child *>(thisPtr);
-
-    runtime_assert(localChild != nullptr, "durationThreadStaticEntryPoint called with thisPtr == nullptr");
-
-    return localChild->durationThreadEntryPoint();
-}
-
-void * Child::stopThreadStaticEntryPoint(void * thisPtr)
-{
-    Child * const localChild = reinterpret_cast<Child *>(thisPtr);
-
-    runtime_assert(localChild != nullptr, "stopThreadStaticEntryPoint called with thisPtr == nullptr");
-
-    return localChild->stopThreadEntryPoint();
-}
-
-void * Child::senderThreadStaticEntryPoint(void * thisPtr)
-{
-    Child * const localChild = reinterpret_cast<Child *>(thisPtr);
-
-    runtime_assert(localChild != nullptr, "senderThreadStaticEntryPoint called with thisPtr == nullptr");
-
-    return localChild->senderThreadEntryPoint();
 }
 
 Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock)
         : haltPipeline(),
           senderThreadStarted(),
-          startProfile(),
           senderSem(),
           primarySource(),
           externalSource(),
@@ -123,7 +114,13 @@ Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock)
           sender(),
           primarySourceProvider(psp),
           socket(sock),
-          numExceptions(0)
+          numExceptions(0),
+          sleepMutex(),
+          sessionEnded(),
+          commandTerminated(true),
+          commandPid(),
+          eventsMap(),
+          sharedData(shared_memory::make_unique<SharedData>())
 {
     // update singleton
     const Child * const prevSingleton = gSingleton.exchange(this, std::memory_order_acq_rel);
@@ -134,11 +131,17 @@ Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock)
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalHandler);
     signal(SIGALRM, signalHandler);
+    // we will wait on children outside of signal handler
+    signal(SIGCHLD, SIG_DFL);
 
     // Initialize semaphores
     sem_init(&senderThreadStarted, 0, 0);
-    sem_init(&startProfile, 0, 0);
     sem_init(&senderSem, 0, 0);
+
+    // enable sleeping
+    sleepMutex.lock();
+
+    sessionEnded.clear();
 
     gSessionData.mSessionIsActive = true;
     gSessionData.mLocalCapture = local;
@@ -161,10 +164,26 @@ Child::~Child()
     runtime_assert(prevSingleton == this, "Exchanged Child::gSingleton with something other than this");
 }
 
+void Child::setEvents(const std::map<std::string, int> &eventsMap_)
+{
+    eventsMap = eventsMap_;
+}
+
+template<class Rep, class Period>
+bool Child::sleep(const std::chrono::duration<Rep, Period>& timeout_duration)
+{
+    if (sleepMutex.try_lock_for(timeout_duration)) {
+        sleepMutex.unlock();
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
 void Child::run()
 {
     std::unique_ptr<LocalCapture> localCapture;
-    pthread_t durationThreadID, stopThreadID, senderThreadID;
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
 
@@ -173,17 +192,80 @@ void Child::run()
 
     // Instantiate the Sender - must be done first, after which error messages can be sent
     sender.reset(new Sender(socket));
-
     // Populate gSessionData with the configuration
-    {
+
+    if (eventsMap.empty()) {
         ConfigurationXML configuration;
     }
 
-    // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
-    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, startProfile);
-    if (primarySource == nullptr) {
-        logg.logError("Failed to init primary capture source");
-        handleException();
+    int perfCounterCount = 0;
+    if (!eventsMap.empty()) {
+        // read attributes
+        for (const auto& eventmap : eventsMap) {
+            const std::string & counterName = eventmap.first;
+            const int event = eventmap.second;
+            const auto end = gSessionData.globalCounterToEventMap.end();
+            const auto it = std::find_if(gSessionData.globalCounterToEventMap.begin(), end, [&counterName] (const std::pair<std::string, int> & pair) {
+                        return strcasecmp(pair.first.c_str(), counterName.c_str()) == 0;
+                    });
+            const bool hasEventsXmlCounter = (it != end);
+            const int counterEvent = (hasEventsXmlCounter ? it->second : -1);
+
+            Counter & counter = gSessionData.mCounters[perfCounterCount];
+            counter.clear();
+            counter.setType(counterName.c_str());
+
+            // if hasEventsXmlCounter, then then event is defined as a counter with 'counter'/'type' attribute
+            // in events.xml. Use the specified event from events.xml (which may be -1 if not relevant)
+            // overriding anything from user map. This is necessary for cycle counters for example where
+            // they have a name "XXX_ccnt" but also often an event code. If not the event code -1 is used
+            // which is incorrect.
+            if (hasEventsXmlCounter) {
+                counter.setEvent(counterEvent);
+            }
+            // the counter is not in events.xml. This usually means it is a PMU slot counter
+            // the user specified the event code, use that
+            else if (event > -1) {
+                counter.setEvent(event);
+            }
+            // the counter is not in events.xml. This usually means it is a PMU slot counter, but since
+            // the user has not specified an event code, this is probably incorrect.
+            else if (strcasestr(counterName.c_str(), "_cnt")) {
+                logg.logWarning("Counter '%s' does not have an event code specified, PMU slot counters require an event code", counterName.c_str());
+            }
+            else {
+                logg.logWarning("Counter '%s' was not recognized", counterName.c_str());
+            }
+
+            // handle all other performance counters
+            if (perfCounterCount >= MAX_PERFORMANCE_COUNTERS) {
+                perfCounterCount++;
+                break;
+            }
+            counter.setEnabled(true);
+
+            // Associate a driver with each counter
+            for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+                if (driver->claimCounter(counter)) {
+                    if (counter.getDriver() != NULL) {
+                        logg.logError("More than one driver has claimed %s:%i", counter.getType(), counter.getEvent());
+                        handleException();
+                    }
+                    counter.setDriver(driver);
+                }
+            }
+
+            // If no driver is associated with the counter, disable it
+            if (counter.getDriver() == NULL) {
+                logg.logWarning("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
+                counter.setEnabled(false);
+            }
+            if (counter.isEnabled()) {
+                // update counter index
+                perfCounterCount++;
+            }
+        }
+        gSessionData.mCcnDriver.validateCounters();
     }
 
     // Initialize all drivers
@@ -206,25 +288,77 @@ void Child::run()
     }
     else {
         char* xmlString;
-        xmlString = readFromDisk(gSessionData.mSessionXMLPath);
-        if (xmlString == 0) {
-            logg.logError("Unable to read session xml file: %s", gSessionData.mSessionXMLPath);
-            handleException();
+        if (gSessionData.mSessionXMLPath) {
+            xmlString = readFromDisk(gSessionData.mSessionXMLPath);
+            if (xmlString) {
+                gSessionData.parseSessionXML(xmlString);
+            }
+            else {
+                logg.logWarning("Unable to read session xml(%s) , using default values", gSessionData.mSessionXMLPath);
+            }
+            free(xmlString);
+
         }
-        gSessionData.parseSessionXML(xmlString);
         localCapture.reset(new LocalCapture());
         localCapture->createAPCDirectory(gSessionData.mTargetPath);
         localCapture->copyImages(gSessionData.mImages);
-        localCapture->write(xmlString);
         sender->createDataFile(gSessionData.mAPCDir);
-        free(xmlString);
+        // Write events XML
+        EventsXML eventsXML;
+        eventsXML.write(gSessionData.mAPCDir);
     }
 
-    bool thread_creation_success = true;
+    std::set<int> appPids;
+    std::thread commandThread { };
+    if (!gSessionData.mCaptureCommand.empty()) {
+        std::string command;
+        for (auto const& cmd : gSessionData.mCaptureCommand) {
+            command += " ";
+            command += cmd;
+        }
+        logg.logWarning("Running command:%s", command.c_str());
+        Command commandResult = runCommand(sharedData->startProfile, [this]() {
+            commandTerminated = true;
+            if (gSessionData.mStopOnExit)
+            endSession();
+        });
+        commandPid = commandResult.pid;
+        commandTerminated = false;
+        commandThread = std::move(commandResult.thread);
+        appPids.insert(commandPid);
+        logg.logMessage("Profiling pid: %d", commandPid);
+    }
+
+    if (gSessionData.mWaitForProcessCommand != nullptr) {
+        logg.logMessage("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
+
+        WaitForProcessPoller poller { gSessionData.mWaitForProcessCommand };
+
+        while (!poller.poll(appPids)) {
+            usleep(1000);
+        }
+
+        logg.logMessage("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
+    }
+
+    // we only consider --pid for stop on exit if we weren't given an
+    // app to run
+    std::set<int> watchPids = appPids.empty() ? gSessionData.mPids : appPids;
+
+    appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
+
+    // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
+    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids);
+    if (primarySource == nullptr) {
+        logg.logError("Failed to init primary capture source");
+        handleException();
+    }
+
     // set up stop thread early, so that ping commands get replied to, even if the
     // setup phase below takes a long time.
-    if (socket && pthread_create(&stopThreadID, NULL, stopThreadStaticEntryPoint, this)) {
-        thread_creation_success = false;
+    std::thread stopThread { };
+    if (socket) {
+        stopThread = std::thread([this]() {stopThreadEntryPoint();});
     }
 
     if (gSessionData.mPrimarySource->supportsMaliCapture() && gSessionData.mPrimarySource->isCapturingMaliCounters()
@@ -263,11 +397,16 @@ void Child::run()
     sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
 
     // Create the duration and sender threads
-    if (gSessionData.mDuration > 0 && pthread_create(&durationThreadID, NULL, durationThreadStaticEntryPoint, this)) {
-        thread_creation_success = false;
+    std::thread durationThread { };
+    if (gSessionData.mDuration > 0) {
+        durationThread = std::thread([this]() {durationThreadEntryPoint();});
     }
-    else if (pthread_create(&senderThreadID, NULL, senderThreadStaticEntryPoint, this)) {
-        thread_creation_success = false;
+
+    std::thread senderThread { [this]() {senderThreadEntryPoint();} };
+
+    std::thread watchPidsThread { };
+    if (gSessionData.mStopOnExit && !watchPids.empty()) {
+        watchPidsThread = std::thread([this, &watchPids]() {watchPidsThreadEntryPoint(watchPids);});
     }
 
     if (UserSpaceSource::shouldStart()) {
@@ -279,23 +418,14 @@ void Child::run()
         userSpaceSource->start();
     }
 
-    if (gSessionData.mAllowCommands && (gSessionData.mCaptureCommand != NULL)) {
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, commandThread, NULL)) {
-            thread_creation_success = false;
-        }
-    }
-
-    if (!thread_creation_success) {
-        logg.logError("Failed to create gator threads");
-        handleException();
-    }
-
     // Wait until thread has started
     sem_wait(&senderThreadStarted);
 
     // Start profiling
     primarySource->run();
+
+    // wake all sleepers
+    sleepMutex.unlock();
 
     // Wait for the other threads to exit
     if (userSpaceSource != NULL) {
@@ -305,19 +435,28 @@ void Child::run()
         midgardHwSource->join();
     }
     externalSource->join();
-    pthread_join(senderThreadID, NULL);
+
+    if (watchPidsThread.joinable()) {
+        watchPidsThread.join();
+    }
+    senderThread.join();
+    if (durationThread.joinable()) {
+        durationThread.join();
+    }
 
     // Shutting down the connection should break the stop thread which is stalling on the socket recv() function
     if (socket) {
         logg.logMessage("Waiting on stop thread");
         socket->shutdownConnection();
-        pthread_join(stopThreadID, NULL);
+        stopThread.join();
     }
 
     // Write the captured xml file
     if (gSessionData.mLocalCapture) {
         CapturedXML capturedXML;
         capturedXML.write(gSessionData.mAPCDir);
+        CounterXML counterXML;
+        counterXML.write(gSessionData.mAPCDir);
     }
 
     logg.logMessage("Profiling ended.");
@@ -328,10 +467,33 @@ void Child::run()
     primarySource.reset();
     sender.reset();
     localCapture.reset();
+
+    if (commandThread.joinable()) {
+        logg.logMessage("Waiting for command");
+        commandThread.join();
+        logg.logMessage("Command finished");
+    }
+}
+
+void Child::terminateCommand()
+{
+    if (!commandTerminated) {
+        logg.logMessage("Terminating %d", commandPid);
+        kill(commandPid, SIGTERM);
+    }
 }
 
 void Child::endSession()
 {
+    if (sessionEnded.test_and_set()) {
+        return; // someone else is running or has ran this
+    }
+
+    // Safety net in case endSession does not complete within 5 seconds
+    // Note this is unlikely to ever fire because main sends another signal
+    // after 1 second
+    alarm(5);
+
     gSessionData.mSessionIsActive = false;
     if (primarySource != nullptr) {
         primarySource->interrupt();
@@ -355,8 +517,10 @@ void Child::cleanupException()
         logg.logMessage("Received multiple exceptions, terminating the child");
 
         // Something is really wrong, exit immediately
-        _exit(1);
+        _exit(secondExceptionExitCode);
     }
+
+    terminateCommand();
 
     if (socket) {
         if (sender) {
@@ -378,24 +542,24 @@ void Child::cleanupException()
     }
 }
 
-void * Child::durationThreadEntryPoint()
+void Child::durationThreadEntryPoint()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-duration"), 0, 0, 0);
-    sem_wait(&startProfile);
-    if (gSessionData.mSessionIsActive) {
-        // Time out after duration seconds
-        // Add a second for host-side filtering
-        sleep(gSessionData.mDuration + 1);
-        if (gSessionData.mSessionIsActive) {
-            logg.logMessage("Duration expired.");
-            endSession();
-        }
+
+    sem_wait(&sharedData->startProfile);
+    sem_post(&sharedData->startProfile); // post for anyone else waiting
+
+    // Time out after duration seconds
+    // Add a second for host-side filtering
+    if (sleep(std::chrono::seconds(gSessionData.mDuration + 1))) {
+        logg.logMessage("Duration expired.");
+        endSession();
     }
+
     logg.logMessage("Exit duration thread");
-    return nullptr;
 }
 
-void * Child::stopThreadEntryPoint()
+void Child::stopThreadEntryPoint()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-stopper"), 0, 0, 0);
     while (gSessionData.mSessionIsActive) {
@@ -435,10 +599,9 @@ void * Child::stopThreadEntryPoint()
     }
 
     logg.logMessage("Exit stop thread");
-    return nullptr;
 }
 
-void * Child::senderThreadEntryPoint()
+void Child::senderThreadEntryPoint()
 {
     char end_sequence[] = { RESPONSE_APC_DATA, 0, 0, 0, 0 };
 
@@ -460,11 +623,44 @@ void * Child::senderThreadEntryPoint()
         primarySource->write(sender.get());
     }
 
+    // flush one more time to ensure any slop is cleared up
+    {
+        externalSource->write(sender.get());
+        if (midgardHwSource != NULL) {
+            midgardHwSource->write(sender.get());
+        }
+        if (userSpaceSource != NULL) {
+            userSpaceSource->write(sender.get());
+        }
+        primarySource->write(sender.get());
+    }
+
     // write end-of-capture sequence
     if (!gSessionData.mLocalCapture) {
         sender->writeData(end_sequence, sizeof(end_sequence), RESPONSE_APC_DATA);
     }
 
     logg.logMessage("Exit sender thread");
-    return nullptr;
+}
+
+void Child::watchPidsThreadEntryPoint(std::set<int> & pids)
+{
+    while (!pids.empty()) {
+        if (!sleep(std::chrono::seconds(1))) {
+            break;
+        }
+
+        auto it = pids.begin();
+        while (it != pids.end()) {
+
+            if (kill(*it, 0) < 0) {
+                it = pids.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+    }
+    endSession();
+    logg.logMessage("Exit watch pids thread");
 }

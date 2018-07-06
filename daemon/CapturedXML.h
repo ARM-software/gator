@@ -17,7 +17,7 @@ public:
     CapturedXML();
     ~CapturedXML();
     char* getXML(bool includeTime); // the string should be freed by the caller
-    void write(char* path);
+    void write(const char* path);
 private:
     mxml_node_t* getTree(bool includeTime);
 };

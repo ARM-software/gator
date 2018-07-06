@@ -13,8 +13,12 @@
 
 #include <atomic>
 #include <memory>
+#include <functional>
 #include <semaphore.h>
 #include <signal.h>
+#include <map>
+#include <mutex>
+#include <set>
 
 class PrimarySourceProvider;
 class Sender;
@@ -37,22 +41,46 @@ public:
 
     void run();
     void endSession();
+    void setEvents(const std::map<std::string, int> &eventsMap_);
 
 private:
 
     friend void ::handleException();
 
+    // Stuff that needs to be accessed in any child processes
+    struct SharedData
+    {
+        sem_t startProfile;
+
+        SharedData()
+                : startProfile()
+        {
+            sem_init(&startProfile, 1, 0);
+        }
+
+        ~SharedData()
+        {
+            sem_destroy(&startProfile);
+        }
+    };
+
     static std::atomic<Child *> gSingleton;
 
     static Child * getSingleton();
     static void signalHandler(int signum);
-    static void * durationThreadStaticEntryPoint(void *);
-    static void * stopThreadStaticEntryPoint(void *);
-    static void * senderThreadStaticEntryPoint(void *);
+    static void childSignalHandler(int signum);
+
+    /**
+     * Sleeps for a specified time but can be interrupted
+     *
+     * @param timeout_duration
+     * @return true if slept for whole time
+     */
+    template<class Rep, class Period>
+    bool sleep(const std::chrono::duration<Rep, Period>& timeout_duration);
 
     sem_t haltPipeline;
     sem_t senderThreadStarted;
-    sem_t startProfile;
     sem_t senderSem;
     std::unique_ptr<Source> primarySource;
     std::unique_ptr<Source> externalSource;
@@ -62,17 +90,27 @@ private:
     PrimarySourceProvider & primarySourceProvider;
     OlySocket * socket;
     int numExceptions;
+    std::timed_mutex sleepMutex;
+    std::atomic_flag sessionEnded;
+    std::atomic_bool commandTerminated;
+    int commandPid;
+
+    std::map<std::string, int> eventsMap;
+    std::unique_ptr<SharedData, std::function<void(SharedData *)>> sharedData;
 
     Child(PrimarySourceProvider & primarySourceProvider);
     Child(PrimarySourceProvider & primarySourceProvider, OlySocket & sock);
     Child(bool local, PrimarySourceProvider & primarySourceProvider, OlySocket * sock);
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(Child);
+    CLASS_DELETE_COPY_MOVE(Child)
+    ;
 
     void cleanupException();
-    void * durationThreadEntryPoint();
-    void * stopThreadEntryPoint();
-    void * senderThreadEntryPoint();
+    void terminateCommand();
+    void durationThreadEntryPoint();
+    void stopThreadEntryPoint();
+    void senderThreadEntryPoint();
+    void watchPidsThreadEntryPoint(std::set<int> &);
 };
 
 #endif //__CHILD_H__

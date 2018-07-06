@@ -44,7 +44,9 @@ private:
     OlyServerSocket mMveStartupUds;
     OlyServerSocket mMidgardStartupUds;
     OlyServerSocket mUtgardStartupUds;
+#ifdef TCP_ANNOTATIONS
     OlyServerSocket mAnnotate;
+#endif
     OlyServerSocket mAnnotateUds;
     int mInterruptFd;
     int mMidgardUds;

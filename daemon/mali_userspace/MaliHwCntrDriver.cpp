@@ -132,10 +132,19 @@ namespace mali_userspace
     }
 
     MaliHwCntrDriver::MaliHwCntrDriver()
-        :   mReader (NULL),
+        :   mUserSpecifiedDeviceType(),
+            mUserSpecifiedDevicePath(),
+            mReader (NULL),
             mEnabledCounterKeys (NULL),
             mPolledDriver (nullptr)
     {
+    }
+
+    void MaliHwCntrDriver::initialize(const char * userSpecifiedDeviceType, const char * userSpecifiedDevicePath)
+    {
+        this->mUserSpecifiedDeviceType = userSpecifiedDeviceType;
+        this->mUserSpecifiedDevicePath = userSpecifiedDevicePath;
+
         query();
 
         // add GPU clock driver
@@ -178,7 +187,7 @@ namespace mali_userspace
         }
         else {
             // query for the device
-            device = mali_userspace::enumerateMaliHwCntrDrivers();
+            device = mali_userspace::enumerateMaliHwCntrDrivers(mUserSpecifiedDeviceType, mUserSpecifiedDevicePath);
             if (device == NULL) {
                 return false;
             }
@@ -235,7 +244,7 @@ namespace mali_userspace
         return true;
     }
 
-    bool MaliHwCntrDriver::claimCounter(const Counter & counter) const
+    bool MaliHwCntrDriver::claimCounter(Counter & counter) const
     {
         // do not claim if another driver already has
         if (counter.getDriver() != NULL) {

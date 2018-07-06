@@ -23,7 +23,7 @@ public:
     {
     }
 
-    bool claimCounter(const Counter &counter) const;
+    bool claimCounter(Counter &counter) const;
     void resetCounters();
     void setupCounter(Counter &counter);
 
