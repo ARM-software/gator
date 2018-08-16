@@ -64,6 +64,9 @@
   <!-- Cavium -->
   <pmu pmnc_name="ARMv8_Cavium_Thunder" cpuid="0x430a1" core_name="ThunderX" pmnc_counters="6" profile="8a"/>
 
+  <!-- Ampere -->
+  <pmu pmnc_name="ARMv8_Ampere_eMAG" cpuid="0x50000" core_name="eMAG" pmnc_counters="6" profile="8a"/>
+
   <!-- This is a guess, but at least the CPU will be recognized -->
   <pmu pmnc_name="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6" profile="8a"/>
 
