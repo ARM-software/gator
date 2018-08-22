@@ -1,0 +1,46 @@
+<!-- Copyright (c) 2018, Ampere Computing LLC -->
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+ <counter_set name="L3C_cnt" count="4"/>
+  <category name="L3C" counter_set="L3C_cnt" per_cpu="no">
+    <!--CYCLES-->
+    <event counter="L3C_ccnt" title="L3C Clock" event="0x0000" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--L3_CACHE-->
+    <event title="L3 Cache" event="0x0001" name="Read hit" description="Read is a hit." />
+    <event title="L3 Cache" event="0x0002" name="Read miss" description="Read is a miss." />
+    <event title="L3 Cache" event="0x0003" name="Index flush eviction" description="Index flush causes a (dirty) eviction." />
+    <event title="L3 Cache" event="0x0004" name="Write caused replacement" description="Write causes a replacement." />
+    <event title="L3 Cache" event="0x0005" name="Write did not cause replacement" description="Write causes no replacement." />
+    <event title="L3 Cache" event="0x0006" name="Clean (eviction)" description="A clean line was replaced." />
+    <event title="L3 Cache" event="0x0007" name="Dirty (eviction)" description="A dirty line was replaced and evicted." />
+    <event title="L3 Cache" event="0x0008" name="Reads" description="Csw reads." />
+    <event title="L3 Cache" event="0x0009" name="Writes" description="Csw writes." />
+    <event title="L3 Cache" event="0x000a" name="Requests" description="Csw requests = Csw Reads + Csw Writes + Csw other ops." />
+    <event title="L3 Cache" event="0x000b" name="TQ bank conflict issue stall" description="The TQ can't issue due to a bank conflict." />
+    <event title="L3 Cache" event="0x000c" name="TQ full" description="TQ is full." />
+    <event title="L3 Cache" event="0x000d" name="ACKQ full" description="ACKQ is full." />
+    <event title="L3 Cache" event="0x000e" name="WDB full" description="WDB is full." />
+    <event title="L3 Cache" event="0x0010" name="ODB full" description="ODB is full." />
+    <event title="L3 Cache" event="0x0011" name="WBQ full" description="WBQ is full." />
+    <event title="L3 Cache" event="0x0012" name="Input request async FIFO stall" description="The Csw input request async FIFO is stalled." />
+    <event title="L3 Cache" event="0x0013" name="Output request async FIFO stall" description="The Csw output request async FIFO is stalled." />
+    <event title="L3 Cache" event="0x0014" name="Output data async FIFO stall" description="The Csw output data FIFO is stalled." />
+    <event title="L3 Cache" event="0x0015" name="Total insertions (==writes)" description="L2c writebacks." />
+    <event title="L3 Cache" event="0x0016" name="SIP insertions with R bit set" description="SIP insertions with R bit set." />
+    <event title="L3 Cache" event="0x0017" name="SIP insertions with R bit clear" description="SIP insertions with R bit clear." />
+    <event title="L3 Cache" event="0x0018" name="DIP insertions with R bit set" description="DIP insertions with R bit set." />
+    <event title="L3 Cache" event="0x0019" name="DIP insertions with R bit clear" description="DIP insertions with R bit clear." />
+    <event title="L3 Cache" event="0x001a" name="DIP insertions force R bit set" description="DIP insertions where filter predicts not to set R bit and DIP sets it." />
+    <event title="L3 Cache" event="0x001b" name="Egressions" description="Egressions." />
+    <event title="L3 Cache" event="0x001c" name="Replacements" description="Clean or dirty data is replaced." />
+    <event title="L3 Cache" event="0x001d" name="Old replacements" description="Replaced data is marked old." />
+    <event title="L3 Cache" event="0x001e" name="Young replacements" description="Replaced data is marked young." />
+    <event title="L3 Cache" event="0x001f" name="R bit set replacements" description="Replaced data is marked R=1." />
+    <event title="L3 Cache" event="0x0020" name="R bit clear replacements" description="Replaced data is marked R=0." />
+    <event title="L3 Cache" event="0x0021" name="Old R replacements" description="Replaced data is marked old and R=1." />
+    <event title="L3 Cache" event="0x0022" name="Old NR replacements" description="Replaced data is marked old and R=0." />
+    <event title="L3 Cache" event="0x0023" name="Young R replacements" description="Replaced data is marked young and R=1." />
+    <event title="L3 Cache" event="0x0024" name="Young NR replacements" description="Replaced data is marked young and R=0." />
+    <event title="L3 Cache" event="0x0025" name="Bloom filter clearings" description="Bloom filter clearings." />
+    <event title="L3 Cache" event="0x0026" name="Generation flips" description="Generation flips." />
+    <event title="L3 Cache" event="0x0027" name="Voltage droop detected" description="Voltage droop detected by L3C voltage droop detector." />
+  </category>

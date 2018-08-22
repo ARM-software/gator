@@ -76,4 +76,7 @@
   <uncore_pmu pmnc_name="ccn" core_name="ARM_CCN_5XX" pmnc_counters="8"/>
   <uncore_pmu pmnc_name="l2c_310" core_name="L2C-310" pmnc_counters="2" has_cycles_counter="no"/>
   <uncore_pmu pmnc_name="arm_dsu_%d" core_name="DSU" pmnc_counters="6" />
+
+  <!-- Ampere -->
+  <uncore_pmu pmnc_name="l3c%d" core_name="L3C" pmnc_counters="4" has_cycles_counter="yes"/>
 </pmus>
