@@ -80,4 +80,5 @@
   <!-- Ampere -->
   <uncore_pmu pmnc_name="l3c%d" core_name="L3C" pmnc_counters="4" has_cycles_counter="yes"/>
   <uncore_pmu pmnc_name="mc%d" core_name="MCU" pmnc_counters="4" has_cycles_counter="yes"/>
+  <uncore_pmu pmnc_name="mcb%d" core_name="MCB" pmnc_counters="4" has_cycles_counter="yes"/>
 </pmus>

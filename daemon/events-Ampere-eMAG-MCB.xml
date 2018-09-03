@@ -1,0 +1,58 @@
+<!-- Copyright (c) 2018, Ampere Computing LLC -->
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+ <counter_set name="MCB_cnt" count="4"/>
+  <category name="MCB" counter_set="MCB_cnt" per_cpu="no">
+    <!--CYCLES-->
+    <event counter="MCB_ccnt" title="MCB Clock" event="0x0000" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--Memory Subsystem-->
+    <event title="Memory Subsystem" event="0x0001" name="Req recv" description="Request (Read or Write) Received from CSW." />
+    <event title="Memory Subsystem" event="0x0002" name="Rd req recv" description="Read Request Received from CSW." />
+    <event title="Memory Subsystem" event="0x0003" name="Rd req recv-2" description="Read Request Received from CSW (Same as Event 02)." />
+    <event title="Memory Subsystem" event="0x0004" name="Wr req recv" description="Write Request Received from CSW." />
+    <event title="Memory Subsystem" event="0x0005" name="Wr req recv-2" description="Write Request Received from CSW (Same as Event 04)." />
+    <event title="Memory Subsystem" event="0x0006" name="Rd req sent to MCU" description="Initial (not retry) read request sent to MCU#n." />
+    <event title="Memory Subsystem" event="0x0007" name="Rd req sent to MCU-2" description="Initial (not retry) read request sent to MCU#n (same as event 06)." />
+    <event title="Memory Subsystem" event="0x0008" name="Rd req sent spec to MCU" description="A read request is sent before Global Ack received (i.e. speculatively) to MCU#n." />
+    <event title="Memory Subsystem" event="0x0009" name="Rd req sent spec to MCU-2" description="A read request is sent before Global Ack received (i.e. speculatively) to MCU#n (Same as event 08)." />
+    <event title="Memory Subsystem" event="0x000a" name="Glbl ack recv for rd req sent spec to MCU" description="Global Ack received for read request previously sent (speculatively) to MCU#n." />
+    <event title="Memory Subsystem" event="0x000b" name="Glbl ack go for rd req sent spec to MCU" description="Global Ack “Go” received for read request previously sent (speculatively) to MCU#n." />
+    <event title="Memory Subsystem" event="0x000c" name="Glbl ack nogo for rd req sent spec to MCU" description="Global Ack “NoGo” received for read request previously sent (speculatively) to MCU#n." />
+    <event title="Memory Subsystem" event="0x000d" name="Glbl ack go for any rd req" description="Global Ack “Go” received for any read request, either sent previously or not." />
+    <event title="Memory Subsystem" event="0x000e" name="Glbl ack go for any rd req-2" description="Global Ack “Go” received for any read request, either sent previously or not." />
+    <event title="Memory Subsystem" event="0x000f" name="Wr request sent to MCU" description="Initial (not retry) write request sent to MCU#n." />
+    <event title="Memory Subsystem" event="0x0010" name="GAck recv" description="Global Ack Received from CSW." />
+    <event title="Memory Subsystem" event="0x0011" name="Rd GAck recv" description="Global Ack For Read Received from CSW." />
+    <event title="Memory Subsystem" event="0x0012" name="Wr GAck recv" description="Global Ack For Read Received from CSW." />
+    <event title="Memory Subsystem" event="0x0013" name="Cancel rd GAck" description="MCB receives Global Ack from CSW indicating cancelled read." />
+    <event title="Memory Subsystem" event="0x0014" name="Cancel wr GAck" description="MCB receives Global Ack from CSW indicating cancelled write." />
+    <event title="Memory Subsystem" event="0x0015" name="MCB-CSW req stall" description="MCB stalls CSW Request Interface." />
+    <event title="Memory Subsystem" event="0x0016" name="MCU req intf blocked" description="Mcb to Mcu Request interface stall." />
+    <event title="Memory Subsystem" event="0x0017" name="MCB-MCU rd intf stall" description="Mcb stalls MCU#n read data interface." />
+    <event title="Memory Subsystem" event="0x0018" name="CSW rd intf blocked" description="The CSW read data response Async FIFO interface is blocked." />
+    <event title="Memory Subsystem" event="0x0019" name="CSW local ack intf blocked" description="The CSW Local Ack response Async FIFO interface is blocked." />
+    <event title="Memory Subsystem" event="0x001a" name="MCU req table full" description="The MCU#n Request Table is full." />
+    <event title="Memory Subsystem" event="0x001b" name="MCU status table full" description="The MCU#n Status Table is full." />
+    <event title="Memory Subsystem" event="0x001c" name="MCU write table full" description="The MCU#n  Write Data Table is full." />
+    <event title="Memory Subsystem" event="0x001d" name="MCU rdreceipt resp" description="READRECEIPT response received from MCU#n." />
+    <event title="Memory Subsystem" event="0x001e" name="MCU wrcomplete resp" description="WRITECOMPLETE response received from MCU#n ." />
+    <event title="Memory Subsystem" event="0x001f" name="MCU retryack resp" description="RETRYACK response received from MCU#n." />
+    <event title="Memory Subsystem" event="0x0020" name="MCU pcrdgrant resp" description="PCRDGRANT response from MCU#n." />
+    <event title="Memory Subsystem" event="0x0021" name="MCU req from lastload" description="Request sent to MCU#n from LastLoad register." />
+    <event title="Memory Subsystem" event="0x0022" name="MCU req from bypass" description="Request sent to MCU#n as bypass from CSW." />
+    <event title="Memory Subsystem" event="0x0023" name="Voltage droop detect" description="Voltage Droop Detected in MCB." />
+    <event title="Memory Subsystem" event="0x0031" name="Req to GAck latency" description="Latency from Any Request Received (event 01) to Global Ack." />
+    <event title="Memory Subsystem" event="0x0032" name="Rd req to LAck latency" description="Latency from Read Request Received (event 02) to Local Ack for Read." />
+    <event title="Memory Subsystem" event="0x0033" name="Rd req to GAck latency" description="Latency from Read Request Received (event 03) to Global Ack for Read." />
+    <event title="Memory Subsystem" event="0x0034" name="Wr req to LAck latency" description="Latency from Read Request Received (event 04) to Local Ack for Write." />
+    <event title="Memory Subsystem" event="0x0035" name="Wr req to GAck latency" description="Latency from Write Request (event 05) to Global Ack for Write." />
+    <event title="Memory Subsystem" event="0x0036" name="Sent MCU rd req to cmpl or cancel" description="Latency from Read Send (event 06) to MCU Read Receipt or request cancellation." />
+    <event title="Memory Subsystem" event="0x0037" name="Sent MCU rd req to final cmpl" description="Latency from Read Send (event 07) to final completion of processing (i.e. Status Table entry retired)." />
+    <event title="Memory Subsystem" event="0x0038" name="Spec sent MCU rd req to GAck latency" description="Latency from Speculative Read Send (event 08) to Global Ack received." />
+    <event title="Memory Subsystem" event="0x0039" name="Spec sent MCU rd req to final cmpl latency" description="Latency from Speculative Read Send (event 09) to final completion of processing (i.e. Status Table entry retired)." />
+    <event title="Memory Subsystem" event="0x003a" name="GAck recv for spec sent rd to req cmpl" description="Latency from Global Ack Received for speculatively sent read (event 10) to final completion of processing (i.e. Status Table entry retired).  Both successful and dropped requests counted." />
+    <event title="Memory Subsystem" event="0x003b" name="GAck go recv for spec sent to rd req cmpl" description="Latency from Global Ack “Go”Received for speculatively sent read (event 11) to final completion of processing (i.e. Status Table entry retired).  Only successful requests counted." />
+    <event title="Memory Subsystem" event="0x003c" name="GAck nogo recv for spec sent to rd req cmpl" description="Latency from Global Ack “NoGo”Received for speculatively sent read (event 12) to final completion of processing (i.e. Status Table entry retired).  Only dropped requests counted." />
+    <event title="Memory Subsystem" event="0x003d" name="GAck go recv for any rd req sent to req cmpl" description="Latency from Global Ack “Go”Received for any read (event 13) to final completion of processing (i.e. Status Table entry retired).  Only successful requests counted." />
+    <event title="Memory Subsystem" event="0x003e" name="GAck go recv for any rd req to rd returned latency" description="Latency from Global Ack “Go”Received for any read (event 14) to Read Data returned to CSW.    Only successful requests counted." />
+    <event title="Memory Subsystem" event="0x003f" name="Wr req sent to wr cmpl for MCU latency" description="Latency from Write Request Sent to MCU#n (event 15) to write complete." />
+  </category>
