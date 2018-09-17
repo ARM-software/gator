@@ -1,0 +1,50 @@
+<!-- Copyright (c) 2018, Ampere Computing LLC -->
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+ <counter_set name="MCU_cnt" count="4"/>
+  <category name="MCU" counter_set="MCU_cnt" per_cpu="no">
+    <!--CYCLES-->
+    <event counter="MCU_ccnt" title="MCU Clock" event="0x0000" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <!--Memory Controller-->
+    <event title="Memory Controller" event="0x0001" name="Act sent" description="DMC sent ACT command on DFI." />
+    <event title="Memory Controller" event="0x0002" name="Pre sent" description="DMC sent PRE command on DFI." />
+    <event title="Memory Controller" event="0x0003" name="Rd sent" description="DMC sent RD command on DFI." />
+    <event title="Memory Controller" event="0x0004" name="Rda sent" description="DMC sent RDA command on DFI." />
+    <event title="Memory Controller" event="0x0005" name="Wr sent" description="DMC sent WR command on DFI." />
+    <event title="Memory Controller" event="0x0006" name="Wra sent" description="DMC sent WRA command on DFI." />
+    <event title="Memory Controller" event="0x0007" name="Pd entry valid" description="PDE sent." />
+    <event title="Memory Controller" event="0x0008" name="Sref entry valid" description="SRE sent." />
+    <event title="Memory Controller" event="0x0009" name="Prea sent" description="DMC sent PREA command on DFI." />
+    <event title="Memory Controller" event="0x000a" name="Ref sent" description="DMC sent REF command on DFI." />
+    <event title="Memory Controller" event="0x000b" name="Rd or Rda sent" description="DMC sent RD or RDA command on DFI." />
+    <event title="Memory Controller" event="0x000c" name="Wr or Wra sent" description="DMC sent WR or WRA command on DFI." />
+    <event title="Memory Controller" event="0x000d" name="RAW hazard" description="Read collision with prior write." />
+    <event title="Memory Controller" event="0x000e" name="WAR hazard" description="Write collision with prior read." />
+    <event title="Memory Controller" event="0x000f" name="WAW hazard" description="Write collision with prior write." />
+    <event title="Memory Controller" event="0x0010" name="RAR hazard" description="Read collision with prior read." />
+    <event title="Memory Controller" event="0x0011" name="RAW or WAR or WAW hazard" description="Any wr/rd or rd/wr collision." />
+    <event title="Memory Controller" event="0x0012" name="HpRd or LpRd or Wr req valid" description="DMC rd/wr request valid." />
+    <event title="Memory Controller" event="0x0013" name="LpRd req valid" description="DMC read request valid, Qos == 0." />
+    <event title="Memory Controller" event="0x0014" name="HpRd req valid" description="DMC read request valid, QoS != 0." />
+    <event title="Memory Controller" event="0x0015" name="HpRd or LpRd req valid" description="DMC read request valid." />
+    <event title="Memory Controller" event="0x0016" name="Wr req valid" description="DMC write request valid." />
+    <event title="Memory Controller" event="0x0017" name="Partial Wr req valid" description="DMC partial write request valid." />
+    <event title="Memory Controller" event="0x0018" name="Rd retry" description="DMC read request given retry response." />
+    <event title="Memory Controller" event="0x0019" name="Wr retry" description="DMC write request given retry response." />
+    <event title="Memory Controller" event="0x001a" name="Retry grant" description="DMC sent retry grant to MCB." />
+    <event title="Memory Controller" event="0x001b" name="Rank change" description="DMC signaling a rank change." />
+    <event title="Memory Controller" event="0x001c" name="Dir change" description="DMC signaling a rd/wr turnaround." />
+    <event title="Memory Controller" event="0x001d" name="Rank Dir change" description="DMC signaling a rd/wr turnaround with rank change." />
+    <event title="Memory Controller" event="0x001e" name="Rank active" description="DMC signaling that selected rank(s) are active." />
+    <event title="Memory Controller" event="0x001f" name="Rank idle" description="DMC signals that selected rank(s) are idle." />
+    <event title="Memory Controller" event="0x0020" name="Rank in Pd" description="DMC signals that the selected rank(s) are in power-down." />
+    <event title="Memory Controller" event="0x0021" name="Rank in Sref" description="DMC signals that the selected rank(s) are in self-refresh." />
+    <event title="Memory Controller" event="0x0022" name="Queue fill gt thresh" description="DMC entry count is greater than threashold." />
+    <event title="Memory Controller" event="0x0023" name="Queued Rds gt thresh" description="DMC read entry count is greater than threshold." />
+    <event title="Memory Controller" event="0x0024" name="Queued Wrs gt thresh" description="DMC write entry count is greater than threshold." />
+    <event title="Memory Controller" event="0x0025" name="Phy updt cmplt" description="DMC signals that a Phy update has been completed." />
+    <event title="Memory Controller" event="0x0026" name="Tz fail" description="DMC signals that a correctable error was detected in the indicated rank and bank." />
+    <event title="Memory Controller" event="0x0027" name="Dram errC" description="DMC signals that a correctable error was detected in the indicated rank and bank." />
+    <event title="Memory Controller" event="0x0028" name="Dram errd" description="DMC signals that an uncorrectable error was detected in the indicated rank and bank." />
+    <event title="Memory Controller" event="0x0029" name="Tmac limit reached" description="DMC signals that a bank row has reached the tMAC threshold for triggering a Target Row Refresh." />
+    <event title="Memory Controller" event="0x002a" name="Tmaw tracker full" description="DMC signals that the tMAC/tMAW tracking resource is full." />
+  </category>

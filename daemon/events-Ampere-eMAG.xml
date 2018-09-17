@@ -1,0 +1,113 @@
+<!-- Copyright (c) 2018, Ampere Computing LLC -->
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+ <counter_set name="ARMv8_Ampere_eMAG_cnt" count="6"/>
+  <category name="Ampere_eMAG" counter_set="ARMv8_Ampere_eMAG_cnt" per_cpu="yes" supports_event_based_sampling="yes">
+    <event counter="ARMv8_Ampere_eMAG_ccnt" event="0x11" title="Clock" name="CPU_CYCLES" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+    <event event="0x00" title="Instruction" name="SW_INCR" description="Instruction architecturally executed, software increment"/>
+    <event event="0x01" title="Cache" name="L1I_CACHE_REFILL" description="Level 1 instruction cache refill"/>
+    <event event="0x02" title="Cache" name="L1I_TLB_REFILL" description="Level 1 instruction TLB refill"/>
+    <event event="0x03" title="Cache" name="L1D_CACHE_REFILL" description="Level 1 data cache refill"/>
+    <event event="0x04" title="Cache" name="L1D_CACHE_ACCESS" description="Level 1 data cache access"/>
+    <event event="0x05" title="Cache" name="L1D_TLB_REFILL" description="Level 1 data TLB refill"/>
+    <event event="0x08" title="Instruction" name="INST_RETIRED" description="Instruction architecturally executed"/>
+    <event event="0x09" title="Exception" name="EXC_TAKEN" description="Exception taken"/>
+    <event event="0x0a" title="Exception" name="EXC_RETURN" description="Instruction architecturally executed, condition code check pass, exception return"/>
+    <event event="0x0b" title="Instruction" name="CID_WRITE_RETIRED" description="Instruction architecturally executed, condition code check pass, write to CONTEXTIDR"/>
+    <event event="0x10" title="Branch" name="BR_MIS_PRED" description="Mispredicted or not predicted branch speculatively executed"/>
+    <event event="0x12" title="Branch" name="BR_PRED" description="Predictable branch speculatively executed"/>
+    <event event="0x13" title="Memory" name="MEM_ACCESS" description="Data memory access"/>
+    <event event="0x14" title="Cache" name="L1I_CACHE_ACCESS" description="Level 1 instruction cache access"/>
+    <event event="0x16" title="Cache" name="L2D_CACHE_ACCESS" description="Level 2 data cache access"/>
+    <event event="0x17" title="Cache" name="L2D_CACHE_REFILL" description="Level 2 data cache refill"/>
+    <event event="0x18" title="Cache" name="L2D_CACHE_WB" description="L2 data cache Write-Back"/>
+    <event event="0x19" title="Bus" name="BUS_ACCESS" description="Bus access"/>
+    <event event="0x1a" title="Memory" name="MEM_ERROR" description="Local memory error. This event counts any correctable or uncorrectable memory error (ECC or parity) in the protected core RAMs"/>
+    <event event="0x1b" title="Instruction" name="INST_SPEC" description="Operation speculatively executed"/>
+    <event event="0x1c" title="Instruction" name="TTBR_WRITE_RETIRED" description="Instruction architecturally executed (condition check pass) - Write to TTBR"/>
+    <event event="0x1e" title="Counter" name="CHAIN" description="For odd-numbered counters, increments the count by one for each overflow of the preceding even-numbered counter. For even-numbered counters there is no increment"/>
+    <event event="0x21" title="Instruction" name="BR_RETIRED" description="Instruction architecturally executed, branch. This event counts all branches, taken or not. This excludes exception entries, debug entries and CCFAIL branches"/>
+    <event event="0x22" title="Instruction" name="BR_MISPRED_RETIRED" description="Instruction architecturally executed, mispredicted branch. The event counts any branch counted by BR_RETIRED which is not correctly predicted and causes a pipeline flush"/>
+    <event event="0x25" title="Cache" name="L1D_TLB_ACCESS" description="Level 1 data TLB access. This event counts any load or store operation which accesses the data L1 TLB"/>
+    <event event="0x26" title="Cache" name="L1I_TLB_ACCESS" description="Level 1 instruction TLB access. This event counts any instruction fetch which accesses the instruction L1 TLB"/>
+    <event event="0x34" title="Cache" name="L2D_TLB_ACCESS" description="Level 2 access to data TLB that caused a page table walk. This event counts on any data access which causes L2D_TLB_REFILL to count"/>
+    <event event="0x35" title="Cache" name="L2I_TLB_ACCESS" description="Level 2 access to instruction TLB that caused a page table walk. This event counts on any instruction access which causes L2D_TLB_REFILL to count"/>
+    <event event="0x40" title="Cache" name="L1D_CACHE_RD" description="Level 1 data cache access, read"/>
+    <event event="0x41" title="Cache" name="L1D_CACHE_WR" description="Level 1 data cache access, write"/>
+    <event event="0x42" title="Cache" name="L1D_CACHE_REFILL_RD" description="Level 1 data cache refill, read"/>
+    <event event="0x48" title="Cache" name="L1D_CACHE_INVAL" description="Level 1 data cache invalidate"/>
+    <event event="0x4c" title="Cache" name="L1D_TLB_REFILL_RD" description="Level 1 data TLB refill, read"/>
+    <event event="0x4d" title="Cache" name="L1D_TLB_REFILL_WR" description="Level 1 data TLB refill, write"/>
+    <event event="0x50" title="Cache" name="L2D_CACHE_RD" description="Level 2 data cache access, read"/>
+    <event event="0x51" title="Cache" name="L2D_CACHE_WR" description="Level 2 data cache access, write"/>
+    <event event="0x52" title="Cache" name="L2D_CACHE_REFILL_RD" description="Level 2 data cache refill, read"/>
+    <event event="0x53" title="Cache" name="L2D_CACHE_REFILL_WR" description="Level 2 data cache refill, write"/>
+    <event event="0x56" title="Cache" name="L2D_CACHE_WB_VICTIM" description="Level 2 data cache Write-Back, victim"/>
+    <event event="0x57" title="Cache" name="L2D_CACHE_WB_CLEAN" description="Level 2 data cache Write-Back, cleaning and coherency"/>
+    <event event="0x58" title="Cache" name="L2D_CACHE_INVAL" description="Level 2 data cache invalidate" />
+    <event event="0x60" title="Bus" name="BUS_ACCESS_RD" description="The event counts for every beat of data transferred over the read data channel between the core and the SCU"/>
+    <event event="0x61" title="Bus" name="BUS_ACCESS_WR" description="The event counts for every beat of data transferred over the write data channel between the core and the SCU"/>
+    <event event="0x62" title="Bus" name="BUS_ACCESS_SHARED" description="Bus access, Normal, Cacheable, Shareable"/>
+    <event event="0x63" title="Bus" name="BUS_ACCESS_NOT_SHARED" description="Bus access, not Normal, Cacheable, or Shareable"/>
+    <event event="0x64" title="Bus" name="BUS_ACCESS_NORMAL" description="Bus access, Normal"/>
+    <event event="0x65" title="Bus" name="BUS_ACCESS_PERIPH" description="Bus access, peripheral"/>
+    <event event="0x66" title="Memory" name="MEM_ACCESS_RD" description="Data memory access, read"/>
+    <event event="0x67" title="Memory" name="MEM_ACCESS_WR" description="Data memory access, write"/>
+    <event event="0x68" title="Memory" name="UNALIGNED_LD_SPEC" description="Unaligned access, read"/>
+    <event event="0x69" title="Memory" name="UNALIGNED_ST_SPEC" description="Unaligned access, write"/>
+    <event event="0x6a" title="Memory" name="UNALIGNED_LDST_SPEC" description="Unaligned access"/>
+    <event event="0x6c" title="Intrinsic" name="LDREX_SPEC" description="Exclusive operation speculatively executed, LDREX, or LDX"/>
+    <event event="0x6d" title="Intrinsic" name="STREX_PASS_SPEC" description="Exclusive operation speculatively executed, STREX or STX pass."/>
+    <event event="0x6e" title="Intrinsic" name="STREX_FAIL_SPEC" description="Exclusive operation speculatively executed, STREX, or STX fail"/>
+    <event event="0x6f" title="Intrinsic" name="STREX_SPEC" description="Exclusive operation speculatively executed, STREX or STX."/>
+    <event event="0x70" title="Instruction" name="LD_SPEC" description="Operation speculatively executed, load"/>
+    <event event="0x71" title="Instruction" name="ST_SPEC" description="Operation speculatively executed, store"/>
+    <event event="0x72" title="Instruction" name="LDST_SPEC" description="Operation speculatively executed, load or store"/>
+    <event event="0x73" title="Instruction" name="DP_SPEC" description="Operation speculatively executed, integer data processing"/>
+    <event event="0x74" title="Instruction" name="ASE_SPEC" description="Operation speculatively executed, Advanced SIMD instruction"/>
+    <event event="0x75" title="Instruction" name="VFP_SPEC" description="Operation speculatively executed, floating-point instruction"/>
+    <event event="0x76" title="Instruction" name="PC_WRITE_SPEC" description="Operation speculatively executed, software change of the PC"/>
+    <event event="0x77" title="Instruction" name="CRYPTO_SPEC" description="Operation speculatively executed, Cryptographic instruction"/>
+    <event event="0x78" title="Branch" name="BR_IMMED_SPEC" description="Branch speculatively executed, immediate branch"/>
+    <event event="0x79" title="Branch" name="BR_RETURN_SPEC" description="Branch speculatively executed, procedure return"/>
+    <event event="0x7a" title="Branch" name="BR_INDIRECT_SPEC" description="Branch speculatively executed - Indirect branch"/>
+    <event event="0x7c" title="Instruction" name="ISB_SPEC" description="Barrier speculatively executed, ISB"/>
+    <event event="0x7d" title="Instruction" name="DSB_SPEC" description="Barrier speculatively executed, DSB"/>
+    <event event="0x7e" title="Instruction" name="DMB_SPEC" description="Barrier speculatively executed, DMB"/>
+    <event event="0x81" title="Exception" name="EXC_UNDEF" description="Exception taken, other synchronous"/>
+    <event event="0x82" title="Exception" name="EXC_SVC" description="Exception taken, Supervisor Call"/>
+    <event event="0x83" title="Exception" name="EXC_PABORT" description="Exception taken, Instruction Abort"/>
+    <event event="0x84" title="Exception" name="EXC_DABORT" description="Exception taken, Data Abort and SError"/>
+    <event event="0x86" title="Exception" name="EXC_IRQ" description="Exception taken, IRQ"/>
+    <event event="0x87" title="Exception" name="EXC_FIQ" description="Exception taken, FIQ"/>
+    <event event="0x8a" title="Exception" name="EXC_HVC" description="Exception taken, Hypervisor Call"/>
+    <event event="0x8b" title="Exception" name="EXC_TRAP_PABORT" description="Exception taken, Instruction Abort not taken locally"/>
+    <event event="0x8c" title="Exception" name="EXC_TRAP_DABORT" description="Exception taken, Data Abort or SError not taken locally"/>
+    <event event="0x8d" title="Exception" name="EXC_TRAP_OTHER" description="Exception taken, Other traps not taken locally"/>
+    <event event="0x8e" title="Exception" name="EXC_TRAP_IRQ" description="Exception taken, IRQ not taken locally"/>
+    <event event="0x8f" title="Exception" name="EXC_TRAP_FIQ" description="Exception taken, FIQ not taken locally"/>
+    <event event="0x90" title="Instruction" name="RD_LD_SPEC" description="Release consistency operation speculatively executed, load-acquire"/>
+    <event event="0x91" title="Instruction" name="RD_ST_SPEC" description="Release consistency operation speculatively executed, store-release"/>
+    <event event="0x100" title="Instruction" name="NOP_SPEC" description="Operation speculatively executed, NOP"/>
+    <event event="0x101" title="Clock" name="FSU_CLOCK_OFF_CYCLES" description="FSU clocking gated off cycle"/>
+    <event event="0x102" title="Cache" name="BTB_MIS_PRED" description="BTB misprediction"/>
+    <event event="0x103" title="Cache" name="ITB_MISS" description="ITB miss"/>
+    <event event="0x104" title="Cache" name="DTB_MISS" description="DTB miss"/>
+    <event event="0x105" title="Cache" name="L1D_CACHE_LATE_MISS" description="Level 1 data cache late miss"/>
+    <event event="0x106" title="Cache" name="L1D_CACHE_PREFETCH" description="Level 1 data cache prefetch request"/>
+    <event event="0x107" title="Cache" name="L2D_CACHE_PREFETCH" description="Level 2 data cache prefetch request"/>
+    <event event="0x108" title="Pipeline" name="DECODE_STALL" description="Decode starved for instruction cycle"/>
+    <event event="0x109" title="Pipeline" name="DISPATCH_STALL" description="Op dispatch stalled cycle"/>
+    <event event="0x10a" title="Pipeline" name="IXA_STALL" description="IXA Op non-issue"/>
+    <event event="0x10b" title="Pipeline" name="IXB_STALL" description="IXB Op non-issue"/>
+    <event event="0x10c" title="Pipeline" name="BX_STALL" description="BX Op non-issue"/>
+    <event event="0x10d" title="Pipeline" name="LX_STALL" description="LX Op non-issue"/>
+    <event event="0x10e" title="Pipeline" name="SX_STALL" description="SX Op non-issue"/>
+    <event event="0x10f" title="Pipeline" name="FX_STALL" description="FX Op non-issue"/>
+    <event event="0x110" title="Clock" name="WAIT_CYCLES" description="Wait state cycle"/>
+    <event event="0x111" title="Cache" name="L1_STAGE2_TLB_REFILL" description="Level 1 stage 2 TLB refill"/>
+    <event event="0x112" title="Cache" name="PAGE_WALK_L0_STAGE1_HIT" description="Page walk cache level-0 stage-1 hit"/>
+    <event event="0x113" title="Cache" name="PAGE_WALK_L1_STAGE1_HIT" description="Page walk cache level-1 stage-1 hit"/>
+    <event event="0x114" title="Cache" name="PAGE_WALK_L2_STAGE1_HIT" description="Page walk cache level-2 stage-1 hit"/>
+    <event event="0x115" title="Cache" name="PAGE_WALK_L1_STAGE2_HIT" description="Page walk cache level-1 stage-2 hit"/>
+    <event event="0x116" title="Cache" name="PAGE_WALK_L2_STAGE2_HIT" description="Page walk cache level-2 stage-2 hit"/>
+  </category>

@@ -64,6 +64,9 @@
   <!-- Cavium -->
   <pmu pmnc_name="ARMv8_Cavium_Thunder" cpuid="0x430a1" core_name="ThunderX" pmnc_counters="6" profile="8a"/>
 
+  <!-- Ampere -->
+  <pmu pmnc_name="ARMv8_Ampere_eMAG" cpuid="0x50000" core_name="eMAG" pmnc_counters="6" profile="8a"/>
+
   <!-- This is a guess, but at least the CPU will be recognized -->
   <pmu pmnc_name="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6" profile="8a"/>
 
@@ -73,4 +76,9 @@
   <uncore_pmu pmnc_name="ccn" core_name="ARM_CCN_5XX" pmnc_counters="8"/>
   <uncore_pmu pmnc_name="l2c_310" core_name="L2C-310" pmnc_counters="2" has_cycles_counter="no"/>
   <uncore_pmu pmnc_name="arm_dsu_%d" core_name="DSU" pmnc_counters="6" />
+
+  <!-- Ampere -->
+  <uncore_pmu pmnc_name="l3c%d" core_name="L3C" pmnc_counters="4" has_cycles_counter="yes"/>
+  <uncore_pmu pmnc_name="mc%d" core_name="MCU" pmnc_counters="4" has_cycles_counter="yes"/>
+  <uncore_pmu pmnc_name="mcb%d" core_name="MCB" pmnc_counters="4" has_cycles_counter="yes"/>
 </pmus>
