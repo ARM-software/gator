@@ -12,6 +12,8 @@
 #include "ClassBoilerPlate.h"
 #include "Driver.h"
 
+bool counterNameFuzzyEquals(const char * properName, const char * fuzzyName);
+
 class DriverCounter
 {
 public:

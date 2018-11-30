@@ -27,8 +27,10 @@ public:
     }
 private:
     char* mConfigurationXML;
+public:
     int mIndex;
 
+private:
     void validate(void);
     int parse(const char* xmlFile, bool printWarningIfUnclaimed);
     int configurationsTag(mxml_node_t *node);

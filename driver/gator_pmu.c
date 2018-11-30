@@ -40,9 +40,13 @@ static struct super_block *gator_sb;
 static struct dentry *gator_events_dir;
 
 static const struct gator_cpu gator_pmu_other = {
+#if defined(__arm__) || defined(__aarch64__)
     .pmnc_name = "Other",
-    .cpuid = 0xfffff,
+#else
+    .pmnc_name = "Perf_Hardware",
+#endif
     .core_name = "Other",
+    .cpuid = 0xfffff,
     .pmnc_counters = 6,
 };
 

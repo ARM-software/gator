@@ -381,6 +381,7 @@ OnlineResult PerfEventGroup::onlineCPU(const uint64_t timestamp, const int cpu, 
                 "    freq: %llu\n"
                 "    task: %llu\n"
                 "    exclude_kernel: %llu\n"
+                "    enable_on_exec: %llu\n"
                 "    inherit: %llu\n"
                 "    sample_id_all: %llu",
                 cpu, event.flags, event.key,
@@ -389,7 +390,8 @@ OnlineResult PerfEventGroup::onlineCPU(const uint64_t timestamp, const int cpu, 
                                 : "<nullptr>")),
                 eventIndex,
                 event.attr.type, typeLabel, event.attr.config, event.attr.sample_period, event.attr.sample_type, event.attr.read_format,
-                event.attr.pinned, event.attr.mmap, event.attr.comm, event.attr.freq, event.attr.task, event.attr.exclude_kernel, event.attr.inherit, event.attr.sample_id_all);
+                event.attr.pinned, event.attr.mmap, event.attr.comm, event.attr.freq, event.attr.task, event.attr.exclude_kernel,
+                event.attr.enable_on_exec, event.attr.inherit, event.attr.sample_id_all);
 
         for (auto tidsIterator = tids.begin(); tidsIterator != tids.end();) {
             const int tid = *tidsIterator;

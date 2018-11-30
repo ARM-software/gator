@@ -101,7 +101,7 @@ namespace
         }
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                            sem_t & startProfile, const std::set<int> &) override
+                                                            sem_t & startProfile, const std::set<int> &, bool) override
         {
             return std::unique_ptr<Source>(new DriverSource(child, senderSem, startProfile));
         }
@@ -192,9 +192,10 @@ namespace
         }
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                            sem_t & startProfile, const std::set<int> & appTids) override
+                                                            sem_t & startProfile, const std::set<int> & appTids,
+                                                            bool enableOnCommandExec) override
         {
-            return std::unique_ptr<Source>(new PerfSource(driver, child, senderSem, startProfile, appTids));
+            return std::unique_ptr<Source>(new PerfSource(driver, child, senderSem, startProfile, appTids, enableOnCommandExec));
         }
 
     private:
@@ -278,7 +279,8 @@ namespace
         }
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                            sem_t & startProfile, const std::set<int> &) override
+                                                            sem_t & startProfile, const std::set<int> &,
+                                                            bool) override
         {
             return std::unique_ptr<Source>(new non_root::NonRootSource(driver, child, senderSem, startProfile));
         }

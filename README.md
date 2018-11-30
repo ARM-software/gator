@@ -1,3 +1,23 @@
+# Gator daemon, driver and related tools
+
+The source code for `gatord`, `gator.ko` `gator.py` and related tools.
+
+## License
+
+* `daemon`, `driver` `python`, `hrtimer_module`, `notify` and `setup` are provided under GPL-2.0-only. See [daemon/COPYING], [driver/COPYING], [python/COPYING], [hrtimer_module/COPYING], [notify/COPYING] and [setup/COPYING] respectively.
+* `annotate` is provided under the BSD-3-Clause license. See [annotate/LICENSE].
+
+This project contains code from other projects listed below. The original license text is included in those source files.
+
+* `libsensors` source code in [daemon/libsensors] licensed under LGPL-2.1-or-later
+* `mxml` source code in [daemon/mxml] licensed under LGPL-2.0 WITH Mini-XML-exception
+* `perf_event.h` from Linux userspace kernel headers in [daemon/k] licensed under GPL-2.0-only WITH Linux-syscall-note
+
+The pre-built `gatord` shipped with Streamline uses [musl]. For musl license information see the COPYRIGHT file shipped with Streamline, or <https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT>
+
+## Contributing
+
+Contributions are accepted under the same license as the associated subproject with developer sign-off as described in [Contributing].
 
 ## Purpose
 
@@ -208,9 +228,9 @@ For Android ART, passing `--no-strip-symbols` to dex2oat will result in function
 
 Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. To see if your Arm compiler supports hardfloat, run `gcc -v` and look for `--with-float=hard`.
 
-To compile for non-hardfloat targets it is necessary to add options `-marm -march=armv4t -mfloat-abi=soft`. It may also be necessary to provide a softfloat filesystem by adding the option `--sysroot`, ex: `--sysroot=../DS-5Examples/distribution/filesystem/armv5t_mtx`. The gatord makefile will do this when run as `make SOFTFLOAT=1 SYSROOT=/path/to/sysroot`
+To compile for non-hardfloat targets it is necessary to add options `-marm -march=armv4t -mfloat-abi=soft`. It may also be necessary to provide a softfloat filesystem by adding the option `--sysroot`, ex: `--sysroot=../Arm_DS_Examples/distribution/filesystem/armv5t_mtx`. The gatord makefile will do this when run as `make SOFTFLOAT=1 SYSROOT=/path/to/sysroot`
 
-The armv5t_mtx filesystem is provided as part of the "DS-5 Linux Example Distribution" package which can be downloaded from the DS-5 Downloads page.
+The armv5t_mtx filesystem is provided as part of the "Arm DS Linux Example Distribution" package which can be downloaded from the Arm Development Suite Downloads page.
 
 Attempting to run an incompatible binary often results in the confusing error message `No such file or directory` when clearly the file exists.
 
@@ -341,8 +361,15 @@ EOF
 update-rc.d rungator.sh defaults
 ```
 
-## GPL License
-
-For license information, please see streamline/gator/daemon/COPYING and streamline/gator/driver/COPYING
-
-The pre-built gatord uses musl from http://www.musl-libc.org/download.html for musl license information see the COPYRIGHT file in the musl tar file.
+[Contributing]: Contributing.md
+[annotate/LICENSE]: annotate/LICENSE
+[daemon/COPYING]: daemon/COPYING
+[daemon/k]: daemon/k
+[daemon/libsensors]: daemon/libsensors
+[daemon/mxml]: daemon/mxml
+[driver/COPYING]: driver/COPYING
+[hrtimer_module/COPYING]: hrtimer_module/COPYING
+[musl]: http://www.musl-libc.org/download.html
+[notify/COPYING]: notify/COPYING
+[python/COPYING]: python/COPYING
+[setup/COPYING]: setup/COPYING

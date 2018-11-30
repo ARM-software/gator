@@ -25,28 +25,30 @@ DriverCounter::~DriverCounter()
 
 
 
-DriverCounter *SimpleDriver::findCounter(Counter &counter) const
-{
-    DriverCounter* dcounter = NULL;
-    for (DriverCounter *driverCounter = mCounters; driverCounter != NULL; driverCounter = driverCounter->getNext()) {
-        if (strcasecmp(driverCounter->getName(), counter.getType()) == 0) {
-            dcounter = driverCounter;
-            counter.setType(driverCounter->getName());
-            break;
+bool counterNameFuzzyEquals(const char * properName, const char * fuzzyName) {
+    if (strcasecmp(properName, fuzzyName) == 0) {
+        return true;
+    } else {
+        //to get the slot name when only part of the counter name is given
+        //for eg: ARMv8_Cortex_A53 --> should be read as ARMv8_Cortex_A53_cnt0
+        std::string counterType = fuzzyName;
+        counterType += "_cnt";
+        if (strncasecmp(properName, counterType.c_str(), counterType.length()) == 0) {
+            return true;
         } else {
-            //to get the slot name when only part of the counter name is given
-            //for eg: ARMv8_Cortex_A53 --> should be read as ARMv8_Cortex_A53_cnt0
-            std::string driverCounterName = driverCounter->getName();
-            std::string counterType = counter.getType();
-            counterType = counterType + "_cnt";
-            driverCounterName = driverCounterName.substr(0, counterType.length());
-            if (strcasecmp(driverCounterName.c_str(), counterType.c_str()) == 0) {
-                dcounter = driverCounter;
-                counter.setType(driverCounter->getName());
-                break;
-            }
+            return false;
         }
     }
-    return dcounter;
+}
+
+DriverCounter *SimpleDriver::findCounter(Counter &counter) const
+{
+    for (DriverCounter *driverCounter = mCounters; driverCounter != NULL; driverCounter = driverCounter->getNext()) {
+        if (counterNameFuzzyEquals(driverCounter->getName(), counter.getType())) {
+            counter.setType(driverCounter->getName());
+            return driverCounter;
+        }
+    }
+    return nullptr;
 }
 

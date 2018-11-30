@@ -228,7 +228,7 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
                     ssize_t bytesRead = 0;
                     while (true)
                     {
-                        const ssize_t bytes = read(pipefd[0], buf + bytesRead, sizeof(buf - bytesRead));
+                        const ssize_t bytes = read(pipefd[0], buf + bytesRead, sizeof(buf) - bytesRead);
                         if (bytes > 0)
                         {
                             bytesRead += bytes;

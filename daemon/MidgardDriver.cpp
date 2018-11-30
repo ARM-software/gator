@@ -163,7 +163,6 @@ void MidgardDriver::query() const
 
             PacketHeader header;
             bool first = true;
-            //uint32_t compatibilityTiebreak = 0;
 
             while (true) {
                 if (!readAll(uds, &header, sizeof(PacketHeader))) {
@@ -181,9 +180,12 @@ void MidgardDriver::query() const
                     handleException();
                 }
 
-                if (header.mReserved0 != 0 || header.mReserved1 != 0) {
-                    continue;
-                }
+                logg.logMessage("MIPE Packet: 0x%x 0x%x 0x%x 0x%x 0x%x",
+                                header.mDataLength,
+                                header.mImplSpec,
+                                header.mPacketIdentifier,
+                                header.mReserved0,
+                                header.mReserved1);
 
                 switch (header.mPacketIdentifier) {
                 case PACKET_SHARED_PARAMETER: {
@@ -207,14 +209,6 @@ void MidgardDriver::query() const
                             logg.logError("mali_magic does not match expected value");
                             handleException();
                         }
-                        /*
-                         for (int i = 0; reinterpret_cast<const char *>(packet->mOffsets + i + 1) <= buf + header.mDataLength && packet->mOffsets[i] != 0; ++i) {
-                         if (i == 3) {
-                         compatibilityTiebreak = *reinterpret_cast<uint32_t *>(buf + packet->mOffsets[i]);
-                         printf("compatibility tiebreak: %i\n", compatibilityTiebreak);
-                         }
-                         }
-                         */
                     }
                     break;
                 }
@@ -237,8 +231,8 @@ void MidgardDriver::query() const
                     }
                 }
                 // fall through
-                /* no break */
 
+                /* no break */
                 case 0x0400:
                 case 0x0402:
                 case 0x0408: {

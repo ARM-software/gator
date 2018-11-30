@@ -237,20 +237,26 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
             result.module = optarg;
             break;
         case 'p': //port
-            if (!stringToInt(&result.port, optarg, 10)) {
-                logg.logError("Port must be an integer");
-                result.parse_error = ERROR_PARSING;
-                return;
+            if (strcasecmp(optarg, "uds") == 0) {
+                logg.logWarning("Using unix domain socket instead of TCP connection");
+                result.port = DISABLE_TCP_USE_UDS_PORT;
             }
-            if ((result.port == 8082) || (result.port == 8083)) {
-                logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for annotations. Please select a different port.", result.port);
-                result.parse_error = ERROR_PARSING;
-                return;
-            }
-            if (result.port < 1 || result.port > 65535) {
-                logg.logError("Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535", result.port);
-                result.parse_error = ERROR_PARSING;
-                return;
+            else {
+                if (!stringToInt(&result.port, optarg, 10)) {
+                    logg.logError("Port must be an integer");
+                    result.parse_error = ERROR_PARSING;
+                    return;
+                }
+                if ((result.port == 8082) || (result.port == 8083)) {
+                    logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for annotations. Please select a different port.", result.port);
+                    result.parse_error = ERROR_PARSING;
+                    return;
+                }
+                if (result.port < 1 || result.port > 65535) {
+                    logg.logError("Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535", result.port);
+                    result.parse_error = ERROR_PARSING;
+                    return;
+                }
             }
             break;
         case 's': //specify path for session xml
@@ -434,10 +440,20 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
                     "                                        '/dev/mali0'. Only valid if --mali-type\n"
                     "                                        is also specified.\n"
                     "  -Z|--mmap-pages <n>                   The maximum number of pages to map per\n"
-                    "                                        mmap'ed perf buffer is equal to <n+1>\n"
+                    "                                        mmap'ed perf buffer is equal to <n+1>.\n"
+                    "                                        Must be a power of 2.\n"
                     "* Arguments available in daemon mode only:\n"
-                    "  -p|--port <port_number>               Port upon which the server listens;\n"
-                    "                                        default is 8080\n"
+                    "  -p|--port <port_number>|uds           Port upon which the server listens;\n"
+                    "                                        default is 8080.\n"
+                    "                                        If the argument given here is 'uds' then\n"
+                    "                                        the TCP socket will be disabled and an \n"
+                    "                                        abstract unix domain socket will be created\n"
+                    "                                        named 'streamline-data'. This is useful\n"
+                    "                                        for Android users where gatord is prevented \n"
+                    "                                        from creating an TCP server socket. Instead \n"
+                    "                                        the user can use \n"
+                    "                                        'adb forward tcp:<local_port> localabstract:streamline-data'\n"
+                    "                                        and connect to localhost:<local_port> in Streamline.\n"
                     "  -a|--allow-command                    Allow the user to issue a command from\n"
                     "                                        Streamline\n"
                     "* Arguments available to local capture mode only:\n"
@@ -468,12 +484,17 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
         case 'Z':
             result.mPerfMmapSizeInPages = -1;
             if (!stringToInt(&result.mPerfMmapSizeInPages, optarg, 0)) {
-                logg.logError("Invalid value for --mmap-pages (%s)", optarg);
+                logg.logError("Invalid value for --mmap-pages (%s): not an integer", optarg);
                 result.parse_error = ERROR_PARSING;
                 result.mPerfMmapSizeInPages = -1;
             }
             else if (result.mPerfMmapSizeInPages < 1) {
-                logg.logError("Invalid value for --mmap-pages (%s)", optarg);
+                logg.logError("Invalid value for --mmap-pages (%s): not more than 0", optarg);
+                result.parse_error = ERROR_PARSING;
+                result.mPerfMmapSizeInPages = -1;
+            }
+            else if (((result.mPerfMmapSizeInPages - 1) & result.mPerfMmapSizeInPages) != 0) {
+                logg.logError("Invalid value for --mmap-pages (%s): not a power of 2", optarg);
                 result.parse_error = ERROR_PARSING;
                 result.mPerfMmapSizeInPages = -1;
             }

@@ -964,9 +964,31 @@ int gator_events_mali_midgard_hw_init(void)
         return 1;
     }
 
+    // Also get kbase_gator_hwcnt_term symbol as will need this to cleanup after call kbase_gator_hwcnt_init
+    SYMBOL_GET(kbase_gator_hwcnt_term, error_count);
+    if (error_count > 0)
+    {
+        // Could not find the symbol in the kernel. Can't proceed.
+        SYMBOL_CLEANUP(kbase_gator_hwcnt_term);
+        SYMBOL_CLEANUP(kbase_gator_hwcnt_init);
+        return 1;
+    }
+
     // a temporary structure that we'll use to obtain gpu id
     result = kbase_gator_hwcnt_init_symbol(&info);
+    gpu_id = info.gpu_id;
+
+    // terminate session
+    if (result != NULL)
+    {
+        kbase_gator_hwcnt_term_symbol(&info, result);
+    }
+
+    // clean up symbols
+    SYMBOL_CLEANUP(kbase_gator_hwcnt_term);
     SYMBOL_CLEANUP(kbase_gator_hwcnt_init);
+
+    // validate result
     if (result == NULL)
     {
         // Could not get the info about the GPU. Can't proceed.
@@ -974,7 +996,6 @@ int gator_events_mali_midgard_hw_init(void)
     }
 
     // now, the info struct has a gpu_id field set to a number, that is architecture-specific
-    gpu_id = info.gpu_id;
     pr_info("gator: Detected GPU ID: %d.\n", gpu_id);
 
     // Identifying the GPU architecture. Version 6 Bifrost.

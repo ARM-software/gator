@@ -78,21 +78,21 @@ static void *syncFunc(void *arg)
 
     return NULL;
 }
-
-PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids)
+PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids, bool enableOnCommandExec)
         : Source(child),
-          mDriver(driver),
           mSummary(0, FRAME_SUMMARY, 1024, &senderSem),
-          mBuffer(NULL),
           mCountersBuf(),
           mCountersGroup(&mCountersBuf, driver.getConfig()),
           mMonitor(),
           mUEvent(),
+          mAppTids(appTids),
+          mDriver(driver),
+          mBuffer(NULL),
           mSenderSem(senderSem),
           mStartProfile(startProfile),
           mInterruptFd(-1),
           mIsDone(false),
-          mAppTids(appTids)
+          enableOnCommandExec(enableOnCommandExec)
 {
 }
 
@@ -141,7 +141,7 @@ bool PerfSource::prepare()
 
     for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
         using Result = OnlineResult;
-        const Result result = mCountersGroup.onlineCPU(currTime, cpu, mAppTids, false, mBuffer, &mMonitor);
+        const Result result = mCountersGroup.onlineCPU(currTime, cpu, mAppTids, !enableOnCommandExec, mBuffer, &mMonitor);
         switch (result) {
         case Result::FAILURE:
             logg.logError("PerfGroups::prepareCPU on mCountersGroup failed");

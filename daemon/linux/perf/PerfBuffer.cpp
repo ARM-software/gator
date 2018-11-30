@@ -38,7 +38,7 @@ PerfBuffer::PerfBuffer()
 PerfBuffer::~PerfBuffer()
 {
     for (auto cpuAndBuf : mBuffers) {
-        munmap(cpuAndBuf.second.buffer, gSessionData.mPageSize + calculateMMapLength() - 1);
+        munmap(cpuAndBuf.second.buffer, calculateMMapLength());
     }
 }
 
@@ -243,7 +243,7 @@ bool PerfBuffer::send(Sender * const sender)
 
         auto discard = mDiscard.find(cpu);
         if (discard != mDiscard.end()) {
-            munmap(buf, gSessionData.mPageSize + calculateMMapLength() - 1);
+            munmap(buf, calculateMMapLength());
             mDiscard.erase(discard);
             logg.logMessage("Unmapped cpu %i", cpu);
             cpuAndBufIt = mBuffers.erase(cpuAndBufIt);

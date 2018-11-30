@@ -59,7 +59,7 @@ namespace shared_memory
         new (allocation) T(std::forward<Args>(args)...);
 
         const std::function<void(T*)> initialized_deleter = [](T *p) {
-            ::operator delete(p);
+            p->~T();
             deallocate<T>(p, 1);
         };
 

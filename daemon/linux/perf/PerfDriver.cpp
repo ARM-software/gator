@@ -613,17 +613,17 @@ void PerfDriver::addUncoreCounters(const UncorePmu * pmu)
     char *name;
 
     if (pmu->getHasCyclesCounter()) {
-        len = snprintf(NULL, 0, "%s_ccnt", pmu->getPmncName()) + 1;
+        len = snprintf(NULL, 0, "%s_ccnt", pmu->getCoreName()) + 1;
         name = new char[len];
-        snprintf(name, len, "%s_ccnt", pmu->getPmncName());
+        snprintf(name, len, "%s_ccnt", pmu->getCoreName());
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(*pmu),
                                     name, pmu->getType(), -1, PERF_SAMPLE_READ, 0, 0));
     }
 
     for (int j = 0; j < pmu->getPmncCounters(); ++j) {
-        len = snprintf(NULL, 0, "%s_cnt%d", pmu->getPmncName(), j) + 1;
+        len = snprintf(NULL, 0, "%s_cnt%d", pmu->getCoreName(), j) + 1;
         name = new char[len];
-        snprintf(name, len, "%s_cnt%d", pmu->getPmncName(), j);
+        snprintf(name, len, "%s_cnt%d", pmu->getCoreName(), j);
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(*pmu),
                                     name, pmu->getType(), -1, PERF_SAMPLE_READ, 0, 0));
     }
@@ -777,9 +777,11 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_fragment", maliFamilyName);
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(),
                                     strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, 1));
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_job_slots_event"));
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_vertex", maliFamilyName);
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(),
                                     strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, 1));
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), strdup("mali/mali_job_slots_event"));
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_opencl", maliFamilyName);
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(),
                                     strdup(buf), PERF_TYPE_TRACEPOINT, id, MALI_SAMPLE_TYPE, MALI_FLAGS, 1));

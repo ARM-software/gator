@@ -19,6 +19,9 @@
 
 #define USE_THREAD defined(CONFIG_PREEMPT_RT_FULL)
 
+
+
+
 /*
  * Handle rename of global_page_state "c41f012ade0b95b0a6e25c7150673e0554736165 mm: rename global_page_state to global_zone_page_state"
  */
@@ -26,6 +29,24 @@
 #define GLOBAL_ZONE_PAGE_STATE(item)    global_page_state(item)
 #else
 #define GLOBAL_ZONE_PAGE_STATE(item)    global_zone_page_state(item)
+#endif
+
+#define GLOBAL_NODE_PAGE_STATE(item)    global_node_page_state(item)
+
+/* NR_SLAB_RECLAIMABLE / NR_SLAB_UNRECLAIMABLE are in node_stat_item from 4.13 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+#define READ_NR_SLAB_RECLAIMABLE        GLOBAL_ZONE_PAGE_STATE(NR_SLAB_RECLAIMABLE)
+#define READ_NR_SLAB_UNRECLAIMABLE      GLOBAL_ZONE_PAGE_STATE(NR_SLAB_UNRECLAIMABLE)
+#else
+#define READ_NR_SLAB_RECLAIMABLE        GLOBAL_NODE_PAGE_STATE(NR_SLAB_RECLAIMABLE)
+#define READ_NR_SLAB_UNRECLAIMABLE      GLOBAL_NODE_PAGE_STATE(NR_SLAB_UNRECLAIMABLE)
+#endif
+
+/* NR_FILE_PAGES is in node_stat_item from 4.8 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#define READ_NR_FILE_PAGES              GLOBAL_ZONE_PAGE_STATE(NR_FILE_PAGES)
+#else
+#define READ_NR_FILE_PAGES              GLOBAL_NODE_PAGE_STATE(NR_FILE_PAGES)
 #endif
 
 enum {
@@ -246,10 +267,10 @@ static void do_read(void)
                 break;
             case MEMINFO_CACHED:
                 // total_swapcache_pages is not exported so the result is slightly different, but hopefully not too much
-                value = (GLOBAL_ZONE_PAGE_STATE(NR_FILE_PAGES) /*- total_swapcache_pages()*/ - info.bufferram) * PAGE_SIZE;
+                value = (READ_NR_FILE_PAGES /*- total_swapcache_pages()*/ - info.bufferram) * PAGE_SIZE;
                 break;
             case MEMINFO_SLAB:
-                value = (GLOBAL_ZONE_PAGE_STATE(NR_SLAB_RECLAIMABLE) + GLOBAL_ZONE_PAGE_STATE(NR_SLAB_UNRECLAIMABLE)) * PAGE_SIZE;
+                value = (READ_NR_SLAB_RECLAIMABLE + READ_NR_SLAB_UNRECLAIMABLE) * PAGE_SIZE;
                 break;
             default:
                 value = 0;

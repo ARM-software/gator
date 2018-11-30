@@ -23,6 +23,8 @@
 #include <stddef.h>
 #endif
 
+#include <utility>
+
 #include "Logging.h"
 
 #ifdef WIN32
@@ -36,22 +38,37 @@
 
 int socket_cloexec(int domain, int type, int protocol)
 {
+    int sock;
+
 #ifdef SOCK_CLOEXEC
-    return socket(domain, type | SOCK_CLOEXEC, protocol);
-#else
-    int sock = socket(domain, type, protocol);
-#ifdef FD_CLOEXEC
+    /* Try create socket as SOCK_CLOEXEC */
+    sock = socket(domain, type | SOCK_CLOEXEC, protocol);
+    if (sock >= 0) {
+        return sock;
+    }
+    else {
+        logg.logMessage("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
+    }
+#endif
+
+    /* Try create socket */
+    sock = socket(domain, type, protocol);
     if (sock < 0) {
+        logg.logMessage("Failed socket %i/%i/%i due to %i %s", domain, type, protocol, errno, strerror(errno));
         return -1;
     }
+
+    /* Try to set CLOEXEC */
+#ifdef FD_CLOEXEC
     int fdf = fcntl(sock, F_GETFD);
     if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
+        logg.logMessage("Failed FD_CLOEXEC %i/%i/%i on %i/%i due to %i %s", domain, type, protocol, sock, fdf, errno, strerror(errno));
         close(sock);
         return -1;
     }
 #endif
+
     return sock;
-#endif
 }
 
 int accept_cloexec(int sockfd, struct sockaddr *addr, socklen_t *addrlen)

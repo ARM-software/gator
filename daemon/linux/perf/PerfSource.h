@@ -26,7 +26,7 @@ class Sender;
 class PerfSource : public Source
 {
 public:
-    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids);
+    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids, bool enableOnCommandExec);
     ~PerfSource();
 
     virtual bool prepare() override;
@@ -38,18 +38,19 @@ public:
 private:
     bool handleUEvent(const uint64_t currTime);
 
-    PerfDriver & mDriver;
     Buffer mSummary;
-    Buffer *mBuffer;
     PerfBuffer mCountersBuf;
     PerfGroups mCountersGroup;
     Monitor mMonitor;
     UEvent mUEvent;
+    const std::set<int> mAppTids;
+    PerfDriver & mDriver;
+    Buffer *mBuffer;
     sem_t & mSenderSem;
     sem_t & mStartProfile;
     int mInterruptFd;
     bool mIsDone;
-    const std::set<int> mAppTids;
+    bool enableOnCommandExec;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfSource);

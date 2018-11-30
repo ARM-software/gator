@@ -15,7 +15,11 @@ namespace non_root
 {
     namespace
     {
+#if defined(__arm__) || defined(__aarch64__)
         static GatorCpu gatorCpuOther("Other", "Other", NULL, 0xfffff, 6);
+#else
+        static GatorCpu gatorCpuOther("Other", "Perf_Hardware", NULL, 0xfffff, 6);
+#endif
 
         class NonRootDriverCounter : public DriverCounter
         {

@@ -49,7 +49,7 @@ static int gator_events_l2c310_create_files(struct super_block *sb,
         char buf[16];
         struct dentry *dir;
 
-        snprintf(buf, sizeof(buf), "l2c_310_cnt%d", i);
+        snprintf(buf, sizeof(buf), "L2C-310_cnt%d", i);
         dir = gatorfs_mkdir(sb, root, buf);
         if (WARN_ON(!dir))
             return -1;

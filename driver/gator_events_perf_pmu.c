@@ -15,10 +15,10 @@
 #include <linux/perf_event.h>
 #include <linux/slab.h>
 
-/* Maximum number of per-core counters - currently reserves enough space for two full hardware PMUs for big.LITTLE */
-#define CNTMAX 16
+/* Maximum number of per-core counters */
+#define CNTMAX  32
 /* Maximum number of uncore counters */
-#define UCCNT 32
+#define UCCNT   128
 
 /* Default to 0 if unable to probe the revision which was the previous behavior */
 #define DEFAULT_CCI_REVISION 0
@@ -471,25 +471,47 @@ static int gator_events_perf_pmu_reread(void)
 
     memset(&pea, 0, sizeof(pea));
     pea.size = sizeof(pea);
-    pea.config = 0xFF;
     attr_count = 0;
     uc_attr_count = 0;
-    for (type = PERF_TYPE_MAX; type < 0x20; ++type) {
+    for (type = PERF_TYPE_MAX; type < 0xff; ++type) {
+        pe = NULL;
         pea.type = type;
 
-        /* A particular PMU may work on some but not all cores, so try on each core */
-        pe = NULL;
+        /* A particular PMU may work on some but not all cores, so try on each core;
+         * - try create cycle counter event */
+        pea.config = 0xff;
         for_each_present_cpu(cpu) {
             pe = perf_event_create_kernel_counter(&pea, cpu, NULL, dummy_handler, NULL);
-            if (!IS_ERR(pe))
+            if (IS_ERR(pe)) {
+                pr_debug("gator: failed for type %i for config 0x%llx on cpu %i", type, pea.config, cpu);
+            }
+            else {
                 break;
+            }
         }
-        /* Assume that valid PMUs are contiguous */
+
+#if defined(__aarch64__)
+        /* Try again with other cycle counter code */
         if (IS_ERR(pe)) {
-            pea.config = 0xff00;
-            pe = perf_event_create_kernel_counter(&pea, 0, NULL, dummy_handler, NULL);
-            if (IS_ERR(pe))
-                break;
+            pea.config = 0x11;
+            for_each_present_cpu(cpu) {
+                pe = perf_event_create_kernel_counter(&pea, cpu, NULL, dummy_handler, NULL);
+                if (!IS_ERR(pe)) {
+                    pr_debug("gator: failed for type %i for config 0x%llx on cpu %i", type, pea.config, cpu);
+                    break;
+                }
+            }
+        }
+#endif
+
+        /* Failed. Do not assume that valid PMUs are contiguous as there are various built in non-api PMUs such as kprobes/uprobes/cs_etm
+         * that gator does not care about. */
+        if (IS_ERR(pe)) {
+            continue;
+        }
+
+        if (pe->pmu != NULL) {
+            pr_debug("gator: detected pmu of type %i / %s", pe->pmu->type, pe->pmu->name);
         }
 
         if (pe->pmu != NULL && type == pe->pmu->type) {
@@ -513,17 +535,15 @@ static int gator_events_perf_pmu_reread(void)
             bool found_cpu = false;
             const struct gator_cpu *gator_cpu = gator_find_cpu_by_cpuid(gator_cpuids[cpu]);
 
-#if defined(__arm__) || defined(__aarch64__)
             if (gator_cpu == NULL) {
+#if defined(__arm__) || defined(__aarch64__)
                 pr_err("gator: This CPU is not recognized, using the Arm architected counters\n");
+#else
+                pr_err("gator: This CPU is not recognized, using perf built in hardware counters\n");
+#endif
                 gator_cpu = &gator_pmu_other;
             }
-#else
-            if (gator_cpu == NULL) {
-                pr_err("gator: This CPU is not recognized\n");
-                return -1;
-            }
-#endif
+
             for (cnt = 0; cnt < gator_cluster_count; ++cnt) {
                 if (gator_clusters[cnt] == gator_cpu) {
                     found_cpu = true;
@@ -533,7 +553,11 @@ static int gator_events_perf_pmu_reread(void)
 
             if (!found_cpu) {
                 pr_notice("gator: Adding cpu counters (based on cpuid) for %s\n", gator_cpu->core_name);
+#if defined(__arm__) || defined(__aarch64__)
                 gator_events_perf_pmu_cpu_init(gator_cpu, PERF_TYPE_RAW);
+#else
+                gator_events_perf_pmu_cpu_init(gator_cpu, PERF_TYPE_HARDWARE);
+#endif
             }
 
             gator_cpus_per_core[cpu] = gator_cpu;

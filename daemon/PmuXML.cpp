@@ -118,7 +118,7 @@ void PmuXML::parse(const char * const xml)
             handleException();
         }
 
-        logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"0x%06x\" %s=\"%d\" />",
+        logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"0x%05x\" %s=\"%d\" />",
                         TAG_PMU,
                         ATTR_CORE_NAME, coreName,
                         ATTR_PMNC_NAME, pmncName,

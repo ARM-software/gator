@@ -716,7 +716,8 @@ bool skipAll(const int fd, const size_t count)
     uint8_t buf[256];
     size_t pos = 0;
     while (pos < count) {
-        ssize_t bytes = read(fd, buf, sizeof(buf));
+        const size_t nToSkip = std::min<size_t>(sizeof(buf), count - pos);
+        ssize_t bytes = read(fd, buf, nToSkip);
         if (bytes <= 0) {
             logg.logMessage("skip failed");
             return false;

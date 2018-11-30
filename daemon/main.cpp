@@ -49,6 +49,8 @@ static Monitor monitor;
 static bool driverRunningAtStart = false;
 static bool driverMountedAtStart = false;
 
+static const char NO_TCP_PIPE[] = "\0streamline-data";
+
 GatorCLIParser parser;
 
 enum State
@@ -701,11 +703,20 @@ int main(int argc, char** argv)
         doLocalCapture();
     }
     else {
-        sock = new OlyServerSocket(parser.result.port);
-        udpListener.setup(parser.result.port);
-        if (!monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())) {
-            logg.logError("Monitor setup failed: couldn't add host listeners");
-            handleException();
+        if (parser.result.port == DISABLE_TCP_USE_UDS_PORT) {
+            sock = new OlyServerSocket(NO_TCP_PIPE, sizeof(NO_TCP_PIPE), true);
+            if (!monitor.add(sock->getFd())) {
+                logg.logError("Monitor setup failed: couldn't add host listeners");
+                handleException();
+            }
+        }
+        else {
+            sock = new OlyServerSocket(parser.result.port);
+            udpListener.setup(parser.result.port);
+            if (!monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())) {
+                logg.logError("Monitor setup failed: couldn't add host listeners");
+                handleException();
+            }
         }
     }
 

@@ -34,7 +34,8 @@ enum SampleRate
     invalid = -1
 };
 
-#define DEFAULT_PORT 8080
+#define DEFAULT_PORT                8080
+#define DISABLE_TCP_USE_UDS_PORT    -1
 
 /**
  * For containing the results of parsing

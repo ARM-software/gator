@@ -37,15 +37,15 @@ bool KMod::claimCounter(Counter &counter) const
         return false;
     }
 
-    char text[128];
+    char text[512];
     snprintf(text, sizeof(text), "/dev/gator/events/%s", counter.getType());
     return access(text, F_OK) == 0;
 }
 
 void KMod::resetCounters()
 {
-    char base[128];
-    char text[128];
+    char base[384];
+    char text[512];
 
     // Initialize all perf counters in the driver, i.e. set enabled to zero
     struct dirent *ent;
@@ -67,8 +67,8 @@ void KMod::resetCounters()
 
 void KMod::setupCounter(Counter &counter)
 {
-    char base[128];
-    char text[128];
+    char base[384];
+    char text[512];
     snprintf(base, sizeof(base), "/dev/gator/events/%s", counter.getType());
 
     if (isMaliCounter(counter)) {

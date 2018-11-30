@@ -69,7 +69,8 @@ public:
 
     /** Create the primary Source instance */
     virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                        sem_t & startProfile, const std::set<int> & appTids) = 0;
+                                                        sem_t & startProfile, const std::set<int> & appTids,
+                                                        bool enableOnCommandExec) = 0;
 
 protected:
 

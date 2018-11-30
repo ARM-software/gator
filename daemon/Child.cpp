@@ -194,11 +194,13 @@ void Child::run()
     sender.reset(new Sender(socket));
     // Populate gSessionData with the configuration
 
-    if (eventsMap.empty()) {
+    int countersIndex = 0;
+    if (eventsMap.empty() || gSessionData.mConfigurationXMLPath != nullptr) {
         ConfigurationXML configuration;
+        countersIndex = configuration.mIndex;
     }
 
-    int perfCounterCount = 0;
+    int perfCounterCount = countersIndex;
     if (!eventsMap.empty()) {
         // read attributes
         for (const auto& eventmap : eventsMap) {
@@ -211,7 +213,21 @@ void Child::run()
             const bool hasEventsXmlCounter = (it != end);
             const int counterEvent = (hasEventsXmlCounter ? it->second : -1);
 
-            Counter & counter = gSessionData.mCounters[perfCounterCount];
+            int index = perfCounterCount;
+            // override configuration.xml
+            for (int i = 0; i < countersIndex && i < MAX_PERFORMANCE_COUNTERS; ++i) {
+                Counter & existingCounter = gSessionData.mCounters[i];
+                if (counterNameFuzzyEquals(existingCounter.getType(), counterName.c_str())) {
+                    // need to clear all because there might be more than one match,
+                    // e.g., 'X' matches 'X_cnt0', 'X_cnt1'...
+                    // it means there might be some gaps in gSessionData.mCounters but that only makes
+                    // a difference if pushing the limit of MAX_PERFMANCE_COUNTERS
+                    existingCounter.clear();
+                    index = i;
+                    logg.logMessage("Overriding %s from configuration.xml", existingCounter.getType());
+                }
+            }
+            Counter & counter = gSessionData.mCounters[index];
             counter.clear();
             counter.setType(counterName.c_str());
 
@@ -260,7 +276,8 @@ void Child::run()
                 logg.logWarning("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
                 counter.setEnabled(false);
             }
-            if (counter.isEnabled()) {
+
+            if (counter.isEnabled() && index == perfCounterCount) {
                 // update counter index
                 perfCounterCount++;
             }
@@ -310,6 +327,7 @@ void Child::run()
 
     std::set<int> appPids;
     std::thread commandThread { };
+    bool enableOnCommandExec = false;
     if (!gSessionData.mCaptureCommand.empty()) {
         std::string command;
         for (auto const& cmd : gSessionData.mCaptureCommand) {
@@ -322,6 +340,7 @@ void Child::run()
             if (gSessionData.mStopOnExit)
             endSession();
         });
+        enableOnCommandExec = true;
         commandPid = commandResult.pid;
         commandTerminated = false;
         commandThread = std::move(commandResult.thread);
@@ -348,7 +367,7 @@ void Child::run()
     appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
 
     // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
-    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids);
+    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids, enableOnCommandExec);
     if (primarySource == nullptr) {
         logg.logError("Failed to init primary capture source");
         handleException();
@@ -490,9 +509,13 @@ void Child::endSession()
     }
 
     // Safety net in case endSession does not complete within 5 seconds
-    // Note this is unlikely to ever fire because main sends another signal
-    // after 1 second
-    alarm(5);
+    // Note this is unlikely to ever fire for a local capture
+    // because main sends another signal after 1 second.
+    // We use a separate thread here rather than ::alarm because other uses
+    // of sleep interfere with SIGALARM
+    std::thread { []() {::sleep(5); Child::signalHandler(SIGALRM);} }.detach();
+
+    terminateCommand();
 
     gSessionData.mSessionIsActive = false;
     if (primarySource != nullptr) {
