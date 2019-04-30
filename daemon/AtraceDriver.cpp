@@ -12,12 +12,12 @@
 
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "SessionData.h"
+#include "FtraceDriver.h"
 
 class AtraceCounter : public DriverCounter
 {
 public:
-    AtraceCounter(DriverCounter *next, char *name, int flag);
+    AtraceCounter(DriverCounter *next, const char *name, int flag);
     ~AtraceCounter();
 
     int getFlag() const
@@ -32,7 +32,7 @@ private:
     CLASS_DELETE_COPY_MOVE(AtraceCounter);
 };
 
-AtraceCounter::AtraceCounter(DriverCounter *next, char *name, int flag)
+AtraceCounter::AtraceCounter(DriverCounter *next, const char *name, int flag)
         : DriverCounter(next, name),
           mFlag(flag)
 {
@@ -42,9 +42,11 @@ AtraceCounter::~AtraceCounter()
 {
 }
 
-AtraceDriver::AtraceDriver()
-        : mSupported(false),
-          mNotifyPath()
+AtraceDriver::AtraceDriver(const FtraceDriver & ftraceDriver)
+        : SimpleDriver("Atrace"),
+          mSupported(false),
+          mNotifyPath(),
+          mFtraceDriver(ftraceDriver)
 {
 }
 
@@ -59,7 +61,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
         //logg.logSetup("Atrace is disabled\nUnable to find setprop, this is not an Android target");
         return;
     }
-    if (!gSessionData.mFtraceDriver.isSupported()) {
+    if (!mFtraceDriver.isSupported()) {
         logg.logSetup("Atrace is disabled\nSupport for ftrace is required");
         return;
     }
@@ -99,7 +101,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
             logg.logError("The flag attribute of the atrace counter %s is not a hex integer", counter);
             handleException();
         }
-        setCounters(new AtraceCounter(getCounters(), strdup(counter), flag));
+        setCounters(new AtraceCounter(getCounters(), counter, flag));
     }
 }
 

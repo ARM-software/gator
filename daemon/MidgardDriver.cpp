@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <cinttypes>
 
+#include "lib/FileDescriptor.h"
+
 #include "Buffer.h"
 #include "Logging.h"
 #include "OlySocket.h"
@@ -132,7 +134,8 @@ private:
 };
 
 MidgardDriver::MidgardDriver()
-        : mQueried(false)
+        : SimpleDriver("MidgardDriver"),
+          mQueried(false)
 {
 }
 
@@ -165,7 +168,7 @@ void MidgardDriver::query() const
             bool first = true;
 
             while (true) {
-                if (!readAll(uds, &header, sizeof(PacketHeader))) {
+                if (!lib::readAll(uds, &header, sizeof(PacketHeader))) {
                     logg.logError("Unable to read Midgard header");
                     handleException();
                 }
@@ -194,11 +197,11 @@ void MidgardDriver::query() const
                         logg.logError("Unable to read Shared Parameter Packet because it's at least %zu bytes long but only %" PRIu32 " bytes were given", sizeof(packet), header.mDataLength);
                         handleException();
                     }
-                    if (!readAll(uds, &packet, sizeof(packet))) {
+                    if (!lib::readAll(uds, &packet, sizeof(packet))) {
                         logg.logError("Unable to read Shared Parameter Packet");
                         handleException();
                     }
-                    if (!skipAll(uds, header.mDataLength - sizeof(packet))) {
+                    if (!lib::skipAll(uds, header.mDataLength - sizeof(packet))) {
                         logg.logError("Unable to skip Shared Parameter Packet pool");
                         handleException();
                     }
@@ -222,7 +225,7 @@ void MidgardDriver::query() const
                         }
 
                         char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
-                        if (!readAll(uds, buf, header.mDataLength)) {
+                        if (!lib::readAll(uds, buf, header.mDataLength)) {
                             logg.logError("Unable to read Hardware Counter Directory Packet");
                             handleException();
                         }
@@ -237,7 +240,7 @@ void MidgardDriver::query() const
                 case 0x0402:
                 case 0x0408: {
                     // Ignore
-                    if (!skipAll(uds, header.mDataLength)) {
+                    if (!lib::skipAll(uds, header.mDataLength)) {
                         logg.logError("Unable to skip packet body");
                         handleException();
                     }
@@ -269,6 +272,7 @@ void MidgardDriver::query() const
         }
         cd.mIndex = counter->mCounterIndex;
         const_cast<MidgardDriver *>(this)->setCounters(new MidgardCounter(getCounters(), name, &cd));
+        ::free(name);
         i += sizeof(*counter) + counter->mCounterNameLen;
     }
 
@@ -276,16 +280,16 @@ void MidgardDriver::query() const
     if (size > 0) {
         cd.mType = CounterData::WINDUMP;
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_Filmstrip2_cnt0"), &cd));
+                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_Filmstrip2_cnt0", &cd));
 
         cd.mType = CounterData::ACTIVITY;
         cd.mCores = 1;
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_fragment"), &cd));
+                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_fragment", &cd));
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_vertex"), &cd));
+                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_vertex", &cd));
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), strdup("ARM_Mali-Midgard_opencl"), &cd));
+                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_opencl", &cd));
     }
 }
 
@@ -356,7 +360,7 @@ bool MidgardDriver::start(const int uds)
         handleException();
     }
 
-    if (!writeAll(uds, buf, bufPos)) {
+    if (!lib::writeAll(uds, buf, bufPos)) {
         logg.logError("Unable to enable Midgard counters");
         handleException();
     }

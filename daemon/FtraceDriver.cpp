@@ -19,13 +19,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "Buffer.h"
+#include "lib/FileDescriptor.h"
+#include "lib/Utils.h"
+
+#include "linux/perf/IPerfAttrsConsumer.h"
+
 #include "Config.h"
-#include "DriverSource.h"
 #include "Logging.h"
 #include "PrimarySourceProvider.h"
-#include "Proc.h"
+#include "Tracepoints.h"
 #include "SessionData.h"
+
 
 Barrier::Barrier()
         : mMutex(),
@@ -71,10 +75,10 @@ void Barrier::wait()
 class FtraceCounter : public DriverCounter
 {
 public:
-    FtraceCounter(DriverCounter *next, char *name, const char *enable);
+    FtraceCounter(DriverCounter *next, const char *name, const char *enable);
     ~FtraceCounter();
 
-    bool readTracepointFormat(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
+    bool readTracepointFormat(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
 
     void prepare();
     void stop();
@@ -88,7 +92,7 @@ private:
     ;
 };
 
-FtraceCounter::FtraceCounter(DriverCounter *next, char *name, const char *enable)
+FtraceCounter::FtraceCounter(DriverCounter *next, const char *name, const char *enable)
         : DriverCounter(next, name),
           mEnable(enable == NULL ? NULL : strdup(enable)),
           mWasEnabled(false)
@@ -114,7 +118,7 @@ void FtraceCounter::prepare()
 
     char buf[1 << 10];
     snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", mEnable);
-    if ((DriverSource::readIntDriver(buf, &mWasEnabled) != 0) || (DriverSource::writeDriver(buf, 1) != 0)) {
+    if ((lib::readIntFromFile(buf, mWasEnabled) != 0) || (lib::writeIntToFile(buf, 1) != 0)) {
         logg.logError("Unable to read or write to %s", buf);
         handleException();
     }
@@ -128,13 +132,12 @@ void FtraceCounter::stop()
 
     char buf[1 << 10];
     snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", mEnable);
-    DriverSource::writeDriver(buf, mWasEnabled);
+    lib::writeIntToFile(buf, mWasEnabled);
 }
 
-bool FtraceCounter::readTracepointFormat(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb,
-                                         DynBuf * const b)
+bool FtraceCounter::readTracepointFormat(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer)
 {
-    return ::readTracepointFormat(currTime, buffer, mEnable, printb, b);
+    return ::readTracepointFormat(currTime, attrsConsumer, mEnable);
 }
 
 static void handlerUsr1(int signum)
@@ -272,8 +275,8 @@ void FtraceReader::run()
         }
     }
 
-    if (!setNonblock(mTfd)) {
-        logg.logError("setNonblock failed");
+    if (!lib::setNonblock(mTfd)) {
+        logg.logError("lib::setNonblock failed");
         handleException();
     }
 
@@ -333,12 +336,15 @@ void FtraceReader::run()
     // Intentionally don't close mPfd0 as it is used after this thread is exited to read the slop
 }
 
-FtraceDriver::FtraceDriver()
-        : mValues(NULL),
+FtraceDriver::FtraceDriver(bool useForTracepoints, size_t numberOfCores)
+        : SimpleDriver("Ftrace"),
+          mValues(NULL),
           mBarrier(),
           mTracingOn(0),
           mSupported(false),
-          mMonotonicRawSupport(false)
+          mMonotonicRawSupport(false),
+          mUseForTracepoints(useForTracepoints),
+          mNumberOfCores(numberOfCores)
 {
 }
 
@@ -350,14 +356,14 @@ FtraceDriver::~FtraceDriver()
 void FtraceDriver::readEvents(mxml_node_t * const xml)
 {
     // Check the kernel version
-    int release[3];
-    if (!getLinuxVersion(release)) {
-        logg.logError("getLinuxVersion failed");
+    struct utsname utsname;
+    if (uname(&utsname) != 0) {
+        logg.logError("uname failed");
         handleException();
     }
 
     // The perf clock was added in 3.10
-    const int kernelVersion = KERNEL_VERSION(release[0], release[1], release[2]);
+    const int kernelVersion = lib::parseLinuxVersion(utsname);
     if (kernelVersion < KERNEL_VERSION(3, 10, 0)) {
         mSupported = false;
         logg.logSetup("Ftrace is disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With user space gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be available.");
@@ -407,7 +413,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         if (enable == NULL) {
             enable = tracepoint;
         }
-        if (gSessionData.mPrimarySource->supportsTracepointCapture() && tracepoint != NULL) {
+        if (!mUseForTracepoints && tracepoint != NULL) {
             logg.logMessage("Not using ftrace for counter %s", counter);
             continue;
         }
@@ -421,18 +427,18 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         }
 
         logg.logMessage("Using ftrace for %s", counter);
-        setCounters(new FtraceCounter(getCounters(), strdup(counter), enable));
+        setCounters(new FtraceCounter(getCounters(), counter, enable));
         ++count;
     }
 
     mValues = new int64_t[2 * count];
 }
 
-bool FtraceDriver::prepare(int * const ftraceFds)
+std::pair<std::vector<int>, bool> FtraceDriver::prepare()
 {
     if (gSessionData.mFtraceRaw) {
         // Don't want the performace impact of sending all formats so gator only sends it for the enabled counters. This means other counters need to be disabled
-        if (DriverSource::writeDriver(TRACING_PATH "/events/enable", "0") != 0) {
+        if (lib::writeCStringToFile(TRACING_PATH "/events/enable", "0") != 0) {
             logg.logError("Unable to turn off all events");
             handleException();
         }
@@ -446,12 +452,12 @@ bool FtraceDriver::prepare(int * const ftraceFds)
         counter->prepare();
     }
 
-    if (DriverSource::readIntDriver(TRACING_PATH "/tracing_on", &mTracingOn)) {
+    if (lib::readIntFromFile(TRACING_PATH "/tracing_on", mTracingOn)) {
         logg.logError("Unable to read if ftrace is enabled");
         handleException();
     }
 
-    if (DriverSource::writeDriver(TRACING_PATH "/tracing_on", "0") != 0) {
+    if (lib::writeCStringToFile(TRACING_PATH "/tracing_on", "0") != 0) {
         logg.logError("Unable to turn ftrace off before truncating the buffer");
         handleException();
     }
@@ -498,19 +504,18 @@ bool FtraceDriver::prepare(int * const ftraceFds)
 
     // Writing to trace_clock can be very slow on loaded high core count
     // systems.
-    if (must_switch_clock && DriverSource::writeDriver(TRACING_PATH "/trace_clock", clock) != 0) {
+    if (must_switch_clock && lib::writeCStringToFile(TRACING_PATH "/trace_clock", clock) != 0) {
         logg.logError("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later", clock, mMonotonicRawSupport ? "4.2" : "3.10");
         handleException();
     }
 
     if (!gSessionData.mFtraceRaw) {
-        ftraceFds[0] = open(TRACING_PATH "/trace_pipe", O_RDONLY | O_CLOEXEC);
-        if (ftraceFds[0] < 0) {
+        const int fd = open(TRACING_PATH "/trace_pipe", O_RDONLY | O_CLOEXEC);
+        if (fd < 0) {
             logg.logError("Unable to open trace_pipe");
             handleException();
         }
-        ftraceFds[1] = -1;
-        return true;
+        return {{fd},true};
     }
 
     struct sigaction act;
@@ -527,10 +532,10 @@ bool FtraceDriver::prepare(int * const ftraceFds)
         handleException();
     }
 
-    mBarrier.init(gSessionData.mCores + 1);
+    mBarrier.init(mNumberOfCores + 1);
 
-    int cpu;
-    for (cpu = 0; cpu < gSessionData.mCores; ++cpu) {
+    std::pair<std::vector<int>, bool> result {{}, false};
+    for (size_t cpu = 0; cpu < mNumberOfCores; ++cpu) {
         int pfd[2];
         if (pipe2(pfd, O_CLOEXEC) != 0) {
             logg.logError("pipe2 failed, %s (%i)", strerror(errno), errno);
@@ -538,19 +543,18 @@ bool FtraceDriver::prepare(int * const ftraceFds)
         }
 
         char buf[64];
-        snprintf(buf, sizeof(buf), TRACING_PATH "/per_cpu/cpu%i/trace_pipe_raw", cpu);
+        snprintf(buf, sizeof(buf), TRACING_PATH "/per_cpu/cpu%zu/trace_pipe_raw", cpu);
         const int tfd = open(buf, O_RDONLY | O_CLOEXEC);
         (new FtraceReader(&mBarrier, cpu, tfd, pfd[0], pfd[1]))->start();
-        ftraceFds[cpu] = pfd[0];
+        result.first.push_back(pfd[0]);
     }
-    ftraceFds[cpu] = -1;
 
-    return false;
+    return result;
 }
 
 void FtraceDriver::start()
 {
-    if (DriverSource::writeDriver(TRACING_PATH "/tracing_on", "1") != 0) {
+    if (lib::writeCStringToFile(TRACING_PATH "/tracing_on", "1") != 0) {
         logg.logError("Unable to turn ftrace on");
         handleException();
     }
@@ -560,9 +564,9 @@ void FtraceDriver::start()
     }
 }
 
-void FtraceDriver::stop(int * const ftraceFds)
+std::vector<int> FtraceDriver::stop()
 {
-    DriverSource::writeDriver(TRACING_PATH "/tracing_on", mTracingOn);
+    lib::writeIntToFile(TRACING_PATH "/tracing_on", mTracingOn);
 
     for (FtraceCounter *counter = static_cast<FtraceCounter *>(getCounters()); counter != NULL;
             counter = static_cast<FtraceCounter *>(counter->getNext())) {
@@ -572,23 +576,20 @@ void FtraceDriver::stop(int * const ftraceFds)
         counter->stop();
     }
 
-    if (!gSessionData.mFtraceRaw) {
-        ftraceFds[0] = -1;
-    }
-    else {
-        int i = 0;
-        for (FtraceReader *reader = FtraceReader::getHead(); reader != NULL; reader = reader->getNext(), ++i) {
+    std::vector<int> fds;
+    if (gSessionData.mFtraceRaw) {
+        for (FtraceReader *reader = FtraceReader::getHead(); reader != NULL; reader = reader->getNext()) {
             reader->interrupt();
-            ftraceFds[i] = reader->getPfd0();
+            fds.push_back(reader->getPfd0());
         }
-        ftraceFds[i] = -1;
-        for (FtraceReader *reader = FtraceReader::getHead(); reader != NULL; reader = reader->getNext(), ++i) {
+        for (FtraceReader *reader = FtraceReader::getHead(); reader != NULL; reader = reader->getNext()) {
             reader->join();
         }
     }
+    return fds;
 }
 
-bool FtraceDriver::readTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb,
+bool FtraceDriver::readTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, DynBuf * const printb,
                                          DynBuf * const b)
 {
     if (!gSessionData.mFtraceRaw) {
@@ -603,7 +604,7 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime, Buffer * const
         logg.logMessage("DynBuf::read failed");
         return false;
     }
-    buffer->marshalHeaderPage(currTime, b->getBuf());
+    attrsConsumer.marshalHeaderPage(currTime, b->getBuf());
 
     if (!printb->printf(EVENTS_PATH "/header_event")) {
         logg.logMessage("DynBuf::printf failed");
@@ -613,7 +614,7 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime, Buffer * const
         logg.logMessage("DynBuf::read failed");
         return false;
     }
-    buffer->marshalHeaderEvent(currTime, b->getBuf());
+    attrsConsumer.marshalHeaderEvent(currTime, b->getBuf());
 
     DIR *dir = opendir(EVENTS_PATH "/ftrace");
     if (dir == NULL) {
@@ -633,7 +634,7 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime, Buffer * const
             logg.logMessage("DynBuf::read failed");
             return false;
         }
-        buffer->marshalFormat(currTime, b->getLength(), b->getBuf());
+        attrsConsumer.marshalFormat(currTime, b->getLength(), b->getBuf());
     }
     closedir(dir);
 
@@ -642,7 +643,7 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime, Buffer * const
         if (!counter->isEnabled()) {
             continue;
         }
-        counter->readTracepointFormat(currTime, buffer, printb, b);
+        counter->readTracepointFormat(currTime, attrsConsumer);
     }
 
     return true;

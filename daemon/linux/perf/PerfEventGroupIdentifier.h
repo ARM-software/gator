@@ -4,7 +4,7 @@
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
 
 #include <cstring>
-#include <set>
+#include <map>
 #include <string>
 
 #include "ClassBoilerPlate.h"
@@ -12,6 +12,10 @@
 class GatorCpu;
 class UncorePmu;
 
+/// Note: these are not (necessarily) perf_event_open groups they are
+/// gatord specific grouping of events, some of which will be used as a
+/// perf_event_open group, some are just a collection of separate
+/// perf_event_open group leaders
 class PerfEventGroupIdentifier
 {
 public:
@@ -21,7 +25,8 @@ public:
         PER_CLUSTER_CPU,
         UNCORE_PMU,
         SPECIFIC_CPU,
-        GLOBAL
+        GLOBAL,
+        SPE
     };
 
     /** Constructor, for global events on all CPUs */
@@ -36,12 +41,15 @@ public:
     /** Constructor, for global events associated with a specific core */
     PerfEventGroupIdentifier(int cpuNumber);
 
+    /** Constructor, for SPE events that have a core specific type */
+    PerfEventGroupIdentifier(const std::map<int, int> & cpuNumberToType);
+
     CLASS_DEFAULT_COPY_MOVE(PerfEventGroupIdentifier);
 
     /** Equality operator, are they the same group? */
     inline bool operator == (const PerfEventGroupIdentifier & that) const
     {
-        return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber);
+        return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber) && (cpuNumberToType == that.cpuNumberToType);
     }
 
     /** Inequality operator, are they not the same group? */
@@ -68,6 +76,11 @@ public:
         return pmu;
     }
 
+    inline const std::map<int, int> * getSpeTypeMap() const
+    {
+        return cpuNumberToType;
+    }
+
     inline int getCpuNumber() const
     {
         return cpuNumber;
@@ -80,6 +93,9 @@ public:
         }
         else if (pmu != nullptr) {
             return Type::UNCORE_PMU;
+        }
+        else if (cpuNumberToType != nullptr) {
+            return Type::SPE;
         }
         else if (cpuNumber >= 0) {
             return Type::SPECIFIC_CPU;
@@ -94,6 +110,7 @@ private:
     const GatorCpu * const cluster;
     const UncorePmu * const pmu;
     const int cpuNumber;
+    const std::map<int, int> * const cpuNumberToType;
 };
 
 #endif /* INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H */

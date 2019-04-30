@@ -37,7 +37,7 @@
 #endif
 
 #if (MALI_DDK_GATOR_API_VERSION != 1) && (MALI_DDK_GATOR_API_VERSION != 2) && (MALI_DDK_GATOR_API_VERSION != 3)
-#error MALI_DDK_GATOR_API_VERSION is invalid (must be 1 for r1/r2 DDK, or 2 for r3/r4 DDK, or 3 for r5 and later DDK).
+#error Your version of the Mali DDK is unsupported. Mali support in gator.ko is not supported past m_r28/b_r16. Support for Mali counters for future DDK versions is provided by gatord.
 #endif
 
 #include "gator_events_mali_common.h"

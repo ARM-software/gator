@@ -17,7 +17,7 @@
 #include "k/perf_event.h"
 
 #include "Config.h"
-#include "DriverSource.h"
+#include "lib/Utils.h"
 #include "Logging.h"
 #include "SessionData.h"
 
@@ -114,7 +114,8 @@ static bool perfPoll(struct perf_event_attr * const pea)
 }
 
 CCNDriver::CCNDriver()
-        : mNodeTypes(NULL),
+        : Driver("CCN"),
+          mNodeTypes(NULL),
           mXpCount(0)
 {
 }
@@ -149,7 +150,7 @@ void CCNDriver::readEvents(mxml_node_t * const)
     }
 
     int type;
-    if (DriverSource::readIntDriver("/sys/bus/event_source/devices/ccn/type", &type) != 0) {
+    if (lib::readIntFromFile("/sys/bus/event_source/devices/ccn/type", type) != 0) {
         logg.logError("Unable to read CCN-5xx type");
         handleException();
     }
@@ -338,7 +339,7 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
     }
 }
 
-void CCNDriver::validateCounters() const
+std::string CCNDriver::validateCounters() const
 {
     int counts[CCN_COUNT][2] = { { 0 } };
     const unsigned int mask = getConfig(0xff, 0xff, 0, 0, 0);
@@ -360,14 +361,12 @@ void CCNDriver::validateCounters() const
                 if (counts[j][0] == node) {
                     ++counts[j][1];
                     if (counts[j][1] > 4) {
-                        if (asprintf(&gSessionData.mCountersError,
-                                     "More than 4 events are assigned to the same CCN node") <= 0) {
-                            logg.logError("asprintf failed");
-                            handleException();
-                        }
+                        return "More than 4 events are assigned to the same CCN node";
                     }
                 }
             }
         }
     }
+
+    return {};
 }

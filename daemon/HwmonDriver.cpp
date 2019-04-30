@@ -8,6 +8,8 @@
 
 #include "HwmonDriver.h"
 
+#include <memory>
+
 #include "libsensors/sensors.h"
 
 #include "Logging.h"
@@ -210,6 +212,7 @@ int64_t HwmonCounter::read()
 }
 
 HwmonDriver::HwmonDriver()
+    : PolledDriver("Hwmon")
 {
 }
 
@@ -244,14 +247,13 @@ void HwmonDriver::readEvents(mxml_node_t * const)
 
             // Get the name of the counter
             int len = sensors_snprintf_chip_name(NULL, 0, chip) + 1;
-            char *chip_name = new char[len];
-            sensors_snprintf_chip_name(chip_name, len, chip);
-            len = snprintf(NULL, 0, "hwmon_%s_%d_%d", chip_name, chip_nr, feature->number) + 1;
-            char * const name = new char[len];
-            snprintf(name, len, "hwmon_%s_%d_%d", chip_name, chip_nr, feature->number);
-            delete[] chip_name;
+            const std::unique_ptr<char[]> chip_name {new char[len]};
+            sensors_snprintf_chip_name(chip_name.get(), len, chip);
+            len = snprintf(NULL, 0, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number) + 1;
+            const std::unique_ptr<char[]> name {new char[len]};
+            snprintf(name.get(), len, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number);
 
-            setCounters(new HwmonCounter(getCounters(), name, chip, feature));
+            setCounters(new HwmonCounter(getCounters(), name.get(), chip, feature));
         }
     }
 }

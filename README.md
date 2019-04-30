@@ -23,7 +23,7 @@ Contributions are accepted under the same license as the associated subproject w
 
 Instructions on setting up Arm Streamline on the target.
 
-A target agent (gator) is required to run on the Arm Linux target in order for Arm Streamline to operate. Gator may run in kernel space or user space mode, though user space gator requires Linux 3.4 or later and contains reduced functionality. Furthermore, user space gator is a beta release, see the bugs section in this readme for a list of known issues.
+A target agent (gator) is required to run on the Arm Linux target in order for Arm Streamline to operate. Gator may run in kernel space or user space mode, though user space gator requires Linux 3.4 or later.
 
 The driver should be built as a module and the daemon must run with root permissions on the target.
 
@@ -144,8 +144,7 @@ cp -r /path/to/streamline/gator/daemon .
 For Linux targets,
 ```
 cd daemon
-make CROSS_COMPILE=<...> # For ARMv7 targets
-make -f Makefile_aarch64 CROSS_COMPILE=<...> # For ARMv8 targets
+make CROSS_COMPILE=<...>
 ```
 gatord should now be created.
 
@@ -223,16 +222,6 @@ Recommended compiler settings:
 - `-marm`: This option is required for ARMv7 and earlier if your compiler is configured with `--with-mode=thumb`, otherwise call stack unwinding will not work.
 
 For Android ART, passing `--no-strip-symbols` to dex2oat will result in function names but not line numbers to be included in the dex files. This can be done by running `setprop dalvik.vm.dex2oat-flags --no-strip-symbols` on the device and then regenerating the dex files.
-
-## Hardfloat EABI
-
-Binary applications built for the soft or softfp ABI are not compatible on a hardfloat system. All soft/softfp applications need to be rebuilt for hardfloat. To see if your Arm compiler supports hardfloat, run `gcc -v` and look for `--with-float=hard`.
-
-To compile for non-hardfloat targets it is necessary to add options `-marm -march=armv4t -mfloat-abi=soft`. It may also be necessary to provide a softfloat filesystem by adding the option `--sysroot`, ex: `--sysroot=../Arm_DS_Examples/distribution/filesystem/armv5t_mtx`. The gatord makefile will do this when run as `make SOFTFLOAT=1 SYSROOT=/path/to/sysroot`
-
-The armv5t_mtx filesystem is provided as part of the "Arm DS Linux Example Distribution" package which can be downloaded from the Arm Development Suite Downloads page.
-
-Attempting to run an incompatible binary often results in the confusing error message `No such file or directory` when clearly the file exists.
 
 ## Mali GPU
 

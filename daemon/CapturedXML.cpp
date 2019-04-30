@@ -11,21 +11,72 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <cassert>
 
+#include <algorithm>
+#include <set>
+
+#include "CapturedSpe.h"
+#include "ICpuInfo.h"
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "mxml/mxml.h"
+#include "lib/FsEntry.h"
 
-CapturedXML::CapturedXML()
+/* Basic target OS detection */
+#undef GATOR_TARGET_OS
+#undef GATOR_TARGET_OS_VERSION
+#undef GATOR_TARGET_OS_VERSION_FMT
+#undef GATOR_TARGET_OS_PROBE
+
+// android NDK build
+#if defined(__ANDROID__) && defined(__BIONIC__)
+#   define GATOR_TARGET_OS                  "android"
+#   if defined(__ANDROID_API__)
+#       define GATOR_TARGET_OS_VERSION      __ANDROID_API__
+#       define GATOR_TARGET_OS_VERSION_FMT  "%d"
+#   endif
+// not an android NDK build
+#else
+#   include <limits.h>
+#   if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__UCLIBC__)
+//      using GLIBC or UCLIBC so must be linux
+#       define GATOR_TARGET_OS              "linux"
+#   elif defined(__linux__)
+//      not sure what it is using, probably is musl libc so have to probe filesystem
+#       define GATOR_TARGET_OS              detectOs()
+#       define GATOR_TARGET_OS_PROBE        1
+#   else
+//      not linux, hmm maybe tests?
+#       define GATOR_TARGET_OS              "unknown"
+#   endif
+#endif
+
+#if defined(GATOR_TARGET_OS_PROBE)
+/** Very simple attempt to detect android/linux by probing fs */
+static const char * detectOs()
 {
-}
+    // maybe musl libc statically linked gatord: probe the filesystem
+    lib::FsEntry app_process = lib::FsEntry::create("/system/bin/app_process");
+    if (app_process.exists())
+        return "android";
 
-CapturedXML::~CapturedXML()
-{
-}
+    app_process = lib::FsEntry::create("/system/bin/app_process32");
+    if (app_process.exists())
+        return "android";
 
-mxml_node_t* CapturedXML::getTree(bool includeTime)
+    app_process = lib::FsEntry::create("/system/bin/app_process64");
+    if (app_process.exists())
+        return "android";
+
+    return "linux";
+}
+#endif
+
+/** Generate the xml tree for capture.xml */
+static mxml_node_t* getTree(bool includeTime, lib::Span<const CapturedSpe> spes, const PrimarySourceProvider & primarySourceProvider, const std::map<unsigned, unsigned> & maliGpuIds)
 {
     mxml_node_t *xml;
     mxml_node_t *captured;
@@ -36,9 +87,9 @@ mxml_node_t* CapturedXML::getTree(bool includeTime)
 
     captured = mxmlNewElement(xml, "captured");
     mxmlElementSetAttr(captured, "version", "1");
-    mxmlElementSetAttr(captured, "backtrace_processing", (gSessionData.mBacktraceDepth > 0) ? gSessionData.mPrimarySource->getBacktraceProcessingMode()
+    mxmlElementSetAttr(captured, "backtrace_processing", (gSessionData.mBacktraceDepth > 0) ? primarySourceProvider.getBacktraceProcessingMode()
                                                                                             : "none");
-    mxmlElementSetAttr(captured, "type", gSessionData.mPrimarySource->getCaptureXmlTypeValue());
+    mxmlElementSetAttr(captured, "type", primarySourceProvider.getCaptureXmlTypeValue());
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
     if (includeTime) { // Send the following only after the capture is complete
         if (time(NULL) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
@@ -47,10 +98,20 @@ mxml_node_t* CapturedXML::getTree(bool includeTime)
     }
 
     target = mxmlNewElement(captured, "target");
-    mxmlElementSetAttr(target, "name", gSessionData.mCoreName);
     mxmlElementSetAttrf(target, "sample_rate", "%d", gSessionData.mSampleRate);
-    mxmlElementSetAttrf(target, "cores", "%d", gSessionData.mCores);
-    mxmlElementSetAttrf(target, "cpuid", "0x%x", gSessionData.mMaxCpuId);
+    const auto & cpuInfo = primarySourceProvider.getCpuInfo();
+    mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
+    const auto cpuIds = cpuInfo.getCpuIds();
+    mxmlElementSetAttrf(target, "cores", "%zu", cpuIds.size());
+    //GPU cores
+    mxmlElementSetAttrf(target, "gpu_cores", "%zu", maliGpuIds.size());
+    //gatord src md5
+    mxmlElementSetAttrf(target, "gatord_src_md5sum", "%s", gSrcMd5);
+    //gatord build commit id
+    mxmlElementSetAttrf(target, "gatord_build_id", "%s", STRIFY(GATORD_BUILD_ID));
+
+    assert(cpuIds.size() > 0); // gatord should've died earlier if there were no cpus
+    mxmlElementSetAttrf(target, "cpuid", "0x%x", *std::max_element(begin(cpuIds), end(cpuIds)));
 
     if (!gSessionData.mOneShot && (gSessionData.mSampleRate > 0)) {
         mxmlElementSetAttr(target, "supports_live", "yes");
@@ -58,6 +119,31 @@ mxml_node_t* CapturedXML::getTree(bool includeTime)
 
     if (gSessionData.mLocalCapture) {
         mxmlElementSetAttr(target, "local_capture", "yes");
+    }
+
+    // add some OS information
+#if defined(GATOR_TARGET_OS)
+    mxmlElementSetAttr(target, "os", GATOR_TARGET_OS);
+#   if defined(GATOR_TARGET_OS_VERSION)
+    mxmlElementSetAttrf(target, "os_version", GATOR_TARGET_OS_VERSION_FMT, GATOR_TARGET_OS_VERSION);
+#   endif
+#endif
+
+    // add mali gpu ids
+    if (!maliGpuIds.empty())
+    {
+        // make set of unique ids
+        std::set<unsigned> uniqueGpuIds;
+        for (auto gpuid : maliGpuIds) {
+            uniqueGpuIds.insert(gpuid.second);
+        }
+
+        mxml_node_t * const gpuids = mxmlNewElement(captured, "gpus");
+
+        for (unsigned gpuid : uniqueGpuIds) {
+            mxml_node_t * const node = mxmlNewElement(gpuids, "gpu");
+            mxmlElementSetAttrf(node, "id", "0x%x", gpuid);
+        }
     }
 
     mxml_node_t *counters = NULL;
@@ -82,70 +168,40 @@ mxml_node_t* CapturedXML::getTree(bool includeTime)
         }
     }
 
+    for (const auto & spe : spes) {
+        if (counters == NULL) {
+            counters = mxmlNewElement(captured, "counters");
+        }
+        mxml_node_t * const node = mxmlNewElement(counters, "spe");
+        mxmlElementSetAttrf(node, "key", "0x%x", spe.key);
+        mxmlElementSetAttr(node, "id", spe.id.c_str());
+    }
+
     return xml;
 }
 
-char* CapturedXML::getXML(bool includeTime)
+namespace captured_xml
 {
-    char* xml_string;
-    mxml_node_t *xml = getTree(includeTime);
-    xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
-    mxmlDelete(xml);
-    return xml_string;
-}
-
-void CapturedXML::write(const char* path)
-{
-    char file[PATH_MAX];
-
-    // Set full path
-    snprintf(file, PATH_MAX, "%s/captured.xml", path);
-
-    char* xml = getXML(true);
-    if (writeToDisk(file, xml) < 0) {
-        logg.logError("Error writing %s\nPlease verify the path.", file);
-        handleException();
+    std::unique_ptr<char, void (*)(void *)> getXML(bool includeTime, lib::Span<const CapturedSpe> spes, const PrimarySourceProvider & primarySourceProvider,
+                                                   const std::map<unsigned, unsigned> & maliGpuIds)
+    {
+        mxml_node_t *xml = getTree(includeTime, spes, primarySourceProvider, maliGpuIds);
+        char* xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+        mxmlDelete(xml);
+        return {xml_string, &free};
     }
 
-    free(xml);
+    void write(const char* path, lib::Span<const CapturedSpe> spes, const PrimarySourceProvider & primarySourceProvider,
+               const std::map<unsigned, unsigned> & maliGpuIds)
+    {
+        char file[PATH_MAX];
+        // Set full path
+        snprintf(file, PATH_MAX, "%s/captured.xml", path);
+
+        if (writeToDisk(file, getXML(true, spes, primarySourceProvider, maliGpuIds).get()) < 0) {
+            logg.logError("Error writing %s\nPlease verify the path.", file);
+            handleException();
+        }
+    }
 }
 
-// whitespace callback utility function used with mini-xml
-const char * mxmlWhitespaceCB(mxml_node_t *node, int loc)
-{
-    const char *name;
-
-    name = mxmlGetElement(node);
-
-    if (loc == MXML_WS_BEFORE_OPEN) {
-        // Single indentation
-        if (!strcmp(name, "target") || !strcmp(name, "counters"))
-            return "\n  ";
-
-        // Double indentation
-        if (!strcmp(name, "counter"))
-            return "\n    ";
-
-        // Avoid a carriage return on the first line of the xml file
-        if (!strncmp(name, "?xml", 4))
-            return NULL;
-
-        // Default - no indentation
-        return "\n";
-    }
-
-    if (loc == MXML_WS_BEFORE_CLOSE) {
-        // No indentation
-        if (!strcmp(name, "captured"))
-            return "\n";
-
-        // Single indentation
-        if (!strcmp(name, "counters"))
-            return "\n  ";
-
-        // Default - no carriage return
-        return NULL;
-    }
-
-    return NULL;
-}

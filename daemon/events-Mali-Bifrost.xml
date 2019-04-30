@@ -1,5 +1,5 @@
   <category name="Mali-Bifrost Software Counters" per_cpu="no">
-    <event counter="ARM_Mali-Bifrost_TOTAL_ALLOC_PAGES" title="Mali Total Alloc Pages" name="Total number of allocated pages" description="Mali total number of allocated pages."/>
+    <event counter="ARM_Mali-Bifrost_TOTAL_ALLOC_PAGES" class="absolute" title="Mali Total Alloc Pages" name="Total number of allocated pages" description="Mali total number of allocated pages."/>
   </category>
 <!--
 power management is disabled during profiling so these counters are not useful as they always return zero

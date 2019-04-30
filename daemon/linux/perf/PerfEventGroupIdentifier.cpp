@@ -2,37 +2,49 @@
 
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "lib/Format.h"
-#include "SessionData.h"
+#include "PmuXML.h"
 
 #include <cassert>
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier()
     : cluster(nullptr),
       pmu(nullptr),
-      cpuNumber(-1)
+      cpuNumber(-1),
+      cpuNumberToType(nullptr)
 {
 }
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier(const GatorCpu & cluster)
     : cluster(&cluster),
       pmu(nullptr),
-      cpuNumber(-1)
+      cpuNumber(-1),
+      cpuNumberToType(nullptr)
 {
 }
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier(const UncorePmu & pmu)
     : cluster(nullptr),
       pmu(&pmu),
-      cpuNumber(-1)
+      cpuNumber(-1),
+      cpuNumberToType(nullptr)
 {
 }
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier(int cpuNumber)
     : cluster(nullptr),
       pmu(nullptr),
-      cpuNumber(cpuNumber)
+      cpuNumber(cpuNumber),
+      cpuNumberToType(nullptr)
 {
     assert (cpuNumber >= 0);
+}
+
+PerfEventGroupIdentifier::PerfEventGroupIdentifier(const std::map<int, int> & cpuToTypeMap)
+    : cluster(nullptr),
+      pmu(nullptr),
+      cpuNumber(-1),
+      cpuNumberToType(&cpuToTypeMap)
+{
 }
 
 bool PerfEventGroupIdentifier::operator < (const PerfEventGroupIdentifier & that) const
@@ -64,6 +76,14 @@ bool PerfEventGroupIdentifier::operator < (const PerfEventGroupIdentifier & that
         return false;
     }
 
+    if (cpuNumberToType != nullptr) {
+        return (that.cpuNumberToType != nullptr ? (cpuNumberToType < that.cpuNumberToType)
+                                    : true);
+    }
+    else if (that.cpuNumberToType != nullptr) {
+        return false;
+    }
+
     // both equal
     return false;
 }
@@ -75,6 +95,9 @@ PerfEventGroupIdentifier::operator std::string () const
     }
     else if (pmu != nullptr) {
         return pmu->getPmncName();
+    }
+    else if (cpuNumberToType != nullptr) {
+        return "SPE";
     }
     else if (cpuNumber >= 0) {
         return lib::Format() << "Software Events on CPU #" << cpuNumber;

@@ -14,7 +14,10 @@
 class Child;
 class Driver;
 class PolledDriver;
+class FtraceDriver;
 class Source;
+struct PmuXML;
+class ICpuInfo;
 
 /**
  * Interface for different primary source types.
@@ -30,7 +33,7 @@ public:
     /**
      * Static initialization / detection
      */
-    static std::unique_ptr<PrimarySourceProvider> detect(const char * module, bool systemWide);
+    static std::unique_ptr<PrimarySourceProvider> detect(const char * module, bool systemWide, PmuXML && pmuXml, const char * maliFamilyName);
 
     virtual ~PrimarySourceProvider();
 
@@ -68,9 +71,12 @@ public:
     virtual Driver & getPrimaryDriver() = 0;
 
     /** Create the primary Source instance */
-    virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem,
-                                                        sem_t & startProfile, const std::set<int> & appTids,
+    virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem, sem_t & startProfile,
+                                                        const std::set<int> & appTids, FtraceDriver & ftraceDriver,
                                                         bool enableOnCommandExec) = 0;
+
+    virtual const ICpuInfo & getCpuInfo() const = 0;
+    virtual ICpuInfo & getCpuInfo() = 0;
 
 protected:
 

@@ -25,8 +25,9 @@ public:
     int writeCounters(mxml_node_t *root) const;
 
 protected:
-    SimpleDriver()
-            : mCounters(NULL)
+    SimpleDriver(const char * name)
+            : Driver(name),
+              mCounters(NULL)
     {
     }
 
@@ -46,7 +47,8 @@ private:
     DriverCounter *mCounters;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(SimpleDriver);
+    CLASS_DELETE_COPY_MOVE(SimpleDriver)
+    ;
 };
 
 #endif /* NATIVE_GATOR_DAEMON_SIMPLEDRIVER_H_ */

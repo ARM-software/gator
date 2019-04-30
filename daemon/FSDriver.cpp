@@ -14,13 +14,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "DriverSource.h"
+#include "lib/Utils.h"
 #include "Logging.h"
 
 class FSCounter : public DriverCounter
 {
 public:
-    FSCounter(DriverCounter *next, char *name, char *path, const char *regex);
+    FSCounter(DriverCounter *next, const char *name, char *path, const char *regex);
     ~FSCounter();
 
     const char *getPath() const
@@ -39,7 +39,7 @@ private:
     CLASS_DELETE_COPY_MOVE(FSCounter);
 };
 
-FSCounter::FSCounter(DriverCounter *next, char *name, char *path, const char *regex)
+FSCounter::FSCounter(DriverCounter *next, const char *name, char *path, const char *regex)
         : DriverCounter(next, name),
           mPath(path),
           mReg(),
@@ -107,7 +107,7 @@ int64_t FSCounter::read()
         }
     }
     else {
-        if (DriverSource::readInt64Driver(mPath, &value) != 0) {
+        if (lib::readInt64FromFile(mPath, value) != 0) {
             goto fail;
         }
     }
@@ -119,6 +119,7 @@ fail:
 }
 
 FSDriver::FSDriver()
+    : PolledDriver("FS")
 {
 }
 
@@ -154,7 +155,7 @@ void FSDriver::readEvents(mxml_node_t * const xml)
             handleException();
         }
         const char *regex = mxmlElementGetAttr(node, "regex");
-        setCounters(new FSCounter(getCounters(), strdup(counter), strdup(path), regex));
+        setCounters(new FSCounter(getCounters(), counter, strdup(path), regex));
     }
 }
 

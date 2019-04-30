@@ -14,10 +14,12 @@
 #include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
+class FtraceDriver;
+
 class AtraceDriver : public SimpleDriver
 {
 public:
-    AtraceDriver();
+    AtraceDriver(const FtraceDriver & ftraceDriver);
     ~AtraceDriver();
 
     void readEvents(mxml_node_t * const xml);
@@ -35,6 +37,7 @@ private:
 
     bool mSupported;
     char mNotifyPath[256];
+    const FtraceDriver & mFtraceDriver;
 
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(AtraceDriver);

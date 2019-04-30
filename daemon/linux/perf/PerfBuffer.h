@@ -15,29 +15,38 @@
 #include "ClassBoilerPlate.h"
 #include "Config.h"
 
-class Sender;
+class ISender;
 
 class PerfBuffer
 {
 public:
+    struct Config
+    {
+        /// must be power of 2
+        size_t pageSize;
+        /// must be power of 2 multiple of pageSize
+        size_t bufferSize;
+    };
 
-    static std::size_t calculateBufferLength();
-    static std::size_t calculateMMapLength();
-
-    PerfBuffer();
+    PerfBuffer(Config config);
     ~PerfBuffer();
 
-    bool useFd(const int fd, int cpu);
+    bool useFd(const int fd, int cpu, bool collectAuxTrace = false);
     void discard(int cpu);
     bool isEmpty();
     bool isFull();
-    bool send(Sender * const sender);
+    bool send(ISender & sender);
+    std::size_t calculateBufferLength() const;
+
 
 private:
+    Config mConfig;
+
     struct Buffer
     {
         int fd;
-        void * buffer;
+        void * data_buffer;
+        void * aux_buffer; // may be null
     };
 
     std::map<int, Buffer> mBuffers;
@@ -47,5 +56,12 @@ private:
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfBuffer);
 };
+
+/**
+ * Validates that config has allowable values and throws exception if not.
+ *
+ * @param config
+ */
+void validate(const PerfBuffer::Config & config);
 
 #endif // PERF_BUFFER

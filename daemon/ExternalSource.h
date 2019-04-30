@@ -17,18 +17,20 @@
 #include "OlySocket.h"
 #include "Source.h"
 
+class Drivers;
+
 // Counters from external sources like graphics drivers and annotations
 class ExternalSource : public Source
 {
 public:
-    ExternalSource(Child & child, sem_t *senderSem);
+    ExternalSource(Child & child, sem_t *senderSem, Drivers & drivers);
     ~ExternalSource();
 
     virtual bool prepare() override;
     virtual void run() override;
     virtual void interrupt() override;
     virtual bool isDone() override;
-    virtual void write(Sender * sender) override;
+    virtual void write(ISender * sender) override;
 
 private:
     void waitFor(const int bytes);
@@ -51,6 +53,7 @@ private:
     int mInterruptFd;
     int mMidgardUds;
     int mMveUds;
+    Drivers & mDrivers;
 
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(ExternalSource);

@@ -25,20 +25,6 @@ namespace lib
         }
     }
 
-    FsEntryDirectoryIterator::FsEntryDirectoryIterator(FsEntryDirectoryIterator && that)
-            : parent_(std::move(that.parent_)),
-              directory_(std::move(that.directory_))
-    {
-    }
-
-    FsEntryDirectoryIterator& FsEntryDirectoryIterator::operator=(FsEntryDirectoryIterator && that)
-    {
-        this->parent_ = std::move(that.parent_);
-        this->directory_ = std::move(that.directory_);
-
-        return *this;
-    }
-
     Optional<FsEntry> FsEntryDirectoryIterator::next()
     {
         if (directory_ != nullptr) {
@@ -208,23 +194,48 @@ namespace lib
         return access(path_.c_str(), mode) == 0;
     }
 
-    bool FsEntry::exists() const
+    std::string FsEntry::readFileContents() const
     {
-        return canAccess(false, false, false);
-    }
-
-    std::string readFileContents(const FsEntry & entry)
-    {
-        std::ifstream stream(entry.path(), std::ios::in);
+        std::ifstream stream(path(), std::ios::in);
         std::ostringstream buffer;
 
         // read contents
+        bool first = true;
         while (stream) {
+            if (!first) {
+                buffer << '\n';
+            }
+            else {
+                first = false;
+            }
+
             std::string line;
             std::getline(stream, line);
-            buffer << line << '\n';
+            buffer << line;
         }
 
         return buffer.str();
+    }
+
+    std::string FsEntry::readFileContentsSingleLine() const
+    {
+        std::ifstream stream(path(), std::ios::in);
+        std::string line;
+
+        // read contents
+        if (stream) {
+            std::getline(stream, line);
+        }
+
+        return line;
+    }
+
+    bool FsEntry::writeFileContents(const char * data) const
+    {
+        std::ofstream stream(path());
+        if (!stream)
+            return false;
+        stream << data;
+        return bool(stream);
     }
 }

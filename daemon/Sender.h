@@ -1,5 +1,5 @@
 /**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
+ * Copyright (C) Arm Limited 2010-2018. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,25 +14,19 @@
 
 #include <memory>
 
+#include "ISender.h"
+
 #include "ClassBoilerPlate.h"
 
 class OlySocket;
 
-enum
-{
-    RESPONSE_XML = 1,
-    RESPONSE_APC_DATA = 3,
-    RESPONSE_ACK = 4,
-    RESPONSE_NAK = 5,
-    RESPONSE_ERROR = 0xFF
-};
 
-class Sender
+class Sender : public ISender
 {
 public:
     Sender(OlySocket* socket);
     ~Sender();
-    void writeData(const char* data, int length, int type, bool ignoreLockErrors = false);
+    void writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts, ResponseType type, bool ignoreLockErrors = false) override;
     void createDataFile(const char* apcDir);
 
 private:

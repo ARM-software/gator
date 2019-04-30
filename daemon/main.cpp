@@ -27,20 +27,26 @@
 #include <map>
 #include <vector>
 #include <iterator>
+#include <iostream>
 
 #include "AnnotateListener.h"
 #include "Child.h"
-#include "DriverSource.h"
+#include "CounterXML.h"
+#include "ConfigurationXML.h"
+#include "Drivers.h"
 #include "EventsXML.h"
+#include "ICpuInfo.h"
 #include "Logging.h"
 #include "Monitor.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
-#include "PmuXML.h"
+#include "PmuXMLParser.h"
 #include "SessionData.h"
-#include "PrimarySourceProvider.h"
 #include "Sender.h"
 #include "GatorCLIParser.h"
+#include "lib/FileDescriptor.h"
+#include "lib/Memory.h"
+#include "lib/Utils.h"
 
 static int shutdownFilesystem();
 static pthread_mutex_t numChildProcesses_mutex;
@@ -50,8 +56,6 @@ static bool driverRunningAtStart = false;
 static bool driverMountedAtStart = false;
 
 static const char NO_TCP_PIPE[] = "\0streamline-data";
-
-GatorCLIParser parser;
 
 enum State
 {
@@ -387,7 +391,7 @@ static int shutdownFilesystem()
 
 static AnnotateListener annotateListener;
 
-static void handleClient()
+static void handleClient(Drivers & drivers)
 {
     assert(sock != nullptr);
 
@@ -396,7 +400,7 @@ static void handleClient()
         OlySocket client(sock->acceptConnection());
         logg.logError("Session already in progress");
         Sender sender(&client);
-        sender.writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
+        sender.writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
 
         // Ensure all data is flushed the host receive the data (not closing socket too quick)
         sleep(1);
@@ -418,7 +422,7 @@ static void handleClient()
             monitor.close();
             annotateListener.close();
 
-            auto child = Child::createLive(*gSessionData.mPrimarySource, client);
+            auto child = Child::createLive(drivers, client);
             child->run();
             child.reset();
             exit(0);
@@ -431,7 +435,7 @@ static void handleClient()
     }
 }
 
-static void doLocalCapture()
+static void doLocalCapture(Drivers & drivers, const Child::Config & config)
 {
     state.store(State::CAPTURING);
     int pid = fork();
@@ -445,8 +449,7 @@ static void doLocalCapture()
         monitor.close();
         annotateListener.close();
 
-        auto child = Child::createLocal(*gSessionData.mPrimarySource);
-        child->setEvents(parser.result.events);
+        auto child = Child::createLocal(drivers, config);
         child->run();
         child.reset();
 
@@ -491,28 +494,28 @@ void setDefaults() {
 #endif
 }
 
-void updateSessionData()
+void updateSessionData(const ParserResult & result)
 {
-    gSessionData.mLocalCapture = parser.result.mIsLocalCapture;
-    gSessionData.mAndroidApiLevel = parser.result.mAndroidApiLevel;
-    gSessionData.mConfigurationXMLPath = parser.result.mConfigurationXMLPath;
-    gSessionData.mEventsXMLAppend = parser.result.mEventsXMLAppend;
-    gSessionData.mEventsXMLPath = parser.result.mEventsXMLPath;
-    gSessionData.mSessionXMLPath = parser.result.mSessionXMLPath;
-    gSessionData.mSystemWide = parser.result.mSystemWide;
-    gSessionData.mWaitForProcessCommand = parser.result.mWaitForCommand;
-    gSessionData.mPids = parser.result.mPids;
+    gSessionData.mLocalCapture = result.mode == ParserResult::ExecutionMode::LOCAL_CAPTURE;
+    gSessionData.mAndroidApiLevel = result.mAndroidApiLevel;
+    gSessionData.mConfigurationXMLPath = result.mConfigurationXMLPath;
+    gSessionData.mEventsXMLAppend = result.mEventsXMLAppend;
+    gSessionData.mEventsXMLPath = result.mEventsXMLPath;
+    gSessionData.mSessionXMLPath = result.mSessionXMLPath;
+    gSessionData.mSystemWide = result.mSystemWide;
+    gSessionData.mWaitForProcessCommand = result.mWaitForCommand;
+    gSessionData.mPids = result.mPids;
 
-    gSessionData.mTargetPath = parser.result.mTargetPath;
-    gSessionData.mAllowCommands = parser.result.mAllowCommands;
-    gSessionData.parameterSetFlag = parser.result.parameterSetFlag;
-    gSessionData.mStopOnExit = parser.result.mStopGator;
-    gSessionData.mPerfMmapSizeInPages = parser.result.mPerfMmapSizeInPages;
+    gSessionData.mTargetPath = result.mTargetPath;
+    gSessionData.mAllowCommands = result.mAllowCommands;
+    gSessionData.parameterSetFlag = result.parameterSetFlag;
+    gSessionData.mStopOnExit = result.mStopGator;
+    gSessionData.mPerfMmapSizeInPages = result.mPerfMmapSizeInPages;
 
     // use value from perf_event_mlock_kb
     if ((gSessionData.mPerfMmapSizeInPages <= 0) && (geteuid() != 0) && (gSessionData.mPageSize >= 1024)) {
         std::int64_t perfEventMlockKb = 0;
-        if (DriverSource::readInt64Driver("/proc/sys/kernel/perf_event_mlock_kb", &perfEventMlockKb) == 0) {
+        if (lib::readInt64FromFile("/proc/sys/kernel/perf_event_mlock_kb", perfEventMlockKb) == 0) {
             if (perfEventMlockKb > 0) {
                 const std::uint64_t perfEventMlockPages = (perfEventMlockKb / (gSessionData.mPageSize / 1024));
                 gSessionData.mPerfMmapSizeInPages = int(std::min<std::uint64_t>(perfEventMlockPages - 1, INT_MAX));
@@ -530,29 +533,26 @@ void updateSessionData()
                             gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ull);
         }
     }
-
     //These values are set from command line and are alos part of session.xml
     //and hence cannot be modified during parse session
-    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) {
-        gSessionData.mSampleRate = parser.result.mSampleRate;
+    if (result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) {
+        gSessionData.mSampleRate = result.mSampleRate;
     }
-    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) {
-        gSessionData.mBacktraceDepth = parser.result.mBacktraceDepth;
+    if (result.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) {
+        gSessionData.mBacktraceDepth = result.mBacktraceDepth;
     }
-    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) {
-        gSessionData.mCaptureWorkingDir = strdup(parser.result.mCaptureWorkingDir);
+    if (result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) {
+        gSessionData.mCaptureWorkingDir = strdup(result.mCaptureWorkingDir);
     }
-    if(parser.result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) {
-        gSessionData.mCaptureCommand  = parser.result.mCaptureCommand;
+    if(result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) {
+        gSessionData.mCaptureCommand  = result.mCaptureCommand;
     }
-    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_DURATION) {
-        gSessionData.mDuration = parser.result.mDuration;
+    if (result.parameterSetFlag & USE_CMDLINE_ARG_DURATION) {
+        gSessionData.mDuration = result.mDuration;
     }
-    if (parser.result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) {
-        gSessionData.mFtraceRaw = parser.result.mFtraceRaw;
+    if (result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) {
+        gSessionData.mFtraceRaw = result.mFtraceRaw;
     }
-
-    gSessionData.mMaliHwCntrs.initialize(parser.result.mMaliType, parser.result.mMaliDevice);
 }
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char** argv)
@@ -560,6 +560,8 @@ int main(int argc, char** argv)
     // Ensure proper signal handling by making gatord the process group leader
     //   e.g. it may not be the group leader when launched as 'sudo gatord'
     setsid();
+
+    GatorCLIParser parser;
     // Set up global thread-safe logging
     logg.setDebug(parser.hasDebugFlag(argc, argv));
     gSessionData.initialize();
@@ -591,7 +593,7 @@ int main(int argc, char** argv)
             rlim.rlim_max = std::max(rlim.rlim_cur, rlim.rlim_max);
             rlim.rlim_cur = std::min(std::max(rlim_t(1) << 15, rlim.rlim_cur), rlim.rlim_max);
             if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-                logg.logMessage("Unable to increase the maximum number of files (%lu, %lu)", rlim.rlim_cur, rlim.rlim_max);
+                logg.logMessage("Unable to increase the maximum number of files (%" PRIuMAX ", %" PRIuMAX ")", static_cast<uintmax_t>(rlim.rlim_cur), static_cast<uintmax_t>(rlim.rlim_max));
                 // Not good, but not a fatal error either
             }
         }
@@ -619,40 +621,32 @@ int main(int argc, char** argv)
     }
     // Parse the command line parameters
     parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5);
-    if (parser.result.parse_error == ERROR_PARSING) {
-
+    const ParserResult & result = parser.result;
+    if (result.mode == ParserResult::ExecutionMode::EXIT) {
         handleException();
     }
-    updateSessionData();
+    updateSessionData(result);
 
-    PmuXML::read(parser.result.pmuPath);
+    PmuXML pmuXml = readPmuXml(result.pmuPath);
     // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
-    gSessionData.mPrimarySource = PrimarySourceProvider::detect(parser.result.module, gSessionData.mSystemWide);
-    if (gSessionData.mPrimarySource == nullptr) {
-        logg.logError(
-                "Unable to initialize primary capture source:\n"
-                "  >>> gator.ko should be co-located with gatord in the same directory\n"
-                "  >>> OR insmod gator.ko prior to launching gatord\n"
-                "  >>> OR specify the location of gator.ko on the command line\n"
-                "  >>> OR run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing (CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
-        handleException();
-    }
+
+
+Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml), result.mMaliTypes, result.mMaliDevices };
 
     {
-        EventsXML eventsXML;
-        mxml_node_t *xml = eventsXML.getTree();
+        auto xml = events_xml::getTree(drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         // Initialize all drivers
-        for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
-            driver->readEvents(xml);
+        for (Driver *driver : drivers.getAll()) {
+            driver->readEvents(xml.get());
         }
         // build map of counter->event
         {
             gSessionData.globalCounterToEventMap.clear();
 
-            mxml_node_t *node = xml;
+            mxml_node_t *node = xml.get();
             while (true) {
-                node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
+                node = mxmlFindElement(node, xml.get(), "event", NULL, NULL, MXML_DESCEND);
                 if (node == nullptr) {
                     break;
                 }
@@ -670,8 +664,21 @@ int main(int argc, char** argv)
                     gSessionData.globalCounterToEventMap[counter] = -1;
                 }
             }
-            mxmlDelete(xml);
         }
+    }
+
+    if (result.mode == ParserResult::ExecutionMode::PRINT) {
+        if (result.printables.count(ParserResult::Printable::EVENTS_XML) == 1) {
+            std::cout << events_xml::getXML(drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo().getClusters()).get();
+        }
+        if (result.printables.count(ParserResult::Printable::COUNTERS_XML) == 1) {
+            std::cout << counters_xml::getXML(drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo()).get();
+        }
+        if (result.printables.count(ParserResult::Printable::DEFAULT_CONFIGURATION_XML) == 1) {
+            std::cout << configuration_xml::getDefaultConfigurationXml(drivers.getPrimarySourceProvider().getCpuInfo().getClusters()).get();
+        }
+        cleanUp();
+        return 0;
     }
 
     // Handle child exit codes
@@ -683,7 +690,7 @@ int main(int argc, char** argv)
 
     annotateListener.setup();
     int pipefd[2];
-    if (pipe_cloexec(pipefd) != 0) {
+    if (lib::pipe_cloexec(pipefd) != 0) {
         logg.logError("Unable to set up annotate pipe");
         handleException();
     }
@@ -699,11 +706,21 @@ int main(int argc, char** argv)
     }
 
     // If the command line argument is a session xml file, no need to open a socket
-    if ( gSessionData.mLocalCapture) {
-        doLocalCapture();
+    if (gSessionData.mLocalCapture) {
+        Child::Config childConfig { { }, { } };
+        for (const auto & event : result.events) {
+            CounterConfiguration config;
+            config.counterName = event.first;
+            config.event = event.second;
+            childConfig.events.insert(std::move(config));
+        }
+        for (const auto & spe : result.mSpeConfigs) {
+            childConfig.spes.insert(spe);
+        }
+        doLocalCapture(drivers, childConfig);
     }
     else {
-        if (parser.result.port == DISABLE_TCP_USE_UDS_PORT) {
+        if (result.port == DISABLE_TCP_USE_UDS_PORT) {
             sock = new OlyServerSocket(NO_TCP_PIPE, sizeof(NO_TCP_PIPE), true);
             if (!monitor.add(sock->getFd())) {
                 logg.logError("Monitor setup failed: couldn't add host listeners");
@@ -711,8 +728,8 @@ int main(int argc, char** argv)
             }
         }
         else {
-            sock = new OlyServerSocket(parser.result.port);
-            udpListener.setup(parser.result.port);
+            sock = new OlyServerSocket(result.port);
+            udpListener.setup(result.port);
             if (!monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())) {
                 logg.logError("Monitor setup failed: couldn't add host listeners");
                 handleException();
@@ -730,7 +747,7 @@ int main(int argc, char** argv)
         }
         for (int i = 0; i < ready; ++i) {
             if (!gSessionData.mLocalCapture && events[i].data.fd == sock->getFd()) {
-                handleClient();
+                handleClient(drivers);
             }
             else if (!gSessionData.mLocalCapture && events[i].data.fd == udpListener.getReq()) {
                 udpListener.handle();

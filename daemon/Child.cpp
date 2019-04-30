@@ -9,7 +9,7 @@
 #include "Child.h"
 
 #include "lib/Assert.h"
-#include "lib/SharedMemory.h"
+#include "lib/Waiter.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -24,8 +24,10 @@
 #include "Command.h"
 #include "ConfigurationXML.h"
 #include "Driver.h"
+#include "Drivers.h"
 #include "PrimarySourceProvider.h"
 #include "ExternalSource.h"
+#include "ICpuInfo.h"
 #include "LocalCapture.h"
 #include "Logging.h"
 #include "OlySocket.h"
@@ -36,7 +38,7 @@
 #include "UserSpaceSource.h"
 #include "PolledDriver.h"
 #include "EventsXML.h"
-#include "WaitForProcessPoller.h"
+#include "lib/WaitForProcessPoller.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
@@ -57,19 +59,27 @@ void handleException()
         singleton->cleanupException();
     }
 
+    //if gatord is being used for a local capture: remove the incomplete APC directory.
+    if (gSessionData.mLocalCapture) {
+        logg.logMessage("Cleaning incomplete APC directory.");
+        int errorCodeForRemovingDir = local_capture::removeDirAndAllContents(gSessionData.mTargetPath);
+        if (errorCodeForRemovingDir != 0)
+            logg.logError("Could not remove incomplete APC directory.");
+    }
+
     // don't call exit handlers / global destructors
     // because other threads may be still running
     _exit(exceptionExitCode);
 }
 
-std::unique_ptr<Child> Child::createLocal(PrimarySourceProvider & primarySourceProvider)
+std::unique_ptr<Child> Child::createLocal(Drivers & drivers, const Child::Config & config)
 {
-    return std::unique_ptr < Child > (new Child(primarySourceProvider));
+    return std::unique_ptr < Child > (new Child(drivers, nullptr, config));
 }
 
-std::unique_ptr<Child> Child::createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock)
+std::unique_ptr<Child> Child::createLive(Drivers & drivers, OlySocket & sock)
 {
-    return std::unique_ptr < Child > (new Child(primarySourceProvider, sock));
+    return std::unique_ptr < Child > (new Child(drivers, &sock, { }));
 }
 
 Child * Child::getSingleton()
@@ -103,23 +113,22 @@ void Child::signalHandler(int signum)
     }
 }
 
-Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock)
+Child::Child(Drivers & drivers, OlySocket * sock, const Child::Config & config)
         : haltPipeline(),
           senderThreadStarted(),
           senderSem(),
           primarySource(),
           externalSource(),
           userSpaceSource(),
-          midgardHwSource(),
+          maliHwSource(),
           sender(),
-          primarySourceProvider(psp),
+          drivers(drivers),
           socket(sock),
           numExceptions(0),
-          sleepMutex(),
           sessionEnded(),
           commandTerminated(true),
           commandPid(),
-          eventsMap(),
+          config(config),
           sharedData(shared_memory::make_unique<SharedData>())
 {
     // update singleton
@@ -138,23 +147,9 @@ Child::Child(bool local, PrimarySourceProvider & psp, OlySocket * sock)
     sem_init(&senderThreadStarted, 0, 0);
     sem_init(&senderSem, 0, 0);
 
-    // enable sleeping
-    sleepMutex.lock();
-
     sessionEnded.clear();
 
     gSessionData.mSessionIsActive = true;
-    gSessionData.mLocalCapture = local;
-}
-
-Child::Child(PrimarySourceProvider & psp)
-        : Child(true, psp, nullptr)
-{
-}
-
-Child::Child(PrimarySourceProvider & psp, OlySocket & sock)
-        : Child(false, psp, &sock)
-{
 }
 
 Child::~Child()
@@ -164,27 +159,8 @@ Child::~Child()
     runtime_assert(prevSingleton == this, "Exchanged Child::gSingleton with something other than this");
 }
 
-void Child::setEvents(const std::map<std::string, int> &eventsMap_)
-{
-    eventsMap = eventsMap_;
-}
-
-template<class Rep, class Period>
-bool Child::sleep(const std::chrono::duration<Rep, Period>& timeout_duration)
-{
-    if (sleepMutex.try_lock_for(timeout_duration)) {
-        sleepMutex.unlock();
-        return false;
-    }
-    else {
-        return true;
-    }
-}
-
 void Child::run()
 {
-    std::unique_ptr<LocalCapture> localCapture;
-
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
 
     // Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
@@ -192,101 +168,46 @@ void Child::run()
 
     // Instantiate the Sender - must be done first, after which error messages can be sent
     sender.reset(new Sender(socket));
+
+    auto & primarySourceProvider = drivers.getPrimarySourceProvider();
     // Populate gSessionData with the configuration
 
-    int countersIndex = 0;
-    if (eventsMap.empty() || gSessionData.mConfigurationXMLPath != nullptr) {
-        ConfigurationXML configuration;
-        countersIndex = configuration.mIndex;
-    }
+    std::set<SpeConfiguration> speConfigs = config.spes;
+    std::set<CounterConfiguration> counterConfigs = config.events;
+    bool countersAreDefaults = false;
+    const auto checkError = [](const std::string & error) {
+        if (!error.empty()) {
+            logg.logError("%s", error.c_str());
+        }
+    };
 
-    int perfCounterCount = countersIndex;
-    if (!eventsMap.empty()) {
-        // read attributes
-        for (const auto& eventmap : eventsMap) {
-            const std::string & counterName = eventmap.first;
-            const int event = eventmap.second;
-            const auto end = gSessionData.globalCounterToEventMap.end();
-            const auto it = std::find_if(gSessionData.globalCounterToEventMap.begin(), end, [&counterName] (const std::pair<std::string, int> & pair) {
-                        return strcasecmp(pair.first.c_str(), counterName.c_str()) == 0;
-                    });
-            const bool hasEventsXmlCounter = (it != end);
-            const int counterEvent = (hasEventsXmlCounter ? it->second : -1);
-
-            int index = perfCounterCount;
-            // override configuration.xml
-            for (int i = 0; i < countersIndex && i < MAX_PERFORMANCE_COUNTERS; ++i) {
-                Counter & existingCounter = gSessionData.mCounters[i];
-                if (counterNameFuzzyEquals(existingCounter.getType(), counterName.c_str())) {
-                    // need to clear all because there might be more than one match,
-                    // e.g., 'X' matches 'X_cnt0', 'X_cnt1'...
-                    // it means there might be some gaps in gSessionData.mCounters but that only makes
-                    // a difference if pushing the limit of MAX_PERFMANCE_COUNTERS
-                    existingCounter.clear();
-                    index = i;
-                    logg.logMessage("Overriding %s from configuration.xml", existingCounter.getType());
-                }
-            }
-            Counter & counter = gSessionData.mCounters[index];
-            counter.clear();
-            counter.setType(counterName.c_str());
-
-            // if hasEventsXmlCounter, then then event is defined as a counter with 'counter'/'type' attribute
-            // in events.xml. Use the specified event from events.xml (which may be -1 if not relevant)
-            // overriding anything from user map. This is necessary for cycle counters for example where
-            // they have a name "XXX_ccnt" but also often an event code. If not the event code -1 is used
-            // which is incorrect.
-            if (hasEventsXmlCounter) {
-                counter.setEvent(counterEvent);
-            }
-            // the counter is not in events.xml. This usually means it is a PMU slot counter
-            // the user specified the event code, use that
-            else if (event > -1) {
-                counter.setEvent(event);
-            }
-            // the counter is not in events.xml. This usually means it is a PMU slot counter, but since
-            // the user has not specified an event code, this is probably incorrect.
-            else if (strcasestr(counterName.c_str(), "_cnt")) {
-                logg.logWarning("Counter '%s' does not have an event code specified, PMU slot counters require an event code", counterName.c_str());
+    // Only read the configuration.xml if no counters were already given (via cmdline) or the configuration.xml
+    // was explicitly given. Given counters take priority.
+    if ((config.events.empty() && config.spes.empty()) || gSessionData.mConfigurationXMLPath != nullptr) {
+        auto && result = configuration_xml::getConfigurationXML(primarySourceProvider.getCpuInfo().getClusters());
+        countersAreDefaults = result.isDefault;
+        for (auto && counter : result.counterConfigurations) {
+            if (config.events.count(counter) == 0) {
+                checkError(configuration_xml::addCounterToSet(counterConfigs, std::move(counter)));
             }
             else {
-                logg.logWarning("Counter '%s' was not recognized", counterName.c_str());
-            }
-
-            // handle all other performance counters
-            if (perfCounterCount >= MAX_PERFORMANCE_COUNTERS) {
-                perfCounterCount++;
-                break;
-            }
-            counter.setEnabled(true);
-
-            // Associate a driver with each counter
-            for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
-                if (driver->claimCounter(counter)) {
-                    if (counter.getDriver() != NULL) {
-                        logg.logError("More than one driver has claimed %s:%i", counter.getType(), counter.getEvent());
-                        handleException();
-                    }
-                    counter.setDriver(driver);
-                }
-            }
-
-            // If no driver is associated with the counter, disable it
-            if (counter.getDriver() == NULL) {
-                logg.logWarning("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
-                counter.setEnabled(false);
-            }
-
-            if (counter.isEnabled() && index == perfCounterCount) {
-                // update counter index
-                perfCounterCount++;
+                logg.logMessage("Overriding <counter> '%s' from configuration.xml", counter.counterName.c_str());
             }
         }
-        gSessionData.mCcnDriver.validateCounters();
+        for (auto && spe : result.speConfigurations) {
+            if (config.spes.count(spe) == 0) {
+                checkError(configuration_xml::addSpeToSet(speConfigs, std::move(spe)));
+            }
+            else {
+                logg.logMessage("Overriding <spe> '%s' from configuration.xml", spe.id.c_str());
+            }
+        }
     }
 
+    checkError(configuration_xml::setCounters(counterConfigs, !countersAreDefaults, drivers));
+
     // Initialize all drivers
-    for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+    for (Driver *driver : drivers.getAll()) {
         driver->resetCounters();
     }
 
@@ -297,11 +218,28 @@ void Child::run()
             counter.getDriver()->setupCounter(counter);
         }
     }
+    std::vector<CapturedSpe> capturedSpes;
+    for (const auto & speConfig : speConfigs) {
+        bool claimed = false;
+
+        for (Driver * driver : drivers.getAll()) {
+            auto && capturedSpe = driver->setupSpe(speConfig);
+            if (capturedSpe) {
+                capturedSpes.push_back(std::move(capturedSpe.get()));
+                claimed = true;
+                break;
+            }
+        }
+
+        if (!claimed) {
+            logg.logWarning("No driver claimed %s", speConfig.id.c_str());
+        }
+    }
 
     // Start up and parse session xml
     if (socket) {
         // Respond to Streamline requests
-        StreamlineSetup ss(socket);
+        StreamlineSetup ss(socket, drivers, capturedSpes);
     }
     else {
         char* xmlString;
@@ -316,13 +254,13 @@ void Child::run()
             free(xmlString);
 
         }
-        localCapture.reset(new LocalCapture());
-        localCapture->createAPCDirectory(gSessionData.mTargetPath);
-        localCapture->copyImages(gSessionData.mImages);
+
+        local_capture::createAPCDirectory(gSessionData.mTargetPath);
+        local_capture::copyImages(gSessionData.mImages);
         sender->createDataFile(gSessionData.mAPCDir);
         // Write events XML
-        EventsXML eventsXML;
-        eventsXML.write(gSessionData.mAPCDir);
+        events_xml::write(gSessionData.mAPCDir, drivers.getAllConst(),
+                          primarySourceProvider.getCpuInfo().getClusters());
     }
 
     std::set<int> appPids;
@@ -338,7 +276,10 @@ void Child::run()
         Command commandResult = runCommand(sharedData->startProfile, [this]() {
             commandTerminated = true;
             if (gSessionData.mStopOnExit)
-            endSession();
+            {
+                logg.logMessage("Ending session because command exited");
+                endSession();
+            }
         });
         enableOnCommandExec = true;
         commandPid = commandResult.pid;
@@ -367,7 +308,8 @@ void Child::run()
     appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
 
     // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
-    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids, enableOnCommandExec);
+    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids,
+                                                              drivers.getFtraceDriver(), enableOnCommandExec);
     if (primarySource == nullptr) {
         logg.logError("Failed to init primary capture source");
         handleException();
@@ -380,8 +322,8 @@ void Child::run()
         stopThread = std::thread([this]() {stopThreadEntryPoint();});
     }
 
-    if (gSessionData.mPrimarySource->supportsMaliCapture() && gSessionData.mPrimarySource->isCapturingMaliCounters()
-            && !gSessionData.mPrimarySource->supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
+    if (primarySourceProvider.supportsMaliCapture() && primarySourceProvider.isCapturingMaliCounters()
+            && !primarySourceProvider.supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
         logg.logError("Mali counters are not supported with Sample Rate: %i.", gSessionData.mSampleRate);
         handleException();
     }
@@ -389,7 +331,7 @@ void Child::run()
     // Initialize ftrace source before child as it's slow and dependens on nothing else
     // If initialized later, us gator with ftrace has time sync issues
     // Must be initialized before senderThread is started as senderThread checks externalSource
-    externalSource.reset(new ExternalSource(*this, &senderSem));
+    externalSource.reset(new ExternalSource(*this, &senderSem, drivers));
     if (!externalSource->prepare()) {
         logg.logError("Unable to prepare external source for capture");
         handleException();
@@ -398,38 +340,41 @@ void Child::run()
 
     // Must be after session XML is parsed
     if (!primarySource->prepare()) {
-        logg.logError("%s", gSessionData.mPrimarySource->getPrepareFailedMessage());
+        logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
         handleException();
     }
-
+    auto getMonotonicStarted = [&primarySourceProvider]() -> std::int64_t {return primarySourceProvider.getMonotonicStarted();};
     // initialize midgard hardware counters
-    if (gSessionData.mMaliHwCntrs.countersEnabled()) {
-        midgardHwSource.reset(new mali_userspace::MaliHwCntrSource(*this, &senderSem));
-        if (!midgardHwSource->prepare()) {
+    if (drivers.getMaliHwCntrs().countersEnabled()) {
+        maliHwSource.reset(
+                new mali_userspace::MaliHwCntrSource(*this, &senderSem, getMonotonicStarted, drivers.getMaliHwCntrs()));
+        if (!maliHwSource->prepare()) {
             logg.logError("Unable to prepare midgard hardware counters source for capture");
             handleException();
         }
-        midgardHwSource->start();
+        maliHwSource->start();
     }
 
     // Sender thread shall be halted until it is signaled for one shot mode
     sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
 
     // Create the duration and sender threads
+    lib::Waiter waiter;
+
     std::thread durationThread { };
     if (gSessionData.mDuration > 0) {
-        durationThread = std::thread([this]() {durationThreadEntryPoint();});
+        durationThread = std::thread([&]() {durationThreadEntryPoint(waiter);});
     }
 
     std::thread senderThread { [this]() {senderThreadEntryPoint();} };
 
     std::thread watchPidsThread { };
     if (gSessionData.mStopOnExit && !watchPids.empty()) {
-        watchPidsThread = std::thread([this, &watchPids]() {watchPidsThreadEntryPoint(watchPids);});
+        watchPidsThread = std::thread([&]() {watchPidsThreadEntryPoint(watchPids, waiter);});
     }
 
-    if (UserSpaceSource::shouldStart()) {
-        userSpaceSource.reset(new UserSpaceSource(*this, &senderSem));
+    if (UserSpaceSource::shouldStart(drivers.getAllPolledConst())) {
+        userSpaceSource.reset(new UserSpaceSource(*this, &senderSem, getMonotonicStarted, drivers.getAllPolled()));
         if (!userSpaceSource->prepare()) {
             logg.logError("Unable to prepare userspace source for capture");
             handleException();
@@ -444,14 +389,14 @@ void Child::run()
     primarySource->run();
 
     // wake all sleepers
-    sleepMutex.unlock();
+    waiter.disable();
 
     // Wait for the other threads to exit
     if (userSpaceSource != NULL) {
         userSpaceSource->join();
     }
-    if (midgardHwSource != NULL) {
-        midgardHwSource->join();
+    if (maliHwSource != NULL) {
+        maliHwSource->join();
     }
     externalSource->join();
 
@@ -472,20 +417,18 @@ void Child::run()
 
     // Write the captured xml file
     if (gSessionData.mLocalCapture) {
-        CapturedXML capturedXML;
-        capturedXML.write(gSessionData.mAPCDir);
-        CounterXML counterXML;
-        counterXML.write(gSessionData.mAPCDir);
+        auto & maliCntrDriver = drivers.getMaliHwCntrs();
+        captured_xml::write(gSessionData.mAPCDir, capturedSpes, primarySourceProvider, maliCntrDriver.getDeviceGpuIds());
+        counters_xml::write(gSessionData.mAPCDir, drivers.getAllConst(), primarySourceProvider.getCpuInfo());
     }
 
     logg.logMessage("Profiling ended.");
 
     userSpaceSource.reset();
-    midgardHwSource.reset();
+    maliHwSource.reset();
     externalSource.reset();
     primarySource.reset();
     sender.reset();
-    localCapture.reset();
 
     if (commandThread.joinable()) {
         logg.logMessage("Waiting for command");
@@ -498,7 +441,9 @@ void Child::terminateCommand()
 {
     if (!commandTerminated) {
         logg.logMessage("Terminating %d", commandPid);
-        kill(commandPid, SIGTERM);
+        //Passing a negative commandPid will kill every process in the process group.
+        //Needed so that all child processes are terminated when the parent is; cleaning up processes created by Streamline/gator.
+        kill(-commandPid, SIGTERM);
     }
 }
 
@@ -524,8 +469,8 @@ void Child::endSession()
     if (externalSource != nullptr) {
         externalSource->interrupt();
     }
-    if (midgardHwSource != nullptr) {
-        midgardHwSource->interrupt();
+    if (maliHwSource != nullptr) {
+        maliHwSource->interrupt();
     }
     if (userSpaceSource != nullptr) {
         userSpaceSource->interrupt();
@@ -548,7 +493,7 @@ void Child::cleanupException()
     if (socket) {
         if (sender) {
             // send the error, regardless of the command sent by Streamline
-            sender->writeData(logg.getLastError(), strlen(logg.getLastError()), RESPONSE_ERROR, true);
+            sender->writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
 
             // cannot close the socket before Streamline issues the command, so wait for the command before exiting
             if (gSessionData.mWaitingOnCommand) {
@@ -565,7 +510,7 @@ void Child::cleanupException()
     }
 }
 
-void Child::durationThreadEntryPoint()
+void Child::durationThreadEntryPoint(const lib::Waiter & waiter)
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-duration"), 0, 0, 0);
 
@@ -573,8 +518,7 @@ void Child::durationThreadEntryPoint()
     sem_post(&sharedData->startProfile); // post for anyone else waiting
 
     // Time out after duration seconds
-    // Add a second for host-side filtering
-    if (sleep(std::chrono::seconds(gSessionData.mDuration + 1))) {
+    if (waiter.wait_for(std::chrono::seconds(gSessionData.mDuration))) {
         logg.logMessage("Duration expired.");
         endSession();
     }
@@ -592,6 +536,7 @@ void Child::stopThreadEntryPoint()
         const char type = header[0];
         const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
         if (result == -1) {
+            logg.logMessage("Receive failed.");
             endSession();
         }
         else if (result > 0) {
@@ -611,7 +556,7 @@ void Child::stopThreadEntryPoint()
                     else {
                         // Ping is used to make sure gator is alive and requires an ACK as the response
                         logg.logMessage("Ping command received.");
-                        sender->writeData(NULL, 0, RESPONSE_ACK);
+                        sender->writeData(NULL, 0, ResponseType::ACK);
                     }
                 }
                 else {
@@ -626,19 +571,17 @@ void Child::stopThreadEntryPoint()
 
 void Child::senderThreadEntryPoint()
 {
-    char end_sequence[] = { RESPONSE_APC_DATA, 0, 0, 0, 0 };
-
     sem_post(&senderThreadStarted);
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-sender"), 0, 0, 0);
     sem_wait(&haltPipeline);
 
-    while ((!externalSource->isDone()) || ((midgardHwSource != NULL) && (!midgardHwSource->isDone()))
+    while ((!externalSource->isDone()) || ((maliHwSource != NULL) && (!maliHwSource->isDone()))
             || ((userSpaceSource != NULL) && (!userSpaceSource->isDone())) || (!primarySource->isDone())) {
         sem_wait(&senderSem);
 
         externalSource->write(sender.get());
-        if (midgardHwSource != NULL) {
-            midgardHwSource->write(sender.get());
+        if (maliHwSource != NULL) {
+            maliHwSource->write(sender.get());
         }
         if (userSpaceSource != NULL) {
             userSpaceSource->write(sender.get());
@@ -649,8 +592,8 @@ void Child::senderThreadEntryPoint()
     // flush one more time to ensure any slop is cleared up
     {
         externalSource->write(sender.get());
-        if (midgardHwSource != NULL) {
-            midgardHwSource->write(sender.get());
+        if (maliHwSource != NULL) {
+            maliHwSource->write(sender.get());
         }
         if (userSpaceSource != NULL) {
             userSpaceSource->write(sender.get());
@@ -660,23 +603,24 @@ void Child::senderThreadEntryPoint()
 
     // write end-of-capture sequence
     if (!gSessionData.mLocalCapture) {
-        sender->writeData(end_sequence, sizeof(end_sequence), RESPONSE_APC_DATA);
+        sender->writeData(nullptr, 0, ResponseType::APC_DATA);
     }
 
     logg.logMessage("Exit sender thread");
 }
 
-void Child::watchPidsThreadEntryPoint(std::set<int> & pids)
+void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & waiter)
 {
     while (!pids.empty()) {
-        if (!sleep(std::chrono::seconds(1))) {
-            break;
+        if (!waiter.wait_for(std::chrono::seconds(1))) {
+            logg.logMessage("Exit watch pids thread by request");
+            return;
         }
 
         auto it = pids.begin();
         while (it != pids.end()) {
-
             if (kill(*it, 0) < 0) {
+                logg.logMessage("pid %d exited", *it);
                 it = pids.erase(it);
             }
             else {
@@ -684,6 +628,7 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids)
             }
         }
     }
+    logg.logMessage("Ending session because all watched processes have exited");
     endSession();
     logg.logMessage("Exit watch pids thread");
 }

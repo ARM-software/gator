@@ -9,6 +9,9 @@
 #ifndef CCNDRIVER_H
 #define CCNDRIVER_H
 
+#include <string>
+
+#include "ClassBoilerPlate.h"
 #include "Driver.h"
 
 class CCNDriver : public Driver
@@ -25,7 +28,7 @@ public:
     int writeCounters(mxml_node_t * const root) const;
     void writeEvents(mxml_node_t * const) const;
 
-    void validateCounters() const;
+    std::string validateCounters() const;
 
 private:
     enum NodeType

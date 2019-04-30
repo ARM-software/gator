@@ -25,12 +25,16 @@ Logging::Logging()
           mErrBuf()
 {
     pthread_mutex_init(&mLoggingMutex, NULL);
-
-    strcpy(mErrBuf, "Unknown Error");
+    reset();
 }
 
 Logging::~Logging()
 {
+}
+
+void Logging::reset() {
+    mSetup.reset();
+    strcpy(mErrBuf, "Unknown Error");
 }
 
 static void format(char * const buf, const size_t bufSize, const bool verbose, const char * const level,

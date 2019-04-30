@@ -10,14 +10,15 @@
 #define PROC_H
 
 #include <stdint.h>
+#include <atomic>
 
-class Buffer;
+class IPerfAttrsConsumer;
 class DynBuf;
+class FtraceDriver;
 
-bool readProcSysDependencies(uint64_t currTime, Buffer & buffer, DynBuf * const printb, DynBuf * const b1);
-bool readProcMaps(uint64_t currTime, Buffer & buffer);
-bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * const isDone);
-bool readTracepointFormat(const uint64_t currTime, Buffer * const buffer, const char * const name,
-                          DynBuf * const printb, DynBuf * const b);
+bool readProcSysDependencies(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, DynBuf * const printb, DynBuf * const b1, FtraceDriver & ftraceDriver);
+bool readProcMaps(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
+bool readKallsyms(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & isDone);
+
 
 #endif // PROC_H

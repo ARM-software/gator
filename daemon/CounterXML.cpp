@@ -6,27 +6,21 @@
  * published by the Free Software Foundation.
  */
 
-
 #include "CounterXML.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 
-#include "PrimarySourceProvider.h"
-#include "SessionData.h"
+#include "Driver.h"
+#include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "PmuXML.h"
+#include "mxml/mxml.h"
+#include "SessionData.h"
 
-CounterXML::CounterXML()
-{
-}
-
-CounterXML::~CounterXML()
-{
-}
-
-mxml_node_t* CounterXML::getTree()
+static mxml_node_t* getTree(lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
 {
     mxml_node_t *xml;
     mxml_node_t *counters;
@@ -34,7 +28,7 @@ mxml_node_t* CounterXML::getTree()
     xml = mxmlNewXML("1.0");
     counters = mxmlNewElement(xml, "counters");
     int count = 0;
-    for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+    for (const Driver *driver : drivers) {
         count += driver->writeCounters(counters);
     }
 
@@ -47,42 +41,44 @@ mxml_node_t* CounterXML::getTree()
     mxmlNewText(setup, 0, logg.getSetup());
 
     // always send the cluster information; even on devices where not all the information is available.
-    for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
+    for (size_t cluster = 0; cluster < cpuInfo.getClusters().size(); ++cluster) {
         mxml_node_t *node = mxmlNewElement(counters, "cluster");
-        mxmlElementSetAttrf(node, "id", "%i", cluster);
-        mxmlElementSetAttr(node, "name", gSessionData.mSharedData->mClusters[cluster]->getPmncName());
+        mxmlElementSetAttrf(node, "id", "%zi", cluster);
+        mxmlElementSetAttr(node, "name", cpuInfo.getClusters()[cluster].getPmncName());
     }
-    for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
-        if (gSessionData.mSharedData->mClusterIds[cpu] >= 0) {
+    for (size_t cpu = 0; cpu < cpuInfo.getClusterIds().size(); ++cpu) {
+        if (cpuInfo.getClusterIds()[cpu] >= 0) {
             mxml_node_t *node = mxmlNewElement(counters, "cpu");
-            mxmlElementSetAttrf(node, "id", "%i", cpu);
-            mxmlElementSetAttrf(node, "cluster", "%i", gSessionData.mSharedData->mClusterIds[cpu]);
+            mxmlElementSetAttrf(node, "id", "%zu", cpu);
+            mxmlElementSetAttrf(node, "cluster", "%i", cpuInfo.getClusterIds()[cpu]);
         }
     }
     return xml;
 }
 
-char* CounterXML::getXML()
+namespace counters_xml
 {
-    char* xml_string;
-    mxml_node_t *xml = getTree();
-    xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
-    mxmlDelete(xml);
-    return xml_string;
-}
 
-void CounterXML::write(const char* path)
-{
-    char file[PATH_MAX];
-
-    // Set full path
-    snprintf(file, PATH_MAX, "%s/counters.xml", path);
-
-    char* xml = getXML();
-    if (writeToDisk(file, xml) < 0) {
-        logg.logError("Error writing %s\nPlease verify the path.", file);
-        handleException();
+    std::unique_ptr<char, void (*)(void*)> getXML(lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
+    {
+        char* xml_string;
+        mxml_node_t *xml = getTree(drivers, cpuInfo);
+        xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+        mxmlDelete(xml);
+        return {xml_string, &::free};
     }
 
-    free(xml);
+    void write(const char* path, lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
+    {
+        char file[PATH_MAX];
+
+        // Set full path
+        snprintf(file, PATH_MAX, "%s/counters.xml", path);
+
+        if (writeToDisk(file, getXML(drivers, cpuInfo).get()) < 0) {
+            logg.logError("Error writing %s\nPlease verify the path.", file);
+            handleException();
+        }
+    }
+
 }

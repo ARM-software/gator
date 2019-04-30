@@ -39,7 +39,7 @@ public:
     void stop(const int mveUds);
 
 private:
-    void marshalEnable(const MaliVideoCounterType type, char * const buf, const size_t bufsize, int &pos);
+    void marshalEnable(const MaliVideoCounterType type, char * const buf, int &pos);
 
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(MaliVideoDriver);

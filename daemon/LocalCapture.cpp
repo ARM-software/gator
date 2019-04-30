@@ -21,25 +21,7 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 
-LocalCapture::LocalCapture()
-{
-}
-
-LocalCapture::~LocalCapture()
-{
-}
-
-void LocalCapture::createAPCDirectory(const char* target_path)
-{
-    gSessionData.mAPCDir = createUniqueDirectory(target_path, ".apc");
-    if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0
-            || mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
-        logg.logError("Unable to create directory %s", gSessionData.mAPCDir);
-        handleException();
-    }
-}
-
-char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* ending)
+static char* createUniqueDirectory(const char* initialPath, const char* ending)
 {
     char* output;
     char path[PATH_MAX];
@@ -71,55 +53,68 @@ char* LocalCapture::createUniqueDirectory(const char* initialPath, const char* e
     return output;
 }
 
-int LocalCapture::removeDirAndAllContents(const char* path)
+namespace local_capture
 {
-    int error = 0;
-    struct stat mFileInfo;
-    // Does the path exist?
-    if (stat(path, &mFileInfo) == 0) {
-        // Is it a directory?
-        if (mFileInfo.st_mode & S_IFDIR) {
-            DIR * dir = opendir(path);
-            dirent* entry = readdir(dir);
-            while (entry) {
-                if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                    std::unique_ptr<char[]> newpath(new char[strlen(path) + strlen(entry->d_name) + 2]);
-                    sprintf(newpath.get(), "%s/%s", path, entry->d_name);
-                    error = removeDirAndAllContents(newpath.get());
-                    if (error) {
-                        break;
-                    }
-                }
-                entry = readdir(dir);
-            }
-            closedir(dir);
-            if (error == 0) {
-                error = rmdir(path);
-            }
-        }
-        else {
-            error = remove(path);
+    void createAPCDirectory(const char* target_path)
+    {
+        gSessionData.mAPCDir = createUniqueDirectory(target_path, ".apc");
+        if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0
+                || mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
+            logg.logError("Unable to create directory %s", gSessionData.mAPCDir);
+            handleException();
         }
     }
-    return error;
-}
 
-void LocalCapture::copyImages(const std::list<std::string> & list)
-{
-    char dstfilename[PATH_MAX];
+    int removeDirAndAllContents(const char* path)
+    {
+        int error = 0;
+        struct stat mFileInfo;
+        // Does the path exist?
+        if (stat(path, &mFileInfo) == 0) {
+            // Is it a directory?
+            if (mFileInfo.st_mode & S_IFDIR) {
+                DIR * dir = opendir(path);
+                dirent* entry = readdir(dir);
+                while (entry) {
+                    if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                        std::unique_ptr<char[]> newpath(new char[strlen(path) + strlen(entry->d_name) + 2]);
+                        sprintf(newpath.get(), "%s/%s", path, entry->d_name);
+                        error = removeDirAndAllContents(newpath.get());
+                        if (error) {
+                            break;
+                        }
+                    }
+                    entry = readdir(dir);
+                }
+                closedir(dir);
+                if (error == 0) {
+                    error = rmdir(path);
+                }
+            }
+            else {
+                error = remove(path);
+            }
+        }
+        return error;
+    }
 
-    for (const auto & element : list) {
-        strncpy(dstfilename, gSessionData.mAPCDir, PATH_MAX);
-        dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
-        if (gSessionData.mAPCDir[strlen(gSessionData.mAPCDir) - 1] != '/') {
-            strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
-        }
-        strncat(dstfilename, getFilePart(element.c_str()), PATH_MAX - strlen(dstfilename) - 1);
-        if (copyFile(element.c_str(), dstfilename)) {
-            logg.logMessage("copied file %s to %s", element.c_str(), dstfilename);
-        }
-        else {
-            logg.logMessage("copy of file %s to %s failed", element.c_str(), dstfilename);
+    void copyImages(const std::list<std::string> & list)
+    {
+        char dstfilename[PATH_MAX];
+
+        for (const auto & element : list) {
+            strncpy(dstfilename, gSessionData.mAPCDir, PATH_MAX);
+            dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
+            if (gSessionData.mAPCDir[strlen(gSessionData.mAPCDir) - 1] != '/') {
+                strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
+            }
+            strncat(dstfilename, getFilePart(element.c_str()), PATH_MAX - strlen(dstfilename) - 1);
+            if (copyFile(element.c_str(), dstfilename)) {
+                logg.logMessage("copied file %s to %s", element.c_str(), dstfilename);
+            }
+            else {
+                logg.logMessage("copy of file %s to %s failed", element.c_str(), dstfilename);
+            }
         }
     }
 }

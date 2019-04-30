@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <utility>
 
+#include "lib/Syscall.h"
+
 namespace lib
 {
     /**

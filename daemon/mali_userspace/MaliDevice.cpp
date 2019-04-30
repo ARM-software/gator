@@ -256,30 +256,26 @@ namespace mali_userspace
         return 0;
     }
 
-    MaliDevice * MaliDevice::create(uint32_t gpuId, const char * devicePath, const char * clockPath)
+    std::unique_ptr<MaliDevice>  MaliDevice::create(uint32_t gpuId, std::string devicePath, std::string clockPath)
     {
         for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
             if ((gpuId & PRODUCT_VERSIONS[index].mGpuIdMask) == PRODUCT_VERSIONS[index].mGpuIdValue) {
-                return new MaliDevice(PRODUCT_VERSIONS[index], devicePath, clockPath, gpuId);
+                return std::unique_ptr<MaliDevice> (new MaliDevice(PRODUCT_VERSIONS[index], devicePath, clockPath));
             }
         }
         return nullptr;
     }
 
-    MaliDevice::MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t gpuId)
+    MaliDevice::MaliDevice(const MaliProductVersion & productVersion,  std::string devicePath, std::string clockPath)
         :   mProductVersion (productVersion),
-            mDevicePath (strdup(devicePath)),
-            mClockPath (clockPath != nullptr ? strdup(clockPath) : nullptr),
-            mGpuId (gpuId)
+            mDevicePath (devicePath),
+            mClockPath (clockPath)
     {
     }
 
-    MaliDevice::~MaliDevice()
+    uint32_t MaliDevice::getGPUId() const
     {
-        free(const_cast<char *>(mDevicePath));
-        if (mClockPath != nullptr) {
-            free(const_cast<char *>(mClockPath));
-        }
+        return mProductVersion.mGpuIdValue;
     }
 
     uint32_t MaliDevice::getBlockCount() const
@@ -313,7 +309,7 @@ namespace mali_userspace
                     const uint32_t counterIndex = (groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + wordIndex;
 
                     if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
-                        if (callback.isCounterActive(nameBlockNumber, counterIndex)) {
+                        if (callback.isCounterActive(nameBlockNumber, counterIndex, mProductVersion.mGpuIdValue)) {
                             result.enable(blockIndex, groupIndex, wordIndex);
                         }
                     }
@@ -324,16 +320,16 @@ namespace mali_userspace
         return result;
     }
 
-    void MaliDevice::dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const
+    void MaliDevice::dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
     {
         switch (hardwareVersion) {
             case 4: {
-                dumpAllCounters_V4(counterList, buffer, bufferLength, callback);
+                dumpAllCounters_V4(counterList, buffer, bufferLength, bufferData, callback);
                 break;
             }
             case 5:
             case 6: {
-                dumpAllCounters_V56(mmul2BlockCount, counterList, buffer, bufferLength, callback);
+                dumpAllCounters_V56(mmul2BlockCount, counterList, buffer, bufferLength, bufferData, callback);
                 break;
             }
             default: {
@@ -347,7 +343,7 @@ namespace mali_userspace
         }
     }
 
-    void MaliDevice::dumpAllCounters_V4(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const
+    void MaliDevice::dumpAllCounters_V4(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
     {
         const size_t counterListSize = counterList.size();
 
@@ -383,7 +379,7 @@ namespace mali_userspace
                         shaderCoreCounters[counterIndex] += delta;
                     }
                     else {
-                        callback.nextCounterValue(nameBlockNumber, counterIndex, delta);
+                        callback.nextCounterValue(nameBlockNumber, counterIndex, delta, mProductVersion.mGpuIdValue, bufferData);
                     }
                 }
             }
@@ -392,12 +388,12 @@ namespace mali_userspace
         // now send shader core and mmu/l2 averages
         for (uint32_t shaderCounterIndex = 0; shaderCounterIndex < NUM_COUNTERS_PER_BLOCK; ++shaderCounterIndex) {
             if (shaderCoreCounters[shaderCounterIndex].isValid()) {
-                callback.nextCounterValue(MALI_NAME_BLOCK_SHADER, shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average());
+                callback.nextCounterValue(MALI_NAME_BLOCK_SHADER, shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average(), mProductVersion.mGpuIdValue, bufferData);
             }
         }
     }
 
-    void MaliDevice::dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const
+    void MaliDevice::dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
     {
         const size_t counterListSize = counterList.size();
 
@@ -449,7 +445,7 @@ namespace mali_userspace
                             mmuL2Counters[counterIndex] += delta;
                         }
                         else {
-                            callback.nextCounterValue(nameBlockNumber, counterIndex, delta);
+                            callback.nextCounterValue(nameBlockNumber, counterIndex, delta, mProductVersion.mGpuIdValue, bufferData);
                         }
                     }
                 }
@@ -459,12 +455,12 @@ namespace mali_userspace
         // now send shader core and mmu/l2 averages
         for (uint32_t mmuL2CounterIndex = 0; mmuL2CounterIndex < NUM_COUNTERS_PER_BLOCK; ++mmuL2CounterIndex) {
             if (mmuL2Counters[mmuL2CounterIndex].isValid()) {
-                callback.nextCounterValue(MALI_NAME_BLOCK_MMU, mmuL2CounterIndex, mmuL2Counters[mmuL2CounterIndex].sum);
+                callback.nextCounterValue(MALI_NAME_BLOCK_MMU, mmuL2CounterIndex, mmuL2Counters[mmuL2CounterIndex].sum, mProductVersion.mGpuIdValue, bufferData);
             }
         }
         for (uint32_t shaderCounterIndex = 0; shaderCounterIndex < NUM_COUNTERS_PER_BLOCK; ++shaderCounterIndex) {
             if (shaderCoreCounters[shaderCounterIndex].isValid()) {
-                callback.nextCounterValue(MALI_NAME_BLOCK_SHADER, shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average());
+                callback.nextCounterValue(MALI_NAME_BLOCK_SHADER, shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average(), mProductVersion.mGpuIdValue, bufferData);
             }
         }
     }
@@ -492,12 +488,12 @@ namespace mali_userspace
         return result;
     }
 
-    const char * MaliDevice::getProductName() const
+    const char* MaliDevice::getProductName() const
     {
-        return mProductVersion.mName;
+       return mProductVersion.mName;
     }
 
-    const char * MaliDevice::getSupportedDeviceFamilyName() const
+    const char* MaliDevice::getSupportedDeviceFamilyName() const
     {
         return mProductVersion.mProductFamilyName;
     }

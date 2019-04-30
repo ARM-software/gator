@@ -6,38 +6,61 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef COUNTERS_H
-#define COUNTERS_H
+#ifndef CONFIGURATION_XML_H
+#define CONFIGURATION_XML_H
 
-#include "ClassBoilerPlate.h"
-#include "mxml/mxml.h"
+#include <memory>
+#include <vector>
+#include <string>
+#include <set>
 
-class ConfigurationXML
+#include "lib/Span.h"
+
+#include "Configuration.h"
+
+class Drivers;
+class Driver;
+class GatorCpu;
+
+namespace configuration_xml
 {
-public:
-    static char *getDefaultConfigurationXml();
-    static void getPath(char* path);
-    static void remove();
+    std::unique_ptr<char, void (*)(void*)> getDefaultConfigurationXml(lib::Span<const GatorCpu> clusters);
 
-    ConfigurationXML();
-    ~ConfigurationXML();
-    const char* getConfigurationXML()
+    void getPath(char* path);
+    void remove();
+    /**
+     *
+     * @param configs
+     * @param config
+     * @return An error or empty
+     */
+    std::string addCounterToSet(std::set<CounterConfiguration> & configs, CounterConfiguration && config);
+    /**
+     *
+     * @param configs
+     * @param config
+     * @return An error or empty
+     */
+    std::string addSpeToSet(std::set<SpeConfiguration> & configs, SpeConfiguration && config);
+    /**
+     *
+     * @param counterConfigurations
+     * @param printWarningIfUnclaimed
+     * @param drivers
+     * @return An error or empty
+     */
+    std::string setCounters(const std::set<CounterConfiguration> & counterConfigurations, bool printWarningIfUnclaimed,
+                            Drivers & drivers);
+
+    struct Contents
     {
-        return mConfigurationXML;
-    }
-private:
-    char* mConfigurationXML;
-public:
-    int mIndex;
+        std::unique_ptr<char, void (*)(void*)> raw;
+        bool isDefault;
+        std::vector<CounterConfiguration> counterConfigurations;
+        std::vector<SpeConfiguration> speConfigurations;
+    };
+    Contents getConfigurationXML(lib::Span<const GatorCpu> clusters);
 
-private:
-    void validate(void);
-    int parse(const char* xmlFile, bool printWarningIfUnclaimed);
-    int configurationsTag(mxml_node_t *node);
-    void configurationTag(mxml_node_t *node, bool printWarningIfUnclaimed);
+}
 
-    // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(ConfigurationXML);
-};
-
-#endif // COUNTERS_H
+#endif // CONFIGURATION_XML_H

@@ -6,27 +6,23 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef EVENTS_XML
-#define EVENTS_XML
+#ifndef EVENTS_XML_H
+#define EVENTS_XML_H
 
-#include "ClassBoilerPlate.h"
+#include <memory>
+
+#include "lib/Span.h"
 #include "mxml/mxml.h"
+class Driver;
+class GatorCpu;
 
-class EventsXML
+namespace events_xml
 {
-public:
-    EventsXML()
-    {
-    }
+    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getTree(lib::Span<const GatorCpu> clusters);
 
-    mxml_node_t *getTree();
-    char *getXML();
-    void write(const char* path);
+    std::unique_ptr<char, void(*)(void*)> getXML(lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters);
 
-private:
-
-    // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(EventsXML);
+    void write(const char* path, lib::Span<const Driver * const > drivers, lib::Span<const GatorCpu> clusters);
 };
 
-#endif // EVENTS_XML
+#endif // EVENTS_XML_H

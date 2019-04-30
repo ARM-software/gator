@@ -2,11 +2,11 @@
 
 #include "non_root/PerCoreMixedFrameBuffer.h"
 #include "Logging.h"
-#include "Sender.h"
+#include "ISender.h"
 
 namespace non_root
 {
-    PerCoreMixedFrameBuffer::PerCoreMixedFrameBuffer(int frameType_, int bufferSize_, sem_t & readerSem_)
+    PerCoreMixedFrameBuffer::PerCoreMixedFrameBuffer(FrameType frameType_, int bufferSize_, sem_t & readerSem_)
             : buffers(),
               wrappers(),
               readerSem(readerSem_),
@@ -46,7 +46,7 @@ namespace non_root
         return true;
     }
 
-    void PerCoreMixedFrameBuffer::write(Sender * sender)
+    void PerCoreMixedFrameBuffer::write(ISender * sender)
     {
         for (auto & entry : buffers) {
             if (entry.second && !entry.second->isDone()) {

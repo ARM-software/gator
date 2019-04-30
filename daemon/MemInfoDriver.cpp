@@ -17,7 +17,7 @@
 class MemInfoCounter : public DriverCounter
 {
 public:
-    MemInfoCounter(DriverCounter *next, char * const name, int64_t * const value);
+    MemInfoCounter(DriverCounter *next, const char * const name, int64_t * const value);
     ~MemInfoCounter();
 
     int64_t read();
@@ -29,7 +29,7 @@ private:
     CLASS_DELETE_COPY_MOVE(MemInfoCounter);
 };
 
-MemInfoCounter::MemInfoCounter(DriverCounter *next, char * const name, int64_t * const value)
+MemInfoCounter::MemInfoCounter(DriverCounter *next, const char * const name, int64_t * const value)
         : DriverCounter(next, name),
           mValue(value)
 {
@@ -45,7 +45,8 @@ int64_t MemInfoCounter::read()
 }
 
 MemInfoDriver::MemInfoDriver()
-        : mBuf(),
+        : PolledDriver("MemInfo"),
+          mBuf(),
           mMemUsed(0),
           mMemFree(0),
           mBuffers(0),
@@ -61,11 +62,11 @@ MemInfoDriver::~MemInfoDriver()
 void MemInfoDriver::readEvents(mxml_node_t * const)
 {
     if (access("/proc/meminfo", R_OK) == 0) {
-        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memused2"), &mMemUsed));
-        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_memfree"), &mMemFree));
-        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_bufferram"), &mBuffers));
-        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_cached"), &mCached));
-        setCounters(new MemInfoCounter(getCounters(), strdup("Linux_meminfo_slab"), &mSlab));
+        setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_memused2", &mMemUsed));
+        setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_memfree", &mMemFree));
+        setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_bufferram", &mBuffers));
+        setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_cached", &mCached));
+        setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_slab", &mSlab));
     }
     else {
         logg.logSetup("Linux counters\nCannot access /proc/meminfo. Memory usage counters not available.");

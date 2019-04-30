@@ -16,12 +16,12 @@
 
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "SessionData.h"
+#include "FtraceDriver.h"
 
 class TtraceCounter : public DriverCounter
 {
 public:
-    TtraceCounter(DriverCounter *next, char *name, int flag);
+    TtraceCounter(DriverCounter *next, const char *name, int flag);
     ~TtraceCounter();
 
     int getFlag() const
@@ -36,7 +36,7 @@ private:
     CLASS_DELETE_COPY_MOVE(TtraceCounter);
 };
 
-TtraceCounter::TtraceCounter(DriverCounter *next, char *name, int flag)
+TtraceCounter::TtraceCounter(DriverCounter *next, const char *name, int flag)
         : DriverCounter(next, name),
           mFlag(flag)
 {
@@ -46,8 +46,9 @@ TtraceCounter::~TtraceCounter()
 {
 }
 
-TtraceDriver::TtraceDriver()
-        : mSupported(false)
+TtraceDriver::TtraceDriver(const FtraceDriver & ftraceDriver)
+        : SimpleDriver("Ttrace"),
+          mSupported(false), mFtraceDriver(ftraceDriver)
 {
 }
 
@@ -62,7 +63,7 @@ void TtraceDriver::readEvents(mxml_node_t * const xml)
         //logg.logSetup("Ttrace is disabled\n/etc/tizen-release is not found, this is not a Tizen target");
         return;
     }
-    if (!gSessionData.mFtraceDriver.isSupported()) {
+    if (!mFtraceDriver.isSupported()) {
         logg.logSetup("Ttrace is disabled\nSupport for ftrace required");
         return;
     }
@@ -94,7 +95,7 @@ void TtraceDriver::readEvents(mxml_node_t * const xml)
             logg.logError("The flag attribute of the ttrace counter %s is not a hex integer", counter);
             handleException();
         }
-        setCounters(new TtraceCounter(getCounters(), strdup(counter), flag));
+        setCounters(new TtraceCounter(getCounters(), counter, flag));
     }
 }
 

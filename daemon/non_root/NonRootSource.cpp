@@ -9,7 +9,9 @@
 #include "non_root/ProcessStateChangeHandler.h"
 #include "lib/Time.h"
 #include "Child.h"
+#include "ICpuInfo.h"
 #include "Logging.h"
+#include "Protocol.h"
 #include "SessionData.h"
 
 #include <sys/prctl.h>
@@ -18,18 +20,19 @@
 
 namespace non_root
 {
-    NonRootSource::NonRootSource(NonRootDriver & driver_, Child & child_, sem_t & senderSem_, sem_t & startProfile_)
+    NonRootSource::NonRootSource(NonRootDriver & driver_, Child & child_, sem_t & senderSem_, sem_t & startProfile_, const ICpuInfo & cpuInfo)
             : Source(child_),
-              mSwitchBuffers(FRAME_SCHED_TRACE, 1 * 1024 * 1024, senderSem_),
-              mGlobalCounterBuffer(0, FRAME_BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
-              mProcessCounterBuffer(0, FRAME_BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
-              mMiscBuffer(0, FRAME_UNKNOWN, 1 * 1024 * 1024, &senderSem_),
+              mSwitchBuffers(FrameType::SCHED_TRACE, 1 * 1024 * 1024, senderSem_),
+              mGlobalCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
+              mProcessCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
+              mMiscBuffer(0, FrameType::UNKNOWN, 1 * 1024 * 1024, &senderSem_),
               interrupted(false),
               timestampSource(CLOCK_MONOTONIC_RAW),
               driver(driver_),
               senderSem(senderSem_),
               startProfile(startProfile_),
-              done(false)
+              done(false),
+              cpuInfo(cpuInfo)
 
     {
     }
@@ -103,7 +106,7 @@ namespace non_root
         return done && mGlobalCounterBuffer.isDone() && mProcessCounterBuffer.isDone() && mMiscBuffer.isDone() && mSwitchBuffers.allDone();
     }
 
-    void NonRootSource::write(Sender * sender)
+    void NonRootSource::write(ISender * sender)
     {
         if (!mGlobalCounterBuffer.isDone()) {
             mGlobalCounterBuffer.write(sender);
@@ -152,26 +155,20 @@ namespace non_root
         miscBuffer.summaryFrameSummaryMessage(currTime, timestamp, monotonicStarted, monotonicStarted, buf, pageSize, true);
         gSessionData.mSentSummary = true;
 
-        const SharedData * const sharedData = gSessionData.mSharedData;
-
-        for (int cpu = 0; cpu < gSessionData.mCores; ++cpu) {
+        for (size_t cpu = 0; cpu < cpuInfo.getNumberOfCores(); ++cpu) {
+            const int cpuId = cpuInfo.getCpuIds()[cpu];
             // Don't send information on a cpu we know nothing about
-            if (sharedData->mCpuIds[cpu] == -1) {
+            if (cpuId == -1) {
                 continue;
             }
 
-            GatorCpu * const gatorCpu = GatorCpu::find(sharedData->mCpuIds[cpu]);
-            if ((gatorCpu != nullptr) && (gatorCpu->getCpuid() == sharedData->mCpuIds[cpu])) {
-                miscBuffer.summaryFrameCoreNameMessage(currTime, cpu, sharedData->mCpuIds[cpu], gatorCpu->getCoreName());
+            const GatorCpu * const gatorCpu = driver.getPmuXml().findCpuById(cpuId);
+            if (gatorCpu != nullptr) {
+                miscBuffer.summaryFrameCoreNameMessage(currTime, cpu, cpuId, gatorCpu->getCoreName());
             }
             else {
-                if (sharedData->mCpuIds[cpu] == -1) {
-                    snprintf(buf, sizeof(buf), "Unknown");
-                }
-                else {
-                    snprintf(buf, sizeof(buf), "Unknown (0x%.3x)", sharedData->mCpuIds[cpu]);
-                }
-                miscBuffer.summaryFrameCoreNameMessage(currTime, cpu, sharedData->mCpuIds[cpu], buf);
+                snprintf(buf, sizeof(buf), "Unknown (0x%.3x)", cpuId);
+                miscBuffer.summaryFrameCoreNameMessage(currTime, cpu, cpuId, buf);
             }
         }
 

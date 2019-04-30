@@ -13,7 +13,7 @@
 #include "ClassBoilerPlate.h"
 
 class Child;
-class Sender;
+class ISender;
 
 class Source
 {
@@ -28,7 +28,7 @@ public:
     void join();
 
     virtual bool isDone() = 0;
-    virtual void write(Sender * sender) = 0;
+    virtual void write(ISender * sender) = 0;
 
 protected:
 

@@ -6,8 +6,8 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef PERF_GROUP
-#define PERF_GROUP
+#ifndef PERF_GROUPS_H
+#define PERF_GROUPS_H
 
 #include <cstdint>
 #include <map>
@@ -16,49 +16,55 @@
 #include <vector>
 
 #include "ClassBoilerPlate.h"
-#include "Config.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "linux/perf/PerfEventGroup.h"
+#include "linux/perf/IPerfGroups.h"
 
-class Buffer;
 class GatorCpu;
-class Monitor;
-class PerfBuffer;
 
-class PerfGroups
+class PerfGroups : public IPerfGroups
 {
 public:
-    PerfGroups(PerfBuffer * pb, const PerfConfig & config);
+    PerfGroups(const PerfConfig & perfConfig, size_t bufferLength, int backtraceDepth,
+               int sampleRate, bool isEbs, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId);
 
-    bool createCpuGroup(const uint64_t currTime, Buffer * const buffer);
-    bool add(uint64_t timestamp, Buffer * buffer, const PerfEventGroupIdentifier & groupIdentifier, int key,
-             uint32_t type, uint64_t config, uint64_t periodOrFreq, uint64_t sampleType, int flags);
-    PerfEventGroup& addGroupLeader(const uint64_t timestamp, Buffer * const buffer, const PerfEventGroupIdentifier & groupIdentifier);
+    virtual bool add(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer,
+                     const PerfEventGroupIdentifier & groupIdentifier, int key, const Attr & attr,
+                     bool hasAuxData = false) override;
+
+    virtual void addGroupLeader(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer,
+                        const PerfEventGroupIdentifier & groupIdentifier) override {
+        getGroup(timestamp, attrsConsumer, groupIdentifier);
+    }
+
     /**
      *
      * @param currTime
      * @param cpu
-     * @param appTid the tid to count or -1 if all thread or 0 for current
+     * @param appPids ignored if system wide
      * @param enableNow
-     * @param buffer
-     * @param monitor
      * @return
      * @note Not safe to call concurrently.
      */
-    OnlineResult onlineCPU(const uint64_t currTime, const int cpu, const std::set<int> & appPids, const bool enableNow, Buffer * const buffer,
-                           Monitor * const monitor);
-    bool offlineCPU(int cpu);
+    OnlineResult onlineCPU(uint64_t timestamp, int cpu, const std::set<int> & appPids, OnlineEnabledState enabledState,
+                           IPerfAttrsConsumer & attrsConsumer, std::function<bool(int)> addToMonitor,
+                           std::function<bool(int, int, bool)> addToBuffer,
+                           std::function<std::set<int>(int)> childTids);
+
+    bool offlineCPU(int cpu, std::function<void(int)> removeFromBuffer);
     void start();
     void stop();
+    bool hasSPE() const;
 
 private:
+    /// Get the group and create the group leader if needed
+    PerfEventGroup& getGroup(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer, const PerfEventGroupIdentifier & groupIdentifier);
 
     PerfEventGroupSharedConfig sharedConfig;
     std::map<PerfEventGroupIdentifier, std::unique_ptr<PerfEventGroup>> perfEventGroupMap;
-    PerfBuffer * const mPb;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfGroups);
 };
 
-#endif // PERF_GROUP
+#endif // PERF_GROUPS_H

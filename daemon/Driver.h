@@ -11,30 +11,35 @@
 
 #include <stdint.h>
 
-#include "ClassBoilerPlate.h"
 #include "mxml/mxml.h"
 
-class Buffer;
+#include "lib/Optional.h"
+#include "CapturedSpe.h"
+#include "ClassBoilerPlate.h"
+
 class Counter;
+struct SpeConfiguration;
 
 class Driver
 {
 public:
-    static Driver *getHead()
-    {
-        return head;
-    }
-
-    virtual ~Driver();
+    Driver(const char * name) : name(name){}
+    virtual ~Driver() = default;
 
     // Returns true if this driver can manage the counter
     virtual bool claimCounter(Counter &counter) const = 0;
 
-    // Clears and disables all counters
+    // Clears and disables all counters/SPE
     virtual void resetCounters() = 0;
 
     // Enables and prepares the counter for capture
     virtual void setupCounter(Counter &counter) = 0;
+
+    // Claims and prepares the SPE for capture
+    virtual lib::Optional<CapturedSpe> setupSpe(const SpeConfiguration &)
+    {
+        return {};
+    }
 
     // Performs any actions needed for setup or based on eventsXML
     virtual void readEvents(mxml_node_t * const)
@@ -49,20 +54,17 @@ public:
     {
     }
 
-    Driver *getNext() const
+    inline const char * getName() const
     {
-        return next;
+        return name;
     }
 
-protected:
-    Driver();
+    CLASS_DEFAULT_COPY_MOVE(Driver);
 
 private:
-    static Driver *head;
-    Driver *next;
 
-    // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(Driver);
+    const char * name;
+
 };
 
 #endif // DRIVER_H
