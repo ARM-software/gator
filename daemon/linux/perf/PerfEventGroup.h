@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <climits>
+#include <functional>
 #include <map>
 #include <set>
 #include <vector>
@@ -12,23 +13,14 @@
 #include "ClassBoilerPlate.h"
 #include "k/perf_event.h" // Use a snapshot of perf_event.h as it may be more recent than what is on the target and if not newer features won't be supported anyways
 #include "lib/AutoClosingFd.h"
+#include "lib/Span.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
+#include "linux/perf/IPerfGroups.h"
+#include "Tracepoints.h"
 
-class Buffer;
+class IPerfAttrsConsumer;
 class GatorCpu;
-class Monitor;
-class PerfBuffer;
-
-enum PerfGroupFlags
-{
-    PERF_GROUP_MMAP = 1 << 0,
-    PERF_GROUP_COMM = 1 << 1,
-    PERF_GROUP_FREQ = 1 << 2,
-    PERF_GROUP_TASK = 1 << 3,
-    PERF_GROUP_SAMPLE_ID_ALL = 1 << 4,
-    PERF_GROUP_CONTEXT_SWITCH = 1 << 5,
-};
 
 enum class OnlineResult
 {
@@ -38,18 +30,42 @@ enum class OnlineResult
     OTHER_FAILURE,
 };
 
+enum class OnlineEnabledState
+{
+    ENABLE_NOW,
+    ENABLE_ON_EXEC,
+    NOT_ENABLED
+};
+
 struct PerfEventGroupSharedConfig
 {
-    inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig)
+    inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig, size_t bufferLength, int backtraceDepth,
+                                      int sampleRate, bool isEbs, lib::Span<const GatorCpu> clusters,
+                                      lib::Span<const int> clusterIds, int64_t schedSwitchId)
             : perfConfig(perfConfig),
-              schedSwitchId(-1),
-              dummyKeyCounter(INT_MAX)
+              schedSwitchId(schedSwitchId),
+              schedSwitchKey(INT_MAX),
+              dummyKeyCounter(INT_MAX - 1),
+              bufferLength(bufferLength),
+              backtraceDepth(backtraceDepth),
+              sampleRate(sampleRate),
+              isEbs(isEbs),
+              clusters(clusters),
+              clusterIds(clusterIds)
     {
     }
 
     const PerfConfig & perfConfig;
-    int schedSwitchId;
+    /// tracepoint ID for sched_switch or UNKNOWN_TRACE_POINT_ID
+    int64_t schedSwitchId;
+    int schedSwitchKey;
     int dummyKeyCounter;
+    size_t bufferLength;
+    int backtraceDepth;
+    int sampleRate;
+    bool isEbs;
+    lib::Span<const GatorCpu> clusters;
+    lib::Span<const int> clusterIds;
 };
 
 class PerfEventGroup
@@ -60,13 +76,15 @@ public:
 
     bool requiresLeader() const;
     bool hasLeader() const;
-    bool addEvent(bool leader, uint64_t timestamp, Buffer * buffer, int key, uint32_t type, uint64_t config, uint64_t frequencyOrPeriod, uint64_t sampleType,
-                  int flags);
-    bool createGroupLeader(uint64_t timestamp, Buffer * buffer);
+    bool addEvent(bool leader, uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer, int key,
+                  const IPerfGroups::Attr & attr, bool hasAuxData);
+    bool createGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
 
-    OnlineResult onlineCPU(uint64_t timestamp, int cpu, std::set<int> & tids, bool enableNow, Buffer * buffer, Monitor * monitor, PerfBuffer * perfBuffer);
+    OnlineResult onlineCPU(uint64_t timestamp, int cpu, std::set<int> & tids, OnlineEnabledState enabledState,
+                           IPerfAttrsConsumer & attrsConsumer, std::function<bool(int)> addToMonitor,
+                           std::function<bool(int, int, bool)> addToBuffer);
 
-    bool offlineCPU(int cpu, PerfBuffer * perfBuffer);
+    bool offlineCPU(int cpu);
     void start();
     void stop();
 
@@ -75,16 +93,14 @@ private:
     struct PerfEvent
     {
         struct perf_event_attr attr;
-        int flags;
         int key;
     };
 
     CLASS_DELETE_COPY_MOVE(PerfEventGroup);
 
-    bool createCpuGroupLeader(uint64_t timestamp, Buffer * buffer);
-    bool createUncoreGroupLeader(uint64_t timestamp, Buffer * buffer);
+    bool createCpuGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
+    bool createUncoreGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
 
-    bool neverInGroup(int eventIndex) const;
     bool enable(const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap);
     bool checkEnabled(const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap);
 

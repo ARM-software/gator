@@ -10,7 +10,7 @@
 #include <memory>
 #include <semaphore.h>
 
-class Sender;
+class ISender;
 
 namespace non_root
 {
@@ -20,12 +20,12 @@ namespace non_root
 
         typedef unsigned long core_type;
 
-        PerCoreMixedFrameBuffer(int frameType, int bufferSize, sem_t & readerSem);
+        PerCoreMixedFrameBuffer(FrameType frameType, int bufferSize, sem_t & readerSem);
 
         bool anyFull() const;
         void setDone();
         bool allDone() const;
-        void write(Sender * sender);
+        void write(ISender * sender);
 
         MixedFrameBuffer & operator[] (core_type core);
 
@@ -34,7 +34,7 @@ namespace non_root
         std::map<core_type, std::unique_ptr<Buffer>> buffers;
         std::map<core_type, std::unique_ptr<MixedFrameBuffer>> wrappers;
         sem_t & readerSem;
-        int frameType;
+        FrameType frameType;
         int bufferSize;
     };
 }

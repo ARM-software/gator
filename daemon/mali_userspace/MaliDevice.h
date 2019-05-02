@@ -6,7 +6,9 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-
+#include <string>
+#include <memory>
+#include "IBuffer.h"
 #include "ClassBoilerPlate.h"
 
 namespace mali_userspace
@@ -28,17 +30,19 @@ namespace mali_userspace
          * @param nameBlockIndex
          * @param counterIndex
          * @param delta
+         * @param gpuId
          */
-        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta) = 0;
+        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta, uint32_t gpuId, IBuffer& buffer) = 0;
 
         /**
          * Used to check if the user selected the counter in the config dialog when building the fast lookup list
          *
          * @param nameBlockIndex
          * @param counterIndex
+         * @param gpuId
          * @return True if the user selected the counter, false otherwise
          */
-        virtual bool isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex) const = 0;
+        virtual bool isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const = 0;
     };
 
     /**
@@ -121,8 +125,6 @@ namespace mali_userspace
             BLOCK_ENABLE_BITS_COUNTER_INDEX = 2
         };
 
-        ~MaliDevice();
-
         /**
          * Using the provided product name string, attempt to map it to some recognized product GPU ID.
          * The name provided must match the pattern /(Mali[ -])?([GT]\d+)/
@@ -141,23 +143,26 @@ namespace mali_userspace
          * @param clockPath (Which may be null)
          * @return The MaliDevice object, or NULL on failure
          */
-        static MaliDevice * create(uint32_t gpuId, const char * devicePath, const char * clockPath);
+        static std::unique_ptr<MaliDevice>  create(uint32_t gpuId, std::string devicePath, std::string clockPath);
 
         /**
          * @return The path to the device file
          */
-        inline const char * getDevicePath() const
+        inline std::string getDevicePath() const
         {
             return mDevicePath;
         }
-
         /**
          * @return The path to the clock file
          */
-        inline const char * getClockPath() const
+        inline std::string  getClockPath() const
         {
             return mClockPath;
         }
+        /**
+         * @return the gpuid of the device
+         */
+        uint32_t getGPUId() const;
 
         /**
          * @return The number of counter blocks
@@ -199,7 +204,7 @@ namespace mali_userspace
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData , IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
          * Count all the blocks with the mask field set to non-zero value
@@ -213,12 +218,12 @@ namespace mali_userspace
         /**
          * @return The family name of the device
          */
-        const char * getProductName() const;
+        const char* getProductName() const;
 
         /**
          * @return The family name of the device
          */
-        const char * getSupportedDeviceFamilyName() const;
+        const char* getSupportedDeviceFamilyName() const;
 
     private:
 
@@ -226,15 +231,12 @@ namespace mali_userspace
         const MaliProductVersion & mProductVersion;
 
         /** The path to the /dev/mali device */
-        const char * const mDevicePath;
+        const std::string mDevicePath;
 
         /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
-        const char * const mClockPath;
+        const std::string mClockPath;
 
-        /** The GPU ID code */
-        const uint32_t mGpuId;
-
-        MaliDevice(const MaliProductVersion & productVersion, const char * devicePath, const char * clockPath, uint32_t gpuId);
+        MaliDevice(const MaliProductVersion & productVersion, std::string devicePath, std::string clockPath);
 
         CLASS_DELETE_COPY_MOVE(MaliDevice);
 
@@ -246,7 +248,7 @@ namespace mali_userspace
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters_V4(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters_V4(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
@@ -257,7 +259,7 @@ namespace mali_userspace
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const;
     };
 }
 

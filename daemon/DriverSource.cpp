@@ -15,17 +15,21 @@
 #include <inttypes.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <dirent.h>
 
-#include "Buffer.h"
+#include "linux/perf/PerfAttrsBuffer.h"
 #include "Child.h"
 #include "DynBuf.h"
 #include "Fifo.h"
 #include "Logging.h"
+#include "KMod.h"
+#include "OlyUtility.h"
 #include "Proc.h"
 #include "Sender.h"
 #include "SessionData.h"
+#include "lib/Utils.h"
 
-DriverSource::DriverSource(Child & child, sem_t & senderSem, sem_t & startProfile)
+DriverSource::DriverSource(Child & child, sem_t & senderSem, sem_t & startProfile, FtraceDriver & ftraceDriver)
         : Source(child),
           mBuffer(NULL),
           mFifo(NULL),
@@ -33,23 +37,19 @@ DriverSource::DriverSource(Child & child, sem_t & senderSem, sem_t & startProfil
           mStartProfile(startProfile),
           mBufferSize(0),
           mBufferFD(0),
-          mLength(1)
+          mLength(1),
+          mFtraceDriver(ftraceDriver)
 {
-    mBuffer = new Buffer(0, FRAME_PERF_ATTRS, 4 * 1024 * 1024, &senderSem);
-    checkVersion();
+    mBuffer = new PerfAttrsBuffer(4 * 1024 * 1024, &senderSem);
+    KMod::checkVersion();
 
     int enable = -1;
-    if (readIntDriver("/dev/gator/enable", &enable) != 0 || enable != 0) {
+    if (lib::readIntFromFile("/dev/gator/enable", enable) != 0 || enable != 0) {
         logg.logError("Driver already enabled, possibly a session is already in progress.");
         handleException();
     }
 
-    readIntDriver("/dev/gator/cpu_cores", &gSessionData.mCores);
-    if (gSessionData.mCores == 0) {
-        gSessionData.mCores = 1;
-    }
-
-    if (readIntDriver("/dev/gator/buffer_size", &mBufferSize) || mBufferSize <= 0) {
+    if (lib::readIntFromFile("/dev/gator/buffer_size", mBufferSize) || mBufferSize <= 0) {
         logg.logError("Unable to read the driver buffer size");
         handleException();
     }
@@ -60,42 +60,11 @@ DriverSource::~DriverSource()
     delete mFifo;
 
     // Write zero for safety, as a zero should have already been written
-    writeDriver("/dev/gator/enable", "0");
+    lib::writeCStringToFile("/dev/gator/enable", "0");
 
     // Calls event_buffer_release in the driver
     if (mBufferFD) {
         close(mBufferFD);
-    }
-}
-
-void DriverSource::checkVersion()
-{
-    int driverVersion = 0;
-
-    if (readIntDriver("/dev/gator/version", &driverVersion) == -1) {
-        logg.logError("Error reading gator driver version");
-        handleException();
-    }
-
-    // Verify the driver version matches the daemon version
-    if (driverVersion != PROTOCOL_VERSION) {
-        if ((driverVersion > PROTOCOL_DEV) || (PROTOCOL_VERSION > PROTOCOL_DEV)) {
-            // One of the mismatched versions is development version
-            logg.logError(
-                    "DEVELOPMENT BUILD MISMATCH: gator driver version \"%d\" is not in sync with gator daemon version \"%d\".\n"
-                    ">> The following must be synchronized from engineering repository:\n"
-                    ">> * gator driver\n"
-                    ">> * gator daemon\n"
-                    ">> * Streamline", driverVersion, PROTOCOL_VERSION);
-            handleException();
-        }
-        else {
-            // Release version mismatch
-            logg.logError(
-                    "gator driver version \"%d\" is different than gator daemon version \"%d\".\n"
-                    ">> Please upgrade the driver and daemon to the latest versions.", driverVersion, PROTOCOL_VERSION);
-            handleException();
-        }
     }
 }
 
@@ -118,7 +87,7 @@ void DriverSource::bootstrapThread()
     // MonotonicStarted may not be not assigned yet
     const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
 
-    if (!readProcSysDependencies(currTime, *mBuffer, &printb, &b1)) {
+    if (!readProcSysDependencies(currTime, *mBuffer, &printb, &b1, mFtraceDriver)) {
         logg.logError("readProcSysDependencies failed");
         handleException();
     }
@@ -142,7 +111,7 @@ void DriverSource::run()
     logg.logMessage("********** Profiling started **********");
 
     // Set the maximum backtrace depth
-    if (writeReadDriver("/dev/gator/backtrace_depth", &gSessionData.mBacktraceDepth)) {
+    if (lib::writeReadIntInFile("/dev/gator/backtrace_depth", gSessionData.mBacktraceDepth)) {
         logg.logError("Unable to set the driver backtrace depth");
         handleException();
     }
@@ -155,20 +124,20 @@ void DriverSource::run()
     }
 
     // set the tick rate of the profiling timer
-    if (writeReadDriver("/dev/gator/tick", &gSessionData.mSampleRate) != 0) {
+    if (lib::writeReadIntInFile("/dev/gator/tick", gSessionData.mSampleRate) != 0) {
         logg.logError("Unable to set the driver tick");
         handleException();
     }
 
     // notify the kernel of the response type
-    int response_type = gSessionData.mLocalCapture ? 0 : RESPONSE_APC_DATA;
-    if (writeDriver("/dev/gator/response_type", response_type)) {
+    const ResponseType response_type = gSessionData.mLocalCapture ? ResponseType::NONE : ResponseType::APC_DATA;
+    if (lib::writeIntToFile("/dev/gator/response_type", static_cast<int>(response_type))) {
         logg.logError("Unable to write the response type");
         handleException();
     }
 
     // Set the live rate
-    if (writeReadDriver("/dev/gator/live_rate", &gSessionData.mLiveRate)) {
+    if (lib::writeReadInt64InFile("/dev/gator/live_rate", gSessionData.mLiveRate)) {
         logg.logError("Unable to set the driver live rate");
         handleException();
     }
@@ -176,7 +145,7 @@ void DriverSource::run()
     logg.logMessage("Start the driver");
 
     // This command makes the driver start profiling by calling gator_op_start() in the driver
-    if (writeDriver("/dev/gator/enable", "1") != 0) {
+    if (lib::writeCStringToFile("/dev/gator/enable", "1") != 0) {
         logg.logError("The gator driver did not start properly. Please view the linux console or dmesg log for more information on the failure.");
         handleException();
     }
@@ -224,7 +193,7 @@ void DriverSource::run()
 void DriverSource::interrupt()
 {
     // This command should cause the read() function in collect() to return and stop the driver from profiling
-    if (writeDriver("/dev/gator/enable", "0") != 0) {
+    if (lib::writeCStringToFile("/dev/gator/enable", "0") != 0) {
         logg.logMessage("Stopping kernel failed");
     }
 }
@@ -234,11 +203,12 @@ bool DriverSource::isDone()
     return mLength <= 0 && (mBuffer == NULL || mBuffer->isDone());
 }
 
-void DriverSource::write(Sender *sender)
+void DriverSource::write(ISender *sender)
 {
     char *data = mFifo->read(&mLength);
     if (data != NULL) {
-        sender->writeData(data, mLength, RESPONSE_APC_DATA);
+        // driver will frame the response with type if needed and length
+        sender->writeData(data, mLength, ResponseType::RAW);
         mFifo->release();
         // Assume the summary packet is in the first block received from the driver
         gSessionData.mSentSummary = true;
@@ -246,106 +216,10 @@ void DriverSource::write(Sender *sender)
     if (mBuffer != NULL && !mBuffer->isDone()) {
         mBuffer->write(sender);
         if (mBuffer->isDone()) {
-            Buffer *buf = mBuffer;
+            PerfAttrsBuffer *buf = mBuffer;
             mBuffer = NULL;
             delete buf;
         }
     }
 }
 
-int DriverSource::readIntDriver(const char *fullpath, int *value)
-{
-    char data[40]; // Sufficiently large to hold any integer
-    const int fd = open(fullpath, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return -1;
-    }
-
-    const ssize_t bytes = read(fd, data, sizeof(data) - 1);
-    close(fd);
-    if (bytes < 0) {
-        return -1;
-    }
-    data[bytes] = '\0';
-
-    char *endptr;
-    errno = 0;
-    *value = strtol(data, &endptr, 10);
-    if (errno != 0 || *endptr != '\n') {
-        logg.logMessage("Invalid value in file %s", fullpath);
-        return -1;
-    }
-
-    return 0;
-}
-
-int DriverSource::readInt64Driver(const char *fullpath, int64_t *value)
-{
-    char data[40]; // Sufficiently large to hold any integer
-    const int fd = open(fullpath, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return -1;
-    }
-
-    const ssize_t bytes = read(fd, data, sizeof(data) - 1);
-    close(fd);
-    if (bytes < 0) {
-        return -1;
-    }
-    data[bytes] = '\0';
-
-    char *endptr;
-    errno = 0;
-    *value = strtoll(data, &endptr, 10);
-    if (errno != 0 || (*endptr != '\n' && *endptr != '\0')) {
-        logg.logMessage("Invalid value in file %s", fullpath);
-        return -1;
-    }
-
-    return 0;
-}
-
-int DriverSource::writeDriver(const char *fullpath, const char *data)
-{
-    int fd = open(fullpath, O_WRONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return -1;
-    }
-    if (::write(fd, data, strlen(data)) < 0) {
-        close(fd);
-        logg.logMessage("Opened but could not write to %s", fullpath);
-        return -1;
-    }
-    close(fd);
-    return 0;
-}
-
-int DriverSource::writeDriver(const char *path, int value)
-{
-    char data[40]; // Sufficiently large to hold any integer
-    snprintf(data, sizeof(data), "%d", value);
-    return writeDriver(path, data);
-}
-
-int DriverSource::writeDriver(const char *path, int64_t value)
-{
-    char data[40]; // Sufficiently large to hold any integer
-    snprintf(data, sizeof(data), "%" PRIi64, value);
-    return writeDriver(path, data);
-}
-
-int DriverSource::writeReadDriver(const char *path, int *value)
-{
-    if (writeDriver(path, *value) || readIntDriver(path, value)) {
-        return -1;
-    }
-    return 0;
-}
-
-int DriverSource::writeReadDriver(const char *path, int64_t *value)
-{
-    if (writeDriver(path, *value) || readInt64Driver(path, value)) {
-        return -1;
-    }
-    return 0;
-}

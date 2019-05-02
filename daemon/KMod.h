@@ -9,14 +9,18 @@
 #ifndef KMOD_H
 #define KMOD_H
 
+#include <vector>
+
 #include "Driver.h"
+#include "PmuXML.h"
 
 // Driver for the gator kernel module
 class KMod : public Driver
 {
 public:
     KMod()
-            : mIsMaliCapture(false)
+            : Driver("KMod"),
+              mIsMaliCapture(false)
     {
     }
     ~KMod()
@@ -33,6 +37,9 @@ public:
     {
         return mIsMaliCapture;
     }
+
+    static void checkVersion();
+    static std::vector<GatorCpu> writePmuXml(const PmuXML & pmuXml);
 
 private:
     bool mIsMaliCapture;

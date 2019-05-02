@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <string>
 
+#include "Protocol.h"
+
 class Buffer;
 class Sender;
 
@@ -21,7 +23,7 @@ namespace non_root
         {
         public:
 
-            Frame(MixedFrameBuffer & parent, std::uint64_t currentTime, std::int32_t frameType, std::int32_t core);
+            Frame(MixedFrameBuffer & parent, std::uint64_t currentTime, FrameType frameType, std::int32_t core);
             ~Frame();
 
             void packInt(std::int32_t);

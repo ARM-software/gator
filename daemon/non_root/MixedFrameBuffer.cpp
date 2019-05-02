@@ -2,6 +2,7 @@
 
 #include "non_root/MixedFrameBuffer.h"
 #include "Buffer.h"
+#include "BufferUtils.h"
 #include "Sender.h"
 #include "Logging.h"
 
@@ -9,11 +10,11 @@
 
 namespace non_root
 {
-    MixedFrameBuffer::Frame::Frame(MixedFrameBuffer & parent_, std::uint64_t currentTime_, std::int32_t frameType,
+    MixedFrameBuffer::Frame::Frame(MixedFrameBuffer & parent_, std::uint64_t currentTime_, FrameType frameType,
                                    std::int32_t core)
             : parent(parent_),
               currentTime(currentTime_),
-              bytesAvailable(parent.buffer.bytesAvailable() - Buffer::MAX_FRAME_HEADER_SIZE),
+              bytesAvailable(parent.buffer.bytesAvailable() - buffer_utils::MAX_FRAME_HEADER_SIZE),
               frameStart(-1),
               valid(false)
     {
@@ -47,7 +48,7 @@ namespace non_root
     void MixedFrameBuffer::Frame::packInt(std::int32_t value)
     {
         // determine the length by writing it to some temp buffer
-        const int size = Buffer::sizeOfPackInt(value);
+        const int size = buffer_utils::sizeOfPackInt(value);
 
         if (checkSize(size)) {
             parent.buffer.packInt(value);
@@ -57,7 +58,7 @@ namespace non_root
     void MixedFrameBuffer::Frame::packInt64(std::int64_t value)
     {
         // determine the length by writing it to some temp buffer
-        const int size = Buffer::sizeOfPackInt64(value);
+        const int size = buffer_utils::sizeOfPackInt64(value);
 
         if (checkSize(size)) {
             parent.buffer.packInt64(value);
@@ -67,7 +68,7 @@ namespace non_root
     void MixedFrameBuffer::Frame::writeString(const char * value)
     {
         const int length = std::strlen(value);
-        const int size = Buffer::sizeOfPackInt(length) + length;
+        const int size = buffer_utils::sizeOfPackInt(length) + length;
 
         if (checkSize(size)) {
             parent.buffer.writeString(value);
@@ -77,7 +78,7 @@ namespace non_root
     void MixedFrameBuffer::Frame::writeString(const std::string & value)
     {
         const int length = value.length();
-        const int size = Buffer::sizeOfPackInt(length) + length;
+        const int size = buffer_utils::sizeOfPackInt(length) + length;
 
         if (checkSize(size)) {
             parent.buffer.packInt(length);
@@ -98,9 +99,9 @@ namespace non_root
     bool MixedFrameBuffer::activityFrameLinkMessage(std::uint64_t currentTime, std::int32_t cookie, std::int32_t pid,
                                                     std::int32_t tid)
     {
-        Frame frame(*this, currentTime, FRAME_ACTIVITY_TRACE, 0);
+        Frame frame(*this, currentTime, FrameType::ACTIVITY_TRACE, 0);
 
-        frame.packInt(MESSAGE_LINK);
+        frame.packInt(static_cast<int32_t>(MessageType::LINK));
         frame.packInt64(currentTime);
         frame.packInt(cookie);
         frame.packInt(pid);
@@ -112,7 +113,7 @@ namespace non_root
     bool MixedFrameBuffer::counterFrameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t key,
                                                std::uint64_t value)
     {
-        Frame frame(*this, currentTime, FRAME_COUNTER, core);
+        Frame frame(*this, currentTime, FrameType::COUNTER, core);
 
         frame.packInt64(currentTime);
         frame.packInt(core);
@@ -125,9 +126,9 @@ namespace non_root
     bool MixedFrameBuffer::nameFrameCookieNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t cookie,
                                                       const std::string & name)
     {
-        Frame frame(*this, currentTime, FRAME_NAME, core);
+        Frame frame(*this, currentTime, FrameType::NAME, core);
 
-        frame.packInt(MESSAGE_COOKIE_NAME);
+        frame.packInt(static_cast<int32_t>(MessageType::COOKIE_NAME));
         frame.packInt(cookie);
         frame.writeString(name);
 
@@ -137,9 +138,9 @@ namespace non_root
     bool MixedFrameBuffer::nameFrameThreadNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid,
                                                       const std::string & name)
     {
-        Frame frame(*this, currentTime, FRAME_NAME, core);
+        Frame frame(*this, currentTime, FrameType::NAME, core);
 
-        frame.packInt(MESSAGE_THREAD_NAME);
+        frame.packInt(static_cast<int32_t>(MessageType::THREAD_NAME));
         frame.packInt64(currentTime);
         frame.packInt(tid);
         frame.writeString(name);
@@ -150,9 +151,9 @@ namespace non_root
     bool MixedFrameBuffer::schedFrameSwitchMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid,
                                                    std::int32_t state)
     {
-        Frame frame(*this, currentTime, FRAME_SCHED_TRACE, core);
+        Frame frame(*this, currentTime, FrameType::SCHED_TRACE, core);
 
-        frame.packInt(MESSAGE_SCHED_SWITCH);
+        frame.packInt(static_cast<int32_t>(MessageType::SCHED_SWITCH));
         frame.packInt64(currentTime);
         frame.packInt(tid);
         frame.packInt(state);
@@ -162,9 +163,9 @@ namespace non_root
 
     bool MixedFrameBuffer::schedFrameThreadExitMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid)
     {
-        Frame frame(*this, currentTime, FRAME_SCHED_TRACE, core);
+        Frame frame(*this, currentTime, FrameType::SCHED_TRACE, core);
 
-        frame.packInt(MESSAGE_THREAD_EXIT);
+        frame.packInt(static_cast<int32_t>(MessageType::THREAD_EXIT));
         frame.packInt64(currentTime);
         frame.packInt(tid);
 
@@ -174,9 +175,9 @@ namespace non_root
     bool MixedFrameBuffer::summaryFrameSummaryMessage(std::uint64_t currentTime, std::uint64_t timestamp, std::uint64_t uptime, std::uint64_t monotonicDelta,
                                     const char * uname, unsigned long pageSize, bool nosync)
     {
-        MixedFrameBuffer::Frame frame (*this, currentTime, FRAME_SUMMARY, 0);
+        MixedFrameBuffer::Frame frame (*this, currentTime, FrameType::SUMMARY, 0);
 
-        frame.packInt(MESSAGE_SUMMARY);
+        frame.packInt(static_cast<int32_t>(MessageType::SUMMARY));
         frame.writeString(NEWLINE_CANARY);
         frame.packInt64(timestamp);
         frame.packInt64(uptime);
@@ -198,9 +199,9 @@ namespace non_root
 
     bool MixedFrameBuffer::summaryFrameCoreNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t cpuid, const char * name)
     {
-        MixedFrameBuffer::Frame frame (*this, currentTime, FRAME_SUMMARY, 0);
+        MixedFrameBuffer::Frame frame (*this, currentTime, FrameType::SUMMARY, 0);
 
-        frame.packInt(MESSAGE_CORE_NAME);
+        frame.packInt(static_cast<int32_t>(MessageType::CORE_NAME));
         frame.packInt(core);
         frame.packInt(cpuid);
         frame.writeString(name);
@@ -212,7 +213,7 @@ namespace non_root
                                                      std::int32_t key, std::uint64_t value)
     {
         // have to send as block counter in order to be able to send tid :-(
-        Frame frame(*this, currentTime, FRAME_BLOCK_COUNTER, core);
+        Frame frame(*this, currentTime, FrameType::BLOCK_COUNTER, core);
 
         frame.packInt(0);
         frame.packInt64(currentTime);

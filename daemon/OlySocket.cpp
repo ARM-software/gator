@@ -24,7 +24,7 @@
 #endif
 
 #include <utility>
-
+#include "lib/Syscall.h"
 #include "Logging.h"
 
 #ifdef WIN32
@@ -54,7 +54,7 @@ int socket_cloexec(int domain, int type, int protocol)
     /* Try create socket */
     sock = socket(domain, type, protocol);
     if (sock < 0) {
-        logg.logMessage("Failed socket %i/%i/%i due to %i %s", domain, type, protocol, errno, strerror(errno));
+        logg.logMessage("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)", domain, type, protocol, errno, strerror(errno));
         return -1;
     }
 
@@ -62,7 +62,7 @@ int socket_cloexec(int domain, int type, int protocol)
 #ifdef FD_CLOEXEC
     int fdf = fcntl(sock, F_GETFD);
     if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-        logg.logMessage("Failed FD_CLOEXEC %i/%i/%i on %i/%i due to %i %s", domain, type, protocol, sock, fdf, errno, strerror(errno));
+        logg.logMessage("Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)", domain, type, protocol, sock, fdf, errno, strerror(errno));
         close(sock);
         return -1;
     }
@@ -75,7 +75,7 @@ int accept_cloexec(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
     int sock;
 #ifdef SOCK_CLOEXEC
-    sock = accept4(sockfd, addr, addrlen, SOCK_CLOEXEC);
+    sock = lib::accept4(sockfd, addr, addrlen, SOCK_CLOEXEC);
     if (sock >= 0) {
         return sock;
     }
@@ -230,7 +230,7 @@ void OlyServerSocket::createServerSocket(int port)
         family = AF_INET;
         mFDServer = socket_cloexec(PF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (mFDServer < 0) {
-            logg.logError("Error creating server TCP socket");
+            logg.logError("Error creating server TCP socket (%d : %s)", errno, strerror(errno));
             handleException();
         }
     }
@@ -296,7 +296,7 @@ void OlySocket::send(const char* buffer, int size)
     while (size > 0) {
         int n = ::send(mSocketID, buffer, size, 0);
         if (n < 0) {
-            logg.logError("Socket send error");
+            logg.logError("Socket send error (%d): %s", errno, strerror(errno));
             handleException();
         }
         size -= n;
@@ -313,7 +313,7 @@ int OlySocket::receive(char* buffer, int size)
 
     int bytes = recv(mSocketID, buffer, size, 0);
     if (bytes < 0) {
-        logg.logError("Socket receive error");
+        logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
         handleException();
     }
     else if (bytes == 0) {
@@ -330,7 +330,7 @@ int OlySocket::receiveNBytes(char* buffer, int size)
     while (size > 0 && buffer != NULL) {
         bytes = recv(mSocketID, buffer, size, 0);
         if (bytes < 0) {
-            logg.logError("Socket receive error");
+            logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
             handleException();
         }
         else if (bytes == 0) {
@@ -357,7 +357,7 @@ int OlySocket::receiveString(char* buffer, int size)
         // Receive a single character
         int bytes = recv(mSocketID, &buffer[bytes_received], 1, 0);
         if (bytes < 0) {
-            logg.logError("Socket receive error");
+            logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
             handleException();
         }
         else if (bytes == 0) {

@@ -20,7 +20,7 @@
 class DiskIOCounter : public DriverCounter
 {
 public:
-    DiskIOCounter(DriverCounter *next, char * const name, uint64_t * const value);
+    DiskIOCounter(DriverCounter *next, const char * const name, uint64_t * const value);
     ~DiskIOCounter();
 
     int64_t read();
@@ -33,7 +33,7 @@ private:
     CLASS_DELETE_COPY_MOVE(DiskIOCounter);
 };
 
-DiskIOCounter::DiskIOCounter(DriverCounter *next, char * const name, uint64_t * const value)
+DiskIOCounter::DiskIOCounter(DriverCounter *next, const char * const name, uint64_t * const value)
         : DriverCounter(next, name),
           mValue(value),
           mPrev(0)
@@ -53,7 +53,8 @@ int64_t DiskIOCounter::read()
 }
 
 DiskIODriver::DiskIODriver()
-        : mBuf(),
+        : PolledDriver("DiskIO"),
+          mBuf(),
           mReadBytes(0),
           mWriteBytes(0)
 {
@@ -66,8 +67,8 @@ DiskIODriver::~DiskIODriver()
 void DiskIODriver::readEvents(mxml_node_t * const)
 {
     if (access("/proc/diskstats", R_OK) == 0) {
-        setCounters(new DiskIOCounter(getCounters(), strdup("Linux_block_rq_rd"), &mReadBytes));
-        setCounters(new DiskIOCounter(getCounters(), strdup("Linux_block_rq_wr"), &mWriteBytes));
+        setCounters(new DiskIOCounter(getCounters(), "Linux_block_rq_rd", &mReadBytes));
+        setCounters(new DiskIOCounter(getCounters(), "Linux_block_rq_wr", &mWriteBytes));
     }
     else {
         logg.logSetup("Linux counters\nCannot access /proc/diskstats. Disk I/O read and write counters not available.");

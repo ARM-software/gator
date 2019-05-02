@@ -11,10 +11,18 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <vector>
+
+#include "lib/Span.h"
 
 #include "ClassBoilerPlate.h"
 
+#include "ISender.h"
+
 class OlySocket;
+class Drivers;
+class ICpuInfo;
+struct CapturedSpe;
 
 // Commands from Streamline
 enum
@@ -30,23 +38,22 @@ enum
 class StreamlineSetup
 {
 public:
-    StreamlineSetup(OlySocket *socket);
+    StreamlineSetup(OlySocket *socket, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes);
     ~StreamlineSetup();
 private:
     OlySocket* mSocket;
+    Drivers & mDrivers;
+    lib::Span<const CapturedSpe> mCapturedSpes;
 
-    char* readCommand(int*);
+    std::vector<char> readCommand(int*);
     void handleRequest(char* xml);
     void handleDeliver(char* xml);
-    void sendData(const char* data, uint32_t length, char type);
-    void sendString(const char* string, int type)
+    void sendData(const char* data, uint32_t length, ResponseType type);
+    void sendString(const char* string, ResponseType type)
     {
         sendData(string, strlen(string), type);
     }
-    void sendEvents();
-    void sendConfiguration();
     void sendDefaults();
-    void sendCounters();
     void writeConfiguration(char* xml);
 
     // Intentionally unimplemented

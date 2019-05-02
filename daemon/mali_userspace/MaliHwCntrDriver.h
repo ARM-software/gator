@@ -13,7 +13,10 @@
 #include "PolledDriver.h"
 #include "SimpleDriver.h"
 #include "mali_userspace/MaliHwCntrReader.h"
-
+#include <map>
+#include <memory>
+#include <vector>
+#include "lib/Optional.h"
 namespace mali_userspace
 {
     /**
@@ -26,51 +29,51 @@ namespace mali_userspace
 
     public:
 
-        MaliHwCntrDriver();
-        ~MaliHwCntrDriver();
+        MaliHwCntrDriver(const std::vector<std::string> userSpecifiedDeviceTypes,
+                         const std::vector<std::string> userSpecifiedDevicePaths);
 
         bool claimCounter(Counter &counter) const;
         void resetCounters();
-        void setupCounter(Counter &counter);
+        void setupCounter(Counter &counter) override;
         bool start();
 
-        inline MaliHwCntrReader * getReader()
-        {
-            return mReader;
-        }
 
-        inline const MaliHwCntrReader * getReader() const
+        inline const std::map<unsigned, std::unique_ptr<MaliHwCntrReader>>& getReaders() const
         {
-            return mReader;
+            return mReaders;
         }
-
-        inline PolledDriver * getPolledDriver() const
+        inline const std::map<unsigned, std::unique_ptr<PolledDriver>>& getPolledDrivers() const
         {
-            return mPolledDriver;
+            return mPolledDrivers;
         }
-
-        int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex) const;
+        int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const;
 
         const char * getSupportedDeviceFamilyName() const;
 
-        void initialize(const char * userSpecifiedDeviceType, const char * userSpecifiedDevicePath);
+        /** @return map from device number to gpu id */
+        std::map<unsigned, unsigned> getDeviceGpuIds() const;
 
     private:
 
-        /** User specified device type string */
-        const char * mUserSpecifiedDeviceType;
-        /** User specified device path string */
-        const char * mUserSpecifiedDevicePath;
+        /** User specified device type vector */
+        const std::vector<std::string> mUserSpecifiedDeviceTypes;
+        /** User specified device path vector */
+        const std::vector<std::string> mUserSpecifiedDevicePaths;
 
-        /** The reader object */
-        MaliHwCntrReader * mReader;
-        /** For each possible counter index, contains the counter key, or 0 if not enabled */
-        int * mEnabledCounterKeys;
-        /** Polling driver for GPU clock etc. */
-        PolledDriver * mPolledDriver;
-
-        bool query();
-
+        /**Map of GPU device number and mali hw counter reader */
+        std::map<unsigned,  std::unique_ptr<MaliHwCntrReader>> mReaders;
+        /** For each possible counter index, contains the counter key, or 0 if not enabled
+         * Mapped to the GPUID not device number as counters are common across all devices with the same type.
+         */
+        std::map<unsigned,  std::unique_ptr<int[]>> mEnabledCounterKeysByGpuId;
+        /** Map of the GPU device number and Polling driver for GPU clock etc. */
+        std::map<unsigned, std::unique_ptr<PolledDriver>> mPolledDrivers;
+        //Map between the device number and the mali devices .
+        std::map<unsigned, std::unique_ptr<MaliDevice>> mDevices;
+        /**
+         * initialize/ reinitialize readers
+         */
+        void query();
         // Intentionally unimplemented
         CLASS_DELETE_COPY_MOVE(MaliHwCntrDriver);
     };

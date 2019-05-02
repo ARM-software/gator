@@ -8,16 +8,18 @@
 
 #ifndef COUNTERXML_H_
 #define COUNTERXML_H_
-#include "mxml/mxml.h"
 
-class CounterXML
+#include <memory>
+
+#include "lib/Span.h"
+
+class Driver;
+class ICpuInfo;
+
+namespace counters_xml
 {
-public:
-    CounterXML();
-    ~CounterXML();
-    char* getXML(); // the string should be freed by the caller
-    void write(const char* path);
-private:
-    mxml_node_t* getTree();
+    std::unique_ptr<char, void (*)(void*)> getXML(lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo);
+
+    void write(const char* path, lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo);
 };
 #endif /* COUNTERXML_H_ */

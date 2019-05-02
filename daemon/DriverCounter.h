@@ -9,16 +9,21 @@
 #ifndef NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 #define NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 
+#include <string>
+
 #include "ClassBoilerPlate.h"
 #include "Driver.h"
-
-bool counterNameFuzzyEquals(const char * properName, const char * fuzzyName);
 
 class DriverCounter
 {
 public:
+    /**
+     *
+     * @param next
+     * @param name will be copied
+     */
     DriverCounter(DriverCounter * const next, const char * const name);
-    virtual ~DriverCounter();
+    virtual ~DriverCounter() = default;
 
     DriverCounter *getNext() const
     {
@@ -26,7 +31,7 @@ public:
     }
     const char *getName() const
     {
-        return mName;
+        return mName.c_str();
     }
     int getKey() const
     {
@@ -47,7 +52,7 @@ public:
 
 private:
     DriverCounter * const mNext;
-    const char * const mName;
+    const std::string mName;
     const int mKey;
     bool mEnabled;
 

@@ -13,43 +13,54 @@
 #include <set>
 
 #include "ClassBoilerPlate.h"
-#include "Buffer.h"
+#include "SummaryBuffer.h"
 #include "Monitor.h"
 #include "linux/perf/PerfBuffer.h"
 #include "linux/perf/PerfGroups.h"
 #include "Source.h"
 #include "UEvent.h"
 
+class PerfAttrsBuffer;
 class PerfDriver;
-class Sender;
+class ISender;
+class FtraceDriver;
+class ICpuInfo;
+class PerfSyncThreadBuffer;
 
 class PerfSource : public Source
 {
 public:
-    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const std::set<int> & appTids, bool enableOnCommandExec);
+    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile,
+               const std::set<int> & appTids, FtraceDriver & ftraceDriver, bool enableOnCommandExec,
+               ICpuInfo & cpuInfo);
     ~PerfSource();
 
     virtual bool prepare() override;
     virtual void run() override;
     virtual void interrupt() override;
     virtual bool isDone() override;
-    virtual void write(Sender * sender) override;
+    virtual void write(ISender * sender) override;
 
 private:
     bool handleUEvent(const uint64_t currTime);
+    bool handleCpuOnline(uint64_t currTime, unsigned cpu);
+    bool handleCpuOffline(uint64_t currTime, unsigned cpu);
 
-    Buffer mSummary;
+    SummaryBuffer mSummary;
     PerfBuffer mCountersBuf;
     PerfGroups mCountersGroup;
     Monitor mMonitor;
     UEvent mUEvent;
-    const std::set<int> mAppTids;
+    std::set<int> mAppTids;
     PerfDriver & mDriver;
-    Buffer *mBuffer;
+    PerfAttrsBuffer *mAttrsBuffer;
     sem_t & mSenderSem;
     sem_t & mStartProfile;
     int mInterruptFd;
     bool mIsDone;
+    FtraceDriver & mFtraceDriver;
+    ICpuInfo & mCpuInfo;
+    std::vector<std::unique_ptr<PerfSyncThreadBuffer>> mSyncThreads;
     bool enableOnCommandExec;
 
     // Intentionally undefined

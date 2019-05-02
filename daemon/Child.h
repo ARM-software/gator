@@ -11,6 +11,10 @@
 
 #include "ClassBoilerPlate.h"
 
+#include "lib/SharedMemory.h"
+
+#include "Configuration.h"
+
 #include <atomic>
 #include <memory>
 #include <functional>
@@ -19,20 +23,30 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <vector>
 
-class PrimarySourceProvider;
+class Drivers;
 class Sender;
 class Source;
 class OlySocket;
+
+namespace lib
+{
+    class Waiter;
+}
 
 void handleException();
 
 class Child
 {
 public:
+    struct Config {
+        std::set<CounterConfiguration> events;
+        std::set<SpeConfiguration> spes;
+    };
 
-    static std::unique_ptr<Child> createLocal(PrimarySourceProvider & primarySourceProvider);
-    static std::unique_ptr<Child> createLive(PrimarySourceProvider & primarySourceProvider, OlySocket & sock);
+    static std::unique_ptr<Child> createLocal(Drivers & drivers, const Config & config);
+    static std::unique_ptr<Child> createLive(Drivers & drivers, OlySocket & sock);
 
     // using one of user signals for interprocess communication based on Linux signals
     static const int SIG_LIVE_CAPTURE_STOPPED = SIGUSR1;
@@ -41,7 +55,6 @@ public:
 
     void run();
     void endSession();
-    void setEvents(const std::map<std::string, int> &eventsMap_);
 
 private:
 
@@ -85,32 +98,29 @@ private:
     std::unique_ptr<Source> primarySource;
     std::unique_ptr<Source> externalSource;
     std::unique_ptr<Source> userSpaceSource;
-    std::unique_ptr<Source> midgardHwSource;
+    std::unique_ptr<Source> maliHwSource;
     std::unique_ptr<Sender> sender;
-    PrimarySourceProvider & primarySourceProvider;
+    Drivers & drivers;
     OlySocket * socket;
     int numExceptions;
-    std::timed_mutex sleepMutex;
     std::atomic_flag sessionEnded;
     std::atomic_bool commandTerminated;
     int commandPid;
 
-    std::map<std::string, int> eventsMap;
-    std::unique_ptr<SharedData, std::function<void(SharedData *)>> sharedData;
+    Config config;
+    shared_memory::unique_ptr<SharedData> sharedData;
 
-    Child(PrimarySourceProvider & primarySourceProvider);
-    Child(PrimarySourceProvider & primarySourceProvider, OlySocket & sock);
-    Child(bool local, PrimarySourceProvider & primarySourceProvider, OlySocket * sock);
+    Child(Drivers & drivers, OlySocket * sock, const Config & config);
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(Child)
     ;
 
     void cleanupException();
     void terminateCommand();
-    void durationThreadEntryPoint();
+    void durationThreadEntryPoint(const lib::Waiter & waiter);
     void stopThreadEntryPoint();
     void senderThreadEntryPoint();
-    void watchPidsThreadEntryPoint(std::set<int> &);
+    void watchPidsThreadEntryPoint(std::set<int> &, const lib::Waiter & waiter);
 };
 
 #endif //__CHILD_H__

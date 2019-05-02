@@ -19,21 +19,15 @@
 #include <semaphore.h>
 
 #include "ClassBoilerPlate.h"
-#include "AtraceDriver.h"
-#include "CCNDriver.h"
 #include "Config.h"
+#include "Configuration.h"
 #include "Counter.h"
-#include "ExternalDriver.h"
-#include "FtraceDriver.h"
 #include "GatorCLIFlags.h"
-#include "KMod.h"
-#include "MaliVideoDriver.h"
-#include "MidgardDriver.h"
-#include "linux/perf/PerfDriver.h"
-#include "TtraceDriver.h"
-#include "mali_userspace/MaliHwCntrDriver.h"
+#include "lib/SharedMemory.h"
 
-#define PROTOCOL_VERSION 680
+#include "mxml/mxml.h"
+
+#define PROTOCOL_VERSION 690
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -44,159 +38,15 @@
 extern const char MALI_GRAPHICS[];
 extern const size_t MALI_GRAPHICS_SIZE;
 
-class PrimarySourceProvider;
-class PolledDriver;
-
-class GatorCpu
-{
-public:
-    GatorCpu(const char * const coreName, const char * const pmncName, const char * const dtName, const int cpuid,
-             const int pmncCounters);
-
-    static GatorCpu *getHead()
-    {
-        return mHead;
-    }
-
-    GatorCpu *getNext() const
-    {
-        return mNext;
-    }
-
-    const char *getCoreName() const
-    {
-        return mCoreName;
-    }
-
-    const char *getPmncName() const
-    {
-        return mPmncName;
-    }
-
-    const char *getDtName() const
-    {
-        return mDtName;
-    }
-
-    int getCpuid() const
-    {
-        return mCpuid;
-    }
-
-    int getPmncCounters() const
-    {
-        return mPmncCounters;
-    }
-
-    void setType(int type)
-    {
-        mType = type;
-    }
-
-    int getType() const
-    {
-        return mType;
-    }
-
-    bool isTypeValid() const
-    {
-        return mType != -1;
-    }
-
-    static GatorCpu *find(const char * const name);
-
-    static GatorCpu *find(const int cpuid);
-
-private:
-    static GatorCpu *mHead;
-    GatorCpu * const mNext;
-    const char * const mCoreName;
-    const char * const mPmncName;
-    const char * const mDtName;
-    const int mCpuid;
-    const int mPmncCounters;
-    int mType;
-};
-
-class UncorePmu
-{
-public:
-    UncorePmu(const char * const coreName, const char * const pmncName, const int pmncCounters,
-              const bool hasCyclesCounter);
-
-    static UncorePmu *getHead()
-    {
-        return mHead;
-    }
-
-    UncorePmu *getNext() const
-    {
-        return mNext;
-    }
-
-    const char *getCoreName() const
-    {
-        return mCoreName;
-    }
-
-    const char *getPmncName() const
-    {
-        return mPmncName;
-    }
-
-    int getPmncCounters() const
-    {
-        return mPmncCounters;
-    }
-
-    bool getHasCyclesCounter() const
-    {
-        return mHasCyclesCounter;
-    }
-
-    void setType(int type)
-    {
-        mType = type;
-    }
-
-    int getType() const
-    {
-        return mType;
-    }
-
-    bool isTypeValid() const
-    {
-        return mType != -1;
-    }
-
-    std::set<int> getCpuMask() const;
-
-    static UncorePmu *find(const char * const name);
-
-private:
-    static UncorePmu *mHead;
-    UncorePmu * const mNext;
-    const char * const mCoreName;
-    const char * const mPmncName;
-    const int mPmncCounters;
-    const bool mHasCyclesCounter;
-    int mType;
-};
-
 class SharedData
 {
 public:
     SharedData();
 
-    int mCpuIds[NR_CPUS];
-    int mClusterIds[NR_CPUS];
-    const GatorCpu * mClusters[CLUSTER_COUNT];
-    int mClusterCount;
     size_t mMaliUtgardCountersSize;
     char mMaliUtgardCounters[1 << 12];
     size_t mMaliMidgardCountersSize;
     char mMaliMidgardCounters[1 << 13];
-    bool mClustersAccurate;
 
 private:
     // Intentionally unimplemented
@@ -214,23 +64,10 @@ public:
 
     void initialize();
     void parseSessionXML(char* xmlString);
-    void readModel();
-    void readCpuInfo();
-    void updateClusterIds();
 
-    std::unique_ptr<PrimarySourceProvider> mPrimarySource;
-    SharedData *mSharedData;
-    MaliVideoDriver mMaliVideo;
-    mali_userspace::MaliHwCntrDriver mMaliHwCntrs;
-    MidgardDriver mMidgard;
-    // Intentionally above FtraceDriver as drivers are initialized in reverse order AtraceDriver and TtraceDriver references FtraceDriver
-    AtraceDriver mAtraceDriver;
-    TtraceDriver mTtraceDriver;
-    FtraceDriver mFtraceDriver;
-    ExternalDriver mExternalDriver;
-    CCNDriver mCcnDriver;
 
-    char mCoreName[MAX_STRING_LEN];
+    shared_memory::unique_ptr<SharedData> mSharedData;
+
     std::list<std::string> mImages;
     const char *mConfigurationXMLPath;
     const char *mSessionXMLPath;
@@ -264,15 +101,12 @@ public:
     int mSampleRate;
     int64_t mLiveRate;
     int mDuration;
-    int mCores;
     int mPageSize;
-    int mMaxCpuId;
     int mAnnotateStart;
     int64_t parameterSetFlag;
     int mPerfMmapSizeInPages;
 
     // PMU Counters
-    char *mCountersError;
     Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 
     // map used to lookup counter names to events (e.g for cycle counters)
@@ -289,18 +123,8 @@ extern const char * const gSrcMd5;
 
 uint64_t getTime();
 int getEventKey();
-int pipe_cloexec(int pipefd[2]);
-FILE *fopen_cloexec(const char *path, const char *mode);
-bool setNonblock(const int fd);
-bool writeAll(const int fd, const void * const buf, const size_t pos);
-bool readAll(const int fd, void * const buf, const size_t count);
-bool skipAll(const int fd, const size_t count);
 void logCpuNotFound();
 
-// From include/generated/uapi/linux/version.h
-#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
-
-bool getLinuxVersion(int version[3]);
 
 const char *mxmlWhitespaceCB(mxml_node_t *node, int where);
 

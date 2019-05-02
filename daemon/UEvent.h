@@ -27,9 +27,15 @@ public:
 
     bool init();
     bool read(UEventResult * const result);
+
     int getFd() const
     {
         return mFd;
+    }
+
+    bool enabled() const
+    {
+        return mFd >= 0;
     }
 
 private:

@@ -20,7 +20,7 @@
 class NetCounter : public DriverCounter
 {
 public:
-    NetCounter(DriverCounter *next, char * const name, uint64_t * const value);
+    NetCounter(DriverCounter *next, const char * const name, uint64_t * const value);
     ~NetCounter();
 
     int64_t read();
@@ -33,7 +33,7 @@ private:
     CLASS_DELETE_COPY_MOVE(NetCounter);
 };
 
-NetCounter::NetCounter(DriverCounter *next, char * const name, uint64_t * const value)
+NetCounter::NetCounter(DriverCounter *next, const char * const name, uint64_t * const value)
         : DriverCounter(next, name),
           mValue(value),
           mPrev(0)
@@ -52,7 +52,8 @@ int64_t NetCounter::read()
 }
 
 NetDriver::NetDriver()
-        : mBuf(),
+        : PolledDriver("Net"),
+          mBuf(),
           mReceiveBytes(0),
           mTransmitBytes(0)
 {
@@ -65,8 +66,8 @@ NetDriver::~NetDriver()
 void NetDriver::readEvents(mxml_node_t * const)
 {
     if (access("/proc/net/dev", R_OK) == 0) {
-        setCounters(new NetCounter(getCounters(), strdup("Linux_net_rx"), &mReceiveBytes));
-        setCounters(new NetCounter(getCounters(), strdup("Linux_net_tx"), &mTransmitBytes));
+        setCounters(new NetCounter(getCounters(), "Linux_net_rx", &mReceiveBytes));
+        setCounters(new NetCounter(getCounters(), "Linux_net_tx", &mTransmitBytes));
     }
     else {
         logg.logSetup("Linux counters\nCannot access /proc/net/dev. Network transmit and receive counters not available.");

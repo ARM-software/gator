@@ -1,0 +1,176 @@
+<!-- Generic Armv8.2 SPE properties
+
+    Format:
+
+                    <spe id="..." name="..." extends="...">
+                        ...
+                    </spe>
+
+                    id:             string:         The machine readable name as listed in pmus.xml that identifies the property object
+                    name:           string:         Human readable name for the property object or target (usually the core the events belong to, such as 'Cortex-Axx')
+                    extends:        string:         Optional value, taking the id of another SPE object. Used to indicate this object will copy all if the properties of
+                                                    the extended object. In most cases users will want to extend 'armv8.2_spe' to pull in all of the architectural properties.
+
+ -->
+<spe name="Armv8.2 Statistical Profiling Extension" id="armv8.2_spe">
+    <!--    Defines address packet index types [5.3.1 Address packet]
+
+            Format:
+
+                    <address index="..." name="..." description="..." />
+
+                    index:          integer:        Value representing the index field in the packet, identifies the address type
+                    name:           string:         Short label for the address type
+                    description:    string:         Detailed description of the address type
+                    type:           enum:           Describes the type of the address (as detailed under [5.3.1 Address packet] sub-heading [Address Packet Payload]):
+                                                        * 'raw'         - unprocessed 64-bit value
+                                                        * 'instruction' - An instruction virtual address, consisting of 56-bit address, exception level and non-secure flag
+                                                        * 'physical'    - Physical data address, consisting of 56-bit address and non-secure flag
+                                                        * 'virtual'     - Virtual data address, consisting of 56-bit address and 8-bit tag
+                                                    The default is 'raw' if unset.
+
+
+    -->
+    <address index="0x00" name="PC" description="Issued instruction virtual address." type="instruction" />
+    <address index="0x01" name="Branch Target" description="The target address for branch and exception return instructions." type="instruction" />
+    <address index="0x02" name="L/S Virtual Address" description="The virtual address of the data access for load, store and atomic instructions." type="virtual" />
+    <address index="0x03" name="L/S Physical Address" description="The physical address of the data access for load, store and atomic instructions." type="physical" />
+
+    <!--    Define counter packet index types [5.3.4 Counter packet]
+
+            Format:
+
+                    <counter index="..." type="..." name="..." description="..." />
+
+                    index:          integer:        Value representing the index field in the packet, identifies the counter type
+                    type:           enum:           Either 'absolute' or 'latency'.
+                                                        * 'absolute' - Each value is an absolute value
+                                                                       The minimum, maximum and mean are calculated and displayed.
+                                                        * 'latency'  - Currently treated the same as 'absolute', but used to distinguish values that are latency and measured in cycles.
+                    name:           string:         Short label for the counter type
+                    description:    string:         Detailed description of the counter type
+                    unit:           string:         Optional value being the unit the count counts in
+    -->
+    <counter index="0" type="latency" unit="cycles" name="Total latency" description="Cycle count from the operation being dispatched for issue to the operation being complete. Included for all operations." />
+    <counter index="1" type="latency" unit="cycles" name="Issue latency" description="Cycle count from the operation being dispatched for issue to the operation being issued for execution. This counts any delay in waiting the operation being ready to issue. Included for all operations." />
+    <counter index="2" type="latency" unit="cycles" name="Translation latency" description="Cycle count from a virtual address being passed to the MMU for translation to the result of the translation being available. Included for all load, store and atomic operations." />
+
+    <!--    Define data source packet source types [5.3.5 Data Source packet]
+
+            Format:
+
+                    <data-source index="..." name="..." description="..." />
+
+                    index:          integer:        Value representing the source field in the packet, identifies the data source type
+                    name:           string:         Short label for the data source type
+                    description:    string:         Detailed description of the data source type
+    -->
+
+    <!-- none are defined in architectural specification -->
+
+    <!--    Define event packet event types [5.3.7 Events packet]
+
+            Format:
+                    <event bit="..." name="..." description="..." filter-bit="..." condition-bit="..."
+                           ratio-label="..." set-label="..." clear-label="..." show-by-default="..">
+                        <valid-op-type class="..." sub-class="..." sub-class-mask="..." />
+                    </event>
+
+                    <event>
+                    bit:            integer:        Value representing the bit in the event packet that identifies the event.
+                    filter-bit:     integer:        If the event can be used for filtering, set this to the bit in the filter register that is used to enable filtering on that event
+                                                    (usually either unset, or set to the same value as 'bit')
+                    name:           string:         Short label for the data source type.
+                    description:    string:         Detailed description of the data source type.
+                    condition-bit:  integer:        Optional.
+                                                    Specifies the event number (value of `bit`) for the event which is used as the access trigger for the conditional ratio.
+                    ratio-label:    string:         Specifies short label for the ratio counter displayed
+                    set-label:      string:         Specifies short label for the ratio counter for the ratio value that matches when the event bit is set
+                    clear-label:    string:         Specifies short label for the ratio counter for the ratio value that matches when the event bit is clear
+                    show-by-default:  enum:         One of 'ratio', 'set' or 'clear'. The default way to present this event. Defaults to 'ratio' if not present.
+
+                    <valid-op-type>
+                    An optional repeating child element used to filter which operation types the event is associated with, see [5.3.8 Operation Type packet]. If these elements are present then
+                    the SPE record containing the event must match at least one of the elements for the event to be considered valid.
+
+                    class:          enum:           One of 'branch', 'load-store', 'other', specifying the type of operation the event is associated with
+                    sub-class:      enum|integer:   Either one of the following predefined values, or an integer value used to match against the subclass field of the packet.
+                                                    Valid enum values when 'class' is 'branch':
+                                                        * 'conditional' - Matches only conditional branches.
+                                                                          Equivalent to 'sub-class="0x01" sub-class-mask="0x01"'
+                                                        * 'indirect'    - Matches only indirect branches.
+                                                                          Equivalent to 'sub-class="0x02" sub-class-mask="0xfe"'
+                                                    Valid enum values when 'class' is 'other':
+                                                        * 'conditional' - Matches only conditional branches.
+                                                                          Equivalent to 'sub-class="0x01" sub-class-mask="0x01"'
+                                                    Valid enum values when 'class' is 'load-store':
+                                                        * 'load'            - Matches only loads/swaps, not stores.
+                                                                              Equivalent to 'sub-class="0x00" sub-class-mask="0x01"'
+                                                        * 'store'           - Matches only stores, not loads/swaps.
+                                                                              Equivalent to 'sub-class="0x01" sub-class-mask="0x01"'
+                                                        * 'general-purpose' - Matches only general purpose loads/stores.
+                                                                              Equivalent to 'sub-class="0x00" sub-class-mask="0xfe"'
+                                                        * 'float-or-simd'   - Matches only floating point / SIMD loads/stores.
+                                                                              Equivalent to 'sub-class="0x04" sub-class-mask="0xfe"'
+                                                        * 'extended'        - Matches only extended loads/stores.
+                                                                              Equivalent to 'sub-class="0x02" sub-class-mask="0xe2"'
+                    sub-class-mask: integer:        (Optional) If set, then 'sub-class' must be an integer. If this attribute is not present but sub-class is an integer then it will be as if
+                                                    this attribute were set to '0xff'.
+                                                    When combined with sub-class creates a bitmask and test that is used to compare against the 'subclass' field of the Operation Type packet.
+                                                    SPE records matching the given event will only be processed if the operation type 'class' matches the elements 'class' attribute, and the
+                                                    operation type 'subclass' field matches the following expression: 'subclass & <sub-class-mask> == <sub-class>'
+    -->
+    <event bit="0" ratio-label="Exception generated" set-label="Exception" clear-label="No Exception" show-by-default="set"
+           name="Generated exception"
+           description="Completed with a synchronous exception.">
+    </event>
+    <event bit="1" filter-bit="1" ratio-label="Architecturally retired" set-label="Retired" clear-label="Not Retired"
+           name="Architecturally retired"
+           description="Committed its results to the architectural state of the PE, or completed with a synchronous architectural exception." />
+    <event bit="2" ratio-label="Level 1 Data Cache" set-label="Access" clear-label="No Access"
+           name="Level 1 Data cache access"
+           description="Load/store operation caused a cache access to at least the first level of data or unified cache.">
+        <valid-op-type class="load-store" />
+    </event>
+    <event bit="3" filter-bit="3" condition-bit="2" ratio-label="Level 1 Data Cache Access" set-label="Miss" clear-label="Hit"
+           name="Level 1 Data cache refill"
+           description="Load/store operation caused a refill of at least the first level of data or unified cache. This includes each data memory access that causes a refill from outside the cache. It excludes accesses that do not cause a new cache refill but are satisfied from refilling data of a previous miss.">
+        <valid-op-type class="load-store" />
+    </event>
+    <event bit="4" ratio-label="TLB" set-label="Access" clear-label="No Access"
+           name="TLB access"
+           description="Load/store operation caused an access to at least the first level of data or unified TLB.">
+        <valid-op-type class="load-store" />
+    </event>
+    <event bit="5" filter-bit="5" condition-bit="4" ratio-label="TLB refill Translation Table walk" set-label="Walk" clear-label="No Walk"
+           name="TLB walk"
+           description="Load/store operation that causes a refill of a data or unified TLB, involving at least one translation table walk access. This includes each complete or partial translation table walk that causes an access to memory, including to data or translation table walk caches.">
+        <valid-op-type class="load-store" />
+    </event>
+    <event bit="6" ratio-label="Conditional Instruction" set-label="Not Taken" clear-label="Taken"
+           name="Not taken"
+           description="A conditional instruction that failed its condition code check. This includes conditional branches, compare-and-branch, conditional select, and conditional compares.">
+        <valid-op-type class="branch" sub-class="conditional" />
+        <valid-op-type class="other" sub-class="conditional" />
+    </event>
+    <event bit="7" filter-bit="7" ratio-label="Branch Prediction" set-label="Mispredicted" clear-label="Predicted"
+           name="Mispredicted"
+           description="A branch that caused a correction to the predicted program flow.">
+        <valid-op-type class="branch" />
+    </event>
+    <event bit="8" ratio-label="Last Level Cache" set-label="Access" clear-label="No Access"
+           name="Last Level cache access"
+           description="Load/store operation caused a cache access to at least the Last Level data or unified cache.">
+        <valid-op-type class="load-store" />
+    </event>
+    <event bit="9" condition-bit="8" ratio-label="Last Level Cache Access" set-label="Miss" clear-label="Hit"
+           name="Last Level cache miss"
+           description="Load/store operation caused an access to at least the Last Level cache but is not completed by the Last Level cache. The event is not set for operations that are completed by a cache above the Last Level cache.">
+        <valid-op-type class="load-store" />
+    </event>
+    <event bit="10" ratio-label="Muli-socket Data Access" set-label="Remote Socket Access" clear-label="Local Socket Access"
+           name="Remote access"
+           description="Load/store operation caused an access to another socket in a multi-socket system. This includes each data memory access that accesses another socket in a multi-socket system, including those that do not return data.">
+        <valid-op-type class="load-store" />
+    </event>
+</spe>

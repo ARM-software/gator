@@ -12,6 +12,8 @@
 #include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
+class Buffer;
+
 class PolledDriver : public SimpleDriver
 {
 public:
@@ -23,7 +25,7 @@ public:
     virtual void read(Buffer * const buffer);
 
 protected:
-    PolledDriver()
+    PolledDriver(const char * name) : SimpleDriver(name)
     {
     }
 

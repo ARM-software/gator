@@ -10,7 +10,8 @@
 
 #include <unistd.h>
 
-#include "Buffer.h"
+#include "lib/FileDescriptor.h"
+#include "BufferUtils.h"
 #include "Counter.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -66,6 +67,7 @@ private:
 };
 
 MaliVideoDriver::MaliVideoDriver()
+    : SimpleDriver("MaliVideoDriver")
 {
 }
 
@@ -92,7 +94,7 @@ void MaliVideoDriver::readEvents(mxml_node_t * const xml)
                 logg.logError("The counter attribute of the Mali video counter %s is not an integer", counter);
                 handleException();
             }
-            setCounters(new MaliVideoCounter(getCounters(), strdup(counter), MVCT_COUNTER, i));
+            setCounters(new MaliVideoCounter(getCounters(), counter, MVCT_COUNTER, i));
         }
         else if (strncmp(counter, EVENT, sizeof(EVENT) - 1) == 0) {
             int i;
@@ -100,7 +102,7 @@ void MaliVideoDriver::readEvents(mxml_node_t * const xml)
                 logg.logError("The event attribute of the Mali video counter %s is not an integer", counter);
                 handleException();
             }
-            setCounters(new MaliVideoCounter(getCounters(), strdup(counter), MVCT_EVENT, i));
+            setCounters(new MaliVideoCounter(getCounters(), counter, MVCT_EVENT, i));
         }
         else if (strncmp(counter, ACTIVITY, sizeof(ACTIVITY) - 1) == 0) {
             int i;
@@ -108,7 +110,7 @@ void MaliVideoDriver::readEvents(mxml_node_t * const xml)
                 logg.logError("The activity attribute of the Mali video counter %s is not an integer", counter);
                 handleException();
             }
-            setCounters(new MaliVideoCounter(getCounters(), strdup(counter), MVCT_ACTIVITY, i));
+            setCounters(new MaliVideoCounter(getCounters(), counter, MVCT_ACTIVITY, i));
         }
     }
 }
@@ -133,7 +135,7 @@ bool MaliVideoDriver::claimCounter(Counter &counter) const
     return super::claimCounter(counter);
 }
 
-void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char * const buf, const size_t bufsize, int &pos)
+void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char * const buf, int &pos)
 {
     // size
     int numEnabled = 0;
@@ -143,18 +145,18 @@ void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char * cons
             ++numEnabled;
         }
     }
-    Buffer::packInt(buf, bufsize, pos, numEnabled * sizeof(uint32_t));
+    buffer_utils::packInt(buf, pos, numEnabled * sizeof(uint32_t));
     for (MaliVideoCounter *counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
             counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
         if (counter->isEnabled() && (counter->getType() == type)) {
-            Buffer::packInt(buf, bufsize, pos, counter->getId());
+            buffer_utils::packInt(buf, pos, counter->getId());
         }
     }
 }
 
 bool MaliVideoDriver::start(const int mveUds)
 {
-    char buf[256];
+    char buf[1 << 12];
     int pos = 0;
 
     // code - MVE_INSTR_STARTUP
@@ -163,9 +165,9 @@ bool MaliVideoDriver::start(const int mveUds)
     buf[pos++] = 'N';
     buf[pos++] = 'T';
     // size
-    Buffer::packInt(buf, sizeof(buf), pos, sizeof(uint32_t));
+    buffer_utils::packInt(buf, pos, sizeof(uint32_t));
     // client_version_number
-    Buffer::packInt(buf, sizeof(buf), pos, 1);
+    buffer_utils::packInt(buf, pos, 1);
 
     // code - MVE_INSTR_CONFIGURE
     buf[pos++] = 'C';
@@ -173,41 +175,41 @@ bool MaliVideoDriver::start(const int mveUds)
     buf[pos++] = 'F';
     buf[pos++] = 'G';
     // size
-    Buffer::packInt(buf, sizeof(buf), pos, 5 * sizeof(uint32_t));
+    buffer_utils::packInt(buf, pos, 5 * sizeof(uint32_t));
     // configuration
-    Buffer::packInt(buf, sizeof(buf), pos,
+    buffer_utils::packInt(buf, pos,
                     MVE_INSTR_COUNTERS | MVE_INSTR_EVENTS | MVE_INSTR_ACTIVITIES | MVE_INSTR_PACKED_COMM);
     // communication_protocol_version
-    Buffer::packInt(buf, sizeof(buf), pos, 1);
+    buffer_utils::packInt(buf, pos, 1);
     // data_protocol_version
-    Buffer::packInt(buf, sizeof(buf), pos, 1);
+    buffer_utils::packInt(buf, pos, 1);
     // sample_rate - convert samples/second to ms/sample
-    Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mSampleRate / 1000);
+    buffer_utils::packInt(buf, pos, gSessionData.mSampleRate / 1000);
     // live_rate - convert ns/flush to ms/flush
-    Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mLiveRate / 1000000);
+    buffer_utils::packInt(buf, pos, gSessionData.mLiveRate / 1000000);
 
     // code - MVE_INSTR_ENABLE_COUNTERS
     buf[pos++] = 'C';
     buf[pos++] = 'F';
     buf[pos++] = 'G';
     buf[pos++] = 'c';
-    marshalEnable(MVCT_COUNTER, buf, sizeof(buf), pos);
+    marshalEnable(MVCT_COUNTER, buf, pos);
 
     // code - MVE_INSTR_ENABLE_EVENTS
     buf[pos++] = 'C';
     buf[pos++] = 'F';
     buf[pos++] = 'G';
     buf[pos++] = 'e';
-    marshalEnable(MVCT_EVENT, buf, sizeof(buf), pos);
+    marshalEnable(MVCT_EVENT, buf, pos);
 
     // code - MVE_INSTR_ENABLE_ACTIVITIES
     buf[pos++] = 'C';
     buf[pos++] = 'F';
     buf[pos++] = 'G';
     buf[pos++] = 'a';
-    marshalEnable(MVCT_ACTIVITY, buf, sizeof(buf), pos);
+    marshalEnable(MVCT_ACTIVITY, buf, pos);
 
-    return writeAll(mveUds, buf, pos);
+    return lib::writeAll(mveUds, buf, pos);
 }
 
 void MaliVideoDriver::stop(const int mveUds)
@@ -221,7 +223,7 @@ void MaliVideoDriver::stop(const int mveUds)
     buf[pos++] = 'O';
     buf[pos++] = 'P';
 
-    writeAll(mveUds, buf, pos);
+    lib::writeAll(mveUds, buf, pos);
 
     close(mveUds);
 }

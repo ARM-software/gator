@@ -11,6 +11,8 @@
 #include <atomic>
 #include <semaphore.h>
 
+class ICpuInfo;
+
 namespace non_root
 {
     class NonRootDriver;
@@ -22,13 +24,13 @@ namespace non_root
     {
     public:
 
-        NonRootSource(NonRootDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile);
+        NonRootSource(NonRootDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const ICpuInfo & cpuInfo);
 
         virtual bool prepare() override;
         virtual void run() override;
         virtual void interrupt() override;
         virtual bool isDone() override;
-        virtual void write(Sender * sender) override;
+        virtual void write(ISender * sender) override;
 
     private:
 
@@ -42,6 +44,7 @@ namespace non_root
         sem_t & senderSem;
         sem_t & startProfile;
         bool done;
+        const ICpuInfo & cpuInfo;
 
         bool summary();
         unsigned long long getBootTimeTicksBase();

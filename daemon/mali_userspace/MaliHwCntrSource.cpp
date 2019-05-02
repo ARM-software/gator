@@ -11,144 +11,101 @@
 #include "mali_userspace/MaliHwCntrSource.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
 #include "mali_userspace/MaliHwCntrReader.h"
+#include "mali_userspace/IMaliHwCntrReader.h"
 
 #include <inttypes.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <algorithm>
+#include "Buffer.h"
 
 #include "Child.h"
 #include "DriverSource.h"
 #include "Logging.h"
 #include "PrimarySourceProvider.h"
+#include "Protocol.h"
 #include "SessionData.h"
 
 namespace mali_userspace
 {
-
-    MaliHwCntrSource::MaliHwCntrSource(Child & child, sem_t *senderSem)
+    MaliHwCntrSource::MaliHwCntrSource(Child & child, sem_t *senderSem, std::function<std::int64_t()> getMonotonicStarted, MaliHwCntrDriver & driver)
             : Source(child),
-              mBuffer(0, FRAME_BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem)
+              mGetMonotonicStarted(getMonotonicStarted),
+              mDriver(driver),
+              tasks()
     {
+        createTasks(senderSem);
     }
 
     MaliHwCntrSource::~MaliHwCntrSource()
     {
     }
 
+    void MaliHwCntrSource::createTasks( sem_t* mSenderSem)
+    {
+        auto funChildEndSession = [&] {mChild.endSession();};
+        auto funIsSessionActive =  [&] () -> bool {return gSessionData.mSessionIsActive;};
+
+        for (auto& reader : mDriver.getReaders()) {
+            int32_t deviceNumber = reader.first;
+            std::unique_ptr<Buffer> taskBuffer(new Buffer(deviceNumber, FrameType::BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
+            std::unique_ptr<MaliHwCntrTask> task(new MaliHwCntrTask(funChildEndSession, funIsSessionActive, mGetMonotonicStarted, std::move(taskBuffer), *this, *reader.second));
+            tasks.push_back(std::move(task));
+        }
+    }
+
     bool MaliHwCntrSource::prepare()
     {
-        return gSessionData.mMaliHwCntrs.start();
+        return mDriver.start();
     }
 
     void MaliHwCntrSource::run()
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-malihwc"), 0, 0, 0);
-
-        MaliHwCntrReader * const reader = gSessionData.mMaliHwCntrs.getReader();
-
-        if (reader != NULL) {
-            int64_t monotonicStarted = 0;
-            while (monotonicStarted <= 0 && gSessionData.mSessionIsActive) {
-                usleep(1);
-                monotonicStarted = gSessionData.mPrimarySource->getMonotonicStarted();
-            }
-
-            bool terminated = false;
-
-            // set sample interval, if sample rate == 0, then sample at 100Hz as currently the job dumping based sampling does not work... (driver issue?)
-            const uint32_t sampleIntervalNs = (gSessionData.mSampleRate > 0
-                        ? (gSessionData.mSampleRate < 1000000000 ? (1000000000u / gSessionData.mSampleRate) : 1u)
-                        : 10000000u);
-
-            if (!reader->startPeriodicSampling(sampleIntervalNs)) {
-                logg.logError("Could not enable periodic sampling");
-                terminated = true;
-            }
-
-            // create the list of enabled counters
-            const MaliDeviceCounterList countersList (reader->getDevice().createCounterList(*this));
-
-            while (gSessionData.mSessionIsActive && !terminated) {
-                SampleBuffer sampleBuffer;
-                MaliHwCntrReader::WaitStatus waitStatus = reader->waitForBuffer(sampleBuffer, 10000);
-
-                switch (waitStatus) {
-                case MaliHwCntrReader::WAIT_STATUS_SUCCESS: {
-                    if (sampleBuffer.isValid()) {
-                        const uint64_t sampleTime = sampleBuffer.getTimestamp() - monotonicStarted;
-
-                        if (mBuffer.eventHeader(sampleTime)) {
-                            reader->getDevice().dumpAllCounters(reader->getHardwareVersion(), reader->getMmuL2BlockCount(),
-                                                                countersList,
-                                                                reinterpret_cast<const uint32_t *>(sampleBuffer.getData()),
-                                                                sampleBuffer.getSize() / sizeof(uint32_t),
-                                                                *this);
-                            mBuffer.check(sampleTime);
-                        }
-                    }
-                    break;
-                }
-                case MaliHwCntrReader::WAIT_STATUS_TERMINATED: {
-                    logg.logMessage("Stopped capturing HW counters");
-                    terminated = true;
-                    break;
-                }
-                case MaliHwCntrReader::WAIT_STATUS_ERROR:
-                default: {
-                    logg.logError("Error - Stopped capturing HW counters");
-                    break;
-                }
-                }
-
-                if (gSessionData.mOneShot && gSessionData.mSessionIsActive && (mBuffer.bytesAvailable() <= 0)) {
-                    logg.logMessage("One shot (malihwc)");
-                    mChild.endSession();
-                }
-            }
-
-            if (!reader->startPeriodicSampling(0)) {
-                logg.logError("Could not disable periodic sampling");
-            }
+        std::vector<std::thread> threadsCreated;
+        for(auto const& task : tasks) {
+            threadsCreated.push_back(std::thread(&MaliHwCntrTask::execute, task.get(),gSessionData.mSampleRate, gSessionData.mOneShot));
         }
-
-        mBuffer.setDone();
+        std::for_each(threadsCreated.begin(),threadsCreated.end(), std::mem_fn(&std::thread::join));
     }
 
     void MaliHwCntrSource::interrupt()
     {
-        // Do nothing
-        MaliHwCntrReader * const reader = gSessionData.mMaliHwCntrs.getReader();
-
-        if (reader != NULL) {
-            reader->interrupt();
+        for(auto& reader :  mDriver.getReaders()) {
+           reader.second->interrupt();
         }
     }
 
     bool MaliHwCntrSource::isDone()
     {
-        return mBuffer.isDone();
+        for (auto& task : tasks) {
+            if (!task->isDone()) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    void MaliHwCntrSource::write(Sender *sender)
+    void MaliHwCntrSource::write(ISender *sender)
     {
-        if (!mBuffer.isDone()) {
-            mBuffer.write(sender);
+        for (auto& task : tasks) {
+            if (!task->isDone()) {
+                task->write(sender);
+            }
         }
     }
 
-    void MaliHwCntrSource::nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta)
+    void MaliHwCntrSource::nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta, uint32_t gpuId, IBuffer& buffer)
     {
-        const int key = gSessionData.mMaliHwCntrs.getCounterKey(nameBlockIndex, counterIndex);
-
+        const int key = mDriver.getCounterKey(nameBlockIndex, counterIndex, gpuId);
         if (key != 0) {
-            mBuffer.event64(key, delta);
+            buffer.event64(key, delta);
         }
     }
 
-    bool MaliHwCntrSource::isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex) const
+    bool MaliHwCntrSource::isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const
     {
-        const int key = gSessionData.mMaliHwCntrs.getCounterKey(nameBlockIndex, counterIndex);
-
+        const int key = mDriver.getCounterKey(nameBlockIndex, counterIndex, gpuId);
         return (key != 0);
     }
 }

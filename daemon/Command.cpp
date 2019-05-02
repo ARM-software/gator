@@ -24,6 +24,8 @@
 #include "Logging.h"
 #include "SessionData.h"
 
+#include "lib/FileDescriptor.h"
+
 static int getUid(const char * const name, const char * const tmpDir, uid_t * const uid)
 {
     // Lookups may fail when using a different libc or a statically compiled executable
@@ -107,7 +109,13 @@ static void checkCommandStatus(int status)
         }
 
         if (exitCode != 0)
+        {
             logg.logError("command exited with code %d", exitCode);
+        }
+        else
+        {
+            logg.logMessage("command exited with code 0");
+        }
     }
     else if (WIFSIGNALED(status)) {
         const int signal = WTERMSIG(status);
@@ -140,7 +148,7 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
 
     constexpr size_t bufSize = 1 << 8;
     int pipefd[2];
-    if (pipe_cloexec(pipefd) != 0) {
+    if (lib::pipe_cloexec(pipefd) != 0) {
         logg.logError("pipe failed");
         handleException();
     }
@@ -159,6 +167,9 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         signal(SIGTERM, SIG_DFL);
         signal(SIGABRT, SIG_DFL);
         signal(SIGALRM, SIG_DFL);
+
+        //Need to change the GPID so that all children of this process will have this processes PID as their GPID.
+        setpgid(pid, pid);
 
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
 
@@ -206,6 +217,7 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         sem_wait(&waitToStart);
         sem_post(&waitToStart); // some other thread might be waiting on this too.
 
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(commands[0]), 0, 0, 0);
         execvp(commands[0], commands);
         snprintf(buf, sizeof(buf), "Failed to run command %s\nexecvp failed: %s", commands[0], strerror(errno));
 

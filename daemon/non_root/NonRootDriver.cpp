@@ -15,12 +15,6 @@ namespace non_root
 {
     namespace
     {
-#if defined(__arm__) || defined(__aarch64__)
-        static GatorCpu gatorCpuOther("Other", "Other", NULL, 0xfffff, 6);
-#else
-        static GatorCpu gatorCpuOther("Other", "Perf_Hardware", NULL, 0xfffff, 6);
-#endif
-
         class NonRootDriverCounter : public DriverCounter
         {
         public:
@@ -28,7 +22,7 @@ namespace non_root
             NonRootDriverCounter(DriverCounter * next, NonRootCounter type, const char * name, const char * label, const char * title, const char * description,
                                  const char * display, const char * counterClass, const char * unit, const char * seriesComposition, double multiplier,
                                  bool percpu, bool proc)
-                    : DriverCounter(next, strdup(name)),
+                    : DriverCounter(next, name),
                       mType(type),
                       mLabel(label),
                       mTitle(title),
@@ -44,7 +38,7 @@ namespace non_root
             }
 
             NonRootDriverCounter(DriverCounter * next, bool system, const std::string & name)
-                    : DriverCounter(next, strdup(name.c_str())),
+                    : DriverCounter(next, name.c_str()),
                       mType(system ? NonRootCounter::ACTIVITY_SYSTEM : NonRootCounter::ACTIVITY_USER),
                       mLabel(nullptr),
                       mTitle(nullptr),
@@ -133,35 +127,11 @@ namespace non_root
         };
     }
 
-    void NonRootDriver::addCluster(GatorCpu * gatorCpu)
+    NonRootDriver::NonRootDriver(PmuXML && pmuXml, lib::Span<const GatorCpu> clusters)
+            : SimpleDriver("NonRootDriver"),
+              pmuXml(std::move(pmuXml)),
+              clusters(clusters)
     {
-        // create the cluster
-        int cluster = gSessionData.mSharedData->mClusterCount++;
-        if (cluster >= ARRAY_LENGTH(gSessionData.mSharedData->mClusters)) {
-            logg.logError("Too many clusters on the target, please increase CLUSTER_COUNT in Config.h");
-            handleException();
-        }
-        gSessionData.mSharedData->mClusters[cluster] = gatorCpu;
-    }
-
-    NonRootDriver::NonRootDriver()
-    {
-        // detect clusters so we can generate activity events
-        for (int processor = 0; processor < NR_CPUS; ++processor) {
-            GatorCpu *gatorCpu = GatorCpu::find(gSessionData.mSharedData->mCpuIds[processor]);
-            if ((gatorCpu != nullptr) && (!gatorCpu->isTypeValid())) {
-                gatorCpu->setType(1); // any value > 0 will do so that isTypeValie returns true
-                // create the cluster
-                addCluster(gatorCpu);
-            }
-        }
-
-        if (gSessionData.mSharedData->mClusterCount < 1) {
-            addCluster(&gatorCpuOther);
-        }
-
-        // Reread cpuinfo so that cluster data is recalculated
-        gSessionData.readCpuInfo();
     }
 
     void NonRootDriver::readEvents(mxml_node_t *)
@@ -402,9 +372,9 @@ namespace non_root
                                                      "accumulate", "delta", "s", "stacked", ticks_mult, false, true));
 
                 // CPU activity charts
-                for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
-                    const std::string sysName = (lib::Format() << gSessionData.mSharedData->mClusters[cluster]->getPmncName() << "_system");
-                    const std::string userName = (lib::Format() << gSessionData.mSharedData->mClusters[cluster]->getPmncName() << "_user");
+                for (const GatorCpu & cluster : clusters) {
+                    const std::string sysName = (lib::Format() << cluster.getPmncName() << "_system");
+                    const std::string userName = (lib::Format() << cluster.getPmncName() << "_user");
 
                     setCounters(new NonRootDriverCounter(getCounters(), true, sysName));
                     setCounters(new NonRootDriverCounter(getCounters(), false, userName));

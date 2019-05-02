@@ -14,41 +14,34 @@
 
 #include "Source.h"
 
-class Buffer;
+class PerfAttrsBuffer;
 class Fifo;
+class FtraceDriver;
 
 class DriverSource : public Source
 {
 public:
-    DriverSource(Child & child, sem_t & senderSem, sem_t & startProfile);
+    DriverSource(Child & child, sem_t & senderSem, sem_t & startProfile, FtraceDriver & ftraceDriver);
     ~DriverSource();
 
     virtual bool prepare() override;
     virtual void run() override;
     virtual void interrupt() override;
     virtual bool isDone() override;
-    virtual void write(Sender * sender) override;
-
-    static void checkVersion();
-    static int readIntDriver(const char *fullpath, int *value);
-    static int readInt64Driver(const char *fullpath, int64_t *value);
-    static int writeDriver(const char *fullpath, const char *data);
-    static int writeDriver(const char *path, int value);
-    static int writeDriver(const char *path, int64_t value);
-    static int writeReadDriver(const char *path, int *value);
-    static int writeReadDriver(const char *path, int64_t *value);
+    virtual void write(ISender * sender) override;
 
 private:
     static void *bootstrapThreadStatic(void *arg);
     void bootstrapThread();
 
-    Buffer *mBuffer;
+    PerfAttrsBuffer *mBuffer;
     Fifo *mFifo;
     sem_t & mSenderSem;
     sem_t & mStartProfile;
     int mBufferSize;
     int mBufferFD;
     int mLength;
+    FtraceDriver & mFtraceDriver;
 
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(DriverSource);

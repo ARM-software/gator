@@ -42,7 +42,9 @@ namespace lib
 
             execvp(command[0], const_cast<char * const *>(command));
             const int error = errno;
-            write(execerr[1], &error, sizeof(error));
+            // try and send the errno, but ignore it if it fails
+            const ssize_t num = write(execerr[1], &error, sizeof(error));
+            (void) num;
             exit(1);
         }
         else {

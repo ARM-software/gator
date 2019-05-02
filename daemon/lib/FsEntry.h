@@ -126,7 +126,33 @@ namespace lib
         bool canAccess(bool read, bool write, bool exec) const;
 
         /** @return True if the file exists */
-        bool exists() const;
+        bool exists() const
+        {
+            return canAccess(false, false, false);
+        }
+
+        /**
+         * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
+         *
+         * @param   entry   The file entry to read
+         * @return  The contents of that file
+         */
+        std::string readFileContents() const;
+
+        /**
+         * Read the contents of a file and return it as a std::string. Only the first line is read and returned without any '\n'
+         *
+         * @param   entry   The file entry to read
+         * @return  The contents of that file
+         */
+        std::string readFileContentsSingleLine() const;
+
+        /**
+         * Write the contents of a file
+         *
+         * @return  true if successful
+         */
+        bool writeFileContents(const char * data) const;
 
     private:
 
@@ -169,8 +195,8 @@ namespace lib
         CLASS_DELETE_COPY(FsEntryDirectoryIterator);
 
         /* But move are */
-        FsEntryDirectoryIterator(FsEntryDirectoryIterator &&);
-        FsEntryDirectoryIterator& operator=(FsEntryDirectoryIterator &&);
+        FsEntryDirectoryIterator(FsEntryDirectoryIterator &&) = default;
+        FsEntryDirectoryIterator& operator=(FsEntryDirectoryIterator &&) = default;
 
         /**
          * Get the next child entry. Users should repeatedly call this function to enumerate children until it returns nothing.
@@ -189,10 +215,24 @@ namespace lib
     /**
      * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
      *
-     * @param   entry   Tge file entry to read
+     * @param   entry   The file entry to read
      * @return  The contents of that file
      */
-    std::string readFileContents(const FsEntry & entry);
+    static inline std::string readFileContents(const FsEntry & entry)
+    {
+        return entry.readFileContents();
+    }
+
+    /**
+     * Write the contents of a file
+     *
+     * @param   entry   The file entry to write
+     * @return  true if successful
+     */
+    static inline bool writeFileContents(const FsEntry & entry, const char * data)
+    {
+        return entry.writeFileContents(data);
+    }
 }
 
 #endif /* INCLUDE_LIB_FSENTRY_H */

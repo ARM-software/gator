@@ -14,16 +14,20 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
+#include "BufferUtils.h"
 #include "Child.h"
+#include "Drivers.h"
 #include "DriverSource.h"
 #include "Logging.h"
 #include "PrimarySourceProvider.h"
 #include "PolledDriver.h"
 #include "SessionData.h"
 
-UserSpaceSource::UserSpaceSource(Child & child, sem_t *senderSem)
+UserSpaceSource::UserSpaceSource(Child & child, sem_t *senderSem, std::function<std::int64_t()> getMonotonicStarted, lib::Span<PolledDriver * const> drivers)
         : Source(child),
-          mBuffer(0, FRAME_BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem)
+          mBuffer(0, FrameType::BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem),
+          mGetMonotonicStarted(getMonotonicStarted),
+          mDrivers(drivers)
 {
 }
 
@@ -31,21 +35,9 @@ UserSpaceSource::~UserSpaceSource()
 {
 }
 
-std::vector<PolledDriver *> UserSpaceSource::allPolledDrivers()
+bool UserSpaceSource::shouldStart(lib::Span<const PolledDriver * const> drivers)
 {
-    std::vector<PolledDriver *> result (gSessionData.mPrimarySource->getAdditionalPolledDrivers());
-
-    PolledDriver * usDriver = gSessionData.mMaliHwCntrs.getPolledDriver();
-    if (usDriver != nullptr) {
-        result.emplace_back(usDriver);
-    }
-
-    return result;
-}
-
-bool UserSpaceSource::shouldStart()
-{
-    for (PolledDriver * usDriver : allPolledDrivers()) {
+    for (const PolledDriver * usDriver : drivers) {
         if (usDriver->countersEnabled()) {
             return true;
         }
@@ -64,7 +56,7 @@ void UserSpaceSource::run()
 
     std::vector<PolledDriver *> allUserspaceDrivers;
 
-    for (PolledDriver * usDriver : allPolledDrivers()) {
+    for (PolledDriver * usDriver : mDrivers) {
         if (usDriver->countersEnabled()) {
             usDriver->start();
             allUserspaceDrivers.emplace_back(usDriver);
@@ -74,7 +66,7 @@ void UserSpaceSource::run()
     int64_t monotonicStarted = 0;
     while (monotonicStarted <= 0 && gSessionData.mSessionIsActive) {
         usleep(1);
-        monotonicStarted = gSessionData.mPrimarySource->getMonotonicStarted();
+        monotonicStarted = mGetMonotonicStarted();
     }
 
     uint64_t nextTime = 0;
@@ -116,7 +108,7 @@ bool UserSpaceSource::isDone()
     return mBuffer.isDone();
 }
 
-void UserSpaceSource::write(Sender *sender)
+void UserSpaceSource::write(ISender *sender)
 {
     if (!mBuffer.isDone()) {
         mBuffer.write(sender);

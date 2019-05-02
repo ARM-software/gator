@@ -15,6 +15,8 @@
                         6a      ARMv6 (not ARMv6-M)
                         7a      ARMv7-A
                         8a      ARMv8-A
+      spe           The name of the SPE events descriptor associated with the PMU. By default armv8.2_spe (the Arm V8.2 architectural events only) is used if
+                    SPE is detected on the target. Specifying something else here allows for more detailed set of properties to be used instead.
 
       Adding a line in this file allows gatord to identify the PMU. A corresponding events-*.xml file should also be added to associate events with that PMU.
   -->
@@ -50,7 +52,6 @@
   <pmu pmnc_name="ARMv8_Cortex_A75" cpuid="0x41d0a" core_name="Cortex-A75" dt_name="arm,cortex-a75" pmnc_counters="6" profile="8a"/>
   <pmu pmnc_name="ARMv8_Cortex_A76" cpuid="0x41d0b" core_name="Cortex-A76" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
 
-
   <!-- Qualcomm -->
   <pmu pmnc_name="Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4" profile="7a"/>
   <pmu pmnc_name="ScorpionMP" cpuid="0x5102d" core_name="ScorpionMP" pmnc_counters="4" profile="7a"/>
@@ -59,7 +60,8 @@
   <pmu pmnc_name="Krait" cpuid="0x5106f" core_name="Krait S4 Pro" pmnc_counters="4" profile="7a"/>
 
   <!-- Samsung -->
-  <pmu pmnc_name="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1" pmnc_counters="6" profile="8a"/>
+  <pmu pmnc_name="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1/M2" pmnc_counters="6" profile="8a"/>
+  <pmu pmnc_name="ARMv8_Exynos_M3" cpuid="0x53002" core_name="Exynos-M3" pmnc_counters="6" profile="8a"/>
 
   <!-- Cavium -->
   <pmu pmnc_name="ARMv8_Cavium_Thunder" cpuid="0x430a1" core_name="ThunderX" pmnc_counters="6" profile="8a"/>

@@ -21,18 +21,10 @@
 #include "OlyUtility.h"
 #include "Logging.h"
 #include "ClassBoilerPlate.h"
+#include "Configuration.h"
 #include "GatorCLIFlags.h"
 
 const int ERROR_PARSING = -101;
-
-enum SampleRate
-{
-    high = 10007,
-    normal = 1009,
-    low = 101,
-    none = 0,
-    invalid = -1
-};
 
 #define DEFAULT_PORT                8080
 #define DISABLE_TCP_USE_UDS_PORT    -1
@@ -43,10 +35,23 @@ enum SampleRate
 class ParserResult
 {
 public:
+    enum class ExecutionMode {
+        LOCAL_CAPTURE,
+        PRINT,
+        DAEMON,
+        EXIT,
+    };
+
+    enum class Printable {
+        EVENTS_XML,
+        COUNTERS_XML,
+        DEFAULT_CONFIGURATION_XML,
+    };
 
     ParserResult();
     ~ParserResult();
 
+    std::vector<SpeConfiguration> mSpeConfigs;
     const char *mCaptureWorkingDir;
     std::vector<std::string> mCaptureCommand;
     std::set<int> mPids;
@@ -56,8 +61,9 @@ public:
     const char *mEventsXMLPath;
     const char *mEventsXMLAppend;
     const char *mWaitForCommand;
-    const char *mMaliDevice;
-    const char *mMaliType;
+
+    std::vector<std::string> mMaliDevices;
+    std::vector<std::string> mMaliTypes;
 
     int mBacktraceDepth;
     int mSampleRate;
@@ -69,7 +75,6 @@ public:
     bool mStopGator;
     bool mSystemWide;
     bool mAllowCommands;
-    bool mIsLocalCapture;
 
     const char *module;
     const char *pmuPath;
@@ -79,9 +84,9 @@ public:
 
     std::map<std::string, int> events;
 
-    int parse_error = 0;
+    ExecutionMode mode;
+    std::set<Printable> printables;
 
-    std::string parse_error_message;
     CLASS_DELETE_COPY_MOVE(ParserResult);
 };
 /**
@@ -103,6 +108,7 @@ private:
     int perfCounterCount;
     void addCounter(int startpos, int pos, std::string &counters);
     int findAndUpdateCmndLineCmnd(int argc, char** argv);
+    void parseAndUpdateSpe();
 };
 
 #endif /* GATORCLIPARSER_H_ */

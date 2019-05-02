@@ -10,11 +10,14 @@
 #define FTRACEDRIVER_H
 
 #include <pthread.h>
+#include <utility>
+#include <vector>
 
 #include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class DynBuf;
+class IPerfAttrsConsumer;
 
 // The Android NDK doesn't provide an implementation of pthread_barrier_t, so implement our own
 class Barrier
@@ -35,15 +38,15 @@ private:
 class FtraceDriver : public SimpleDriver
 {
 public:
-    FtraceDriver();
+    FtraceDriver(bool useForTracepoint, size_t numberOfCores);
     ~FtraceDriver();
 
     void readEvents(mxml_node_t * const xml);
 
-    bool prepare(int * const ftraceFds);
+    std::pair<std::vector<int>, bool> prepare();
     void start();
-    void stop(int * const ftraceFds);
-    bool readTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
+    std::vector<int> stop();
+    bool readTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, DynBuf * const printb, DynBuf * const b);
 
     bool isSupported() const
     {
@@ -54,7 +57,8 @@ private:
     int64_t *mValues;
     Barrier mBarrier;
     int mTracingOn;
-    bool mSupported, mMonotonicRawSupport;
+    bool mSupported, mMonotonicRawSupport, mUseForTracepoints;
+    size_t mNumberOfCores;
 
     // Intentionally unimplemented
     CLASS_DELETE_COPY_MOVE(FtraceDriver);

@@ -13,15 +13,36 @@
 #define STRIFY(ARG) STRIFY2(ARG)
 
 #define ARRAY_LENGTH(A) static_cast<int>(sizeof(A) / sizeof((A)[0]))
-#define ACCESS_ONCE(x)  (*reinterpret_cast<volatile __typeof(x) *>(&(x)))
 
 #define MAX_PERFORMANCE_COUNTERS 100
-#define NR_CPUS 128
-#define CLUSTER_COUNT 4
-#define CLUSTER_MASK (CLUSTER_COUNT - 1)
 
 // If debugfs is not mounted at /sys/kernel/debug, update TRACING_PATH
 #define TRACING_PATH "/sys/kernel/debug/tracing"
 #define EVENTS_PATH TRACING_PATH "/events"
+
+// feature control options
+#ifndef CONFIG_PREFER_SYSTEM_WIDE_MODE
+#define CONFIG_PREFER_SYSTEM_WIDE_MODE  1
+#endif
+
+#ifndef CONFIG_SUPPORT_GATOR_KO
+#define CONFIG_SUPPORT_GATOR_KO         1
+#endif
+
+#ifndef CONFIG_SUPPORT_PROC_POLLING
+#define CONFIG_SUPPORT_PROC_POLLING     1
+#endif
+
+#ifndef CONFIG_SUPPORT_PERF
+#define CONFIG_SUPPORT_PERF             1
+#endif
+
+#ifndef GATORD_BUILD_ID
+#define GATORD_BUILD_ID                 "oss"
+#endif
+
+#if !CONFIG_SUPPORT_PERF && !CONFIG_SUPPORT_GATOR_KO && !CONFIG_SUPPORT_PROC_POLLING
+#   error   "at least one of CONFIG_SUPPORT_GATOR_KO, CONFIG_SUPPORT_PERF and CONFIG_SUPPORT_PROC_POLLING must be set"
+#endif
 
 #endif // CONFIG_H

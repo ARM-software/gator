@@ -12,6 +12,9 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
+#include "PmuXML.h"
+#include "Driver.h"
+#include "lib/File.h"
 
 static const char TAG_EVENTS[] = "events";
 static const char TAG_CATEGORY[] = "category";
@@ -63,7 +66,9 @@ private:
     CLASS_DELETE_COPY_MOVE(XMLList);
 };
 
-mxml_node_t *EventsXML::getTree()
+namespace events_xml {
+
+std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getTree(lib::Span<const GatorCpu> clusters)
 {
 #include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
     char path[PATH_MAX];
@@ -76,7 +81,7 @@ mxml_node_t *EventsXML::getTree()
     // Load the provided or default events xml
     if (gSessionData.mEventsXMLPath) {
         strncpy(path, gSessionData.mEventsXMLPath, PATH_MAX);
-        fl = fopen_cloexec(path, "r");
+        fl = lib::fopen_cloexec(path, "r");
         if (fl) {
             xml = mxmlLoadFile(NULL, fl, MXML_NO_CALLBACK);
             if (xml == NULL) {
@@ -93,7 +98,7 @@ mxml_node_t *EventsXML::getTree()
 
     // Append additional events XML
     if (gSessionData.mEventsXMLAppend) {
-        fl = fopen_cloexec(gSessionData.mEventsXMLAppend, "r");
+        fl = lib::fopen_cloexec(gSessionData.mEventsXMLAppend, "r");
         if (fl == NULL) {
             logg.logError("Unable to open additional events XML %s", gSessionData.mEventsXMLAppend);
             handleException();
@@ -285,11 +290,11 @@ mxml_node_t *EventsXML::getTree()
             node = next, next = mxmlFindElement(node, xml, TAG_EVENT, NULL, NULL, MXML_DESCEND)) {
         const char *counter = mxmlElementGetAttr(node, ATTR_COUNTER);
         if (counter != NULL && strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0) {
-            for (int cluster = 0; cluster < gSessionData.mSharedData->mClusterCount; ++cluster) {
+            for (const GatorCpu & cluster : clusters) {
                 mxml_node_t *n = mxmlNewElement(mxmlGetParent(node), TAG_EVENT);
                 copyMxmlElementAttrs(n, node);
                 char buf[1 << 7];
-                snprintf(buf, sizeof(buf), "%s%s", gSessionData.mSharedData->mClusters[cluster]->getPmncName(),
+                snprintf(buf, sizeof(buf), "%s%s", cluster.getPmncName(),
                          counter + sizeof(CLUSTER_VAR) - 1);
                 mxmlElementSetAttr(n, ATTR_COUNTER, buf);
             }
@@ -297,58 +302,39 @@ mxml_node_t *EventsXML::getTree()
         }
     }
 
-    return xml;
+    return {xml, &mxmlDelete};
 }
 
-// mxml doesn't have a function to do this, so dip into its private API
-// Copy all the attributes from src to dst
-void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src)
+std::unique_ptr<char, void(*)(void*)> getXML(lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters)
 {
-    if (dest == NULL || dest->type != MXML_ELEMENT || src == NULL || src->type != MXML_ELEMENT)
-        return;
-
-    int i;
-    mxml_attr_t *attr;
-
-    for (i = src->value.element.num_attrs, attr = src->value.element.attrs; i > 0; --i, ++attr) {
-        mxmlElementSetAttr(dest, attr->name, attr->value);
-    }
-}
-
-char *EventsXML::getXML()
-{
-    mxml_node_t *xml = getTree();
+    const auto xml = getTree(clusters);
 
     // Add dynamic events from the drivers
-    mxml_node_t *events = mxmlFindElement(xml, xml, TAG_EVENTS, NULL, NULL, MXML_DESCEND);
+    mxml_node_t *events = mxmlFindElement(xml.get(), xml.get(), TAG_EVENTS, NULL, NULL, MXML_DESCEND);
     if (!events) {
         logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 "<events>");
         handleException();
     }
-    for (Driver *driver = Driver::getHead(); driver != NULL; driver = driver->getNext()) {
+    for (const Driver *driver : drivers) {
         driver->writeEvents(events);
     }
 
-    char *string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
-    mxmlDelete(xml);
-
-    return string;
+    return {mxmlSaveAllocString(xml.get(), mxmlWhitespaceCB), &free};
 }
 
-void EventsXML::write(const char *path)
+void write(const char *path, lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters)
 {
     char file[PATH_MAX];
 
     // Set full path
     snprintf(file, PATH_MAX, "%s/events.xml", path);
 
-    char *buf = getXML();
-    if (writeToDisk(file, buf) < 0) {
+    if (writeToDisk(file, getXML(drivers, clusters).get()) < 0) {
         logg.logError("Error writing %s\nPlease verify the path.", file);
         handleException();
     }
+}
 
-    free(buf);
 }

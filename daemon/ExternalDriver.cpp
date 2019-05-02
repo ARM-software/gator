@@ -11,10 +11,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "Buffer.h"
+#include "BufferUtils.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
+
+#include "lib/FileDescriptor.h"
 
 static const char MALI_UTGARD_SETUP[] = "\0mali-utgard-setup";
 static const char SETUP_VERSION[] = "ANNOTATE_SETUP 1\n";
@@ -98,7 +100,8 @@ private:
 };
 
 ExternalDriver::ExternalDriver()
-        : mUds(-1),
+        : SimpleDriver("External"),
+          mUds(-1),
           mQueried(false),
           mStarted(false)
 {
@@ -108,7 +111,7 @@ bool ExternalDriver::connect() const
 {
     if (mUds < 0) {
         mUds = OlySocket::connect(MALI_UTGARD_SETUP, sizeof(MALI_UTGARD_SETUP));
-        if (mUds >= 0 && !writeAll(mUds, SETUP_VERSION, sizeof(SETUP_VERSION) - 1)) {
+        if (mUds >= 0 && !lib::writeAll(mUds, SETUP_VERSION, sizeof(SETUP_VERSION) - 1)) {
             logg.logError("Unable to send setup version");
             handleException();
         }
@@ -146,18 +149,18 @@ void ExternalDriver::query() const
 
         buf[0] = HEADER_REQUEST_COUNTERS;
         size_t pos = HEADER_SIZE;
-        Buffer::writeLEInt(reinterpret_cast<unsigned char *>(buf + 1), pos);
-        if (!writeAll(mUds, buf, pos)) {
+        buffer_utils::writeLEInt(buf + 1, pos);
+        if (!lib::writeAll(mUds, buf, pos)) {
             logg.logError("Unable to send request counters message");
             handleException();
         }
 
-        if (!readAll(mUds, buf, HEADER_SIZE) || (buf[0] != HEADER_COUNTERS)) {
+        if (!lib::readAll(mUds, buf, HEADER_SIZE) || (buf[0] != HEADER_COUNTERS)) {
             logg.logError("Unable to read request counters response header");
             handleException();
         }
         size = readLEInt(buf + 1);
-        if (size > bufSize || !readAll(mUds, buf, size - HEADER_SIZE)) {
+        if (size > bufSize || !lib::readAll(mUds, buf, size - HEADER_SIZE)) {
             logg.logError("Unable to read request counters response");
             handleException();
         }
@@ -181,9 +184,12 @@ void ExternalDriver::query() const
         if (pos < size && buf[pos] == '\0') {
             ++pos;
         };
-        if (name != NULL && readPackedInt(buf, bufSize, &pos, &cores) == 0) {
-            // Cheat so that this can be 'const'
-            const_cast<ExternalDriver *>(this)->setCounters(new ExternalCounter(getCounters(), name, cores));
+        if (name != NULL) {
+            if (readPackedInt(buf, bufSize, &pos, &cores) == 0) {
+                // Cheat so that this can be 'const'
+                const_cast<ExternalDriver *>(this)->setCounters(new ExternalCounter(getCounters(), name, cores));
+            }
+            ::free(name);
         }
     }
 
@@ -216,28 +222,27 @@ void ExternalDriver::start()
             continue;
         }
         size_t nameLen = strlen(counter->getName());
-        if (pos + nameLen + 1 + 2 * Buffer::MAXSIZE_PACK32 > sizeof(buf)) {
+        if (pos + nameLen + 1 + 2 * buffer_utils::MAXSIZE_PACK32 > sizeof(buf)) {
             logg.logError("Unable to enable counters, message is too large");
             handleException();
         }
         memcpy(buf + pos, counter->getName(), nameLen + 1);
         pos += nameLen + 1;
-        Buffer::packInt(buf, sizeof(buf), pos, counter->getEvent());
-        Buffer::packInt(buf, sizeof(buf), pos, counter->getKey());
+        buffer_utils::packInt(buf, pos, counter->getEvent());
+        buffer_utils::packInt(buf, pos, counter->getKey());
     }
-    Buffer::writeLEInt(reinterpret_cast<unsigned char *>(buf + 1), pos);
-    if (!writeAll(mUds, buf, pos)) {
+    buffer_utils::writeLEInt(buf + 1, pos);
+    if (!lib::writeAll(mUds, buf, pos)) {
         logg.logError("Unable to send enable counters message");
         handleException();
     }
 
-    size_t size = 0;
-    if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != HEADER_ACK) {
+    if (!lib::readAll(mUds, buf, HEADER_SIZE) || buf[0] != HEADER_ACK) {
         logg.logError("Unable to read enable counters response header");
         handleException();
     }
-    size = readLEInt(buf + 1);
-    if (size != HEADER_SIZE) {
+
+    if (readLEInt(buf + 1) != HEADER_SIZE) {
         logg.logError("Unable to parse enable counters response");
         handleException();
     }
@@ -246,21 +251,20 @@ void ExternalDriver::start()
     pos = HEADER_SIZE;
     // ns/sec / samples/sec = ns/sample
     // For sample rate of none, sample every 100ms
-    Buffer::packInt(buf, sizeof(buf), pos, NS_PER_S / (gSessionData.mSampleRate == 0 ? 10 : gSessionData.mSampleRate));
-    Buffer::packInt(buf, sizeof(buf), pos, gSessionData.mLiveRate);
-    Buffer::writeLEInt(reinterpret_cast<unsigned char *>(buf + 1), pos);
-    if (!writeAll(mUds, buf, pos)) {
+    buffer_utils::packInt(buf, pos, NS_PER_S / (gSessionData.mSampleRate == 0 ? 10 : gSessionData.mSampleRate));
+    buffer_utils::packInt(buf, pos, gSessionData.mLiveRate);
+    buffer_utils::writeLEInt(buf + 1, pos);
+    if (!lib::writeAll(mUds, buf, pos)) {
         logg.logError("Unable to send start message");
         handleException();
     }
 
-    size = 0;
-    if (!readAll(mUds, buf, HEADER_SIZE) || buf[0] != HEADER_ACK) {
+    if (!lib::readAll(mUds, buf, HEADER_SIZE) || buf[0] != HEADER_ACK) {
         logg.logError("Unable to read start response header");
         handleException();
     }
-    size = readLEInt(buf + 1);
-    if (size != HEADER_SIZE) {
+
+    if (readLEInt(buf + 1) != HEADER_SIZE) {
         logg.logError("Unable to parse start response");
         handleException();
     }

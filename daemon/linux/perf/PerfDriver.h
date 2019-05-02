@@ -12,73 +12,56 @@
 #include <list>
 #include <memory>
 #include <set>
+#include <functional>
 #include <stdint.h>
 
 #include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 #include "linux/perf/PerfConfig.h"
+#include "linux/perf/PerfDriverConfiguration.h"
 
-#define SCHED_SWITCH "sched/sched_switch"
-#define CPU_IDLE "power/cpu_idle"
-#define CPU_FREQUENCY "power/cpu_frequency"
+static constexpr const char * SCHED_SWITCH = "sched/sched_switch";
+static constexpr const char * CPU_IDLE = "power/cpu_idle";
+static constexpr const char * CPU_FREQUENCY = "power/cpu_frequency";
 
-class Buffer;
-class DynBuf;
+class ISummaryConsumer;
 class GatorCpu;
-class PerfGroups;
+class IPerfGroups;
+class IPerfAttrsConsumer;
 class PerfTracepoint;
 class UncorePmu;
+class ICpuInfo;
 
 class PerfDriver : public SimpleDriver
 {
 public:
-
-    /**
-     * Contains the detected parameters of perf
-     */
-    class PerfDriverConfiguration
-    {
-    private:
-
-        // opaque to everyone else
-        friend class PerfDriver;
-
-        std::list<GatorCpu *> cpuPmus;
-        std::list<UncorePmu *> uncorePmus;
-        bool foundCpu;
-        PerfConfig config;
-
-        PerfDriverConfiguration();
-    };
-
-    static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide);
-
-    PerfDriver(const PerfDriverConfiguration & configuration);
+    PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXml, const char * maliFamilyName, const ICpuInfo & cpuInfo);
     ~PerfDriver();
 
     const PerfConfig & getConfig() const
     {
-        return mConfig;
+        return mConfig.config;
     }
 
 
-    void readEvents(mxml_node_t * const xml);
-    bool summary(Buffer * const buffer);
-    void coreName(const uint64_t currTime, Buffer * const buffer, const int cpu);
-    void setupCounter(Counter &counter);
-    bool enable(const uint64_t currTime, PerfGroups * const group, Buffer * const buffer) const;
-    void read(Buffer * const buffer, const int cpu);
-    bool sendTracepointFormats(const uint64_t currTime, Buffer * const buffer, DynBuf * const printb, DynBuf * const b);
-
-    static long long getTracepointId(const char * const name, DynBuf * const printb);
-    static long long getTracepointId(const char * const counter, const char * const name, DynBuf * const printb);
+    void readEvents(mxml_node_t * const xml) override;
+    int writeCounters(mxml_node_t *root) const override;
+    bool summary(ISummaryConsumer & consumer, std::function<uint64_t()> getAndSetMonotonicStarted);
+    void coreName(const uint64_t currTime, ISummaryConsumer & consumer, const int cpu);
+    void setupCounter(Counter &counter) override;
+    lib::Optional<CapturedSpe> setupSpe(const SpeConfiguration & spe) override;
+    bool enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
+    void read(IPerfAttrsConsumer & attrsConsumer, const int cpu);
+    bool sendTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
 
 private:
-    void addCpuCounters(const GatorCpu * cpu);
-    void addUncoreCounters(const UncorePmu * pmu);
+    void addCpuCounters(const PerfCpu & cpu);
+    void addUncoreCounters(const PerfUncore & uncore);
     PerfTracepoint *mTracepoints;
     bool mIsSetup;
-    PerfConfig mConfig;
+    PerfDriverConfiguration mConfig;
+    PmuXML mPmuXml;
+    const ICpuInfo & mCpuInfo;
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfDriver);

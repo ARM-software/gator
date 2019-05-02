@@ -14,12 +14,15 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include "BufferUtils.h"
 #include "Child.h"
 #include "DriverSource.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
+#include "lib/FileDescriptor.h"
+#include "Drivers.h"
 
 static const char STREAMLINE_ANNOTATE[] = "\0streamline-annotate";
 static const char MALI_VIDEO[] = "\0mali-video";
@@ -31,10 +34,10 @@ static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
 static const char FTRACE_V2[] = "FTRACE 2\n";
 
-ExternalSource::ExternalSource(Child & child, sem_t *senderSem)
+ExternalSource::ExternalSource(Child & child, sem_t *senderSem, Drivers & mDrivers)
         : Source(child),
           mBufferSem(),
-          mBuffer(0, FRAME_EXTERNAL, 128 * 1024, senderSem),
+          mBuffer(0, FrameType::EXTERNAL, 128 * 1024, senderSem),
           mMonitor(),
           mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)),
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
@@ -45,7 +48,8 @@ ExternalSource::ExternalSource(Child & child, sem_t *senderSem)
           mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true),
           mInterruptFd(-1),
           mMidgardUds(-1),
-          mMveUds(-1)
+          mMveUds(-1),
+          mDrivers(mDrivers)
 {
     sem_init(&mBufferSem, 0, 0);
 }
@@ -67,7 +71,7 @@ void ExternalSource::waitFor(const int bytes)
 
 void ExternalSource::configureConnection(const int fd, const char * const handshake, size_t size)
 {
-    if (!setNonblock(fd)) {
+    if (!lib::setNonblock(fd)) {
         logg.logError("Unable to set nonblock on fh");
         handleException();
     }
@@ -78,7 +82,7 @@ void ExternalSource::configureConnection(const int fd, const char * const handsh
     }
 
     // Write the handshake to the circular buffer
-    waitFor(Buffer::MAXSIZE_PACK32 + size - 1);
+    waitFor(buffer_utils::MAXSIZE_PACK32 + size - 1);
     mBuffer.packInt(fd);
     mBuffer.writeBytes(handshake, size - 1);
     mBuffer.commit(1, true);
@@ -91,7 +95,7 @@ bool ExternalSource::connectMidgard()
         return false;
     }
 
-    if (!gSessionData.mMidgard.start(mMidgardUds)) {
+    if (!mDrivers.getMidgard().start(mMidgardUds)) {
         return false;
     }
 
@@ -102,7 +106,7 @@ bool ExternalSource::connectMidgard()
 
 bool ExternalSource::connectMve()
 {
-    if (!gSessionData.mMaliVideo.countersEnabled()) {
+    if (!mDrivers.getMaliVideo().countersEnabled()) {
         return true;
     }
 
@@ -111,7 +115,7 @@ bool ExternalSource::connectMve()
         return false;
     }
 
-    if (!gSessionData.mMaliVideo.start(mMveUds)) {
+    if (!mDrivers.getMaliVideo().start(mMveUds)) {
         return false;
     }
 
@@ -122,14 +126,14 @@ bool ExternalSource::connectMve()
 
 void ExternalSource::connectFtrace()
 {
-    if (!gSessionData.mFtraceDriver.isSupported()) {
+    if (!mDrivers.getFtraceDriver().isSupported()) {
         return;
     }
 
-    int ftraceFds[NR_CPUS + 1];
+    const std::pair<std::vector<int>, bool> ftraceFds = mDrivers.getFtraceDriver().prepare();
     const char *handshake;
     size_t size;
-    if (gSessionData.mFtraceDriver.prepare(ftraceFds)) {
+    if (ftraceFds.second) {
         handshake = FTRACE_V1;
         size = sizeof(FTRACE_V1);
     }
@@ -138,27 +142,27 @@ void ExternalSource::connectFtrace()
         size = sizeof(FTRACE_V2);
     }
 
-    for (int i = 0; i < ARRAY_LENGTH(ftraceFds) && ftraceFds[i] >= 0; ++i) {
-        configureConnection(ftraceFds[i], handshake, size);
+    for (int fd : ftraceFds.first) {
+        configureConnection(fd, handshake, size);
     }
 }
 
 bool ExternalSource::prepare()
 {
-    if (!mMonitor.init() || !setNonblock(mMveStartupUds.getFd()) || !mMonitor.add(mMveStartupUds.getFd())
-            || !setNonblock(mMidgardStartupUds.getFd()) || !mMonitor.add(mMidgardStartupUds.getFd())
-            || !setNonblock(mUtgardStartupUds.getFd()) || !mMonitor.add(mUtgardStartupUds.getFd())
+    if (!mMonitor.init() || !lib::setNonblock(mMveStartupUds.getFd()) || !mMonitor.add(mMveStartupUds.getFd())
+            || !lib::setNonblock(mMidgardStartupUds.getFd()) || !mMonitor.add(mMidgardStartupUds.getFd())
+            || !lib::setNonblock(mUtgardStartupUds.getFd()) || !mMonitor.add(mUtgardStartupUds.getFd())
 #ifdef TCP_ANNOTATIONS
-            || !setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
+            || !lib::setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
 #endif
-            || !setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd())) {
+            || !lib::setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd())) {
         return false;
     }
 
     connectMidgard();
     connectMve();
     connectFtrace();
-    gSessionData.mExternalDriver.start();
+    mDrivers.getExternalDriver().start();
 
     return true;
 }
@@ -175,7 +179,7 @@ void ExternalSource::run()
         handleException();
     }
 
-    if (pipe_cloexec(pipefd) != 0) {
+    if (lib::pipe_cloexec(pipefd) != 0) {
         logg.logError("pipe failed");
         handleException();
     }
@@ -192,17 +196,17 @@ void ExternalSource::run()
         logg.logMessage("Writing to annotate pipe failed");
     }
 
-    if (gSessionData.mFtraceDriver.isSupported()) {
-        gSessionData.mAtraceDriver.start();
-        gSessionData.mTtraceDriver.start();
-        gSessionData.mFtraceDriver.start();
+    if (mDrivers.getFtraceDriver().isSupported()) {
+        mDrivers.getAtraceDriver().start();
+        mDrivers.getTtraceDriver().start();
+        mDrivers.getFtraceDriver().start();
     }
 
     // Wait until monotonicStarted is set before sending data
     int64_t monotonicStarted = 0;
     while (monotonicStarted <= 0 && gSessionData.mSessionIsActive) {
         usleep(1);
-        monotonicStarted = gSessionData.mPrimarySource->getMonotonicStarted();
+        monotonicStarted = mDrivers.getPrimarySourceProvider().getMonotonicStarted();
     }
 
     while (gSessionData.mSessionIsActive) {
@@ -245,13 +249,13 @@ void ExternalSource::run()
                 int client = mUtgardStartupUds.acceptConnection();
                 // Don't read from this connection, configure utgard and expect them to reconnect with annotations
                 close(client);
-                gSessionData.mExternalDriver.disconnect();
-                gSessionData.mExternalDriver.start();
+                mDrivers.getExternalDriver().disconnect();
+                mDrivers.getExternalDriver().start();
             }
 #ifdef TCP_ANNOTATIONS
             else if (fd == mAnnotate.getFd()) {
                 int client = mAnnotate.acceptConnection();
-                if (!setNonblock(client) || !mMonitor.add(client)) {
+                if (!lib::setNonblock(client) || !mMonitor.add(client)) {
                     logg.logError("Unable to set socket options on incoming annotation connection");
                     handleException();
                 }
@@ -259,7 +263,7 @@ void ExternalSource::run()
 #endif
             else if (fd == mAnnotateUds.getFd()) {
                 int client = mAnnotateUds.acceptConnection();
-                if (!setNonblock(client) || !mMonitor.add(client)) {
+                if (!lib::setNonblock(client) || !mMonitor.add(client)) {
                     logg.logError("Unable to set socket options on incoming annotation connection");
                     handleException();
                 }
@@ -282,23 +286,22 @@ void ExternalSource::run()
         }
     }
 
-    if (gSessionData.mFtraceDriver.isSupported()) {
-        int ftraceFds[NR_CPUS + 1];
-        gSessionData.mFtraceDriver.stop(ftraceFds);
+    if (mDrivers.getFtraceDriver().isSupported()) {
+        const auto ftraceFds = mDrivers.getFtraceDriver().stop();
         // Read any slop
         const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
-        for (int i = 0; i < ARRAY_LENGTH(ftraceFds) && ftraceFds[i] >= 0; ++i) {
-            transfer(currTime, ftraceFds[i]);
-            close(ftraceFds[i]);
+        for (int fd : ftraceFds) {
+            transfer(currTime, fd);
+            close(fd);
         }
-        gSessionData.mTtraceDriver.stop();
-        gSessionData.mAtraceDriver.stop();
+        mDrivers.getTtraceDriver().stop();
+        mDrivers.getAtraceDriver().stop();
     }
 
     mBuffer.setDone();
 
     if (mMveUds >= 0) {
-        gSessionData.mMaliVideo.stop(mMveUds);
+        mDrivers.getMaliVideo().stop(mMveUds);
     }
 
     mInterruptFd = -1;
@@ -309,7 +312,7 @@ void ExternalSource::run()
 bool ExternalSource::transfer(const uint64_t currTime, const int fd)
 {
     // Wait until there is enough room for the fd, two headers and two ints
-    waitFor(7 * Buffer::MAXSIZE_PACK32 + 2 * sizeof(uint32_t));
+    waitFor(7 * buffer_utils::MAXSIZE_PACK32 + 2 * sizeof(uint32_t));
     mBuffer.packInt(fd);
     const int contiguous = mBuffer.contiguousSpaceAvailable();
     const int bytes = read(fd, mBuffer.getWritePos(), contiguous);
@@ -362,7 +365,7 @@ bool ExternalSource::isDone()
     return mBuffer.isDone();
 }
 
-void ExternalSource::write(Sender *sender)
+void ExternalSource::write(ISender *sender)
 {
     // Don't send external data until the summary packet is sent so that monotonic delta is available
     if (!gSessionData.mSentSummary) {

@@ -16,11 +16,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "Buffer.h"
+#include "linux/perf/IPerfAttrsConsumer.h"
+#include "Config.h"
 #include "DynBuf.h"
+#include "FtraceDriver.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "SessionData.h"
+#include "lib/Utils.h"
 
 #include "linux/proc/ProcessPollerBase.h"
 #include "linux/proc/ProcPidStatFileRecord.h"
@@ -32,7 +34,7 @@ namespace
     {
     public:
 
-        ReadProcSysDependenciesPollerVisiter(uint64_t currTime_, Buffer & buffer_)
+        ReadProcSysDependenciesPollerVisiter(uint64_t currTime_, IPerfAttrsConsumer & buffer_)
                 : currTime(currTime_),
                   buffer(buffer_)
         {
@@ -46,7 +48,7 @@ namespace
     private:
 
         uint64_t currTime;
-        Buffer & buffer;
+        IPerfAttrsConsumer & buffer;
 
         virtual void onThreadDetails(int pid, int tid, const lnx::ProcPidStatFileRecord & statRecord,
                                      const lib::Optional<lnx::ProcPidStatmFileRecord> &,
@@ -61,7 +63,7 @@ namespace
     {
     public:
 
-        ReadProcMapsPollerVisiter(uint64_t currTime_, Buffer & buffer_)
+        ReadProcMapsPollerVisiter(uint64_t currTime_, IPerfAttrsConsumer & buffer_)
                 : currTime(currTime_),
                   buffer(buffer_)
         {
@@ -75,7 +77,7 @@ namespace
     private:
 
         uint64_t currTime;
-        Buffer & buffer;
+        IPerfAttrsConsumer & buffer;
 
         virtual void onProcessDirectory(int pid, const lib::FsEntry & path) override
         {
@@ -87,22 +89,20 @@ namespace
     };
 }
 
-bool readProcSysDependencies(const uint64_t currTime, Buffer & buffer, DynBuf * const printb, DynBuf * const b1)
+bool readProcSysDependencies(const uint64_t currTime, IPerfAttrsConsumer & buffer, DynBuf * const printb, DynBuf * const b1, FtraceDriver & ftraceDriver)
 {
     ReadProcSysDependenciesPollerVisiter poller(currTime, buffer);
     poller.poll();
 
-    if (gSessionData.mFtraceRaw) {
-        if (!gSessionData.mFtraceDriver.readTracepointFormats(currTime, &buffer, printb, b1)) {
-            logg.logMessage("FtraceDriver::readTracepointFormats failed");
-            return false;
-        }
+    if (!ftraceDriver.readTracepointFormats(currTime, buffer, printb, b1)) {
+        logg.logMessage("FtraceDriver::readTracepointFormats failed");
+        return false;
     }
 
     return true;
 }
 
-bool readProcMaps(const uint64_t currTime, Buffer & buffer)
+bool readProcMaps(const uint64_t currTime, IPerfAttrsConsumer & buffer)
 {
     ReadProcMapsPollerVisiter poller(currTime, buffer);
     poller.poll();
@@ -110,7 +110,7 @@ bool readProcMaps(const uint64_t currTime, Buffer & buffer)
     return true;
 }
 
-bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * const isDone)
+bool readKallsyms(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & isDone)
 {
     int fd = ::open("/proc/kallsyms", O_RDONLY | O_CLOEXEC);
 
@@ -121,7 +121,7 @@ bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * c
 
     char buf[1 << 12];
     ssize_t pos = 0;
-    while (gSessionData.mSessionIsActive && !ACCESS_ONCE(*isDone)) {
+    while (!isDone) {
         // Assert there is still space in the buffer
         if (sizeof(buf) - pos - 1 == 0) {
             logg.logError("no space left in buffer");
@@ -152,7 +152,7 @@ bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * c
             if (buf[newline] == '\n') {
                 const char was = buf[newline + 1];
                 buf[newline + 1] = '\0';
-                buffer->marshalKallsyms(currTime, buf);
+                attrsConsumer.marshalKallsyms(currTime, buf);
                 buf[0] = was;
                 // Assert the memory regions do not overlap
                 if (pos - newline >= newline + 1) {
@@ -169,22 +169,6 @@ bool readKallsyms(const uint64_t currTime, Buffer * const buffer, const bool * c
     }
 
     close(fd);
-
-    return true;
-}
-
-bool readTracepointFormat(const uint64_t currTime, Buffer * const buffer, const char * const name,
-                          DynBuf * const printb, DynBuf * const b)
-{
-    if (!printb->printf(EVENTS_PATH "/%s/format", name)) {
-        logg.logMessage("DynBuf::printf failed");
-        return false;
-    }
-    if (!b->read(printb->getBuf())) {
-        logg.logMessage("DynBuf::read failed");
-        return false;
-    }
-    buffer->marshalFormat(currTime, b->getLength(), b->getBuf());
 
     return true;
 }

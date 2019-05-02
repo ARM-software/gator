@@ -12,17 +12,11 @@
 #include <list>
 #include <string>
 
-struct ImageLinkList;
 
-class LocalCapture
+namespace local_capture
 {
-public:
-    LocalCapture();
-    ~LocalCapture();
     void copyImages(const std::list<std::string> & ptr);
     void createAPCDirectory(const char* target_path);
-private:
-    char* createUniqueDirectory(const char* path, const char* ending);
     int removeDirAndAllContents(const char* path);
 };
 
