@@ -97,13 +97,13 @@ To create the gator.ko module,
 ```
 cp -r /path/to/streamline/gator/driver .
 cd driver
-make -C <kernel_build_dir> M=`pwd` ARCH=arm CROSS_COMPILE=<...> modules
+make -C <kernel_build_dir> M=$(pwd) ARCH=arm CROSS_COMPILE=<...> modules
 ```
 whenever possible, use the same toolchain the kernel was built with when building gator.ko
 
 for example when using the linaro-toolchain-binaries
 ```
-make -C /home/username/kernel_2.6.32/ M=`pwd` ARCH=arm CROSS_COMPILE=/home/username/gcc-linaro-arm-linux-gnueabihf-4.7-2013.01-20130125_linux/bin/arm-linux-gnueabihf- modules
+make -C /home/username/kernel_2.6.32/ M=$(pwd) ARCH=arm CROSS_COMPILE=/home/username/gcc-linaro-arm-linux-gnueabihf-4.7-2013.01-20130125_linux/bin/arm-linux-gnueabihf- modules
 ```
 If successful, a gator.ko module should be generated
 
