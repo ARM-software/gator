@@ -51,8 +51,7 @@
     <event event="0xe1" title="Stalls" name="Frontend (Cache miss)" description="No operation issued due to the frontend, cache miss." units="cycles"/>
     <event event="0xe2" title="Stalls" name="Frontend (TLB miss)" description="No operation issued due to the frontend, TLB miss." units="cycles"/>
     <event event="0xe3" title="Stalls" name="Frontend (Pre-decode error)" description="No operation issued due to the frontend, pre-decode error." units="cycles"/>
-    <event event="0xe4" title="Stalls" name="Backend (Other interlock)" description="Counts every cycle there is an interlock that is not because of an Advanced SIMD or floating-point instruction, and not because of a load/store instruction waiting for data to calculate the address in the AGU.
-Stall cycles because of a stall in Wr, typically awaiting load data, are excluded." units="cycles"/>
+    <event event="0xe4" title="Stalls" name="Backend (Other interlock)" description="Counts every cycle there is an interlock that is not because of an Advanced SIMD or floating-point instruction, and not because of a load/store instruction waiting for data to calculate the address in the AGU.  Stall cycles because of a stall in Wr, typically awaiting load data, are excluded." units="cycles"/>
     <event event="0xe5" title="Stalls" name="Backend (Interlock, AGU)" description="No operation issued due to the backend, interlock, AGU." units="cycles"/>
     <event event="0xe6" title="Stalls" name="Backend (Interlock, FPU)" description="No operation issued due to the backend, interlock, FPU." units="cycles"/>
     <event event="0xe7" title="Stalls" name="Backend (Interlock, Load)" description="No operation issued due to the backend, load." units="cycles"/>

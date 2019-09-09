@@ -7,6 +7,9 @@ MD5_SRC := $(GEN_DIR)/SrcMd5.cpp
 # Generate some files into the output directory
 XML_H := $(shell $(MAKE) -C $(LOCAL_PATH) OBJ_DIR="$(GEN_DIR)" ndk-prerequisites)
 
+# Set to 1 to enable compiling with LTO using *LDD* as the linker
+USE_LTO := 0
+
 LOCAL_SRC_FILES := \
     AnnotateListener.cpp \
     AtraceDriver.cpp \
@@ -26,7 +29,6 @@ LOCAL_SRC_FILES := \
     Drivers.cpp \
     DriverSource.cpp \
     DynBuf.cpp \
-    EventsXML.cpp \
     ExternalDriver.cpp \
     ExternalSource.cpp \
     Fifo.cpp \
@@ -109,8 +111,7 @@ LOCAL_SRC_FILES := \
     non_root/ProcessStatsTracker.cpp \
     OlySocket.cpp \
     OlyUtility.cpp \
-    PmuXML.cpp \
-    PmuXMLParser.cpp \
+    pmus_xml.cpp \
     PolledDriver.cpp \
     PrimarySourceProvider.cpp \
     Proc.cpp \
@@ -125,11 +126,21 @@ LOCAL_SRC_FILES := \
     TtraceDriver.cpp \
     UEvent.cpp \
     UserSpaceSource.cpp \
+    xml/EventsXML.cpp \
+    xml/EventsXMLProcessor.cpp \
+    xml/MxmlUtils.cpp \
+    xml/PmuXML.cpp \
+    xml/PmuXMLParser.cpp \
     $(MD5_SRC)
 
-LOCAL_CFLAGS += -Wall -O3 -fno-exceptions -pthread -DETCDIR=\"/etc\" -Ilibsensors -fPIE -I$(LOCAL_PATH)/$(GEN_DIR)
+LOCAL_CFLAGS += -Wall -O3 -fno-exceptions -pthread -DETCDIR=\"/etc\" -Ilibsensors -fPIE -I$(LOCAL_PATH)/$(GEN_DIR) -fvisibility=hidden
 LOCAL_CPPFLAGS += -fno-rtti -Wextra -Wpointer-arith -std=c++11 -static-libstdc++
 LOCAL_LDFLAGS += -fPIE -pie
+
+ifeq ($(USE_LTO),1)
+LOCAL_CFLAGS += -flto -fuse-ld=lld -ffunction-sections -fdata-sections
+LOCAL_LDFLAGS += -flto -fuse-ld=lld -Wl,--gc-sections
+endif
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)
 

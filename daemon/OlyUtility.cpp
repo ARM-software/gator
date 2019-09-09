@@ -92,7 +92,7 @@ bool stringToLong(long * const value, const char *str, const int base)
     long v;
     errno = 0;
 
-    if (base >= 2 || base == 0) {
+    if ((str != nullptr) && ((base >= 2) || (base == 0))) {
         v = strtol(str, &endptr, base);
         if (errno != 0 || *endptr != '\0') {
             return false;

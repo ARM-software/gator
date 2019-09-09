@@ -5,7 +5,7 @@
 
 #include "SimpleDriver.h"
 #include "non_root/NonRootCounter.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 #include "lib/Span.h"
 
 #include <map>

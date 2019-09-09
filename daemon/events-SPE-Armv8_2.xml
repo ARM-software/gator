@@ -45,8 +45,8 @@
                     index:          integer:        Value representing the index field in the packet, identifies the counter type
                     type:           enum:           Either 'absolute' or 'latency'.
                                                         * 'absolute' - Each value is an absolute value
-                                                                       The minimum, maximum and mean are calculated and displayed.
-                                                        * 'latency'  - Currently treated the same as 'absolute', but used to distinguish values that are latency and measured in cycles.
+                                                        * 'latency'  - Each value is an absolute latency value.
+                                                    This field is used to hint to Streamline how to visualize the count.
                     name:           string:         Short label for the counter type
                     description:    string:         Detailed description of the counter type
                     unit:           string:         Optional value being the unit the count counts in
@@ -84,10 +84,18 @@
                     description:    string:         Detailed description of the data source type.
                     condition-bit:  integer:        Optional.
                                                     Specifies the event number (value of `bit`) for the event which is used as the access trigger for the conditional ratio.
+                    condition-inverted: boolean:    Optional.
+                                                    For conditional access events (where condition-bit is set), is used to indicate that the condition should trigger when the access bit is *not*
+                                                    set rather than when it is set. Default value is 'false' meaning access is when access bit is set.
                     ratio-label:    string:         Specifies short label for the ratio counter displayed
                     set-label:      string:         Specifies short label for the ratio counter for the ratio value that matches when the event bit is set
                     clear-label:    string:         Specifies short label for the ratio counter for the ratio value that matches when the event bit is clear
                     show-by-default:  enum:         One of 'ratio', 'set' or 'clear'. The default way to present this event. Defaults to 'ratio' if not present.
+                    set-mode:       enum:           Optional.
+                                                    One of 'neutral', 'negative', 'positive'.
+                                                    By default is 'negative' meaning that when the event is 'set', this indicates a negative event such as a 'cache miss' or 'exception', with the 'clear'
+                                                    state indicating the positive outcome such as 'cache hit' or 'no exception'. Setting this to 'positive' inverts that relationship. The value 'neutral'
+                                                    indicates that neither state is negative or positive.
 
                     <valid-op-type>
                     An optional repeating child element used to filter which operation types the event is associated with, see [5.3.8 Operation Type packet]. If these elements are present then
@@ -124,10 +132,10 @@
            name="Generated exception"
            description="Completed with a synchronous exception.">
     </event>
-    <event bit="1" filter-bit="1" ratio-label="Architecturally retired" set-label="Retired" clear-label="Not Retired"
+    <event bit="1" filter-bit="1" ratio-label="Architecturally retired" set-label="Retired" clear-label="Not Retired" set-mode="positive"
            name="Architecturally retired"
            description="Committed its results to the architectural state of the PE, or completed with a synchronous architectural exception." />
-    <event bit="2" ratio-label="Level 1 Data Cache" set-label="Access" clear-label="No Access"
+    <event bit="2" ratio-label="Level 1 Data Cache" set-label="Access" clear-label="No Access" set-mode="neutral"
            name="Level 1 Data cache access"
            description="Load/store operation caused a cache access to at least the first level of data or unified cache.">
         <valid-op-type class="load-store" />
@@ -137,7 +145,7 @@
            description="Load/store operation caused a refill of at least the first level of data or unified cache. This includes each data memory access that causes a refill from outside the cache. It excludes accesses that do not cause a new cache refill but are satisfied from refilling data of a previous miss.">
         <valid-op-type class="load-store" />
     </event>
-    <event bit="4" ratio-label="TLB" set-label="Access" clear-label="No Access"
+    <event bit="4" ratio-label="TLB" set-label="Access" clear-label="No Access" set-mode="neutral"
            name="TLB access"
            description="Load/store operation caused an access to at least the first level of data or unified TLB.">
         <valid-op-type class="load-store" />
@@ -147,7 +155,7 @@
            description="Load/store operation that causes a refill of a data or unified TLB, involving at least one translation table walk access. This includes each complete or partial translation table walk that causes an access to memory, including to data or translation table walk caches.">
         <valid-op-type class="load-store" />
     </event>
-    <event bit="6" ratio-label="Conditional Instruction" set-label="Not Taken" clear-label="Taken"
+    <event bit="6" ratio-label="Conditional Instruction" set-label="Not Taken" clear-label="Taken" set-mode="neutral"
            name="Not taken"
            description="A conditional instruction that failed its condition code check. This includes conditional branches, compare-and-branch, conditional select, and conditional compares.">
         <valid-op-type class="branch" sub-class="conditional" />
@@ -158,7 +166,7 @@
            description="A branch that caused a correction to the predicted program flow.">
         <valid-op-type class="branch" />
     </event>
-    <event bit="8" ratio-label="Last Level Cache" set-label="Access" clear-label="No Access"
+    <event bit="8" ratio-label="Last Level Cache" set-label="Access" clear-label="No Access" set-mode="neutral"
            name="Last Level cache access"
            description="Load/store operation caused a cache access to at least the Last Level data or unified cache.">
         <valid-op-type class="load-store" />

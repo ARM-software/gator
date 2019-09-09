@@ -7,6 +7,12 @@
  *
  */
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0))
+#define GATOR_ACCESS_OK(type, addr, size)           access_ok((type), (addr), (size))
+#else
+#define GATOR_ACCESS_OK(type, addr, size)           access_ok((addr), (size))
+#endif
+
 #if defined(__arm__) || defined(__aarch64__)
 #define GATOR_KERNEL_UNWINDING                      1
 #define GATOR_USER_UNWINDING                        1
@@ -257,7 +263,7 @@ static void arm_backtrace_eabi(int cpu, struct pt_regs *const regs, unsigned int
         return;
 
     while (depth-- && curr) {
-        if (!access_ok(VERIFY_READ, curr, sizeof(struct stack_frame_eabi)) ||
+        if (!GATOR_ACCESS_OK(VERIFY_READ, curr, sizeof(struct stack_frame_eabi)) ||
                 __copy_from_user_inatomic(&bufcurr, curr, sizeof(struct stack_frame_eabi))) {
             return;
         }

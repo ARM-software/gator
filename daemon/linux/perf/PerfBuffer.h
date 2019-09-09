@@ -11,6 +11,7 @@
 
 #include <map>
 #include <set>
+#include <vector>
 
 #include "ClassBoilerPlate.h"
 #include "Config.h"
@@ -25,7 +26,9 @@ public:
         /// must be power of 2
         size_t pageSize;
         /// must be power of 2 multiple of pageSize
-        size_t bufferSize;
+        size_t dataBufferSize;
+        /// must be power of 2 multiple of pageSize (or 0)
+        size_t auxBufferSize;
     };
 
     PerfBuffer(Config config);
@@ -36,7 +39,9 @@ public:
     bool isEmpty();
     bool isFull();
     bool send(ISender & sender);
-    std::size_t calculateBufferLength() const;
+
+    std::size_t getDataBufferLength() const;
+    std::size_t getAuxBufferLength() const;
 
 
 private:
@@ -44,14 +49,16 @@ private:
 
     struct Buffer
     {
-        int fd;
         void * data_buffer;
         void * aux_buffer; // may be null
+        int fd;
+        int aux_fd;
     };
 
     std::map<int, Buffer> mBuffers;
     // After the buffer is flushed it should be unmapped
     std::set<int> mDiscard;
+
 
     // Intentionally undefined
     CLASS_DELETE_COPY_MOVE(PerfBuffer);

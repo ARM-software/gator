@@ -22,7 +22,7 @@
 #include "linux/perf/PerfAttrsBuffer.h"
 #include "linux/perf/IPerfGroups.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 #include "Tracepoints.h"
 #include "SessionData.h"
 #include "lib/Assert.h"
@@ -239,13 +239,11 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
     // add CPU PMUs
     for (const auto & perfCpu : mConfig.cpus) {
 
-        if (perfCpu.gator_cpu.getCpuid() != PerfDriverConfiguration::UNKNOWN_CPUID) {
-            if (perfCpu.pmu_type == PERF_TYPE_RAW) {
-                logg.logMessage("Adding cpu counters (based on cpuid) for %s", perfCpu.gator_cpu.getCoreName());
-            }
-            else {
-                logg.logMessage("Adding cpu counters for %s with type %i", perfCpu.gator_cpu.getCoreName(), perfCpu.pmu_type);
-            }
+        if ((perfCpu.pmu_type != PERF_TYPE_RAW) && (perfCpu.pmu_type != PERF_TYPE_HARDWARE)) {
+            logg.logMessage("Adding cpu counters for %s with type %i", perfCpu.gator_cpu.getCoreName(), perfCpu.pmu_type);
+        }
+        else if ((perfCpu.gator_cpu.getCpuIds().size() > 1) || (!perfCpu.gator_cpu.hasCpuId(PerfDriverConfiguration::UNKNOWN_CPUID))) {
+            logg.logMessage("Adding cpu counters (based on cpuid) for %s", perfCpu.gator_cpu.getCoreName());
         }
         else {
             logg.logMessage("Adding cpu counters based on default CPU object");
@@ -269,7 +267,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         id = getTracepointId("Interrupts: SoftIRQ", "irq/softirq_exit");
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
-                snprintf(buf, sizeof(buf), "%s_softirq", perfCpu.gator_cpu.getPmncName());
+                snprintf(buf, sizeof(buf), "%s_softirq", perfCpu.gator_cpu.getId());
                 setCounters(
                         new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
                                         buf, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_READ,
@@ -280,7 +278,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         id = getTracepointId("Interrupts: IRQ", "irq/irq_handler_exit");
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
-                snprintf(buf, sizeof(buf), "%s_irq", perfCpu.gator_cpu.getPmncName());
+                snprintf(buf, sizeof(buf), "%s_irq", perfCpu.gator_cpu.getId());
                 setCounters(
                         new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
                                         buf, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_READ,
@@ -291,7 +289,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         id = getTracepointId("Scheduler: Switch", SCHED_SWITCH);
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
-                snprintf(buf, sizeof(buf), "%s_switch", perfCpu.gator_cpu.getPmncName());
+                snprintf(buf, sizeof(buf), "%s_switch", perfCpu.gator_cpu.getId());
                 setCounters(
                         new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
                                         buf, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_READ,
@@ -302,7 +300,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         id = getTracepointId("Clock: Frequency", CPU_FREQUENCY);
         if (id >= 0 && access("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq", R_OK) == 0) {
             for (const auto & perfCpu : mConfig.cpus) {
-                snprintf(buf, sizeof(buf), "%s_freq", perfCpu.gator_cpu.getPmncName());
+                snprintf(buf, sizeof(buf), "%s_freq", perfCpu.gator_cpu.getId());
                 setCounters(
                         new CPUFreqDriver(getCounters(), buf, id, perfCpu.gator_cpu));
             }
@@ -312,10 +310,10 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
     if (getConfig().can_access_tracepoints || getConfig().has_attr_context_switch) {
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "Linux_cpu_wait_contention", TYPE_DERIVED, -1, 0, 0));
         for (const auto & perfCpu : mConfig.cpus) {
-            snprintf(buf, sizeof(buf), "%s_system", perfCpu.gator_cpu.getPmncName());
+            snprintf(buf, sizeof(buf), "%s_system", perfCpu.gator_cpu.getId());
             setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
                                         buf, TYPE_DERIVED, -1, 0, 0));
-            snprintf(buf, sizeof(buf), "%s_user", perfCpu.gator_cpu.getPmncName());
+            snprintf(buf, sizeof(buf), "%s_user", perfCpu.gator_cpu.getId());
             setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
                                         buf, TYPE_DERIVED, -1, 0, 0));
         }
@@ -390,18 +388,18 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
     const int type = perfCpu.pmu_type;
 
     {
-        const int len = snprintf(NULL, 0, "%s_ccnt", cpu.getPmncName()) + 1;
+        const int len = snprintf(NULL, 0, "%s_ccnt", cpu.getId()) + 1;
         const std::unique_ptr<char[]> name { new char[len] };
-        snprintf(name.get(), len, "%s_ccnt", cpu.getPmncName());
+        snprintf(name.get(), len, "%s_ccnt", cpu.getId());
         setCounters(
                 new PerfCounter(getCounters(), PerfEventGroupIdentifier(cpu), name.get(), type, -1, PERF_SAMPLE_READ, 0,
                                 PerfCounter::noConfigId2, getConfig().has_armv7_pmu_driver));
     }
 
     for (int j = 0; j < cpu.getPmncCounters(); ++j) {
-        const int len = snprintf(NULL, 0, "%s_cnt%d", cpu.getPmncName(), j) + 1;
+        const int len = snprintf(NULL, 0, "%s_cnt%d", cpu.getId(), j) + 1;
         const std::unique_ptr<char[]> name { new char[len] };
-        snprintf(name.get(), len, "%s_cnt%d", cpu.getPmncName(), j);
+        snprintf(name.get(), len, "%s_cnt%d", cpu.getId(), j);
         setCounters(
                 new PerfCounter(getCounters(), PerfEventGroupIdentifier(cpu),
                                 name.get(), type, -1, PERF_SAMPLE_READ,
@@ -422,17 +420,17 @@ void PerfDriver::addUncoreCounters(const PerfUncore & perfUncore)
     const int type = perfUncore.pmu_type;
 
     if (pmu.getHasCyclesCounter()) {
-        const int len = snprintf(NULL, 0, "%s_ccnt", pmu.getCoreName()) + 1;
+        const int len = snprintf(NULL, 0, "%s_ccnt", pmu.getCounterSet()) + 1;
         const std::unique_ptr<char[]> name { new char[len] };
-        snprintf(name.get(), len, "%s_ccnt", pmu.getCoreName());
+        snprintf(name.get(), len, "%s_ccnt", pmu.getCounterSet());
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu),
                                     name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }
 
     for (int j = 0; j < pmu.getPmncCounters(); ++j) {
-        const int len = snprintf(NULL, 0, "%s_cnt%d", pmu.getCoreName(), j) + 1;
+        const int len = snprintf(NULL, 0, "%s_cnt%d", pmu.getCounterSet(), j) + 1;
         const std::unique_ptr<char[]> name { new char[len] };
-        snprintf(name.get(), len, "%s_cnt%d", pmu.getCoreName(), j);
+        snprintf(name.get(), len, "%s_cnt%d", pmu.getCounterSet(), j);
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu),
                                     name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }
@@ -691,14 +689,15 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(const SpeConfiguration & spe)
             SET_SPE_CFG(pa_enable, 0);
             // disable physical clock timestamps, use virtual clock timestamps
             SET_SPE_CFG(pct_enable, 0);
-            // no jitter
-            SET_SPE_CFG(jitter, 0);
+            // enable jitter
+            SET_SPE_CFG(jitter, 1);
 
             counter->setConfig(config);
             counter->setConfig1(config1);
             counter->setConfig2(config2);
-            counter->setCount(1);
+            counter->setCount(100000 /* approx 10KHz sample rate at 1GHz CPU clock */);
             counter->setEnabled(true);
+
             return { {spe.id, counter->getKey()}};
         }
     }

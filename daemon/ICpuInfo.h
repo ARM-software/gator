@@ -10,7 +10,7 @@
 #define I_CPU_INFO_H
 
 #include "lib/Span.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 
 class ICpuInfo
 {

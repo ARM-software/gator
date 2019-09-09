@@ -10,8 +10,7 @@
     <event event="0x6" title="Instructions (Executed)" name="Load" description="The counter increments for every executed memory-reading instruction." units="instructions"/>
     <event event="0x7" title="Instructions (Executed)" name="Store" description="The counter increments for every executed memory-writing instruction, including SWP. The counter does not increment for a Store-Exclusive instruction that fails." units="instructions"/>
     <event event="0x8" title="Instructions (Executed)" name="All" description="The counter increments for every architecturally executed instruction." units="instructions"/>
-    <event event="0x9" title="Exceptions" name="Taken" description="The counter increments for each exception taken.
-The counter counts only the processor exceptions. It does not count untrapped floating-point exceptions or ThumbEE null checks and index checks." units="exceptions"/>
+    <event event="0x9" title="Exceptions" name="Taken" description="The counter increments for each exception taken. The counter counts only the processor exceptions. It does not count untrapped floating-point exceptions or ThumbEE null checks and index checks." units="exceptions"/>
     <event event="0xa" title="Instructions (Executed)" name="Exception Returns" description="The counter increments for each executed exception return instruction." units="instructions"/>
     <event event="0xb" title="Instructions (Executed)" name="Write to CONTEXTIDR" description="The counter increments for every write to the CONTEXTIDR." units="instructions"/>
     <event event="0xc" title="Instructions (Executed)" name="Write to PC" description="The counter increments for every software change of the PC. This includes all: Branch instructions, memory reading instructions that explicitly write to the PC, Data processing instructions that explicitly write to the PC, and Exception return instructions." units="instructions"/>

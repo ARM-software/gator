@@ -37,7 +37,7 @@
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
 #include "PolledDriver.h"
-#include "EventsXML.h"
+#include "xml/EventsXML.h"
 #include "lib/WaitForProcessPoller.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 
@@ -147,7 +147,7 @@ Child::Child(Drivers & drivers, OlySocket * sock, const Child::Config & config)
     sem_init(&senderThreadStarted, 0, 0);
     sem_init(&senderSem, 0, 0);
 
-    sessionEnded.clear();
+    sessionEnded = false;
 
     gSessionData.mSessionIsActive = true;
 }
@@ -289,32 +289,6 @@ void Child::run()
         logg.logMessage("Profiling pid: %d", commandPid);
     }
 
-    if (gSessionData.mWaitForProcessCommand != nullptr) {
-        logg.logMessage("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
-
-        WaitForProcessPoller poller { gSessionData.mWaitForProcessCommand };
-
-        while (!poller.poll(appPids)) {
-            usleep(1000);
-        }
-
-        logg.logMessage("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
-    }
-
-    // we only consider --pid for stop on exit if we weren't given an
-    // app to run
-    std::set<int> watchPids = appPids.empty() ? gSessionData.mPids : appPids;
-
-    appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
-
-    // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
-    primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids,
-                                                              drivers.getFtraceDriver(), enableOnCommandExec);
-    if (primarySource == nullptr) {
-        logg.logError("Failed to init primary capture source");
-        handleException();
-    }
-
     // set up stop thread early, so that ping commands get replied to, even if the
     // setup phase below takes a long time.
     std::thread stopThread { };
@@ -322,90 +296,119 @@ void Child::run()
         stopThread = std::thread([this]() {stopThreadEntryPoint();});
     }
 
-    if (primarySourceProvider.supportsMaliCapture() && primarySourceProvider.isCapturingMaliCounters()
-            && !primarySourceProvider.supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
-        logg.logError("Mali counters are not supported with Sample Rate: %i.", gSessionData.mSampleRate);
-        handleException();
+    if (gSessionData.mWaitForProcessCommand != nullptr) {
+        logg.logMessage("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
+
+        WaitForProcessPoller poller { gSessionData.mWaitForProcessCommand };
+
+        while ((!poller.poll(appPids)) && !sessionEnded) {
+            usleep(1000);
+        }
+
+        logg.logMessage("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
     }
 
-    // Initialize ftrace source before child as it's slow and dependens on nothing else
-    // If initialized later, us gator with ftrace has time sync issues
-    // Must be initialized before senderThread is started as senderThread checks externalSource
-    externalSource.reset(new ExternalSource(*this, &senderSem, drivers));
-    if (!externalSource->prepare()) {
-        logg.logError("Unable to prepare external source for capture");
-        handleException();
-    }
-    externalSource->start();
+    if (!sessionEnded)
+    {
+        // we only consider --pid for stop on exit if we weren't given an
+        // app to run
+        std::set<int> watchPids = appPids.empty() ? gSessionData.mPids : appPids;
 
-    // Must be after session XML is parsed
-    if (!primarySource->prepare()) {
-        logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
-        handleException();
-    }
-    auto getMonotonicStarted = [&primarySourceProvider]() -> std::int64_t {return primarySourceProvider.getMonotonicStarted();};
-    // initialize midgard hardware counters
-    if (drivers.getMaliHwCntrs().countersEnabled()) {
-        maliHwSource.reset(
-                new mali_userspace::MaliHwCntrSource(*this, &senderSem, getMonotonicStarted, drivers.getMaliHwCntrs()));
-        if (!maliHwSource->prepare()) {
-            logg.logError("Unable to prepare midgard hardware counters source for capture");
+        appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
+
+        // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
+        primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids,
+                                                                  drivers.getFtraceDriver(), enableOnCommandExec);
+        if (primarySource == nullptr) {
+            logg.logError("Failed to init primary capture source");
             handleException();
         }
-        maliHwSource->start();
-    }
 
-    // Sender thread shall be halted until it is signaled for one shot mode
-    sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
-
-    // Create the duration and sender threads
-    lib::Waiter waiter;
-
-    std::thread durationThread { };
-    if (gSessionData.mDuration > 0) {
-        durationThread = std::thread([&]() {durationThreadEntryPoint(waiter);});
-    }
-
-    std::thread senderThread { [this]() {senderThreadEntryPoint();} };
-
-    std::thread watchPidsThread { };
-    if (gSessionData.mStopOnExit && !watchPids.empty()) {
-        watchPidsThread = std::thread([&]() {watchPidsThreadEntryPoint(watchPids, waiter);});
-    }
-
-    if (UserSpaceSource::shouldStart(drivers.getAllPolledConst())) {
-        userSpaceSource.reset(new UserSpaceSource(*this, &senderSem, getMonotonicStarted, drivers.getAllPolled()));
-        if (!userSpaceSource->prepare()) {
-            logg.logError("Unable to prepare userspace source for capture");
+        if (primarySourceProvider.supportsMaliCapture() && primarySourceProvider.isCapturingMaliCounters()
+                && !primarySourceProvider.supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
+            logg.logError("Mali counters are not supported with Sample Rate: %i.", gSessionData.mSampleRate);
             handleException();
         }
-        userSpaceSource->start();
-    }
 
-    // Wait until thread has started
-    sem_wait(&senderThreadStarted);
+        // Initialize ftrace source before child as it's slow and dependens on nothing else
+        // If initialized later, us gator with ftrace has time sync issues
+        // Must be initialized before senderThread is started as senderThread checks externalSource
+        externalSource.reset(new ExternalSource(*this, &senderSem, drivers));
+        if (!externalSource->prepare()) {
+            logg.logError("Unable to prepare external source for capture");
+            handleException();
+        }
+        externalSource->start();
 
-    // Start profiling
-    primarySource->run();
+        // Must be after session XML is parsed
+        if (!primarySource->prepare()) {
+            logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
+            handleException();
+        }
+        auto getMonotonicStarted = [&primarySourceProvider]() -> std::int64_t {return primarySourceProvider.getMonotonicStarted();};
+        // initialize midgard hardware counters
+        if (drivers.getMaliHwCntrs().countersEnabled()) {
+            maliHwSource.reset(
+                    new mali_userspace::MaliHwCntrSource(*this, &senderSem, getMonotonicStarted, drivers.getMaliHwCntrs()));
+            if (!maliHwSource->prepare()) {
+                logg.logError("Unable to prepare midgard hardware counters source for capture");
+                handleException();
+            }
+            maliHwSource->start();
+        }
 
-    // wake all sleepers
-    waiter.disable();
+        // Sender thread shall be halted until it is signaled for one shot mode
+        sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
 
-    // Wait for the other threads to exit
-    if (userSpaceSource != NULL) {
-        userSpaceSource->join();
-    }
-    if (maliHwSource != NULL) {
-        maliHwSource->join();
-    }
-    externalSource->join();
+        // Create the duration and sender threads
+        lib::Waiter waiter;
 
-    if (watchPidsThread.joinable()) {
-        watchPidsThread.join();
-    }
-    senderThread.join();
-    if (durationThread.joinable()) {
-        durationThread.join();
+        std::thread durationThread { };
+        if (gSessionData.mDuration > 0) {
+            durationThread = std::thread([&]() {durationThreadEntryPoint(waiter);});
+        }
+
+        std::thread senderThread { [this]() {senderThreadEntryPoint();} };
+
+        std::thread watchPidsThread { };
+        if (gSessionData.mStopOnExit && !watchPids.empty()) {
+            watchPidsThread = std::thread([&]() {watchPidsThreadEntryPoint(watchPids, waiter);});
+        }
+
+        if (UserSpaceSource::shouldStart(drivers.getAllPolledConst())) {
+            userSpaceSource.reset(new UserSpaceSource(*this, &senderSem, getMonotonicStarted, drivers.getAllPolled()));
+            if (!userSpaceSource->prepare()) {
+                logg.logError("Unable to prepare userspace source for capture");
+                handleException();
+            }
+            userSpaceSource->start();
+        }
+
+        // Wait until thread has started
+        sem_wait(&senderThreadStarted);
+
+        // Start profiling
+        primarySource->run();
+
+        // wake all sleepers
+        waiter.disable();
+
+        // Wait for the other threads to exit
+        if (userSpaceSource != NULL) {
+            userSpaceSource->join();
+        }
+        if (maliHwSource != NULL) {
+            maliHwSource->join();
+        }
+        externalSource->join();
+
+        if (watchPidsThread.joinable()) {
+            watchPidsThread.join();
+        }
+        senderThread.join();
+        if (durationThread.joinable()) {
+            durationThread.join();
+        }
     }
 
     // Shutting down the connection should break the stop thread which is stalling on the socket recv() function
@@ -449,7 +452,7 @@ void Child::terminateCommand()
 
 void Child::endSession()
 {
-    if (sessionEnded.test_and_set()) {
+    if (sessionEnded.exchange(true)) {
         return; // someone else is running or has ran this
     }
 

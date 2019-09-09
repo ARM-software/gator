@@ -1,22 +1,23 @@
-  <counter_set name="Krait_cnt" count="4"/>
-  <category name="Krait" counter_set="Krait_cnt" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="Krait_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
-    <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
-    <event event="0x01" title="Cache" name="Instruction refill" description="Instruction fetch that causes a refill of at least the level of instruction or unified cache closest to the processor"/>
-    <event event="0x02" title="Cache" name="Inst TLB refill" description="Instruction fetch that causes a TLB refill of at least the level of TLB closest to the processor"/>
-    <event event="0x03" title="Cache" name="Data refill" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/>
-    <event event="0x04" title="Cache" name="Data access" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/>
-    <event event="0x05" title="Cache" name="Data TLB refill" description="Memory Read or Write operation that causes a TLB refill of at least the level of TLB closest to the processor"/>
-    <event event="0x06" title="Instruction" name="Load" description="Memory-reading instruction architecturally executed"/>
-    <event event="0x07" title="Instruction" name="Store" description="Memory-writing instruction architecturally executed"/>
-    <event event="0x08" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
-    <event event="0x09" title="Exception" name="Taken" description="Exceptions taken"/>
-    <event event="0x0a" title="Exception" name="Return" description="Exception return architecturally executed"/>
-    <event event="0x0b" title="Instruction" name="CONTEXTIDR" description="Instruction that writes to the CONTEXTIDR architecturally executed"/>
-    <event event="0x0c" title="Program Counter" name="SW change" description="Software change of PC, except by an exception, architecturally executed"/>
-    <event event="0x0d" title="Branch" name="Immediate" description="Immediate branch architecturally executed"/>
-    <event event="0x0e" title="Branch" name="Procedure Return" description="Procedure return architecturally executed (not by exceptions)"/>
-    <event event="0x0f" title="Memory" name="Unaligned access" description="Unaligned access architecturally executed"/>
-    <event event="0x10" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
-    <event event="0x12" title="Branch" name="Potential prediction" description="Branch or other change in program flow that could have been predicted by the branch prediction resources of the processor"/>
-  </category>
+<counter_set count="4" name="Krait_cnt"/>
+<category counter_set="Krait_cnt" name="Krait" per_cpu="yes" supports_event_based_sampling="yes">
+    <event counter="Krait_ccnt" event="0xff" title="Cycles" name="CPU Cycles" description="The counter increments on every cycle." display="hertz" units="Hz" average_selection="yes" average_cores="yes"/>
+    <event event="0x0" title="Instructions (Executed)" name="Increment PMSWINC Register" description="The counter increments on writes to the PMSWINC register." units="instructions"/>
+    <event event="0x1" title="L1 Instruction Cache" name="Refill" description="The counter counts instruction memory accesses that cause a refill of at least the Level 1 instruction or unified cache. This includes each instruction memory access that causes a refill from outside the cache. It excludes accesses that do not cause a new cache refill but are satisfied from refilling data of a previous miss."/>
+    <event event="0x2" title="L1 Instruction TLB" name="Refill" description="The counter counts instruction memory accesses that cause a TLB refill of at least the Level 1 instruction TLB. This includes each instruction memory access that causes an access to a level of memory system due to a translation table walk or an access to another level of TLB caching."/>
+    <event event="0x3" title="L1 Data Cache" name="Refill" description="The counter counts each memory-read operation or memory-write operation that causes a refill of at least the Level 1 data or unified cache from outside the Level 1 cache. Each access that causes a new linefill is counted, including those from instructions that generate multiple accesses, such as load or store multiples, and PUSH and POP instructions. In particular, the counter counts accesses to the Level 1 cache that cause a refill that is satisfied by another Level 1 data or unified cache, or a Level 2 cache, or memory."/>
+    <event event="0x4" title="L1 Data Cache" name="Access" description="The counter counts each memory-read operation or memory-write operation that causes a cache access to at least the Level 1 data or unified cache. Each access to a cache line is counted including the multiple accesses of instructions, such as LDM or STM . Each access to other Level 1 data or unified memory structures, for example refill buffers, write buffers, and write- back buffers, is also counted."/>
+    <event event="0x5" title="L1 Data TLB" name="Refill" description="The counter counts each memory-read operation or memory-write operation that causes a TLB refill of at least the Level 1 data or unified TLB. It counts each read or write that causes a refill, in the form of a translation table walk or an access to another level of TLB caching."/>
+    <event event="0x6" title="Instructions (Executed)" name="Load" description="The counter increments for every executed memory-reading instruction." units="instructions"/>
+    <event event="0x7" title="Instructions (Executed)" name="Store" description="The counter increments for every executed memory-writing instruction, including SWP. The counter does not increment for a Store-Exclusive instruction that fails." units="instructions"/>
+    <event event="0x8" title="Instructions (Executed)" name="All" description="The counter increments for every architecturally executed instruction." units="instructions"/>
+    <event event="0x9" title="Exceptions" name="Taken" description="The counter increments for each exception taken.
+ The counter counts only the processor exceptions. It does not count untrapped floating-point exceptions or ThumbEE null checks and index checks." units="exceptions"/>
+    <event event="0xa" title="Instructions (Executed)" name="Exception Returns" description="The counter increments for each executed exception return instruction." units="instructions"/>
+    <event event="0xb" title="Instructions (Executed)" name="Write to CONTEXTIDR" description="The counter increments for every write to the CONTEXTIDR." units="instructions"/>
+    <event event="0xc" title="Instructions (Executed)" name="Write to PC" description="The counter increments for every software change of the PC. This includes all: Branch instructions, memory reading instructions that explicitly write to the PC, Data processing instructions that explicitly write to the PC, and Exception return instructions." units="instructions"/>
+    <event event="0xd" title="Instructions (Executed)" name="Branch (Immediate)" description="The counter counts all immediate branch instructions that are architecturally executed." units="instructions"/>
+    <event event="0xe" title="Instructions (Executed)" name="Branch (Return)" description="The counter counts all procedure return instructions that are architecturally executed." units="instructions"/>
+    <event event="0xf" title="Instructions (Executed)" name="Unaligned Load/Store" description="The counter counts each memory-reading instruction or memory-writing instruction that accesses an unaligned address." units="instructions"/>
+    <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, the branch prediction resources and that relates to instructions that the branch prediction resources are capable of predicting."/>
+    <event event="0x12" title="Branch Predictor" name="Possible Predictions" description="The counter counts every branch or other change in the program flow that the branch prediction resources are capable of predicting."/>
+</category>

@@ -42,9 +42,13 @@
 
 static PerfBuffer::Config createPerfBufferConfig()
 {
-    return {static_cast<size_t>(gSessionData.mPageSize),
-        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages :
-                gSessionData.mTotalBufferSize * 1024 * 1024)};
+    return {
+        static_cast<size_t>(gSessionData.mPageSize),
+        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
+                                                                  : gSessionData.mTotalBufferSize * 1024 * 1024),
+        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
+                                                                  : gSessionData.mTotalBufferSize * 1024 * 1024 * 4),
+    };
 }
 
 PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile,
@@ -52,9 +56,11 @@ PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, se
         : Source(child),
           mSummary(1024 * 1024, &senderSem),
           mCountersBuf(createPerfBufferConfig()),
-          mCountersGroup(driver.getConfig(), mCountersBuf.calculateBufferLength(), gSessionData.mBacktraceDepth,
-                         gSessionData.mSampleRate, gSessionData.mIsEBS, cpuInfo.getClusters(),
-                         cpuInfo.getClusterIds(), getTracepointId(SCHED_SWITCH)),
+          mCountersGroup(driver.getConfig(),
+                         mCountersBuf.getDataBufferLength(), mCountersBuf.getAuxBufferLength(),
+                         gSessionData.mBacktraceDepth, gSessionData.mSampleRate, gSessionData.mIsEBS,
+                         cpuInfo.getClusters(), cpuInfo.getClusterIds(),
+                         getTracepointId(SCHED_SWITCH)),
           mMonitor(),
           mUEvent(),
           mAppTids(appTids),

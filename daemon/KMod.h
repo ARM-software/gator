@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "Driver.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 
 // Driver for the gator kernel module
 class KMod : public Driver

@@ -2,8 +2,9 @@
 
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "lib/Format.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 
+#include <algorithm>
 #include <cassert>
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier()
@@ -51,8 +52,12 @@ bool PerfEventGroupIdentifier::operator < (const PerfEventGroupIdentifier & that
 {
     // sort CPU cluster events first
     if (cluster != nullptr) {
-        return (that.cluster != nullptr ? (cluster->getCpuid() < that.cluster->getCpuid())
-                                        : true);
+        if (that.cluster == nullptr) {
+            return true;
+        }
+        const int minThis = *std::min_element(cluster->getCpuIds().begin(), cluster->getCpuIds().end());
+        const int minThat = *std::min_element(that.cluster->getCpuIds().begin(), that.cluster->getCpuIds().end());
+        return minThis < minThat;
     }
     else if (that.cluster != nullptr) {
         return false;
@@ -60,7 +65,7 @@ bool PerfEventGroupIdentifier::operator < (const PerfEventGroupIdentifier & that
 
     // sort Uncore PMU events second
     if (pmu != nullptr) {
-        return (that.pmu != nullptr ? (strcmp(pmu->getPmncName(), that.pmu->getPmncName()) < 0)
+        return (that.pmu != nullptr ? (strcmp(pmu->getId(), that.pmu->getId()) < 0)
                                     : true);
     }
     else if (that.pmu != nullptr) {
@@ -91,10 +96,10 @@ bool PerfEventGroupIdentifier::operator < (const PerfEventGroupIdentifier & that
 PerfEventGroupIdentifier::operator std::string () const
 {
     if (cluster != nullptr) {
-        return cluster->getPmncName();
+        return cluster->getId();
     }
     else if (pmu != nullptr) {
-        return pmu->getPmncName();
+        return pmu->getId();
     }
     else if (cpuNumberToType != nullptr) {
         return "SPE";

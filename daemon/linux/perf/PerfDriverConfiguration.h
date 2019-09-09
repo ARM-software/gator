@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "linux/perf/PerfConfig.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 #include "lib/Span.h"
 
 class GatorCpu;
@@ -45,6 +45,7 @@ struct PerfDriverConfiguration
     static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide, lib::Span<const int> cpuIds, const PmuXML & pmuXml);
 
     static constexpr int UNKNOWN_CPUID = 0xfffff;
+    static constexpr char ARMV82_SPE[] = "armv8.2_spe";
 };
 
 #endif // PERFDRIVER_CONFIGURATION_H

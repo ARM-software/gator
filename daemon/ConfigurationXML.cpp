@@ -15,6 +15,7 @@
 #include <sstream>
 
 #include "lib/Format.h"
+#include "xml/MxmlUtils.h"
 
 #include "Drivers.h"
 #include "ICpuInfo.h"
@@ -162,7 +163,7 @@ std::unique_ptr<char, void (*)(void *)> getDefaultConfigurationXml(lib::Span<con
                 mxml_node_t *n = mxmlNewElement(mxmlGetParent(node), TAG_CONFIGURATION);
                 copyMxmlElementAttrs(n, node);
                 char buf[1 << 7];
-                snprintf(buf, sizeof(buf), "%s%s", cluster.getPmncName(),
+                snprintf(buf, sizeof(buf), "%s%s", cluster.getId(),
                 counter + sizeof(CLUSTER_VAR) - 1);
                 mxmlElementSetAttr(n, ATTR_COUNTER, buf);
             }

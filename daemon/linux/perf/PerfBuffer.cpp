@@ -8,6 +8,7 @@
 
 #include "linux/perf/PerfBuffer.h"
 
+#include <cinttypes>
 #include <cstring>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -34,24 +35,38 @@ void validate(const PerfBuffer::Config & config)
         logg.logError("PerfBuffer::Config.pageSize (%zu) must be a power of 2", config.pageSize);
         handleException();
     }
-    if (((config.bufferSize - 1) & config.bufferSize) != 0) {
-        logg.logError("PerfBuffer::Config.bufferSize (%zu) must be a power of 2", config.bufferSize);
+    if (((config.dataBufferSize - 1) & config.dataBufferSize) != 0) {
+        logg.logError("PerfBuffer::Config.dataBufferSize (%zu) must be a power of 2", config.dataBufferSize);
         handleException();
     }
-    if (config.bufferSize < config.pageSize) {
-        logg.logError("PerfBuffer::Config.bufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)", config.bufferSize, config.pageSize);
+    if (config.dataBufferSize < config.pageSize) {
+        logg.logError("PerfBuffer::Config.dataBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)", config.dataBufferSize, config.pageSize);
+        handleException();
+    }
+
+    if (((config.auxBufferSize - 1) & config.auxBufferSize) != 0) {
+        logg.logError("PerfBuffer::Config.auxBufferSize (%zu) must be a power of 2", config.auxBufferSize);
+        handleException();
+    }
+    if ((config.auxBufferSize < config.pageSize) && (config.auxBufferSize != 0)) {
+        logg.logError("PerfBuffer::Config.auxBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)", config.auxBufferSize, config.pageSize);
         handleException();
     }
 }
 
-static std::size_t calculateMMapLength(const PerfBuffer::Config & config)
+static std::size_t getDataMMapLength(const PerfBuffer::Config & config)
 {
-    return config.pageSize + config.bufferSize;
+    return config.pageSize + config.dataBufferSize;
 }
 
-std::size_t PerfBuffer::calculateBufferLength() const
+std::size_t PerfBuffer::getDataBufferLength() const
 {
-    return mConfig.bufferSize;
+    return mConfig.dataBufferSize;
+}
+
+std::size_t PerfBuffer::getAuxBufferLength() const
+{
+    return mConfig.auxBufferSize;
 }
 
 PerfBuffer::PerfBuffer(PerfBuffer::Config config)
@@ -65,9 +80,9 @@ PerfBuffer::PerfBuffer(PerfBuffer::Config config)
 PerfBuffer::~PerfBuffer()
 {
     for (auto cpuAndBuf : mBuffers) {
-        lib::munmap(cpuAndBuf.second.data_buffer, calculateMMapLength(mConfig));
+        lib::munmap(cpuAndBuf.second.data_buffer, getDataMMapLength(mConfig));
         if (cpuAndBuf.second.aux_buffer != nullptr)
-            lib::munmap(cpuAndBuf.second.aux_buffer, calculateBufferLength());
+            lib::munmap(cpuAndBuf.second.aux_buffer, getAuxBufferLength());
     }
 }
 
@@ -83,7 +98,7 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
                         "This may be caused by too small limit in /proc/sys/kernel/perf_event_mlock_kb\n"
                         "Try again with a smaller value of --mmap-pages\n"
                         "Usually a value of ((perf_event_mlock_kb * 1024 / page_size) - 1) or lower will work.\n"
-                        "The current value effective value for --mmap-pages is %zu", cpu, mConfig.bufferSize / mConfig.pageSize);
+                        "The current value effective value for --mmap-pages is %zu", cpu, mConfig.dataBufferSize / mConfig.pageSize);
             }
         }
         return buf;
@@ -97,11 +112,11 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
         }
     }
     else {
-        void * buf = mmap(calculateMMapLength(mConfig), 0, fd);
+        void * buf = mmap(getDataMMapLength(mConfig), 0, fd);
         if (buf == MAP_FAILED)
             return false;
 
-        mBuffers[cpu] = Buffer { fd, buf, nullptr };
+        mBuffers[cpu] = Buffer { buf, nullptr, fd, -1 };
 
         struct perf_event_mmap_page & pemp = *static_cast<struct perf_event_mmap_page *>(buf);
         // Check the version
@@ -115,8 +130,8 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
     if (collectAuxTrace) {
         auto & buffer = mBuffers[cpu];
         if (buffer.aux_buffer == nullptr) {
-            const size_t offset = calculateMMapLength(mConfig);
-            const size_t length = calculateBufferLength();
+            const size_t offset = getDataMMapLength(mConfig);
+            const size_t length = getAuxBufferLength();
 
             struct perf_event_mmap_page & pemp = *static_cast<struct perf_event_mmap_page *>(buffer.data_buffer);
             pemp.aux_offset = offset;
@@ -127,6 +142,11 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
                 return false;
 
             buffer.aux_buffer = buf;
+            if (buffer.aux_fd >= 0) {
+                logg.logMessage("Multiple aux fds");
+                return false;
+            }
+            buffer.aux_fd = fd;
         }
     }
 
@@ -135,7 +155,9 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
 
 void PerfBuffer::discard(int cpu)
 {
-    if (mBuffers.find(cpu) != mBuffers.end()) {
+    auto it = mBuffers.find(cpu);
+    if (it != mBuffers.end()) {
+        it->second.aux_fd = -1;
         mDiscard.insert(cpu);
     }
 }
@@ -145,10 +167,10 @@ bool PerfBuffer::isEmpty()
     for (auto cpuAndBuf : mBuffers) {
         // Take a snapshot of the positions
         struct perf_event_mmap_page *pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
-        const uint64_t tail = readOnceAtomicRelaxed(pemp->data_tail);
-        const uint64_t head = readOnceAtomicRelaxed(pemp->data_head);
+        const uint64_t dataTail = readOnceAtomicRelaxed(pemp->data_tail);
+        const uint64_t dataHead = readOnceAtomicRelaxed(pemp->data_head);
 
-        if (head != tail) {
+        if (dataHead != dataTail) {
             return false;
         }
         if (cpuAndBuf.second.aux_buffer != nullptr
@@ -166,10 +188,17 @@ bool PerfBuffer::isFull()
     for (auto cpuAndBuf : mBuffers) {
         // Take a snapshot of the positions
         struct perf_event_mmap_page *pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
-        const uint64_t head = readOnceAtomicRelaxed(pemp->data_head);
+        const uint64_t dataHead = readOnceAtomicRelaxed(pemp->data_head);
 
-        if ((head + 2000) <= calculateBufferLength()) {
+        if ((dataHead + 2000) >= getDataBufferLength()) {
             return true;
+        }
+
+        if (cpuAndBuf.second.aux_buffer != nullptr) {
+            const uint64_t auxHead = readOnceAtomicRelaxed(pemp->aux_head);
+            if ((auxHead + 2000) >= getAuxBufferLength()) {
+                return true;
+            }
         }
     }
 
@@ -300,7 +329,8 @@ bool PerfBuffer::send(ISender & sender)
 {
     PerfDataFrame frame(sender);
 
-    const std::size_t bufferLength = calculateBufferLength();
+    const std::size_t dataBufferLength = getDataBufferLength();
+    const std::size_t auxBufferLength = getAuxBufferLength();
 
     for (auto cpuAndBufIt = mBuffers.begin(); cpuAndBufIt != mBuffers.end();) {
         const int cpu = cpuAndBufIt->first;
@@ -314,6 +344,9 @@ bool PerfBuffer::send(ISender & sender)
         // Only we write this so no atomic load needed
         const uint64_t dataTail = pemp->data_tail;
 
+        auto discard = mDiscard.find(cpu);
+        const bool shouldDiscard = (discard != mDiscard.end());
+
         // Now send the aux data before the records to ensure the consumer never receives
         // a PERF_RECORD_AUX without already having received the aux data
         void * const auxBuf = cpuAndBufIt->second.aux_buffer;
@@ -326,27 +359,37 @@ bool PerfBuffer::send(ISender & sender)
             if (auxHead > auxTail) {
                 const char * const b = static_cast<char *>(auxBuf);
 
-                sendAuxFrame(sender, cpu, auxTail, auxHead, b, bufferLength);
+                sendAuxFrame(sender, cpu, auxTail, auxHead, b, auxBufferLength);
 
                 // Update tail with the aux read and synchronize with the buffer writer
                 __atomic_store_n(&pemp->aux_tail, auxHead, __ATOMIC_RELEASE);
+            } else if ((auxHead > 0) && (!shouldDiscard) && (cpuAndBufIt->second.aux_fd >= 0)) {
+                const std::size_t usedLength = (auxHead % auxBufferLength);
+                if ((auxHead < auxTail) || (usedLength > (auxBufferLength / 2))) {
+                    logg.logMessage("Aux buffer might be full, hence trying to issue an ioctl() to re-enable tracing. (%" PRIu64 " == %" PRIu64 " -> %zu)", auxHead, auxTail, usedLength);
+                    if (lib::ioctl(cpuAndBufIt->second.aux_fd, PERF_EVENT_IOC_ENABLE, 0) != 0) {
+                        logg.logError("Unable to enable a perf event");
+                    }
+                }
+                else {
+                    logg.logMessage("No new aux data. (%" PRIu64 " == %" PRIu64 " -> %zu)", auxHead, auxTail, usedLength);
+                }
             }
         }
 
         if (dataHead > dataTail) {
             const char * const b = static_cast<char *>(dataBuf) + mConfig.pageSize;
 
-            frame.add(cpu, dataHead, dataTail, b, bufferLength);
+            frame.add(cpu, dataHead, dataTail, b, dataBufferLength);
 
             // Update tail with the data read and synchronize with the buffer writer
             __atomic_store_n(&pemp->data_tail, dataHead, __ATOMIC_RELEASE);
         }
 
-        auto discard = mDiscard.find(cpu);
-        if (discard != mDiscard.end()) {
-            lib::munmap(dataBuf, calculateMMapLength(mConfig));
+        if (shouldDiscard) {
+            lib::munmap(dataBuf, getDataMMapLength(mConfig));
             if (auxBuf != nullptr)
-                lib::munmap(auxBuf, calculateBufferLength());
+                lib::munmap(auxBuf, auxBufferLength);
             mDiscard.erase(discard);
             logg.logMessage("Unmapped cpu %i", cpu);
             cpuAndBufIt = mBuffers.erase(cpuAndBufIt);
@@ -355,7 +398,6 @@ bool PerfBuffer::send(ISender & sender)
             ++cpuAndBufIt;
         }
     }
-
     frame.send();
 
     return true;

@@ -11,7 +11,7 @@
 #include "Logging.h"
 #include "MemInfoDriver.h"
 #include "NetDriver.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 #include "SessionData.h"
 #include "lib/Utils.h"
 #if CONFIG_SUPPORT_GATOR_KO
@@ -117,8 +117,7 @@ namespace
             for (size_t i = 0; i < ids.getCpuIds().length; ++i) {
                 int clusterId = -1;
                 for (size_t j = 0; j < clusters.size(); ++j) {
-                    const int cpuId = clusters[j].getCpuid();
-                    if (ids.getCpuIds()[i] == cpuId) {
+                    if (clusters[j].hasCpuId(ids.getCpuIds()[i])) {
                         clusterId = j;
                     }
                 }
@@ -405,11 +404,11 @@ namespace
 
             if (clusters.empty()) {
 #if defined(__aarch64__)
-                clusters.emplace_back("Other", "Other", nullptr, nullptr, 0xfffff, 6, true);
+                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int>{0xfffff}, 6, true);
 #elif defined(__arm__)
-                clusters.emplace_back("Other", "Other", nullptr, nullptr, 0xfffff, 6, false);
+                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int>{0xfffff}, 6, false);
 #else
-                clusters.emplace_back("Other", "Perf_Hardware", nullptr, nullptr, 0xfffff, 6, false);
+                clusters.emplace_back("Other", "Perf_Hardware", "Perf_Hardware", nullptr, nullptr, std::set<int>{0xfffff}, 6, false);
 #endif
             }
 

@@ -30,7 +30,7 @@ LDLIBS      += -lrt -lm -pthread
 TARGET      := $(OBJ_DIR)gatord
 ESCAPE_EXE  := $(OBJ_DIR)escape/escape
 C_SRC       := $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
-CXX_SRC     := $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp)
+CXX_SRC     := $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp xml/*.cpp)
 D_FILES     := $(C_SRC:%.c=$(OBJ_DIR)%.d) $(CXX_SRC:%.cpp=$(OBJ_DIR)%.d)
 $(shell mkdir -p $(dir $(D_FILES)))
 
@@ -72,6 +72,8 @@ clean:
           $(OBJ_DIR)non_root/*.o \
           $(OBJ_DIR)mxml/*.d \
           $(OBJ_DIR)mxml/*.o \
+          $(OBJ_DIR)xml/*.d \
+          $(OBJ_DIR)xml/*.o \
           $(OBJ_DIR)libsensors/*.d \
           $(OBJ_DIR)libsensors/*.o \
           $(OBJ_DIR)events.xml \
@@ -109,9 +111,9 @@ $(OBJ_DIR)%.o: $(OBJ_DIR)%.cpp
 	$(ECHO_CXX)
 	$(Q)$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-EventsXML.cpp: $(OBJ_DIR)events_xml.h
+xml/EventsXML.cpp: $(OBJ_DIR)events_xml.h
 ConfigurationXML.cpp: $(OBJ_DIR)defaults_xml.h
-PmuXMLParser.cpp: $(OBJ_DIR)pmus_xml.h
+pmus_xml.cpp: $(OBJ_DIR)pmus_xml.h
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
@@ -134,7 +136,7 @@ $(OBJ_DIR):
 $(OBJ_DIR)%/:
 	$(Q)mkdir -p $@
 
-include $(wildcard $(OBJ_DIR)*.d $(OBJ_DIR)lib/*.d $(OBJ_DIR)linux/*.d $(OBJ_DIR)linux/*/*.d $(OBJ_DIR)mali_userspace/*.d $(OBJ_DIR)non_root/*.d)
+include $(wildcard $(OBJ_DIR)*.d $(OBJ_DIR)lib/*.d $(OBJ_DIR)linux/*.d $(OBJ_DIR)linux/*/*.d $(OBJ_DIR)mali_userspace/*.d $(OBJ_DIR)non_root/*.d $(OBJ_DIR)xml/*.d)
 include $(wildcard $(OBJ_DIR)mxml/*.d)
 include $(wildcard $(OBJ_DIR)libsensors/*.d)
 

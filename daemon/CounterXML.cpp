@@ -16,8 +16,8 @@
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "PmuXML.h"
-#include "mxml/mxml.h"
+#include "xml/MxmlUtils.h"
+#include "xml/PmuXML.h"
 #include "SessionData.h"
 
 static mxml_node_t* getTree(lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
@@ -44,7 +44,7 @@ static mxml_node_t* getTree(lib::Span<const Driver * const > drivers, const ICpu
     for (size_t cluster = 0; cluster < cpuInfo.getClusters().size(); ++cluster) {
         mxml_node_t *node = mxmlNewElement(counters, "cluster");
         mxmlElementSetAttrf(node, "id", "%zi", cluster);
-        mxmlElementSetAttr(node, "name", cpuInfo.getClusters()[cluster].getPmncName());
+        mxmlElementSetAttr(node, "name", cpuInfo.getClusters()[cluster].getId());
     }
     for (size_t cpu = 0; cpu < cpuInfo.getClusterIds().size(); ++cpu) {
         if (cpuInfo.getClusterIds()[cpu] >= 0) {

@@ -7,8 +7,7 @@
     <event event="0x4" title="L1 Data Cache" name="Access" description="The counter counts each memory-read operation or memory-write operation that causes a cache access to at least the Level 1 data or unified cache. Each access to a cache line is counted including the multiple accesses of instructions, such as LDM or STM . Each access to other Level 1 data or unified memory structures, for example refill buffers, write buffers, and write- back buffers, is also counted."/>
     <event event="0x5" title="L1 Data TLB" name="Refill" description="The counter counts each memory-read operation or memory-write operation that causes a TLB refill of at least the Level 1 data or unified TLB. It counts each read or write that causes a refill, in the form of a translation table walk or an access to another level of TLB caching."/>
     <event event="0x8" title="Instructions (Executed)" name="All" description="The counter increments for every architecturally executed instruction." units="instructions"/>
-    <event event="0x9" title="Exceptions" name="Taken" description="The counter increments for each exception taken.
-The counter counts only the processor exceptions. It does not count untrapped floating-point exceptions or ThumbEE null checks and index checks." units="exceptions"/>
+    <event event="0x9" title="Exceptions" name="Taken" description="The counter increments for each exception taken. The counter counts only the processor exceptions. It does not count untrapped floating-point exceptions or ThumbEE null checks and index checks." units="exceptions"/>
     <event event="0xa" title="Instructions (Executed)" name="Exception Returns" description="The counter increments for each executed exception return instruction." units="instructions"/>
     <event event="0xb" title="Instructions (Executed)" name="Write to CONTEXTIDR" description="The counter increments for every write to the CONTEXTIDR." units="instructions"/>
     <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, the branch prediction resources and that relates to instructions that the branch prediction resources are capable of predicting."/>
@@ -81,6 +80,6 @@ The counter counts only the processor exceptions. It does not count untrapped fl
     <event event="0xe7" title="L1 TLB" name="Refill (Preload)" description="Level 1 Preload TLB refill."/>
     <event event="0xe8" title="L1 TLB" name="Refill (CP15)" description="Level 1 CP15 TLB refill."/>
     <event event="0xe9" title="L1 TLB" name="Flush" description="Level 1 TLB flush."/>
-    <event event="0xea" title="L2 TLB" name="Access" description="Level 2 TLB access."/>
-    <event event="0xeb" title="L2 TLB" name="Miss" description="Level 2 TLB miss."/>
+    <event event="0xea" title="L2 Data/Unified TLB" name="Access" description="Level 2 TLB access."/>
+    <event event="0xeb" title="L2 Data/Unified TLB" name="Miss" description="Level 2 TLB miss."/>
 </category>

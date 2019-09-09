@@ -14,7 +14,7 @@
 #include "CounterXML.h"
 #include "Driver.h"
 #include "Drivers.h"
-#include "EventsXML.h"
+#include "xml/EventsXML.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlySocket.h"

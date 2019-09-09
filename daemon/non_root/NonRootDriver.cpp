@@ -373,8 +373,8 @@ namespace non_root
 
                 // CPU activity charts
                 for (const GatorCpu & cluster : clusters) {
-                    const std::string sysName = (lib::Format() << cluster.getPmncName() << "_system");
-                    const std::string userName = (lib::Format() << cluster.getPmncName() << "_user");
+                    const std::string sysName = (lib::Format() << cluster.getId() << "_system");
+                    const std::string userName = (lib::Format() << cluster.getId() << "_user");
 
                     setCounters(new NonRootDriverCounter(getCounters(), true, sysName));
                     setCounters(new NonRootDriverCounter(getCounters(), false, userName));

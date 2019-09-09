@@ -39,14 +39,15 @@ enum class OnlineEnabledState
 
 struct PerfEventGroupSharedConfig
 {
-    inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig, size_t bufferLength, int backtraceDepth,
+    inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth,
                                       int sampleRate, bool isEbs, lib::Span<const GatorCpu> clusters,
                                       lib::Span<const int> clusterIds, int64_t schedSwitchId)
             : perfConfig(perfConfig),
               schedSwitchId(schedSwitchId),
               schedSwitchKey(INT_MAX),
               dummyKeyCounter(INT_MAX - 1),
-              bufferLength(bufferLength),
+              dataBufferLength(dataBufferLength),
+              auxBufferLength(auxBufferLength),
               backtraceDepth(backtraceDepth),
               sampleRate(sampleRate),
               isEbs(isEbs),
@@ -60,7 +61,8 @@ struct PerfEventGroupSharedConfig
     int64_t schedSwitchId;
     int schedSwitchKey;
     int dummyKeyCounter;
-    size_t bufferLength;
+    size_t dataBufferLength;
+    size_t auxBufferLength;
     int backtraceDepth;
     int sampleRate;
     bool isEbs;

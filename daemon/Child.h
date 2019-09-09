@@ -103,7 +103,7 @@ private:
     Drivers & drivers;
     OlySocket * socket;
     int numExceptions;
-    std::atomic_flag sessionEnded;
+    std::atomic_bool sessionEnded;
     std::atomic_bool commandTerminated;
     int commandPid;
 

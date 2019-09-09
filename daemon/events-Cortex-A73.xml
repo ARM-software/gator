@@ -76,7 +76,7 @@
     <event event="0xe7" title="L1 TLB" name="Refill (Preload)" description="Level 1 Preload TLB refill."/>
     <event event="0xe8" title="L1 TLB" name="Refill (CP15)" description="Level 1 CP15 TLB refill."/>
     <event event="0xe9" title="L1 TLB" name="Flush" description="Level 1 TLB flush."/>
-    <event event="0xea" title="L2 TLB" name="Access" description="Level 2 TLB access."/>
-    <event event="0xeb" title="L2 TLB" name="Miss" description="Level 2 TLB miss."/>
+    <event event="0xea" title="L2 Data/Unified TLB" name="Access" description="Level 2 TLB access."/>
+    <event event="0xeb" title="L2 Data/Unified TLB" name="Miss" description="Level 2 TLB miss."/>
     <event event="0xec" title="Data Cache" name="Hit due to VIPT aliasing" description="Data cache hit in itself due to VIPT aliasing"/>
 </category>

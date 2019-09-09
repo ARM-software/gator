@@ -20,7 +20,7 @@ config GATOR_DO_NOT_ONLINE_CORES_AT_STARTUP
       loads. This is safe and necessary in most cases as it allows gator to correctly
       identify all cores in the system.
       Most users should leave this option disabled.
-      Even if the option is left enabled, it is possible to disable onlining
+      Even if the option is left disabled, it is possible to disable onlining
       behaviour at module load time by setting the disable_cpu_onlining
       module parameter to true.
 

@@ -35,6 +35,23 @@ namespace mali_userspace
 
     static void enumerateMaliHwCntrDriversInDir(const lib::FsEntry & sysDevicesPlatformDir, std::map<unsigned int , std::unique_ptr<MaliDevice>>& coreDriverMap)
     {
+        // quickly look through /dev first before recursively looking through /sys
+        // this is about 20 times faster in the case of no mali devices
+        lib::FsEntryDirectoryIterator devIterator = lib::FsEntry::create("/dev").children();
+        bool foundAMaliDevice = false;
+        while (const lib::Optional<lib::FsEntry> devChildEntry = devIterator.next()) {
+            // match child against 'mali%d'
+            int id = -1;
+            if (sscanf(devChildEntry->name().c_str(), "mali%d", &id) == 1) {
+                foundAMaliDevice = true;
+                break;
+            }
+        }
+
+        if (!foundAMaliDevice) {
+            return;
+        }
+
         // open sysfs directory
         if (sysDevicesPlatformDir.read_stats().type() != lib::FsEntry::Type::DIR) {
             logg.logMessage("Failed to open '%s'", sysDevicesPlatformDir.path().c_str());

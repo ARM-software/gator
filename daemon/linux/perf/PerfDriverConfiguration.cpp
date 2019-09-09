@@ -29,6 +29,9 @@
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
 
+constexpr int PerfDriverConfiguration::UNKNOWN_CPUID;
+constexpr char PerfDriverConfiguration::ARMV82_SPE[];
+
 using lib::FsEntry;
 
 static bool getPerfHarden()
@@ -247,9 +250,16 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         logg.logMessage(PERF_DEVICES " doesn't exist");
 
     // additionally add any by CPUID
+    std::set<int> unrecognisedCpuIds;
     for (int cpuId: cpuIds) {
         const GatorCpu *gatorCpu = pmuXml.findCpuById(cpuId);
-        if ((gatorCpu != NULL) && (cpusDetectedViaSysFs.count(gatorCpu) == 0) && (cpusDetectedViaCpuid.count(gatorCpu) == 0)) {
+        if (gatorCpu == nullptr) {
+            // track the unknown cpuid (filter out some junk values)
+            if ((cpuId != UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0)) {
+                unrecognisedCpuIds.insert(cpuId);
+            }
+        }
+        else if ((cpusDetectedViaSysFs.count(gatorCpu) == 0) && (cpusDetectedViaCpuid.count(gatorCpu) == 0)) {
             logg.logMessage("generic pmu: %s", gatorCpu->getCoreName());
             configuration->cpus.push_back(PerfCpu { *gatorCpu, PERF_TYPE_RAW });
             cpusDetectedViaCpuid.insert(gatorCpu);
@@ -260,35 +270,52 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 
     //if CPUs are incorrect up until this point.
     //If the kernel has detected v7 cores when the cores are v8 due to kernel running 32 bit.
-    bool previous = false;
+    bool anyV7 = false;
+    bool anyV8 = false;
 
     for (unsigned int i = 0; i < configuration->cpus.size(); ++i)
     {
-        if ((configuration->cpus[i].gator_cpu.getIsV8() != previous) && (i > 0)) {
+        anyV7 |= !configuration->cpus[i].gator_cpu.getIsV8();
+        anyV8 |=  configuration->cpus[i].gator_cpu.getIsV8();
+
+        if (anyV7 && anyV8) {
             //the clusters are mixed, therefore remove all cpus that arent v8.
             configuration->cpus.erase(
                     std::remove_if(configuration->cpus.begin(), configuration->cpus.end(),
                                    [](const PerfCpu & cpu) {return !(cpu.gator_cpu.getIsV8());}),
                     configuration->cpus.end());
+            break;
         }
-        previous = configuration->cpus[i].gator_cpu.getIsV8();
     }
 
-    // force add other
-    const bool haveUnkonwnCpu = cpusDetectedViaSysFs.empty() && cpusDetectedViaCpuid.empty();
+    const bool hasNoCpus = cpusDetectedViaSysFs.empty() && cpusDetectedViaCpuid.empty();
     const bool haveUnknownSpe = !configuration->cpuNumberToSpeType.empty() && !haveFoundKnownCpuWithSpe;
-    if (haveUnkonwnCpu || haveUnknownSpe) {
-        logCpuNotFound();
+    const bool addOtherForUnknownSpe = (haveUnknownSpe && configuration->cpus.empty());
 
-        const char * const speName = haveUnknownSpe ? "armv8.2_spe" : nullptr;
+    // need to update or create a record to set the SPE flag?
+    if (haveUnknownSpe && !configuration->cpus.empty()) {
+        for (unsigned int i = 0; i < configuration->cpus.size(); ++i) {
+            const auto & currentValue = configuration->cpus[i];
+            configuration->cpus[i] = PerfCpu { GatorCpu(currentValue.gator_cpu, ARMV82_SPE), currentValue.pmu_type };
+        }
+    }
+
+    // insert 'Other' for unknown CPUIDs / no cpus found
+    if ((hasNoCpus || addOtherForUnknownSpe) && unrecognisedCpuIds.empty()) {
+        unrecognisedCpuIds.insert(UNKNOWN_CPUID);
+    }
+
+    if (!unrecognisedCpuIds.empty())
+    {
+        logCpuNotFound();
+        const char * const speName = (addOtherForUnknownSpe ? ARMV82_SPE : nullptr);
+
 #if defined(__aarch64__)
-        configuration->cpus.push_back(PerfCpu { {"Other", "Other", nullptr, speName, UNKNOWN_CPUID, 6, true}, PERF_TYPE_RAW});
+        configuration->cpus.push_back(PerfCpu { { "Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, true}, PERF_TYPE_RAW});
 #elif defined(__arm__)
-        configuration->cpus.push_back(PerfCpu { {"Other", "Other", nullptr, speName, UNKNOWN_CPUID, 6, false}, PERF_TYPE_RAW});
+        configuration->cpus.push_back(PerfCpu { { "Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, anyV8}, PERF_TYPE_RAW});
 #else
-        configuration->cpus.push_back(
-                PerfCpu { { "Other", "Perf_Hardware", nullptr, speName, UNKNOWN_CPUID, 6, false },
-                                                PERF_TYPE_HARDWARE });
+        configuration->cpus.push_back(PerfCpu { { "Other", "Perf_Hardware", "Perf_Hardware", nullptr, speName, unrecognisedCpuIds, 6, false }, PERF_TYPE_HARDWARE });
 #endif
     }
 

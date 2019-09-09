@@ -27,7 +27,7 @@
 
 #include "mxml/mxml.h"
 
-#define PROTOCOL_VERSION 690
+#define PROTOCOL_VERSION 700
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -124,10 +124,5 @@ extern const char * const gSrcMd5;
 uint64_t getTime();
 int getEventKey();
 void logCpuNotFound();
-
-
-const char *mxmlWhitespaceCB(mxml_node_t *node, int where);
-
-void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src);
 
 #endif // SESSION_DATA_H

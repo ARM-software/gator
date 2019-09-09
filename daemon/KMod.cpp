@@ -173,37 +173,42 @@ std::vector<GatorCpu> KMod::writePmuXml(const PmuXML & pmuXml)
     char buf[512];
 
     for (const GatorCpu & gatorCpu : pmuXml.cpus) {
-        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s", gatorCpu.getPmncName());
+        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s", gatorCpu.getId());
         if (access(buf, X_OK) == 0) {
             continue;
         }
-        lib::writeCStringToFile("/dev/gator/pmu/export", gatorCpu.getPmncName());
-        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/cpuid", gatorCpu.getPmncName());
-        lib::writeIntToFile(buf, gatorCpu.getCpuid());
-        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/core_name", gatorCpu.getPmncName());
+        if (gatorCpu.getCpuIds().size() != 1) {
+            logg.logMessage("CPU %s is not supported by gator.ko", gatorCpu.getCoreName());
+            continue;
+        }
+        const int cpuId = *gatorCpu.getCpuIds().begin();
+        lib::writeCStringToFile("/dev/gator/pmu/export", gatorCpu.getId());
+        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/cpuid", gatorCpu.getId());
+        lib::writeIntToFile(buf, cpuId); // gator.ko does not support multiple cpuids
+        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/core_name", gatorCpu.getId());
         lib::writeCStringToFile(buf, gatorCpu.getCoreName());
         if (gatorCpu.getDtName() != NULL) {
-            snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/dt_name", gatorCpu.getPmncName());
+            snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/dt_name", gatorCpu.getId());
             lib::writeCStringToFile(buf, gatorCpu.getDtName());
         }
-        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/pmnc_counters", gatorCpu.getPmncName());
+        snprintf(buf, sizeof(buf), "/dev/gator/pmu/%s/pmnc_counters", gatorCpu.getId());
         lib::writeIntToFile(buf, gatorCpu.getPmncCounters());
     }
 
     for (const UncorePmu &uncorePmu : pmuXml.uncores) {
-        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s", uncorePmu.getPmncName());
+        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s", uncorePmu.getId());
         if (access(buf, X_OK) == 0) {
             continue;
         }
-        lib::writeCStringToFile("/dev/gator/uncore_pmu/export", uncorePmu.getPmncName());
-        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/core_name", uncorePmu.getPmncName());
+        lib::writeCStringToFile("/dev/gator/uncore_pmu/export", uncorePmu.getId());
+        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/core_name", uncorePmu.getId());
         lib::writeCStringToFile(buf, uncorePmu.getCoreName());
-        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/pmnc_counters", uncorePmu.getPmncName());
+        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/pmnc_counters", uncorePmu.getId());
         lib::writeIntToFile(buf, uncorePmu.getPmncCounters());
-        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/has_cycles_counter", uncorePmu.getPmncName());
+        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/has_cycles_counter", uncorePmu.getId());
         lib::writeIntToFile(buf, uncorePmu.getHasCyclesCounter());
-        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/cpumask", uncorePmu.getPmncName());
-        for (int cpu : perf_utils::readCpuMask(uncorePmu.getPmncName())) {
+        snprintf(buf, sizeof(buf), "/dev/gator/uncore_pmu/%s/cpumask", uncorePmu.getId());
+        for (int cpu : perf_utils::readCpuMask(uncorePmu.getId())) {
             lib::writeIntToFile(buf, cpu);
         }
     }
@@ -213,7 +218,7 @@ std::vector<GatorCpu> KMod::writePmuXml(const PmuXML & pmuXml)
     // Was any CPU detected?
     bool foundCpu = false;
     for (const GatorCpu & gatorCpu : pmuXml.cpus) {
-        snprintf(buf, sizeof(buf), "/dev/gator/events/%s_cnt0", gatorCpu.getPmncName());
+        snprintf(buf, sizeof(buf), "/dev/gator/events/%s_cnt0", gatorCpu.getId());
         if (access(buf, X_OK) == 0) {
             foundCpu = true;
             break;

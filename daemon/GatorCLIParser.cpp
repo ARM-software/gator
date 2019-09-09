@@ -620,10 +620,14 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
                     "  -C|--counters <counters>              A comma separated list of counters to\n"
                     "                                        enable. This option may be specified\n"
                     "                                        multiple times.\n"
-#if 0
                     "  -X|--spe <id>[:events=<indexes>][:ops=<types>][:min_latency=<lat>]\n"
                     "                                        Enable Statistical Profiling Extension\n"
                     "                                        (SPE). Where:\n"
+                    "                                        * <id> is the name of the SPE properties\n"
+                    "                                          specified in the events.xml or \n"
+                    "                                          pmus.xml file. It uniquely identifies\n"
+                    "                                          the available events and counters for\n"
+                    "                                          the SPE hardware.\n"
                     "                                        * <indexes> are a comma separated list\n"
                     "                                          of event indexes to filter the\n"
                     "                                          sampling by, a sample will only be\n"
@@ -635,10 +639,9 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
                     "                                          Valid types are LD for load, ST for\n"
                     "                                          store and B for branch.\n"
                     "                                        * <lat> is the minimum latency, a sample\n"
-                    "                                          will only be record if its latency is\n"
-                    "                                          equal to or greater than this value.\n"
-                    "                                          The valid range is [0,4096).\n"
-#endif
+                    "                                          will only be recorded if its latency \n"
+                    "                                          is greater than or equal to this \n"
+                    "                                          value. The valid range is [0,4096).\n"
             );
             result.mode = ExecutionMode::EXIT;
             return;

@@ -5,7 +5,7 @@
 #include "linux/perf/IPerfAttrsConsumer.h"
 #include "DynBuf.h"
 #include "Logging.h"
-#include "PmuXML.h"
+#include "xml/PmuXML.h"
 #include "SessionData.h"
 #include "lib/Syscall.h"
 #include "lib/Optional.h"
@@ -136,7 +136,7 @@ bool PerfEventGroup::addEvent(const bool leader, const uint64_t timestamp, IPerf
     /* have a sampling interrupt happen when we cross the wakeup_watermark boundary */
     event.attr.watermark = 1;
     /* Be conservative in flush size as only one buffer set is monitored */
-    event.attr.wakeup_watermark = sharedConfig.bufferLength / 2;
+    event.attr.wakeup_watermark = sharedConfig.dataBufferLength / 2;
     /* Use the monotonic raw clock if possible */
     event.attr.use_clockid = sharedConfig.perfConfig.has_attr_clockid_support ? 1 : 0;
     event.attr.clockid = sharedConfig.perfConfig.has_attr_clockid_support ? CLOCK_MONOTONIC_RAW : 0;
@@ -155,7 +155,7 @@ bool PerfEventGroup::addEvent(const bool leader, const uint64_t timestamp, IPerf
     event.attr.exclude_kernel = (sharedConfig.perfConfig.exclude_kernel ? 1 : 0);
     event.attr.exclude_hv = (sharedConfig.perfConfig.exclude_kernel ? 1 : 0);
     event.attr.exclude_idle = (sharedConfig.perfConfig.exclude_kernel ? 1 : 0);
-    event.attr.aux_watermark = hasAuxData ? sharedConfig.bufferLength / 2 : 0;
+    event.attr.aux_watermark = hasAuxData ? sharedConfig.auxBufferLength / 2 : 0;
     event.key = key;
 
     attrsConsumer.marshalPea(timestamp, &event.attr, key);
@@ -326,7 +326,7 @@ OnlineResult PerfEventGroup::onlineCPU(uint64_t timestamp, int cpu, std::set<int
 
         case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
             groupLabel = uncorePmu->getCoreName();
-            const std::set<int> cpuMask = perf_utils::readCpuMask(uncorePmu->getPmncName());
+            const std::set<int> cpuMask = perf_utils::readCpuMask(uncorePmu->getId());
             if ((!cpuMask.empty()) && (cpuMask.count(cpu) == 0)) {
                 return OnlineResult::SUCCESS;
             }
@@ -412,8 +412,8 @@ OnlineResult PerfEventGroup::onlineCPU(uint64_t timestamp, int cpu, std::set<int
                 "    sample_id_all: %llu\n"
                 "    aux_watermark: %u",
                 cpu, event.key,
-                (cluster != nullptr ? cluster->getPmncName()
-                        : (uncorePmu != nullptr ? uncorePmu->getPmncName()
+                (cluster != nullptr ? cluster->getId()
+                        : (uncorePmu != nullptr ? uncorePmu->getId()
                                 : "<nullptr>")),
                 eventIndex,
                 event.attr.type, typeLabel, event.attr.config, event.attr.config1, event.attr.config2, event.attr.sample_period, event.attr.sample_type, event.attr.read_format,

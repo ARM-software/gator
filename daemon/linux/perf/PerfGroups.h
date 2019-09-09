@@ -25,7 +25,7 @@ class GatorCpu;
 class PerfGroups : public IPerfGroups
 {
 public:
-    PerfGroups(const PerfConfig & perfConfig, size_t bufferLength, int backtraceDepth,
+    PerfGroups(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth,
                int sampleRate, bool isEbs, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId);
 
     virtual bool add(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer,

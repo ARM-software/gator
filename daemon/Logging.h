@@ -56,7 +56,7 @@ private:
     DynBuf mSetup;
     pthread_mutex_t mLoggingMutex;
     bool mDebug;
-    char mErrBuf[8192]; // Arbitrarily large buffer to hold a string
+    char mErrBuf[16384]; // Arbitrarily large buffer to hold a string
 };
 
 extern Logging logg;

@@ -12,7 +12,7 @@ namespace lib
      * @param s
      * @return
      */
-    static char * strdup_null(const char * s)
+    inline char * strdup_null(const char * s)
     {
         if (s == nullptr)
             return nullptr;

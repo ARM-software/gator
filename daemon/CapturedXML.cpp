@@ -22,7 +22,7 @@
 #include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "mxml/mxml.h"
+#include "xml/MxmlUtils.h"
 #include "lib/FsEntry.h"
 
 /* Basic target OS detection */

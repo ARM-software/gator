@@ -18,9 +18,9 @@
 
 #include "Logging.h"
 
-PerfGroups::PerfGroups(const PerfConfig & perfConfig, size_t bufferLength, int backtraceDepth, int sampleRate,
+PerfGroups::PerfGroups(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth, int sampleRate,
                        bool isEbs, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId)
-        : sharedConfig(perfConfig, bufferLength, backtraceDepth, sampleRate, isEbs, clusters, clusterIds, schedSwitchId),
+        : sharedConfig(perfConfig, dataBufferLength, auxBufferLength, backtraceDepth, sampleRate, isEbs, clusters, clusterIds, schedSwitchId),
           perfEventGroupMap()
 {
 }
