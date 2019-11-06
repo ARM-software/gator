@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
   <category name="Mali Job Manager" per_cpu="no">
     <event counter="ARM_Mali-T82x_GPU_ACTIVE" title="Mali Job Manager Cycles" name="GPU cycles" description="Number of cycles GPU active"/>
     <event counter="ARM_Mali-T82x_IRQ_ACTIVE" title="Mali Job Manager Cycles" name="IRQ cycles" description="Number of cycles GPU interrupt pending"/>

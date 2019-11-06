@@ -100,6 +100,8 @@ public:
         attr.sampleType = sampleType;
     }
 
+    using DriverCounter::read;
+
     /**
      *
      * @param
@@ -328,7 +330,10 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
     //Adding for performance counters for perf software
     setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CPU_CLOCK", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, 0, 0));
     setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_TASK_CLOCK", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_TASK_CLOCK, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CONTEXT_SWITCHES", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES, 0, 0));
+    if (!getConfig().exclude_kernel) {
+        // requires ability to read kernel events
+        setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CONTEXT_SWITCHES", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES, 0, 0));
+    }
     setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CPU_MIGRATIONS", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS, 0, 0));
     setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_PAGE_FAULTS", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS, 0, 0));
     setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_PAGE_FAULTS_MAJ", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ, 0, 0));
@@ -491,8 +496,12 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
 
 void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
 {
-    if (!getConfig().can_access_tracepoints)
+    bool isSystemWide =  getConfig().is_system_wide ;
+    bool canAccessTrcPnt = getConfig().can_access_tracepoints;
+    if (!isSystemWide || !canAccessTrcPnt) {
+        logg.logMessage("No Mali Tracepoint counters added, (systemwide (%d), canAccessTracepoints(%d))", isSystemWide, canAccessTrcPnt);
         return;
+    }
 
     static const char * const MALI_MIDGARD_AS_IN_USE_RELEASED[] = { "MMU_AS_0", "MMU_AS_1", "MMU_AS_2", "MMU_AS_3" };
 
@@ -534,45 +543,45 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         }
     }
 
-    id = getTracepointId("Mali: MMU address space in use", "mali/mali_mmu_as_in_use");
+    id = getTracepointId(MALI_MMU_IN_USE, MALI_TRC_PNT_PATH[MALI_MMU_IN_USE]);
     if (id >= 0) {
-        const int id2 = getTracepointId("Mali: PM Status", "mali/mali_mmu_as_released");
+        const int id2 = getTracepointId(MALI_PM_STATUS, MALI_TRC_PNT_PATH[MALI_PM_STATUS] );
         for (size_t i = 0; i < COUNT_OF(MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES); ++i) {
             snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_AS_IN_USE_RELEASED[i]);
             addCounterWithConfigId2(buf, id, id2);
-            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_mmu_as_in_use");
-            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_mmu_as_released");
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_MMU_IN_USE]);
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_PM_STATUS]);
         }
     }
 
-    id = getTracepointId("Mali: MMU page fault insert pages", "mali/mali_page_fault_insert_pages");
+    id = getTracepointId(MALI_MMU_PAGE_FAULT, MALI_TRC_PNT_PATH[MALI_MMU_PAGE_FAULT]);
     if (id >= 0) {
         for (size_t i = 0; i < COUNT_OF(MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES); ++i) {
             snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES[i]);
             addCounter(buf, id);
-            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_page_fault_insert_pages");
+            mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_MMU_PAGE_FAULT]);
         }
     }
 
-    id = getTracepointId("Mali: MMU total alloc pages changed", "mali/mali_total_alloc_pages_change");
+    id = getTracepointId(MALI_MMU_TOTAL_ALLOC, MALI_TRC_PNT_PATH[MALI_MMU_TOTAL_ALLOC]);
     if (id >= 0) {
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_TOTAL_ALLOC_PAGES);
         addCounter(buf, id);
-        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_total_alloc_pages_change");
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_MMU_TOTAL_ALLOC]);
     }
 
     // for activity counters
-    id = getTracepointId("Mali: Job slot events", "mali/mali_job_slots_event");
+    id = getTracepointId(MALI_JOB_SLOT, MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
     if (id >= 0) {
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_fragment", maliFamilyName);
         addCounter(buf, id);
-        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_job_slots_event");
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_vertex", maliFamilyName);
         addCounter(buf, id);
-        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_job_slots_event");
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_opencl", maliFamilyName);
         addCounter(buf, id);
-        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), "mali/mali_job_slots_event");
+        mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
     }
 }
 
@@ -678,10 +687,18 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(const SpeConfiguration & spe)
             uint64_t config2 = 0;
 
             SET_SPE_CFG(event_filter, spe.event_filter_mask);
+            logg.logMessage("Set Spe Event filter mask : 0x%jx\n ",  spe.event_filter_mask);
             SET_SPE_CFG(min_latency, spe.min_latency);
-            SET_SPE_CFG(branch_filter, spe.ops.count(SpeOps::BRANCH));
-            SET_SPE_CFG(load_filter, spe.ops.count(SpeOps::LOAD));
-            SET_SPE_CFG(store_filter, spe.ops.count(SpeOps::STORE));
+            logg.logMessage("Set Spe Event min latency : %d\n ",  spe.min_latency);
+            size_t branchCount = spe.ops.count(SpeOps::BRANCH);
+            SET_SPE_CFG(branch_filter, branchCount);
+            logg.logMessage("Set Spe branch ops count : %zu\n ", branchCount);
+            size_t loadCount = spe.ops.count(SpeOps::LOAD);
+            SET_SPE_CFG(load_filter, loadCount);
+            logg.logMessage("Set Spe load ops count : %zu\n ", loadCount);
+            size_t storeCount = spe.ops.count(SpeOps::STORE);
+            SET_SPE_CFG(store_filter, storeCount);
+            logg.logMessage("Set Spe store ops count : %zu\n ", storeCount);
 
             // enable timestamps
             SET_SPE_CFG(ts_enable, 1);

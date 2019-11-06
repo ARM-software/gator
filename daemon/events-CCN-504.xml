@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
   <counter_set name="CCN-504_cnt" count="4"/>
   <category name="CCN-504" counter_set="CCN-504_cnt">
     <event counter="CCN-504_ccnt" title="CCN-504 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>

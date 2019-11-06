@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2018, 2019 by Arm Limited. All rights reserved. -->
+
   <counter_set name="L2C-310_cnt" count="2"/>
   <category name="L2C-310" counter_set="L2C-310_cnt" per_cpu="no">
     <event event="0x1" title="L2 Cache" name="CastOUT" description="Eviction, CastOUT, of a line from the L2 cache"/>

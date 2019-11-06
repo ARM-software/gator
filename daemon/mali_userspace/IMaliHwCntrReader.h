@@ -30,7 +30,9 @@ namespace mali_userspace
         {
         }
     };
+
     class MaliHwCntrReader;
+
     /** Wait status result */
     typedef enum
     {
@@ -94,6 +96,7 @@ namespace mali_userspace
          * WAIT_STATUS_TERMINATED  The wait ended as the connection was terminated
          */
         virtual SampleBuffer waitForBuffer(int timeout)= 0;
+
         /**
          * Initiate periodic dumping of hardware counters.
          *
@@ -126,11 +129,6 @@ namespace mali_userspace
          * @return  Architecture version of the hardware counters, or 0 if not available
          */
         virtual HardwareVersion getHardwareVersion() const = 0;
-
-        /**
-         * @return The number of mmu/l2 blocks
-         */
-        virtual unsigned getMmuL2BlockCount() const = 0;
 
     };
 }  // namespace

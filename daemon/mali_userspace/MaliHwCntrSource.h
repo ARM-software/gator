@@ -41,8 +41,9 @@ namespace mali_userspace
 
     private:
 
-        std::function<std::int64_t()> mGetMonotonicStarted;
         MaliHwCntrDriver & mDriver;
+        std::function<std::int64_t()> mGetMonotonicStarted;
+        std::map<unsigned,  std::unique_ptr<MaliHwCntrReader>> mReaders;
         std::vector<std::unique_ptr<MaliHwCntrTask>> tasks;
 
         void createTasks( sem_t* mSenderSem);

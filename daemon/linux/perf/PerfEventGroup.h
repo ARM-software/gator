@@ -40,7 +40,7 @@ enum class OnlineEnabledState
 struct PerfEventGroupSharedConfig
 {
     inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth,
-                                      int sampleRate, bool isEbs, lib::Span<const GatorCpu> clusters,
+                                      int sampleRate, bool enablePeriodicSampling, lib::Span<const GatorCpu> clusters,
                                       lib::Span<const int> clusterIds, int64_t schedSwitchId)
             : perfConfig(perfConfig),
               schedSwitchId(schedSwitchId),
@@ -50,7 +50,7 @@ struct PerfEventGroupSharedConfig
               auxBufferLength(auxBufferLength),
               backtraceDepth(backtraceDepth),
               sampleRate(sampleRate),
-              isEbs(isEbs),
+              enablePeriodicSampling(enablePeriodicSampling),
               clusters(clusters),
               clusterIds(clusterIds)
     {
@@ -65,7 +65,7 @@ struct PerfEventGroupSharedConfig
     size_t auxBufferLength;
     int backtraceDepth;
     int sampleRate;
-    bool isEbs;
+    bool enablePeriodicSampling;
     lib::Span<const GatorCpu> clusters;
     lib::Span<const int> clusterIds;
 };
@@ -82,7 +82,7 @@ public:
                   const IPerfGroups::Attr & attr, bool hasAuxData);
     bool createGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
 
-    OnlineResult onlineCPU(uint64_t timestamp, int cpu, std::set<int> & tids, OnlineEnabledState enabledState,
+    std::pair<OnlineResult, std::string> onlineCPU(uint64_t timestamp, int cpu, std::set<int> & tids, OnlineEnabledState enabledState,
                            IPerfAttrsConsumer & attrsConsumer, std::function<bool(int)> addToMonitor,
                            std::function<bool(int, int, bool)> addToBuffer);
 

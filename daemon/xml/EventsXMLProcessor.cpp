@@ -39,22 +39,23 @@ namespace events_xml
         template<typename T>
         static void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src, T attributeFilter)
         {
-            if (dest == nullptr || dest->type != MXML_ELEMENT || src == nullptr || src->type != MXML_ELEMENT)
+            if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr || mxmlGetType(src) != MXML_ELEMENT)
                 return;
+
 
             const char * elementName = mxmlGetElement(src);
 
-            int i;
-            mxml_attr_t *attr;
-
             std::string modifiedValue;
-            for (i = src->value.element.num_attrs, attr = src->value.element.attrs; i > 0;
-                    --i, ++attr) {
-                if (!attributeFilter(elementName, attr->name, attr->value, modifiedValue)) {
-                    mxmlElementSetAttr(dest, attr->name, attr->value);
+            const int numAttrs = mxmlElementGetAttrCount(src);
+            for (int i = 0; i < numAttrs; ++i) {
+                const char * name;
+                const char * value = mxmlElementGetAttrByIndex(src, i, &name);
+
+                if (!attributeFilter(elementName, name, value, modifiedValue)) {
+                    mxmlElementSetAttr(dest, name, value);
                 }
                 else {
-                    mxmlElementSetAttr(dest, attr->name, modifiedValue.c_str());
+                    mxmlElementSetAttr(dest, name, modifiedValue.c_str());
                 }
             }
         }

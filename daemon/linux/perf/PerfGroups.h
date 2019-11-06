@@ -26,7 +26,7 @@ class PerfGroups : public IPerfGroups
 {
 public:
     PerfGroups(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth,
-               int sampleRate, bool isEbs, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId);
+               int sampleRate, bool enablePeriodicSampling, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId);
 
     virtual bool add(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer,
                      const PerfEventGroupIdentifier & groupIdentifier, int key, const Attr & attr,
@@ -46,7 +46,7 @@ public:
      * @return
      * @note Not safe to call concurrently.
      */
-    OnlineResult onlineCPU(uint64_t timestamp, int cpu, const std::set<int> & appPids, OnlineEnabledState enabledState,
+    std::pair<OnlineResult, std::string>  onlineCPU(uint64_t timestamp, int cpu, const std::set<int> & appPids, OnlineEnabledState enabledState,
                            IPerfAttrsConsumer & attrsConsumer, std::function<bool(int)> addToMonitor,
                            std::function<bool(int, int, bool)> addToBuffer,
                            std::function<std::set<int>(int)> childTids);

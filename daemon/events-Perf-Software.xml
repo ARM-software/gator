@@ -1,4 +1,6 @@
-  <category name="Perf Software" per_cpu="yes">
+<!-- Copyright (C) 2016, 2018, 2019 by Arm Limited. All rights reserved. -->
+
+  <category name="Perf Software" per_cpu="yes" supports_event_based_sampling="true">
     <event counter="PERF_COUNT_SW_CPU_CLOCK" title="Clock" name="CPU Clock" display="accumulate" units="s" multiplier="0.000000001" average_selection="no" average_cores="yes" description="The time the core is active" proc="no" />
     <event counter="PERF_COUNT_SW_TASK_CLOCK" title="Clock" name="Task Clock" display="accumulate" units="s" multiplier="0.000000001" average_selection="no" average_cores="yes" description="The time the task is active"/>
     <event counter="PERF_COUNT_SW_CONTEXT_SWITCHES" title="Process" name="Context Switches" display="accumulate" units="" average_selection="yes" average_cores="yes" description="The number of context switches"/>
@@ -7,5 +9,5 @@
     <event counter="PERF_COUNT_SW_PAGE_FAULTS_MAJ" title="Page Faults" name="Major Faults" display="accumulate" units="" average_selection="yes" average_cores="yes" description="The number of page faults that required to read from disk"/>
     <event counter="PERF_COUNT_SW_PAGE_FAULTS_MIN" title="Page Faults" name="Minor Faults" display="accumulate" units="" average_selection="yes" average_cores="yes" description="The number of page faults that did not require to read from disk"/>
     <event counter="PERF_COUNT_SW_ALIGNMENT_FAULTS" title="Alignment Faults" name="Faults" display="accumulate" units="" average_selection="yes" average_cores="yes" description="The number of unaligned read faults"/>
-    <event counter="PERF_COUNT_SW_EMULATION_FAULTS"  title="Emulation Faults" name="Faults" display="accumulate" units="" average_selection="yes" average_cores="yes" description="The number of emulation faults"/>
+    <event counter="PERF_COUNT_SW_EMULATION_FAULTS" title="Emulation Faults" name="Faults" display="accumulate" units="" average_selection="yes" average_cores="yes" description="The number of emulation faults"/>
   </category>

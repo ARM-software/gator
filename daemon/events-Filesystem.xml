@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
   <category name="Filesystem">
     <!-- counter attribute must start with filesystem_ and be unique -->
     <!-- regex item in () is the value shown or, if the parentheses are missing, the number of times the regex matches is counted -->

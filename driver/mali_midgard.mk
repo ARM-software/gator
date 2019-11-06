@@ -1,3 +1,5 @@
+# Copyright (C) 2016, 2017, 2019 by Arm Limited. All rights reserved.
+
 # Defines for Mali-Midgard/Bifrost driver
 EXTRA_CFLAGS += -DMALI_USE_UMP=1 \
                 -DMALI_LICENSE_IS_GPL=1 \

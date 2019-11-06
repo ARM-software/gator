@@ -32,6 +32,19 @@ class PerfTracepoint;
 class UncorePmu;
 class ICpuInfo;
 
+static const char* MALI_MMU_IN_USE = "Mali: MMU address space in use";
+static const char* MALI_PM_STATUS = "Mali: PM Status";
+static const char* MALI_MMU_PAGE_FAULT = "Mali: MMU page fault insert pages";
+static const char* MALI_MMU_TOTAL_ALLOC = "Mali: MMU total alloc pages changed";
+static const char* MALI_JOB_SLOT = "Mali: Job slot events";
+
+static std::map<const char*,const char*> MALI_TRC_PNT_PATH = { //
+{ MALI_MMU_IN_USE, "mali/mali_mmu_as_in_use" }, //
+{ MALI_PM_STATUS, "mali/mali_mmu_as_released" }, //
+{ MALI_MMU_PAGE_FAULT, "mali/mali_page_fault_insert_pages" }, //
+{ MALI_MMU_TOTAL_ALLOC, "mali/mali_total_alloc_pages_change" }, //
+{ MALI_JOB_SLOT, "mali/mali_job_slots_event" } };
+
 class PerfDriver : public SimpleDriver
 {
 public:

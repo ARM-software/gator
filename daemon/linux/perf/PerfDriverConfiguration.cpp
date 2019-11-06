@@ -124,8 +124,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     const bool isRoot = (lib::geteuid() == 0);
 
     if (!isRoot && !disablePerfHarden()) {
-        logg.logSetup("failed to disable property security.perf_harden\n" //
-                "try 'adb shell setprop security.perf_harden 0'");
+        logg.logSetup("Failed to disable property security.perf_harden\n" //
+                "Try 'adb shell setprop security.perf_harden 0'");
         return nullptr;
     }
 
@@ -137,7 +137,11 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         }
         else {
             logg.logSetup("perf_event_paranoid not accessible\nAssuming high paranoia.");
+#if defined(CONFIG_ASSUME_PERF_HIGH_PARANOIA) && CONFIG_ASSUME_PERF_HIGH_PARANOIA
             perf_event_paranoid = 2;
+#else
+            perf_event_paranoid = 1;
+#endif
         }
     }
     else {
@@ -160,7 +164,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         return nullptr;
     }
 
-    const bool can_access_tracepoints = (access(EVENTS_PATH, R_OK) == 0) && (isRoot || perf_event_paranoid == -1);
+    const bool can_access_tracepoints = (lib::access(EVENTS_PATH, R_OK) == 0)  && (isRoot || perf_event_paranoid == -1);
     if (can_access_tracepoints)
     {
         logg.logMessage("Have access to tracepoints");

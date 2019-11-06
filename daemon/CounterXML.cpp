@@ -20,13 +20,18 @@
 #include "xml/PmuXML.h"
 #include "SessionData.h"
 
-static mxml_node_t* getTree(lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
+static mxml_node_t* getTree(bool supportsMultiEbs, lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
 {
     mxml_node_t *xml;
     mxml_node_t *counters;
 
     xml = mxmlNewXML("1.0");
     counters = mxmlNewElement(xml, "counters");
+
+    if (supportsMultiEbs) {
+        mxmlElementSetAttr(counters, "supports-multiple-ebs", "yes");
+    }
+
     int count = 0;
     for (const Driver *driver : drivers) {
         count += driver->writeCounters(counters);
@@ -59,23 +64,23 @@ static mxml_node_t* getTree(lib::Span<const Driver * const > drivers, const ICpu
 namespace counters_xml
 {
 
-    std::unique_ptr<char, void (*)(void*)> getXML(lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
+    std::unique_ptr<char, void (*)(void*)> getXML(bool supportsMultiEbs, lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
     {
         char* xml_string;
-        mxml_node_t *xml = getTree(drivers, cpuInfo);
+        mxml_node_t *xml = getTree(supportsMultiEbs, drivers, cpuInfo);
         xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
         mxmlDelete(xml);
         return {xml_string, &::free};
     }
 
-    void write(const char* path, lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
+    void write(const char* path, bool supportsMultiEbs, lib::Span<const Driver * const > drivers, const ICpuInfo & cpuInfo)
     {
         char file[PATH_MAX];
 
         // Set full path
         snprintf(file, PATH_MAX, "%s/counters.xml", path);
 
-        if (writeToDisk(file, getXML(drivers, cpuInfo).get()) < 0) {
+        if (writeToDisk(file, getXML(supportsMultiEbs, drivers, cpuInfo).get()) < 0) {
             logg.logError("Error writing %s\nPlease verify the path.", file);
             handleException();
         }

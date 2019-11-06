@@ -54,7 +54,7 @@ Contents getConfigurationXML(lib::Span<const GatorCpu> clusters)
     // try the configuration.xml file first
     {
         char path[PATH_MAX];
-        getPath(path);
+        getPath(path, sizeof(path));
         std::unique_ptr<char, void (*)(void *)> configurationXML { readFromDisk(path), &free };
 
         if (configurationXML) {
@@ -176,23 +176,23 @@ std::unique_ptr<char, void (*)(void *)> getDefaultConfigurationXml(lib::Span<con
     return {str, &free};
 }
 
-void getPath(char* path)
+void getPath(char * path, size_t n)
 {
     if (gSessionData.mConfigurationXMLPath) {
-        strncpy(path, gSessionData.mConfigurationXMLPath, PATH_MAX);
+        strncpy(path, gSessionData.mConfigurationXMLPath, n - 1);
     }
     else {
-        if (getApplicationFullPath(path, PATH_MAX) != 0) {
+        if (getApplicationFullPath(path, n) != 0) {
             logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
         }
-        strncat(path, "configuration.xml", PATH_MAX - strlen(path) - 1);
+        strncat(path, "configuration.xml", n - strlen(path) - 1);
     }
 }
 
 void remove()
 {
     char path[PATH_MAX];
-    getPath(path);
+    getPath(path, sizeof(path));
 
     if (::remove(path) != 0) {
         logg.logError("Invalid configuration.xml file detected and unable to delete it. To resolve, delete configuration.xml on disk");

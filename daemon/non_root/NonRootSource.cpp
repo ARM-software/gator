@@ -29,7 +29,6 @@ namespace non_root
               interrupted(false),
               timestampSource(CLOCK_MONOTONIC_RAW),
               driver(driver_),
-              senderSem(senderSem_),
               startProfile(startProfile_),
               done(false),
               cpuInfo(cpuInfo)

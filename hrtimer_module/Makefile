@@ -1,3 +1,5 @@
+# Copyright (C) 2016, 2019 by Arm Limited. All rights reserved.
+
 ifneq ($(KERNELRELEASE),)
 
 obj-m := hrtimer_module.o

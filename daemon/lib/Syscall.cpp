@@ -52,6 +52,11 @@ namespace lib
         return ::read(fd, buf, count);
     }
 
+    ssize_t write(int fd, const void * buf, size_t count)
+    {
+        return ::write(fd, buf, count);
+    }
+
     int uname(struct utsname *buf)
     {
         return ::uname(buf);
@@ -64,6 +69,10 @@ namespace lib
 
     int poll (struct pollfd * fds, nfds_t nfds, int timeout) {
         return ::poll(fds, nfds, timeout);
+    }
+
+    int access (const char *filename, int how) {
+        return ::access(filename, how);
     }
 }
 

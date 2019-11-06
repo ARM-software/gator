@@ -1,3 +1,5 @@
+# Copyright (C) 2016, 2019 by Arm Limited. All rights reserved.
+
 # Find the oldest SDK Platform installed >= 16
 SDK_PLATFORM := $(shell ls -d $(SDKDIR)/platforms/android-1[6-9] $(SDKDIR)/platforms/android-[2-9][0-9] 2> /dev/null | head -1)
 # Find layoutlib.jar

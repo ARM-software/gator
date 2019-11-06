@@ -48,7 +48,7 @@ namespace mali_userspace
                 if (waitStatus.data) {
                     const uint64_t sampleTime = waitStatus.timestamp - monotonicStarted;
                     if (mBuffer->eventHeader(sampleTime)) {
-                        mReader.getDevice().dumpAllCounters(mReader.getHardwareVersion(), mReader.getMmuL2BlockCount(), countersList,
+                        mReader.getDevice().dumpAllCounters(mReader.getHardwareVersion(), countersList,
                                 reinterpret_cast<const uint32_t *>(waitStatus.data.get()), waitStatus.size / sizeof(uint32_t), *mBuffer, mCallback);
                         mBuffer->check(sampleTime);
                     }

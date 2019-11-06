@@ -32,7 +32,9 @@ namespace lib
 
             if (entry != nullptr) {
                 // skip '.' and '..'
-                if ((::strcmp(entry->d_name, ".") == 0) || (::strcmp(entry->d_name, "..") == 0))
+                if ((::strcmp(entry->d_name, ".") == 0) || (::strcmp(entry->d_name, "..") == 0)
+                // this shouldn't happen but was seen on a device in /sys/bus/usb/devices
+                        || (::strcmp(entry->d_name, "") == 0))
                     return next();
 
                 return FsEntry(parent_->path().append("/").append(entry->d_name));

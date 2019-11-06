@@ -18,8 +18,8 @@ class ICpuInfo;
 
 namespace counters_xml
 {
-    std::unique_ptr<char, void (*)(void*)> getXML(lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo);
+    std::unique_ptr<char, void (*)(void*)> getXML(bool supportsMultiEbs, lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo);
 
-    void write(const char* path, lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo);
+    void write(const char* path, bool supportsMultiEbs, lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo);
 };
 #endif /* COUNTERXML_H_ */

@@ -30,10 +30,10 @@
 /* Publicly accessible library functions */
 
 /* libsensors API version define, first digit is the major version (changed
-   when the API + ABI breaks), the third digit is incremented to track small
+   when the API or ABI breaks), the third digit is incremented to track small
    API additions like new flags / enum values. The second digit is for tracking
    larger additions like new methods. */
-#define SENSORS_API_VERSION     0x440
+#define SENSORS_API_VERSION     0x500
 
 #define SENSORS_CHIP_NAME_PREFIX_ANY    NULL
 #define SENSORS_CHIP_NAME_ADDR_ANY  (-1)
@@ -46,6 +46,8 @@
 #define SENSORS_BUS_TYPE_VIRTUAL    4
 #define SENSORS_BUS_TYPE_ACPI       5
 #define SENSORS_BUS_TYPE_HID        6
+#define SENSORS_BUS_TYPE_MDIO       7
+#define SENSORS_BUS_TYPE_SCSI       8
 #define SENSORS_BUS_NR_ANY      (-1)
 #define SENSORS_BUS_NR_IGNORE       (-2)
 
@@ -217,11 +219,15 @@ typedef enum sensors_subfeature_type {
     SENSORS_SUBFEATURE_POWER_CAP_HYST,
     SENSORS_SUBFEATURE_POWER_MAX,
     SENSORS_SUBFEATURE_POWER_CRIT,
+    SENSORS_SUBFEATURE_POWER_MIN,
+    SENSORS_SUBFEATURE_POWER_LCRIT,
     SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL = (SENSORS_FEATURE_POWER << 8) | 0x80,
     SENSORS_SUBFEATURE_POWER_ALARM,
     SENSORS_SUBFEATURE_POWER_CAP_ALARM,
     SENSORS_SUBFEATURE_POWER_MAX_ALARM,
     SENSORS_SUBFEATURE_POWER_CRIT_ALARM,
+    SENSORS_SUBFEATURE_POWER_MIN_ALARM,
+    SENSORS_SUBFEATURE_POWER_LCRIT_ALARM,
 
     SENSORS_SUBFEATURE_ENERGY_INPUT = SENSORS_FEATURE_ENERGY << 8,
 
@@ -311,4 +317,4 @@ sensors_get_subfeature(const sensors_chip_name *name,
 }
 #endif /* __cplusplus */
 
-#endif /* def LIB_SENSORS_ERROR_H */
+#endif /* def LIB_SENSORS_SENSORS_H */

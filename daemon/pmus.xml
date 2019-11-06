@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2016, 2017, 2018, 2019 by Arm Limited. All rights reserved. -->
+
 <pmus version="2">
     <!--
       pmu element: Identifies a CPU PMU
       =================================
       id            A unique identifier for the record, *should* be the name used by perf (case insensitive) in /sys/bus/event_source/devices/ if it is known.
-      counter_set   The name of the counters set in events.xml to use for this core.
+      counter_set   The name of the counters set (without _cnt suffix) in events.xml to use for this core.
                     Optional. Defaults to same value as the 'id' field if not set.
       cpuid         The Implementer and Primary part number from the Main ID Register.
                     Alternatively, where multiple cpuids exist for what is effectively the same CPU, then nested
@@ -73,7 +75,8 @@
     <pmu id="ARMv8_Cortex_A73" cpuid="0x41d09" core_name="Cortex-A73" dt_name="arm,cortex-a73" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A75" cpuid="0x41d0a" core_name="Cortex-A75" dt_name="arm,cortex-a75" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A76" cpuid="0x41d0b" core_name="Cortex-A76" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
-    
+    <pmu id="ARMv8_Cortex_A77" cpuid="0x41d0d" core_name="Cortex-A77" dt_name="arm,cortex-a77" pmnc_counters="6" profile="8a"/>
+
     <pmu id="ARMv8_Cortex_A65AE" cpuid="0x41d43" core_name="Cortex-A65AE" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A65AE" id="ARMv8_Cortex_A65" cpuid="0x41d06" core_name="Cortex-A65" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Cortex_A76AE" cpuid="0x41d0e" core_name="Cortex-A76AE" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
@@ -91,8 +94,11 @@
     </pmu>
 
     <!-- Qualcomm V8 parts based on publicly available information -->
+    <pmu counter_set="Other" id="ARMv8_Kryo_Silver" cpuid="0x51201" core_name="Kryo Silver" pmnc_counters="6" profile="8a"/>
+    <pmu counter_set="Other" id="ARMv8_Kryo_Gold" cpuid="0x51205" core_name="Kryo Gold" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A53" id="ARMv8_Kryo_2x0_Silver" cpuid="0x51801" core_name="Kryo 250/260/280 Silver" pmnc_counters="6" profile="8a"/>
-    <pmu counter_set="ARMv8_Cortex_A55" id="ARMv8_Kryo_3x0_Silver" cpuid="0x51803" core_name="Kryo 360/385/460/485/495 Silver" pmnc_counters="6" profile="8a"/>
+    <pmu counter_set="ARMv8_Cortex_A55" id="ARMv8_Kryo_3x0_Silver" cpuid="0x51803" core_name="Kryo 360/385 Silver" pmnc_counters="6" profile="8a"/>
+    <pmu counter_set="ARMv8_Cortex_A55" id="ARMv8_Kryo_4x0_Silver" cpuid="0x51805" core_name="Kryo 460/485/495 Silver" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A73" id="ARMv8_Kryo_2x0_Gold" cpuid="0x51800" core_name="Kryo 260/280 Gold" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A75" id="ARMv8_Kryo_3x0_Gold" cpuid="0x51802" core_name="Kryo 360/385 Gold" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Kryo_4x0_Gold" cpuid="0x51804" core_name="Kryo 460/485/495 Gold" pmnc_counters="6" profile="8a"/>

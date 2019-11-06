@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
 <configurations revision="3">
   <configuration counter="ARM_ARM11_ccnt" event="0xff"/>
   <configuration counter="ARM_ARM11_cnt0" event="0x7"/>
@@ -94,5 +96,8 @@
   <configuration counter="ARM_Mali-Bifrost_fragment" cores="1"/>
   <configuration counter="ARM_Mali-Bifrost_vertex" cores="1"/>
   <configuration counter="ARM_Mali-Bifrost_opencl" cores="1"/>
+  <configuration counter="ARM_Mali-Valhall_fragment" cores="1"/>
+  <configuration counter="ARM_Mali-Valhall_vertex" cores="1"/>
+  <configuration counter="ARM_Mali-Valhall_opencl" cores="1"/>
   <configuration counter="L2C-310_cnt0" event="0x1"/>
 </configurations>

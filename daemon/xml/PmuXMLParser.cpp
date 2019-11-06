@@ -105,7 +105,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
 
     // find the root
     mxml_node_t * const root = (
-            (documentPtr == nullptr) || (strcmp(documentPtr->value.element.name, TAG_PMUS) == 0) ?
+            (documentPtr == nullptr) || (strcmp(mxmlGetElement(documentPtr.get()), TAG_PMUS) == 0) ?
                     documentPtr.get() :
                     mxmlFindElement(documentPtr.get(), documentPtr.get(), TAG_PMUS, nullptr, nullptr,
                                     MXML_DESCEND));

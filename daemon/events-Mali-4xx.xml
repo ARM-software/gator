@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
   <counter_set name="ARM_Mali-4xx_VP_0_cnt" count="2"/>
   <counter_set name="ARM_Mali-4xx_SW_cnt" count="0"/>
   <category name="Mali Vertex Processor" counter_set="ARM_Mali-4xx_VP_0_cnt" per_cpu="no">

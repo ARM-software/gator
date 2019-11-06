@@ -9,7 +9,6 @@ namespace lib
 {
     /**
      * Extracts comma separated numbers from a stream.
-     * Sets failbit on parse error
      * @param stream
      * @return vector of the numbers in the order they were in the stream
      */
@@ -21,12 +20,18 @@ namespace lib
         IntType value;
         while (!(stream >> std::ws).eof() && stream >> value) {
             ints.push_back(value);
-            stream >> std::ws;
-            if (!stream.eof() && stream.get() != ',') {
-                stream.setstate(std::ios_base::failbit);
+            if (!stream.eof()) {
+                stream >> std::ws;
+            } else {
+                break;
+            }
+            if (!stream.eof() && stream.peek() != ',') {
+                break;
+            }
+            if (!stream.eof()) {
+                stream.get();
             }
         }
-
         return ints;
     }
 

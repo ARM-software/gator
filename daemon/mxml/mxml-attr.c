@@ -1,17 +1,12 @@
 /*
- * "$Id: mxml-attr.c 451 2014-01-04 21:50:06Z msweet $"
+ * Attribute support code for Mini-XML, a small XML file parsing library.
  *
- * Attribute support code for Mini-XML, a small XML-like file parsing library.
+ * https://www.msweet.org/mxml
  *
- * Copyright 2003-2014 by Michael R Sweet.
+ * Copyright © 2003-2019 by Michael R Sweet.
  *
- * These coded instructions, statements, and computer programs are the
- * property of Michael R Sweet and are protected by Federal copyright
- * law.  Distribution and use rights are outlined in the file "COPYING"
- * which should have been included with this file.  If this file is
- * missing or damaged, see the license at:
- *
- *     http://www.msweet.org/projects.php/Mini-XML
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more
+ * information.
  */
 
 /*
@@ -19,15 +14,14 @@
  */
 
 #include "config.h"
-#include "mxml.h"
+#include "mxml-private.h"
 
 
 /*
  * Local functions...
  */
 
-static int	mxml_set_attr(mxml_node_t *node, const char *name,
-		              char *value);
+static int  mxml_set_attr(mxml_node_t *node, const char *name, char *value);
 
 
 /*
@@ -40,8 +34,8 @@ void
 mxmlElementDeleteAttr(mxml_node_t *node,/* I - Element */
                       const char  *name)/* I - Attribute name */
 {
-  int		i;			/* Looping var */
-  mxml_attr_t	*attr;			/* Cirrent attribute */
+  int       i;          /* Looping var */
+  _mxml_attr_t  *attr;          /* Cirrent attribute */
 
 
 #ifdef DEBUG
@@ -79,7 +73,7 @@ mxmlElementDeleteAttr(mxml_node_t *node,/* I - Element */
 
       i --;
       if (i > 0)
-        memmove(attr, attr + 1, i * sizeof(mxml_attr_t));
+        memmove(attr, attr + 1, i * sizeof(_mxml_attr_t));
 
       node->value.element.num_attrs --;
 
@@ -94,16 +88,16 @@ mxmlElementDeleteAttr(mxml_node_t *node,/* I - Element */
 /*
  * 'mxmlElementGetAttr()' - Get an attribute.
  *
- * This function returns NULL if the node is not an element or the
+ * This function returns @code NULL@ if the node is not an element or the
  * named attribute does not exist.
  */
 
-const char *				/* O - Attribute value or NULL */
-mxmlElementGetAttr(mxml_node_t *node,	/* I - Element node */
-                   const char  *name)	/* I - Name of attribute */
+const char *                /* O - Attribute value or @code NULL@ */
+mxmlElementGetAttr(mxml_node_t *node,   /* I - Element node */
+                   const char  *name)   /* I - Name of attribute */
 {
-  int		i;			/* Looping var */
-  mxml_attr_t	*attr;			/* Cirrent attribute */
+  int       i;          /* Looping var */
+  _mxml_attr_t  *attr;          /* Cirrent attribute */
 
 
 #ifdef DEBUG
@@ -152,6 +146,48 @@ mxmlElementGetAttr(mxml_node_t *node,	/* I - Element node */
 
 
 /*
+ * 'mxmlElementGetAttrByIndex()' - Get an element attribute by index.
+ *
+ * The index ("idx") is 0-based.  @code NULL@ is returned if the specified index
+ * is out of range.
+ *
+ * @since Mini-XML 2.11@
+ */
+
+const char *                            /* O - Attribute value */
+mxmlElementGetAttrByIndex(
+    mxml_node_t *node,                  /* I - Node */
+    int         idx,                    /* I - Attribute index, starting at 0 */
+    const char  **name)                 /* O - Attribute name */
+{
+  if (!node || node->type != MXML_ELEMENT || idx < 0 || idx >= node->value.element.num_attrs)
+    return (NULL);
+
+  if (name)
+    *name = node->value.element.attrs[idx].name;
+
+  return (node->value.element.attrs[idx].value);
+}
+
+
+/*
+ * 'mxmlElementGetAttrCount()' - Get the number of element attributes.
+ *
+ * @since Mini-XML 2.11@
+ */
+
+int                                     /* O - Number of attributes */
+mxmlElementGetAttrCount(
+    mxml_node_t *node)                  /* I - Node */
+{
+  if (node && node->type == MXML_ELEMENT)
+    return (node->value.element.num_attrs);
+  else
+    return (0);
+}
+
+
+/*
  * 'mxmlElementSetAttr()' - Set an attribute.
  *
  * If the named attribute already exists, the value of the attribute
@@ -161,11 +197,11 @@ mxmlElementGetAttr(mxml_node_t *node,	/* I - Element node */
  */
 
 void
-mxmlElementSetAttr(mxml_node_t *node,	/* I - Element node */
-                   const char  *name,	/* I - Name of attribute */
-                   const char  *value)	/* I - Attribute value */
+mxmlElementSetAttr(mxml_node_t *node,   /* I - Element node */
+                   const char  *name,   /* I - Name of attribute */
+                   const char  *value)  /* I - Attribute value */
 {
-  char	*valuec;			/* Copy of value */
+  char  *valuec;            /* Copy of value */
 
 
 #ifdef DEBUG
@@ -202,13 +238,13 @@ mxmlElementSetAttr(mxml_node_t *node,	/* I - Element node */
  */
 
 void
-mxmlElementSetAttrf(mxml_node_t *node,	/* I - Element node */
-                    const char  *name,	/* I - Name of attribute */
+mxmlElementSetAttrf(mxml_node_t *node,  /* I - Element node */
+                    const char  *name,  /* I - Name of attribute */
                     const char  *format,/* I - Printf-style attribute value */
-		    ...)		/* I - Additional arguments as needed */
+            ...)        /* I - Additional arguments as needed */
 {
-  va_list	ap;			/* Argument pointer */
-  char		*value;			/* Value */
+  va_list   ap;         /* Argument pointer */
+  char      *value;         /* Value */
 
 
 #ifdef DEBUG
@@ -244,13 +280,13 @@ mxmlElementSetAttrf(mxml_node_t *node,	/* I - Element node */
  * 'mxml_set_attr()' - Set or add an attribute name/value pair.
  */
 
-static int				/* O - 0 on success, -1 on failure */
-mxml_set_attr(mxml_node_t *node,	/* I - Element node */
-              const char  *name,	/* I - Attribute name */
-              char        *value)	/* I - Attribute value */
+static int              /* O - 0 on success, -1 on failure */
+mxml_set_attr(mxml_node_t *node,    /* I - Element node */
+              const char  *name,    /* I - Attribute name */
+              char        *value)   /* I - Attribute value */
 {
-  int		i;			/* Looping var */
-  mxml_attr_t	*attr;			/* New attribute */
+  int       i;          /* Looping var */
+  _mxml_attr_t  *attr;          /* New attribute */
 
 
  /*
@@ -279,10 +315,10 @@ mxml_set_attr(mxml_node_t *node,	/* I - Element node */
   */
 
   if (node->value.element.num_attrs == 0)
-    attr = malloc(sizeof(mxml_attr_t));
+    attr = malloc(sizeof(_mxml_attr_t));
   else
     attr = realloc(node->value.element.attrs,
-                   (node->value.element.num_attrs + 1) * sizeof(mxml_attr_t));
+                   (node->value.element.num_attrs + 1) * sizeof(_mxml_attr_t));
 
   if (!attr)
   {
@@ -307,8 +343,3 @@ mxml_set_attr(mxml_node_t *node,	/* I - Element node */
 
   return (0);
 }
-
-
-/*
- * End of "$Id: mxml-attr.c 451 2014-01-04 21:50:06Z msweet $".
- */

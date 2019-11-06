@@ -1,6 +1,7 @@
 /* Copyright (c) 2016 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
+#include "mali_userspace/MaliDeviceApi.h"
 #include "lib/FsEntry.h"
 #include "lib/Optional.h"
 
@@ -19,234 +20,89 @@
 
 namespace mali_userspace
 {
-    static std::unique_ptr<MaliDevice> enumerateMaliHwCntrDriver(const char * model, int mpNumber, int rValue, int pValue, int gpuId, std::string devicePath, std::string  clockPath)
+    static void enumerateMaliGpuClockPaths(const lib::FsEntry & currentDirectory, std::map<unsigned int, std::string> & gpuClockPaths)
     {
-        auto device = MaliDevice::create(gpuId, devicePath, clockPath) ;
-
-        if (device != nullptr) {
-            logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found", model, mpNumber, rValue, pValue, gpuId, devicePath.c_str());
-        }
-        else {
-            logg.logSetup("Mali Hardware Counters\n'%s MP%d r%dp%d 0x%04X' @ '%s' found, but not supported", model, mpNumber, rValue, pValue, gpuId, devicePath.c_str());
-        }
-
-        return device;
-    }
-
-    static void enumerateMaliHwCntrDriversInDir(const lib::FsEntry & sysDevicesPlatformDir, std::map<unsigned int , std::unique_ptr<MaliDevice>>& coreDriverMap)
-    {
-        // quickly look through /dev first before recursively looking through /sys
-        // this is about 20 times faster in the case of no mali devices
-        lib::FsEntryDirectoryIterator devIterator = lib::FsEntry::create("/dev").children();
-        bool foundAMaliDevice = false;
-        while (const lib::Optional<lib::FsEntry> devChildEntry = devIterator.next()) {
-            // match child against 'mali%d'
-            int id = -1;
-            if (sscanf(devChildEntry->name().c_str(), "mali%d", &id) == 1) {
-                foundAMaliDevice = true;
-                break;
-            }
-        }
-
-        if (!foundAMaliDevice) {
-            return;
-        }
-
         // open sysfs directory
-        if (sysDevicesPlatformDir.read_stats().type() != lib::FsEntry::Type::DIR) {
-            logg.logMessage("Failed to open '%s'", sysDevicesPlatformDir.path().c_str());
+        if (currentDirectory.read_stats().type() != lib::FsEntry::Type::DIR) {
+            logg.logMessage("Failed to open '%s'", currentDirectory.path().c_str());
             return;
         }
 
-        // walk children looking for <CHILD>/gpuinfo and <CHILD>/misc/mali<%d>
-        lib::FsEntryDirectoryIterator iterator = sysDevicesPlatformDir.children();
+        // is the parent called 'misc'
+        const bool dirIsCalledMisc = (currentDirectory.name() == "misc");
+        const lib::Optional<lib::FsEntry> dirsParent = currentDirectory.parent();
+        const lib::Optional<lib::FsEntry> parentClockPath = (dirsParent.valid() ? lib::Optional<lib::FsEntry>{ lib::FsEntry::create(dirsParent.get(), "clock") }
+                                                                                   : lib::Optional<lib::FsEntry>{});
+
+        // walk children looking for directories named 'mali%d'
+        lib::FsEntryDirectoryIterator iterator = currentDirectory.children();
         lib::Optional<lib::FsEntry> childEntry;
         while ((childEntry = iterator.next()).valid()) {
             // determine type
             lib::FsEntry::Stats childStats = childEntry->read_stats();
             if (childStats.type() == lib::FsEntry::Type::DIR) {
+                // check name is 'mali#'
+                unsigned int id = 0;
+                if (dirIsCalledMisc && sscanf(childEntry->name().c_str(), "mali%u", &id) == 1) {
+                    // don't repeat your self
+                    if (gpuClockPaths.count(id) > 0) {
+                        continue;
+                    }
+                    // check for 'misc/clock' directory
+                    lib::FsEntry childClockPath = lib::FsEntry::create(*childEntry, "clock");
+                    if (childClockPath.exists() && childClockPath.canAccess(true, false, false)) {
+                        gpuClockPaths[id] = childClockPath.path();
+                    }
+                    // use ../../clock ?
+                    else if (parentClockPath.valid() && parentClockPath->exists() && parentClockPath->canAccess(true, false, false)) {
+                        gpuClockPaths[id] = parentClockPath->path();
+                    }
+                }
                 // try to recursively scan the child directory
-                if (!childStats.is_symlink()) {
-                    enumerateMaliHwCntrDriversInDir(*childEntry, coreDriverMap);
-                }
-                // Create the gpuinfo object
-                lib::FsEntry gpuinfoEntry = lib::FsEntry::create(*childEntry, "gpuinfo");
-                if (!gpuinfoEntry.exists()) {
-                    continue;
-                }
-                // read the contents of 'gpuinfo' file
-                std::string data = gpuinfoEntry.readFileContentsSingleLine();
-                if (data.empty()) {
-                    logg.logMessage("File %s is empty", gpuinfoEntry.path().c_str());
-                    continue;
-                }
-                char model[33];
-                int mpNumber ,rValue, pValue;
-                unsigned int gpuId;
-
-                int fscanfResult = sscanf(data.c_str(), "%32s MP%d r%dp%d 0x%04x", model, &mpNumber, &rValue, &pValue,
-                                          &gpuId);
-                if (fscanfResult != 5) {
-                    fscanfResult = sscanf(data.c_str(), "(Unknown Mali GPU) MP%d r%dp%d 0x%04x", &mpNumber, &rValue,
-                                          &pValue, &gpuId);
-                    fscanfResult = (fscanfResult == 4 ? 5 : fscanfResult);
-                    std::strcpy(model, "Unknown Mali GPU");
-
-                }
-                if (fscanfResult != 5) {
-                    fscanfResult = sscanf(data.c_str(), "%32s %d cores r%dp%d 0x%04x", model, &mpNumber, &rValue,
-                                          &pValue, &gpuId);
-                }
-                if (fscanfResult != 5) {
-                    fscanfResult = sscanf(data.c_str(), "(Unknown Mali GPU) %d cores r%dp%d 0x%04x", &mpNumber, &rValue,
-                                          &pValue, &gpuId);
-                    fscanfResult = (fscanfResult == 4 ? 5 : fscanfResult);
-                    std::strcpy(model, "Unknown Mali GPU");
-                }
-                if (fscanfResult != 5) {
-                    fscanfResult = sscanf(data.c_str(), "%32s %d core r%dp%d 0x%04x", model, &mpNumber, &rValue, &pValue,
-                                          &gpuId);
-                }
-                if (fscanfResult != 5) {
-                    fscanfResult = sscanf(data.c_str(), "(Unknown Mali GPU) %d core r%dp%d 0x%04x", &mpNumber, &rValue,
-                                          &pValue, &gpuId);
-                    fscanfResult = (fscanfResult == 4 ? 5 : fscanfResult);
-                    std::strcpy(model, "Unknown Mali GPU");
-                }
-                if (fscanfResult != 5) {
-                    logg.logError("Failed to parse gpuinfo -> '%s'", data.c_str());
-                    continue;
-                }
-                logg.logMessage("parsed gpu info %s' with '%s MP%d r%dp%d 0x%04X'", gpuinfoEntry.path().c_str(), model, mpNumber, rValue, pValue, gpuId);
-                // now check for <CHILD>/misc/mali<%d> directories
-                lib::FsEntry miscDirEntry = lib::FsEntry::create(*childEntry, "misc");
-                if (miscDirEntry.read_stats().type() != lib::FsEntry::Type::DIR) {
-                    logg.logError("could not open '%s'", miscDirEntry.path().c_str());
-                    continue;
-                }
-                lib::Optional<lib::FsEntry> clockPath;
-                lib::Optional<lib::FsEntry> devicePath;
-                lib::Optional<lib::FsEntry> miscChildEntry;
-                lib::FsEntryDirectoryIterator miscIterator = miscDirEntry.children();
-                while ((miscChildEntry = miscIterator.next()).valid()) {
-                    // match child against 'mali%d'
-                    int id = -1;
-                    if (sscanf(miscChildEntry->name().c_str(), "mali%d", &id) == 1) {
-                        if (coreDriverMap.count(id) > 0) { //already added
-                            logg.logMessage("Device already created for '%s' %d", miscChildEntry->name().c_str(), gpuId);
-                            continue;
-                        }
-                        devicePath = lib::FsEntry::create(lib::FsEntry::create("/dev"), miscChildEntry->name());
-                        clockPath = lib::FsEntry::create(*miscChildEntry, "clock");
-                        if (!devicePath.get().exists()) {
-                            logg.logError("could not find %s/mail<N>", miscDirEntry.path().c_str());
-                            continue;
-                        }
-                        if (!clockPath.get().exists() || (!clockPath->canAccess(true, false, false))) {
-                            clockPath = lib::FsEntry::create(*childEntry, "clock");
-                        }
-                        // create the device object
-                        auto result = enumerateMaliHwCntrDriver(model, mpNumber, rValue, pValue, gpuId,
-                                                           devicePath->path(),
-                                                           clockPath->path());
-                        if (result != nullptr) {
-                            coreDriverMap[id] = std::move(result);
-                        } else {
-                            logg.logError("Did not recognise Mali product name '%s'%d", devicePath->path().c_str(), gpuId);
-                        }
-                    }
-                    else {
-                        logg.logError("not a valid mali gpu %s ", miscDirEntry.path().c_str());
-                    }
+                else if (!childStats.is_symlink()) {
+                    enumerateMaliGpuClockPaths(*childEntry, gpuClockPaths);
                 }
             }
         }
     }
 
-    static bool addMaliCounterDriver(std::string userSpecifiedDevicePath, std::string userSpecifiedDeviceType, std::map<unsigned int , std::unique_ptr<MaliDevice> >& coreDriverMap) {
-
-        lib::FsEntry deviceFsEntry = lib::FsEntry::create(userSpecifiedDevicePath);
-        if (!deviceFsEntry.exists() || !deviceFsEntry.canAccess(true, true, false)) {
-            logg.logError("Cannot access mali device path '%s'", userSpecifiedDevicePath.c_str());
-            return false;
-        }
-        else {
-            // try to find a gpuID by name
-            uint32_t gpuId = MaliDevice::findProductByName(userSpecifiedDeviceType.c_str());
-            // then by hex code
-            if (gpuId == 0) {
-                gpuId = strtoul(userSpecifiedDeviceType.c_str(), nullptr, 0);
-            }
-            int id = -1;
-            std::string path(userSpecifiedDevicePath);
-            //gets the last number in the path ?
-            size_t last_char_pos = path.find_last_not_of("0123456789");
-            if (last_char_pos == std::string::npos) {
-                id = 0;
-            } else {
-                std::string base = path.substr(last_char_pos + 1,path.size());
-                if(sscanf(base.c_str(), "%d", &id) == -1) {
-                    id = 0;
-                }
-            }
-            if(coreDriverMap.find(id) == coreDriverMap.end()) { //not already added
-                auto  result = MaliDevice::create(gpuId, userSpecifiedDevicePath, "");
-                if (result == nullptr) {
-                    logg.logError("Did not recognise Mali product name '%s' 0x%04x", userSpecifiedDeviceType.c_str(), gpuId);
-                    return false;
-                }
-                coreDriverMap[id] = std::move(result);
-                logg.logSetup("Mali Hardware Counters\nUsing user provided Arm Mali GPU driver for Mali is %s at %s", coreDriverMap[id]-> getProductName(), userSpecifiedDevicePath.c_str());
-                return true;
-            } else {
-                logg.logError("Device already created for '%s' %d", userSpecifiedDevicePath.c_str(), gpuId);
-                return false;
-            }
-        }
-    }
-
-    std::map<unsigned int, std::unique_ptr<MaliDevice>> enumerateAllMaliHwCntrDrivers(
-            std::vector<std::string> userSpecifiedDeviceTypes, std::vector<std::string> userSpecifiedDevicePaths)
+    std::map<unsigned int, std::unique_ptr<MaliDevice>> enumerateAllMaliHwCntrDrivers()
     {
-        std::map<unsigned int , std::unique_ptr<MaliDevice>>  coreDriverMap;
-        // scan first as scan always overrides user settings
-        enumerateMaliHwCntrDriversInDir(lib::FsEntry::create("/sys"), coreDriverMap);
-        if (!coreDriverMap.empty()) {
-            if (!userSpecifiedDeviceTypes.empty()) {
-                logg.logError("Ignoring user provided Mali device type");
+        static constexpr unsigned int MAX_DEV_MALI_TOO_SCAN_FOR = 16;
+
+        std::map<unsigned int, std::unique_ptr<IMaliDeviceApi>>  detectedDevices;
+        std::map<unsigned int, std::string> gpuClockPaths;
+        std::map<unsigned int , std::unique_ptr<MaliDevice>> coreDriverMap;
+
+        // first scan for '/dev/mali#' files
+        for (unsigned int i = 0; i < MAX_DEV_MALI_TOO_SCAN_FOR; ++i) {
+            // construct the path
+            char pathBuffer[16];
+            snprintf(pathBuffer, sizeof(pathBuffer), "/dev/mali%u", i);
+            // attempt to open device
+            std::unique_ptr<IMaliDeviceApi> device = IMaliDeviceApi::probe(pathBuffer);
+            if (device) {
+                detectedDevices[i] = std::move(device);
             }
-            return coreDriverMap;
         }
-        // try user provided value, which adds only one entry to map as it has key as gpuid derived from userSpecifiedDeviceType
-        if (!userSpecifiedDeviceTypes.empty()) {
-            // validate path first
-            if (userSpecifiedDevicePaths.empty()) {
-                //default paths will be used for each specified type.
-                for (unsigned int i = 0; i < userSpecifiedDeviceTypes.size(); ++i) {
-                    //construct the path
-                    std::ostringstream stream;
-                    stream << "/dev/mali" << i;
-                    std::string path = stream.str();
-                    //add counter
-                    addMaliCounterDriver(path, userSpecifiedDeviceTypes[i], coreDriverMap);
-                }
-            }
-            else {
-                //iterate through the number of user specified paths.
-                for (unsigned int i = 0; i < userSpecifiedDevicePaths.size(); ++i) {
-                    //if only one type is specified then all paths of of this type.
-                    if (userSpecifiedDeviceTypes.size() == 1) {
-                        addMaliCounterDriver(userSpecifiedDevicePaths[i], userSpecifiedDeviceTypes[0],
-                                             coreDriverMap);
-                    }
-                    else if (i < userSpecifiedDeviceTypes.size()) {
-                        //This must mean that each type has a corresponding path.
-                        addMaliCounterDriver(userSpecifiedDevicePaths[i], userSpecifiedDeviceTypes[i],
-                                             coreDriverMap);
-                    }
+
+        if (!detectedDevices.empty()) {
+            // now scan /sys to find the 'clock' metadata files from which we read gpu frequency
+            enumerateMaliGpuClockPaths(lib::FsEntry::create("/sys"), gpuClockPaths);
+
+            // populate result
+            for (auto & detectedDevice : detectedDevices) {
+                const unsigned int id = detectedDevice.first;
+
+                std::unique_ptr<MaliDevice> device = MaliDevice::create(std::move(detectedDevice.second),
+                                                                        std::move(gpuClockPaths[id]));
+
+                if (device) {
+                    coreDriverMap[id] = std::move(device);
                 }
             }
         }
+
         return coreDriverMap;
     }
 }

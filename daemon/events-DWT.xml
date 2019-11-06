@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2017, 2019 by Arm Limited. All rights reserved. -->
+
   <counter_set name="DWT_cnt" count="6"/>
   <category name="DWT profiling counters" counter_set="DWT_cnt" per_cpu="yes">
     <!--

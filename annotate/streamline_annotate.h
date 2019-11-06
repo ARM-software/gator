@@ -187,7 +187,8 @@ extern "C" {
 enum gator_annotate_counter_class {
   ANNOTATE_DELTA = 1,
   ANNOTATE_ABSOLUTE,
-  ANNOTATE_ACTIVITY
+  ANNOTATE_ACTIVITY,
+  ANNOTATE_INCIDENT
 };
 
 enum gator_annotate_display {

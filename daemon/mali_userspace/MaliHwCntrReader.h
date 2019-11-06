@@ -10,6 +10,7 @@
 #include "ClassBoilerPlate.h"
 #include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/IMaliHwCntrReader.h"
+#include "lib/AutoClosingFd.h"
 
 namespace mali_userspace
 {
@@ -21,43 +22,11 @@ namespace mali_userspace
     {
     public:
 
-
-        /**
-         * Probe the number of MMU blocks on V5+ device
-         *
-         * @param device
-         * @return The number of MMU blocks
-         */
-        static unsigned probeMMUCount(const MaliDevice * device);
-
-        /** Destructor */
-        ~MaliHwCntrReader();
-
-        /**
-         * @return The device object
-         */
-        inline const MaliDevice & getDevice() const
-        {
-            return device;
-        }
-
-        /**
-         * @return True if the reader initialized successfully and is able to provide counter information
-         */
-        inline bool isInitialized() const
-        {
-            return initialized;
-        }
-
-        inline HardwareVersion getHardwareVersion() const
-        {
-            return hardwareVersion;
-        }
-
-        inline unsigned getMmuL2BlockCount() const
-        {
-            return mmuL2BlockCount;
-        }
+        virtual ~MaliHwCntrReader() = default;
+        virtual const MaliDevice & getDevice() const override;
+        virtual HardwareVersion getHardwareVersion() const override;
+        virtual SampleBuffer waitForBuffer(int timeout) override;
+        virtual bool startPeriodicSampling(uint32_t interval) override;
 
         /**
          * Get the size of hardware counters sample buffer.
@@ -81,8 +50,6 @@ namespace mali_userspace
          */
         bool triggerCounterRead();
 
-        bool startPeriodicSampling(uint32_t interval);
-
         /**
          * Initiate dumping of hardware counters, pre and post job.
          *
@@ -97,7 +64,6 @@ namespace mali_userspace
          */
         bool configureJobBasedSampled(bool preJob, bool postJob);
 
-        SampleBuffer waitForBuffer(int timeout);
 
         /**
          * Interrupt a call to {@link #waitForBuffer(SampleBuffer &, int)} from another thread
@@ -113,57 +79,43 @@ namespace mali_userspace
 
     private:
 
+        using MmappedBuffer = std::unique_ptr<uint8_t[], std::function<void(uint8_t*)>>;
+
         /** Mali device object */
         const MaliDevice& device;
-        /** Device file descriptor */
-        int devFd;
         /** File descriptor used to access vinstr client in kernel. */
-        int hwcntReaderFd;
+        lib::AutoClosingFd hwcntReaderFd;
+        /** Pipe to allow one thread to signal to poll to wake. Used to stop read. */
+        lib::AutoClosingFd selfPipe[2];
         /** Sample capture memory */
-        uint8_t * sampleMemory;
+        MmappedBuffer sampleMemory;
         /** Buffer count */
         uint32_t bufferCount;
         /** Size of a single sample buffer */
         uint32_t sampleBufferSize;
         /** Hardware version */
         uint32_t hardwareVersion;
-        /** Number of mmu/l2 regions on v5+ */
-        unsigned mmuL2BlockCount;
-        /** Pipe to allow one thread to signal to poll to wake. Used to stop read. */
-        int selfPipe[2];
-        /** Set true if the reader was fully initialized */
-        bool initialized;
-        /** Set true if failure relates to probing buffer count */
-        bool failedDueToBufferCount;
-
 
         /**
          * Constructor
-         *
-         * @param device_           The device to open
-         * @param mmul2count        The value returned by probeMMUCount
-         * @param bufferCount_      Number of buffers that this reader shall use. Must be a power of two.
-         * @param jmBitmask_        Counters selection bitmask (JM).
-         * @param shaderBitmask_    Counters selection bitmask (Shader).
-         * @param tilerBitmask_     Counters selection bitmask (Tiler).
-         * @param mmuL2Bitmask_     Counters selection bitmask (MMU_L2).
          */
-        MaliHwCntrReader(const MaliDevice & device_, unsigned mmul2count, uint32_t bufferCount_, CounterBitmask jmBitmask_,
-                               CounterBitmask shaderBitmask_, CounterBitmask tilerBitmask_, CounterBitmask mmuL2Bitmask_);
+        MaliHwCntrReader(const MaliDevice & device, lib::AutoClosingFd hwcntReaderFd,
+                         lib::AutoClosingFd selfPipe0, lib::AutoClosingFd selfPipe1,
+                         MmappedBuffer sampleMemory,
+                         uint32_t bufferCount, uint32_t sampleBufferSize, uint32_t hardwareVersion);
 
         /**
          * Create a Mali HW Cntr reader by probing multiple times the mmu block
          *
          * @param device
-         * @param mmul2count
-         * @param jmBitmask_
-         * @param shaderBitmask_
-         * @param tilerBitmask_
-         * @param mmuL2Bitmask_
+         * @param jmBitmask
+         * @param shaderBitmask
+         * @param tilerBitmask
+         * @param mmuL2Bitmask
          */
-        static std::unique_ptr<MaliHwCntrReader> create(const MaliDevice& device, unsigned mmul2count,
-                                                        CounterBitmask jmBitmask_, CounterBitmask shaderBitmask_,
-                                                        CounterBitmask tilerBitmask_, CounterBitmask mmuL2Bitmask_);
+        static std::unique_ptr<MaliHwCntrReader> create(const MaliDevice& device,
+                                                        CounterBitmask jmBitmask, CounterBitmask shaderBitmask,
+                                                        CounterBitmask tilerBitmask, CounterBitmask mmuL2Bitmask);
         /**
          * Release hardware counters sampling buffer.
          *

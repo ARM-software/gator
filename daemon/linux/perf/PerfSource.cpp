@@ -58,7 +58,9 @@ PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, se
           mCountersBuf(createPerfBufferConfig()),
           mCountersGroup(driver.getConfig(),
                          mCountersBuf.getDataBufferLength(), mCountersBuf.getAuxBufferLength(),
-                         gSessionData.mBacktraceDepth, gSessionData.mSampleRate, gSessionData.mIsEBS,
+                         // We disable periodic sampling if we have at least one EBS counter
+                         // it should probably be independent of EBS though
+                         gSessionData.mBacktraceDepth, gSessionData.mSampleRate, !gSessionData.mIsEBS,
                          cpuInfo.getClusters(), cpuInfo.getClusterIds(),
                          getTracepointId(SCHED_SWITCH)),
           mMonitor(),
@@ -83,7 +85,9 @@ PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, se
     }
 
     // was !enableOnCommandExec but this causes us to miss the exec comm record associated with the
-    this->enableOnCommandExec = (enableOnCommandExec && mConfig.has_attr_clockid_support && mConfig.has_attr_comm_exec);
+    // enable on exec doesn't work for cpu-wide events.
+    this->enableOnCommandExec = (enableOnCommandExec && !mConfig.is_system_wide && mConfig.has_attr_clockid_support
+            && mConfig.has_attr_comm_exec);
 }
 
 PerfSource::~PerfSource()
@@ -130,15 +134,15 @@ bool PerfSource::prepare()
 
     for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
         using Result = OnlineResult;
-        const Result result = mCountersGroup.onlineCPU(
+        const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
                 currTime, cpu, mAppTids, onlineEnabledState,
                 *mAttrsBuffer, //
                 [this](int fd) -> bool {return mMonitor.add(fd);},
                 [this](int fd, int cpu, bool hasAux) -> bool {return mCountersBuf.useFd(fd, cpu, hasAux);},
                 &lnx::getChildTids);
-        switch (result) {
+        switch (result.first) {
         case Result::FAILURE:
-            logg.logError("PerfGroups::prepareCPU on mCountersGroup failed");
+            logg.logError("\n%s", result.second.c_str());
             handleException();
             break;
         case Result::SUCCESS:
@@ -386,14 +390,14 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
     mAttrsBuffer->onlineCPU(currTime, cpu);
 
     bool ret;
-    const OnlineResult result = mCountersGroup.onlineCPU(
+    const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
             currTime, cpu, mAppTids, OnlineEnabledState::ENABLE_NOW,
             *mAttrsBuffer, //
             [this](int fd) -> bool {return mMonitor.add(fd);},
             [this](int fd, int cpu, bool hasAux) -> bool {return mCountersBuf.useFd(fd, cpu, hasAux);},
             &lnx::getChildTids);
 
-    switch (result) {
+    switch (result.first) {
     case OnlineResult::SUCCESS:
         mAttrsBuffer->perfCounterHeader(currTime);
         mDriver.read(*mAttrsBuffer, cpu);
@@ -442,7 +446,13 @@ bool PerfSource::isDone()
             return false;
         }
     }
-    return mAttrsBuffer->isDone() && mIsDone && mCountersBuf.isEmpty();
+    return mAttrsBuffer->isDone() && mIsDone
+            // This is broken because isDone should only return false if
+            // there is at least one guaranteed sem_post during or after the call.
+            // If perf continues to fill the buffer after mCountersGroup.stop() is called
+            // mCountersBuf.isEmpty() will return false after the last sem_post in PerfSource::run.
+            // The work around is a timed wait in Child::senderThreadEntryPoint
+            && mCountersBuf.isEmpty();
 }
 
 void PerfSource::write(ISender *sender)

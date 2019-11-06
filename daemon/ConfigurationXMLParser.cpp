@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <memory>
 
+static const char TAG_CONFIGURATIONS[] = "configurations";
 static const char TAG_CONFIGURATION[] = "configuration";
 static const char TAG_SPE[] = "spe";
 
@@ -176,15 +177,16 @@ int ConfigurationXMLParser::parseConfigurationContent(const char* config_xml_con
     std::unique_ptr<mxml_node_t, decltype(mxmlDelete)*> tree { mxmlLoadString(nullptr, config_xml_content,
                                                                               MXML_NO_CALLBACK),
                                                                &mxmlDelete };
-
     mxml_node_t *node = mxmlGetFirstChild(tree.get());
     if (node) {
         while (node && mxmlGetType(node) != MXML_ELEMENT)
-            node = mxmlWalkNext(node, tree.get(), MXML_NO_DESCEND);
+            node = mxmlFindElement(node, tree.get(), TAG_CONFIGURATIONS, ATTR_REVISION,
+                                   NULL, MXML_NO_DESCEND);
         int revision = configurationsTag(node);
         if (revision != 0) {
             return revision;
         }
+
         node = mxmlGetFirstChild(node);
         while (node) {
             if (mxmlGetType(node) != MXML_ELEMENT) {

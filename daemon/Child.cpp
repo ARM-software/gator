@@ -40,6 +40,7 @@
 #include "xml/EventsXML.h"
 #include "lib/WaitForProcessPoller.h"
 #include "mali_userspace/MaliHwCntrSource.h"
+#include "lib/FsUtils.h"
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
 
@@ -422,7 +423,7 @@ void Child::run()
     if (gSessionData.mLocalCapture) {
         auto & maliCntrDriver = drivers.getMaliHwCntrs();
         captured_xml::write(gSessionData.mAPCDir, capturedSpes, primarySourceProvider, maliCntrDriver.getDeviceGpuIds());
-        counters_xml::write(gSessionData.mAPCDir, drivers.getAllConst(), primarySourceProvider.getCpuInfo());
+        counters_xml::write(gSessionData.mAPCDir, primarySourceProvider.supportsMultiEbs(), drivers.getAllConst(), primarySourceProvider.getCpuInfo());
     }
 
     logg.logMessage("Profiling ended.");
@@ -461,7 +462,14 @@ void Child::endSession()
     // because main sends another signal after 1 second.
     // We use a separate thread here rather than ::alarm because other uses
     // of sleep interfere with SIGALARM
-    std::thread { []() {::sleep(5); Child::signalHandler(SIGALRM);} }.detach();
+    std::thread { []() {
+        // rename thread
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("gatord-alarm"), 0, 0, 0);
+        // sleep
+        ::sleep(5);
+        // terminate
+        Child::signalHandler(SIGALRM);
+    }}.detach();
 
     terminateCommand();
 
@@ -580,7 +588,22 @@ void Child::senderThreadEntryPoint()
 
     while ((!externalSource->isDone()) || ((maliHwSource != NULL) && (!maliHwSource->isDone()))
             || ((userSpaceSource != NULL) && (!userSpaceSource->isDone())) || (!primarySource->isDone())) {
-        sem_wait(&senderSem);
+
+        // wait on semaphore with timeout so as to avoid hanging forever in case that sem_post is missed
+        timespec timeout;
+        if (clock_gettime(CLOCK_REALTIME, &timeout) != 0) {
+            logg.logError("clock_gettime failed: %d, (%s)", errno, strerror(errno));
+            handleException();
+        }
+        timeout.tv_sec += 1; // one second in th future
+        if (sem_timedwait(&senderSem, &timeout) != 0) {
+            if (errno == ETIMEDOUT) {
+                logg.logMessage("Timeout waiting for sender thread");
+            }
+            else {
+                logg.logError("wait failed: %d, (%s)", errno, strerror(errno));
+            }
+        }
 
         externalSource->write(sender.get());
         if (maliHwSource != NULL) {
@@ -614,15 +637,19 @@ void Child::senderThreadEntryPoint()
 
 void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & waiter)
 {
+    // rename thread
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("gatord-pidwatcher"), 0, 0, 0);
+
     while (!pids.empty()) {
         if (!waiter.wait_for(std::chrono::seconds(1))) {
             logg.logMessage("Exit watch pids thread by request");
             return;
         }
 
+        const auto &alivePids = lib::getNumericalDirectoryEntries<int>("/proc");
         auto it = pids.begin();
         while (it != pids.end()) {
-            if (kill(*it, 0) < 0) {
+            if (alivePids.count(*it) == 0) {
                 logg.logMessage("pid %d exited", *it);
                 it = pids.erase(it);
             }

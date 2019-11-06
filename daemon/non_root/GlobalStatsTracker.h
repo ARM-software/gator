@@ -29,8 +29,7 @@ namespace non_root
         {
         public:
 
-            PerCoreStatsTracker();CLASS_DEFAULT_COPY_MOVE(PerCoreStatsTracker)
-            ;
+            PerCoreStatsTracker();
 
             void sendStats(unsigned long long timestampNS, GlobalStateChangeHandler & handler, unsigned long cpuID);
             void updateFromProcStatFileRecordCpuTime(const lnx::ProcStatFileRecord::CpuTime & record);
@@ -58,7 +57,6 @@ namespace non_root
         static constexpr const unsigned long LOADAVG_MULTIPLIER = 100;
 
         GlobalStatsTracker(GlobalStateChangeHandler & handler);
-        CLASS_DEFAULT_COPY_MOVE(GlobalStatsTracker);
 
         void sendStats(unsigned long long timestampNS);
         void updateFromProcLoadAvgFileRecord(const lnx::ProcLoadAvgFileRecord & record);

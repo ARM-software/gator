@@ -44,8 +44,6 @@ public:
     /** Constructor, for SPE events that have a core specific type */
     PerfEventGroupIdentifier(const std::map<int, int> & cpuNumberToType);
 
-    CLASS_DEFAULT_COPY_MOVE(PerfEventGroupIdentifier);
-
     /** Equality operator, are they the same group? */
     inline bool operator == (const PerfEventGroupIdentifier & that) const
     {

@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
   <counter_set name="CCI_400_cnt" count="4"/>
   <category name="CCI-400" counter_set="CCI_400_cnt" per_cpu="no">
     <event counter="CCI_400_ccnt" event="0xff" title="CCI-400 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>

@@ -99,6 +99,13 @@ void PerCoreIdentificationThread::run() noexcept
     int64_t midr_el1 = 0;
     std::set<int> core_siblings;
 
+    // rename thread
+    {
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "gatord-cid-%d", cpu);
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(buffer), 0, 0, 0);
+    }
+
     if (!ignoreOffline) {
         // attempt to read the online state of the core and then set it online
         coreOnliner.set(CoreOnliner(cpu));

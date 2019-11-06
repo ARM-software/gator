@@ -93,12 +93,15 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
 
         if (buf == MAP_FAILED) {
             logg.logMessage("mmap failed for fd %i (errno=%d, %s, mmapLength=%zu, offset=%zu)", fd, errno, strerror(errno), length, offset);
-            if ((errno == EPERM) && (geteuid() != 0)) {
-                logg.logError("Could not mmap perf buffer on cpu %d, EPERM returned.\n"
+            if ((errno == ENOMEM) || ((errno == EPERM) && (geteuid() != 0))) {
+                logg.logError("Could not mmap perf buffer on cpu %d, '%s' (errno: %d) returned.\n"
                         "This may be caused by too small limit in /proc/sys/kernel/perf_event_mlock_kb\n"
                         "Try again with a smaller value of --mmap-pages\n"
                         "Usually a value of ((perf_event_mlock_kb * 1024 / page_size) - 1) or lower will work.\n"
-                        "The current value effective value for --mmap-pages is %zu", cpu, mConfig.dataBufferSize / mConfig.pageSize);
+                        "The current value effective value for --mmap-pages is %zu",
+                        cpu,
+                        strerror(errno), errno,
+                        mConfig.dataBufferSize / mConfig.pageSize);
             }
         }
         return buf;

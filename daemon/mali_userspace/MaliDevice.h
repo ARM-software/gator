@@ -10,12 +10,15 @@
 #include <memory>
 #include "IBuffer.h"
 #include "ClassBoilerPlate.h"
+#include "lib/AutoClosingFd.h"
+#include "mali_userspace/MaliDeviceApi.h"
 
 namespace mali_userspace
 {
     /* forward declarations */
     struct MaliProductVersion;
     class MaliDevice;
+    enum class MaliCounterBlockName : uint32_t;
 
     /**
      * Interface implemented by counter value receiver; the object that is passed data by MaliDevice::dumpAllCounters
@@ -56,7 +59,8 @@ namespace mali_userspace
             /** An address of an enabled counter */
             struct Address
             {
-                uint32_t blockIndex;
+                MaliCounterBlockName nameBlock;
+                uint32_t repeatCount;
                 uint32_t groupIndex;
                 uint32_t wordIndex;
             };
@@ -98,11 +102,12 @@ namespace mali_userspace
             /**
              * Mark counter at particular address as enabled
              *
-             * @param blockIndex
+             * @param nameBlockIndex
+             * @param repeatCount
              * @param groupIndex
              * @param wordIndex
              */
-            void enable(uint32_t blockIndex, uint32_t groupIndex, uint32_t wordIndex);
+            void enable(MaliCounterBlockName nameBlock, uint32_t repeatCount, uint32_t groupIndex, uint32_t wordIndex);
 
             CLASS_DELETE_COPY(MaliDeviceCounterList);
     };
@@ -126,48 +131,36 @@ namespace mali_userspace
         };
 
         /**
-         * Using the provided product name string, attempt to map it to some recognized product GPU ID.
-         * The name provided must match the pattern /(Mali[ -])?([GT]\d+)/
-         * Matching is case insensitive.
-         *
-         * @param productName The name to look up
-         * @return The matched product GPU ID, or 0 if not found
-         */
-        static uint32_t findProductByName(const char * productName);
-
-        /**
          * Factory method, returns a pointer to a heap allocated object which the caller must take ownership of.
          *
-         * @param gpuId
-         * @param devicePath
-         * @param clockPath (Which may be null)
+         * @param deviceApi
+         * @param clockPath (Which may be empty meaning no clock)
          * @return The MaliDevice object, or NULL on failure
          */
-        static std::unique_ptr<MaliDevice>  create(uint32_t gpuId, std::string devicePath, std::string clockPath);
+        static std::unique_ptr<MaliDevice> create(std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath);
 
-        /**
-         * @return The path to the device file
-         */
-        inline std::string getDevicePath() const
-        {
-            return mDevicePath;
-        }
         /**
          * @return The path to the clock file
          */
         inline std::string  getClockPath() const
         {
-            return mClockPath;
+            return clockPath;
         }
+
         /**
          * @return the gpuid of the device
          */
-        uint32_t getGPUId() const;
+        uint32_t getGpuId() const;
 
         /**
-         * @return The number of counter blocks
+         * @return The number of shader blocks
          */
-        uint32_t getBlockCount() const;
+        uint32_t getShaderBlockCount() const;
+
+        /**
+         * @return The number of l2/mmu blocks
+         */
+        uint32_t getL2MmuBlockCount() const;
 
         /**
          * @return The number of counter name blocks
@@ -176,6 +169,16 @@ namespace mali_userspace
         {
             return 4; // currently this is always 4
         }
+
+        /**
+         * @return The family name of the device
+         */
+        const char* getProductName() const;
+
+        /**
+         * @return The family name of the device
+         */
+        const char* getSupportedDeviceFamilyName() const;
 
         /**
          * Get the name of the counter for the given block and index
@@ -198,45 +201,45 @@ namespace mali_userspace
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
          *
          * @param hardwareVersion
-         * @param mmul2BlockCount
          * @param counterList
          * @param buffer
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData , IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters(uint32_t hardwareVersion, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData , IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
-         * Count all the blocks with the mask field set to non-zero value
+         * Create an HWCNT reader handle (which is a file-descriptor, for use by MaliHwCntrReader)
          *
-         * @param buffer
-         * @param bufferLength
-         * @param callback
+         * @param bufferCount
+         * @param jmBitmask
+         * @param shaderBitmask
+         * @param tilerBitmask
+         * @param mmuL2Bitmask
+         * @param failedDueToBufferCount [OUT] indicates the the creation likely failed due to buffer
+         *          count being invalid
+         * @return The handle, or invalid handle if failed
          */
-        unsigned probeBlockMaskCount(const uint32_t * buffer, size_t bufferLength) const;
+        lib::AutoClosingFd createHwCntReaderFd(std::size_t bufferCount, std::uint32_t jmBitmask,
+                                               std::uint32_t shaderBitmask, std::uint32_t tilerBitmask,
+                                               std::uint32_t mmuL2Bitmask, bool & failedDueToBufferCount) const;
 
-        /**
-         * @return The family name of the device
-         */
-        const char* getProductName() const;
-
-        /**
-         * @return The family name of the device
-         */
-        const char* getSupportedDeviceFamilyName() const;
 
     private:
+
+        /** Init a block in the enable list */
+        static void initCounterList(uint32_t gpuId, IMaliDeviceCounterDumpCallback & callback, MaliDeviceCounterList & list, MaliCounterBlockName block, uint32_t repeatCount);
 
         /** Internal product version counter information */
         const MaliProductVersion & mProductVersion;
 
         /** The path to the /dev/mali device */
-        const std::string mDevicePath;
+        const std::unique_ptr<IMaliDeviceApi> deviceApi;
 
         /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
-        const std::string mClockPath;
+        const std::string clockPath;
 
-        MaliDevice(const MaliProductVersion & productVersion, std::string devicePath, std::string clockPath);
+        MaliDevice(const MaliProductVersion & productVersion, std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath);
 
         CLASS_DELETE_COPY_MOVE(MaliDevice);
 
@@ -253,14 +256,21 @@ namespace mali_userspace
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
          *
-         * @param mmul2BlockCount
          * @param counterList
          * @param buffer
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters_V56(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const;
     };
+
+    /**
+     * Map a product id to a product name string
+     *
+     * @param productId
+     * @return The product name string, or null if not recognized
+     */
+    const char * findMaliProductNameFromId(uint32_t productId);
 }
 
 #endif /* NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_ */

@@ -28,5 +28,5 @@ void sensors_scanner_exit(void);
 
 #define YY_NO_INPUT
 
-#endif
+#endif /* def LIB_SENSORS_SCANNER_H */
 

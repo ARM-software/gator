@@ -1,17 +1,12 @@
 /*
- * "$Id: mxml-private.c 451 2014-01-04 21:50:06Z msweet $"
+ * Private functions for Mini-XML, a small XML file parsing library.
  *
- * Private functions for Mini-XML, a small XML-like file parsing library.
+ * https://www.msweet.org/mxml
  *
- * Copyright 2003-2014 by Michael R Sweet.
+ * Copyright © 2003-2019 by Michael R Sweet.
  *
- * These coded instructions, statements, and computer programs are the
- * property of Michael R Sweet and are protected by Federal copyright
- * law.  Distribution and use rights are outlined in the file "COPYING"
- * which should have been included with this file.  If this file is
- * missing or damaged, see the license at:
- *
- *     http://www.msweet.org/projects.php/Mini-XML
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more
+ * information.
  */
 
 /*
@@ -53,13 +48,13 @@
  */
 
 void
-mxml_error(const char *format,		/* I - Printf-style format string */
-           ...)				/* I - Additional arguments as needed */
+mxml_error(const char *format,      /* I - Printf-style format string */
+           ...)             /* I - Additional arguments as needed */
 {
-  va_list	ap;			/* Pointer to arguments */
-  char		s[1024];		/* Message string */
+  va_list   ap;         /* Pointer to arguments */
+  char      s[1024];        /* Message string */
   _mxml_global_t *global = _mxml_global();
-					/* Global data */
+                    /* Global data */
 
 
  /*
@@ -94,8 +89,8 @@ mxml_error(const char *format,		/* I - Printf-style format string */
  * 'mxml_ignore_cb()' - Default callback for ignored values.
  */
 
-mxml_type_t				/* O - Node type */
-mxml_ignore_cb(mxml_node_t *node)	/* I - Current node */
+mxml_type_t             /* O - Node type */
+mxml_ignore_cb(mxml_node_t *node)   /* I - Current node */
 {
   (void)node;
 
@@ -107,8 +102,8 @@ mxml_ignore_cb(mxml_node_t *node)	/* I - Current node */
  * 'mxml_integer_cb()' - Default callback for integer values.
  */
 
-mxml_type_t				/* O - Node type */
-mxml_integer_cb(mxml_node_t *node)	/* I - Current node */
+mxml_type_t             /* O - Node type */
+mxml_integer_cb(mxml_node_t *node)  /* I - Current node */
 {
   (void)node;
 
@@ -120,8 +115,8 @@ mxml_integer_cb(mxml_node_t *node)	/* I - Current node */
  * 'mxml_opaque_cb()' - Default callback for opaque values.
  */
 
-mxml_type_t				/* O - Node type */
-mxml_opaque_cb(mxml_node_t *node)	/* I - Current node */
+mxml_type_t             /* O - Node type */
+mxml_opaque_cb(mxml_node_t *node)   /* I - Current node */
 {
   (void)node;
 
@@ -133,8 +128,8 @@ mxml_opaque_cb(mxml_node_t *node)	/* I - Current node */
  * 'mxml_real_cb()' - Default callback for real number values.
  */
 
-mxml_type_t				/* O - Node type */
-mxml_real_cb(mxml_node_t *node)		/* I - Current node */
+mxml_type_t             /* O - Node type */
+mxml_real_cb(mxml_node_t *node)     /* I - Current node */
 {
   (void)node;
 
@@ -142,14 +137,14 @@ mxml_real_cb(mxml_node_t *node)		/* I - Current node */
 }
 
 
-#ifdef HAVE_PTHREAD_H			/**** POSIX threading ****/
+#ifdef HAVE_PTHREAD_H           /**** POSIX threading ****/
 #  include <pthread.h>
 
-static pthread_key_t	_mxml_key = -1;	/* Thread local storage key */
-static pthread_once_t	_mxml_key_once = PTHREAD_ONCE_INIT;
-					/* One-time initialization object */
-static void		_mxml_init(void);
-static void		_mxml_destructor(void *g);
+static pthread_key_t    _mxml_key = -1; /* Thread local storage key */
+static pthread_once_t   _mxml_key_once = PTHREAD_ONCE_INIT;
+                    /* One-time initialization object */
+static void     _mxml_init(void);
+static void     _mxml_destructor(void *g);
 
 
 /*
@@ -157,7 +152,7 @@ static void		_mxml_destructor(void *g);
  */
 
 static void
-_mxml_destructor(void *g)		/* I - Global data */
+_mxml_destructor(void *g)       /* I - Global data */
 {
   free(g);
 }
@@ -170,7 +165,7 @@ _mxml_destructor(void *g)		/* I - Global data */
 static void
 _MXML_FINI(void)
 {
-  _mxml_global_t	*global;	/* Global data */
+  _mxml_global_t    *global;    /* Global data */
 
 
   if (_mxml_key != -1)
@@ -188,10 +183,10 @@ _MXML_FINI(void)
  * '_mxml_global()' - Get global data.
  */
 
-_mxml_global_t *			/* O - Global data */
+_mxml_global_t *            /* O - Global data */
 _mxml_global(void)
 {
-  _mxml_global_t	*global;	/* Global data */
+  _mxml_global_t    *global;    /* Global data */
 
 
   pthread_once(&_mxml_key_once, _mxml_init);
@@ -221,22 +216,22 @@ _mxml_init(void)
 }
 
 
-#elif defined(WIN32) && defined(MXML1_EXPORTS) /**** WIN32 threading ****/
+#elif defined(_WIN32) && defined(MXML1_EXPORTS) /**** WIN32 threading ****/
 #  include <windows.h>
 
-static DWORD _mxml_tls_index;		/* Index for global storage */
+static DWORD _mxml_tls_index;       /* Index for global storage */
 
 
 /*
  * 'DllMain()' - Main entry for library.
  */
 
-BOOL WINAPI				/* O - Success/failure */
-DllMain(HINSTANCE hinst,		/* I - DLL module handle */
-        DWORD     reason,		/* I - Reason */
-        LPVOID    reserved)		/* I - Unused */
+BOOL WINAPI             /* O - Success/failure */
+DllMain(HINSTANCE hinst,        /* I - DLL module handle */
+        DWORD     reason,       /* I - Reason */
+        LPVOID    reserved)     /* I - Unused */
 {
-  _mxml_global_t	*global;	/* Global data */
+  _mxml_global_t    *global;    /* Global data */
 
 
   (void)hinst;
@@ -244,17 +239,17 @@ DllMain(HINSTANCE hinst,		/* I - DLL module handle */
 
   switch (reason)
   {
-    case DLL_PROCESS_ATTACH :		/* Called on library initialization */
+    case DLL_PROCESS_ATTACH :       /* Called on library initialization */
         if ((_mxml_tls_index = TlsAlloc()) == TLS_OUT_OF_INDEXES)
           return (FALSE);
         break;
 
-    case DLL_THREAD_DETACH :		/* Called when a thread terminates */
+    case DLL_THREAD_DETACH :        /* Called when a thread terminates */
         if ((global = (_mxml_global_t *)TlsGetValue(_mxml_tls_index)) != NULL)
           free(global);
         break;
 
-    case DLL_PROCESS_DETACH :		/* Called when library is unloaded */
+    case DLL_PROCESS_DETACH :       /* Called when library is unloaded */
         if ((global = (_mxml_global_t *)TlsGetValue(_mxml_tls_index)) != NULL)
           free(global);
 
@@ -273,10 +268,10 @@ DllMain(HINSTANCE hinst,		/* I - DLL module handle */
  * '_mxml_global()' - Get global data.
  */
 
-_mxml_global_t *			/* O - Global data */
+_mxml_global_t *            /* O - Global data */
 _mxml_global(void)
 {
-  _mxml_global_t	*global;	/* Global data */
+  _mxml_global_t    *global;    /* Global data */
 
 
   if ((global = (_mxml_global_t *)TlsGetValue(_mxml_tls_index)) == NULL)
@@ -294,30 +289,25 @@ _mxml_global(void)
 }
 
 
-#else					/**** No threading ****/
+#else                   /**** No threading ****/
 /*
  * '_mxml_global()' - Get global data.
  */
 
-_mxml_global_t *			/* O - Global data */
+_mxml_global_t *            /* O - Global data */
 _mxml_global(void)
 {
-  static _mxml_global_t	global =	/* Global data */
+  static _mxml_global_t global =    /* Global data */
   {
-    NULL,				/* error_cb */
-    1,					/* num_entity_cbs */
-    { _mxml_entity_cb },		/* entity_cbs */
-    72,					/* wrap */
-    NULL,				/* custom_load_cb */
-    NULL				/* custom_save_cb */
+    NULL,               /* error_cb */
+    1,                  /* num_entity_cbs */
+    { _mxml_entity_cb },        /* entity_cbs */
+    72,                 /* wrap */
+    NULL,               /* custom_load_cb */
+    NULL                /* custom_save_cb */
   };
 
 
   return (&global);
 }
 #endif /* HAVE_PTHREAD_H */
-
-
-/*
- * End of "$Id: mxml-private.c 451 2014-01-04 21:50:06Z msweet $".
- */

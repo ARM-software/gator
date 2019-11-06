@@ -13,7 +13,7 @@
 #include <sstream>
 #include <algorithm>
 
-static const char OPTSTRING_SHORT[] = "ahvVS:d::p:s:c:e:E:P:m:N:u:r:t:f:x:o:w:C:A:i:Q:D:M:Z:X:R:";
+static const char OPTSTRING_SHORT[] = "ahvVS:d::p:s:c:e:E:P:m:N:u:r:t:f:x:o:w:C:A:i:Q:Z:X:R:";
 static const struct option OPTSTRING_LONG[] = { //
 { "call-stack-unwinding", /**/required_argument, NULL, 'u' }, //
 { "sample-rate", /***********/required_argument, NULL, 'r' }, //
@@ -38,8 +38,6 @@ static const struct option OPTSTRING_LONG[] = { //
 { "config-xml", /************/required_argument, NULL, 'c' }, //
 { "pid", /*******************/required_argument, NULL, 'i' }, //
 { "wait-process", /**********/required_argument, NULL, 'Q' }, //
-{ "mali-device", /***********/required_argument, NULL, 'D' }, //
-{ "mali-type", /*************/required_argument, NULL, 'M' }, //
 { "mmap-pages", /************/required_argument, NULL, 'Z' }, //
 { "spe", /*******************/required_argument, NULL, 'X' }, //
 { "print", /*****************/required_argument, NULL, 'R' }, //
@@ -71,8 +69,6 @@ ParserResult::ParserResult()
           mEventsXMLPath(),
           mEventsXMLAppend(),
           mWaitForCommand(),
-          mMaliDevices(),
-          mMaliTypes(),
           mBacktraceDepth(),
           mSampleRate(),
           mDuration(),
@@ -492,23 +488,13 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
         {
             std::stringstream stream { optarg };
             std::vector<int> pids = lib::parseCommaSeparatedNumbers<int>(stream);
-            if (stream.fail()) {
-                logg.logError("Invalid value for --pid (%s), comma separated list expected.", optarg);
+            if (stream.fail() || !stream.eof()) {
+                logg.logError("Invalid value for --pid (%s), comma separated and numeric list expected.", optarg);
                 result.mode = ExecutionMode::EXIT;
                 return;
             }
 
             result.mPids.insert(pids.begin(), pids.end());
-            break;
-        }
-        case 'M': // mali-type
-        {
-            split(std::string(optarg), PRINTABLE_SEPARATOR, result.mMaliTypes);
-            break;
-        }
-        case 'D': // mali-device
-        {
-            split(std::string(optarg), PRINTABLE_SEPARATOR, result.mMaliDevices);
             break;
         }
         case 'h':
@@ -535,7 +521,8 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
                     "                                        to append\n"
                     "  -P|--pmus-xml <pmu_xml>               Specify path and filename of pmu XML to\n"
                     "                                        append\n"
-                    "  -m|--module-path <module>             Specify path and filename of gator.ko\n"
+                    "  -m|--module-path <module>             (Deprecated) Specify path and filename\n"
+                    "                                        of gator.ko\n"
                     "  -v|--version                          Print version information\n"
                     "  -d|--debug                            Enable debug messages\n"
                     "  -A|--app <cmd> <args...>              Specify the command to execute once the\n"
@@ -570,24 +557,6 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
                     "                                        specified command to launch before\n"
                     "                                        starting capture. Attach to the\n"
                     "                                        specified process and profile it.\n"
-                    "  -M|--mali-type <types>                Specify a comma separated list defining\n"
-                    "                                        the Arm Mali GPU(s) present on the\n"
-                    "                                        system. Used when it is not possible to\n"
-                    "                                        auto-detect the GPU(s) (for example\n"
-                    "                                        because access to '/sys' is denied.\n"
-                    "                                        The value specified must be the product\n"
-                    "                                        name (e.g. Mali-T880, or G72), or the \n"
-                    "                                        16-bit hex GPU ID value. The number\n"
-                    "                                        of types specified may be one if all\n"
-                    "                                        devices are the same type, otherwise it\n"
-                    "                                        must be a list matching the order of \n"
-                    "                                        --mali-device.\n"
-                    "  -D|--mali-device <paths>              The path to the Mali GPU device node(s)\n"
-                    "                                        in the '/dev' filesystem. When not\n"
-                    "                                        supplied and not auto-detected, defaults\n"
-                    "                                        to '/dev/mali0,/dev/mali1', and so on\n"
-                    "                                        for the amount of GPUs present. Only\n"
-                    "                                        valid if --mali-type is also specified.\n"
                     "  -Z|--mmap-pages <n>                   The maximum number of pages to map per\n"
                     "                                        mmap'ed perf buffer is equal to <n+1>.\n"
                     "                                        Must be a power of 2.\n"
@@ -699,8 +668,10 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
     const bool haveProcess = !result.mCaptureCommand.empty() || !result.mPids.empty()
             || result.mWaitForCommand != nullptr;
 
-    if ((result.parameterSetFlag & USE_CMDLINE_ARG_STOP_GATOR) == 0) {
-        result.mStopGator = haveProcess;
+    // default to stopping on process exit unless user specified otherwise
+    if (haveProcess && ((result.parameterSetFlag & USE_CMDLINE_ARG_STOP_GATOR) == 0)) {
+        result.mStopGator = true;
+        result.parameterSetFlag |= USE_CMDLINE_ARG_STOP_GATOR; // must be set, otherwise session.xml will override during live mode (which leads to counter-intuitive behaviour)
     }
 
     if (!systemWideSet) {
@@ -756,20 +727,6 @@ void GatorCLIParser::parseCLIArguments(int argc, char* argv[], const char* versi
 
     if (result.mDuration < 0) {
         logg.logError("Capture duration cannot be a negative value : %d ", result.mDuration);
-        result.mode = ExecutionMode::EXIT;
-        return;
-    }
-
-    if (result.mMaliTypes.size() == 0 && result.mMaliDevices.size() > 0) {
-        logg.logError("--mali-device must have a corresponding --mali-type.");
-        result.mode = ExecutionMode::EXIT;
-        return;
-    }
-
-    if (result.mMaliTypes.size() > 1 && result.mMaliDevices.size() > 0
-            && result.mMaliDevices.size() != result.mMaliTypes.size())
-    {
-        logg.logError("The number of --mali-device paths should equal the amount of --mali-type, given the amount of --mali-type is greater than one.");
         result.mode = ExecutionMode::EXIT;
         return;
     }

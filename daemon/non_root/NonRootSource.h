@@ -41,7 +41,6 @@ namespace non_root
         std::atomic<bool> interrupted;
         lib::TimestampSource timestampSource;
         NonRootDriver & driver;
-        sem_t & senderSem;
         sem_t & startProfile;
         bool done;
         const ICpuInfo & cpuInfo;

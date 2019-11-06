@@ -122,7 +122,7 @@ namespace non_root
             bool mPerCPU;
             bool mProc;
 
-            CLASS_DEFAULT_COPY_MOVE (NonRootDriverCounter)
+            CLASS_DELETE_COPY_MOVE (NonRootDriverCounter)
             ;
         };
     }
@@ -144,7 +144,7 @@ namespace non_root
         const bool canAccessProcSelfStat = (access("/proc/self/stat", R_OK) == 0);
         const bool canAccessProcSelfStatm = (access("/proc/self/statm", R_OK) == 0);
 
-        // non-root counters are fixed so are not listed in events.xml; instead enumerate them here
+        // proc counters are fixed so are not listed in events.xml; instead enumerate them here
         if (canAccessProcLoadAvg) {
             setCounters(new NonRootDriverCounter(getCounters(), NonRootCounter::GLOBAL_ABS_LOADAVG_1_MINUTE, "nonroot_global_abs_loadavg_1_minute", //
                                                  "Average Over 1 Minute", //
@@ -181,7 +181,7 @@ namespace non_root
                                                  "average", "absolute", nullptr, "overlay", 1.0, false, false));
         }
         else {
-            logg.logSetup("Non-root support\nCannot access /proc/loadavg");
+            logg.logSetup("/proc support\nCannot access /proc/loadavg");
         }
 
         if (canAccessProcStat) {
@@ -281,7 +281,7 @@ namespace non_root
                                                  "accumulate", "delta", "s", "stacked", ticks_mult, true, false));
         }
         else {
-            logg.logSetup("Non-root support\nCannot access /proc/stat");
+            logg.logSetup("/proc support\nCannot access /proc/stat");
         }
 
         static const int ANDROID_N_API_LEVEL = 24;
@@ -310,7 +310,7 @@ namespace non_root
                                                      "maximum", "absolute", "B", "overlay", 1.0, false, true));
             }
             else {
-                logg.logSetup("Non-root support\nCannot access /proc/self/statm");
+                logg.logSetup("/proc support\nCannot access /proc/self/statm");
             }
 
             if (canAccessProcSelfStat) {
@@ -381,18 +381,18 @@ namespace non_root
                 }
             }
             else {
-                logg.logSetup("Non-root support\nCannot access /proc/self/stat");
+                logg.logSetup("/proc support\nCannot access /proc/self/stat");
             }
         }
         else {
-            logg.logSetup("Non-root limited on Android 7+\nDisabled per-process non-root counters on Android 7+ due to access restrictions on /proc (Android API level detected as %d)", gSessionData.mAndroidApiLevel);
+            logg.logSetup("/proc limited on Android 7+\nDisabled per-process proc counters on Android 7+ due to access restrictions on /proc (Android API level detected as %d)", gSessionData.mAndroidApiLevel);
         }
     }
 
     void NonRootDriver::writeEvents(mxml_node_t * root) const
     {
         root = mxmlNewElement(root, "category");
-        mxmlElementSetAttr(root, "name", "Non-Root");
+        mxmlElementSetAttr(root, "name", "/proc");
 
         for (NonRootDriverCounter *counter = static_cast<NonRootDriverCounter *>(getCounters()); counter != nullptr;
                 counter = static_cast<NonRootDriverCounter *>(counter->getNext())) {

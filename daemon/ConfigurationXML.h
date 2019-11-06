@@ -26,7 +26,7 @@ namespace configuration_xml
 {
     std::unique_ptr<char, void (*)(void*)> getDefaultConfigurationXml(lib::Span<const GatorCpu> clusters);
 
-    void getPath(char* path);
+    void getPath(char * path, size_t n);
     void remove();
     /**
      *

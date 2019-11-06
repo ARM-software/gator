@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
 <counter_set count="6" name="ARMv7_Cortex_A9_cnt"/>
 <category counter_set="ARMv7_Cortex_A9_cnt" name="Cortex-A9" per_cpu="yes" supports_event_based_sampling="yes">
     <event counter="ARMv7_Cortex_A9_ccnt" event="0xff" title="Cycles" name="CPU Cycles" description="The counter increments on every cycle." display="hertz" units="Hz" average_selection="yes" average_cores="yes"/>

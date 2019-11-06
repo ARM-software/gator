@@ -1,3 +1,5 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
   <category name="Linux">
     <event counter="${cluster}_softirq" title="Interrupts" name="SoftIRQ" per_cpu="yes" description="Linux SoftIRQ taken"/>
     <event counter="${cluster}_irq" title="Interrupts" name="IRQ" per_cpu="yes" description="Linux IRQ taken"/>

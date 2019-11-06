@@ -240,7 +240,7 @@ namespace cpu_utils
                 perCoreThreads.emplace_back(
                         new PerCoreIdentificationThread(
                                 ignoreOffline, cpu,
-                                [&] (unsigned c, unsigned core_id, unsigned physical_package_id, std::set<int> core_siblings, std::uint64_t midr_el1) -> void
+                                [&] (unsigned c, unsigned /*core_id*/, unsigned physical_package_id, std::set<int> core_siblings, std::uint64_t midr_el1) -> void
                                 {
                                     std::lock_guard<std::mutex> guard {mutex};
 

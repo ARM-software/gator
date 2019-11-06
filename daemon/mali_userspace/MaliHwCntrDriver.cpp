@@ -14,95 +14,65 @@
 
 namespace mali_userspace
 {
-    MaliHwCntrDriver::MaliHwCntrDriver(const std::vector<std::string> userSpecifiedDeviceTypes,
-                                       const std::vector<std::string> userSpecifiedDevicePaths)
+    MaliHwCntrDriver::MaliHwCntrDriver()
             : SimpleDriver("MaliHwCntrDriver"),
-              mUserSpecifiedDeviceTypes(userSpecifiedDeviceTypes),
-              mUserSpecifiedDevicePaths(userSpecifiedDevicePaths),
-              mReaders(),
               mEnabledCounterKeysByGpuId(),
               mPolledDrivers(),
-              mDevices()
+              mDevices(mali_userspace::enumerateAllMaliHwCntrDrivers())
     {
-        query();
+         if (mDevices.empty()) {
+             logg.logMessage("There are no mali devices to create readers");
+             return;
+         }
+
+         //Add counters done only once.
+         std::vector<uint32_t> addedGpuIds;
+         for (auto const& device : mDevices) {
+             const MaliDevice& t_device = *device.second;
+             const uint32_t gpuId = t_device.getGpuId();
+
+             if (std::find(addedGpuIds.begin(), addedGpuIds.end(), gpuId) == addedGpuIds.end()) { // finds if counter already created for gpu
+                     // add all the device counters
+                 const uint32_t numNameBlocks = t_device.getNameBlockCount();
+
+                 // allocate the enable map
+                 const uint32_t enabledMapLength = (numNameBlocks * MaliDevice::NUM_COUNTERS_PER_BLOCK);
+                 std::unique_ptr<int[]> mEnabledCounterKeys(new int[enabledMapLength] { });
+
+                 for (uint32_t nameBlockIndex = 0; nameBlockIndex < numNameBlocks; ++nameBlockIndex) {
+                     for (uint32_t counterIndex = 0; counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK;
+                             ++counterIndex) {
+                         // get the next counter name
+                         const char * counterName = t_device.getCounterName(nameBlockIndex, counterIndex);
+                         if (counterName == NULL) {
+                             continue;
+                         }
+                         // create a counter object for it
+                         char *name;
+                         if (asprintf(&name, "ARM_Mali-%s", counterName) <= 0) {
+                             logg.logError("asprintf failed");
+                             handleException();
+                         }
+
+                         logg.logMessage("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
+                         setCounters(new MaliHwCntr(getCounters(), name, nameBlockIndex, counterIndex, gpuId));
+                         ::free(name);
+                     }
+                 }
+                 mEnabledCounterKeysByGpuId[gpuId] = std::move(mEnabledCounterKeys);
+                 addedGpuIds.push_back(gpuId);
+             }
+         }
 
         // add GPU clock driver
-        if (!mReaders.empty()){
-            for (auto const& mDevice : mDevices) {
-                const MaliDevice & device = *mDevice.second;
-                if (!device.getClockPath().empty()) {
-                    mPolledDrivers[mDevice.first] = std::unique_ptr<PolledDriver> (new MaliGPUClockPolledDriver( device.getClockPath()));
-                } else {
-                    logg.logSetup("GPU frequency counters not available for gpu id 0x%04x.", mDevice.first);
-                }
+        for (auto const& mDevice : mDevices) {
+            const MaliDevice & device = *mDevice.second;
+            if (!device.getClockPath().empty()) {
+                mPolledDrivers[mDevice.first] = std::unique_ptr<PolledDriver> (new MaliGPUClockPolledDriver(device.getClockPath()));
+            } else {
+                logg.logSetup("Mali GPU counters\nGPU frequency counters not available for GPU # %d.", mDevice.first);
             }
         }
-    }
-    void MaliHwCntrDriver::query()
-    {
-       if (mDevices.empty()) {
-            mDevices = mali_userspace::enumerateAllMaliHwCntrDrivers(mUserSpecifiedDeviceTypes,
-                                                                     mUserSpecifiedDevicePaths);
-            if (mDevices.empty()) {
-                logg.logMessage("There are no mali devices to create readers");
-                return;
-            }
-            //Add counters done only once.
-            std::vector<uint32_t> addedGpuIds;
-            for (auto const& device : mDevices) {
-                const MaliDevice& t_device = *device.second;
-                const uint32_t gpuId = t_device.getGPUId();
-
-                if (std::find(addedGpuIds.begin(), addedGpuIds.end(), gpuId) == addedGpuIds.end()) { // finds if counter already created for gpu
-                        // add all the device counters
-                    const uint32_t numNameBlocks = t_device.getNameBlockCount();
-
-                    // allocate the enable map
-                    const uint32_t enabledMapLength = (numNameBlocks * MaliDevice::NUM_COUNTERS_PER_BLOCK);
-                    std::unique_ptr<int[]> mEnabledCounterKeys(new int[enabledMapLength] { });
-
-                    for (uint32_t nameBlockIndex = 0; nameBlockIndex < numNameBlocks; ++nameBlockIndex) {
-                        for (uint32_t counterIndex = 0; counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK;
-                                ++counterIndex) {
-                            // get the next counter name
-                            const char * counterName = t_device.getCounterName(nameBlockIndex, counterIndex);
-                            if (counterName == NULL) {
-                                continue;
-                            }
-                            // create a counter object for it
-                            char *name;
-                            if (asprintf(&name, "ARM_Mali-%s", counterName) <= 0) {
-                                logg.logError("asprintf failed");
-                                handleException();
-                            }
-
-                            logg.logMessage("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
-                            setCounters(new MaliHwCntr(getCounters(), name, nameBlockIndex, counterIndex, gpuId));
-                            ::free(name);
-                        }
-                    }
-                    mEnabledCounterKeysByGpuId[gpuId] = std::move(mEnabledCounterKeys);
-                    addedGpuIds.push_back(gpuId);
-                }
-            }
-       }
-       // For every call to query recreate reader - because as follows
-       // The reader is recreated as the ioctl interface is configured during the constructor,
-       // if we need to configure different counter selection then constructor
-       // must be run again on new Reader object
-       //Not relying on the key as to map between device and reader
-       mReaders.clear();
-       for (auto & device : mDevices) {
-           std::unique_ptr<MaliHwCntrReader> mReader = MaliHwCntrReader::createReader(*device.second);
-           if (!mReader ) {
-               logg.logError("Create reader failed for device %s for GPUId 0x%04X ", device.second->getDevicePath().c_str(), device.second->getGPUId());
-               continue;
-           }
-           if(!mReader->isInitialized()) {
-               logg.logMessage("Reader created, but initialized failed. ");
-           }
-           mReaders[device.first] = std::move(mReader);
-       }
     }
 
     bool MaliHwCntrDriver::start()
@@ -121,9 +91,8 @@ namespace mali_userspace
 
     void MaliHwCntrDriver::resetCounters()
     {
-        query();
-        for (auto const& reader : mReaders) {
-            const uint32_t numNameBlocks = reader.second->getDevice().getNameBlockCount();
+        for (auto const& device : mDevices) {
+            const uint32_t numNameBlocks = device.second->getNameBlockCount();
             const uint32_t enabledMapLength = (numNameBlocks * MaliDevice::NUM_COUNTERS_PER_BLOCK);
             for (auto & counterKeys : mEnabledCounterKeysByGpuId) {
                 std::unique_ptr<int[]> & counterKey = counterKeys.second;
@@ -151,27 +120,19 @@ namespace mali_userspace
 
     int MaliHwCntrDriver::getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const
     {
-        uint32_t numNameBlock = 0;
-        for(auto const& device : mDevices) {
-            if(device.second->getGPUId() == gpuId) {
-                //Find the name block count
-                numNameBlock = device.second->getNameBlockCount();
-                break;
-            }
-        }
-        if(nameBlockIndex < numNameBlock && counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK) {
+        if(counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK) {
             const uint32_t index = (nameBlockIndex * MaliDevice::NUM_COUNTERS_PER_BLOCK + counterIndex);
-            if (mEnabledCounterKeysByGpuId.find(gpuId) == mEnabledCounterKeysByGpuId.end()) {
+            const auto it = mEnabledCounterKeysByGpuId.find(gpuId);
+            if (it == mEnabledCounterKeysByGpuId.end()) {
                 return 0;
             }
-            return mEnabledCounterKeysByGpuId.find(gpuId)->second[index];
+            return it->second[index];
         }
         return 0;
     }
 
     const char * MaliHwCntrDriver::getSupportedDeviceFamilyName() const
     {
-        const_cast<MaliHwCntrDriver *>(this)->query();
         if (!mDevices.empty()) {
             //TODO: return it for first, for the time being
             const char* supportedDevice = mDevices.begin()->second->getSupportedDeviceFamilyName();
@@ -184,7 +145,7 @@ namespace mali_userspace
     {
         std::map<unsigned, unsigned> result;
         for (const auto & device : mDevices) {
-            result[device.first] = device.second->getGPUId();
+            result[device.first] = device.second->getGpuId();
         }
         return result;
     }

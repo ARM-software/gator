@@ -145,7 +145,7 @@ void StreamlineSetup::handleRequest(char* xml)
         logg.logMessage("Sent configuration xml response");
     }
     else if (attr && strcmp(attr, VALUE_COUNTERS) == 0) {
-        const auto xml = counters_xml::getXML(mDrivers.getAllConst(), mDrivers.getPrimarySourceProvider().getCpuInfo());
+        const auto xml = counters_xml::getXML(mDrivers.getPrimarySourceProvider().supportsMultiEbs(), mDrivers.getAllConst(), mDrivers.getPrimarySourceProvider().getCpuInfo());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent counters xml response");
     }
@@ -222,7 +222,7 @@ void StreamlineSetup::writeConfiguration(char* xml)
 {
     char path[PATH_MAX];
 
-    configuration_xml::getPath(path);
+    configuration_xml::getPath(path, sizeof(path));
 
     if (writeToDisk(path, xml) < 0) {
         logg.logError("Error writing %s\nPlease verify write permissions to this path.", path);

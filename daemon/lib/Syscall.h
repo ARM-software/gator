@@ -32,13 +32,14 @@ namespace lib
     int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags);
 
     ssize_t read(int fd, void *buf, size_t count);
+    ssize_t write(int fd, const void * buf, size_t count);
 
     int uname(struct utsname *buf);
 
     uid_t geteuid();
 
     int poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
-
+    int access (const char *filename, int how);
 }
 
 #endif // INCLUDE_LIB_SYSCALL_H

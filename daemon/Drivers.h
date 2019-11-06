@@ -30,9 +30,7 @@
 class Drivers
 {
 public:
-    Drivers(const char * module, bool systemWide, PmuXML && pmuXml,
-            const std::vector<std::string> userSpecifiedMaliDeviceTypes,
-            const std::vector<std::string> userSpecifiedMaliDevicePaths);
+    Drivers(const char * module, bool systemWide, PmuXML && pmuXml);
 
     MidgardDriver & getMidgard()
     {

@@ -1,3 +1,5 @@
+# Copyright (C) 2016, 2017, 2019 by Arm Limited. All rights reserved.
+
 #
 # Makefile for Arm Streamline - Gator Daemon
 OBJ_DIR     := ${CURDIR}/
@@ -29,8 +31,9 @@ LDFLAGS     += -s
 LDLIBS      += -lrt -lm -pthread
 TARGET      := $(OBJ_DIR)gatord
 ESCAPE_EXE  := $(OBJ_DIR)escape/escape
-C_SRC       := $(wildcard mxml/*.c) $(wildcard libsensors/*.c)
-CXX_SRC     := $(wildcard *.cpp lib/*.cpp linux/*.cpp linux/*/*.cpp mali_userspace/*.cpp non_root/*.cpp xml/*.cpp)
+include Sources.mk
+C_SRC       := $(GATORD_C_SRC_FILES)
+CXX_SRC     := $(GATORD_CXX_SRC_FILES)
 D_FILES     := $(C_SRC:%.c=$(OBJ_DIR)%.d) $(CXX_SRC:%.cpp=$(OBJ_DIR)%.d)
 $(shell mkdir -p $(dir $(D_FILES)))
 

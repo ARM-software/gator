@@ -18,8 +18,8 @@
     MA 02110-1301 USA.
 */
 
-#ifndef LIB_SENSORS_GENERAL
-#define LIB_SENSORS_GENERAL
+#ifndef LIB_SENSORS_GENERAL_H
+#define LIB_SENSORS_GENERAL_H
 
 /* These are general purpose functions. They allow you to use variable-
    length arrays, which are extended automatically. A distinction is
@@ -27,13 +27,13 @@
    You can only add elements at the end. Primitive, but very useful
    for internal use. */
 void sensors_malloc_array(void *list, int *num_el, int *max_el,
-			  int el_size);
+              int el_size);
 void sensors_free_array(void *list, int *num_el, int *max_el);
 void sensors_add_array_el(const void *el, void *list, int *num_el,
-			  int *max_el, int el_size);
+              int *max_el, int el_size);
 void sensors_add_array_els(const void *els, int nr_els, void *list,
-			   int *num_el, int *max_el, int el_size);
+               int *num_el, int *max_el, int el_size);
 
-#define ARRAY_SIZE(arr)	(int)(sizeof(arr) / sizeof((arr)[0]))
+#define ARRAY_SIZE(arr) (int)(sizeof(arr) / sizeof((arr)[0]))
 
-#endif /* LIB_SENSORS_GENERAL */
+#endif /* def LIB_SENSORS_GENERAL_H */

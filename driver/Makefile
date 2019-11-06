@@ -1,3 +1,5 @@
+# Copyright (C) 2016, 2017, 2019 by Arm Limited. All rights reserved.
+
 ifneq ($(KERNELRELEASE),)
 
 # Uncomment the following line to enable kernel stack unwinding within gator, or update gator_backtrace.c

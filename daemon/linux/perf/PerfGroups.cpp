@@ -19,8 +19,8 @@
 #include "Logging.h"
 
 PerfGroups::PerfGroups(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth, int sampleRate,
-                       bool isEbs, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId)
-        : sharedConfig(perfConfig, dataBufferLength, auxBufferLength, backtraceDepth, sampleRate, isEbs, clusters, clusterIds, schedSwitchId),
+                       bool enablePeriodicSampling, lib::Span<const GatorCpu> clusters, lib::Span<const int> clusterIds, int64_t schedSwitchId)
+        : sharedConfig(perfConfig, dataBufferLength, auxBufferLength, backtraceDepth, sampleRate, enablePeriodicSampling, clusters, clusterIds, schedSwitchId),
           perfEventGroupMap()
 {
 }
@@ -68,7 +68,7 @@ bool PerfGroups::add(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsume
     // so we need to add sample them individually periodically
     if (((!sharedConfig.perfConfig.is_system_wide) || (!eventGroup.requiresLeader())) && (attr.periodOrFreq == 0)) {
         logg.logMessage("    Forcing as freq counter");
-        newAttr.periodOrFreq = sharedConfig.sampleRate > 0 && !sharedConfig.isEbs ? sharedConfig.sampleRate : 10UL;
+        newAttr.periodOrFreq = sharedConfig.sampleRate > 0 && sharedConfig.enablePeriodicSampling ? sharedConfig.sampleRate : 10UL;
         newAttr.sampleType |= PERF_SAMPLE_PERIOD;
         newAttr.freq = true;
     }
@@ -77,16 +77,15 @@ bool PerfGroups::add(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsume
     return eventGroup.addEvent(false, timestamp, attrsConsumer, key, newAttr, hasAuxData);
 }
 
-OnlineResult PerfGroups::onlineCPU(uint64_t timestamp, int cpu, const std::set<int> & appPids, OnlineEnabledState enabledState,
+std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(uint64_t timestamp, int cpu, const std::set<int> & appPids, OnlineEnabledState enabledState,
                                    IPerfAttrsConsumer & attrsConsumer, std::function<bool(int)> addToMonitor,
                                    std::function<bool(int, int, bool)> addToBuffer,
                                    std::function<std::set<int>(int)> childTids)
 {
     logg.logMessage("Onlining cpu %i", cpu);
-
     if (!sharedConfig.perfConfig.is_system_wide && appPids.empty()) {
-        logg.logMessage("No task given for non-system-wide");
-        return OnlineResult::FAILURE;
+        std::string message("No task given for non-system-wide");
+        return std::make_pair(OnlineResult::FAILURE, message.c_str());
     }
 
     std::set<int> tids { };
@@ -100,15 +99,13 @@ OnlineResult PerfGroups::onlineCPU(uint64_t timestamp, int cpu, const std::set<i
             }
         }
     }
-
     for (auto & pair : perfEventGroupMap) {
         const auto result = pair.second->onlineCPU(timestamp, cpu, tids, enabledState, attrsConsumer, addToMonitor, addToBuffer);
-        if (result != OnlineResult::SUCCESS) {
+        if (result.first != OnlineResult::SUCCESS) {
             return result;
         }
     }
-
-    return OnlineResult::SUCCESS;
+    return std::make_pair(OnlineResult::SUCCESS,"");
 }
 
 bool PerfGroups::offlineCPU(int cpu, std::function<void(int)> removeFromBuffer)

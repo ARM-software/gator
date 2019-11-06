@@ -9,15 +9,15 @@
 #include <cstring>
 
 #include "Logging.h"
+#include "lib/Assert.h"
 
 namespace mali_userspace
 {
-    struct MaliCounterBlock
-    {
-        const char * mName;
-        uint32_t mBlockNumber;
-        uint32_t mNameBlockNumber;
-        uint32_t mEnablementBlockNumber;
+    enum class MaliCounterBlockName : uint32_t {
+        JM      = 0,
+        TILER   = 1,
+        SHADER  = 2,
+        MMU     = 3,
     };
 
     struct MaliProductVersion
@@ -27,74 +27,16 @@ namespace mali_userspace
         const char * mName;
         const char * mProductFamilyName;
         const char * const * mCounterNames;
-        const MaliCounterBlock * mCounterBlocks;
         uint32_t mNumCounterNames;
-        uint32_t mNumCounterBlocks;
+        bool mLegacyLayout;
     };
 
-#define COUNT_OF(A)                             (sizeof(A) / sizeof(A[0]))
-#define MALI_COUNTER_BLOCK(N, B, NB)            { (N), (B), (NB), (NB) }
-#define MALI_PRODUCT_VERSION(M, V, PN, FN, CN, L)   { (M), (V), (PN), (FN), (CN), (L), COUNT_OF(CN), COUNT_OF(L) }
+#define COUNT_OF(A)                                 (sizeof(A) / sizeof(A[0]))
+#define MALI_COUNTER_BLOCK(N, B, NB)                { (N), (B), (NB), (NB) }
+#define MALI_PRODUCT_VERSION(M, V, PN, FN, CN, V4)  { (M), (V), (PN), (FN), (CN), COUNT_OF(CN), (V4) }
 
     namespace
     {
-        /* Counter blocks */
-        enum MaliCounterBlockName {
-            MALI_NAME_BLOCK_JM      = 0,
-            MALI_NAME_BLOCK_TILER   = 1,
-            MALI_NAME_BLOCK_SHADER  = 2,
-            MALI_NAME_BLOCK_MMU     = 3,
-        };
-
-        /* memory layout for the v4 architecture */
-        static const MaliCounterBlock COUNTER_LAYOUT_V4[] = { MALI_COUNTER_BLOCK( "SC 0",  0, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 1",  1, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 2",  2, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 3",  3, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "TILER", 4, MALI_NAME_BLOCK_TILER ),
-                                                              MALI_COUNTER_BLOCK( "MMU",   5, MALI_NAME_BLOCK_MMU ),
-                                                              MALI_COUNTER_BLOCK( "JM",    7, MALI_NAME_BLOCK_JM ) };
-
-        /* memory layout for the v6 architecture, also used by v5 architecture up to SC 7 */
-        static const MaliCounterBlock COUNTER_LAYOUT_V6[] = { MALI_COUNTER_BLOCK( "JM",      0, MALI_NAME_BLOCK_JM ),
-                                                              MALI_COUNTER_BLOCK( "TILER",   1, MALI_NAME_BLOCK_TILER ),
-                                                              // NB: there may infact be more than one of these. we must
-                                                              // manually detect that and then account for it when processing the block
-                                                              // contents
-                                                              MALI_COUNTER_BLOCK( "MMU",     2, MALI_NAME_BLOCK_MMU ),
-                                                              MALI_COUNTER_BLOCK( "SC 0",    3, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 1",    4, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 2",    5, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 3",    6, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 4",    7, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 5",    8, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 6",    9, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 7",   10, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 8",   11, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 9",   12, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 10",  13, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 11",  14, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 12",  15, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 13",  16, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 14",  17, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 15",  18, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 16",  19, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 17",  20, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 18",  21, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 19",  22, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 20",  23, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 21",  24, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 22",  25, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 23",  26, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 24",  27, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 25",  28, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 26",  29, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 27",  30, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 28",  31, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 29",  32, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 30",  33, MALI_NAME_BLOCK_SHADER ),
-                                                              MALI_COUNTER_BLOCK( "SC 31",  34, MALI_NAME_BLOCK_SHADER ) };
-
         enum {
             /* product id masks for old and new versions of the id field. NB: the T60x must be tested before anything else as it could exceptionally be
              * treated as a new style of id with produce code 0x6006 */
@@ -115,25 +57,28 @@ namespace mali_userspace
             PRODUCT_ID_TSIX = 0x7000,
             PRODUCT_ID_TNOX = 0x7001,
             PRODUCT_ID_TGOX = 0x7002,
-            PRODUCT_ID_TDVX = 0x7003
-
+            PRODUCT_ID_TDVX = 0x7003,
+            PRODUCT_ID_TTRX = 0x9000
         };
 
         /* supported product versions */
-        static const MaliProductVersion PRODUCT_VERSIONS[] = { MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T60X, "T60x", "Midgard", hardware_counters_mali_t60x, COUNTER_LAYOUT_V4 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T62X, "T62x", "Midgard", hardware_counters_mali_t62x, COUNTER_LAYOUT_V4 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T72X, "T72x", "Midgard", hardware_counters_mali_t72x, COUNTER_LAYOUT_V4 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T76X, "T76x", "Midgard", hardware_counters_mali_t76x, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T82X, "T82x", "Midgard", hardware_counters_mali_t82x, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T83X, "T83x", "Midgard", hardware_counters_mali_t83x, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T86X, "T86x", "Midgard", hardware_counters_mali_t86x, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_TFRX, "T88x", "Midgard", hardware_counters_mali_t88x, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TMIX, "G71",  "Bifrost", hardware_counters_mali_tMIx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_THEX, "G72",  "Bifrost", hardware_counters_mali_tHEx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TSIX, "G51",  "Bifrost", hardware_counters_mali_tSIx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TGOX, "G52",  "Bifrost", hardware_counters_mali_tGOx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TDVX, "G31",  "Bifrost", hardware_counters_mali_tDVx, COUNTER_LAYOUT_V6 ),
-                                                               MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TNOX, "G76",  "Bifrost", hardware_counters_mali_tNOx, COUNTER_LAYOUT_V6 )};
+        static const MaliProductVersion PRODUCT_VERSIONS[] = {
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T60X, "T60x", "Midgard", hardware_counters_mali_t60x, true ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T62X, "T62x", "Midgard", hardware_counters_mali_t62x, true ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T72X, "T72x", "Midgard", hardware_counters_mali_t72x, true ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T76X, "T76x", "Midgard", hardware_counters_mali_t76x, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T82X, "T82x", "Midgard", hardware_counters_mali_t82x, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T83X, "T83x", "Midgard", hardware_counters_mali_t83x, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_T86X, "T86x", "Midgard", hardware_counters_mali_t86x, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_OLD, PRODUCT_ID_TFRX, "T88x", "Midgard", hardware_counters_mali_t88x, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TMIX, "G71",  "Bifrost", hardware_counters_mali_tMIx, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_THEX, "G72",  "Bifrost", hardware_counters_mali_tHEx, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TSIX, "G51",  "Bifrost", hardware_counters_mali_tSIx, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TGOX, "G52",  "Bifrost", hardware_counters_mali_tGOx, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TDVX, "G31",  "Bifrost", hardware_counters_mali_tDVx, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TNOX, "G76",  "Bifrost", hardware_counters_mali_tNOx, false ),
+            MALI_PRODUCT_VERSION( PRODUCT_ID_MASK_NEW, PRODUCT_ID_TTRX, "G77",  "Valhall", hardware_counters_mali_tTRx, false )
+        };
 
         enum {
             NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS)
@@ -168,6 +113,102 @@ namespace mali_userspace
                 return sum / count;
             }
         };
+
+        /**
+         * Map from the index'th block of a particular type to the actual block number within the list of data blocks.
+         * For GPU's with legacy counter data layout
+         *
+         * @param nameBlock
+         * @param index
+         * @return The actual physical block number
+         */
+        static inline uint32_t mapV4BlockIndexToBlockNumber(MaliCounterBlockName nameBlock, uint32_t index)
+        {
+            /*
+             * BLOCKS ARE LAYED OUT AS:
+             *
+             *  0. SC 0
+             *  1. SC 1
+             *  2. SC 2
+             *  3. SC 3
+             *  4. TILER
+             *  5. MMU/L2
+             *  6. JOB MANAGER
+             */
+            switch (nameBlock)
+            {
+            case MaliCounterBlockName::JM:
+                runtime_assert(index == 0, "Unexpected block index");
+                return 6;
+            case MaliCounterBlockName::TILER:
+                runtime_assert(index == 0, "Unexpected block index");
+                return 4;
+            case MaliCounterBlockName::MMU:
+                runtime_assert(index == 0, "Unexpected block index");
+                return 5;
+            default:
+                runtime_assert(nameBlock == MaliCounterBlockName::SHADER, "Unexpected name block");
+                runtime_assert(index < 4, "Unexpected block index");
+                return index;
+            }
+        }
+
+        /**
+         * Map from the index'th block of a particular type to the actual block number within the list of data blocks.
+         * For GPU's with modern counter data layout
+         *
+         * @param nameBlock
+         * @param numL2MmuBlocks
+         * @param numShaderBlocks
+         * @param index
+         * @return The actual physical block number
+         */
+        static inline uint32_t mapV56BlockIndexToBlockNumber(MaliCounterBlockName nameBlock, uint32_t numL2MmuBlocks, uint32_t numShaderBlocks, uint32_t index)
+        {
+            /*
+             * BLOCKS ARE LAYED OUT AS:
+             *
+             * 0.         JOB MANAGER
+             * 1.         TILER
+             * 2 + 0.     MMU/L2 0
+             *   + 1.     MMU/L2 1
+             *            ...
+             * 2 + n + 0. SC 0
+             *       + 1. SC 1
+             *            ...
+             */
+            switch (nameBlock)
+            {
+            case MaliCounterBlockName::JM:
+                runtime_assert(index == 0, "Unexpected block index");
+                return 0;
+            case MaliCounterBlockName::TILER:
+                runtime_assert(index == 0, "Unexpected block index");
+                return 1;
+            case MaliCounterBlockName::MMU:
+                runtime_assert(index < numL2MmuBlocks, "Unexpected block index");
+                return 2 + index;
+            default:
+                runtime_assert(nameBlock == MaliCounterBlockName::SHADER, "Unexpected name block");
+                runtime_assert(index < numShaderBlocks, "Unexpected block index");
+                return 2 + numL2MmuBlocks + index;
+            }
+        }
+
+        static constexpr uint32_t mapNameBlockToIndex(MaliCounterBlockName nameBlock)
+        {
+            return uint32_t(nameBlock);
+        }
+
+        static const MaliProductVersion * findMaliProductRecordFromId(uint32_t productId)
+        {
+            for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
+                if ((productId & PRODUCT_VERSIONS[index].mGpuIdMask) == PRODUCT_VERSIONS[index].mGpuIdValue) {
+                    return &PRODUCT_VERSIONS[index];
+                }
+            }
+            return nullptr;
+        }
     }
 
     IMaliDeviceCounterDumpCallback::~IMaliDeviceCounterDumpCallback()
@@ -198,89 +239,74 @@ namespace mali_userspace
         }
     }
 
-    void MaliDeviceCounterList::enable(uint32_t blockIndex, uint32_t groupIndex, uint32_t wordIndex)
+    void MaliDeviceCounterList::enable(MaliCounterBlockName nameBlock, uint32_t repeatCount, uint32_t groupIndex, uint32_t wordIndex)
     {
         const size_t index = countersListValid++;
 
         assert(index < countersListLength);
 
-        countersList[index].blockIndex = blockIndex;
+        countersList[index].nameBlock = nameBlock;
+        countersList[index].repeatCount = repeatCount;
         countersList[index].groupIndex = groupIndex;
         countersList[index].wordIndex = wordIndex;
     }
 
-    uint32_t MaliDevice::findProductByName(const char * productName)
+    const char * findMaliProductNameFromId(uint32_t productId)
     {
-        if (productName == nullptr) {
-            return 0;
-        }
-
-        // skip prefix
-        if ((strcasestr(productName, "Mali-") == productName) || (strcasestr(productName, "Mali ") == productName)) {
-            productName += 5;
-        }
-
-        // dont bother if empty string
-        const auto plen = strlen(productName);
-        if (plen < 1) {
-            return 0;
-        }
-
-        // do search
-        for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
-            // must be same length to be equal
-            const auto len = strlen(PRODUCT_VERSIONS[index].mName);
-            if (len != plen) {
-                continue;
-            }
-
-            // Txxx names end with 'x' so treat that as a wildcard against any digit
-            if (PRODUCT_VERSIONS[index].mName[len - 1] == 'x') {
-                // validate match against digit or x
-                if ((productName[len - 1] != 'x') && (productName[len - 1] != 'X') && ((productName[len - 1] < '0') || (productName[len - 1] > '9'))) {
-                    continue;
-                }
-
-                // compare prefix
-                if (strncasecmp(PRODUCT_VERSIONS[index].mName, productName, len - 1) == 0) {
-                    return PRODUCT_VERSIONS[index].mGpuIdValue;
-                }
-            }
-
-            // other names must match in full
-            if (strcasecmp(PRODUCT_VERSIONS[index].mName, productName) == 0) {
-                return PRODUCT_VERSIONS[index].mGpuIdValue;
-            }
-        }
-
-        return 0;
+        const auto * productRecord = findMaliProductRecordFromId(productId);
+        return (productRecord != nullptr ? productRecord->mName : nullptr);
     }
 
-    std::unique_ptr<MaliDevice>  MaliDevice::create(uint32_t gpuId, std::string devicePath, std::string clockPath)
+    std::unique_ptr<MaliDevice> MaliDevice::create(std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath)
     {
-        for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
-            if ((gpuId & PRODUCT_VERSIONS[index].mGpuIdMask) == PRODUCT_VERSIONS[index].mGpuIdValue) {
-                return std::unique_ptr<MaliDevice> (new MaliDevice(PRODUCT_VERSIONS[index], devicePath, clockPath));
+        if (deviceApi) {
+            const std::uint32_t gpuId = deviceApi->getGpuId();
+            const auto * productRecord = findMaliProductRecordFromId(gpuId);
+
+            if (productRecord != nullptr) {
+                return std::unique_ptr<MaliDevice>(new MaliDevice(*productRecord, std::move(deviceApi), std::move(clockPath)));
             }
         }
-        return nullptr;
+        return {};
     }
 
-    MaliDevice::MaliDevice(const MaliProductVersion & productVersion,  std::string devicePath, std::string clockPath)
+    MaliDevice::MaliDevice(const MaliProductVersion & productVersion, std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath)
         :   mProductVersion (productVersion),
-            mDevicePath (devicePath),
-            mClockPath (clockPath)
+            deviceApi (std::move(deviceApi)),
+            clockPath (std::move(clockPath))
     {
     }
 
-    uint32_t MaliDevice::getGPUId() const
+    uint32_t MaliDevice::getGpuId() const
     {
         return mProductVersion.mGpuIdValue;
     }
 
-    uint32_t MaliDevice::getBlockCount() const
+    uint32_t MaliDevice::getShaderBlockCount() const
     {
-        return mProductVersion.mNumCounterBlocks;
+        return std::max(1u, deviceApi->getNumberOfShaderCores());
+    }
+
+    uint32_t MaliDevice::getL2MmuBlockCount() const
+    {
+        return std::max(1u, deviceApi->getNumberOfL2Slices());
+    }
+
+    const char* MaliDevice::getProductName() const
+    {
+       return mProductVersion.mName;
+    }
+
+    const char* MaliDevice::getSupportedDeviceFamilyName() const
+    {
+        return mProductVersion.mProductFamilyName;
+    }
+
+    lib::AutoClosingFd MaliDevice::createHwCntReaderFd(std::size_t bufferCount, std::uint32_t jmBitmask,
+                                           std::uint32_t shaderBitmask, std::uint32_t tilerBitmask,
+                                           std::uint32_t mmuL2Bitmask, bool & failedDueToBufferCount) const
+    {
+        return deviceApi->createHwCntReaderFd(bufferCount, jmBitmask, shaderBitmask, tilerBitmask, mmuL2Bitmask, failedDueToBufferCount);
     }
 
     const char * MaliDevice::getCounterName(uint32_t nameBlockIndex, uint32_t counterIndex) const
@@ -298,29 +324,38 @@ namespace mali_userspace
         return result;
     }
 
-    MaliDeviceCounterList MaliDevice::createCounterList(IMaliDeviceCounterDumpCallback & callback) const
+    void MaliDevice::initCounterList(uint32_t gpuId, IMaliDeviceCounterDumpCallback & callback, MaliDeviceCounterList & list, MaliCounterBlockName nameBlock, uint32_t repeatCount)
     {
-        MaliDeviceCounterList result (mProductVersion.mNumCounterBlocks, NUM_ENABLE_GROUPS, NUM_COUNTERS_PER_ENABLE_GROUP);
+        const uint32_t nameBlockIndex = mapNameBlockToIndex(nameBlock);
 
-        for (uint32_t blockIndex = 0; blockIndex < mProductVersion.mNumCounterBlocks; ++blockIndex) {
-            const uint32_t nameBlockNumber = mProductVersion.mCounterBlocks[blockIndex].mNameBlockNumber;
-            for (uint32_t groupIndex = 0; groupIndex < NUM_ENABLE_GROUPS; ++groupIndex) {
-                for (uint32_t wordIndex = 0; wordIndex < NUM_COUNTERS_PER_ENABLE_GROUP; ++wordIndex) {
-                    const uint32_t counterIndex = (groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + wordIndex;
-
-                    if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
-                        if (callback.isCounterActive(nameBlockNumber, counterIndex, mProductVersion.mGpuIdValue)) {
-                            result.enable(blockIndex, groupIndex, wordIndex);
-                        }
+        for (uint32_t groupIndex = 0; groupIndex < MaliDevice::NUM_ENABLE_GROUPS; ++groupIndex) {
+            for (uint32_t wordIndex = 0; wordIndex < MaliDevice::NUM_COUNTERS_PER_ENABLE_GROUP; ++wordIndex) {
+                const uint32_t counterIndex = (groupIndex * MaliDevice::NUM_COUNTERS_PER_ENABLE_GROUP) + wordIndex;
+                if (counterIndex != MaliDevice::BLOCK_ENABLE_BITS_COUNTER_INDEX) {
+                    if (callback.isCounterActive(nameBlockIndex, counterIndex, gpuId)) {
+                        list.enable(nameBlock, repeatCount, groupIndex, wordIndex);
                     }
                 }
             }
         }
+    }
+
+    MaliDeviceCounterList MaliDevice::createCounterList(IMaliDeviceCounterDumpCallback & callback) const
+    {
+        const uint32_t numL2MmuBlocks = getL2MmuBlockCount();
+        const uint32_t numShaderBlocks = getShaderBlockCount();
+
+        MaliDeviceCounterList result ( 4, NUM_ENABLE_GROUPS, NUM_COUNTERS_PER_ENABLE_GROUP);
+
+        initCounterList(mProductVersion.mGpuIdValue, callback, result, MaliCounterBlockName::JM, 1);
+        initCounterList(mProductVersion.mGpuIdValue, callback, result, MaliCounterBlockName::TILER, 1);
+        initCounterList(mProductVersion.mGpuIdValue, callback, result, MaliCounterBlockName::MMU, numL2MmuBlocks);
+        initCounterList(mProductVersion.mGpuIdValue, callback, result, MaliCounterBlockName::SHADER, numShaderBlocks);
 
         return result;
     }
 
-    void MaliDevice::dumpAllCounters(uint32_t hardwareVersion, uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
+    void MaliDevice::dumpAllCounters(uint32_t hardwareVersion, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
     {
         switch (hardwareVersion) {
             case 4: {
@@ -329,7 +364,7 @@ namespace mali_userspace
             }
             case 5:
             case 6: {
-                dumpAllCounters_V56(mmul2BlockCount, counterList, buffer, bufferLength, bufferData, callback);
+                dumpAllCounters_V56(counterList, buffer, bufferLength, bufferData, callback);
                 break;
             }
             default: {
@@ -353,33 +388,37 @@ namespace mali_userspace
         for (size_t counterListIndex = 0; counterListIndex < counterListSize; ++counterListIndex) {
             const MaliDeviceCounterList::Address & counterAddress = counterList[counterListIndex];
 
-            const uint32_t blockNumber = mProductVersion.mCounterBlocks[counterAddress.blockIndex].mBlockNumber;
-            const uint32_t nameBlockNumber = mProductVersion.mCounterBlocks[counterAddress.blockIndex].mNameBlockNumber;
-            const bool isShaderCore = (nameBlockNumber == MALI_NAME_BLOCK_SHADER);
-            const size_t maskBufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + BLOCK_ENABLE_BITS_COUNTER_INDEX;
+            const MaliCounterBlockName nameBlock = counterAddress.nameBlock;
+            const uint32_t nameBlockIndex = mapNameBlockToIndex(nameBlock);
+            const bool isShaderCore = (nameBlock == MaliCounterBlockName::SHADER);
 
-            if (maskBufferIndex >= bufferLength) {
-                continue;
-            }
+            for (uint32_t blockIndex = 0; blockIndex < counterAddress.repeatCount; ++blockIndex) {
+                const uint32_t blockNumber = mapV4BlockIndexToBlockNumber(nameBlock, blockIndex);
+                const size_t maskBufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + BLOCK_ENABLE_BITS_COUNTER_INDEX;
 
-            const uint32_t mask = buffer[maskBufferIndex];
-
-            if (mask & (1 << counterAddress.groupIndex)) {
-                const uint32_t counterIndex = (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
-                const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
-
-                if (bufferIndex >= bufferLength) {
+                if (maskBufferIndex >= bufferLength) {
                     continue;
                 }
 
-                const uint32_t delta = buffer[bufferIndex];
+                const uint32_t mask = buffer[maskBufferIndex];
 
-                if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
-                    if (isShaderCore) {
-                        shaderCoreCounters[counterIndex] += delta;
+                if (mask & (1 << counterAddress.groupIndex)) {
+                    const uint32_t counterIndex = (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
+                    const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
+
+                    if (bufferIndex >= bufferLength) {
+                        continue;
                     }
-                    else {
-                        callback.nextCounterValue(nameBlockNumber, counterIndex, delta, mProductVersion.mGpuIdValue, bufferData);
+
+                    const uint32_t delta = buffer[bufferIndex];
+
+                    if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
+                        if (isShaderCore) {
+                            shaderCoreCounters[counterIndex] += delta;
+                        }
+                        else {
+                            callback.nextCounterValue(nameBlockIndex, counterIndex, delta, mProductVersion.mGpuIdValue, bufferData);
+                        }
                     }
                 }
             }
@@ -388,13 +427,15 @@ namespace mali_userspace
         // now send shader core and mmu/l2 averages
         for (uint32_t shaderCounterIndex = 0; shaderCounterIndex < NUM_COUNTERS_PER_BLOCK; ++shaderCounterIndex) {
             if (shaderCoreCounters[shaderCounterIndex].isValid()) {
-                callback.nextCounterValue(MALI_NAME_BLOCK_SHADER, shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average(), mProductVersion.mGpuIdValue, bufferData);
+                callback.nextCounterValue(mapNameBlockToIndex(MaliCounterBlockName::SHADER), shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average(), mProductVersion.mGpuIdValue, bufferData);
             }
         }
     }
 
-    void MaliDevice::dumpAllCounters_V56(uint32_t mmul2BlockCount, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
+    void MaliDevice::dumpAllCounters_V56(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const
     {
+        const uint32_t numL2MmuBlocks = getL2MmuBlockCount();
+        const uint32_t numShaderBlocks = getShaderBlockCount();
         const size_t counterListSize = counterList.size();
 
         // we must accumulate the mmu counters accross all mmu blocks
@@ -405,20 +446,13 @@ namespace mali_userspace
         for (size_t counterListIndex = 0; counterListIndex < counterListSize; ++counterListIndex) {
             const MaliDeviceCounterList::Address & counterAddress = counterList[counterListIndex];
 
-            const uint32_t nameBlockNumber = mProductVersion.mCounterBlocks[counterAddress.blockIndex].mNameBlockNumber;
-            const bool isMMUL2 = (nameBlockNumber == MALI_NAME_BLOCK_MMU);
-            const bool isShaderCore = (nameBlockNumber == MALI_NAME_BLOCK_SHADER);
+            const MaliCounterBlockName nameBlock = counterAddress.nameBlock;
+            const uint32_t nameBlockIndex = mapNameBlockToIndex(nameBlock);
+            const bool isShaderCore = (nameBlock == MaliCounterBlockName::SHADER);
+            const bool isMMUL2 = (nameBlock == MaliCounterBlockName::MMU);
 
-            // on V5/V6 there can be more than one MMU block, they are layout out contiguously starting from offset 3
-            // if this is an MMU block, then repeat the call for each offset
-            const uint32_t repeatCount = (isMMUL2 ? mmul2BlockCount : 1);
-
-            for (uint32_t repeatNo = 0; repeatNo < repeatCount; ++repeatNo) {
-                // the base is 'repeatNo' for MMU blocks,
-                // the base is 'mmul2BlockCount - 1' for shader core blocks
-                // and is zero for everything else
-                const uint32_t blockNumberBase = (isMMUL2 ? repeatNo : (isShaderCore ? (mmul2BlockCount - 1): 0));
-                const uint32_t blockNumber = mProductVersion.mCounterBlocks[counterAddress.blockIndex].mBlockNumber + blockNumberBase;
+            for (uint32_t blockIndex = 0; blockIndex < counterAddress.repeatCount; ++blockIndex) {
+                const uint32_t blockNumber = mapV56BlockIndexToBlockNumber(nameBlock, numL2MmuBlocks, numShaderBlocks, blockIndex);
                 const size_t maskBufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + BLOCK_ENABLE_BITS_COUNTER_INDEX;
 
                 if (maskBufferIndex >= bufferLength) {
@@ -445,7 +479,7 @@ namespace mali_userspace
                             mmuL2Counters[counterIndex] += delta;
                         }
                         else {
-                            callback.nextCounterValue(nameBlockNumber, counterIndex, delta, mProductVersion.mGpuIdValue, bufferData);
+                            callback.nextCounterValue(nameBlockIndex, counterIndex, delta, mProductVersion.mGpuIdValue, bufferData);
                         }
                     }
                 }
@@ -455,46 +489,13 @@ namespace mali_userspace
         // now send shader core and mmu/l2 averages
         for (uint32_t mmuL2CounterIndex = 0; mmuL2CounterIndex < NUM_COUNTERS_PER_BLOCK; ++mmuL2CounterIndex) {
             if (mmuL2Counters[mmuL2CounterIndex].isValid()) {
-                callback.nextCounterValue(MALI_NAME_BLOCK_MMU, mmuL2CounterIndex, mmuL2Counters[mmuL2CounterIndex].sum, mProductVersion.mGpuIdValue, bufferData);
+                callback.nextCounterValue(mapNameBlockToIndex(MaliCounterBlockName::MMU), mmuL2CounterIndex, mmuL2Counters[mmuL2CounterIndex].sum, mProductVersion.mGpuIdValue, bufferData);
             }
         }
         for (uint32_t shaderCounterIndex = 0; shaderCounterIndex < NUM_COUNTERS_PER_BLOCK; ++shaderCounterIndex) {
             if (shaderCoreCounters[shaderCounterIndex].isValid()) {
-                callback.nextCounterValue(MALI_NAME_BLOCK_SHADER, shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average(), mProductVersion.mGpuIdValue, bufferData);
+                callback.nextCounterValue(mapNameBlockToIndex(MaliCounterBlockName::SHADER), shaderCounterIndex, shaderCoreCounters[shaderCounterIndex].average(), mProductVersion.mGpuIdValue, bufferData);
             }
         }
-    }
-
-    unsigned MaliDevice::probeBlockMaskCount(const uint32_t * buffer, size_t bufferLength) const
-    {
-        unsigned result = 0;
-        size_t lastEnabledBlockOffset = 0;
-
-        for (size_t offset = BLOCK_ENABLE_BITS_COUNTER_INDEX; offset < bufferLength; offset += NUM_COUNTERS_PER_BLOCK) {
-            if (buffer[offset] != 0) {
-                result += 1;
-
-                // blocks are required to be contiguous
-                if ((lastEnabledBlockOffset == 0) || ((lastEnabledBlockOffset + NUM_COUNTERS_PER_BLOCK) == offset)) {
-                    lastEnabledBlockOffset = offset;
-                }
-                else {
-                    logg.logError("MaliDevice::probeBlockMaskCount - non contiguous blocks found at offset 0x%lx and 0x%lx.", static_cast<unsigned long>(lastEnabledBlockOffset), static_cast<unsigned long>(offset));
-                    return 0;
-                }
-            }
-        }
-
-        return result;
-    }
-
-    const char* MaliDevice::getProductName() const
-    {
-       return mProductVersion.mName;
-    }
-
-    const char* MaliDevice::getSupportedDeviceFamilyName() const
-    {
-        return mProductVersion.mProductFamilyName;
     }
 }

@@ -30,10 +30,8 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(const 
     return primarySourceProvider;
 }
 
-Drivers::Drivers(const char * module, bool systemWide, PmuXML && pmuXml,
-                 const std::vector<std::string> userSpecifiedMaliDeviceTypes,
-                 const std::vector<std::string> userSpecifiedMaliDevicePaths)
-        : mMaliHwCntrs { userSpecifiedMaliDeviceTypes, userSpecifiedMaliDevicePaths },
+Drivers::Drivers(const char * module, bool systemWide, PmuXML && pmuXml)
+        : mMaliHwCntrs { },
           mPrimarySourceProvider { createPrimarySourceProvider(module, systemWide, std::move(pmuXml),
                                                                mMaliHwCntrs.getSupportedDeviceFamilyName()) },
           mMaliVideo { },

@@ -1,0 +1,22 @@
+<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+
+  <category name="Mali-Valhall Software Counters" per_cpu="no">
+    <event counter="ARM_Mali-Valhall_TOTAL_ALLOC_PAGES" class="absolute" title="Mali Total Alloc Pages" name="Total number of allocated pages" description="Mali total number of allocated pages."/>
+  </category>
+  <category name="Mali-Valhall MMU Address Space" per_cpu="no">
+    <event counter="ARM_Mali-Valhall_MMU_AS_0" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 0" description="Mali MMU Address Space 0 usage."/>
+    <event counter="ARM_Mali-Valhall_MMU_AS_1" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 1" description="Mali MMU Address Space 1 usage."/>
+    <event counter="ARM_Mali-Valhall_MMU_AS_2" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 2" description="Mali MMU Address Space 2 usage."/>
+    <event counter="ARM_Mali-Valhall_MMU_AS_3" class="absolute" display="average" multiplier="0.01" average_selection="yes" percentage="yes" title="Mali MMU Address Space" name="MMU Address Space 3" description="Mali MMU Address Space 3 usage."/>
+  </category>
+  <category name="Mali-Valhall MMU Page Fault" per_cpu="no">
+    <event counter="ARM_Mali-Valhall_MMU_PAGE_FAULT_0" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 0" description="Reports the number of newly allocated pages after a MMU page fault in address space 0."/>
+    <event counter="ARM_Mali-Valhall_MMU_PAGE_FAULT_1" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 1" description="Reports the number of newly allocated pages after a MMU page fault in address space 1."/>
+    <event counter="ARM_Mali-Valhall_MMU_PAGE_FAULT_2" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 2" description="Reports the number of newly allocated pages after a MMU page fault in address space 2."/>
+    <event counter="ARM_Mali-Valhall_MMU_PAGE_FAULT_3" title="Mali MMU Page Fault Add. Space" name="Mali MMU Page Fault Add. Space 3" description="Reports the number of newly allocated pages after a MMU page fault in address space 3."/>
+  </category>
+  <category name="Mali-Valhall Activity" per_cpu="no">
+    <event counter="ARM_Mali-Valhall_fragment" title="GPU Fragment" name="Activity" class="activity" activity1="Activity" activity_color1="0x00006fcc" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 0 Activity"/>
+    <event counter="ARM_Mali-Valhall_vertex" title="GPU Vertex-Tiling-Compute" name="Activity" class="activity" activity1="Activity" activity_color1="0x00eda000" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 1 Activity"/>
+    <event counter="ARM_Mali-Valhall_opencl" title="GPU Vertex-Compute" name="Activity" class="activity" activity1="Activity" activity_color1="0x00ef022f" rendering_type="bar" average_selection="yes" percentage="yes" cores="1" description="GPU Job Slot 2 Activity"/>
+  </category>

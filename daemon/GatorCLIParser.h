@@ -62,9 +62,6 @@ public:
     const char *mEventsXMLAppend;
     const char *mWaitForCommand;
 
-    std::vector<std::string> mMaliDevices;
-    std::vector<std::string> mMaliTypes;
-
     int mBacktraceDepth;
     int mSampleRate;
     int mDuration;

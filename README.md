@@ -10,7 +10,7 @@ The source code for `gatord`, `gator.ko` `gator.py` and related tools.
 This project contains code from other projects listed below. The original license text is included in those source files.
 
 * `libsensors` source code in [daemon/libsensors] licensed under LGPL-2.1-or-later
-* `mxml` source code in [daemon/mxml] licensed under LGPL-2.0 WITH Mini-XML-exception
+* `mxml` source code in [daemon/mxml] licensed under APACHE-2.0 WITH Mini-XML-exception
 * `perf_event.h` from Linux userspace kernel headers in [daemon/k] licensed under GPL-2.0-only WITH Linux-syscall-note
 
 The pre-built `gatord` shipped with Streamline uses [musl]. For musl license information see the COPYRIGHT file shipped with Streamline, or <https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT>

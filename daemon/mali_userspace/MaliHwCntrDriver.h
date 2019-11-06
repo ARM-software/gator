@@ -29,23 +29,23 @@ namespace mali_userspace
 
     public:
 
-        MaliHwCntrDriver(const std::vector<std::string> userSpecifiedDeviceTypes,
-                         const std::vector<std::string> userSpecifiedDevicePaths);
+        MaliHwCntrDriver();
 
-        bool claimCounter(Counter &counter) const;
-        void resetCounters();
+        bool claimCounter(Counter &counter) const override;
+        void resetCounters() override;
         void setupCounter(Counter &counter) override;
         bool start();
 
-
-        inline const std::map<unsigned, std::unique_ptr<MaliHwCntrReader>>& getReaders() const
-        {
-            return mReaders;
-        }
         inline const std::map<unsigned, std::unique_ptr<PolledDriver>>& getPolledDrivers() const
         {
             return mPolledDrivers;
         }
+
+        inline const std::map<unsigned, std::unique_ptr<MaliDevice>>& getDevices() const
+        {
+            return mDevices;
+        }
+
         int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const;
 
         const char * getSupportedDeviceFamilyName() const;
@@ -55,13 +55,6 @@ namespace mali_userspace
 
     private:
 
-        /** User specified device type vector */
-        const std::vector<std::string> mUserSpecifiedDeviceTypes;
-        /** User specified device path vector */
-        const std::vector<std::string> mUserSpecifiedDevicePaths;
-
-        /**Map of GPU device number and mali hw counter reader */
-        std::map<unsigned,  std::unique_ptr<MaliHwCntrReader>> mReaders;
         /** For each possible counter index, contains the counter key, or 0 if not enabled
          * Mapped to the GPUID not device number as counters are common across all devices with the same type.
          */
@@ -70,10 +63,7 @@ namespace mali_userspace
         std::map<unsigned, std::unique_ptr<PolledDriver>> mPolledDrivers;
         //Map between the device number and the mali devices .
         std::map<unsigned, std::unique_ptr<MaliDevice>> mDevices;
-        /**
-         * initialize/ reinitialize readers
-         */
-        void query();
+
         // Intentionally unimplemented
         CLASS_DELETE_COPY_MOVE(MaliHwCntrDriver);
     };

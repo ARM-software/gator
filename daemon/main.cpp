@@ -144,7 +144,13 @@ static void child_exit(int)
         logg.logMessage("Child process %d exited with status %d", pid, status);
         if (pid == localCapturePid.load()) {
             cleanUp();
-            exit(0);
+            if (WIFEXITED(status))
+                exit(WEXITSTATUS(status));
+            else if (WIFSIGNALED(status))
+                exit(-WTERMSIG(status));
+            else
+                // shouldn't get here but just in case
+                exit(127);
         }
         state.store(State::IDLE);
     }
@@ -337,7 +343,7 @@ bool setupFilesystem(const char * module)
         char location[256]; // arbitrarily large amount
 
         if (module) {
-            strncpy(location, module, sizeof(location));
+            strncpy(location, module, sizeof(location) - 1);
         }
         else {
             // Is the driver co-located in the same directory?
@@ -632,7 +638,7 @@ int main(int argc, char** argv)
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
 
 
-Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml), result.mMaliTypes, result.mMaliDevices };
+Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
 
     {
         auto xml = events_xml::getTree(drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
@@ -672,7 +678,7 @@ Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml), result.m
             std::cout << events_xml::getXML(drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo().getClusters()).get();
         }
         if (result.printables.count(ParserResult::Printable::COUNTERS_XML) == 1) {
-            std::cout << counters_xml::getXML(drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo()).get();
+            std::cout << counters_xml::getXML(drivers.getPrimarySourceProvider().supportsMultiEbs(), drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo()).get();
         }
         if (result.printables.count(ParserResult::Printable::DEFAULT_CONFIGURATION_XML) == 1) {
             std::cout << configuration_xml::getDefaultConfigurationXml(drivers.getPrimarySourceProvider().getCpuInfo().getClusters()).get();

@@ -41,6 +41,11 @@
 #define GATORD_BUILD_ID                 "oss"
 #endif
 
+// assume /proc/sys/kernel/perf_event_paranoid == 2 if it cannot be read
+#ifndef CONFIG_ASSUME_PERF_HIGH_PARANOIA
+#define CONFIG_ASSUME_PERF_HIGH_PARANOIA	1
+#endif
+
 #if !CONFIG_SUPPORT_PERF && !CONFIG_SUPPORT_GATOR_KO && !CONFIG_SUPPORT_PROC_POLLING
 #   error   "at least one of CONFIG_SUPPORT_GATOR_KO, CONFIG_SUPPORT_PERF and CONFIG_SUPPORT_PROC_POLLING must be set"
 #endif

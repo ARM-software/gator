@@ -55,6 +55,9 @@ public:
     /** Return true if the sample rate is supported for mali counters */
     virtual bool supportsMaliCaptureSampleRate(int rate) const = 0;
 
+    /** Return true if the source supports setting more than one EBS counter */
+    virtual bool supportsMultiEbs() const = 0;
+
     /** Return true if the target is capturing mali counters */
     virtual bool isCapturingMaliCounters() const = 0;
 

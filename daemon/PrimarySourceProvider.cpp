@@ -207,6 +207,11 @@ namespace
             return rate > 0;
         }
 
+        virtual bool supportsMultiEbs() const override
+        {
+            return false;
+        }
+
         virtual bool isCapturingMaliCounters() const override
         {
             return driver.isMaliCapture();
@@ -322,6 +327,11 @@ namespace
         virtual bool supportsMaliCaptureSampleRate(int) const override
         {
             return false;
+        }
+
+        virtual bool supportsMultiEbs() const override
+        {
+            return true;
         }
 
         virtual bool isCapturingMaliCounters() const override
@@ -446,6 +456,11 @@ namespace
             return false;
         }
 
+        virtual bool supportsMultiEbs() const override
+        {
+            return false;
+        }
+
         virtual bool isCapturingMaliCounters() const override
         {
             return false;
@@ -453,7 +468,7 @@ namespace
 
         virtual const char * getPrepareFailedMessage() const override
         {
-            return "Could not initialize non-root data capture";
+            return "Could not initialize /proc data capture";
         }
 
         virtual const Driver & getPrimaryDriver() const override
@@ -520,7 +535,6 @@ const std::vector<PolledDriver *> & PrimarySourceProvider::getAdditionalPolledDr
 
 std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(const char * module, bool systemWide, PmuXML && pmuXml, const char * maliFamilyName)
 {
-
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
     const std::string hardwareName = cpu_utils::readCpuInfo(false, ids.getCpuIds());
@@ -540,11 +554,14 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(const char 
         if (result != nullptr) {
             logg.logMessage("...Success");
             logg.logSetup("Profiling Source\nUsing gator.ko for primary data source");
+            logg.logError("Using deprecated gator.ko for primary data source");
             return result;
         }
         else
             logg.logMessage("...Unable to set up gator.ko");
     }
+#else
+    (void)module;
 #endif /* CONFIG_SUPPORT_GATOR_KO */
 
     // try perf
@@ -561,30 +578,36 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(const char 
         return result;
     }
     else
-        logg.logMessage("...Perf API is not available to non-root users in system-wide mode.\n"
-                "To use it make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1,\n"
-                "and '/sys/kernel/debug' and '/sys/kernel/debug/tracing' are mounted and accessible as this user.\n\n"
+        logg.logError("...Perf API is not available to non-root users in system-wide mode.\n"
+                "To use it\n"
+                " * try --system-wide=no,\n"
+                " * run as root,\n"
+                " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
+                "   Try (as root):\n"
+                "    - echo -1 > /proc/sys/kernel/perf_event_paranoid\n"
+                "Also make sure '/sys/kernel/debug' and '/sys/kernel/debug/tracing'\n"
+                "are mounted and accessible as the user that gatord is run as.\n"
                 "Try (as root):\n"
                 " - mount -o remount,mode=755 /sys/kernel/debug\n"
-                " - mount -o remount,mode=755 /sys/kernel/debug/tracing\n"
-                " - echo -1 > /proc/sys/kernel/perf_event_paranoid");
+                " - mount -o remount,mode=755 /sys/kernel/debug/tracing");
 #endif /* CONFIG_SUPPORT_PERF */
 
-    // fall back to non-root mode
+    // fall back to proc mode
 #if CONFIG_SUPPORT_PROC_POLLING
     if (isRoot)
-        logg.logMessage("Trying proc counters as root...");
+        logg.logMessage("Trying /proc counters as root...");
     else
-        logg.logMessage("Trying proc counters as non-root; limited system profiling information available...");
+        logg.logMessage("Trying /proc counters as non-root; limited system profiling information available...");
 
     result = NonRootPrimarySource::tryCreate(std::move(pmuXml), ids, modelNameToUse);
     if (result != nullptr) {
         logg.logMessage("...Success");
-        logg.logSetup("Profiling Source\nUsing proc polling for primary data source");
+        logg.logSetup("Profiling Source\nUsing /proc polling for primary data source");
+        logg.logError("Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
         return result;
     }
     else
-        logg.logMessage("...Unable to set proc counters");
+        logg.logMessage("...Unable to set /proc counters");
 #endif /* CONFIG_SUPPORT_PROC_POLLING */
 
     return result;

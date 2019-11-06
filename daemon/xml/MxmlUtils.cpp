@@ -6,14 +6,14 @@
 // Copy all the attributes from src to dst
 void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src)
 {
-    if (dest == NULL || dest->type != MXML_ELEMENT || src == NULL || src->type != MXML_ELEMENT)
+    if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr || mxmlGetType(src) != MXML_ELEMENT)
         return;
 
-    int i;
-    mxml_attr_t *attr;
-
-    for (i = src->value.element.num_attrs, attr = src->value.element.attrs; i > 0; --i, ++attr) {
-        mxmlElementSetAttr(dest, attr->name, attr->value);
+    const int numAttrs = mxmlElementGetAttrCount(src);
+    for (int i = 0; i < numAttrs; ++i) {
+        const char * name;
+        const char * value = mxmlElementGetAttrByIndex(src, i, &name);
+        mxmlElementSetAttr(dest, name, value);
     }
 }
 
@@ -35,7 +35,7 @@ const char * mxmlWhitespaceCB(mxml_node_t *node, int loc)
 
         // Avoid a carriage return on the first line of the xml file
         if (!strncmp(name, "?xml", 4))
-            return NULL;
+            return nullptr;
 
         // Default - no indentation
         return "\n";
@@ -51,8 +51,8 @@ const char * mxmlWhitespaceCB(mxml_node_t *node, int loc)
             return "\n  ";
 
         // Default - no carriage return
-        return NULL;
+        return nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }

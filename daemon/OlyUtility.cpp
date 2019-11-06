@@ -32,7 +32,7 @@ bool stringToBool(const char* string, bool defValue)
         return defValue;
     }
 
-    strncpy(value, string, sizeof(value));
+    strncpy(value, string, sizeof(value) - 1);
     if (value[0] == 0) {
         return defValue;
     }
