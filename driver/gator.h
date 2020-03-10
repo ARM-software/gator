@@ -14,9 +14,21 @@
 #include <linux/mm.h>
 #include <linux/list.h>
 
-#define GATOR_PERF_PMU_SUPPORT  (defined(CONFIG_PERF_EVENTS) && (!(defined(__arm__) || defined(__aarch64__)) || defined(CONFIG_HW_PERF_EVENTS)))
-#define GATOR_CPU_FREQ_SUPPORT  defined(CONFIG_CPU_FREQ)
-#define GATOR_IKS_SUPPORT       defined(CONFIG_BL_SWITCHER)
+#if defined(CONFIG_PERF_EVENTS) && (!(defined(__arm__) || defined(__aarch64__)) || defined(CONFIG_HW_PERF_EVENTS))
+#define GATOR_PERF_PMU_SUPPORT 1
+#else
+#define GATOR_PERF_PMU_SUPPORT 0
+#endif
+#if defined(CONFIG_CPU_FREQ)
+#define GATOR_CPU_FREQ_SUPPORT 1
+#else
+#define GATOR_CPU_FREQ_SUPPORT 0
+#endif
+#if defined(CONFIG_BL_SWITCHER)
+#define GATOR_IKS_SUPPORT 1
+#else
+#define GATOR_IKS_SUPPORT 0
+#endif
 
 /* cpu ids */
 #define CORTEX_A5    0x41c05
