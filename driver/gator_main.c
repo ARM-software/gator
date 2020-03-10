@@ -279,7 +279,7 @@ module_param_named(src_md5, gator_src_md5, charp, 0444);
 u32 gator_cpuid(void)
 {
 #if defined(__arm__) || defined(__aarch64__)
-    u32 val;
+    unsigned long val;
 #if !defined(__aarch64__)
     asm volatile("mrc p15, 0, %0, c0, c0, 0" : "=r" (val));
 #else
