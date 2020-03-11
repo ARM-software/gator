@@ -17,10 +17,11 @@
 #include <linux/workqueue.h>
 #include <trace/events/kmem.h>
 
-#define USE_THREAD defined(CONFIG_PREEMPT_RT_FULL)
-
-
-
+#if defined(CONFIG_PREEMPT_RT_FULL)
+#define USE_THREAD 1
+#else
+#define USE_THREAD 0
+#endif
 
 /*
  * Handle rename of global_page_state "c41f012ade0b95b0a6e25c7150673e0554736165 mm: rename global_page_state to global_zone_page_state"
