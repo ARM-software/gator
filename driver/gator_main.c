@@ -1294,7 +1294,6 @@ static const struct file_operations depth_fops = {
 static void gator_op_create_files(struct super_block *sb, struct dentry *root)
 {
     struct dentry *dir;
-    int cpu;
 
     userspace_buffer_size = BACKTRACE_BUFFER_SIZE;
     gator_response_type = 1;
