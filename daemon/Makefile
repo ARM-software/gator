@@ -37,6 +37,10 @@ CXX_SRC     := $(GATORD_CXX_SRC_FILES)
 D_FILES     := $(C_SRC:%.c=$(OBJ_DIR)%.d) $(CXX_SRC:%.cpp=$(OBJ_DIR)%.d)
 $(shell mkdir -p $(dir $(D_FILES)))
 
+ifeq ($(shell expr `$(CXX) -dumpversion | cut -f1 -d.` \>= 7),1)
+	LDLIBS += -latomic
+endif
+
 ifeq ($(V),1)
 	Q =
 	ECHO_HOSTCC =
