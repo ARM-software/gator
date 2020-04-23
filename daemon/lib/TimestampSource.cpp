@@ -1,25 +1,13 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "lib/TimestampSource.h"
 
-namespace lib
-{
-    TimestampSource::TimestampSource(clockid_t id_)
-            : base(0),
-              id(id_)
-    {
-        base = getAbsTimestampNS();
-    }
+namespace lib {
+    TimestampSource::TimestampSource(clockid_t id_) : base(0), id(id_) { base = getAbsTimestampNS(); }
 
-    unsigned long long TimestampSource::getBaseTimestampNS() const
-    {
-        return base;
-    }
+    unsigned long long TimestampSource::getBaseTimestampNS() const { return base; }
 
-    unsigned long long TimestampSource::getTimestampNS() const
-    {
-        return getAbsTimestampNS() - base;
-    }
+    unsigned long long TimestampSource::getTimestampNS() const { return getAbsTimestampNS() - base; }
 
     unsigned long long TimestampSource::getAbsTimestampNS() const
     {

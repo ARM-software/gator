@@ -1,28 +1,20 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef MIDGARDDRIVER_H
 #define MIDGARDDRIVER_H
 
-#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
-class MidgardDriver : public SimpleDriver
-{
+class MidgardDriver : public SimpleDriver {
     typedef SimpleDriver super;
 
 public:
     MidgardDriver();
     ~MidgardDriver();
 
-    bool claimCounter(Counter &counter) const;
+    bool claimCounter(Counter & counter) const;
     void resetCounters();
-    void setupCounter(Counter &counter);
+    void setupCounter(Counter & counter);
 
     bool start(const int midgardUds);
 
@@ -32,7 +24,10 @@ private:
     mutable bool mQueried;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(MidgardDriver);
+    MidgardDriver(const MidgardDriver &) = delete;
+    MidgardDriver & operator=(const MidgardDriver &) = delete;
+    MidgardDriver(MidgardDriver &&) = delete;
+    MidgardDriver & operator=(MidgardDriver &&) = delete;
 };
 
 #endif // MIDGARDDRIVER_H

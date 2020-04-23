@@ -1,10 +1,9 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FILE_DESCRIPTOR_H
 #define INCLUDE_LIB_FILE_DESCRIPTOR_H
 
-namespace lib
-{
+namespace lib {
     int pipe_cloexec(int pipefd[2]);
     bool setNonblock(const int fd);
     bool writeAll(const int fd, const void * const buf, const size_t pos);
@@ -13,4 +12,3 @@ namespace lib
 }
 
 #endif // INCLUDE_LIB_FILE_DESCRIPTOR_H
-

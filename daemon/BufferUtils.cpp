@@ -1,15 +1,8 @@
-/**
- * Copyright (C) Arm Limited 2013-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "BufferUtils.h"
 
-namespace buffer_utils
-{
+namespace buffer_utils {
     int sizeOfPackInt(int32_t x)
     {
         char tmp[MAXSIZE_PACK32];
@@ -26,10 +19,10 @@ namespace buffer_utils
         return packInt64(tmp, writePos, x);
     }
 
-    int packInt(char * const buf, int &writePos, int32_t x, int writePosWrapMask)
+    int packInt(char * const buf, int & writePos, int32_t x, int writePosWrapMask)
     {
         int packedBytes = 0;
-        int more = true;
+        bool more = true;
         while (more) {
             // low order 7 bits of x
             char b = x & 0x7f;
@@ -51,10 +44,10 @@ namespace buffer_utils
         return packedBytes;
     }
 
-    int packInt64(char * const buf, int &writePos, int64_t x, int writePosWrapMask)
+    int packInt64(char * const buf, int & writePos, int64_t x, int writePosWrapMask)
     {
         int packedBytes = 0;
-        int more = true;
+        bool more = true;
         while (more) {
             // low order 7 bits of x
             char b = x & 0x7f;
@@ -76,7 +69,7 @@ namespace buffer_utils
         return packedBytes;
     }
 
-    int32_t unpackInt(const char * buf, int &readPos)
+    int32_t unpackInt(const char * buf, int & readPos)
     {
         uint8_t shift = 0;
         int32_t value = 0;
@@ -95,7 +88,7 @@ namespace buffer_utils
         return value;
     }
 
-    int64_t unpackInt64(const char * buf, int &readPos)
+    int64_t unpackInt64(const char * buf, int & readPos)
     {
         uint8_t shift = 0;
         int64_t value = 0;
@@ -115,4 +108,3 @@ namespace buffer_utils
     }
 
 }
-

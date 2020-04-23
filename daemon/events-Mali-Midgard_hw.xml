@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
 <!-- this file is valid for Midgard r4p0 and earlier and replaced with the core-specific files in r5p0 -->
   <category name="Mali-Midgard Job Manager" per_cpu="no">

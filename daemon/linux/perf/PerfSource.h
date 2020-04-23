@@ -1,24 +1,17 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef PERFSOURCE_H
 #define PERFSOURCE_H
 
-#include <semaphore.h>
-#include <set>
-
-#include "ClassBoilerPlate.h"
-#include "SummaryBuffer.h"
 #include "Monitor.h"
+#include "Source.h"
+#include "SummaryBuffer.h"
+#include "UEvent.h"
 #include "linux/perf/PerfBuffer.h"
 #include "linux/perf/PerfGroups.h"
-#include "Source.h"
-#include "UEvent.h"
+
+#include <semaphore.h>
+#include <set>
 
 class PerfAttrsBuffer;
 class PerfDriver;
@@ -27,13 +20,16 @@ class FtraceDriver;
 class ICpuInfo;
 class PerfSyncThreadBuffer;
 
-class PerfSource : public Source
-{
+class PerfSource : public Source {
 public:
-    PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile,
-               const std::set<int> & appTids, FtraceDriver & ftraceDriver, bool enableOnCommandExec,
+    PerfSource(PerfDriver & driver,
+               Child & child,
+               sem_t & senderSem,
+               sem_t & startProfile,
+               const std::set<int> & appTids,
+               FtraceDriver & ftraceDriver,
+               bool enableOnCommandExec,
                ICpuInfo & cpuInfo);
-    ~PerfSource();
 
     virtual bool prepare() override;
     virtual void run() override;
@@ -53,7 +49,8 @@ private:
     UEvent mUEvent;
     std::set<int> mAppTids;
     PerfDriver & mDriver;
-    PerfAttrsBuffer *mAttrsBuffer;
+    std::unique_ptr<PerfAttrsBuffer> mAttrsBuffer;
+    std::unique_ptr<PerfAttrsBuffer> mProcBuffer;
     sem_t & mSenderSem;
     sem_t & mStartProfile;
     int mInterruptFd;
@@ -64,7 +61,10 @@ private:
     bool enableOnCommandExec;
 
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(PerfSource);
+    PerfSource(const PerfSource &) = delete;
+    PerfSource & operator=(const PerfSource &) = delete;
+    PerfSource(PerfSource &&) = delete;
+    PerfSource & operator=(PerfSource &&) = delete;
 };
 
 #endif // PERFSOURCE_H

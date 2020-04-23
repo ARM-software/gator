@@ -1,41 +1,31 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FORMAT_H
 #define INCLUDE_LIB_FORMAT_H
 
 #include <sstream>
 
-namespace lib
-{
+namespace lib {
     /**
      * Helper class for formatting values into strings
      */
-    class Format
-    {
+    class Format {
     public:
-
         /** @brief  Constructor */
-        Format()
-                : ss()
-        {
-        }
+        Format() : ss() {}
 
         /** @brief  Insertion operator */
         template<typename T>
-        Format& operator <<(const T & that)
+        Format & operator<<(const T & that)
         {
             ss << that;
             return *this;
         }
 
         /** @brief  Convert to string */
-        operator std::string() const
-        {
-            return ss.str();
-        }
+        operator std::string() const { return ss.str(); }
 
     private:
-
         /** @brief  Stream we use as buffer */
         std::ostringstream ss;
     };

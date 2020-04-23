@@ -1,18 +1,13 @@
-/**
- * Copyright (C) Arm Limited 2013-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "Tracepoints.h"
 
-#include "linux/perf/IPerfAttrsConsumer.h"
 #include "Config.h"
 #include "Logging.h"
-#include "lib/Utils.h"
 #include "lib/Format.h"
+#include "lib/Utils.h"
+#include "linux/perf/IPerfAttrsConsumer.h"
+
 #include <lib/FsEntry.h>
 
 std::string getTracepointPath(const char * name, const char * file)

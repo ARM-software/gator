@@ -1,18 +1,13 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /*
- * "$Id: config.h.in 451 2014-01-04 21:50:06Z msweet $"
+ * Configuration file for Mini-XML, a small XML file parsing library.
  *
- * Configuration file for Mini-XML, a small XML-like file parsing library.
+ * https://www.msweet.org/mxml
  *
- * Copyright 2003-2014 by Michael R Sweet.
+ * Copyright © 2003-2019 by Michael R Sweet.
  *
- * These coded instructions, statements, and computer programs are the
- * property of Michael R Sweet and are protected by Federal copyright
- * law.  Distribution and use rights are outlined in the file "COPYING"
- * which should have been included with this file.  If this file is
- * missing or damaged, see the license at:
- *
- *     http://www.msweet.org/projects.php/Mini-XML
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more
+ * information.
  */
 
 /*
@@ -30,7 +25,7 @@
  * Version number...
  */
 
-#define MXML_VERSION "Mini-XML v2.9"
+#define MXML_VERSION "Mini-XML v3.0"
 
 
 /*
@@ -48,10 +43,11 @@
 
 
 /*
- * Do we have the snprintf() and vsnprintf() functions?
+ * Do we have the *printf() functions?
  */
 
 #define HAVE_SNPRINTF 1
+#define HAVE_VASPRINTF 1
 #define HAVE_VSNPRINTF 1
 
 
@@ -60,6 +56,8 @@
  */
 
 #define HAVE_STRDUP 1
+/* #undef HAVE_STRLCAT */
+/* #undef HAVE_STRLCPY */
 
 
 /*
@@ -74,23 +72,29 @@
  */
 
 #  ifndef HAVE_STRDUP
-extern char	*_mxml_strdup(const char *);
+extern char *_mxml_strdup(const char *);
 #    define strdup _mxml_strdup
 #  endif /* !HAVE_STRDUP */
 
-extern char	*_mxml_strdupf(const char *, ...);
-extern char	*_mxml_vstrdupf(const char *, va_list);
+#  ifndef HAVE_STRLCAT
+extern size_t   _mxml_strlcat(char *, const char *, size_t);
+#    define strlcat _mxml_strlcat
+#  endif /* !HAVE_STRLCAT */
+
+#  ifndef HAVE_STRLCPY
+extern size_t   _mxml_strlcpy(char *, const char *, size_t);
+#    define strlcpy _mxml_strlcpy
+#  endif /* !HAVE_STRLCPY */
+
+extern char *_mxml_strdupf(const char *, ...);
+extern char *_mxml_vstrdupf(const char *, va_list);
 
 #  ifndef HAVE_SNPRINTF
-extern int	_mxml_snprintf(char *, size_t, const char *, ...);
+extern int  _mxml_snprintf(char *, size_t, const char *, ...);
 #    define snprintf _mxml_snprintf
 #  endif /* !HAVE_SNPRINTF */
 
 #  ifndef HAVE_VSNPRINTF
-extern int	_mxml_vsnprintf(char *, size_t, const char *, va_list);
+extern int  _mxml_vsnprintf(char *, size_t, const char *, va_list);
 #    define vsnprintf _mxml_vsnprintf
 #  endif /* !HAVE_VSNPRINTF */
-
-/*
- * End of "$Id: config.h.in 451 2014-01-04 21:50:06Z msweet $".
- */

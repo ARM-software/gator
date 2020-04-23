@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) Arm Limited 2015-2016. All rights reserved.
+# Copyright (C) 2015-2020 by Arm Limited. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -94,14 +94,6 @@ if [ $UID_EFFECTIVE -ne 0 ]; then
 fi
 echo now root
 
-if [ -e /sys/module/gator ]; then
-	if ! confirm "Streamline has detected that the gator kernel module is loaded on your device. Click yes to switch to user space gator, click no to abort the install."; then
-		restore_selinux
-		echo setup: cancel
-		exit
-	fi
-fi
-
 try_home() {
 	if ! [ -d "$1" -a -w "$1" ]; then
 		return 1
@@ -163,17 +155,7 @@ while true; do
 	sleep 1
 done
 
-# Ensure gator.ko is unloaded
-umount /dev/gator 2> /dev/null
-rmmod gator 2> /dev/null
-if [ -e /sys/module/gator ]; then
-	restore_selinux
-	echo setup: error: Unable to unload gator.ko, the gator module may be built into the kernel or gator.ko cannot be unloaded. Rebooting the device may resolve the issue.
-	exit
-fi
-
 mv gatord gatord.old 2> /dev/null
-mv gator.ko gator.ko.old 2> /dev/null
 
 move $OLD_DIR/gatord$SUFFIX gatord
 chmod 755 gatord

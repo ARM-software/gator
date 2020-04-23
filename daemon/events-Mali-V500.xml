@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
   <category name="Mali-V500">
     <event counter="ARM_Mali-V500_cnt0" title="MVE-V500 Stats" name="Samples" class="absolute" description="The number of times we have taken a sample"/>

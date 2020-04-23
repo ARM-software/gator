@@ -1,21 +1,20 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessPoller.h"
 
-namespace non_root
-{
-    namespace
-    {
-        class ProcessStateTrackerActiveScanIProcessPollerReceiver : public lnx::ProcessPollerBase::IProcessPollerReceiver
-        {
+namespace non_root {
+    namespace {
+        class ProcessStateTrackerActiveScanIProcessPollerReceiver
+            : public lnx::ProcessPollerBase::IProcessPollerReceiver {
         public:
-
             ProcessStateTrackerActiveScanIProcessPollerReceiver(ProcessStateTracker::ActiveScan & activeScan_)
-                    : activeScan(activeScan_)
+                : activeScan(activeScan_)
             {
             }
 
-            virtual void onThreadDetails(int pid, int tid, const lnx::ProcPidStatFileRecord & statRecord,
+            virtual void onThreadDetails(int pid,
+                                         int tid,
+                                         const lnx::ProcPidStatFileRecord & statRecord,
                                          const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
                                          const lib::Optional<lib::FsEntry> & exe) override
             {
@@ -23,14 +22,12 @@ namespace non_root
             }
 
         private:
-
             ProcessStateTracker::ActiveScan & activeScan;
         };
     }
 
     ProcessPoller::ProcessPoller(ProcessStateTracker & processStateTracker_, lib::TimestampSource & timestampSource_)
-            : processStateTracker(processStateTracker_),
-              timestampSource(timestampSource_)
+        : processStateTracker(processStateTracker_), timestampSource(timestampSource_)
     {
     }
 

@@ -1,20 +1,19 @@
-/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 
-#include <assert.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string>
-#include <memory>
 #include "IBuffer.h"
-#include "ClassBoilerPlate.h"
 #include "lib/AutoClosingFd.h"
 #include "mali_userspace/MaliDeviceApi.h"
 
-namespace mali_userspace
-{
+#include <assert.h>
+#include <memory>
+#include <stddef.h>
+#include <stdint.h>
+#include <string>
+
+namespace mali_userspace {
     /* forward declarations */
     struct MaliProductVersion;
     class MaliDevice;
@@ -23,8 +22,7 @@ namespace mali_userspace
     /**
      * Interface implemented by counter value receiver; the object that is passed data by MaliDevice::dumpAllCounters
      */
-    struct IMaliDeviceCounterDumpCallback
-    {
+    struct IMaliDeviceCounterDumpCallback {
         virtual ~IMaliDeviceCounterDumpCallback();
 
         /**
@@ -35,7 +33,11 @@ namespace mali_userspace
          * @param delta
          * @param gpuId
          */
-        virtual void nextCounterValue(uint32_t nameBlockIndex, uint32_t counterIndex, uint64_t delta, uint32_t gpuId, IBuffer& buffer) = 0;
+        virtual void nextCounterValue(uint32_t nameBlockIndex,
+                                      uint32_t counterIndex,
+                                      uint64_t delta,
+                                      uint32_t gpuId,
+                                      IBuffer & buffer) = 0;
 
         /**
          * Used to check if the user selected the counter in the config dialog when building the fast lookup list
@@ -52,54 +54,47 @@ namespace mali_userspace
      * Contains the list of counters to read. Used to improve performance during read instead of having to iterate
      * over all possible counter entries
      */
-    class MaliDeviceCounterList
-    {
-        public:
+    class MaliDeviceCounterList {
+    public:
+        /** An address of an enabled counter */
+        struct Address {
+            MaliCounterBlockName nameBlock;
+            uint32_t repeatCount;
+            uint32_t groupIndex;
+            uint32_t wordIndex;
+        };
 
-            /** An address of an enabled counter */
-            struct Address
-            {
-                MaliCounterBlockName nameBlock;
-                uint32_t repeatCount;
-                uint32_t groupIndex;
-                uint32_t wordIndex;
-            };
-
-            /**
+        /**
              * Constructor
              *
              * @param numBlocks
              * @param numGroups
              * @param numWords
              */
-            MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords);
-            MaliDeviceCounterList(MaliDeviceCounterList &&);
-            ~MaliDeviceCounterList();
+        MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords);
+        MaliDeviceCounterList(MaliDeviceCounterList &&);
+        ~MaliDeviceCounterList();
 
-            /** @return The number of enabled counters in the list */
-            size_t size() const
-            {
-                return countersListValid;
-            }
+        /** @return The number of enabled counters in the list */
+        size_t size() const { return countersListValid; }
 
-            /** @return The `index`th item in the list */
-            const Address & operator[] (size_t index) const
-            {
-                assert(index < countersListValid);
+        /** @return The `index`th item in the list */
+        const Address & operator[](size_t index) const
+        {
+            assert(index < countersListValid);
 
-                return countersList[index];
-            }
+            return countersList[index];
+        }
 
-        private:
+    private:
+        size_t countersListLength;
+        size_t countersListValid;
+        Address * countersList;
 
-            size_t countersListLength;
-            size_t countersListValid;
-            Address * countersList;
+        /* It can call enable */
+        friend class MaliDevice;
 
-            /* It can call enable */
-            friend class MaliDevice;
-
-            /**
+        /**
              * Mark counter at particular address as enabled
              *
              * @param nameBlockIndex
@@ -107,18 +102,17 @@ namespace mali_userspace
              * @param groupIndex
              * @param wordIndex
              */
-            void enable(MaliCounterBlockName nameBlock, uint32_t repeatCount, uint32_t groupIndex, uint32_t wordIndex);
+        void enable(MaliCounterBlockName nameBlock, uint32_t repeatCount, uint32_t groupIndex, uint32_t wordIndex);
 
-            CLASS_DELETE_COPY(MaliDeviceCounterList);
+        MaliDeviceCounterList(const MaliDeviceCounterList &) = delete;
+        MaliDeviceCounterList & operator=(const MaliDeviceCounterList &) = delete;
     };
 
     /**
      * Mali device object, manages properties of the device, and data buffer
      */
-    class MaliDevice
-    {
+    class MaliDevice {
     public:
-
         enum {
             /** The number of counters with a block */
             NUM_COUNTERS_PER_BLOCK = 64,
@@ -142,10 +136,7 @@ namespace mali_userspace
         /**
          * @return The path to the clock file
          */
-        inline std::string  getClockPath() const
-        {
-            return clockPath;
-        }
+        inline std::string getClockPath() const { return clockPath; }
 
         /**
          * @return the gpuid of the device
@@ -173,12 +164,12 @@ namespace mali_userspace
         /**
          * @return The family name of the device
          */
-        const char* getProductName() const;
+        const char * getProductName() const;
 
         /**
          * @return The family name of the device
          */
-        const char* getSupportedDeviceFamilyName() const;
+        const char * getSupportedDeviceFamilyName() const;
 
         /**
          * Get the name of the counter for the given block and index
@@ -206,7 +197,12 @@ namespace mali_userspace
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters(uint32_t hardwareVersion, const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData , IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters(uint32_t hardwareVersion,
+                             const MaliDeviceCounterList & counterList,
+                             const uint32_t * buffer,
+                             size_t bufferLength,
+                             IBuffer & bufferData,
+                             IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
          * Create an HWCNT reader handle (which is a file-descriptor, for use by MaliHwCntrReader)
@@ -220,15 +216,20 @@ namespace mali_userspace
          *          count being invalid
          * @return The handle, or invalid handle if failed
          */
-        lib::AutoClosingFd createHwCntReaderFd(std::size_t bufferCount, std::uint32_t jmBitmask,
-                                               std::uint32_t shaderBitmask, std::uint32_t tilerBitmask,
-                                               std::uint32_t mmuL2Bitmask, bool & failedDueToBufferCount) const;
-
+        lib::AutoClosingFd createHwCntReaderFd(std::size_t bufferCount,
+                                               std::uint32_t jmBitmask,
+                                               std::uint32_t shaderBitmask,
+                                               std::uint32_t tilerBitmask,
+                                               std::uint32_t mmuL2Bitmask,
+                                               bool & failedDueToBufferCount) const;
 
     private:
-
         /** Init a block in the enable list */
-        static void initCounterList(uint32_t gpuId, IMaliDeviceCounterDumpCallback & callback, MaliDeviceCounterList & list, MaliCounterBlockName block, uint32_t repeatCount);
+        static void initCounterList(uint32_t gpuId,
+                                    IMaliDeviceCounterDumpCallback & callback,
+                                    MaliDeviceCounterList & list,
+                                    MaliCounterBlockName block,
+                                    uint32_t repeatCount);
 
         /** Internal product version counter information */
         const MaliProductVersion & mProductVersion;
@@ -239,9 +240,14 @@ namespace mali_userspace
         /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
         const std::string clockPath;
 
-        MaliDevice(const MaliProductVersion & productVersion, std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath);
+        MaliDevice(const MaliProductVersion & productVersion,
+                   std::unique_ptr<IMaliDeviceApi> deviceApi,
+                   std::string clockPath);
 
-        CLASS_DELETE_COPY_MOVE(MaliDevice);
+        MaliDevice(const MaliDevice &) = delete;
+        MaliDevice & operator=(const MaliDevice &) = delete;
+        MaliDevice(MaliDevice &&) = delete;
+        MaliDevice & operator=(MaliDevice &&) = delete;
 
         /**
          * Dump all the counter data on V4 layout
@@ -251,7 +257,11 @@ namespace mali_userspace
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters_V4(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters_V4(const MaliDeviceCounterList & counterList,
+                                const uint32_t * buffer,
+                                size_t bufferLength,
+                                IBuffer & bufferData,
+                                IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
@@ -261,7 +271,11 @@ namespace mali_userspace
          * @param bufferLength
          * @param callback
          */
-        void dumpAllCounters_V56(const MaliDeviceCounterList & counterList, const uint32_t * buffer, size_t bufferLength, IBuffer& bufferData, IMaliDeviceCounterDumpCallback & callback) const;
+        void dumpAllCounters_V56(const MaliDeviceCounterList & counterList,
+                                 const uint32_t * buffer,
+                                 size_t bufferLength,
+                                 IBuffer & bufferData,
+                                 IMaliDeviceCounterDumpCallback & callback) const;
     };
 
     /**

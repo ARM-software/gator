@@ -1,22 +1,14 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef SOURCE_H
 #define SOURCE_H
 
 #include <pthread.h>
-#include "ClassBoilerPlate.h"
 
 class Child;
 class ISender;
 
-class Source
-{
+class Source {
 public:
     Source(Child & child);
     virtual ~Source();
@@ -31,17 +23,19 @@ public:
     virtual void write(ISender * sender) = 0;
 
 protected:
-
     // active child object
     Child & mChild;
 
 private:
-    static void *runStatic(void *arg);
+    static void * runStatic(void * arg);
 
     pthread_t mThreadID;
 
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(Source);
+    Source(const Source &) = delete;
+    Source & operator=(const Source &) = delete;
+    Source(Source &&) = delete;
+    Source & operator=(Source &&) = delete;
 };
 
 #endif // SOURCE_H

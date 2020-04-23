@@ -1,28 +1,21 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 
-#include "ClassBoilerPlate.h"
+#include "Protocol.h"
 
 #include <cstdint>
 #include <string>
 
-#include "Protocol.h"
-
 class Buffer;
 class Sender;
 
-namespace non_root
-{
-    class MixedFrameBuffer
-    {
+namespace non_root {
+    class MixedFrameBuffer {
     public:
-
-        class Frame
-        {
+        class Frame {
         public:
-
             Frame(MixedFrameBuffer & parent, std::uint64_t currentTime, FrameType frameType, std::int32_t core);
             ~Frame();
 
@@ -33,7 +26,6 @@ namespace non_root
             bool isValid() const;
 
         private:
-
             MixedFrameBuffer & parent;
             std::uint64_t currentTime;
             int bytesAvailable;
@@ -48,26 +40,51 @@ namespace non_root
 
         MixedFrameBuffer(Buffer & buffer);
 
-        bool activityFrameLinkMessage(std::uint64_t currentTime, std::int32_t cookie, std::int32_t pid, std::int32_t tid);
+        bool activityFrameLinkMessage(std::uint64_t currentTime,
+                                      std::int32_t cookie,
+                                      std::int32_t pid,
+                                      std::int32_t tid);
         bool counterFrameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t key, std::uint64_t value);
-        bool nameFrameCookieNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t cookie, const std::string & name);
-        bool nameFrameThreadNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid, const std::string & name);
-        bool schedFrameSwitchMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid, std::int32_t state);
+        bool nameFrameCookieNameMessage(std::uint64_t currentTime,
+                                        std::int32_t core,
+                                        std::int32_t cookie,
+                                        const std::string & name);
+        bool nameFrameThreadNameMessage(std::uint64_t currentTime,
+                                        std::int32_t core,
+                                        std::int32_t tid,
+                                        const std::string & name);
+        bool schedFrameSwitchMessage(std::uint64_t currentTime,
+                                     std::int32_t core,
+                                     std::int32_t tid,
+                                     std::int32_t state);
         bool schedFrameThreadExitMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid);
-        bool summaryFrameSummaryMessage(std::uint64_t currentTime, std::uint64_t timestamp, std::uint64_t uptime, std::uint64_t monotonicDelta,
-                                        const char * uname, unsigned long pageSize, bool nosync);
-        bool summaryFrameCoreNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t cpuid, const char * name);
-        bool threadCounterFrameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid, std::int32_t key, std::uint64_t value);
+        bool summaryFrameSummaryMessage(std::uint64_t currentTime,
+                                        std::uint64_t timestamp,
+                                        std::uint64_t uptime,
+                                        std::uint64_t monotonicDelta,
+                                        const char * uname,
+                                        unsigned long pageSize,
+                                        bool nosync);
+        bool summaryFrameCoreNameMessage(std::uint64_t currentTime,
+                                         std::int32_t core,
+                                         std::int32_t cpuid,
+                                         const char * name);
+        bool threadCounterFrameMessage(std::uint64_t currentTime,
+                                       std::int32_t core,
+                                       std::int32_t tid,
+                                       std::int32_t key,
+                                       std::uint64_t value);
 
     private:
-
         friend class Frame;
 
         Buffer & buffer;
 
         // Intentionally unimplemented
-        CLASS_DELETE_COPY_MOVE(MixedFrameBuffer)
-        ;
+        MixedFrameBuffer(const MixedFrameBuffer &) = delete;
+        MixedFrameBuffer & operator=(const MixedFrameBuffer &) = delete;
+        MixedFrameBuffer(MixedFrameBuffer &&) = delete;
+        MixedFrameBuffer & operator=(MixedFrameBuffer &&) = delete;
     };
 
 }

@@ -1,28 +1,19 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef MALIVIDEODRIVER_H
 #define MALIVIDEODRIVER_H
 
-#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
 class MaliVideoCounter;
 
-enum MaliVideoCounterType
-{
+enum MaliVideoCounterType {
     MVCT_COUNTER,
     MVCT_EVENT,
     MVCT_ACTIVITY,
 };
 
-class MaliVideoDriver : public SimpleDriver
-{
+class MaliVideoDriver : public SimpleDriver {
 private:
     typedef SimpleDriver super;
 
@@ -32,17 +23,20 @@ public:
 
     void readEvents(mxml_node_t * const root);
 
-    int writeCounters(mxml_node_t *root) const;
-    bool claimCounter(Counter &counter) const;
+    int writeCounters(mxml_node_t * root) const;
+    bool claimCounter(Counter & counter) const;
 
     bool start(const int mveUds);
     void stop(const int mveUds);
 
 private:
-    void marshalEnable(const MaliVideoCounterType type, char * const buf, int &pos);
+    void marshalEnable(const MaliVideoCounterType type, char * const buf, int & pos);
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(MaliVideoDriver);
+    MaliVideoDriver(const MaliVideoDriver &) = delete;
+    MaliVideoDriver & operator=(const MaliVideoDriver &) = delete;
+    MaliVideoDriver(MaliVideoDriver &&) = delete;
+    MaliVideoDriver & operator=(MaliVideoDriver &&) = delete;
 };
 
 #endif // MALIVIDEODRIVER_H

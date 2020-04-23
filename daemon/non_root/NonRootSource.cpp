@@ -1,45 +1,47 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+#define BUFFER_USE_SESSION_DATA
 
 #include "non_root/NonRootSource.h"
-#include "non_root/NonRootDriver.h"
-#include "non_root/GlobalPoller.h"
-#include "non_root/GlobalStatsTracker.h"
-#include "non_root/GlobalStateChangeHandler.h"
-#include "non_root/ProcessPoller.h"
-#include "non_root/ProcessStateChangeHandler.h"
-#include "lib/Time.h"
+
 #include "Child.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "Protocol.h"
 #include "SessionData.h"
+#include "lib/Time.h"
+#include "non_root/GlobalPoller.h"
+#include "non_root/GlobalStateChangeHandler.h"
+#include "non_root/GlobalStatsTracker.h"
+#include "non_root/NonRootDriver.h"
+#include "non_root/ProcessPoller.h"
+#include "non_root/ProcessStateChangeHandler.h"
 
 #include <sys/prctl.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
-namespace non_root
-{
-    NonRootSource::NonRootSource(NonRootDriver & driver_, Child & child_, sem_t & senderSem_, sem_t & startProfile_, const ICpuInfo & cpuInfo)
-            : Source(child_),
-              mSwitchBuffers(FrameType::SCHED_TRACE, 1 * 1024 * 1024, senderSem_),
-              mGlobalCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
-              mProcessCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
-              mMiscBuffer(0, FrameType::UNKNOWN, 1 * 1024 * 1024, &senderSem_),
-              interrupted(false),
-              timestampSource(CLOCK_MONOTONIC_RAW),
-              driver(driver_),
-              startProfile(startProfile_),
-              done(false),
-              cpuInfo(cpuInfo)
+namespace non_root {
+    NonRootSource::NonRootSource(NonRootDriver & driver_,
+                                 Child & child_,
+                                 sem_t & senderSem_,
+                                 sem_t & startProfile_,
+                                 const ICpuInfo & cpuInfo)
+        : Source(child_),
+          mSwitchBuffers(FrameType::SCHED_TRACE, 1 * 1024 * 1024, senderSem_),
+          mGlobalCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
+          mProcessCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
+          mMiscBuffer(0, FrameType::UNKNOWN, 1 * 1024 * 1024, &senderSem_),
+          interrupted(false),
+          timestampSource(CLOCK_MONOTONIC_RAW),
+          driver(driver_),
+          startProfile(startProfile_),
+          done(false),
+          cpuInfo(cpuInfo)
 
     {
     }
 
-    bool NonRootSource::prepare()
-    {
-        return summary();
-    }
+    bool NonRootSource::prepare() { return summary(); }
 
     void NonRootSource::run()
     {
@@ -57,20 +59,23 @@ namespace non_root
         GlobalPoller globalPoller(globalStatsTracker, timestampSource);
 
         // process related stuff
-        ProcessStateChangeHandler processChangeHandler(mProcessCounterBuffer, mMiscBuffer, mSwitchBuffers, enabledCounters);
+        ProcessStateChangeHandler processChangeHandler(mProcessCounterBuffer,
+                                                       mMiscBuffer,
+                                                       mSwitchBuffers,
+                                                       enabledCounters);
         ProcessStateTracker processStateTracker(processChangeHandler, getBootTimeTicksBase(), clktck, pageSize);
         ProcessPoller processPoller(processStateTracker, timestampSource);
 
         sem_post(&startProfile);
 
-        const useconds_t sleepIntervalUs = (gSessionData.mSampleRate < 1000 ? 10000 : 1000); // select 1ms or 10ms depending on normal or low rate
+        const useconds_t sleepIntervalUs =
+            (gSessionData.mSampleRate < 1000 ? 10000 : 1000); // select 1ms or 10ms depending on normal or low rate
 
         while (gSessionData.mSessionIsActive) {
             // check buffer not full
-            if (gSessionData.mOneShot && gSessionData.mSessionIsActive && ((mGlobalCounterBuffer.bytesAvailable() <= 0) ||
-                    (mProcessCounterBuffer.bytesAvailable() <= 0) ||
-                    (mMiscBuffer.bytesAvailable() <= 0) ||
-                    mSwitchBuffers.anyFull())) {
+            if (gSessionData.mOneShot && gSessionData.mSessionIsActive &&
+                ((mGlobalCounterBuffer.bytesAvailable() <= 0) || (mProcessCounterBuffer.bytesAvailable() <= 0) ||
+                 (mMiscBuffer.bytesAvailable() <= 0) || mSwitchBuffers.anyFull())) {
                 logg.logMessage("One shot (nrsrc)");
                 mChild.endSession();
             }
@@ -82,7 +87,8 @@ namespace non_root
             processPoller.poll();
 
             // sleep an amount of time to align to the next 1 or 10 millisecond boundary depending on rate
-            const unsigned long long timestampNowUs = (timestampSource.getTimestampNS() + 500) / 1000; // round to nearest uS
+            const unsigned long long timestampNowUs =
+                (timestampSource.getTimestampNS() + 500) / 1000; // round to nearest uS
             const useconds_t sleepUs = sleepIntervalUs - (timestampNowUs % sleepIntervalUs);
 
             usleep(sleepUs);
@@ -95,14 +101,12 @@ namespace non_root
         done = true;
     }
 
-    void NonRootSource::interrupt()
-    {
-        interrupted.store(true, std::memory_order_seq_cst);
-    }
+    void NonRootSource::interrupt() { interrupted.store(true, std::memory_order_seq_cst); }
 
     bool NonRootSource::isDone()
     {
-        return done && mGlobalCounterBuffer.isDone() && mProcessCounterBuffer.isDone() && mMiscBuffer.isDone() && mSwitchBuffers.allDone();
+        return done && mGlobalCounterBuffer.isDone() && mProcessCounterBuffer.isDone() && mMiscBuffer.isDone() &&
+               mSwitchBuffers.allDone();
     }
 
     void NonRootSource::write(ISender * sender)
@@ -128,8 +132,14 @@ namespace non_root
         }
 
         char buf[512];
-        snprintf(buf, sizeof(buf), "%s %s %s %s %s GNU/Linux", utsname.sysname, utsname.nodename, utsname.release,
-                 utsname.version, utsname.machine);
+        snprintf(buf,
+                 sizeof(buf),
+                 "%s %s %s %s %s GNU/Linux",
+                 utsname.sysname,
+                 utsname.nodename,
+                 utsname.release,
+                 utsname.version,
+                 utsname.machine);
 
         long pageSize = sysconf(_SC_PAGESIZE);
         if (pageSize < 0) {
@@ -148,10 +158,11 @@ namespace non_root
         gSessionData.mMonotonicStarted = monotonicStarted;
         const uint64_t currTime = 0;
 
-        MixedFrameBuffer miscBuffer (mMiscBuffer);
+        MixedFrameBuffer miscBuffer(mMiscBuffer);
 
         // send summary message
-        miscBuffer.summaryFrameSummaryMessage(currTime, timestamp, monotonicStarted, monotonicStarted, buf, pageSize, true);
+        miscBuffer
+            .summaryFrameSummaryMessage(currTime, timestamp, monotonicStarted, monotonicStarted, buf, pageSize, true);
         gSessionData.mSentSummary = true;
 
         for (size_t cpu = 0; cpu < cpuInfo.getNumberOfCores(); ++cpu) {

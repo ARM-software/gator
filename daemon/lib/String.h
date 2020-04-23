@@ -1,12 +1,11 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_STRING_H
 #define INCLUDE_LIB_STRING_H
 
 #include <string.h>
 
-namespace lib
-{
+namespace lib {
     /**
      * Like strdup but returns nullptr if the input is null
      * @param s
@@ -21,4 +20,3 @@ namespace lib
 }
 
 #endif // INCLUDE_LIB_STRING_H
-

@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2020 by Arm Limited. All rights reserved. -->
 
   <category name="Mali Misc" per_cpu="no">
     <event counter="ARM_Mali-clock" title="Mali Clock" name="Frequency" class="absolute" display="maximum" description="GPU clock frequency in Hz" units="Hz" />

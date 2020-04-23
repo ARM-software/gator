@@ -1,20 +1,12 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #ifndef NETDRIVER_H
 #define NETDRIVER_H
 
-#include "ClassBoilerPlate.h"
-#include "PolledDriver.h"
 #include "DynBuf.h"
+#include "PolledDriver.h"
 
-class NetDriver : public PolledDriver
-{
+class NetDriver : public PolledDriver {
 private:
     typedef PolledDriver super;
 
@@ -34,7 +26,10 @@ private:
     uint64_t mTransmitBytes;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(NetDriver);
+    NetDriver(const NetDriver &) = delete;
+    NetDriver & operator=(const NetDriver &) = delete;
+    NetDriver(NetDriver &&) = delete;
+    NetDriver & operator=(NetDriver &&) = delete;
 };
 
 #endif // NETDRIVER_H

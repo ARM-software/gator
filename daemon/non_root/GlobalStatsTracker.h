@@ -1,9 +1,8 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_GLOBALSTATSTRACKER_H
 #define INCLUDE_NON_ROOT_GLOBALSTATSTRACKER_H
 
-#include "ClassBoilerPlate.h"
 #include "linux/proc/ProcLoadAvgFileRecord.h"
 #include "linux/proc/ProcStatFileRecord.h"
 #include "non_root/CounterHelpers.h"
@@ -11,31 +10,25 @@
 
 #include <map>
 
-namespace non_root
-{
+namespace non_root {
     class GlobalStateChangeHandler;
 
     /**
      * Extracts and monitors interesting global stats from various sources such as ProcLoadAvgFileRecord and ProcStatFileRecord
      */
-    class GlobalStatsTracker
-    {
+    class GlobalStatsTracker {
     public:
-
         /**
          * Extracts and monitors intersting per-core stats from ProcStatFileRecord (CPU entries)
          */
-        class PerCoreStatsTracker
-        {
+        class PerCoreStatsTracker {
         public:
-
             PerCoreStatsTracker();
 
             void sendStats(unsigned long long timestampNS, GlobalStateChangeHandler & handler, unsigned long cpuID);
             void updateFromProcStatFileRecordCpuTime(const lnx::ProcStatFileRecord::CpuTime & record);
 
         private:
-
             DeltaCounter<unsigned long long> timeUserTicks;
             DeltaCounter<unsigned long long> timeNiceTicks;
             DeltaCounter<unsigned long long> timeSystemTicks;
@@ -49,8 +42,11 @@ namespace non_root
             bool first;
 
             template<typename T>
-            void writeCounter(unsigned long long timestampNS, GlobalStateChangeHandler & handler, unsigned long cpuID,
-                              DeltaGlobalCounter id, DeltaCounter<T> & counter);
+            void writeCounter(unsigned long long timestampNS,
+                              GlobalStateChangeHandler & handler,
+                              unsigned long cpuID,
+                              DeltaGlobalCounter id,
+                              DeltaCounter<T> & counter);
         };
 
         /* to convert loadavg values from double to unsigned long */
@@ -63,7 +59,6 @@ namespace non_root
         void updateFromProcStatFileRecord(const lnx::ProcStatFileRecord & record);
 
     private:
-
         std::map<unsigned long, PerCoreStatsTracker> perCoreStats;
         AbsoluteCounter<unsigned long> loadavgOver1Minute;
         AbsoluteCounter<unsigned long> loadavgOver5Minutes;

@@ -1,22 +1,15 @@
-/**
- * Copyright (C) Arm Limited 2019. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef LIB_FS_UTILS_H
 #define LIB_FS_UTILS_H
 
-#include <set>
-#include <ios>
-#include <sstream>
-
 #include "lib/FsEntry.h"
 
-namespace lib
-{
+#include <ios>
+#include <set>
+#include <sstream>
+
+namespace lib {
     /**
      * Gets all the directory entries that have numerical names
      *
@@ -24,7 +17,7 @@ namespace lib
      * @return the set of entries that name can be parsed exactly (no whitespace or other characters)
      */
     template<typename IntType>
-    std::set<IntType> getNumericalDirectoryEntries(const char *parent)
+    std::set<IntType> getNumericalDirectoryEntries(const char * parent)
     {
         std::set<IntType> numbers;
         auto iterator = FsEntry::create(parent).children();

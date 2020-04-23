@@ -1,6 +1,7 @@
-/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
 
 #include "lib/FsEntry.h"
+
 #include "lib/Assert.h"
 
 #include <algorithm>
@@ -11,14 +12,12 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-namespace lib
-{
+namespace lib {
     FsEntryDirectoryIterator::FsEntryDirectoryIterator(const FsEntry & parent)
-            : parent_(parent),
-              directory_(nullptr, ::closedir)
+        : parent_(parent), directory_(nullptr, ::closedir)
     {
         if (parent_->read_stats().type() == FsEntry::Type::DIR) {
             directory_.reset(::opendir(parent_->path().c_str()));
@@ -32,9 +31,10 @@ namespace lib
 
             if (entry != nullptr) {
                 // skip '.' and '..'
-                if ((::strcmp(entry->d_name, ".") == 0) || (::strcmp(entry->d_name, "..") == 0)
-                // this shouldn't happen but was seen on a device in /sys/bus/usb/devices
-                        || (::strcmp(entry->d_name, "") == 0))
+                if ((::strcmp(entry->d_name, ".") == 0) ||
+                    (::strcmp(entry->d_name, "..") == 0)
+                    // this shouldn't happen but was seen on a device in /sys/bus/usb/devices
+                    || (::strcmp(entry->d_name, "") == 0))
                     return next();
 
                 return FsEntry(parent_->path().append("/").append(entry->d_name));
@@ -44,21 +44,11 @@ namespace lib
         return Optional<FsEntry>();
     }
 
-    FsEntry::Stats::Stats()
-        :   Stats(Type::UNKNOWN, false, false)
-    {
-    }
+    FsEntry::Stats::Stats() : Stats(Type::UNKNOWN, false, false) {}
 
-    FsEntry::Stats::Stats(Type t, bool e, bool s)
-            : type_(t),
-              exists_(e),
-              symlink_(s)
-    {
-    }
+    FsEntry::Stats::Stats(Type t, bool e, bool s) : type_(t), exists_(e), symlink_(s) {}
 
-    FsEntry::FsEntry(const std::string & p)
-            : path_(p),
-              name_offset(std::string::npos)
+    FsEntry::FsEntry(const std::string & p) : path_(p), name_offset(std::string::npos)
     {
         // add CWD if not starting with '/'
         if ((path_.length() == 0) || (path_[0] != '/')) {
@@ -86,10 +76,7 @@ namespace lib
         name_offset = path_.rfind('/');
     }
 
-    FsEntry::FsEntry(const FsEntry & p, const std::string & n)
-            : FsEntry(p.path().append("/").append(n))
-    {
-    }
+    FsEntry::FsEntry(const FsEntry & p, const std::string & n) : FsEntry(p.path().append("/").append(n)) {}
 
     Optional<FsEntry> FsEntry::parent() const
     {
@@ -100,29 +87,17 @@ namespace lib
         return Optional<FsEntry>();
     }
 
-    std::string FsEntry::name() const
-    {
-        return path_.substr(name_offset + 1);
-    }
+    std::string FsEntry::name() const { return path_.substr(name_offset + 1); }
 
-    std::string FsEntry::path() const
-    {
-        return path_;
-    }
+    std::string FsEntry::path() const { return path_; }
 
-    bool FsEntry::is_root() const
-    {
-        return path_.length() == 1;
-    }
+    bool FsEntry::is_root() const { return path_.length() == 1; }
 
-    FsEntryDirectoryIterator FsEntry::children() const
-    {
-        return FsEntryDirectoryIterator(*this);
-    }
+    FsEntryDirectoryIterator FsEntry::children() const { return FsEntryDirectoryIterator(*this); }
 
     Optional<FsEntry> FsEntry::realpath() const
     {
-        std::unique_ptr<char[], void(*)(void*)> real_path { ::realpath(path_.c_str(), nullptr), std::free };
+        std::unique_ptr<char[], void (*)(void *)> real_path{::realpath(path_.c_str(), nullptr), std::free};
 
         if (real_path != nullptr) {
             return FsEntry(real_path.get());
@@ -131,15 +106,9 @@ namespace lib
         return Optional<FsEntry>();
     }
 
-    bool FsEntry::operator ==(const FsEntry & that) const
-    {
-        return (path_ == that.path_);
-    }
+    bool FsEntry::operator==(const FsEntry & that) const { return (path_ == that.path_); }
 
-    bool FsEntry::operator <(const FsEntry & that) const
-    {
-        return (path_ < that.path_);
-    }
+    bool FsEntry::operator<(const FsEntry & that) const { return (path_ < that.path_); }
 
     FsEntry::Stats FsEntry::read_stats() const
     {

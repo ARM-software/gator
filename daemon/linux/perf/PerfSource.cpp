@@ -1,40 +1,33 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfSource.h"
-#include "linux/perf/PerfSyncThreadBuffer.h"
-
-#include <algorithm>
-#include <cstring>
-#include <cinttypes>
-
-#include <signal.h>
-#include <sys/prctl.h>
-#include <sys/resource.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "Child.h"
 #include "DynBuf.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "linux/perf/PerfAttrsBuffer.h"
-#include "linux/perf/PerfDriver.h"
-#include "linux/perf/PerfCpuOnlineMonitor.h"
-#include "linux/proc/ProcessChildren.h"
 #include "Proc.h"
 #include "Protocol.h"
 #include "Sender.h"
 #include "SessionData.h"
-#include "lib/Time.h"
 #include "lib/FileDescriptor.h"
+#include "lib/Time.h"
+#include "linux/perf/PerfAttrsBuffer.h"
+#include "linux/perf/PerfCpuOnlineMonitor.h"
+#include "linux/perf/PerfDriver.h"
+#include "linux/perf/PerfSyncThreadBuffer.h"
+#include "linux/proc/ProcessChildren.h"
+
+#include <algorithm>
+#include <cinttypes>
+#include <cstring>
+#include <signal.h>
+#include <sys/prctl.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #ifndef SCHED_RESET_ON_FORK
 #define SCHED_RESET_ON_FORK 0x40000000
@@ -44,38 +37,51 @@ static PerfBuffer::Config createPerfBufferConfig()
 {
     return {
         static_cast<size_t>(gSessionData.mPageSize),
-        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
-                                                                  : gSessionData.mTotalBufferSize * 1024 * 1024),
-        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
-                                                                  : gSessionData.mTotalBufferSize * 1024 * 1024 * 4),
+        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0
+                                ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
+                                : gSessionData.mTotalBufferSize * 1024 * 1024),
+        static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0
+                                ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
+                                : gSessionData.mTotalBufferSize * 1024 * 1024 * 64),
     };
 }
 
-PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile,
-                       const std::set<int> & appTids, FtraceDriver & ftraceDriver, bool enableOnCommandExec, ICpuInfo & cpuInfo)
-        : Source(child),
-          mSummary(1024 * 1024, &senderSem),
-          mCountersBuf(createPerfBufferConfig()),
-          mCountersGroup(driver.getConfig(),
-                         mCountersBuf.getDataBufferLength(), mCountersBuf.getAuxBufferLength(),
-                         // We disable periodic sampling if we have at least one EBS counter
-                         // it should probably be independent of EBS though
-                         gSessionData.mBacktraceDepth, gSessionData.mSampleRate, !gSessionData.mIsEBS,
-                         cpuInfo.getClusters(), cpuInfo.getClusterIds(),
-                         getTracepointId(SCHED_SWITCH)),
-          mMonitor(),
-          mUEvent(),
-          mAppTids(appTids),
-          mDriver(driver),
-          mAttrsBuffer(NULL),
-          mSenderSem(senderSem),
-          mStartProfile(startProfile),
-          mInterruptFd(-1),
-          mIsDone(false),
-          mFtraceDriver(ftraceDriver),
-          mCpuInfo(cpuInfo),
-          mSyncThreads(),
-          enableOnCommandExec(false)
+PerfSource::PerfSource(PerfDriver & driver,
+                       Child & child,
+                       sem_t & senderSem,
+                       sem_t & startProfile,
+                       const std::set<int> & appTids,
+                       FtraceDriver & ftraceDriver,
+                       bool enableOnCommandExec,
+                       ICpuInfo & cpuInfo)
+    : Source(child),
+      mSummary(1024 * 1024, &senderSem),
+      mCountersBuf(createPerfBufferConfig()),
+      mCountersGroup(driver.getConfig(),
+                     mCountersBuf.getDataBufferLength(),
+                     mCountersBuf.getAuxBufferLength(),
+                     // We disable periodic sampling if we have at least one EBS counter
+                     // it should probably be independent of EBS though
+                     gSessionData.mBacktraceDepth,
+                     gSessionData.mSampleRate,
+                     !gSessionData.mIsEBS,
+                     cpuInfo.getClusters(),
+                     cpuInfo.getClusterIds(),
+                     getTracepointId(SCHED_SWITCH)),
+      mMonitor(),
+      mUEvent(),
+      mAppTids(appTids),
+      mDriver(driver),
+      mAttrsBuffer(),
+      mProcBuffer(),
+      mSenderSem(senderSem),
+      mStartProfile(startProfile),
+      mInterruptFd(-1),
+      mIsDone(false),
+      mFtraceDriver(ftraceDriver),
+      mCpuInfo(cpuInfo),
+      mSyncThreads(),
+      enableOnCommandExec(false)
 {
     const PerfConfig & mConfig = mDriver.getConfig();
 
@@ -86,13 +92,8 @@ PerfSource::PerfSource(PerfDriver & driver, Child & child, sem_t & senderSem, se
 
     // was !enableOnCommandExec but this causes us to miss the exec comm record associated with the
     // enable on exec doesn't work for cpu-wide events.
-    this->enableOnCommandExec = (enableOnCommandExec && !mConfig.is_system_wide && mConfig.has_attr_clockid_support
-            && mConfig.has_attr_comm_exec);
-}
-
-PerfSource::~PerfSource()
-{
-    delete mAttrsBuffer;
+    this->enableOnCommandExec = (enableOnCommandExec && !mConfig.is_system_wide && mConfig.has_attr_clockid_support &&
+                                 mConfig.has_attr_comm_exec);
 }
 
 bool PerfSource::prepare()
@@ -102,7 +103,8 @@ bool PerfSource::prepare()
     // MonotonicStarted has not yet been assigned!
     const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
 
-    mAttrsBuffer = new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem);
+    mAttrsBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem));
+    mProcBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem));
 
     // Reread cpuinfo since cores may have changed since startup
     mCpuInfo.updateIds(false);
@@ -112,8 +114,7 @@ bool PerfSource::prepare()
         return false;
     }
 
-    if (mConfig.is_system_wide && (!mUEvent.init() || !mMonitor.add(mUEvent.getFd())))
-    {
+    if (mConfig.is_system_wide && (!mUEvent.init() || !mMonitor.add(mUEvent.getFd()))) {
         logg.logMessage("uevent setup failed");
         return false;
     }
@@ -129,29 +130,33 @@ bool PerfSource::prepare()
     }
 
     // online them later
-    const OnlineEnabledState onlineEnabledState = (enableOnCommandExec ? OnlineEnabledState::ENABLE_ON_EXEC : OnlineEnabledState::NOT_ENABLED);
+    const OnlineEnabledState onlineEnabledState =
+        (enableOnCommandExec ? OnlineEnabledState::ENABLE_ON_EXEC : OnlineEnabledState::NOT_ENABLED);
     int numOnlined = 0;
 
     for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
         using Result = OnlineResult;
         const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
-                currTime, cpu, mAppTids, onlineEnabledState,
-                *mAttrsBuffer, //
-                [this](int fd) -> bool {return mMonitor.add(fd);},
-                [this](int fd, int cpu, bool hasAux) -> bool {return mCountersBuf.useFd(fd, cpu, hasAux);},
-                &lnx::getChildTids);
+            currTime,
+            cpu,
+            mAppTids,
+            onlineEnabledState,
+            *mAttrsBuffer, //
+            [this](int fd) -> bool { return mMonitor.add(fd); },
+            [this](int fd, int cpu, bool hasAux) -> bool { return mCountersBuf.useFd(fd, cpu, hasAux); },
+            &lnx::getChildTids);
         switch (result.first) {
-        case Result::FAILURE:
-            logg.logError("\n%s", result.second.c_str());
-            handleException();
-            break;
-        case Result::SUCCESS:
-            numOnlined++;
-            break;
-        default:
-            // do nothing
-            // why distinguish between FAILURE and OTHER_FAILURE?
-            break;
+            case Result::FAILURE:
+                logg.logError("\n%s", result.second.c_str());
+                handleException();
+                break;
+            case Result::SUCCESS:
+                numOnlined++;
+                break;
+            default:
+                // do nothing
+                // why distinguish between FAILURE and OTHER_FAILURE?
+                break;
         }
     }
 
@@ -160,7 +165,7 @@ bool PerfSource::prepare()
     }
 
     // Send the summary right before the start so that the monotonic delta is close to the start time
-    if (!mDriver.summary(mSummary, []() -> uint64_t {return (gSessionData.mMonotonicStarted = getTime());})) {
+    if (!mDriver.summary(mSummary, []() -> uint64_t { return (gSessionData.mMonotonicStarted = getTime()); })) {
         logg.logError("PerfDriver::summary failed");
         handleException();
     }
@@ -170,14 +175,13 @@ bool PerfSource::prepare()
     return true;
 }
 
-struct ProcThreadArgs
-{
-    PerfAttrsBuffer *mAttrsBuffer {nullptr};
-    uint64_t mCurrTime {0};
-    std::atomic_bool mIsDone {false};
+struct ProcThreadArgs {
+    PerfAttrsBuffer * mProcBuffer{nullptr};
+    uint64_t mCurrTime{0};
+    std::atomic_bool mIsDone{false};
 };
 
-static void *procFunc(void *arg)
+static void * procFunc(void * arg)
 {
     const ProcThreadArgs * const args = reinterpret_cast<const ProcThreadArgs *>(arg);
 
@@ -189,16 +193,16 @@ static void *procFunc(void *arg)
         handleException();
     }
 
-    if (!readProcMaps(args->mCurrTime, *args->mAttrsBuffer)) {
+    if (!readProcMaps(args->mCurrTime, *args->mProcBuffer)) {
         logg.logError("readProcMaps failed");
         handleException();
     }
 
-    if (!readKallsyms(args->mCurrTime, *args->mAttrsBuffer, args->mIsDone)) {
+    if (!readKallsyms(args->mCurrTime, *args->mProcBuffer, args->mIsDone)) {
         logg.logError("readKallsyms failed");
         handleException();
     }
-    args->mAttrsBuffer->commit(args->mCurrTime);
+    args->mProcBuffer->commit(args->mCurrTime);
 
     return NULL;
 }
@@ -234,7 +238,9 @@ void PerfSource::run()
             mCountersGroup.start();
         }
 
-        mAttrsBuffer->perfCounterHeader(currTime);
+        // This a bit fragile, we are assuming the driver will only write one counter per CPU
+        // which is true at the time of writing (just the cpu freq)
+        mAttrsBuffer->perfCounterHeader(currTime, mCpuInfo.getNumberOfCores());
         for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
             mDriver.read(*mAttrsBuffer, cpu);
         }
@@ -251,9 +257,8 @@ void PerfSource::run()
         }
         mAttrsBuffer->commit(currTime);
 
-
         // Postpone reading kallsyms as on android adb gets too backed up and data is lost
-        procThreadArgs.mAttrsBuffer = mAttrsBuffer;
+        procThreadArgs.mProcBuffer = mProcBuffer.get();
         procThreadArgs.mCurrTime = currTime;
         procThreadArgs.mIsDone = false;
         if (pthread_create(&procThread, NULL, procFunc, &procThreadArgs)) {
@@ -278,7 +283,10 @@ void PerfSource::run()
     }
 
     // start sync threads
-    mSyncThreads = PerfSyncThreadBuffer::create(gSessionData.mMonotonicStarted, this->mDriver.getConfig().has_attr_clockid_support, this->mCountersGroup.hasSPE(), mSenderSem);
+    mSyncThreads = PerfSyncThreadBuffer::create(gSessionData.mMonotonicStarted,
+                                                this->mDriver.getConfig().has_attr_clockid_support,
+                                                this->mCountersGroup.hasSPE(),
+                                                mSenderSem);
 
     // start profiling
     sem_post(&mStartProfile);
@@ -289,7 +297,7 @@ void PerfSource::run()
     int timeout = rate != NO_RATE ? 0 : -1;
     while (gSessionData.mSessionIsActive) {
         // +1 for uevents, +1 for pipe
-        std::vector<struct epoll_event> events {mCpuInfo.getNumberOfCores() + 2};
+        std::vector<struct epoll_event> events{mCpuInfo.getNumberOfCores() + 2};
         int ready = mMonitor.wait(events.data(), events.size(), timeout);
         if (ready < 0) {
             logg.logError("Monitor::wait failed");
@@ -311,8 +319,9 @@ void PerfSource::run()
         sem_post(&mSenderSem);
 
         // In one shot mode, stop collection once all the buffers are filled
-        if (gSessionData.mOneShot && gSessionData.mSessionIsActive
-                && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
+        if (gSessionData.mOneShot && gSessionData.mSessionIsActive &&
+            ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) ||
+             (mProcBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
             logg.logMessage("One shot (perf)");
             mChild.endSession();
         }
@@ -322,8 +331,8 @@ void PerfSource::run()
                 nextTime += rate;
             }
             // + NS_PER_MS - 1 to ensure always rounding up
-            timeout = std::max<int>(
-                    0, (nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS);
+            timeout =
+                std::max<int>(0, (nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS);
         }
     }
 
@@ -335,6 +344,7 @@ void PerfSource::run()
     pthread_join(procThread, NULL);
     mCountersGroup.stop();
     mAttrsBuffer->setDone();
+    mProcBuffer->setDone();
     mIsDone = true;
 
     // terminate all remaining sync threads
@@ -370,7 +380,10 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
         }
 
         if (static_cast<size_t>(cpu) >= mCpuInfo.getNumberOfCores()) {
-            logg.logError("Only %zu cores are expected but core %i reports %s", mCpuInfo.getNumberOfCores(), cpu, result.mAction);
+            logg.logError("Only %zu cores are expected but core %i reports %s",
+                          mCpuInfo.getNumberOfCores(),
+                          cpu,
+                          result.mAction);
             handleException();
         }
 
@@ -391,25 +404,30 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
 
     bool ret;
     const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
-            currTime, cpu, mAppTids, OnlineEnabledState::ENABLE_NOW,
-            *mAttrsBuffer, //
-            [this](int fd) -> bool {return mMonitor.add(fd);},
-            [this](int fd, int cpu, bool hasAux) -> bool {return mCountersBuf.useFd(fd, cpu, hasAux);},
-            &lnx::getChildTids);
+        currTime,
+        cpu,
+        mAppTids,
+        OnlineEnabledState::ENABLE_NOW,
+        *mAttrsBuffer, //
+        [this](int fd) -> bool { return mMonitor.add(fd); },
+        [this](int fd, int cpu, bool hasAux) -> bool { return mCountersBuf.useFd(fd, cpu, hasAux); },
+        &lnx::getChildTids);
 
     switch (result.first) {
-    case OnlineResult::SUCCESS:
-        mAttrsBuffer->perfCounterHeader(currTime);
-        mDriver.read(*mAttrsBuffer, cpu);
-        mAttrsBuffer->perfCounterFooter(currTime);
-        // fall through
-        /* no break */
-    case OnlineResult::CPU_OFFLINE:
-        ret = true;
-        break;
-    default:
-        ret = false;
-        break;
+        case OnlineResult::SUCCESS:
+            // This a bit fragile, we are assuming the driver will only write one counter per CPU
+            // which is true at the time of writing (just the cpu freq)
+            mAttrsBuffer->perfCounterHeader(currTime, 1);
+            mDriver.read(*mAttrsBuffer, cpu);
+            mAttrsBuffer->perfCounterFooter(currTime);
+            // fall through
+            /* no break */
+        case OnlineResult::CPU_OFFLINE:
+            ret = true;
+            break;
+        default:
+            ret = false;
+            break;
     }
 
     mAttrsBuffer->commit(currTime);
@@ -422,7 +440,7 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
 
 bool PerfSource::handleCpuOffline(uint64_t currTime, unsigned cpu)
 {
-    const bool ret = mCountersGroup.offlineCPU(cpu, [this] (int cpu) {mCountersBuf.discard(cpu);});
+    const bool ret = mCountersGroup.offlineCPU(cpu, [this](int cpu) { mCountersBuf.discard(cpu); });
     mAttrsBuffer->offlineCPU(currTime, cpu);
     return ret;
 }
@@ -446,16 +464,17 @@ bool PerfSource::isDone()
             return false;
         }
     }
-    return mAttrsBuffer->isDone() && mIsDone
-            // This is broken because isDone should only return false if
-            // there is at least one guaranteed sem_post during or after the call.
-            // If perf continues to fill the buffer after mCountersGroup.stop() is called
-            // mCountersBuf.isEmpty() will return false after the last sem_post in PerfSource::run.
-            // The work around is a timed wait in Child::senderThreadEntryPoint
-            && mCountersBuf.isEmpty();
+    return mAttrsBuffer->isDone() && mProcBuffer->isDone() &&
+           mIsDone
+           // This is broken because isDone should only return false if
+           // there is at least one guaranteed sem_post during or after the call.
+           // If perf continues to fill the buffer after mCountersGroup.stop() is called
+           // mCountersBuf.isEmpty() will return false after the last sem_post in PerfSource::run.
+           // The work around is a timed wait in Child::senderThreadEntryPoint
+           && mCountersBuf.isEmpty();
 }
 
-void PerfSource::write(ISender *sender)
+void PerfSource::write(ISender * sender)
 {
     if (!mSummary.isDone()) {
         mSummary.write(sender);
@@ -463,6 +482,9 @@ void PerfSource::write(ISender *sender)
     }
     if (!mAttrsBuffer->isDone()) {
         mAttrsBuffer->write(sender);
+    }
+    if (!mProcBuffer->isDone()) {
+        mProcBuffer->write(sender);
     }
     if (!mCountersBuf.send(*sender)) {
         logg.logError("PerfBuffer::send failed");

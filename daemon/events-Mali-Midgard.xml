@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
   <category name="Mali-Midgard Software Counters" per_cpu="no">
     <event counter="ARM_Mali-Midgard_TOTAL_ALLOC_PAGES" class="absolute" title="Mali Total Alloc Pages" name="Total number of allocated pages" description="Mali total number of allocated pages."/>

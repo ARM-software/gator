@@ -1,28 +1,20 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef CCNDRIVER_H
 #define CCNDRIVER_H
 
-#include <string>
-
-#include "ClassBoilerPlate.h"
 #include "Driver.h"
 
-class CCNDriver : public Driver
-{
+#include <string>
+
+class CCNDriver : public Driver {
 public:
     CCNDriver();
     ~CCNDriver();
 
-    bool claimCounter(Counter &counter) const;
+    bool claimCounter(Counter & counter) const;
     void resetCounters();
-    void setupCounter(Counter &counter);
+    void setupCounter(Counter & counter);
 
     void readEvents(mxml_node_t * const);
     int writeCounters(mxml_node_t * const root) const;
@@ -31,19 +23,21 @@ public:
     std::string validateCounters() const;
 
 private:
-    enum NodeType
-    {
+    enum NodeType {
         NT_UNKNOWN,
         NT_HNF,
         NT_RNI,
         NT_SBAS,
     };
 
-    NodeType *mNodeTypes;
+    NodeType * mNodeTypes;
     int mXpCount;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(CCNDriver);
+    CCNDriver(const CCNDriver &) = delete;
+    CCNDriver & operator=(const CCNDriver &) = delete;
+    CCNDriver(CCNDriver &&) = delete;
+    CCNDriver & operator=(CCNDriver &&) = delete;
 };
 
 #endif // CCNDRIVER_H

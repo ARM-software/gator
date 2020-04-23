@@ -1,15 +1,14 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef CPU_UTILS_TOPOLOGY_H
 #define CPU_UTILS_TOPOLOGY_H
 
+#include "lib/Span.h"
+
 #include <map>
 #include <set>
 
-#include "lib/Span.h"
-
-namespace cpu_utils
-{
+namespace cpu_utils {
     void updateCpuIdsFromTopologyInformation(lib::Span<int> cpuIds,
                                              const std::map<unsigned, unsigned> & cpuToCpuIds,
                                              const std::map<unsigned, unsigned> & cpuToCluster,

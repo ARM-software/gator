@@ -1,147 +1,106 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "MidgardDriver.h"
-
-#include <unistd.h>
-#include <cinttypes>
-
-#include "lib/FileDescriptor.h"
 
 #include "Buffer.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
+#include "lib/FileDescriptor.h"
+
+#include <cinttypes>
+#include <unistd.h>
 
 static const uint32_t PACKET_SHARED_PARAMETER = 0x0000;
 static const uint32_t PACKET_HARDWARE_COUNTER_DIRECTORY = 0x0002;
 
-struct PacketHeader
-{
-    uint32_t mImplSpec :8, mReserved0 :8, mPacketIdentifier :16; //mPacketId : 10, mPacketFamily : 6;
-    uint32_t mDataLength :23, mSequenceNumbered :1, mReserved1 :8;
-}__attribute__((packed));
+struct PacketHeader {
+    uint32_t mImplSpec : 8, mReserved0 : 8, mPacketIdentifier : 16; //mPacketId : 10, mPacketFamily : 6;
+    uint32_t mDataLength : 23, mSequenceNumbered : 1, mReserved1 : 8;
+} __attribute__((packed));
 
-struct SharedParameterPacket
-{
+struct SharedParameterPacket {
     uint32_t mMaliMagic;
-    uint32_t mMaxDataLen :24, mReserved2 :8;
+    uint32_t mMaxDataLen : 24, mReserved2 : 8;
     uint32_t mPid;
     uint32_t mOffsets[4];
-}__attribute__((packed));
+} __attribute__((packed));
 
-struct HardwareCounter
-{
+struct HardwareCounter {
     uint16_t mCounterIndex;
     uint32_t mCounterNameLen;
     char mCounterName[];
-}__attribute__((packed));
+} __attribute__((packed));
 
-struct GPUPerfPeriod
-{
+struct GPUPerfPeriod {
     uint32_t mDeclId;
     int32_t mMicroseconds;
     uint32_t mStartIndex;
     uint64_t mEnableMap;
-}__attribute__((packed));
+} __attribute__((packed));
 
-struct GLESWindump
-{
+struct GLESWindump {
     uint32_t mDeclId;
     int32_t mSkipframes;
     uint32_t mMinWidth;
     uint32_t mMinHeight;
-}__attribute__((packed));
+} __attribute__((packed));
 
-struct CounterData
-{
-    enum
-    {
+struct CounterData {
+    enum {
         PERF,
         WINDUMP,
         ACTIVITY,
     } mType;
-    union
-    {
-        struct
-        {
+    union {
+        struct {
             // PERF
             int mIndex;
         };
-        struct
-        {
+        struct {
             // WINDUMP
         };
-        struct
-        {
+        struct {
             // ACTIVITY
             int mCores;
         };
     };
 };
 
-class MidgardCounter : public DriverCounter
-{
+class MidgardCounter : public DriverCounter {
 public:
-    MidgardCounter(DriverCounter *next, const char *name, CounterData * const counterData)
-            : DriverCounter(next, name),
-              mCounterData(*counterData),
-              mEvent(-1)
+    MidgardCounter(DriverCounter * next, const char * name, CounterData * const counterData)
+        : DriverCounter(next, name), mCounterData(*counterData), mEvent(-1)
     {
     }
 
-    ~MidgardCounter()
-    {
-    }
+    ~MidgardCounter() {}
 
-    int getType() const
-    {
-        return mCounterData.mType;
-    }
+    int getType() const { return mCounterData.mType; }
 
     // PERF
-    int getIndex() const
-    {
-        return mCounterData.mIndex;
-    }
+    int getIndex() const { return mCounterData.mIndex; }
 
     // ACTIVITY
-    int getCores() const
-    {
-        return mCounterData.mCores;
-    }
+    int getCores() const { return mCounterData.mCores; }
 
-    void setEvent(const int event)
-    {
-        mEvent = event;
-    }
-    int getEvent() const
-    {
-        return mEvent;
-    }
+    void setEvent(const int event) { mEvent = event; }
+    int getEvent() const { return mEvent; }
 
 private:
     const CounterData mCounterData;
     int mEvent;
 
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(MidgardCounter);
+    MidgardCounter(const MidgardCounter &) = delete;
+    MidgardCounter & operator=(const MidgardCounter &) = delete;
+    MidgardCounter(MidgardCounter &&) = delete;
+    MidgardCounter & operator=(MidgardCounter &&) = delete;
 };
 
-MidgardDriver::MidgardDriver()
-        : SimpleDriver("MidgardDriver"),
-          mQueried(false)
-{
-}
+MidgardDriver::MidgardDriver() : SimpleDriver("MidgardDriver"), mQueried(false) {}
 
-MidgardDriver::~MidgardDriver()
-{
-}
+MidgardDriver::~MidgardDriver() {}
 
 void MidgardDriver::query() const
 {
@@ -191,69 +150,74 @@ void MidgardDriver::query() const
                                 header.mReserved1);
 
                 switch (header.mPacketIdentifier) {
-                case PACKET_SHARED_PARAMETER: {
-                    SharedParameterPacket packet;
-                    if (header.mDataLength < sizeof(packet)) {
-                        logg.logError("Unable to read Shared Parameter Packet because it's at least %zu bytes long but only %" PRIu32 " bytes were given", sizeof(packet), header.mDataLength);
-                        handleException();
-                    }
-                    if (!lib::readAll(uds, &packet, sizeof(packet))) {
-                        logg.logError("Unable to read Shared Parameter Packet");
-                        handleException();
-                    }
-                    if (!lib::skipAll(uds, header.mDataLength - sizeof(packet))) {
-                        logg.logError("Unable to skip Shared Parameter Packet pool");
-                        handleException();
-                    }
-
-
-                    if (header.mImplSpec == 0 && packet.mReserved2 == 0) {
-                        if (packet.mMaliMagic != 0x6D616C69) {
-                            logg.logError("mali_magic does not match expected value");
+                    case PACKET_SHARED_PARAMETER: {
+                        SharedParameterPacket packet;
+                        if (header.mDataLength < sizeof(packet)) {
+                            logg.logError("Unable to read Shared Parameter Packet because it's at least %zu bytes long "
+                                          "but only %" PRIu32 " bytes were given",
+                                          sizeof(packet),
+                                          header.mDataLength);
                             handleException();
                         }
-                    }
-                    break;
-                }
-
-                case PACKET_HARDWARE_COUNTER_DIRECTORY: {
-                    if (header.mImplSpec == 0) {
-                        constexpr size_t buffSize = sizeof(gSessionData.mSharedData->mMaliMidgardCounters);
-                        if (header.mDataLength > buffSize) {
-                            logg.logError("Unable to read Hardware Counter Directory Packet because it's %" PRIu32 " bytes but no more than %zu bytes was expected", header.mDataLength, buffSize);
+                        if (!lib::readAll(uds, &packet, sizeof(packet))) {
+                            logg.logError("Unable to read Shared Parameter Packet");
+                            handleException();
+                        }
+                        if (!lib::skipAll(uds, header.mDataLength - sizeof(packet))) {
+                            logg.logError("Unable to skip Shared Parameter Packet pool");
                             handleException();
                         }
 
-                        char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
-                        if (!lib::readAll(uds, buf, header.mDataLength)) {
-                            logg.logError("Unable to read Hardware Counter Directory Packet");
+                        if (header.mImplSpec == 0 && packet.mReserved2 == 0) {
+                            if (packet.mMaliMagic != 0x6D616C69) {
+                                logg.logError("mali_magic does not match expected value");
+                                handleException();
+                            }
+                        }
+                        break;
+                    }
+
+                    case PACKET_HARDWARE_COUNTER_DIRECTORY: {
+                        if (header.mImplSpec == 0) {
+                            constexpr size_t buffSize = sizeof(gSessionData.mSharedData->mMaliMidgardCounters);
+                            if (header.mDataLength > buffSize) {
+                                logg.logError("Unable to read Hardware Counter Directory Packet because it's %" PRIu32
+                                              " bytes but no more than %zu bytes was expected",
+                                              header.mDataLength,
+                                              buffSize);
+                                handleException();
+                            }
+
+                            char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
+                            if (!lib::readAll(uds, buf, header.mDataLength)) {
+                                logg.logError("Unable to read Hardware Counter Directory Packet");
+                                handleException();
+                            }
+                            gSessionData.mSharedData->mMaliMidgardCountersSize = header.mDataLength;
+                            goto allDone;
+                        }
+                    }
+                    // fall through
+
+                    /* no break */
+                    case 0x0400:
+                    case 0x0402:
+                    case 0x0408: {
+                        // Ignore
+                        if (!lib::skipAll(uds, header.mDataLength)) {
+                            logg.logError("Unable to skip packet body");
                             handleException();
                         }
-                        gSessionData.mSharedData->mMaliMidgardCountersSize = header.mDataLength;
+
+                        break;
+                    }
+
+                    default:
+                        // Unrecognized packet, give up
                         goto allDone;
-                    }
-                }
-                // fall through
-
-                /* no break */
-                case 0x0400:
-                case 0x0402:
-                case 0x0408: {
-                    // Ignore
-                    if (!lib::skipAll(uds, header.mDataLength)) {
-                        logg.logError("Unable to skip packet body");
-                        handleException();
-                    }
-
-                    break;
-                }
-
-                default:
-                    // Unrecognized packet, give up
-                    goto allDone;
                 }
             }
-            allDone:
+        allDone:
 
             close(uds);
         }
@@ -264,8 +228,8 @@ void MidgardDriver::query() const
     CounterData cd;
     cd.mType = CounterData::PERF;
     for (int i = 0; i + sizeof(HardwareCounter) < size;) {
-        const HardwareCounter *counter = reinterpret_cast<const HardwareCounter *>(buf + i);
-        char *name;
+        const HardwareCounter * counter = reinterpret_cast<const HardwareCounter *>(buf + i);
+        char * name;
         if (asprintf(&name, "ARM_Mali-%s", counter->mCounterName) <= 0) {
             logg.logError("asprintf failed");
             handleException();
@@ -280,22 +244,22 @@ void MidgardDriver::query() const
     if (size > 0) {
         cd.mType = CounterData::WINDUMP;
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_Filmstrip2_cnt0", &cd));
+            new MidgardCounter(getCounters(), "ARM_Mali-Midgard_Filmstrip2_cnt0", &cd));
 
         cd.mType = CounterData::ACTIVITY;
         cd.mCores = 1;
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_fragment", &cd));
+            new MidgardCounter(getCounters(), "ARM_Mali-Midgard_fragment", &cd));
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_vertex", &cd));
+            new MidgardCounter(getCounters(), "ARM_Mali-Midgard_vertex", &cd));
         const_cast<MidgardDriver *>(this)->setCounters(
-                new MidgardCounter(getCounters(), "ARM_Mali-Midgard_opencl", &cd));
+            new MidgardCounter(getCounters(), "ARM_Mali-Midgard_opencl", &cd));
     }
 }
 
 bool MidgardDriver::start(const int uds)
 {
-    uint64_t enabled[8] = { 0 };
+    uint64_t enabled[8] = {0};
     size_t bufPos = 0;
     char buf[ARRAY_LENGTH(enabled) * sizeof(GPUPerfPeriod) + sizeof(GLESWindump)];
 
@@ -303,8 +267,8 @@ bool MidgardDriver::start(const int uds)
     // not always received
     usleep(10000);
 
-    for (MidgardCounter *counter = static_cast<MidgardCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<MidgardCounter *>(counter->getNext())) {
+    for (MidgardCounter * counter = static_cast<MidgardCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<MidgardCounter *>(counter->getNext())) {
         if (!counter->isEnabled() || counter->getType() != CounterData::PERF) {
             continue;
         }
@@ -333,8 +297,8 @@ bool MidgardDriver::start(const int uds)
     }
 
     bool foundWindumpCounter = false;
-    for (MidgardCounter *counter = static_cast<MidgardCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<MidgardCounter *>(counter->getNext())) {
+    for (MidgardCounter * counter = static_cast<MidgardCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<MidgardCounter *>(counter->getNext())) {
         if (!counter->isEnabled() || counter->getType() != CounterData::WINDUMP) {
             continue;
         }
@@ -368,7 +332,7 @@ bool MidgardDriver::start(const int uds)
     return true;
 }
 
-bool MidgardDriver::claimCounter(Counter &counter) const
+bool MidgardDriver::claimCounter(Counter & counter) const
 {
     // do not claim if another driver already has
     if (counter.getDriver() != NULL) {
@@ -385,7 +349,7 @@ void MidgardDriver::resetCounters()
     super::resetCounters();
 }
 
-void MidgardDriver::setupCounter(Counter &counter)
+void MidgardDriver::setupCounter(Counter & counter)
 {
     MidgardCounter * const midgardCounter = static_cast<MidgardCounter *>(findCounter(counter));
     if (midgardCounter == NULL) {

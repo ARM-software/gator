@@ -1,27 +1,18 @@
-/**
- * Copyright (C) Arm Limited 2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef WAIT_FOR_PROCESS_POLLER_H
 #define WAIT_FOR_PROCESS_POLLER_H
 
-#include <set>
-
-#include "ClassBoilerPlate.h"
 #include "lib/FsEntry.h"
 #include "linux/proc/ProcessPollerBase.h"
+
+#include <set>
 
 /**
  * Polls /proc/ for some process matching the given command name
  */
-class WaitForProcessPoller : private lnx::ProcessPollerBase
-{
+class WaitForProcessPoller : private lnx::ProcessPollerBase {
 public:
-
     /**
      * Constructor
      *
@@ -38,11 +29,13 @@ public:
     bool poll(std::set<int> & pids);
 
 private:
-
     const std::string mCommandName;
     const lib::Optional<lib::FsEntry> mRealPath;
 
-    CLASS_DELETE_COPY_MOVE(WaitForProcessPoller);
+    WaitForProcessPoller(const WaitForProcessPoller &) = delete;
+    WaitForProcessPoller & operator=(const WaitForProcessPoller &) = delete;
+    WaitForProcessPoller(WaitForProcessPoller &&) = delete;
+    WaitForProcessPoller & operator=(WaitForProcessPoller &&) = delete;
 };
 
 #endif /* WAIT_FOR_PROCESS_POLLER_H */

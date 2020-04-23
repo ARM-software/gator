@@ -1,21 +1,22 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "non_root/GlobalStateChangeHandler.h"
+
 #include "Buffer.h"
 
 #include <algorithm>
 
-namespace non_root
-{
+namespace non_root {
     GlobalStateChangeHandler::GlobalStateChangeHandler(Buffer & outputBuffer_,
                                                        const std::map<NonRootCounter, int> & enabledCounters_)
-            : outputBuffer(outputBuffer_),
-              enabledCounters(enabledCounters_)
+        : outputBuffer(outputBuffer_), enabledCounters(enabledCounters_)
     {
     }
 
-    void GlobalStateChangeHandler::absoluteCounter(unsigned long long timestampNS, unsigned long core,
-                                                   AbsoluteGlobalCounter id, unsigned long long value)
+    void GlobalStateChangeHandler::absoluteCounter(unsigned long long timestampNS,
+                                                   unsigned long core,
+                                                   AbsoluteGlobalCounter id,
+                                                   unsigned long long value)
     {
         const auto it = enabledCounters.find(NonRootCounter(id));
 
@@ -24,7 +25,8 @@ namespace non_root
         }
     }
 
-    void GlobalStateChangeHandler::absoluteCounter(unsigned long long timestampNS, AbsoluteGlobalCounter id,
+    void GlobalStateChangeHandler::absoluteCounter(unsigned long long timestampNS,
+                                                   AbsoluteGlobalCounter id,
                                                    unsigned long long value)
     {
         const auto it = enabledCounters.find(NonRootCounter(id));
@@ -34,8 +36,10 @@ namespace non_root
         }
     }
 
-    void GlobalStateChangeHandler::deltaCounter(unsigned long long timestampNS, unsigned long core,
-                                                DeltaGlobalCounter id, unsigned long long delta)
+    void GlobalStateChangeHandler::deltaCounter(unsigned long long timestampNS,
+                                                unsigned long core,
+                                                DeltaGlobalCounter id,
+                                                unsigned long long delta)
     {
         const auto it = enabledCounters.find(NonRootCounter(id));
 
@@ -44,7 +48,8 @@ namespace non_root
         }
     }
 
-    void GlobalStateChangeHandler::deltaCounter(unsigned long long timestampNS, DeltaGlobalCounter id,
+    void GlobalStateChangeHandler::deltaCounter(unsigned long long timestampNS,
+                                                DeltaGlobalCounter id,
                                                 unsigned long long delta)
     {
         const auto it = enabledCounters.find(NonRootCounter(id));
@@ -54,4 +59,3 @@ namespace non_root
         }
     }
 }
-

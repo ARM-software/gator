@@ -1,9 +1,10 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef IBUFFER_H_
 #define IBUFFER_H_
 
 #include "ISender.h"
+
 #include <cstdint>
 
 class IBuffer {
@@ -13,7 +14,7 @@ public:
     /**
      * Write data to Sender, like socket
      */
-    virtual void write(ISender *sender) = 0;
+    virtual void write(ISender * sender) = 0;
     /**
      *
      */
@@ -30,7 +31,7 @@ public:
     /**
      * Is buffer write/commit done ?
      */
-    virtual bool isDone() const = 0 ;
+    virtual bool isDone() const = 0;
 
     // Block Counter messages
     virtual bool eventHeader(uint64_t curr_time) = 0;

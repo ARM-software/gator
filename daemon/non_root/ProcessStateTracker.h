@@ -1,9 +1,8 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
 
-#include "ClassBoilerPlate.h"
 #include "lib/Optional.h"
 #include "non_root/ProcessStatsTracker.h"
 
@@ -11,49 +10,43 @@
 #include <memory>
 #include <string>
 
-namespace lib
-{
+namespace lib {
     class FsEntry;
 }
 
-namespace lnx
-{
+namespace lnx {
     class ProcPidStatFileRecord;
     class ProcPidStatmFileRecord;
 }
 
-namespace non_root
-{
+namespace non_root {
     class ProcessStateChangeHandler;
 
     /**
      * Maintains a record of the current processes/threads and will generate appropriate events when these change
      */
-    class ProcessStateTracker
-    {
+    class ProcessStateTracker {
     public:
-
         /**
          * Tracks the state of a scan pass in ProcessPoller, once the scan is finished, updates its parent
          * ProcessStateTracker with changes since the last scan.
          *
          * This allows to determine the difference at each pass
          */
-        class ActiveScan
-        {
+        class ActiveScan {
         public:
-
             ~ActiveScan();
 
             /**
              * Accept one /proc/[PID]/stat or /proc/[PID]/task/[TID]/stat record and an optional /proc/[PID]/statm or /proc/[PID]/task/[TID]/statm
              */
-            void addProcess(int pid, int tid, const lnx::ProcPidStatFileRecord & statRecord,
+            void addProcess(int pid,
+                            int tid,
+                            const lnx::ProcPidStatFileRecord & statRecord,
                             const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
                             const lib::Optional<lib::FsEntry> & exe);
 
         private:
-
             /** Only ProcessStateTracker can construct */
             friend class ProcessStateTracker;
 
@@ -64,12 +57,17 @@ namespace non_root
 
             ActiveScan(ProcessStateTracker & parent, unsigned long long timestampNS);
 
-            CLASS_DELETE_COPY_MOVE(ActiveScan);
+            ActiveScan(const ActiveScan &) = delete;
+            ActiveScan & operator=(const ActiveScan &) = delete;
+            ActiveScan(ActiveScan &&) = delete;
+            ActiveScan & operator=(ActiveScan &&) = delete;
         };
 
         /** Constructor */
-        ProcessStateTracker(ProcessStateChangeHandler & handler, unsigned long long bootTimeBaseNS,
-                            unsigned long clktck, unsigned long pageSize);
+        ProcessStateTracker(ProcessStateChangeHandler & handler,
+                            unsigned long long bootTimeBaseNS,
+                            unsigned long clktck,
+                            unsigned long pageSize);
 
         /**
          * Begin a scan
@@ -77,63 +75,33 @@ namespace non_root
         std::unique_ptr<ProcessStateTracker::ActiveScan> beginScan(unsigned long long timestampNS);
 
     private:
-
         /**
          * State object for a given TID
          */
-        class ProcessInfo
-        {
+        class ProcessInfo {
         public:
-
             static constexpr const int PARENT_PID_UNKNOWN = -1;
 
-            enum class State
-            {
-                EMPTY,
-                NEW,
-                SEEN,
-                UNSEEN
-            };
+            enum class State { EMPTY, NEW, SEEN, UNSEEN };
 
             ProcessInfo();
             ProcessInfo(int pid, int tid, unsigned long pageSize, unsigned long long timestampNS);
             ProcessInfo(ProcessInfo &&);
-            ProcessInfo& operator=(ProcessInfo &&);
+            ProcessInfo & operator=(ProcessInfo &&);
 
-            bool isEmpty() const
-            {
-                return (state == State::EMPTY);
-            }
+            bool isEmpty() const { return (state == State::EMPTY); }
 
-            bool isNew() const
-            {
-                return (state == State::NEW);
-            }
+            bool isNew() const { return (state == State::NEW); }
 
-            bool isSeenSinceLastScan() const
-            {
-                return (state == State::NEW) || (state == State::SEEN);
-            }
+            bool isSeenSinceLastScan() const { return (state == State::NEW) || (state == State::SEEN); }
 
-            int getPid() const
-            {
-                return statsTracker.getPid();
-            }
+            int getPid() const { return statsTracker.getPid(); }
 
-            int getTid() const
-            {
-                return statsTracker.getTid();
-            }
+            int getTid() const { return statsTracker.getTid(); }
 
-            unsigned long long getStartTimeNS() const
-            {
-                return startTimeNS;
-            }
+            unsigned long long getStartTimeNS() const { return startTimeNS; }
 
-            unsigned long getProcessor() const
-            {
-                return statsTracker.getProcessor();
-            }
+            unsigned long getProcessor() const { return statsTracker.getProcessor(); }
 
             int getParentPid() const
             {
@@ -141,39 +109,35 @@ namespace non_root
                 return parentPid != PARENT_PID_UNKNOWN ? parentPid : 0;
             }
 
-            const std::string & getComm() const
-            {
-                return statsTracker.getComm();
-            }
+            const std::string & getComm() const { return statsTracker.getComm(); }
 
-            const std::string & getExePath() const
-            {
-                return statsTracker.getExePath();
-            }
+            const std::string & getExePath() const { return statsTracker.getExePath(); }
 
-            unsigned long long getTimeRunningDelta() const
-            {
-                return statsTracker.getTimeRunningDelta();
-            }
+            unsigned long long getTimeRunningDelta() const { return statsTracker.getTimeRunningDelta(); }
 
-            bool hasExitedAndRestartedSince(unsigned long long bootTimeBaseNS, unsigned long clktck, int pid, int tid,
+            bool hasExitedAndRestartedSince(unsigned long long bootTimeBaseNS,
+                                            unsigned long clktck,
+                                            int pid,
+                                            int tid,
                                             const lnx::ProcPidStatFileRecord & record);
             void setSeenSinceLastScan(bool seen);
-            unsigned long long update(unsigned long long bootTimeBaseNS, unsigned long clktck,
+            unsigned long long update(unsigned long long bootTimeBaseNS,
+                                      unsigned long clktck,
                                       const lnx::ProcPidStatFileRecord & statRecord,
                                       const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
                                       const lib::Optional<lib::FsEntry> & exe);
-            void sendStats(unsigned long long timestampNS, ProcessStateChangeHandler & handler,
+            void sendStats(unsigned long long timestampNS,
+                           ProcessStateChangeHandler & handler,
                            bool sendFakeSchedulingEvents);
 
         private:
-
             ProcessStatsTracker statsTracker;
             unsigned long long startTimeNS;
             int parentPid;
             State state;
 
-            CLASS_DELETE_COPY(ProcessInfo);
+            ProcessInfo(const ProcessInfo &) = delete;
+            ProcessInfo & operator=(const ProcessInfo &) = delete;
         };
 
         /** Can call endScan */
@@ -203,7 +167,9 @@ namespace non_root
         /**
          * Accept one /proc/[PID]/stat or /proc/[PID]/task/[TID]/stat record and optinally one /proc/[PID]/statm or /proc/[PID]/task/[TID]/statm record
          */
-        unsigned long long add(unsigned long long timestampNS, int pid, int tid,
+        unsigned long long add(unsigned long long timestampNS,
+                               int pid,
+                               int tid,
                                const lnx::ProcPidStatFileRecord & statRecord,
                                const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
                                const lib::Optional<lib::FsEntry> & exe);
@@ -219,7 +185,8 @@ namespace non_root
         void sendProcessExit(unsigned long long timestampNS, ProcessInfo & processInfo);
 
         /** Replace existing process info with new record */
-        void replaceProcessInfo(unsigned long long timestampNS, const lnx::ProcPidStatFileRecord & statRecord,
+        void replaceProcessInfo(unsigned long long timestampNS,
+                                const lnx::ProcPidStatFileRecord & statRecord,
                                 ProcessInfo & processInfo);
     };
 }

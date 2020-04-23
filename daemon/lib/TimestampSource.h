@@ -1,19 +1,16 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_TIMESTAMPSOURCE_H
 #define INCLUDE_LIB_TIMESTAMPSOURCE_H
 
 #include <ctime>
 
-namespace lib
-{
+namespace lib {
     /**
      * Provides current timestamp
      */
-    class TimestampSource
-    {
+    class TimestampSource {
     public:
-
         TimestampSource(clockid_t id);
 
         unsigned long long getBaseTimestampNS() const;
@@ -21,7 +18,6 @@ namespace lib
         unsigned long long getAbsTimestampNS() const;
 
     private:
-
         unsigned long long base;
         clockid_t id;
     };

@@ -1,24 +1,15 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "Monitor.h"
+
+#include "Logging.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "Logging.h"
-
-Monitor::Monitor()
-        : mFd(-1)
-{
-}
+Monitor::Monitor() : mFd(-1) {}
 
 Monitor::~Monitor()
 {

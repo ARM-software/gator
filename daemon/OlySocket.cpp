@@ -1,36 +1,31 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "OlySocket.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
+#include <fcntl.h>
+#include <netdb.h>
 #include <netinet/in.h>
+#include <stddef.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <stddef.h>
 #endif
 
-#include <utility>
-#include "lib/Syscall.h"
 #include "Logging.h"
+#include "lib/Syscall.h"
+
+#include <utility>
 
 #ifdef WIN32
 #define CLOSE_SOCKET(x) closesocket(x)
 #define SHUTDOWN_RX_TX SD_BOTH
-#define snprintf       _snprintf
+#define snprintf _snprintf
 #else
 #define CLOSE_SOCKET(x) close(x)
 #define SHUTDOWN_RX_TX SHUT_RDWR
@@ -54,7 +49,12 @@ int socket_cloexec(int domain, int type, int protocol)
     /* Try create socket */
     sock = socket(domain, type, protocol);
     if (sock < 0) {
-        logg.logMessage("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)", domain, type, protocol, errno, strerror(errno));
+        logg.logMessage("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)",
+                        domain,
+                        type,
+                        protocol,
+                        errno,
+                        strerror(errno));
         return -1;
     }
 
@@ -62,7 +62,15 @@ int socket_cloexec(int domain, int type, int protocol)
 #ifdef FD_CLOEXEC
     int fdf = fcntl(sock, F_GETFD);
     if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-        logg.logMessage("Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)", domain, type, protocol, sock, fdf, errno, strerror(errno));
+        logg.logMessage(
+            "Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)",
+            domain,
+            type,
+            protocol,
+            sock,
+            fdf,
+            errno,
+            strerror(errno));
         close(sock);
         return -1;
     }
@@ -71,7 +79,7 @@ int socket_cloexec(int domain, int type, int protocol)
     return sock;
 }
 
-int accept_cloexec(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+int accept_cloexec(int sockfd, struct sockaddr * addr, socklen_t * addrlen)
 {
     int sock;
 #ifdef SOCK_CLOEXEC
@@ -95,8 +103,7 @@ int accept_cloexec(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
     return sock;
 }
 
-OlyServerSocket::OlyServerSocket(int port)
-        : mFDServer(0)
+OlyServerSocket::OlyServerSocket(int port) : mFDServer(0)
 {
 #ifdef WIN32
     WSADATA wsaData;
@@ -109,21 +116,18 @@ OlyServerSocket::OlyServerSocket(int port)
     createServerSocket(port);
 }
 
-OlySocket::OlySocket(int socketID)
-        : mSocketID(socketID)
-{
-}
+OlySocket::OlySocket(int socketID) : mSocketID(socketID) {}
 
 #ifndef WIN32
 
-#define MIN(A, B) ({ \
-  const __typeof__(A) __a = A; \
-  const __typeof__(B) __b = B; \
-  __a > __b ? __b : __a; \
-})
+#define MIN(A, B)                                                                                                      \
+    ({                                                                                                                 \
+        const __typeof__(A) __a = A;                                                                                   \
+        const __typeof__(B) __b = B;                                                                                   \
+        __a > __b ? __b : __a;                                                                                         \
+    })
 
-OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const bool calculateAddrlen)
-        : mFDServer(0)
+OlyServerSocket::OlyServerSocket(const char * path, const size_t pathSize, const bool calculateAddrlen) : mFDServer(0)
 {
     // Create socket
     mFDServer = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
@@ -140,7 +144,8 @@ OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const 
     sockaddr.sun_path[sizeof(sockaddr.sun_path) - 1] = '\0';
 
     // Bind the socket to an address
-    if (bind(mFDServer, reinterpret_cast<const struct sockaddr*>(&sockaddr),
+    if (bind(mFDServer,
+             reinterpret_cast<const struct sockaddr *>(&sockaddr),
              calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
         //                                                                    use sun_path because it is null terminated
         //                                                                    if path was actually empty string
@@ -157,7 +162,7 @@ OlyServerSocket::OlyServerSocket(const char* path, const size_t pathSize, const 
     }
 }
 
-int OlySocket::connect(const char* path, const size_t pathSize, const bool calculateAddrlen)
+int OlySocket::connect(const char * path, const size_t pathSize, const bool calculateAddrlen)
 {
     int fd = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -171,7 +176,8 @@ int OlySocket::connect(const char* path, const size_t pathSize, const bool calcu
     memcpy(sockaddr.sun_path, path, MIN(pathSize, sizeof(sockaddr.sun_path)));
     sockaddr.sun_path[sizeof(sockaddr.sun_path) - 1] = '\0';
 
-    if (::connect(fd, reinterpret_cast<const struct sockaddr*>(&sockaddr),
+    if (::connect(fd,
+                  reinterpret_cast<const struct sockaddr *>(&sockaddr),
                   calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
         close(fd);
         return -1;
@@ -256,8 +262,10 @@ void OlyServerSocket::createServerSocket(int port)
     sockaddr.sin6_addr = in6addr_any;
 
     // Bind the socket to an address
-    if (bind(mFDServer, reinterpret_cast<const struct sockaddr*>(&sockaddr), sizeof(sockaddr)) < 0) {
-        logg.logError("Binding of server socket on port %i failed.\nIs an instance already running or is another application using that port?", port);
+    if (bind(mFDServer, reinterpret_cast<const struct sockaddr *>(&sockaddr), sizeof(sockaddr)) < 0) {
+        logg.logError("Binding of server socket on port %i failed.\nIs an instance already running or is another "
+                      "application using that port?",
+                      port);
         handleException();
     }
 
@@ -274,7 +282,8 @@ int OlyServerSocket::acceptConnection()
 {
     int socketID;
     if (mFDServer <= 0) {
-        logg.logError("Attempting multiple connections on a single connection server socket or attempting to accept on a client socket");
+        logg.logError("Attempting multiple connections on a single connection server socket or attempting to accept on "
+                      "a client socket");
         handleException();
     }
 
@@ -287,7 +296,7 @@ int OlyServerSocket::acceptConnection()
     return socketID;
 }
 
-void OlySocket::send(const char* buffer, int size)
+void OlySocket::send(const char * buffer, int size)
 {
     if (size <= 0 || buffer == NULL) {
         return;
@@ -305,7 +314,7 @@ void OlySocket::send(const char* buffer, int size)
 }
 
 // Returns the number of bytes received
-int OlySocket::receive(char* buffer, int size)
+int OlySocket::receive(char * buffer, int size)
 {
     if (size <= 0 || buffer == NULL) {
         return 0;
@@ -324,7 +333,7 @@ int OlySocket::receive(char* buffer, int size)
 }
 
 // Receive exactly size bytes of data. Note, this function will block until all bytes are received
-int OlySocket::receiveNBytes(char* buffer, int size)
+int OlySocket::receiveNBytes(char * buffer, int size)
 {
     int bytes = 0;
     while (size > 0 && buffer != NULL) {
@@ -344,7 +353,7 @@ int OlySocket::receiveNBytes(char* buffer, int size)
 }
 
 // Receive data until a carriage return, line feed, or null is encountered, or the buffer fills
-int OlySocket::receiveString(char* buffer, int size)
+int OlySocket::receiveString(char * buffer, int size)
 {
     int bytes_received = 0;
     bool found = false;

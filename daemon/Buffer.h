@@ -1,32 +1,38 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "ClassBoilerPlate.h"
+#include "IBuffer.h"
+#include "Protocol.h"
+#ifdef BUFFER_USE_SESSION_DATA
+#include "SessionData.h"
+#endif
 
+#include <atomic>
 #include <cstdint>
 #include <semaphore.h>
-#include <atomic>
-
-#include "Protocol.h"
-#include "IBuffer.h"
 
 class ISender;
 
-class Buffer : public IBuffer
-{
+class Buffer : public IBuffer {
 public:
-    Buffer(int32_t core, FrameType frameType, const int size, sem_t * const readerSem);
+    Buffer(int32_t core,
+           FrameType frameType,
+           const int size,
+           sem_t * const readerSem,
+           uint64_t commitRate,
+           bool includeResponseType);
+#ifdef BUFFER_USE_SESSION_DATA
+    // include SessionData.h first to get access to this constructor
+    Buffer(int32_t core, FrameType frameType, const int size, sem_t * const readerSem)
+        : Buffer(core, frameType, size, readerSem, gSessionData.mLiveRate, !gSessionData.mLocalCapture)
+    {
+    }
+#endif
     ~Buffer();
 
-    void write(ISender *sender);
+    void write(ISender * sender);
 
     int bytesAvailable() const;
     int contiguousSpaceAvailable() const;
@@ -47,19 +53,10 @@ public:
     bool isDone() const;
 
     // Prefer a new member to using these functions if possible
-    char *getWritePos()
-    {
-        return mBuf + mWritePos;
-    }
-    void advanceWrite(int bytes)
-    {
-        mWritePos = (mWritePos + bytes) & /*mask*/(mSize - 1);
-    }
+    char * getWritePos() { return mBuf + mWritePos; }
+    void advanceWrite(int bytes) { mWritePos = (mWritePos + bytes) & /*mask*/ (mSize - 1); }
 
-    FrameType getFrameType() const
-    {
-        return mFrameType;
-    }
+    FrameType getFrameType() const { return mFrameType; }
 
     int packInt(int32_t x);
     int packInt64(int64_t x);
@@ -69,14 +66,10 @@ public:
     int beginFrameOrMessage(FrameType frameType, int32_t core);
     void endFrame(uint64_t currTime, bool abort, int writePos);
 
-    void waitForSpace(int bytes) {
-        while (!checkSpace(bytes)) {
-            sem_wait(&mWriterSem);
-        }
-    }
+    // Will commit if needed.
+    void waitForSpace(int bytes, uint64_t currTime);
 
 private:
-
     bool frameTypeSendsCpu(FrameType frameType);
     int beginFrameOrMessage(FrameType frameType, int32_t core, bool force);
     void frame();
@@ -84,6 +77,7 @@ private:
 
     char * const mBuf;
     sem_t * const mReaderSem;
+    const uint64_t mCommitRate;
     uint64_t mCommitTime;
     sem_t mWriterSem;
     const int mSize;
@@ -92,6 +86,7 @@ private:
     std::atomic_int mCommitPos;
     bool mAvailable;
     bool mIsDone;
+    const bool mIncludeResponseType;
     const int32_t mCore;
     const FrameType mFrameType;
     uint64_t mLastEventTime;
@@ -99,7 +94,10 @@ private:
     int mLastEventTid;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(Buffer);
+    Buffer(const Buffer &) = delete;
+    Buffer & operator=(const Buffer &) = delete;
+    Buffer(Buffer &&) = delete;
+    Buffer & operator=(Buffer &&) = delete;
 };
 
 #endif // BUFFER_H

@@ -1,15 +1,20 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #include "MaliHwCntrTask.h"
+
 #include "Logging.h"
 #include "SessionData.h"
-#include <unistd.h>
 #include "lib/Syscall.h"
 
-namespace mali_userspace
-{
-    MaliHwCntrTask::MaliHwCntrTask(std::function<void()> endSession_, std::function<bool()> isSessionActive_, std::function<std::int64_t()> getMonotonicStarted,
-                                   std::unique_ptr<IBuffer> && buffer_, IMaliDeviceCounterDumpCallback & callback_, IMaliHwCntrReader & reader)
+#include <unistd.h>
+
+namespace mali_userspace {
+    MaliHwCntrTask::MaliHwCntrTask(std::function<void()> endSession_,
+                                   std::function<bool()> isSessionActive_,
+                                   std::function<std::int64_t()> getMonotonicStarted,
+                                   std::unique_ptr<IBuffer> && buffer_,
+                                   IMaliDeviceCounterDumpCallback & callback_,
+                                   IMaliHwCntrReader & reader)
         : mBuffer(std::move(buffer_)),
           mGetMonotonicStarted(getMonotonicStarted),
           mCallback(callback_),
@@ -30,9 +35,8 @@ namespace mali_userspace
 
         bool terminated = false;
         // set sample interval, if sample rate == 0, then sample at 100Hz as currently the job dumping based sampling does not work... (driver issue?)
-        const uint32_t sampleIntervalNs = (
-                sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000u / sampleRate) : 1u) :
-                        10000000u);
+        const uint32_t sampleIntervalNs =
+            (sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000u / sampleRate) : 1u) : 10000000u);
 
         if (!mReader.startPeriodicSampling(sampleIntervalNs)) {
             logg.logError("Could not enable periodic sampling");
@@ -44,27 +48,32 @@ namespace mali_userspace
             SampleBuffer waitStatus = mReader.waitForBuffer(10000);
 
             switch (waitStatus.status) {
-            case WAIT_STATUS_SUCCESS: {
-                if (waitStatus.data) {
-                    const uint64_t sampleTime = waitStatus.timestamp - monotonicStarted;
-                    if (mBuffer->eventHeader(sampleTime)) {
-                        mReader.getDevice().dumpAllCounters(mReader.getHardwareVersion(), countersList,
-                                reinterpret_cast<const uint32_t *>(waitStatus.data.get()), waitStatus.size / sizeof(uint32_t), *mBuffer, mCallback);
-                        mBuffer->check(sampleTime);
+                case WAIT_STATUS_SUCCESS: {
+                    if (waitStatus.data) {
+                        const uint64_t sampleTime = waitStatus.timestamp - monotonicStarted;
+                        if (mBuffer->eventHeader(sampleTime)) {
+                            mReader.getDevice().dumpAllCounters(
+                                mReader.getHardwareVersion(),
+                                countersList,
+                                reinterpret_cast<const uint32_t *>(waitStatus.data.get()),
+                                waitStatus.size / sizeof(uint32_t),
+                                *mBuffer,
+                                mCallback);
+                            mBuffer->check(sampleTime);
+                        }
                     }
+                    break;
                 }
-                break;
-            }
-            case WAIT_STATUS_TERMINATED: {
-                logg.logMessage("Stopped capturing HW counters");
-                terminated = true;
-                break;
-            }
-            case WAIT_STATUS_ERROR:
-            default: {
-                logg.logError("Error - Stopped capturing HW counters");
-                break;
-            }
+                case WAIT_STATUS_TERMINATED: {
+                    logg.logMessage("Stopped capturing HW counters");
+                    terminated = true;
+                    break;
+                }
+                case WAIT_STATUS_ERROR:
+                default: {
+                    logg.logError("Error - Stopped capturing HW counters");
+                    break;
+                }
             }
             if (isOneShot && isSessionActive() && (mBuffer->bytesAvailable() <= 0)) {
                 logg.logMessage("One shot (malihwc)");
@@ -78,16 +87,12 @@ namespace mali_userspace
         mBuffer->setDone();
     }
 
-    bool MaliHwCntrTask::isDone()
-    {
-        return mBuffer->isDone();
-    }
+    bool MaliHwCntrTask::isDone() { return mBuffer->isDone(); }
 
-    void MaliHwCntrTask::write(ISender *sender)
+    void MaliHwCntrTask::write(ISender * sender)
     {
         if (!mBuffer->isDone()) {
             mBuffer->write(sender);
         }
     }
 }
-

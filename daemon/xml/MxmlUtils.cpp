@@ -1,10 +1,10 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #include "xml/MxmlUtils.h"
 
 // mxml doesn't have a function to do this, so dip into its private API
 // Copy all the attributes from src to dst
-void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src)
+void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src)
 {
     if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr || mxmlGetType(src) != MXML_ELEMENT)
         return;
@@ -18,9 +18,9 @@ void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src)
 }
 
 // whitespace callback utility function used with mini-xml
-const char * mxmlWhitespaceCB(mxml_node_t *node, int loc)
+const char * mxmlWhitespaceCB(mxml_node_t * node, int loc)
 {
-    const char *name;
+    const char * name;
 
     name = mxmlGetElement(node);
 

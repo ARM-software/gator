@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
 <configurations revision="3">
   <configuration counter="ARM_ARM11_ccnt" event="0xff"/>

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_OPTIONAL_H
 #define INCLUDE_LIB_OPTIONAL_H
@@ -7,66 +7,37 @@
 
 #include <utility>
 
-namespace lib
-{
+namespace lib {
     template<typename T>
-    class Optional
-    {
+    class Optional {
     public:
-
         typedef T value_type;
 
-        Optional()
-            :   wrapper(),
-                hasValue(false)
-        {
-        }
+        Optional() : wrapper(), hasValue(false) {}
 
-        Optional(const value_type & t)
-            :   wrapper(t),
-                hasValue(true)
-        {
-        }
+        Optional(const value_type & t) : wrapper(t), hasValue(true) {}
 
-        Optional(value_type && t)
-            :   wrapper(std::move(t)),
-                hasValue(true)
-        {
-        }
+        Optional(value_type && t) : wrapper(std::move(t)), hasValue(true) {}
 
-        Optional(const Optional<value_type> & t)
-            :   wrapper(),
-                hasValue(false)
-        {
-            *this = t;
-        }
+        Optional(const Optional<value_type> & t) : wrapper(), hasValue(false) { *this = t; }
 
-        Optional(Optional<value_type> && t)
-            :   wrapper(),
-                hasValue(false)
-        {
-            *this = std::move(t);
-        }
+        Optional(Optional<value_type> && t) : wrapper(), hasValue(false) { *this = std::move(t); }
 
+        ~Optional() { clear(); }
 
-        ~Optional()
-        {
-            clear();
-        }
-
-        Optional& operator= (const value_type & t)
+        Optional & operator=(const value_type & t)
         {
             set(t);
             return *this;
         }
 
-        Optional& operator= (value_type && t)
+        Optional & operator=(value_type && t)
         {
             set(std::move(t));
             return *this;
         }
 
-        Optional& operator= (const Optional<value_type> & t)
+        Optional & operator=(const Optional<value_type> & t)
         {
             if (t) {
                 set(t.get());
@@ -77,7 +48,7 @@ namespace lib
             return *this;
         }
 
-        Optional& operator= (Optional<value_type> && t)
+        Optional & operator=(Optional<value_type> && t)
         {
             if (t) {
                 set(std::move(t.get()));
@@ -89,10 +60,7 @@ namespace lib
             return *this;
         }
 
-        bool valid() const
-        {
-            return hasValue;
-        }
+        bool valid() const { return hasValue; }
 
         value_type & get()
         {
@@ -143,32 +111,17 @@ namespace lib
             }
         }
 
-        operator bool() const
-        {
-            return valid();
-        }
+        operator bool() const { return valid(); }
 
-        value_type & operator * ()
-        {
-            return get();
-        }
+        value_type & operator*() { return get(); }
 
-        const value_type & operator * () const
-        {
-            return get();
-        }
+        const value_type & operator*() const { return get(); }
 
-        value_type * operator -> ()
-        {
-            return &get();
-        }
+        value_type * operator->() { return &get(); }
 
-        const value_type * operator -> () const
-        {
-            return &get();
-        }
+        const value_type * operator->() const { return &get(); }
 
-        bool operator == (const Optional<value_type> & that) const
+        bool operator==(const Optional<value_type> & that) const
         {
             if (hasValue && that.hasValue) {
                 return wrapper.data == that.wrapper.data;
@@ -178,25 +131,34 @@ namespace lib
             }
         }
 
-        bool operator != (const Optional<value_type> & that) const
+        bool operator<(const Optional<value_type> & that) const
         {
             if (hasValue && that.hasValue) {
-                return wrapper.data != that.wrapper.data;
+                return wrapper.data < that.wrapper.data;
+            }
+            else if (!hasValue && !that.hasValue) {
+                return false;
             }
             else {
-                return hasValue != that.hasValue;
+                return !hasValue;
             }
         }
 
-    private:
+        bool operator!=(const Optional<value_type> & that) const { return !(*this == that); }
 
+        bool operator<=(const Optional<value_type> & that) const { return *this == that || *this < that; }
+
+        bool operator>(const Optional<value_type> & that) const { return !(*this <= that); }
+
+        bool operator>=(const Optional<value_type> & that) const { return !(*this < that); }
+
+    private:
         /* Use a union to hold the optional value so we can manually construct/destruct and have it stack allocated */
-        union Wrapper
-        {
+        union Wrapper {
             value_type data;
 
             /* let Optional do the construction / destruction */
-            Wrapper() {};
+            Wrapper(){};
             Wrapper(const value_type & t) : data(t) {}
             Wrapper(value_type && t) : data(std::move(t)) {}
             ~Wrapper() {}

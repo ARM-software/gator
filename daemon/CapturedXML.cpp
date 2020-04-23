@@ -1,29 +1,22 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "CapturedXML.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
-#include <cassert>
-
-#include <algorithm>
-#include <set>
-
 #include "CapturedSpe.h"
 #include "ICpuInfo.h"
-#include "PrimarySourceProvider.h"
-#include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "xml/MxmlUtils.h"
+#include "PrimarySourceProvider.h"
+#include "SessionData.h"
 #include "lib/FsEntry.h"
+#include "xml/MxmlUtils.h"
+
+#include <algorithm>
+#include <cassert>
+#include <dirent.h>
+#include <set>
+#include <stdlib.h>
+#include <string.h>
 
 /* Basic target OS detection */
 #undef GATOR_TARGET_OS
@@ -33,25 +26,25 @@
 
 // android NDK build
 #if defined(__ANDROID__) && defined(__BIONIC__)
-#   define GATOR_TARGET_OS                  "android"
-#   if defined(__ANDROID_API__)
-#       define GATOR_TARGET_OS_VERSION      __ANDROID_API__
-#       define GATOR_TARGET_OS_VERSION_FMT  "%d"
-#   endif
+#define GATOR_TARGET_OS "android"
+#if defined(__ANDROID_API__)
+#define GATOR_TARGET_OS_VERSION __ANDROID_API__
+#define GATOR_TARGET_OS_VERSION_FMT "%d"
+#endif
 // not an android NDK build
 #else
-#   include <limits.h>
-#   if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__UCLIBC__)
+#include <limits.h>
+#if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__UCLIBC__)
 //      using GLIBC or UCLIBC so must be linux
-#       define GATOR_TARGET_OS              "linux"
-#   elif defined(__linux__)
+#define GATOR_TARGET_OS "linux"
+#elif defined(__linux__)
 //      not sure what it is using, probably is musl libc so have to probe filesystem
-#       define GATOR_TARGET_OS              detectOs()
-#       define GATOR_TARGET_OS_PROBE        1
-#   else
+#define GATOR_TARGET_OS detectOs()
+#define GATOR_TARGET_OS_PROBE 1
+#else
 //      not linux, hmm maybe tests?
-#       define GATOR_TARGET_OS              "unknown"
-#   endif
+#define GATOR_TARGET_OS "unknown"
+#endif
 #endif
 
 #if defined(GATOR_TARGET_OS_PROBE)
@@ -76,22 +69,27 @@ static const char * detectOs()
 #endif
 
 /** Generate the xml tree for capture.xml */
-static mxml_node_t* getTree(bool includeTime, lib::Span<const CapturedSpe> spes, const PrimarySourceProvider & primarySourceProvider, const std::map<unsigned, unsigned> & maliGpuIds)
+static mxml_node_t * getTree(bool includeTime,
+                             lib::Span<const CapturedSpe> spes,
+                             const PrimarySourceProvider & primarySourceProvider,
+                             const std::map<unsigned, unsigned> & maliGpuIds)
 {
-    mxml_node_t *xml;
-    mxml_node_t *captured;
-    mxml_node_t *target;
+    mxml_node_t * xml;
+    mxml_node_t * captured;
+    mxml_node_t * target;
     int x;
 
     xml = mxmlNewXML("1.0");
 
     captured = mxmlNewElement(xml, "captured");
     mxmlElementSetAttr(captured, "version", "1");
-    mxmlElementSetAttr(captured, "backtrace_processing", (gSessionData.mBacktraceDepth > 0) ? primarySourceProvider.getBacktraceProcessingMode()
-                                                                                            : "none");
+    mxmlElementSetAttr(captured,
+                       "backtrace_processing",
+                       (gSessionData.mBacktraceDepth > 0) ? primarySourceProvider.getBacktraceProcessingMode()
+                                                          : "none");
     mxmlElementSetAttr(captured, "type", primarySourceProvider.getCaptureXmlTypeValue());
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
-    if (includeTime) { // Send the following only after the capture is complete
+    if (includeTime) {                 // Send the following only after the capture is complete
         if (time(NULL) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
             mxmlElementSetAttrf(captured, "created", "%lu", time(NULL)); // Valid until the year 2038
         }
@@ -113,7 +111,10 @@ static mxml_node_t* getTree(bool includeTime, lib::Span<const CapturedSpe> spes,
     assert(cpuIds.size() > 0); // gatord should've died earlier if there were no cpus
     mxmlElementSetAttrf(target, "cpuid", "0x%x", *std::max_element(begin(cpuIds), end(cpuIds)));
 
-    if (!gSessionData.mOneShot && (gSessionData.mSampleRate > 0)) {
+    /* SDDAP-10049: Removed `&& (gSessionData.mSampleRate > 0)` - this allows sample rate: none
+     * to work with live mode, at the risk that live display is 'jittery' as data sending is dependent
+     * on CPU's being active and doing some context switching. */
+    if (!gSessionData.mOneShot) {
         mxmlElementSetAttr(target, "supports_live", "yes");
     }
 
@@ -124,14 +125,13 @@ static mxml_node_t* getTree(bool includeTime, lib::Span<const CapturedSpe> spes,
     // add some OS information
 #if defined(GATOR_TARGET_OS)
     mxmlElementSetAttr(target, "os", GATOR_TARGET_OS);
-#   if defined(GATOR_TARGET_OS_VERSION)
+#if defined(GATOR_TARGET_OS_VERSION)
     mxmlElementSetAttrf(target, "os_version", GATOR_TARGET_OS_VERSION_FMT, GATOR_TARGET_OS_VERSION);
-#   endif
+#endif
 #endif
 
     // add mali gpu ids
-    if (!maliGpuIds.empty())
-    {
+    if (!maliGpuIds.empty()) {
         // make set of unique ids
         std::set<unsigned> uniqueGpuIds;
         for (auto gpuid : maliGpuIds) {
@@ -146,7 +146,7 @@ static mxml_node_t* getTree(bool includeTime, lib::Span<const CapturedSpe> spes,
         }
     }
 
-    mxml_node_t *counters = NULL;
+    mxml_node_t * counters = NULL;
     for (x = 0; x < MAX_PERFORMANCE_COUNTERS; x++) {
         const Counter & counter = gSessionData.mCounters[x];
         if (counter.isEnabled()) {
@@ -180,18 +180,21 @@ static mxml_node_t* getTree(bool includeTime, lib::Span<const CapturedSpe> spes,
     return xml;
 }
 
-namespace captured_xml
-{
-    std::unique_ptr<char, void (*)(void *)> getXML(bool includeTime, lib::Span<const CapturedSpe> spes, const PrimarySourceProvider & primarySourceProvider,
+namespace captured_xml {
+    std::unique_ptr<char, void (*)(void *)> getXML(bool includeTime,
+                                                   lib::Span<const CapturedSpe> spes,
+                                                   const PrimarySourceProvider & primarySourceProvider,
                                                    const std::map<unsigned, unsigned> & maliGpuIds)
     {
-        mxml_node_t *xml = getTree(includeTime, spes, primarySourceProvider, maliGpuIds);
-        char* xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+        mxml_node_t * xml = getTree(includeTime, spes, primarySourceProvider, maliGpuIds);
+        char * xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
         mxmlDelete(xml);
         return {xml_string, &free};
     }
 
-    void write(const char* path, lib::Span<const CapturedSpe> spes, const PrimarySourceProvider & primarySourceProvider,
+    void write(const char * path,
+               lib::Span<const CapturedSpe> spes,
+               const PrimarySourceProvider & primarySourceProvider,
                const std::map<unsigned, unsigned> & maliGpuIds)
     {
         char file[PATH_MAX];
@@ -204,4 +207,3 @@ namespace captured_xml
         }
     }
 }
-

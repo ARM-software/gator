@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTSOURCE_H
 #define INCLUDE_NON_ROOT_NONROOTSOURCE_H
@@ -13,18 +13,19 @@
 
 class ICpuInfo;
 
-namespace non_root
-{
+namespace non_root {
     class NonRootDriver;
 
     /**
      * Non-root Capture driver
      */
-    class NonRootSource : public Source
-    {
+    class NonRootSource : public Source {
     public:
-
-        NonRootSource(NonRootDriver & driver, Child & child, sem_t & senderSem, sem_t & startProfile, const ICpuInfo & cpuInfo);
+        NonRootSource(NonRootDriver & driver,
+                      Child & child,
+                      sem_t & senderSem,
+                      sem_t & startProfile,
+                      const ICpuInfo & cpuInfo);
 
         virtual bool prepare() override;
         virtual void run() override;
@@ -33,7 +34,6 @@ namespace non_root
         virtual void write(ISender * sender) override;
 
     private:
-
         PerCoreMixedFrameBuffer mSwitchBuffers;
         Buffer mGlobalCounterBuffer;
         Buffer mProcessCounterBuffer;

@@ -12,11 +12,3 @@ The different annotation types include:
 * Simple examples for all the above annotation types are available in the streamline/examples folder.
 * For more complicated examples, import the Linux application example projects into Arm DS IDE and refer to readme.html for more details.
 
-*** Java annotations
-StreamlineAnnotate.java provides methods for String, Visual, and Marker annotations.
-
-*** Kernel/module annotations
-String, Visual, and Marker annotations are supported from within the kernel or a module by including streamline_annotate.h (streamline_annotate.c need not be included in the project).
-The same macros are defined for both user space and kernel space using the _KERNEL_ preprocessor conditional.
-See the mmapped example in the gator driver source code and in the documentation for details on adding Counter annotations to kernel space.
-

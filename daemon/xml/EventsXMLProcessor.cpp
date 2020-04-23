@@ -1,47 +1,62 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXMLProcessor.h"
-#include "xml/PmuXML.h"
-#include "lib/Assert.h"
+
 #include "Logging.h"
+#include "lib/Assert.h"
+#include "xml/PmuXML.h"
 
 #include <map>
 #include <string>
+#include <utility>
 
-namespace events_xml
-{
-    namespace
-    {
+namespace events_xml {
+    namespace {
         static const char TAG_EVENTS[] = "events";
         static const char TAG_CATEGORY[] = "category";
         static const char TAG_COUNTER_SET[] = "counter_set";
         static const char TAG_EVENT[] = "event";
 
+        static const char ATTR_CLASS[] = "class";
+        static const char ATTR_COUNT[] = "count";
         static const char ATTR_COUNTER[] = "counter";
         static const char ATTR_COUNTER_SET[] = "counter_set";
-        static const char ATTR_TITLE[] = "title";
+        static const char ATTR_DESCRIPTION[] = "description";
+        static const char ATTR_MULTIPLIER[] = "multiplier";
         static const char ATTR_NAME[] = "name";
+        static const char ATTR_TITLE[] = "title";
+        static const char ATTR_UNITS[] = "units";
 
         static const char CLUSTER_VAR[] = "${cluster}";
 
-        static const auto NOP_ATTR_MODIFICATION_FUNCTION = [](const char*, const char*, const char*, std::string&) -> bool { return false; };
+        static const std::map<Event::Class, std::string> classToStringMap = {
+            { Event::Class::DELTA, "delta" },
+            { Event::Class::INCIDENT, "incident" },
+            { Event::Class::ABSOLUTE, "absolute" },
+            { Event::Class::ACTIVITY, "activity" }
+        };
+
+        static const auto NOP_ATTR_MODIFICATION_FUNCTION =
+            [](const char *, const char *, const char *, std::string &) -> bool { return false; };
 
         template<typename T>
-        static void addAllIdToCounterSetMappings(lib::Span<const T> pmus,
-                                                 std::map<std::string, std::pair<std::string, std::string>> & idToCounterSetAndName)
+        static void addAllIdToCounterSetMappings(
+            lib::Span<const T> pmus,
+            std::map<std::string, std::pair<std::string, std::string>> & idToCounterSetAndName)
         {
             for (const T & pmu : pmus) {
-                idToCounterSetAndName.emplace(pmu.getId(),
-                                              std::pair<std::string, std::string> { pmu.getCounterSet(), pmu.getCoreName() });
+                idToCounterSetAndName.emplace(
+                    pmu.getId(),
+                    std::pair<std::string, std::string>{pmu.getCounterSet(), pmu.getCoreName()});
             }
         }
 
         template<typename T>
-        static void copyMxmlElementAttrs(mxml_node_t *dest, mxml_node_t *src, T attributeFilter)
+        static void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
         {
-            if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr || mxmlGetType(src) != MXML_ELEMENT)
+            if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr ||
+                mxmlGetType(src) != MXML_ELEMENT)
                 return;
-
 
             const char * elementName = mxmlGetElement(src);
 
@@ -61,10 +76,9 @@ namespace events_xml
         }
 
         template<typename T>
-        static void copyMxmlChildElements(mxml_node_t *dest, mxml_node_t *src, T attributeFilter)
+        static void copyMxmlChildElements(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
         {
-            for (mxml_node_t * child = mxmlGetFirstChild(src); child != nullptr;
-                    child = mxmlGetNextSibling(child)) {
+            for (mxml_node_t * child = mxmlGetFirstChild(src); child != nullptr; child = mxmlGetNextSibling(child)) {
                 const char * childName = mxmlGetElement(child);
                 if (childName == nullptr)
                     continue;
@@ -83,11 +97,10 @@ namespace events_xml
             addAllIdToCounterSetMappings(clusters, idToCounterSetAndName);
 
             // find all counter_set elements by name
-            std::map<std::string, mxml_node_t*> counterSetNodes;
+            std::map<std::string, mxml_node_t *> counterSetNodes;
             for (mxml_node_t * node = mxmlFindElement(xml, xml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
                  node != nullptr;
-                 node = mxmlFindElement(node, xml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND))
-            {
+                 node = mxmlFindElement(node, xml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND)) {
                 const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
                 if (name != nullptr) {
                     counterSetNodes.emplace(name, node);
@@ -95,11 +108,10 @@ namespace events_xml
             }
 
             // find all category elements by name
-            std::map<std::string, mxml_node_t*> categoryNodes;
+            std::map<std::string, mxml_node_t *> categoryNodes;
             for (mxml_node_t * node = mxmlFindElement(xml, xml, TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND);
                  node != nullptr;
-                 node = mxmlFindElement(node, xml, TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND))
-            {
+                 node = mxmlFindElement(node, xml, TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND)) {
                 const char * const name = mxmlElementGetAttr(node, ATTR_COUNTER_SET);
                 if (name != nullptr) {
                     categoryNodes.emplace(name, node);
@@ -107,8 +119,7 @@ namespace events_xml
             }
 
             // resolve counter set copies for PMUs
-            for (const auto & pair : idToCounterSetAndName)
-            {
+            for (const auto & pair : idToCounterSetAndName) {
                 const std::string & id = pair.first;
                 const std::pair<std::string, std::string> & counterSetAndCoreName = pair.second;
                 const std::string & counterSet = counterSetAndCoreName.first;
@@ -135,57 +146,57 @@ namespace events_xml
 
                 // clone the new counter_set element
                 mxml_node_t * const counterSetNode = counterSetIt->second;
-                mxml_node_t * newCounterSetNode = mxmlNewElement(mxmlGetParent(counterSetNode),
-                                                                 TAG_COUNTER_SET);
+                mxml_node_t * newCounterSetNode = mxmlNewElement(mxmlGetParent(counterSetNode), TAG_COUNTER_SET);
                 copyMxmlElementAttrs(newCounterSetNode, counterSetNode, NOP_ATTR_MODIFICATION_FUNCTION);
                 mxmlElementSetAttr(newCounterSetNode, ATTR_NAME, newCounterSetName.c_str());
 
                 // clone the new category element
                 mxml_node_t * const categoryNode = categoryIt->second;
-                mxml_node_t * newCategoryNode = mxmlNewElement(mxmlGetParent(categoryNode),
-                                                               TAG_CATEGORY);
-                copyMxmlElementAttrs(
-                        newCategoryNode,
-                        categoryNode,
-                        [&coreName] (const char * /*elementName*/, const char * attrName, const char * attrValue, std::string & result) -> bool
-                        {
-                            if (attrValue == nullptr) {
-                                return false;
-                            }
+                mxml_node_t * newCategoryNode = mxmlNewElement(mxmlGetParent(categoryNode), TAG_CATEGORY);
+                copyMxmlElementAttrs(newCategoryNode,
+                                     categoryNode,
+                                     [&coreName](const char * /*elementName*/,
+                                                 const char * attrName,
+                                                 const char * attrValue,
+                                                 std::string & result) -> bool {
+                                         if (attrValue == nullptr) {
+                                             return false;
+                                         }
 
-                            if (strcmp(attrName, ATTR_NAME) != 0) {
-                                return false;
-                            }
+                                         if (strcmp(attrName, ATTR_NAME) != 0) {
+                                             return false;
+                                         }
 
-                            // use the PMU's core name instead of the original one
-                            result = coreName;
-                            return true;
-                        });
-                copyMxmlChildElements(
-                        newCategoryNode,
-                        categoryNode,
-                        [&oldEventPrefix, &newEventPrefix] (const char * elementName, const char * attrName, const char * attrValue, std::string & result) -> bool
-                        {
-                            if (attrValue == nullptr) {
-                                return false;
-                            }
+                                         // use the PMU's core name instead of the original one
+                                         result = coreName;
+                                         return true;
+                                     });
+                copyMxmlChildElements(newCategoryNode,
+                                      categoryNode,
+                                      [&oldEventPrefix, &newEventPrefix](const char * elementName,
+                                                                         const char * attrName,
+                                                                         const char * attrValue,
+                                                                         std::string & result) -> bool {
+                                          if (attrValue == nullptr) {
+                                              return false;
+                                          }
 
-                            if (strcmp(elementName, TAG_EVENT) != 0) {
-                                return false;
-                            }
+                                          if (strcmp(elementName, TAG_EVENT) != 0) {
+                                              return false;
+                                          }
 
-                            if (strcmp(attrName, ATTR_COUNTER) != 0) {
-                                return false;
-                            }
+                                          if (strcmp(attrName, ATTR_COUNTER) != 0) {
+                                              return false;
+                                          }
 
-                            if (strstr(attrValue, oldEventPrefix.c_str()) != attrValue) {
-                                return false;
-                            }
+                                          if (strstr(attrValue, oldEventPrefix.c_str()) != attrValue) {
+                                              return false;
+                                          }
 
-                            // change the counter prefix to match 'id'
-                            result = newEventPrefix + (attrValue + oldEventPrefix.length());
-                            return true;
-                        });
+                                          // change the counter prefix to match 'id'
+                                          result = newEventPrefix + (attrValue + oldEventPrefix.length());
+                                          return true;
+                                      });
 
                 mxmlElementSetAttr(newCategoryNode, ATTR_COUNTER_SET, newCounterSetName.c_str());
             }
@@ -199,9 +210,11 @@ namespace events_xml
 
         mxml_node_t * const eventsNode = mxmlFindElement(mainXml, mainXml, TAG_EVENTS, nullptr, nullptr, MXML_DESCEND);
         if (eventsNode == nullptr) {
-            logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML starts with:\n"
-                          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                          "<events>");
+            logg.logError(
+                "Unable to find <events> node in the events.xml, please ensure the first two lines of events XML "
+                "starts with:\n"
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                "<events>");
             return false;
         }
 
@@ -213,36 +226,40 @@ namespace events_xml
             // Make list of all categories in xml
             for (mxml_node_t * node = mxmlFindElement(mainXml, mainXml, TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND);
                  node != nullptr;
-                 node = mxmlFindElement(node, mainXml, TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND))
-            {
+                 node = mxmlFindElement(node, mainXml, TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND)) {
                 categories.emplace_back(node);
             }
 
             // Make list of all events in xml
             for (mxml_node_t * node = mxmlFindElement(mainXml, mainXml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND);
                  node != nullptr;
-                 node = mxmlFindElement(node, mainXml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND))
-            {
+                 node = mxmlFindElement(node, mainXml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND)) {
                 events.emplace_back(node);
             }
 
             // Make list of all counter_sets in xml
-            for (mxml_node_t * node = mxmlFindElement(mainXml, mainXml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
+            for (mxml_node_t * node =
+                     mxmlFindElement(mainXml, mainXml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
                  node != nullptr;
-                 node = mxmlFindElement(node, mainXml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND))
-            {
+                 node = mxmlFindElement(node, mainXml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND)) {
                 counterSets.emplace_back(node);
             }
         }
 
         // Handle counter_sets
-        for (mxml_node_t * node = ((strcmp(mxmlGetElement(appendXml.get()), TAG_COUNTER_SET) == 0) ? appendXml.get()
-                                                                                                   : mxmlFindElement(appendXml.get(), appendXml.get(), TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND)),
-                         * next = mxmlFindElement(node, appendXml.get(), TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
+        for (mxml_node_t *
+                 node =
+                    ((strcmp(mxmlGetElement(appendXml.get()), TAG_COUNTER_SET) == 0) ? appendXml.get()
+                                                                                     : mxmlFindElement(appendXml.get(),
+                                                                                                       appendXml.get(),
+                                                                                                       TAG_COUNTER_SET,
+                                                                                                       nullptr,
+                                                                                                       nullptr,
+                                                                                                       MXML_DESCEND)),
+                *next = mxmlFindElement(node, appendXml.get(), TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
              node != nullptr;
              node = next,
-             next = mxmlFindElement(node, appendXml.get(), TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND))
-        {
+                next = mxmlFindElement(node, appendXml.get(), TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND)) {
             const char * const appendXmlNodeName = mxmlElementGetAttr(node, ATTR_NAME);
             if (appendXmlNodeName == nullptr) {
                 logg.logError("Not all event XML counter_sets have the required name attribute");
@@ -251,12 +268,11 @@ namespace events_xml
 
             // Replace any duplicate counter_sets
             bool replaced = false;
-            for (auto * counterSet : counterSets)
-            {
+            for (auto * counterSet : counterSets) {
                 const char * const mainXmlNodeName = mxmlElementGetAttr(counterSet, ATTR_NAME);
                 if (mainXmlNodeName == nullptr) {
                     logg.logError(
-                            "Not all event XML nodes have the required title and name and parent name attributes");
+                        "Not all event XML nodes have the required title and name and parent name attributes");
                     return false;
                 }
 
@@ -280,12 +296,11 @@ namespace events_xml
         }
 
         // Handle events
-        for (mxml_node_t * node = mxmlFindElement(appendXml.get(), appendXml.get(), TAG_EVENT, nullptr, nullptr, MXML_DESCEND),
-                         * next = mxmlFindElement(node, appendXml.get(), TAG_EVENT, nullptr, nullptr, MXML_DESCEND);
-                node != nullptr;
-                node = next,
-                next = mxmlFindElement(node, appendXml.get(), TAG_EVENT, nullptr, nullptr, MXML_DESCEND))
-        {
+        for (mxml_node_t *
+                 node = mxmlFindElement(appendXml.get(), appendXml.get(), TAG_EVENT, nullptr, nullptr, MXML_DESCEND),
+                *next = mxmlFindElement(node, appendXml.get(), TAG_EVENT, nullptr, nullptr, MXML_DESCEND);
+             node != nullptr;
+             node = next, next = mxmlFindElement(node, appendXml.get(), TAG_EVENT, nullptr, nullptr, MXML_DESCEND)) {
             const char * const appendXmlNodeCategory = mxmlElementGetAttr(mxmlGetParent(node), ATTR_NAME);
             const char * const appendXmlNodeTitle = mxmlElementGetAttr(node, ATTR_TITLE);
             const char * const appendXmlNodeName = mxmlElementGetAttr(node, ATTR_NAME);
@@ -296,22 +311,24 @@ namespace events_xml
             }
 
             // Replace any duplicate events
-            for (auto * event : events)
-            {
+            for (auto * event : events) {
                 const char * const mainXmlNodeCategory = mxmlElementGetAttr(mxmlGetParent(event), ATTR_NAME);
                 const char * const mainXmlNodeTitle = mxmlElementGetAttr(event, ATTR_TITLE);
                 const char * const mainXmlNodeName = mxmlElementGetAttr(event, ATTR_NAME);
 
                 if (mainXmlNodeCategory == nullptr || mainXmlNodeTitle == nullptr || mainXmlNodeName == nullptr) {
-                    logg.logError("Not all event XML nodes have the required title and name and parent name attributes");
+                    logg.logError(
+                        "Not all event XML nodes have the required title and name and parent name attributes");
                     return false;
                 }
 
-                if ((strcmp(appendXmlNodeCategory, mainXmlNodeCategory) == 0)
-                    && (strcmp(appendXmlNodeTitle, mainXmlNodeTitle) == 0)
-                    && (strcmp(appendXmlNodeName, mainXmlNodeName) == 0))
-                {
-                    logg.logMessage("Replacing counter %s %s: %s", appendXmlNodeCategory, appendXmlNodeTitle, appendXmlNodeName);
+                if ((strcmp(appendXmlNodeCategory, mainXmlNodeCategory) == 0) &&
+                    (strcmp(appendXmlNodeTitle, mainXmlNodeTitle) == 0) &&
+                    (strcmp(appendXmlNodeName, mainXmlNodeName) == 0)) {
+                    logg.logMessage("Replacing counter %s %s: %s",
+                                    appendXmlNodeCategory,
+                                    appendXmlNodeTitle,
+                                    appendXmlNodeName);
                     mxml_node_t * const parent = mxmlGetParent(event);
                     mxmlDelete(event);
                     mxmlAdd(parent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
@@ -321,13 +338,17 @@ namespace events_xml
         }
 
         // Handle categories
-        for (mxml_node_t * node = strcmp(mxmlGetElement(appendXml.get()), TAG_CATEGORY) == 0 ? appendXml.get()
-                                                                                             : mxmlFindElement(appendXml.get(), appendXml.get(), TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND),
-                         * next = mxmlFindElement(node, appendXml.get(), TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND);
-                node != nullptr;
-                node = next,
-                next = mxmlFindElement(node, appendXml.get(), TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND))
-        {
+        for (mxml_node_t *node = strcmp(mxmlGetElement(appendXml.get()), TAG_CATEGORY) == 0
+                                     ? appendXml.get()
+                                     : mxmlFindElement(appendXml.get(),
+                                                       appendXml.get(),
+                                                       TAG_CATEGORY,
+                                                       nullptr,
+                                                       nullptr,
+                                                       MXML_DESCEND),
+                         *next = mxmlFindElement(node, appendXml.get(), TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND);
+             node != nullptr;
+             node = next, next = mxmlFindElement(node, appendXml.get(), TAG_CATEGORY, nullptr, nullptr, MXML_DESCEND)) {
             // After replacing duplicate events, a category may be empty
             if (mxmlGetFirstChild(node) == nullptr) {
                 continue;
@@ -341,8 +362,7 @@ namespace events_xml
 
             // Merge identically named categories
             bool merged = false;
-            for (auto * category : categories)
-            {
+            for (auto * category : categories) {
                 const char * const mainXmlNodeName = mxmlElementGetAttr(category, ATTR_NAME);
                 if (mainXmlNodeName == nullptr) {
                     logg.logError("Not all event XML category nodes have the required name attribute");
@@ -351,8 +371,8 @@ namespace events_xml
 
                 if (strcmp(appendXmlNodeName, mainXmlNodeName) == 0) {
                     logg.logMessage("Merging category %s", appendXmlNodeName);
-                    for (mxml_node_t * child = mxmlGetFirstChild(node); child != nullptr; child = mxmlGetFirstChild(node))
-                    {
+                    for (mxml_node_t * child = mxmlGetFirstChild(node); child != nullptr;
+                         child = mxmlGetFirstChild(node)) {
                         mxmlAdd(category, MXML_ADD_AFTER, mxmlGetLastChild(category), child);
                     }
                     merged = true;
@@ -377,18 +397,15 @@ namespace events_xml
         addAdditionalPmusCounterSets(xml, clusters);
 
         // Resolve ${cluster}
-        for (mxml_node_t * node = mxmlFindElement(xml, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND),
-                         * next = mxmlFindElement(node, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND);
-                node != nullptr;
-                node = next,
-                next = mxmlFindElement(node, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND))
-        {
+        for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND),
+                         *next = mxmlFindElement(node, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND);
+             node != nullptr;
+             node = next, next = mxmlFindElement(node, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND)) {
             const char * const counter = mxmlElementGetAttr(node, ATTR_COUNTER);
 
-            if ((counter != nullptr) && (strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0))
-            {
+            if ((counter != nullptr) && (strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0)) {
                 for (const GatorCpu & cluster : clusters) {
-                    mxml_node_t *n = mxmlNewElement(mxmlGetParent(node), TAG_EVENT);
+                    mxml_node_t * n = mxmlNewElement(mxmlGetParent(node), TAG_EVENT);
                     copyMxmlElementAttrs(n, node, NOP_ATTR_MODIFICATION_FUNCTION);
                     char buf[1 << 7];
                     snprintf(buf, sizeof(buf), "%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1);
@@ -403,5 +420,49 @@ namespace events_xml
     {
         return mxmlFindElement(xml, xml, TAG_EVENTS, nullptr, nullptr, MXML_DESCEND);
     }
-}
 
+    std::pair<mxml_unique_ptr, mxml_unique_ptr> createCategoryAndCounterSetNodes(const Category & category)
+    {
+        // Create the category node
+        mxml_unique_ptr categoryNode {makeMxmlUniquePtr(mxmlNewElement(MXML_NO_PARENT, TAG_CATEGORY))};
+
+
+        // Create the counter set node
+        mxml_unique_ptr counterSetNode {makeMxmlUniquePtr(nullptr)};
+        if(category.counterSet)
+        {
+            const CounterSet & counterSet = category.counterSet.get();
+
+            counterSetNode.reset(mxmlNewElement(MXML_NO_PARENT, TAG_COUNTER_SET));
+            mxmlElementSetAttrf(counterSetNode.get(), ATTR_COUNT, "%i", counterSet.count);
+            mxmlElementSetAttr(counterSetNode.get(), ATTR_NAME, counterSet.name.c_str());
+
+            // Add the counter_set attr to the category node
+            mxmlElementSetAttr(categoryNode.get(), ATTR_COUNTER_SET, counterSet.name.c_str());
+        }
+
+        // Populate the category node
+        mxmlElementSetAttr(categoryNode.get(), ATTR_NAME, category.name.c_str());
+        for (auto event : category.events)
+        {
+            mxml_node_t * eventNode{mxmlNewElement(categoryNode.get(), TAG_EVENT)};
+
+            if (event.eventNumber)
+            {
+                mxmlElementSetAttrf(eventNode, TAG_EVENT, "0x%x", event.eventNumber.get());
+            }
+            if(event.counter)
+            {
+                mxmlElementSetAttr(eventNode, ATTR_COUNTER, event.counter.get().c_str());
+            }
+            mxmlElementSetAttr(eventNode, ATTR_TITLE, event.title.c_str());
+            mxmlElementSetAttr(eventNode, ATTR_NAME, event.name.c_str());
+            mxmlElementSetAttr(eventNode, ATTR_DESCRIPTION, event.description.c_str());
+            mxmlElementSetAttr(eventNode, ATTR_UNITS, event.units.c_str());
+            mxmlElementSetAttrf(eventNode, ATTR_MULTIPLIER, "%f", event.multiplier);
+            mxmlElementSetAttr(eventNode, ATTR_CLASS, classToStringMap.at(event.clazz).c_str());
+        }
+
+        return std::make_pair(std::move(categoryNode), std::move(counterSetNode));
+    }
+}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/PerCoreIdentificationThread.h"
 
@@ -8,12 +8,12 @@
 #include "lib/Utils.h"
 #include "linux/CoreOnliner.h"
 
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
-#include <cerrno>
+#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
-#include <signal.h>
 #include <unistd.h>
 
 #ifndef _GNU_SOURCE
@@ -24,12 +24,10 @@
 #include <sched.h>
 #endif
 
-PerCoreIdentificationThread::PerCoreIdentificationThread(bool ignoreOffline, unsigned cpu, ConsumerFunction consumerFunction)
-        : thread(),
-          consumerFunction(consumerFunction),
-          terminatedFlag(false),
-          cpu(cpu),
-          ignoreOffline(ignoreOffline)
+PerCoreIdentificationThread::PerCoreIdentificationThread(bool ignoreOffline,
+                                                         unsigned cpu,
+                                                         ConsumerFunction consumerFunction)
+    : thread(), consumerFunction(consumerFunction), terminatedFlag(false), cpu(cpu), ignoreOffline(ignoreOffline)
 {
     thread = std::thread(launch, this);
 }
@@ -58,8 +56,7 @@ bool PerCoreIdentificationThread::configureAffinity()
 
     // try and set affinity
     bool affinitySucceeded = false;
-    for (unsigned count = 0; count < AFFINE_LOOP_COUNT && !affinitySucceeded; ++count)
-    {
+    for (unsigned count = 0; count < AFFINE_LOOP_COUNT && !affinitySucceeded; ++count) {
         if (sched_setaffinity(tid, sizeof(cpu_set_t), &cpuset) == 0) {
             affinitySucceeded = true;
         }
@@ -144,6 +141,6 @@ void PerCoreIdentificationThread::run() noexcept
     // sadly this means instead once all threads are running (and thus all cores are online) we read /proc/cpuinfo to get the CPUID info
     // hence the spin wait *after* the callback
     while (!terminatedFlag) {
-       sched_yield();
+        sched_yield();
     }
 }

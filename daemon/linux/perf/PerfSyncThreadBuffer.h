@@ -1,7 +1,10 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERFSYNCTHREADBUFFER_H
 #define INCLUDE_LINUX_PERF_PERFSYNCTHREADBUFFER_H
+
+#include "Buffer.h"
+#include "linux/perf/PerfSyncThread.h"
 
 #include <cstdint>
 #include <semaphore.h>
@@ -9,15 +12,10 @@
 #include <unistd.h>
 #include <vector>
 
-#include "Buffer.h"
-#include "linux/perf/PerfSyncThread.h"
-
 class ISender;
 
-class PerfSyncThreadBuffer
-{
+class PerfSyncThreadBuffer {
 public:
-
     /**
      * Factory method, creates appropriate number of sync thread objects
      *
@@ -26,7 +24,10 @@ public:
      * @param hasSPEConfiguration True if the user selected at least one SPE configuration
      * @return The list of buffer objects
      */
-    static std::vector<std::unique_ptr<PerfSyncThreadBuffer>> create(std::uint64_t monotonicRawBase, bool supportsClockId, bool hasSPEConfiguration, sem_t & senderSem);
+    static std::vector<std::unique_ptr<PerfSyncThreadBuffer>> create(std::uint64_t monotonicRawBase,
+                                                                     bool supportsClockId,
+                                                                     bool hasSPEConfiguration,
+                                                                     sem_t & senderSem);
 
     /**
      * Constructor
@@ -36,7 +37,11 @@ public:
      * @param readTimer True to read the arch timer, false otherwise
      * @param readerSem The buffer reader semaphore
      */
-    PerfSyncThreadBuffer(std::uint64_t monotonicRawBase, unsigned cpu, bool enableSyncThreadMode, bool readTimer, sem_t * readerSem);
+    PerfSyncThreadBuffer(std::uint64_t monotonicRawBase,
+                         unsigned cpu,
+                         bool enableSyncThreadMode,
+                         bool readTimer,
+                         sem_t * readerSem);
 
     /**
      * Stop thread
@@ -55,7 +60,6 @@ public:
     void send(ISender & sender);
 
 private:
-
     std::uint64_t monotonicRawBase;
     Buffer buffer;
     PerfSyncThread thread;

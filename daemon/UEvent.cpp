@@ -1,31 +1,21 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "UEvent.h"
 
+#include "Logging.h"
+#include "OlySocket.h"
+
+#include <linux/netlink.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include <linux/netlink.h>
-
-#include "Logging.h"
-#include "OlySocket.h"
 
 static const char EMPTY[] = "";
 static const char ACTION[] = "ACTION=";
 static const char DEVPATH[] = "DEVPATH=";
 static const char SUBSYSTEM[] = "SUBSYSTEM=";
 
-UEvent::UEvent()
-        : mFd(-1)
-{
-}
+UEvent::UEvent() : mFd(-1) {}
 
 UEvent::~UEvent()
 {

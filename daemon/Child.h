@@ -1,28 +1,19 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef __CHILD_H__
 #define __CHILD_H__
 
-#include "ClassBoilerPlate.h"
-
+#include "Configuration.h"
 #include "lib/SharedMemory.h"
 
-#include "Configuration.h"
-
 #include <atomic>
-#include <memory>
 #include <functional>
-#include <semaphore.h>
-#include <signal.h>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <semaphore.h>
 #include <set>
+#include <signal.h>
 #include <vector>
 
 class Drivers;
@@ -30,15 +21,13 @@ class Sender;
 class Source;
 class OlySocket;
 
-namespace lib
-{
+namespace lib {
     class Waiter;
 }
 
 void handleException();
 
-class Child
-{
+class Child {
 public:
     struct Config {
         std::set<CounterConfiguration> events;
@@ -57,24 +46,15 @@ public:
     void endSession();
 
 private:
-
     friend void ::handleException();
 
     // Stuff that needs to be accessed in any child processes
-    struct SharedData
-    {
+    struct SharedData {
         sem_t startProfile;
 
-        SharedData()
-                : startProfile()
-        {
-            sem_init(&startProfile, 1, 0);
-        }
+        SharedData() : startProfile() { sem_init(&startProfile, 1, 0); }
 
-        ~SharedData()
-        {
-            sem_destroy(&startProfile);
-        }
+        ~SharedData() { sem_destroy(&startProfile); }
     };
 
     static std::atomic<Child *> gSingleton;
@@ -90,7 +70,7 @@ private:
      * @return true if slept for whole time
      */
     template<class Rep, class Period>
-    bool sleep(const std::chrono::duration<Rep, Period>& timeout_duration);
+    bool sleep(const std::chrono::duration<Rep, Period> & timeout_duration);
 
     sem_t haltPipeline;
     sem_t senderThreadStarted;
@@ -112,8 +92,10 @@ private:
 
     Child(Drivers & drivers, OlySocket * sock, const Config & config);
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(Child)
-    ;
+    Child(const Child &) = delete;
+    Child & operator=(const Child &) = delete;
+    Child(Child &&) = delete;
+    Child & operator=(Child &&) = delete;
 
     void cleanupException();
     void terminateCommand();

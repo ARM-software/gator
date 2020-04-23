@@ -1,14 +1,13 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "lib/File.h"
 
 #include <fcntl.h>
 
-namespace lib
-{
-    FILE *fopen_cloexec(const char *path, const char *mode)
+namespace lib {
+    FILE * fopen_cloexec(const char * path, const char * mode)
     {
-        FILE *fh = fopen(path, mode);
+        FILE * fh = fopen(path, mode);
         if (fh == NULL) {
             return NULL;
         }
@@ -22,4 +21,3 @@ namespace lib
     }
 
 }
-

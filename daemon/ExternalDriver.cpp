@@ -1,33 +1,26 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "ExternalDriver.h"
-
-#include <stdio.h>
-#include <unistd.h>
 
 #include "BufferUtils.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
-
 #include "lib/FileDescriptor.h"
+
+#include <stdio.h>
+#include <unistd.h>
 
 static const char MALI_UTGARD_SETUP[] = "\0mali-utgard-setup";
 static const char SETUP_VERSION[] = "ANNOTATE_SETUP 1\n";
 static const size_t HEADER_SIZE = 1 + sizeof(uint32_t);
 
-#define HEADER_ERROR            (char(0x80))
-#define HEADER_ACK              (char(0x81))
+#define HEADER_ERROR (char(0x80))
+#define HEADER_ACK (char(0x81))
 #define HEADER_REQUEST_COUNTERS (char(0x82))
-#define HEADER_COUNTERS         (char(0x83))
-#define HEADER_ENABLE_COUNTERS  (char(0x84))
-#define HEADER_START            (char(0x85))
+#define HEADER_COUNTERS (char(0x83))
+#define HEADER_ENABLE_COUNTERS (char(0x84))
+#define HEADER_START (char(0x85))
 
 static uint32_t readLEInt(char * const buf)
 {
@@ -64,48 +57,31 @@ static int readPackedInt(char * const buf, const size_t bufSize, size_t * const 
     return 0;
 }
 
-class ExternalCounter : public DriverCounter
-{
+class ExternalCounter : public DriverCounter {
 public:
-    ExternalCounter(DriverCounter *next, const char *name, int cores)
-            : DriverCounter(next, name),
-              mCores(cores),
-              mEvent(-1)
+    ExternalCounter(DriverCounter * next, const char * name, int cores)
+        : DriverCounter(next, name), mCores(cores), mEvent(-1)
     {
     }
 
-    ~ExternalCounter()
-    {
-    }
+    ~ExternalCounter() {}
 
-    int getCores() const
-    {
-        return mCores;
-    }
-    void setEvent(const int event)
-    {
-        mEvent = event;
-    }
-    int getEvent() const
-    {
-        return mEvent;
-    }
+    int getCores() const { return mCores; }
+    void setEvent(const int event) { mEvent = event; }
+    int getEvent() const { return mEvent; }
 
 private:
     const int mCores;
     int mEvent;
 
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(ExternalCounter);
+    ExternalCounter(const ExternalCounter &) = delete;
+    ExternalCounter & operator=(const ExternalCounter &) = delete;
+    ExternalCounter(ExternalCounter &&) = delete;
+    ExternalCounter & operator=(ExternalCounter &&) = delete;
 };
 
-ExternalDriver::ExternalDriver()
-        : SimpleDriver("External"),
-          mUds(-1),
-          mQueried(false),
-          mStarted(false)
-{
-}
+ExternalDriver::ExternalDriver() : SimpleDriver("External"), mUds(-1), mQueried(false), mStarted(false) {}
 
 bool ExternalDriver::connect() const
 {
@@ -173,7 +149,7 @@ void ExternalDriver::query() const
     size_t pos = 0;
     while (pos < size) {
         size_t begin = pos;
-        char *name = NULL;
+        char * name = NULL;
         uint64_t cores = -1;
         while (pos < size && buf[pos] != '\0') {
             ++pos;
@@ -216,8 +192,8 @@ void ExternalDriver::start()
 
     buf[0] = HEADER_ENABLE_COUNTERS;
     pos = HEADER_SIZE;
-    for (ExternalCounter *counter = static_cast<ExternalCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<ExternalCounter *>(counter->getNext())) {
+    for (ExternalCounter * counter = static_cast<ExternalCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<ExternalCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
         }
@@ -270,13 +246,13 @@ void ExternalDriver::start()
     }
 }
 
-bool ExternalDriver::claimCounter(Counter &counter) const
+bool ExternalDriver::claimCounter(Counter & counter) const
 {
     query();
     return super::claimCounter(counter);
 }
 
-void ExternalDriver::setupCounter(Counter &counter)
+void ExternalDriver::setupCounter(Counter & counter)
 {
     ExternalCounter * const externalCounter = static_cast<ExternalCounter *>(findCounter(counter));
     if (externalCounter == NULL) {

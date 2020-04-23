@@ -1,26 +1,26 @@
-/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
-#include "mali_userspace/MaliDeviceApi.h"
-#include "lib/FsEntry.h"
-#include "lib/Optional.h"
-
-#include <cstring>
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <memory>
-#include <sstream>
 
 #include "DynBuf.h"
 #include "Logging.h"
+#include "lib/FsEntry.h"
+#include "lib/Optional.h"
+#include "mali_userspace/MaliDeviceApi.h"
 
-namespace mali_userspace
-{
-    static void enumerateMaliGpuClockPaths(const lib::FsEntry & currentDirectory, std::map<unsigned int, std::string> & gpuClockPaths)
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <sstream>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+namespace mali_userspace {
+    static void enumerateMaliGpuClockPaths(const lib::FsEntry & currentDirectory,
+                                           std::map<unsigned int, std::string> & gpuClockPaths)
     {
         // open sysfs directory
         if (currentDirectory.read_stats().type() != lib::FsEntry::Type::DIR) {
@@ -31,8 +31,9 @@ namespace mali_userspace
         // is the parent called 'misc'
         const bool dirIsCalledMisc = (currentDirectory.name() == "misc");
         const lib::Optional<lib::FsEntry> dirsParent = currentDirectory.parent();
-        const lib::Optional<lib::FsEntry> parentClockPath = (dirsParent.valid() ? lib::Optional<lib::FsEntry>{ lib::FsEntry::create(dirsParent.get(), "clock") }
-                                                                                   : lib::Optional<lib::FsEntry>{});
+        const lib::Optional<lib::FsEntry> parentClockPath =
+            (dirsParent.valid() ? lib::Optional<lib::FsEntry>{lib::FsEntry::create(dirsParent.get(), "clock")}
+                                : lib::Optional<lib::FsEntry>{});
 
         // walk children looking for directories named 'mali%d'
         lib::FsEntryDirectoryIterator iterator = currentDirectory.children();
@@ -54,7 +55,8 @@ namespace mali_userspace
                         gpuClockPaths[id] = childClockPath.path();
                     }
                     // use ../../clock ?
-                    else if (parentClockPath.valid() && parentClockPath->exists() && parentClockPath->canAccess(true, false, false)) {
+                    else if (parentClockPath.valid() && parentClockPath->exists() &&
+                             parentClockPath->canAccess(true, false, false)) {
                         gpuClockPaths[id] = parentClockPath->path();
                     }
                 }
@@ -70,9 +72,9 @@ namespace mali_userspace
     {
         static constexpr unsigned int MAX_DEV_MALI_TOO_SCAN_FOR = 16;
 
-        std::map<unsigned int, std::unique_ptr<IMaliDeviceApi>>  detectedDevices;
+        std::map<unsigned int, std::unique_ptr<IMaliDeviceApi>> detectedDevices;
         std::map<unsigned int, std::string> gpuClockPaths;
-        std::map<unsigned int , std::unique_ptr<MaliDevice>> coreDriverMap;
+        std::map<unsigned int, std::unique_ptr<MaliDevice>> coreDriverMap;
 
         // first scan for '/dev/mali#' files
         for (unsigned int i = 0; i < MAX_DEV_MALI_TOO_SCAN_FOR; ++i) {
@@ -94,8 +96,8 @@ namespace mali_userspace
             for (auto & detectedDevice : detectedDevices) {
                 const unsigned int id = detectedDevice.first;
 
-                std::unique_ptr<MaliDevice> device = MaliDevice::create(std::move(detectedDevice.second),
-                                                                        std::move(gpuClockPaths[id]));
+                std::unique_ptr<MaliDevice> device =
+                    MaliDevice::create(std::move(detectedDevice.second), std::move(gpuClockPaths[id]));
 
                 if (device) {
                     coreDriverMap[id] = std::move(device);

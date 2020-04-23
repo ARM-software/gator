@@ -1,21 +1,15 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "SessionXML.h"
+
+#include "Logging.h"
+#include "OlyUtility.h"
+#include "SessionData.h"
 
 #include <climits>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
-
-#include "Logging.h"
-#include "OlyUtility.h"
-#include "SessionData.h"
 
 static const char TAG_SESSION[] = "session";
 static const char TAG_IMAGE[] = "image";
@@ -33,21 +27,17 @@ static const char ATTR_CAPTURE_COMMAND[] = "capture_command";
 static const char ATTR_STOP_GATOR[] = "stop_gator";
 static const char ATTR_CAPTURE_USER[] = "capture_user";
 
-SessionXML::SessionXML(const char *str)
-        : parameters(),
-          mSessionXML(str)
+SessionXML::SessionXML(const char * str) : parameters(), mSessionXML(str)
 {
     logg.logMessage("%s", mSessionXML);
 }
 
-SessionXML::~SessionXML()
-{
-}
+SessionXML::~SessionXML() {}
 
 void SessionXML::parse()
 {
-    mxml_node_t *tree;
-    mxml_node_t *node;
+    mxml_node_t * tree;
+    mxml_node_t * node;
 
     tree = mxmlLoadString(NULL, mSessionXML, MXML_NO_CALLBACK);
     node = mxmlFindElement(tree, tree, TAG_SESSION, NULL, NULL, MXML_DESCEND);
@@ -62,7 +52,7 @@ void SessionXML::parse()
     handleException();
 }
 
-void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
+void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
 {
     int version = 0;
     if (mxmlElementGetAttr(node, ATTR_VERSION) && !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), 10)) {
@@ -79,16 +69,18 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
     // copy to pre-allocated strings
     if (mxmlElementGetAttr(node, ATTR_BUFFER_MODE)) {
         strncpy(parameters.buffer_mode, mxmlElementGetAttr(node, ATTR_BUFFER_MODE), sizeof(parameters.buffer_mode));
-        parameters.buffer_mode[sizeof(parameters.buffer_mode) - 1] = 0; // strncpy does not guarantee a null-terminated string
+        parameters.buffer_mode[sizeof(parameters.buffer_mode) - 1] =
+            0; // strncpy does not guarantee a null-terminated string
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0)) {
-        if(mxmlElementGetAttr(node, ATTR_SAMPLE_RATE)) {
+        if (mxmlElementGetAttr(node, ATTR_SAMPLE_RATE)) {
             strncpy(parameters.sample_rate, mxmlElementGetAttr(node, ATTR_SAMPLE_RATE), sizeof(parameters.sample_rate));
-            parameters.sample_rate[sizeof(parameters.sample_rate) - 1] = 0; // strncpy does not guarantee a null-terminated string
+            parameters.sample_rate[sizeof(parameters.sample_rate) - 1] =
+                0; // strncpy does not guarantee a null-terminated string
         }
     }
-    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR)== 0)) {
-        if(mxmlElementGetAttr(node, ATTR_CAPTURE_WORKING_DIR)) {
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) == 0)) {
+        if (mxmlElementGetAttr(node, ATTR_CAPTURE_WORKING_DIR)) {
             if (gSessionData.mCaptureWorkingDir != nullptr) {
                 free(const_cast<char *>(gSessionData.mCaptureWorkingDir));
             }
@@ -96,14 +88,15 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
         }
     }
 
-    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0) && mxmlElementGetAttr(node, ATTR_CAPTURE_COMMAND)) {
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0) &&
+        mxmlElementGetAttr(node, ATTR_CAPTURE_COMMAND)) {
         //sh and -c added for shell interpreted execution of the command
         gSessionData.mCaptureCommand.push_back("sh");
         gSessionData.mCaptureCommand.push_back("-c");
         gSessionData.mCaptureCommand.push_back(mxmlElementGetAttr(node, ATTR_CAPTURE_COMMAND));
     }
-    if(((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_STOP_GATOR) == 0) ) {
-        if(mxmlElementGetAttr(node, ATTR_STOP_GATOR)) {
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_STOP_GATOR) == 0)) {
+        if (mxmlElementGetAttr(node, ATTR_STOP_GATOR)) {
             gSessionData.mStopOnExit = stringToBool(mxmlElementGetAttr(node, ATTR_STOP_GATOR), false);
         }
     }
@@ -115,22 +108,23 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
     }
 
     // integers/bools
-    if(((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) == 0)) {
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) == 0)) {
         parameters.call_stack_unwinding = stringToBool(mxmlElementGetAttr(node, ATTR_CALL_STACK_UNWINDING), false);
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_DURATION) == 0)) {
-        if(mxmlElementGetAttr(node, ATTR_DURATION)) {
-            if(!stringToInt(&gSessionData.mDuration, mxmlElementGetAttr(node, ATTR_DURATION), 10)) {
+        if (mxmlElementGetAttr(node, ATTR_DURATION)) {
+            if (!stringToInt(&gSessionData.mDuration, mxmlElementGetAttr(node, ATTR_DURATION), 10)) {
                 logg.logError("Invalid session.xml duration must be an integer");
                 handleException();
             }
         }
     }
-    if((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) == 0) {
-        gSessionData.mFtraceRaw = stringToBool(mxmlElementGetAttr(node, USE_EFFICIENT_FTRACE), false);// default to false
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) == 0) {
+        gSessionData.mFtraceRaw =
+            stringToBool(mxmlElementGetAttr(node, USE_EFFICIENT_FTRACE), false); // default to false
     }
     if (mxmlElementGetAttr(node, ATTR_LIVE_RATE)) {
-        if(!stringToInt(&parameters.live_rate, mxmlElementGetAttr(node, ATTR_LIVE_RATE), 10)) {
+        if (!stringToInt(&parameters.live_rate, mxmlElementGetAttr(node, ATTR_LIVE_RATE), 10)) {
             logg.logError("Invalid session.xml live_rate must be an integer");
             handleException();
         }
@@ -149,7 +143,7 @@ void SessionXML::sessionTag(mxml_node_t *tree, mxml_node_t *node)
     }
 }
 
-void SessionXML::sessionImage(mxml_node_t *node)
+void SessionXML::sessionImage(mxml_node_t * node)
 {
     gSessionData.mImages.emplace_back(mxmlElementGetAttr(node, ATTR_PATH));
 }

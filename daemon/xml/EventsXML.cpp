@@ -1,24 +1,17 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXML.h"
-#include "xml/EventsXMLProcessor.h"
 
 #include "CapturedXML.h"
+#include "Driver.h"
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
-#include "xml/PmuXML.h"
-#include "Driver.h"
 #include "lib/File.h"
+#include "xml/EventsXMLProcessor.h"
+#include "xml/PmuXML.h"
 
-namespace events_xml
-{
+namespace events_xml {
 
     std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getTree(lib::Span<const GatorCpu> clusters)
     {
@@ -30,7 +23,7 @@ namespace events_xml
 
         // Load the provided or default events xml
         if (gSessionData.mEventsXMLPath) {
-            std::unique_ptr<FILE, int(*)(FILE*)> fl { lib::fopen_cloexec(gSessionData.mEventsXMLPath, "r"), fclose };
+            std::unique_ptr<FILE, int (*)(FILE *)> fl{lib::fopen_cloexec(gSessionData.mEventsXMLPath, "r"), fclose};
             if (fl != nullptr) {
                 mainXml = makeMxmlUniquePtr(mxmlLoadFile(nullptr, fl.get(), MXML_NO_CALLBACK));
                 if (mainXml == nullptr) {
@@ -41,12 +34,13 @@ namespace events_xml
         }
         if (mainXml == nullptr) {
             logg.logMessage("Unable to locate events.xml, using default");
-            mainXml = makeMxmlUniquePtr(mxmlLoadString(nullptr, reinterpret_cast<const char *>(events_xml), MXML_NO_CALLBACK));
+            mainXml = makeMxmlUniquePtr(
+                mxmlLoadString(nullptr, reinterpret_cast<const char *>(events_xml), MXML_NO_CALLBACK));
         }
 
         // Append additional events XML
         if (gSessionData.mEventsXMLAppend) {
-            std::unique_ptr<FILE, int(*)(FILE*)> fl { lib::fopen_cloexec(gSessionData.mEventsXMLAppend, "r"), fclose };
+            std::unique_ptr<FILE, int (*)(FILE *)> fl{lib::fopen_cloexec(gSessionData.mEventsXMLAppend, "r"), fclose};
             if (fl == nullptr) {
                 logg.logError("Unable to open additional events XML %s", gSessionData.mEventsXMLAppend);
                 handleException();
@@ -68,17 +62,18 @@ namespace events_xml
         return mainXml;
     }
 
-    std::unique_ptr<char, void (*)(void*)> getXML(lib::Span<const Driver * const > drivers,
-                                                  lib::Span<const GatorCpu> clusters)
+    std::unique_ptr<char, void (*)(void *)> getXML(lib::Span<const Driver * const> drivers,
+                                                   lib::Span<const GatorCpu> clusters)
     {
         const auto xml = getTree(clusters);
 
         // Add dynamic events from the drivers
         mxml_node_t * events = getEventsElement(xml.get());
         if (events == nullptr) {
-            logg.logError("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
-                          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                          "<events>");
+            logg.logError(
+                "Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                "<events>");
             handleException();
         }
         for (const Driver * driver : drivers) {
@@ -88,8 +83,7 @@ namespace events_xml
         return {mxmlSaveAllocString(xml.get(), mxmlWhitespaceCB), &free};
     }
 
-    void write(const char *path, lib::Span<const Driver * const > drivers,
-               lib::Span<const GatorCpu> clusters)
+    void write(const char * path, lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters)
     {
         char file[PATH_MAX];
 

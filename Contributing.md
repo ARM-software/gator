@@ -31,7 +31,7 @@
 * Arm engineers remain primary maintainers of this project, however:
   * If you are making some form of target / device specific contribution, and particularly if you are submitting that contribution on behalf of the originator / manufacturer of that device, please update the [Maintainers] file adding an appropriate contact as sub-maintainer for that contribution.
   * If you are submitting new files that you intend to be the technical sub-maintainer for, then also update the [Maintainers] file.
-* Please test your changes. Gator supports data collection via `gator.ko` and via Linux perf API. Contributions of new counters are generally expected to support both collection methods. Please ensure that they do.
+* Please test your changes. Gator supports data collection via the Linux perf API. Contributions of new counters are generally expected to support both collection methods. Please ensure that they do.
 
 ### Submitting changes
 

@@ -1,28 +1,28 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_ISTREAM_H
 #define INCLUDE_LIB_ISTREAM_H
 
 #include <istream>
 
-namespace lib
-{
+namespace lib {
     /**
      * Extracts comma separated numbers from a stream.
      * @param stream
      * @return vector of the numbers in the order they were in the stream
      */
     template<typename IntType>
-    static std::vector<IntType> parseCommaSeparatedNumbers(std::istream& stream)
+    static std::vector<IntType> parseCommaSeparatedNumbers(std::istream & stream)
     {
-        std::vector<IntType> ints { };
+        std::vector<IntType> ints{};
 
         IntType value;
         while (!(stream >> std::ws).eof() && stream >> value) {
             ints.push_back(value);
             if (!stream.eof()) {
                 stream >> std::ws;
-            } else {
+            }
+            else {
                 break;
             }
             if (!stream.eof() && stream.peek() != ',') {
@@ -38,4 +38,3 @@ namespace lib
 }
 
 #endif // INCLUDE_LIB_ISTREAM_H
-

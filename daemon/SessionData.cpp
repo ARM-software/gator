@@ -1,18 +1,6 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "SessionData.h"
-
-#include <algorithm>
-
-#include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
 #include "CpuUtils.h"
 #include "DiskIODriver.h"
@@ -24,12 +12,15 @@
 #include "OlyUtility.h"
 #include "PrimarySourceProvider.h"
 #include "SessionXML.h"
-
 #include "lib/File.h"
 #include "lib/Format.h"
 #include "lib/Time.h"
-
 #include "mali_userspace/MaliInstanceLocator.h"
+
+#include <algorithm>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 const char MALI_GRAPHICS[] = "\0mali_thirdparty_server";
 const size_t MALI_GRAPHICS_SIZE = sizeof(MALI_GRAPHICS);
@@ -37,57 +28,52 @@ const size_t MALI_GRAPHICS_SIZE = sizeof(MALI_GRAPHICS);
 SessionData gSessionData;
 
 SharedData::SharedData()
-        : mMaliUtgardCountersSize(0),
-          mMaliUtgardCounters(),
-          mMaliMidgardCountersSize(0),
-          mMaliMidgardCounters()
+    : mMaliUtgardCountersSize(0), mMaliUtgardCounters(), mMaliMidgardCountersSize(0), mMaliMidgardCounters()
 {
 }
 
 SessionData::SessionData()
-        : mSharedData(),
-          mImages(),
-          mConfigurationXMLPath(),
-          mSessionXMLPath(),
-          mEventsXMLPath(),
-          mEventsXMLAppend(),
-          mTargetPath(),
-          mAPCDir(),
-          mCaptureWorkingDir(),
-          mCaptureCommand(),
-          mCaptureUser(),
-          mWaitForProcessCommand(),
-          mPids(),
-          mStopOnExit(),
-          mWaitingOnCommand(),
-          mSessionIsActive(),
-          mLocalCapture(),
-          mOneShot(),
-          mIsEBS(),
-          mSentSummary(),
-          mAllowCommands(),
-          mFtraceRaw(),
-          mSystemWide(),
-          mAndroidApiLevel(),
-          mMonotonicStarted(),
-          mBacktraceDepth(),
-          mTotalBufferSize(),
-          mSampleRate(),
-          mLiveRate(),
-          mDuration(),
-          mPageSize(),
-          mAnnotateStart(),
-          parameterSetFlag(),
-          mPerfMmapSizeInPages(),
-          mCounters(),
-          globalCounterToEventMap()
+    : mSharedData(),
+      mImages(),
+      mConfigurationXMLPath(),
+      mSessionXMLPath(),
+      mEventsXMLPath(),
+      mEventsXMLAppend(),
+      mTargetPath(),
+      mAPCDir(),
+      mCaptureWorkingDir(),
+      mCaptureCommand(),
+      mCaptureUser(),
+      mWaitForProcessCommand(),
+      mPids(),
+      mStopOnExit(),
+      mWaitingOnCommand(),
+      mSessionIsActive(),
+      mLocalCapture(),
+      mOneShot(),
+      mIsEBS(),
+      mSentSummary(),
+      mAllowCommands(),
+      mFtraceRaw(),
+      mSystemWide(),
+      mAndroidApiLevel(),
+      mMonotonicStarted(),
+      mBacktraceDepth(),
+      mTotalBufferSize(),
+      mSampleRate(),
+      mLiveRate(),
+      mDuration(),
+      mPageSize(),
+      mAnnotateStart(),
+      parameterSetFlag(),
+      mPerfMmapSizeInPages(),
+      mSpeSampleRate(-1),
+      mCounters(),
+      globalCounterToEventMap()
 {
 }
 
-SessionData::~SessionData()
-{
-}
-
+SessionData::~SessionData() {}
 
 void SessionData::initialize()
 {
@@ -125,7 +111,7 @@ void SessionData::initialize()
     parameterSetFlag = 0;
 }
 
-void SessionData::parseSessionXML(char* xmlString)
+void SessionData::parseSessionXML(char * xmlString)
 {
     SessionXML session(xmlString);
     session.parse();
@@ -185,8 +171,10 @@ void SessionData::parseSessionXML(char* xmlString)
         handleException();
     }
 
-    if ((!mAllowCommands) && (!mCaptureCommand.empty()) && ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)) {
-        logg.logError("Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
+    if ((!mAllowCommands) && (!mCaptureCommand.empty()) &&
+        ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)) {
+        logg.logError(
+            "Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
         handleException();
     }
 }
@@ -213,4 +201,3 @@ int getEventKey()
     key += 2;
     return ret;
 }
-

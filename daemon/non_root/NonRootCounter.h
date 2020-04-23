@@ -1,14 +1,12 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTCOUNTER_H
 #define INCLUDE_NON_ROOT_NONROOTCOUNTER_H
 
 #include <type_traits>
 
-namespace non_root
-{
-    enum class NonRootCounter : unsigned
-    {
+namespace non_root {
+    enum class NonRootCounter : unsigned {
         ACTIVITY_SYSTEM,
         ACTIVITY_USER,
 
@@ -55,5 +53,3 @@ namespace non_root
 }
 
 #endif /* INCLUDE_NON_ROOT_NONROOTCOUNTER_H */
-
-

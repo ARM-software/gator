@@ -1,12 +1,10 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #include "Command.h"
+
+#include "Logging.h"
+#include "SessionData.h"
+#include "lib/FileDescriptor.h"
 
 #include <fcntl.h>
 #include <grp.h>
@@ -21,18 +19,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "Logging.h"
-#include "SessionData.h"
-
-#include "lib/FileDescriptor.h"
-
-static int getUid(const char * const name, const char * const tmpDir, uid_t * const uid)
+static bool getUid(const char * const name, const char * const tmpDir, uid_t * const uid)
 {
     // Lookups may fail when using a different libc or a statically compiled executable
     char gatorTemp[32];
     snprintf(gatorTemp, sizeof(gatorTemp), "%s/gator_temp", tmpDir);
 
-    const int fd = open(gatorTemp, 600, O_CREAT | O_CLOEXEC);
+    const int fd = open(gatorTemp, O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR);
     if (fd < 0) {
         return false;
     }
@@ -96,10 +89,11 @@ static void checkCommandStatus(int status)
         const int exitCode = WEXITSTATUS(status);
 
         // add some special case handling for when we are launching via bash shell
-        if ((gSessionData.mCaptureCommand.size() == 3) && (gSessionData.mCaptureCommand[0] == "sh")
-                && (gSessionData.mCaptureCommand[1] == "-c")) {
+        if ((gSessionData.mCaptureCommand.size() == 3) && (gSessionData.mCaptureCommand[0] == "sh") &&
+            (gSessionData.mCaptureCommand[1] == "-c")) {
             if (exitCode == 126) {
-                logg.logError("Failed to run command %s: Permission denied or is a directory", gSessionData.mCaptureCommand[2].c_str());
+                logg.logError("Failed to run command %s: Permission denied or is a directory",
+                              gSessionData.mCaptureCommand[2].c_str());
                 handleException();
             }
             if (exitCode == 127) {
@@ -108,12 +102,10 @@ static void checkCommandStatus(int status)
             }
         }
 
-        if (exitCode != 0)
-        {
+        if (exitCode != 0) {
             logg.logError("command exited with code %d", exitCode);
         }
-        else
-        {
+        else {
             logg.logMessage("command exited with code 0");
         }
     }
@@ -177,7 +169,7 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         buf[0] = '\0';
         close(pipefd[0]);
 
-        std::vector<char*> cmd_str { };
+        std::vector<char *> cmd_str{};
         for (const auto & string : gSessionData.mCaptureCommand) {
             cmd_str.push_back(const_cast<char *>(string.c_str()));
         }
@@ -192,15 +184,26 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
 
         if (name != NULL) {
             if (setgroups(1, &gid) != 0) {
-                snprintf(buf, sizeof(buf), "setgroups failed for user: %s, please check if the user is part of group", name );
+                snprintf(buf,
+                         sizeof(buf),
+                         "setgroups failed for user: %s, please check if the user is part of group",
+                         name);
                 goto fail_exit;
             }
             if (setresgid(gid, gid, gid) != 0) {
-                snprintf(buf, sizeof(buf), "setresgid failed for user: %s, please check if the user is part of GID %d", name, gid);
+                snprintf(buf,
+                         sizeof(buf),
+                         "setresgid failed for user: %s, please check if the user is part of GID %d",
+                         name,
+                         gid);
                 goto fail_exit;
             }
             if (setresuid(uid, uid, uid) != 0) {
-                snprintf(buf, sizeof(buf), "setresuid failed for user: %s, please check if the user is part of UID %d", name, uid);
+                snprintf(buf,
+                         sizeof(buf),
+                         "setresuid failed for user: %s, please check if the user is part of UID %d",
+                         name,
+                         uid);
                 goto fail_exit;
             }
         }
@@ -208,8 +211,10 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         {
             const char * const path = gSessionData.mCaptureWorkingDir == NULL ? "/" : gSessionData.mCaptureWorkingDir;
             if (chdir(path) != 0) {
-                snprintf(buf, sizeof(buf),
-                         "Unable to cd to %s, please verify the directory exists and is accessible to %s", path,
+                snprintf(buf,
+                         sizeof(buf),
+                         "Unable to cd to %s, please verify the directory exists and is accessible to %s",
+                         path,
                          name != nullptr ? name : "the current user");
                 goto fail_exit;
             }
@@ -221,7 +226,8 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         execvp(commands[0], commands);
         snprintf(buf, sizeof(buf), "Failed to run command %s\nexecvp failed: %s", commands[0], strerror(errno));
 
-        fail_exit: if (buf[0] != '\0') {
+    fail_exit:
+        if (buf[0] != '\0') {
             const ssize_t bytes = write(pipefd[1], buf, sizeof(buf));
             // Can't do anything if this fails
             (void) bytes;
@@ -234,19 +240,16 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
 
         close(pipefd[1]);
 
-        return {pid, std::thread {[pipefd, pid, terminationCallback]() {
+        return {pid, std::thread{[pipefd, pid, terminationCallback]() {
                     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command-reader"), 0, 0, 0);
                     char buf[bufSize];
                     ssize_t bytesRead = 0;
-                    while (true)
-                    {
+                    while (true) {
                         const ssize_t bytes = read(pipefd[0], buf + bytesRead, sizeof(buf) - bytesRead);
-                        if (bytes > 0)
-                        {
+                        if (bytes > 0) {
                             bytesRead += bytes;
                         }
-                        else if (bytes == 0)
-                        {
+                        else if (bytes == 0) {
                             break;
                         }
                         else if (errno != EAGAIN) {
@@ -266,12 +269,10 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
                         // wait for the process to exit and read its status.
                         while (true) {
                             int status;
-                            if (waitpid(pid, &status, 0) != -1)
-                            {
+                            if (waitpid(pid, &status, 0) != -1) {
                                 checkCommandStatus(status);
                             }
-                            else if (errno == EINTR)
-                            {
+                            else if (errno == EINTR) {
                                 continue;
                             }
                             else {

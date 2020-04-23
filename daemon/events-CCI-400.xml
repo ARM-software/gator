@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
   <counter_set name="CCI_400_cnt" count="4"/>
   <category name="CCI-400" counter_set="CCI_400_cnt" per_cpu="no">

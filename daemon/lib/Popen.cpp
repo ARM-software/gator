@@ -1,16 +1,15 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "lib/Popen.h"
 
-#include <unistd.h>
 #include <errno.h>
-#include <sys/wait.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-namespace lib
-{
+namespace lib {
     struct PopenResult popen(const char * const command[])
     {
         int execerr[2];
@@ -90,4 +89,3 @@ namespace lib
     }
 
 }
-

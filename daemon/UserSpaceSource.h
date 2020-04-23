@@ -1,32 +1,26 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef USERSPACESOURCE_H
 #define USERSPACESOURCE_H
 
-#include <semaphore.h>
-
-#include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Source.h"
 #include "lib/Span.h"
 
 #include <functional>
+#include <semaphore.h>
 
 // Forward decl for allPolledDrivers
 class PolledDriver;
 class PrimarySourceProvider;
 
 // User space counters
-class UserSpaceSource : public Source
-{
+class UserSpaceSource : public Source {
 public:
-    UserSpaceSource(Child & child, sem_t *senderSem, std::function<std::int64_t()> mGetMonotonicStarted, lib::Span<PolledDriver * const> drivers);
+    UserSpaceSource(Child & child,
+                    sem_t * senderSem,
+                    std::function<std::int64_t()> mGetMonotonicStarted,
+                    lib::Span<PolledDriver * const> drivers);
     ~UserSpaceSource();
 
     virtual bool prepare() override;
@@ -43,7 +37,10 @@ private:
     lib::Span<PolledDriver * const> mDrivers;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(UserSpaceSource);
+    UserSpaceSource(const UserSpaceSource &) = delete;
+    UserSpaceSource & operator=(const UserSpaceSource &) = delete;
+    UserSpaceSource(UserSpaceSource &&) = delete;
+    UserSpaceSource & operator=(UserSpaceSource &&) = delete;
 };
 
 #endif // USERSPACESOURCE_H

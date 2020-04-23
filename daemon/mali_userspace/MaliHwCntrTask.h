@@ -1,27 +1,30 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIHWCNTRTASK_H_
 #define MALI_USERSPACE_MALIHWCNTRTASK_H_
 
+#include "Child.h"
 #include "IBuffer.h"
 #include "IMaliHwCntrReader.h"
 #include "MaliDevice.h"
+
 #include <functional>
-#include "Child.h"
-#include "ClassBoilerPlate.h"
 
 namespace mali_userspace {
 
-    class MaliHwCntrTask
-    {
+    class MaliHwCntrTask {
     public:
-        MaliHwCntrTask(std::function<void()> endSession, std::function<bool()> isSessionActive, std::function<std::int64_t()> getMonotonicStarted, std::unique_ptr<IBuffer> && buffer,
-                       IMaliDeviceCounterDumpCallback & callback, IMaliHwCntrReader & reader);
+        MaliHwCntrTask(std::function<void()> endSession,
+                       std::function<bool()> isSessionActive,
+                       std::function<std::int64_t()> getMonotonicStarted,
+                       std::unique_ptr<IBuffer> && buffer,
+                       IMaliDeviceCounterDumpCallback & callback,
+                       IMaliHwCntrReader & reader);
         void execute(int sampleRate, bool isOneShot);
         bool isDone();
-        void write(ISender *sender);
+        void write(ISender * sender);
 
-    private :
+    private:
         std::unique_ptr<IBuffer> mBuffer;
         std::function<std::int64_t()> mGetMonotonicStarted;
         IMaliDeviceCounterDumpCallback & mCallback;
@@ -30,7 +33,10 @@ namespace mali_userspace {
         IMaliHwCntrReader & mReader;
 
         // Intentionally unimplemented
-        CLASS_DELETE_COPY_MOVE(MaliHwCntrTask);
+        MaliHwCntrTask(const MaliHwCntrTask &) = delete;
+        MaliHwCntrTask & operator=(const MaliHwCntrTask &) = delete;
+        MaliHwCntrTask(MaliHwCntrTask &&) = delete;
+        MaliHwCntrTask & operator=(MaliHwCntrTask &&) = delete;
     };
 }
 

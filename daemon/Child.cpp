@@ -1,46 +1,39 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "Child.h"
 
-#include "lib/Assert.h"
-#include "lib/Waiter.h"
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/prctl.h>
-#include <sys/wait.h>
-
-#include <algorithm>
-#include <thread>
-
 #include "CapturedXML.h"
-#include "CounterXML.h"
 #include "Command.h"
 #include "ConfigurationXML.h"
+#include "CounterXML.h"
 #include "Driver.h"
 #include "Drivers.h"
-#include "PrimarySourceProvider.h"
 #include "ExternalSource.h"
 #include "ICpuInfo.h"
 #include "LocalCapture.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
+#include "PolledDriver.h"
+#include "PrimarySourceProvider.h"
 #include "Sender.h"
 #include "SessionData.h"
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
-#include "PolledDriver.h"
-#include "xml/EventsXML.h"
-#include "lib/WaitForProcessPoller.h"
-#include "mali_userspace/MaliHwCntrSource.h"
+#include "lib/Assert.h"
 #include "lib/FsUtils.h"
+#include "lib/WaitForProcessPoller.h"
+#include "lib/Waiter.h"
+#include "mali_userspace/MaliHwCntrSource.h"
+#include "xml/EventsXML.h"
+
+#include <algorithm>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/prctl.h>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
 
@@ -75,12 +68,12 @@ void handleException()
 
 std::unique_ptr<Child> Child::createLocal(Drivers & drivers, const Child::Config & config)
 {
-    return std::unique_ptr < Child > (new Child(drivers, nullptr, config));
+    return std::unique_ptr<Child>(new Child(drivers, nullptr, config));
 }
 
 std::unique_ptr<Child> Child::createLive(Drivers & drivers, OlySocket & sock)
 {
-    return std::unique_ptr < Child > (new Child(drivers, &sock, { }));
+    return std::unique_ptr<Child>(new Child(drivers, &sock, {}));
 }
 
 Child * Child::getSingleton()
@@ -115,22 +108,22 @@ void Child::signalHandler(int signum)
 }
 
 Child::Child(Drivers & drivers, OlySocket * sock, const Child::Config & config)
-        : haltPipeline(),
-          senderThreadStarted(),
-          senderSem(),
-          primarySource(),
-          externalSource(),
-          userSpaceSource(),
-          maliHwSource(),
-          sender(),
-          drivers(drivers),
-          socket(sock),
-          numExceptions(0),
-          sessionEnded(),
-          commandTerminated(true),
-          commandPid(),
-          config(config),
-          sharedData(shared_memory::make_unique<SharedData>())
+    : haltPipeline(),
+      senderThreadStarted(),
+      senderSem(),
+      primarySource(),
+      externalSource(),
+      userSpaceSource(),
+      maliHwSource(),
+      sender(),
+      drivers(drivers),
+      socket(sock),
+      numExceptions(0),
+      sessionEnded(),
+      commandTerminated(true),
+      commandPid(),
+      config(config),
+      sharedData(shared_memory::make_unique<SharedData>())
 {
     // update singleton
     const Child * const prevSingleton = gSingleton.exchange(this, std::memory_order_acq_rel);
@@ -208,7 +201,7 @@ void Child::run()
     checkError(configuration_xml::setCounters(counterConfigs, !countersAreDefaults, drivers));
 
     // Initialize all drivers
-    for (Driver *driver : drivers.getAll()) {
+    for (Driver * driver : drivers.getAll()) {
         driver->resetCounters();
     }
 
@@ -224,7 +217,7 @@ void Child::run()
         bool claimed = false;
 
         for (Driver * driver : drivers.getAll()) {
-            auto && capturedSpe = driver->setupSpe(speConfig);
+            auto && capturedSpe = driver->setupSpe(gSessionData.mSpeSampleRate, speConfig);
             if (capturedSpe) {
                 capturedSpes.push_back(std::move(capturedSpe.get()));
                 claimed = true;
@@ -243,7 +236,7 @@ void Child::run()
         StreamlineSetup ss(socket, drivers, capturedSpes);
     }
     else {
-        char* xmlString;
+        char * xmlString;
         if (gSessionData.mSessionXMLPath) {
             xmlString = readFromDisk(gSessionData.mSessionXMLPath);
             if (xmlString) {
@@ -253,31 +246,30 @@ void Child::run()
                 logg.logWarning("Unable to read session xml(%s) , using default values", gSessionData.mSessionXMLPath);
             }
             free(xmlString);
-
         }
 
         local_capture::createAPCDirectory(gSessionData.mTargetPath);
         local_capture::copyImages(gSessionData.mImages);
         sender->createDataFile(gSessionData.mAPCDir);
         // Write events XML
-        events_xml::write(gSessionData.mAPCDir, drivers.getAllConst(),
+        events_xml::write(gSessionData.mAPCDir,
+                          drivers.getAllConst(),
                           primarySourceProvider.getCpuInfo().getClusters());
     }
 
     std::set<int> appPids;
-    std::thread commandThread { };
+    std::thread commandThread{};
     bool enableOnCommandExec = false;
     if (!gSessionData.mCaptureCommand.empty()) {
         std::string command;
-        for (auto const& cmd : gSessionData.mCaptureCommand) {
+        for (auto const & cmd : gSessionData.mCaptureCommand) {
             command += " ";
             command += cmd;
         }
         logg.logWarning("Running command:%s", command.c_str());
         Command commandResult = runCommand(sharedData->startProfile, [this]() {
             commandTerminated = true;
-            if (gSessionData.mStopOnExit)
-            {
+            if (gSessionData.mStopOnExit) {
                 logg.logMessage("Ending session because command exited");
                 endSession();
             }
@@ -292,15 +284,15 @@ void Child::run()
 
     // set up stop thread early, so that ping commands get replied to, even if the
     // setup phase below takes a long time.
-    std::thread stopThread { };
+    std::thread stopThread{};
     if (socket) {
-        stopThread = std::thread([this]() {stopThreadEntryPoint();});
+        stopThread = std::thread([this]() { stopThreadEntryPoint(); });
     }
 
     if (gSessionData.mWaitForProcessCommand != nullptr) {
         logg.logMessage("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
 
-        WaitForProcessPoller poller { gSessionData.mWaitForProcessCommand };
+        WaitForProcessPoller poller{gSessionData.mWaitForProcessCommand};
 
         while ((!poller.poll(appPids)) && !sessionEnded) {
             usleep(1000);
@@ -309,8 +301,7 @@ void Child::run()
         logg.logMessage("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
     }
 
-    if (!sessionEnded)
-    {
+    if (!sessionEnded) {
         // we only consider --pid for stop on exit if we weren't given an
         // app to run
         std::set<int> watchPids = appPids.empty() ? gSessionData.mPids : appPids;
@@ -318,15 +309,19 @@ void Child::run()
         appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
 
         // Set up the driver; must be done after gSessionData.mPerfCounterType[] is populated
-        primarySource = primarySourceProvider.createPrimarySource(*this, senderSem, sharedData->startProfile, appPids,
-                                                                  drivers.getFtraceDriver(), enableOnCommandExec);
+        primarySource = primarySourceProvider.createPrimarySource(*this,
+                                                                  senderSem,
+                                                                  sharedData->startProfile,
+                                                                  appPids,
+                                                                  drivers.getFtraceDriver(),
+                                                                  enableOnCommandExec);
         if (primarySource == nullptr) {
             logg.logError("Failed to init primary capture source");
             handleException();
         }
 
-        if (primarySourceProvider.supportsMaliCapture() && primarySourceProvider.isCapturingMaliCounters()
-                && !primarySourceProvider.supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
+        if (primarySourceProvider.supportsMaliCapture() && primarySourceProvider.isCapturingMaliCounters() &&
+            !primarySourceProvider.supportsMaliCaptureSampleRate(gSessionData.mSampleRate)) {
             logg.logError("Mali counters are not supported with Sample Rate: %i.", gSessionData.mSampleRate);
             handleException();
         }
@@ -346,11 +341,13 @@ void Child::run()
             logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
             handleException();
         }
-        auto getMonotonicStarted = [&primarySourceProvider]() -> std::int64_t {return primarySourceProvider.getMonotonicStarted();};
+        auto getMonotonicStarted = [&primarySourceProvider]() -> std::int64_t {
+            return primarySourceProvider.getMonotonicStarted();
+        };
         // initialize midgard hardware counters
         if (drivers.getMaliHwCntrs().countersEnabled()) {
             maliHwSource.reset(
-                    new mali_userspace::MaliHwCntrSource(*this, &senderSem, getMonotonicStarted, drivers.getMaliHwCntrs()));
+                new mali_userspace::MaliHwCntrSource(*this, &senderSem, getMonotonicStarted, drivers.getMaliHwCntrs()));
             if (!maliHwSource->prepare()) {
                 logg.logError("Unable to prepare midgard hardware counters source for capture");
                 handleException();
@@ -364,16 +361,16 @@ void Child::run()
         // Create the duration and sender threads
         lib::Waiter waiter;
 
-        std::thread durationThread { };
+        std::thread durationThread{};
         if (gSessionData.mDuration > 0) {
-            durationThread = std::thread([&]() {durationThreadEntryPoint(waiter);});
+            durationThread = std::thread([&]() { durationThreadEntryPoint(waiter); });
         }
 
-        std::thread senderThread { [this]() {senderThreadEntryPoint();} };
+        std::thread senderThread{[this]() { senderThreadEntryPoint(); }};
 
-        std::thread watchPidsThread { };
+        std::thread watchPidsThread{};
         if (gSessionData.mStopOnExit && !watchPids.empty()) {
-            watchPidsThread = std::thread([&]() {watchPidsThreadEntryPoint(watchPids, waiter);});
+            watchPidsThread = std::thread([&]() { watchPidsThreadEntryPoint(watchPids, waiter); });
         }
 
         if (UserSpaceSource::shouldStart(drivers.getAllPolledConst())) {
@@ -422,8 +419,14 @@ void Child::run()
     // Write the captured xml file
     if (gSessionData.mLocalCapture) {
         auto & maliCntrDriver = drivers.getMaliHwCntrs();
-        captured_xml::write(gSessionData.mAPCDir, capturedSpes, primarySourceProvider, maliCntrDriver.getDeviceGpuIds());
-        counters_xml::write(gSessionData.mAPCDir, primarySourceProvider.supportsMultiEbs(), drivers.getAllConst(), primarySourceProvider.getCpuInfo());
+        captured_xml::write(gSessionData.mAPCDir,
+                            capturedSpes,
+                            primarySourceProvider,
+                            maliCntrDriver.getDeviceGpuIds());
+        counters_xml::write(gSessionData.mAPCDir,
+                            primarySourceProvider.supportsMultiEbs(),
+                            drivers.getAllConst(),
+                            primarySourceProvider.getCpuInfo());
     }
 
     logg.logMessage("Profiling ended.");
@@ -462,7 +465,7 @@ void Child::endSession()
     // because main sends another signal after 1 second.
     // We use a separate thread here rather than ::alarm because other uses
     // of sleep interfere with SIGALARM
-    std::thread { []() {
+    std::thread{[]() {
         // rename thread
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("gatord-alarm"), 0, 0, 0);
         // sleep
@@ -586,8 +589,8 @@ void Child::senderThreadEntryPoint()
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-sender"), 0, 0, 0);
     sem_wait(&haltPipeline);
 
-    while ((!externalSource->isDone()) || ((maliHwSource != NULL) && (!maliHwSource->isDone()))
-            || ((userSpaceSource != NULL) && (!userSpaceSource->isDone())) || (!primarySource->isDone())) {
+    while ((!externalSource->isDone()) || ((maliHwSource != NULL) && (!maliHwSource->isDone())) ||
+           ((userSpaceSource != NULL) && (!userSpaceSource->isDone())) || (!primarySource->isDone())) {
 
         // wait on semaphore with timeout so as to avoid hanging forever in case that sem_post is missed
         timespec timeout;
@@ -595,7 +598,7 @@ void Child::senderThreadEntryPoint()
             logg.logError("clock_gettime failed: %d, (%s)", errno, strerror(errno));
             handleException();
         }
-        timeout.tv_sec += 1; // one second in th future
+        timeout.tv_sec += 1; // one second in the future
         if (sem_timedwait(&senderSem, &timeout) != 0) {
             if (errno == ETIMEDOUT) {
                 logg.logMessage("Timeout waiting for sender thread");
@@ -646,7 +649,7 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & 
             return;
         }
 
-        const auto &alivePids = lib::getNumericalDirectoryEntries<int>("/proc");
+        const auto & alivePids = lib::getNumericalDirectoryEntries<int>("/proc");
         auto it = pids.begin();
         while (it != pids.end()) {
             if (alivePids.count(*it) == 0) {

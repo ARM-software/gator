@@ -1,27 +1,19 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef FTRACEDRIVER_H
 #define FTRACEDRIVER_H
+
+#include "SimpleDriver.h"
 
 #include <pthread.h>
 #include <utility>
 #include <vector>
 
-#include "ClassBoilerPlate.h"
-#include "SimpleDriver.h"
-
 class DynBuf;
 class IPerfAttrsConsumer;
 
 // The Android NDK doesn't provide an implementation of pthread_barrier_t, so implement our own
-class Barrier
-{
+class Barrier {
 public:
     Barrier();
     ~Barrier();
@@ -35,8 +27,7 @@ private:
     unsigned int mCount;
 };
 
-class FtraceDriver : public SimpleDriver
-{
+class FtraceDriver : public SimpleDriver {
 public:
     FtraceDriver(bool useForTracepoint, size_t numberOfCores);
     ~FtraceDriver();
@@ -46,22 +37,25 @@ public:
     std::pair<std::vector<int>, bool> prepare();
     void start();
     std::vector<int> stop();
-    bool readTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, DynBuf * const printb, DynBuf * const b);
+    bool readTracepointFormats(const uint64_t currTime,
+                               IPerfAttrsConsumer & attrsConsumer,
+                               DynBuf * const printb,
+                               DynBuf * const b);
 
-    bool isSupported() const
-    {
-        return mSupported;
-    }
+    bool isSupported() const { return mSupported; }
 
 private:
-    int64_t *mValues;
+    int64_t * mValues;
     Barrier mBarrier;
     int mTracingOn;
     bool mSupported, mMonotonicRawSupport, mUseForTracepoints;
     size_t mNumberOfCores;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(FtraceDriver);
+    FtraceDriver(const FtraceDriver &) = delete;
+    FtraceDriver & operator=(const FtraceDriver &) = delete;
+    FtraceDriver(FtraceDriver &&) = delete;
+    FtraceDriver & operator=(FtraceDriver &&) = delete;
 };
 
 #endif // FTRACEDRIVER_H

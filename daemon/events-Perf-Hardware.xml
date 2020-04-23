@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
   <counter_set name="Perf_Hardware_cnt" count="6"/>
   <category name="Perf Hardware" counter_set="Perf_Hardware_cnt" per_cpu="yes" supports_event_based_sampling="yes">

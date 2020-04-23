@@ -1,16 +1,16 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfSyncThread.h"
-#include "lib/GenericTimer.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/GenericTimer.h"
 
-#include <cstring>
 #include <cerrno>
+#include <cstring>
+#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
-#include <signal.h>
 #include <unistd.h>
 
 #ifndef _GNU_SOURCE
@@ -21,8 +21,7 @@
 #include <sched.h>
 #endif
 
-namespace
-{
+namespace {
     inline std::uint64_t get_cntfreq_el0(bool readTimer)
     {
         if (readTimer) {
@@ -43,18 +42,22 @@ namespace
 
 extern std::uint64_t getTime();
 
-#define NS_PER_S        1000000000ULL
-#define NS_TO_US        1000ULL
-#define NS_TO_SLEEP     (NS_PER_S / 2)
+#define NS_PER_S 1000000000ULL
+#define NS_TO_US 1000ULL
+#define NS_TO_SLEEP (NS_PER_S / 2)
 
-PerfSyncThread::PerfSyncThread(unsigned cpu, bool enableSyncThreadMode, bool readTimer, std::uint64_t monotonicRawBase, ConsumerFunction consumerFunction)
-        : thread(),
-          consumerFunction(consumerFunction),
-          monotonicRawBase(monotonicRawBase),
-          cpu(cpu),
-          terminateFlag(false),
-          readTimer(readTimer),
-          enableSyncThreadMode(enableSyncThreadMode)
+PerfSyncThread::PerfSyncThread(unsigned cpu,
+                               bool enableSyncThreadMode,
+                               bool readTimer,
+                               std::uint64_t monotonicRawBase,
+                               ConsumerFunction consumerFunction)
+    : thread(),
+      consumerFunction(consumerFunction),
+      monotonicRawBase(monotonicRawBase),
+      cpu(cpu),
+      terminateFlag(false),
+      readTimer(readTimer),
+      enableSyncThreadMode(enableSyncThreadMode)
 {
     runtime_assert(enableSyncThreadMode || readTimer, "At least one of enableSyncThreadMode or readTimer are required");
 

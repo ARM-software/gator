@@ -1,10 +1,4 @@
-/**
- * Copyright (C) Arm Limited 2013-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include <map>
 #include <string>
@@ -13,8 +7,7 @@ namespace lib {
     class FsEntry;
 }
 
-namespace lnx
-{
+namespace lnx {
     /**
      * Utility to track default stuff from sysfs
      */

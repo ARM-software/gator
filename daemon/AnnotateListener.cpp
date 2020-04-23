@@ -1,31 +1,24 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #include "AnnotateListener.h"
 
-#include <unistd.h>
-
 #include "OlySocket.h"
+
+#include <unistd.h>
 
 static const char STREAMLINE_ANNOTATE_PARENT[] = "\0streamline-annotate-parent";
 
-struct AnnotateClient
-{
-    AnnotateClient *next;
+struct AnnotateClient {
+    AnnotateClient * next;
     int fd;
 };
 
 AnnotateListener::AnnotateListener()
-        : mClients(NULL),
+    : mClients(NULL),
 #ifdef TCP_ANNOTATIONS
-          mSock(NULL),
+      mSock(NULL),
 #endif
-          mUds(NULL)
+      mUds(NULL)
 {
 }
 
@@ -88,7 +81,7 @@ void AnnotateListener::close()
 #endif
     while (mClients != NULL) {
         ::close(mClients->fd);
-        AnnotateClient *next = mClients->next;
+        AnnotateClient * next = mClients->next;
         delete mClients;
         mClients = next;
     }
@@ -97,12 +90,12 @@ void AnnotateListener::close()
 void AnnotateListener::signal()
 {
     const char ch = 0;
-    AnnotateClient **ptr = &mClients;
-    AnnotateClient *client = mClients;
+    AnnotateClient ** ptr = &mClients;
+    AnnotateClient * client = mClients;
     while (client != NULL) {
         if (write(client->fd, &ch, sizeof(ch)) != 1) {
             ::close(client->fd);
-            AnnotateClient *next = client->next;
+            AnnotateClient * next = client->next;
             delete client;
             *ptr = next;
             client = next;

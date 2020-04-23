@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2018, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
   <category name="Perf Software" per_cpu="yes" supports_event_based_sampling="true">
     <event counter="PERF_COUNT_SW_CPU_CLOCK" title="Clock" name="CPU Clock" display="accumulate" units="s" multiplier="0.000000001" average_selection="no" average_cores="yes" description="The time the core is active" proc="no" />

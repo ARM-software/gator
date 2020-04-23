@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
   <counter_set name="ARM_ARM11_cnt" count="3"/>
   <category name="ARM11" counter_set="ARM_ARM11_cnt" per_cpu="yes">

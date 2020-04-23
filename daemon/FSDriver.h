@@ -1,31 +1,25 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef FSDRIVER_H
 #define FSDRIVER_H
 
-#include "ClassBoilerPlate.h"
 #include "PolledDriver.h"
 
-class FSDriver : public PolledDriver
-{
+class FSDriver : public PolledDriver {
 public:
     FSDriver();
     ~FSDriver();
 
     void readEvents(mxml_node_t * const xml);
 
-    int writeCounters(mxml_node_t *root) const;
+    int writeCounters(mxml_node_t * root) const;
 
 private:
-
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(FSDriver);
+    FSDriver(const FSDriver &) = delete;
+    FSDriver & operator=(const FSDriver &) = delete;
+    FSDriver(FSDriver &&) = delete;
+    FSDriver & operator=(FSDriver &&) = delete;
 };
 
 #endif // FSDRIVER_H

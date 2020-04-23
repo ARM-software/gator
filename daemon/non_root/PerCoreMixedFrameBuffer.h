@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PERCOREMIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_PERCOREMIXEDFRAMEBUFFER_H
@@ -12,12 +12,9 @@
 
 class ISender;
 
-namespace non_root
-{
-    class PerCoreMixedFrameBuffer
-    {
+namespace non_root {
+    class PerCoreMixedFrameBuffer {
     public:
-
         typedef unsigned long core_type;
 
         PerCoreMixedFrameBuffer(FrameType frameType, int bufferSize, sem_t & readerSem);
@@ -27,10 +24,9 @@ namespace non_root
         bool allDone() const;
         void write(ISender * sender);
 
-        MixedFrameBuffer & operator[] (core_type core);
+        MixedFrameBuffer & operator[](core_type core);
 
     private:
-
         std::map<core_type, std::unique_ptr<Buffer>> buffers;
         std::map<core_type, std::unique_ptr<MixedFrameBuffer>> wrappers;
         sem_t & readerSem;

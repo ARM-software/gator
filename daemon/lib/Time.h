@@ -1,10 +1,4 @@
-/**
- * Copyright (C) Arm Limited 2017. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_TIME_H
 #define INCLUDE_LIB_TIME_H

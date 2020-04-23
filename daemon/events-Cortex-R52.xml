@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2020 by Arm Limited. All rights reserved. -->
 
   <counter_set name="ARMv8R_Cortex_R52_cnt" count="8"/>
   <category name="Cortex_R52" counter_set="ARMv8R_Cortex_R52_cnt" per_cpu="yes">

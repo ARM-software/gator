@@ -1,40 +1,36 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+
+#include "non_root/ProcessStateTracker.h"
 
 #include "lib/Assert.h"
 #include "lib/FsEntry.h"
-#include "non_root/ProcessStateTracker.h"
-#include "non_root/ProcessStateChangeHandler.h"
 #include "linux/proc/ProcPidStatFileRecord.h"
 #include "linux/proc/ProcPidStatmFileRecord.h"
+#include "non_root/ProcessStateChangeHandler.h"
 
 #include <algorithm>
-
 #include <iostream>
 
-namespace non_root
-{
-    namespace
-    {
+namespace non_root {
+    namespace {
         static inline unsigned long long convertClkTicksToNS(unsigned long long ticks,
-                                                             unsigned long long bootTimeBaseNS, unsigned long divider)
+                                                             unsigned long long bootTimeBaseNS,
+                                                             unsigned long divider)
         {
             return std::max<long long>((ticks * (1e9 / divider)) - bootTimeBaseNS, 0);
         }
     }
 
     ProcessStateTracker::ActiveScan::ActiveScan(ProcessStateTracker & parent_, unsigned long long timestampNS_)
-            : accumulatedTimePerCore(),
-              parent(parent_),
-              timestampNS(timestampNS_)
+        : accumulatedTimePerCore(), parent(parent_), timestampNS(timestampNS_)
     {
     }
 
-    ProcessStateTracker::ActiveScan::~ActiveScan()
-    {
-        parent.endScan(*this, accumulatedTimePerCore);
-    }
+    ProcessStateTracker::ActiveScan::~ActiveScan() { parent.endScan(*this, accumulatedTimePerCore); }
 
-    void ProcessStateTracker::ActiveScan::addProcess(int pid, int tid, const lnx::ProcPidStatFileRecord & statRecord,
+    void ProcessStateTracker::ActiveScan::addProcess(int pid,
+                                                     int tid,
+                                                     const lnx::ProcPidStatFileRecord & statRecord,
                                                      const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
                                                      const lib::Optional<lib::FsEntry> & exe)
     {
@@ -46,32 +42,32 @@ namespace non_root
     }
 
     ProcessStateTracker::ProcessInfo::ProcessInfo()
-            : statsTracker(0, 0, 0),
-              startTimeNS(0),
-              parentPid(PARENT_PID_UNKNOWN),
-              state(State::EMPTY)
+        : statsTracker(0, 0, 0), startTimeNS(0), parentPid(PARENT_PID_UNKNOWN), state(State::EMPTY)
     {
     }
 
-    ProcessStateTracker::ProcessInfo::ProcessInfo(int pid_, int tid_, unsigned long pageSize_, unsigned long long timestampNS_)
-            : statsTracker(pid_, tid_, pageSize_),
-              startTimeNS(timestampNS_),
-              parentPid(PARENT_PID_UNKNOWN),
-              state(State::NEW)
+    ProcessStateTracker::ProcessInfo::ProcessInfo(int pid_,
+                                                  int tid_,
+                                                  unsigned long pageSize_,
+                                                  unsigned long long timestampNS_)
+        : statsTracker(pid_, tid_, pageSize_),
+          startTimeNS(timestampNS_),
+          parentPid(PARENT_PID_UNKNOWN),
+          state(State::NEW)
     {
     }
 
     ProcessStateTracker::ProcessInfo::ProcessInfo(ProcessInfo && that)
-            : statsTracker(std::move(that.statsTracker)),
-              startTimeNS(that.startTimeNS),
-              parentPid(that.parentPid),
-              state(that.state)
+        : statsTracker(std::move(that.statsTracker)),
+          startTimeNS(that.startTimeNS),
+          parentPid(that.parentPid),
+          state(that.state)
     {
         that.parentPid = PARENT_PID_UNKNOWN;
         that.state = State::EMPTY;
     }
 
-    ProcessStateTracker::ProcessInfo& ProcessStateTracker::ProcessInfo::operator=(ProcessInfo && that)
+    ProcessStateTracker::ProcessInfo & ProcessStateTracker::ProcessInfo::operator=(ProcessInfo && that)
     {
         this->statsTracker = std::move(that.statsTracker);
         this->startTimeNS = that.startTimeNS;
@@ -99,8 +95,11 @@ namespace non_root
     }
 
     unsigned long long ProcessStateTracker::ProcessInfo::update(
-            unsigned long long bootTimeBaseNS, unsigned long clktck, const lnx::ProcPidStatFileRecord & statRecord,
-            const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord, const lib::Optional<lib::FsEntry> & exe)
+        unsigned long long bootTimeBaseNS,
+        unsigned long clktck,
+        const lnx::ProcPidStatFileRecord & statRecord,
+        const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+        const lib::Optional<lib::FsEntry> & exe)
     {
         if (isNew()) {
             // pull out parent pid
@@ -123,7 +122,9 @@ namespace non_root
     }
 
     bool ProcessStateTracker::ProcessInfo::hasExitedAndRestartedSince(unsigned long long bootTimeBaseNS,
-                                                                      unsigned long clktck, int pid, int tid,
+                                                                      unsigned long clktck,
+                                                                      int pid,
+                                                                      int tid,
                                                                       const lnx::ProcPidStatFileRecord & record)
     {
 
@@ -135,8 +136,8 @@ namespace non_root
             }
 
             // if start time changes then assume reused TID
-            const unsigned long long recordStartTimeNS = convertClkTicksToNS(record.getStarttime(), bootTimeBaseNS,
-                                                                             clktck);
+            const unsigned long long recordStartTimeNS =
+                convertClkTicksToNS(record.getStarttime(), bootTimeBaseNS, clktck);
             if (this->startTimeNS != recordStartTimeNS) {
                 return true;
             }
@@ -151,20 +152,23 @@ namespace non_root
     }
 
     void ProcessStateTracker::ProcessInfo::sendStats(unsigned long long timestampNS,
-                                                     ProcessStateChangeHandler & handler, bool sendFakeSchedulingEvents)
+                                                     ProcessStateChangeHandler & handler,
+                                                     bool sendFakeSchedulingEvents)
     {
         statsTracker.sendStats(timestampNS, handler, sendFakeSchedulingEvents);
     }
 
-    ProcessStateTracker::ProcessStateTracker(ProcessStateChangeHandler & handler_, unsigned long long bootTimeBaseNS_,
-                                             unsigned long clktck_, unsigned long pageSize_)
-            : handler(handler_),
-              lastTimestampNS(0),
-              bootTimeBaseNS(bootTimeBaseNS_),
-              clktck(clktck_),
-              pageSize(pageSize_),
-              trackedProcesses(),
-              firstIteration(true)
+    ProcessStateTracker::ProcessStateTracker(ProcessStateChangeHandler & handler_,
+                                             unsigned long long bootTimeBaseNS_,
+                                             unsigned long clktck_,
+                                             unsigned long pageSize_)
+        : handler(handler_),
+          lastTimestampNS(0),
+          bootTimeBaseNS(bootTimeBaseNS_),
+          clktck(clktck_),
+          pageSize(pageSize_),
+          trackedProcesses(),
+          firstIteration(true)
     {
     }
 
@@ -177,8 +181,8 @@ namespace non_root
                                                  const lnx::ProcPidStatFileRecord & statRecord,
                                                  ProcessInfo & processInfo)
     {
-        const unsigned long long newStartTimestampNS = convertClkTicksToNS(statRecord.getStarttime(), bootTimeBaseNS,
-                                                                           clktck);
+        const unsigned long long newStartTimestampNS =
+            convertClkTicksToNS(statRecord.getStarttime(), bootTimeBaseNS, clktck);
         const unsigned long long timestampToUse = std::min(timestampNS, newStartTimestampNS - 1);
 
         // send exit event
@@ -188,7 +192,9 @@ namespace non_root
         processInfo = ProcessInfo(statRecord.getPgid(), statRecord.getPid(), pageSize, newStartTimestampNS);
     }
 
-    unsigned long long ProcessStateTracker::add(unsigned long long timestampNS, int pid, int tid,
+    unsigned long long ProcessStateTracker::add(unsigned long long timestampNS,
+                                                int pid,
+                                                int tid,
                                                 const lnx::ProcPidStatFileRecord & statRecord,
                                                 const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
                                                 const lib::Optional<lib::FsEntry> & exe)
@@ -221,9 +227,8 @@ namespace non_root
      * This is obviously incorrect with respect to the actual scheduling of processes on the system, but since it is not possible to observe the actual scheduling events, this at least allows Streamline
      * to display an approximately correct heatmap and core map view.
      */
-    void ProcessStateTracker::endScan(
-            const ActiveScan & activeScan,
-            const std::map<unsigned long, unsigned long long> & accumulatedTimePerCore)
+    void ProcessStateTracker::endScan(const ActiveScan & activeScan,
+                                      const std::map<unsigned long, unsigned long long> & accumulatedTimePerCore)
     {
         runtime_assert(firstIteration || (activeScan.timestampNS > lastTimestampNS), "timestampNS <= lastTimestampNS");
 
@@ -270,23 +275,28 @@ namespace non_root
             if (processInfo.isSeenSinceLastScan()) {
                 // send new event if required
                 if (processInfo.isNew()) {
-                    handler.onNewProcess(processInfo.getStartTimeNS(), processInfo.getProcessor(),
-                                         processInfo.getParentPid(), processInfo.getPid(), processInfo.getTid(),
-                                         processInfo.getComm(), processInfo.getExePath());
+                    handler.onNewProcess(processInfo.getStartTimeNS(),
+                                         processInfo.getProcessor(),
+                                         processInfo.getParentPid(),
+                                         processInfo.getPid(),
+                                         processInfo.getTid(),
+                                         processInfo.getComm(),
+                                         processInfo.getExePath());
                 }
 
                 // number of ticks process was running for since last scan; used to emulate time spent running on processor for fake scheduling events
                 const unsigned long long processRunningTime = processInfo.getTimeRunningDelta();
 
                 // whether or not to fake scheduling events for process
-                bool shouldSendSchedEvent = (!firstIteration) && (!processInfo.isNew())
-                        && (processRunningTime > 0);
+                bool shouldSendSchedEvent = (!firstIteration) && (!processInfo.isNew()) && (processRunningTime > 0);
 
                 // calculate fake timestamp for process
                 unsigned long long & relativeTimestampEntryRef = relativeTimestampMap[processInfo.getProcessor()];
                 const unsigned long long fakeTimestampNS = relativeTimestampEntryRef + lastTimestampNS;
-                const unsigned long long totalGapTimeNs = coreTotalTimeMultiplier[processInfo.getProcessor()] * processRunningTime;
-                const unsigned long long fakeRunningTimeNS = coreRunningTimeMultiplier[processInfo.getProcessor()] * processRunningTime;
+                const unsigned long long totalGapTimeNs =
+                    coreTotalTimeMultiplier[processInfo.getProcessor()] * processRunningTime;
+                const unsigned long long fakeRunningTimeNS =
+                    coreRunningTimeMultiplier[processInfo.getProcessor()] * processRunningTime;
                 // update fake timestamp tracker for core by some relative fraction of overall ticks
                 if (shouldSendSchedEvent) {
                     relativeTimestampEntryRef += std::max(fakeRunningTimeNS, totalGapTimeNs);
@@ -297,7 +307,8 @@ namespace non_root
                 }
 
                 // send updates to state
-                processInfo.sendStats((shouldSendSchedEvent ? fakeTimestampNS : activeScan.timestampNS), handler,
+                processInfo.sendStats((shouldSendSchedEvent ? fakeTimestampNS : activeScan.timestampNS),
+                                      handler,
                                       shouldSendSchedEvent);
 
                 // mark it as unseen for next pass
@@ -326,8 +337,10 @@ namespace non_root
         lastTimestampNS = activeScan.timestampNS;
     }
 
-    ProcessStateTracker::ProcessInfo & ProcessStateTracker::getProcessInfoFor(unsigned long long timestampNS, int pgid,
-                                                                              int pid, int tid)
+    ProcessStateTracker::ProcessInfo & ProcessStateTracker::getProcessInfoFor(unsigned long long timestampNS,
+                                                                              int pgid,
+                                                                              int pid,
+                                                                              int tid)
     {
         const int pidToUse = (pgid != 0 ? pid : 0); // kernel threads have pgid 0, and pid == tid, change their pid to 0
         auto & processInfo = trackedProcesses[tid];

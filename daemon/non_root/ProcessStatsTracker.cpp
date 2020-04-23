@@ -1,38 +1,39 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStatsTracker.h"
-#include "non_root/ProcessStateChangeHandler.h"
+
 #include "lib/FsEntry.h"
 #include "linux/proc/ProcPidStatFileRecord.h"
 #include "linux/proc/ProcPidStatmFileRecord.h"
+#include "non_root/ProcessStateChangeHandler.h"
 
-namespace non_root
-{
+namespace non_root {
     ProcessStatsTracker::ProcessStatsTracker(int pid_, int tid_, unsigned long pageSize_)
-            : comm(),
-              exe_path(),
-              stat_minflt(),
-              stat_majflt(),
-              stat_utime(),
-              stat_stime(),
-              stat_guest_time(),
-              stat_vsize(),
-              stat_rss(),
-              stat_rsslim(),
-              statm_shared(),
-              statm_text(),
-              statm_data(),
-              stat_processor(),
-              stat_num_threads(),
-              pageSize(pageSize_),
-              pid(pid_),
-              tid(tid_),
-              newProcess(true)
+        : comm(),
+          exe_path(),
+          stat_minflt(),
+          stat_majflt(),
+          stat_utime(),
+          stat_stime(),
+          stat_guest_time(),
+          stat_vsize(),
+          stat_rss(),
+          stat_rsslim(),
+          statm_shared(),
+          statm_text(),
+          statm_data(),
+          stat_processor(),
+          stat_num_threads(),
+          pageSize(pageSize_),
+          pid(pid_),
+          tid(tid_),
+          newProcess(true)
 
     {
     }
 
-    void ProcessStatsTracker::sendStats(unsigned long long timestampNS, ProcessStateChangeHandler & handler,
+    void ProcessStatsTracker::sendStats(unsigned long long timestampNS,
+                                        ProcessStateChangeHandler & handler,
                                         bool sendFakeSchedulingEvents)
     {
         // send process activity values (time spent in userspace, kernel space and the last seen processor
@@ -95,22 +96,23 @@ namespace non_root
         statm_data.update(record.getData() * pageSize);
     }
 
-    void ProcessStatsTracker::updateExe(const lib::FsEntry & exe)
-    {
-        exe_path.update(exe.path());
-    }
+    void ProcessStatsTracker::updateExe(const lib::FsEntry & exe) { exe_path.update(exe.path()); }
 
     template<typename T>
-    void ProcessStatsTracker::writeCounter(unsigned long long timestampNS, ProcessStateChangeHandler & handler,
-                                           AbsoluteProcessCounter id, AbsoluteCounter<T> & counter)
+    void ProcessStatsTracker::writeCounter(unsigned long long timestampNS,
+                                           ProcessStateChangeHandler & handler,
+                                           AbsoluteProcessCounter id,
+                                           AbsoluteCounter<T> & counter)
     {
         handler.absoluteCounter(timestampNS, getProcessor(), tid, id, counter.value());
         counter.done();
     }
 
     template<typename T>
-    void ProcessStatsTracker::writeCounter(unsigned long long timestampNS, ProcessStateChangeHandler & handler,
-                                           DeltaProcessCounter id, DeltaCounter<T> & counter)
+    void ProcessStatsTracker::writeCounter(unsigned long long timestampNS,
+                                           ProcessStateChangeHandler & handler,
+                                           DeltaProcessCounter id,
+                                           DeltaCounter<T> & counter)
     {
         // send zero for first event to avoid potential big spike
         handler.deltaCounter(timestampNS, getProcessor(), tid, id, newProcess ? 0 : counter.delta());

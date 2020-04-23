@@ -1,17 +1,10 @@
-/**
- * Copyright (C) Arm Limited 2013-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
 // all values *must* be in range 0 ... 127 so as to fit in exactly one byte of packedInt
-enum class FrameType : char
-{
+enum class FrameType : char {
     UNKNOWN = 0,
     SUMMARY = 1,
     NAME = 3,
@@ -28,8 +21,7 @@ enum class FrameType : char
 };
 
 // PERF_ATTR messages
-enum class CodeType : int
-{
+enum class CodeType : int {
     PEA = 1,
     KEYS = 2,
     FORMAT = 3,
@@ -45,8 +37,7 @@ enum class CodeType : int
 };
 
 // Summary Frame Messages
-enum class MessageType : char
-{
+enum class MessageType : char {
     LINK = 1,
     SUMMARY = 1,
     SCHED_SWITCH = 1,
@@ -58,7 +49,7 @@ enum class MessageType : char
 };
 
 // From gator_marshaling.c
-static constexpr const char * NEWLINE_CANARY  =
+static constexpr const char * NEWLINE_CANARY =
     /* Unix */
     "1\n"
     /* Windows */
@@ -69,6 +60,5 @@ static constexpr const char * NEWLINE_CANARY  =
     "4\n\r"
     /* Add another character so the length isn't 0x0a bytes */
     "5";
-
 
 #endif // PROTOCOL_H

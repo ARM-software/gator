@@ -1,12 +1,9 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #include "FSDriver.h"
+
+#include "Logging.h"
+#include "lib/Utils.h"
 
 #include <fcntl.h>
 #include <regex.h>
@@ -14,19 +11,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "lib/Utils.h"
-#include "Logging.h"
-
-class FSCounter : public DriverCounter
-{
+class FSCounter : public DriverCounter {
 public:
-    FSCounter(DriverCounter *next, const char *name, char *path, const char *regex);
+    FSCounter(DriverCounter * next, const char * name, char * path, const char * regex);
     ~FSCounter();
 
-    const char *getPath() const
-    {
-        return mPath;
-    }
+    const char * getPath() const { return mPath; }
 
     int64_t read();
 
@@ -36,14 +26,14 @@ private:
     bool mUseRegex;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(FSCounter);
+    FSCounter(const FSCounter &) = delete;
+    FSCounter & operator=(const FSCounter &) = delete;
+    FSCounter(FSCounter &&) = delete;
+    FSCounter & operator=(FSCounter &&) = delete;
 };
 
-FSCounter::FSCounter(DriverCounter *next, const char *name, char *path, const char *regex)
-        : DriverCounter(next, name),
-          mPath(path),
-          mReg(),
-          mUseRegex(regex != NULL)
+FSCounter::FSCounter(DriverCounter * next, const char * name, char * path, const char * regex)
+    : DriverCounter(next, name), mPath(path), mReg(), mUseRegex(regex != NULL)
 {
     if (mUseRegex) {
         int result = regcomp(&mReg, regex, REG_EXTENDED);
@@ -118,30 +108,27 @@ fail:
     handleException();
 }
 
-FSDriver::FSDriver()
-    : PolledDriver("FS")
-{
-}
+FSDriver::FSDriver() : PolledDriver("FS") {}
 
-FSDriver::~FSDriver()
-{
-}
+FSDriver::~FSDriver() {}
 
 void FSDriver::readEvents(mxml_node_t * const xml)
 {
-    mxml_node_t *node = xml;
+    mxml_node_t * node = xml;
     while (true) {
         node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
         if (node == NULL) {
             break;
         }
-        const char *counter = mxmlElementGetAttr(node, "counter");
+        const char * counter = mxmlElementGetAttr(node, "counter");
         if (counter == NULL) {
             continue;
         }
 
         if (counter[0] == '/') {
-            logg.logError("Old style filesystem counter (%s) detected, please create a new unique counter value and move the filename into the path attribute, see events-Filesystem.xml for examples", counter);
+            logg.logError("Old style filesystem counter (%s) detected, please create a new unique counter value and "
+                          "move the filename into the path attribute, see events-Filesystem.xml for examples",
+                          counter);
             handleException();
         }
 
@@ -149,23 +136,23 @@ void FSDriver::readEvents(mxml_node_t * const xml)
             continue;
         }
 
-        const char *path = mxmlElementGetAttr(node, "path");
+        const char * path = mxmlElementGetAttr(node, "path");
         if (path == NULL) {
             logg.logError("The filesystem counter %s is missing the required path attribute", counter);
             handleException();
         }
-        const char *regex = mxmlElementGetAttr(node, "regex");
+        const char * regex = mxmlElementGetAttr(node, "regex");
         setCounters(new FSCounter(getCounters(), counter, strdup(path), regex));
     }
 }
 
-int FSDriver::writeCounters(mxml_node_t *root) const
+int FSDriver::writeCounters(mxml_node_t * root) const
 {
     int count = 0;
-    for (FSCounter *counter = static_cast<FSCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<FSCounter *>(counter->getNext())) {
+    for (FSCounter * counter = static_cast<FSCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<FSCounter *>(counter->getNext())) {
         if (access(counter->getPath(), R_OK) == 0) {
-            mxml_node_t *node = mxmlNewElement(root, "counter");
+            mxml_node_t * node = mxmlNewElement(root, "counter");
             mxmlElementSetAttr(node, "name", counter->getName());
             ++count;
         }

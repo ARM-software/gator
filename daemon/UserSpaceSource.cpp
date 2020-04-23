@@ -1,39 +1,34 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #define __STDC_FORMAT_MACROS
+#define BUFFER_USE_SESSION_DATA
 
 #include "UserSpaceSource.h"
+
+#include "BufferUtils.h"
+#include "Child.h"
+#include "Drivers.h"
+#include "Logging.h"
+#include "PolledDriver.h"
+#include "PrimarySourceProvider.h"
+#include "SessionData.h"
 
 #include <inttypes.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 
-#include "BufferUtils.h"
-#include "Child.h"
-#include "Drivers.h"
-#include "DriverSource.h"
-#include "Logging.h"
-#include "PrimarySourceProvider.h"
-#include "PolledDriver.h"
-#include "SessionData.h"
-
-UserSpaceSource::UserSpaceSource(Child & child, sem_t *senderSem, std::function<std::int64_t()> getMonotonicStarted, lib::Span<PolledDriver * const> drivers)
-        : Source(child),
-          mBuffer(0, FrameType::BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem),
-          mGetMonotonicStarted(getMonotonicStarted),
-          mDrivers(drivers)
+UserSpaceSource::UserSpaceSource(Child & child,
+                                 sem_t * senderSem,
+                                 std::function<std::int64_t()> getMonotonicStarted,
+                                 lib::Span<PolledDriver * const> drivers)
+    : Source(child),
+      mBuffer(0, FrameType::BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem),
+      mGetMonotonicStarted(getMonotonicStarted),
+      mDrivers(drivers)
 {
 }
 
-UserSpaceSource::~UserSpaceSource()
-{
-}
+UserSpaceSource::~UserSpaceSource() {}
 
 bool UserSpaceSource::shouldStart(lib::Span<const PolledDriver * const> drivers)
 {
@@ -108,7 +103,7 @@ bool UserSpaceSource::isDone()
     return mBuffer.isDone();
 }
 
-void UserSpaceSource::write(ISender *sender)
+void UserSpaceSource::write(ISender * sender)
 {
     if (!mBuffer.isDone()) {
         mBuffer.write(sender);

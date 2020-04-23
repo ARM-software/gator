@@ -1,21 +1,12 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef ANNOTATELISTENER_H
 #define ANNOTATELISTENER_H
 
-#include "ClassBoilerPlate.h"
-
 struct AnnotateClient;
 class OlyServerSocket;
 
-class AnnotateListener
-{
+class AnnotateListener {
 public:
     AnnotateListener();
     ~AnnotateListener();
@@ -34,14 +25,17 @@ public:
     void signal();
 
 private:
-    AnnotateClient *mClients;
+    AnnotateClient * mClients;
 #ifdef TCP_ANNOTATIONS
-    OlyServerSocket *mSock;
+    OlyServerSocket * mSock;
 #endif
-    OlyServerSocket *mUds;
+    OlyServerSocket * mUds;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(AnnotateListener);
+    AnnotateListener(const AnnotateListener &) = delete;
+    AnnotateListener & operator=(const AnnotateListener &) = delete;
+    AnnotateListener(AnnotateListener &&) = delete;
+    AnnotateListener & operator=(AnnotateListener &&) = delete;
 };
 
 #endif // ANNOTATELISTENER_H

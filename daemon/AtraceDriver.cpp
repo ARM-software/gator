@@ -1,58 +1,42 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #include "AtraceDriver.h"
 
-#include <unistd.h>
-
+#include "FtraceDriver.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "FtraceDriver.h"
 
-class AtraceCounter : public DriverCounter
-{
+#include <unistd.h>
+
+class AtraceCounter : public DriverCounter {
 public:
-    AtraceCounter(DriverCounter *next, const char *name, int flag);
+    AtraceCounter(DriverCounter * next, const char * name, int flag);
     ~AtraceCounter();
 
-    int getFlag() const
-    {
-        return mFlag;
-    }
+    int getFlag() const { return mFlag; }
 
 private:
     const int mFlag;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(AtraceCounter);
+    AtraceCounter(const AtraceCounter &) = delete;
+    AtraceCounter & operator=(const AtraceCounter &) = delete;
+    AtraceCounter(AtraceCounter &&) = delete;
+    AtraceCounter & operator=(AtraceCounter &&) = delete;
 };
 
-AtraceCounter::AtraceCounter(DriverCounter *next, const char *name, int flag)
-        : DriverCounter(next, name),
-          mFlag(flag)
+AtraceCounter::AtraceCounter(DriverCounter * next, const char * name, int flag) : DriverCounter(next, name), mFlag(flag)
 {
 }
 
-AtraceCounter::~AtraceCounter()
-{
-}
+AtraceCounter::~AtraceCounter() {}
 
 AtraceDriver::AtraceDriver(const FtraceDriver & ftraceDriver)
-        : SimpleDriver("Atrace"),
-          mSupported(false),
-          mNotifyPath(),
-          mFtraceDriver(ftraceDriver)
+    : SimpleDriver("Atrace"), mSupported(false), mNotifyPath(), mFtraceDriver(ftraceDriver)
 {
 }
 
-AtraceDriver::~AtraceDriver()
-{
-}
+AtraceDriver::~AtraceDriver() {}
 
 void AtraceDriver::readEvents(mxml_node_t * const xml)
 {
@@ -76,13 +60,13 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
 
     mSupported = true;
 
-    mxml_node_t *node = xml;
+    mxml_node_t * node = xml;
     while (true) {
         node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
         if (node == NULL) {
             break;
         }
-        const char *counter = mxmlElementGetAttr(node, "counter");
+        const char * counter = mxmlElementGetAttr(node, "counter");
         if (counter == NULL) {
             continue;
         }
@@ -91,7 +75,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
             continue;
         }
 
-        const char *flagStr = mxmlElementGetAttr(node, "flag");
+        const char * flagStr = mxmlElementGetAttr(node, "flag");
         if (flagStr == NULL) {
             logg.logError("The atrace counter %s is missing the required flag attribute", counter);
             handleException();
@@ -115,9 +99,12 @@ void AtraceDriver::setAtrace(const int flags)
     }
     else if (pid == 0) {
         char buf[1 << 10];
-        snprintf(buf, sizeof(buf), "setprop debug.atrace.tags.enableflags %i; "
+        snprintf(buf,
+                 sizeof(buf),
+                 "setprop debug.atrace.tags.enableflags %i; "
                  "CLASSPATH=%s app_process /system/bin Notify",
-                 flags, mNotifyPath);
+                 flags,
+                 mNotifyPath);
         execlp("sh", "sh", "-c", buf, nullptr);
         exit(0);
     }
@@ -130,8 +117,8 @@ void AtraceDriver::start()
     }
 
     int flags = 0;
-    for (AtraceCounter *counter = static_cast<AtraceCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<AtraceCounter *>(counter->getNext())) {
+    for (AtraceCounter * counter = static_cast<AtraceCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<AtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
         }

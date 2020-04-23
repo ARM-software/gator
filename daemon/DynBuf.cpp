@@ -1,20 +1,14 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "DynBuf.h"
+
+#include "Logging.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "Logging.h"
 
 // Pick an aggressive size as buffer is primarily used for disk IO
 #define MIN_BUFFER_FREE (1 << 12)
@@ -40,7 +34,7 @@ int DynBuf::resize(const size_t minCapacity)
 
 bool DynBuf::read(const char * const path)
 {
-    int result = false;
+    bool result = false;
 
     const int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
@@ -73,7 +67,8 @@ bool DynBuf::read(const char * const path)
     buf[length] = '\0';
     result = true;
 
-    fail: close(fd);
+fail:
+    close(fd);
 
     return result;
 }
@@ -104,7 +99,7 @@ int DynBuf::readlink(const char * const path)
     return 0;
 }
 
-bool DynBuf::printf(const char *format, ...)
+bool DynBuf::printf(const char * format, ...)
 {
     va_list ap;
     bool result;
@@ -118,7 +113,7 @@ bool DynBuf::printf(const char *format, ...)
     return result;
 }
 
-bool DynBuf::append(const char *format, ...)
+bool DynBuf::append(const char * format, ...)
 {
     va_list ap;
     bool result;
@@ -130,7 +125,7 @@ bool DynBuf::append(const char *format, ...)
     return result;
 }
 
-bool DynBuf::append(const char *format, va_list ap)
+bool DynBuf::append(const char * format, va_list ap)
 {
     va_list dup;
 
@@ -168,7 +163,7 @@ bool DynBuf::append(const char *format, va_list ap)
     return true;
 }
 
-bool DynBuf::appendStr(const char *str)
+bool DynBuf::appendStr(const char * str)
 {
     if (capacity <= 0) {
         if (resize(2 * MIN_BUFFER_FREE) != 0) {

@@ -1,22 +1,24 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "non_root/MixedFrameBuffer.h"
+
 #include "Buffer.h"
 #include "BufferUtils.h"
-#include "Sender.h"
 #include "Logging.h"
+#include "Sender.h"
 
 #include <cstring>
 
-namespace non_root
-{
-    MixedFrameBuffer::Frame::Frame(MixedFrameBuffer & parent_, std::uint64_t currentTime_, FrameType frameType,
+namespace non_root {
+    MixedFrameBuffer::Frame::Frame(MixedFrameBuffer & parent_,
+                                   std::uint64_t currentTime_,
+                                   FrameType frameType,
                                    std::int32_t core)
-            : parent(parent_),
-              currentTime(currentTime_),
-              bytesAvailable(parent.buffer.bytesAvailable() - buffer_utils::MAX_FRAME_HEADER_SIZE),
-              frameStart(-1),
-              valid(false)
+        : parent(parent_),
+          currentTime(currentTime_),
+          bytesAvailable(parent.buffer.bytesAvailable() - buffer_utils::MAX_FRAME_HEADER_SIZE),
+          frameStart(-1),
+          valid(false)
     {
         if (bytesAvailable >= 0) {
             frameStart = parent.buffer.beginFrameOrMessage(frameType, core);
@@ -86,17 +88,13 @@ namespace non_root
         }
     }
 
-    bool MixedFrameBuffer::Frame::isValid() const
-    {
-        return valid;
-    }
+    bool MixedFrameBuffer::Frame::isValid() const { return valid; }
 
-    MixedFrameBuffer::MixedFrameBuffer(Buffer & buffer_)
-            : buffer(buffer_)
-    {
-    }
+    MixedFrameBuffer::MixedFrameBuffer(Buffer & buffer_) : buffer(buffer_) {}
 
-    bool MixedFrameBuffer::activityFrameLinkMessage(std::uint64_t currentTime, std::int32_t cookie, std::int32_t pid,
+    bool MixedFrameBuffer::activityFrameLinkMessage(std::uint64_t currentTime,
+                                                    std::int32_t cookie,
+                                                    std::int32_t pid,
                                                     std::int32_t tid)
     {
         Frame frame(*this, currentTime, FrameType::ACTIVITY_TRACE, 0);
@@ -110,7 +108,9 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::counterFrameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t key,
+    bool MixedFrameBuffer::counterFrameMessage(std::uint64_t currentTime,
+                                               std::int32_t core,
+                                               std::int32_t key,
                                                std::uint64_t value)
     {
         Frame frame(*this, currentTime, FrameType::COUNTER, core);
@@ -123,7 +123,9 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::nameFrameCookieNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t cookie,
+    bool MixedFrameBuffer::nameFrameCookieNameMessage(std::uint64_t currentTime,
+                                                      std::int32_t core,
+                                                      std::int32_t cookie,
                                                       const std::string & name)
     {
         Frame frame(*this, currentTime, FrameType::NAME, core);
@@ -135,7 +137,9 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::nameFrameThreadNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid,
+    bool MixedFrameBuffer::nameFrameThreadNameMessage(std::uint64_t currentTime,
+                                                      std::int32_t core,
+                                                      std::int32_t tid,
                                                       const std::string & name)
     {
         Frame frame(*this, currentTime, FrameType::NAME, core);
@@ -148,7 +152,9 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::schedFrameSwitchMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid,
+    bool MixedFrameBuffer::schedFrameSwitchMessage(std::uint64_t currentTime,
+                                                   std::int32_t core,
+                                                   std::int32_t tid,
                                                    std::int32_t state)
     {
         Frame frame(*this, currentTime, FrameType::SCHED_TRACE, core);
@@ -172,10 +178,15 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::summaryFrameSummaryMessage(std::uint64_t currentTime, std::uint64_t timestamp, std::uint64_t uptime, std::uint64_t monotonicDelta,
-                                    const char * uname, unsigned long pageSize, bool nosync)
+    bool MixedFrameBuffer::summaryFrameSummaryMessage(std::uint64_t currentTime,
+                                                      std::uint64_t timestamp,
+                                                      std::uint64_t uptime,
+                                                      std::uint64_t monotonicDelta,
+                                                      const char * uname,
+                                                      unsigned long pageSize,
+                                                      bool nosync)
     {
-        MixedFrameBuffer::Frame frame (*this, currentTime, FrameType::SUMMARY, 0);
+        MixedFrameBuffer::Frame frame(*this, currentTime, FrameType::SUMMARY, 0);
 
         frame.packInt(static_cast<int32_t>(MessageType::SUMMARY));
         frame.writeString(NEWLINE_CANARY);
@@ -197,9 +208,12 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::summaryFrameCoreNameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t cpuid, const char * name)
+    bool MixedFrameBuffer::summaryFrameCoreNameMessage(std::uint64_t currentTime,
+                                                       std::int32_t core,
+                                                       std::int32_t cpuid,
+                                                       const char * name)
     {
-        MixedFrameBuffer::Frame frame (*this, currentTime, FrameType::SUMMARY, 0);
+        MixedFrameBuffer::Frame frame(*this, currentTime, FrameType::SUMMARY, 0);
 
         frame.packInt(static_cast<int32_t>(MessageType::CORE_NAME));
         frame.packInt(core);
@@ -209,8 +223,11 @@ namespace non_root
         return frame.isValid();
     }
 
-    bool MixedFrameBuffer::threadCounterFrameMessage(std::uint64_t currentTime, std::int32_t core, std::int32_t tid,
-                                                     std::int32_t key, std::uint64_t value)
+    bool MixedFrameBuffer::threadCounterFrameMessage(std::uint64_t currentTime,
+                                                     std::int32_t core,
+                                                     std::int32_t tid,
+                                                     std::int32_t key,
+                                                     std::uint64_t value)
     {
         // have to send as block counter in order to be able to send tid :-(
         Frame frame(*this, currentTime, FrameType::BLOCK_COUNTER, core);

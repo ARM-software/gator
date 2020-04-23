@@ -1,29 +1,22 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "LocalCapture.h"
 
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <dirent.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <memory>
-
-#include "SessionData.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "SessionData.h"
 
-static char* createUniqueDirectory(const char* initialPath, const char* ending)
+#include <dirent.h>
+#include <memory>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+static char * createUniqueDirectory(const char * initialPath, const char * ending)
 {
-    char* output;
+    char * output;
     char path[PATH_MAX];
 
     // Ensure the path is an absolute path, i.e. starts with a slash
@@ -53,19 +46,18 @@ static char* createUniqueDirectory(const char* initialPath, const char* ending)
     return output;
 }
 
-namespace local_capture
-{
-    void createAPCDirectory(const char* target_path)
+namespace local_capture {
+    void createAPCDirectory(const char * target_path)
     {
         gSessionData.mAPCDir = createUniqueDirectory(target_path, ".apc");
-        if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0
-                || mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
+        if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0 ||
+             mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
             logg.logError("Unable to create directory %s", gSessionData.mAPCDir);
             handleException();
         }
     }
 
-    int removeDirAndAllContents(const char* path)
+    int removeDirAndAllContents(const char * path)
     {
         int error = 0;
         struct stat mFileInfo;
@@ -74,7 +66,7 @@ namespace local_capture
             // Is it a directory?
             if (mFileInfo.st_mode & S_IFDIR) {
                 DIR * dir = opendir(path);
-                dirent* entry = readdir(dir);
+                dirent * entry = readdir(dir);
                 while (entry) {
                     if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                         std::unique_ptr<char[]> newpath(new char[strlen(path) + strlen(entry->d_name) + 2]);

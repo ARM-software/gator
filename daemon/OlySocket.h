@@ -1,10 +1,4 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef __OLY_SOCKET_H__
 #define __OLY_SOCKET_H__
@@ -19,11 +13,10 @@ typedef int socklen_t;
 
 #include "Config.h"
 
-class OlySocket
-{
+class OlySocket {
 public:
 #ifndef WIN32
-    static int connect(const char* path, const size_t pathSize, const bool calculateAddrlen = false);
+    static int connect(const char * path, const size_t pathSize, const bool calculateAddrlen = false);
 #endif
 
     OlySocket(int socketID);
@@ -31,36 +24,29 @@ public:
 
     void closeSocket();
     void shutdownConnection();
-    void send(const char* buffer, int size);
-    int receive(char* buffer, int size);
-    int receiveNBytes(char* buffer, int size);
-    int receiveString(char* buffer, int size);
+    void send(const char * buffer, int size);
+    int receive(char * buffer, int size);
+    int receiveNBytes(char * buffer, int size);
+    int receiveString(char * buffer, int size);
 
-    bool isValid() const
-    {
-        return mSocketID >= 0;
-    }
+    bool isValid() const { return mSocketID >= 0; }
 
 private:
     int mSocketID;
 };
 
-class OlyServerSocket
-{
+class OlyServerSocket {
 public:
     OlyServerSocket(int port);
 #ifndef WIN32
-    OlyServerSocket(const char* path, const size_t pathSize, const bool calculateAddrlen = false);
+    OlyServerSocket(const char * path, const size_t pathSize, const bool calculateAddrlen = false);
 #endif
     ~OlyServerSocket();
 
     int acceptConnection();
     void closeServerSocket();
 
-    int getFd()
-    {
-        return mFDServer;
-    }
+    int getFd() { return mFDServer; }
 
 private:
     int mFDServer;
@@ -69,6 +55,6 @@ private:
 };
 
 int socket_cloexec(int domain, int type, int protocol);
-int accept_cloexec(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+int accept_cloexec(int sockfd, struct sockaddr * addr, socklen_t * addrlen);
 
 #endif //__OLY_SOCKET_H__

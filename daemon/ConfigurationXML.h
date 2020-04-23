@@ -1,30 +1,22 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATION_XML_H
 #define CONFIGURATION_XML_H
 
-#include <memory>
-#include <vector>
-#include <string>
-#include <set>
-
+#include "Configuration.h"
 #include "lib/Span.h"
 
-#include "Configuration.h"
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 class Drivers;
 class Driver;
 class GatorCpu;
 
-namespace configuration_xml
-{
-    std::unique_ptr<char, void (*)(void*)> getDefaultConfigurationXml(lib::Span<const GatorCpu> clusters);
+namespace configuration_xml {
+    std::unique_ptr<char, void (*)(void *)> getDefaultConfigurationXml(lib::Span<const GatorCpu> clusters);
 
     void getPath(char * path, size_t n);
     void remove();
@@ -49,12 +41,12 @@ namespace configuration_xml
      * @param drivers
      * @return An error or empty
      */
-    std::string setCounters(const std::set<CounterConfiguration> & counterConfigurations, bool printWarningIfUnclaimed,
+    std::string setCounters(const std::set<CounterConfiguration> & counterConfigurations,
+                            bool printWarningIfUnclaimed,
                             Drivers & drivers);
 
-    struct Contents
-    {
-        std::unique_ptr<char, void (*)(void*)> raw;
+    struct Contents {
+        std::unique_ptr<char, void (*)(void *)> raw;
         bool isDefault;
         std::vector<CounterConfiguration> counterConfigurations;
         std::vector<SpeConfiguration> speConfigurations;

@@ -1,25 +1,18 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #include "MaliVideoDriver.h"
 
-#include <unistd.h>
-
-#include "lib/FileDescriptor.h"
 #include "BufferUtils.h"
 #include "Counter.h"
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
+#include "lib/FileDescriptor.h"
+
+#include <unistd.h>
 
 // From instr/src/mve_instr_comm_protocol.h
-typedef enum mve_instr_configuration_type
-{
+typedef enum mve_instr_configuration_type {
     MVE_INSTR_RAW = 1 << 0,
     MVE_INSTR_COUNTERS = 1 << 1,
     MVE_INSTR_EVENTS = 1 << 2,
@@ -37,28 +30,17 @@ static const char COUNTER[] = "ARM_Mali-V500_cnt";
 static const char EVENT[] = "ARM_Mali-V500_evn";
 static const char ACTIVITY[] = "ARM_Mali-V500_act";
 
-class MaliVideoCounter : public DriverCounter
-{
+class MaliVideoCounter : public DriverCounter {
 public:
-    MaliVideoCounter(DriverCounter *next, const char *name, const MaliVideoCounterType type, const int id)
-            : DriverCounter(next, name),
-              mType(type),
-              mId(id)
+    MaliVideoCounter(DriverCounter * next, const char * name, const MaliVideoCounterType type, const int id)
+        : DriverCounter(next, name), mType(type), mId(id)
     {
     }
 
-    ~MaliVideoCounter()
-    {
-    }
+    ~MaliVideoCounter() {}
 
-    MaliVideoCounterType getType() const
-    {
-        return mType;
-    }
-    int getId() const
-    {
-        return mId;
-    }
+    MaliVideoCounterType getType() const { return mType; }
+    int getId() const { return mId; }
 
 private:
     const MaliVideoCounterType mType;
@@ -66,25 +48,20 @@ private:
     const int mId;
 };
 
-MaliVideoDriver::MaliVideoDriver()
-    : SimpleDriver("MaliVideoDriver")
-{
-}
+MaliVideoDriver::MaliVideoDriver() : SimpleDriver("MaliVideoDriver") {}
 
-MaliVideoDriver::~MaliVideoDriver()
-{
-}
+MaliVideoDriver::~MaliVideoDriver() {}
 
 void MaliVideoDriver::readEvents(mxml_node_t * const xml)
 {
     // Always create the counters as /dev/mv500 may show up after gatord starts
-    mxml_node_t *node = xml;
+    mxml_node_t * node = xml;
     while (true) {
         node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
         if (node == NULL) {
             break;
         }
-        const char *counter = mxmlElementGetAttr(node, "counter");
+        const char * counter = mxmlElementGetAttr(node, "counter");
         if (counter == NULL) {
             // Ignore
         }
@@ -115,7 +92,7 @@ void MaliVideoDriver::readEvents(mxml_node_t * const xml)
     }
 }
 
-int MaliVideoDriver::writeCounters(mxml_node_t *root) const
+int MaliVideoDriver::writeCounters(mxml_node_t * root) const
 {
     if (access("/dev/mv500", F_OK) != 0) {
         // Don't show the counters in counter configuration
@@ -125,7 +102,7 @@ int MaliVideoDriver::writeCounters(mxml_node_t *root) const
     return super::writeCounters(root);
 }
 
-bool MaliVideoDriver::claimCounter(Counter &counter) const
+bool MaliVideoDriver::claimCounter(Counter & counter) const
 {
     if (access("/dev/mv500", F_OK) != 0) {
         // Don't add the counters to captured XML
@@ -135,19 +112,19 @@ bool MaliVideoDriver::claimCounter(Counter &counter) const
     return super::claimCounter(counter);
 }
 
-void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char * const buf, int &pos)
+void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char * const buf, int & pos)
 {
     // size
     int numEnabled = 0;
-    for (MaliVideoCounter *counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
+    for (MaliVideoCounter * counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
         if (counter->isEnabled() && (counter->getType() == type)) {
             ++numEnabled;
         }
     }
     buffer_utils::packInt(buf, pos, numEnabled * sizeof(uint32_t));
-    for (MaliVideoCounter *counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
+    for (MaliVideoCounter * counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
         if (counter->isEnabled() && (counter->getType() == type)) {
             buffer_utils::packInt(buf, pos, counter->getId());
         }
@@ -177,8 +154,9 @@ bool MaliVideoDriver::start(const int mveUds)
     // size
     buffer_utils::packInt(buf, pos, 5 * sizeof(uint32_t));
     // configuration
-    buffer_utils::packInt(buf, pos,
-                    MVE_INSTR_COUNTERS | MVE_INSTR_EVENTS | MVE_INSTR_ACTIVITIES | MVE_INSTR_PACKED_COMM);
+    buffer_utils::packInt(buf,
+                          pos,
+                          MVE_INSTR_COUNTERS | MVE_INSTR_EVENTS | MVE_INSTR_ACTIVITIES | MVE_INSTR_PACKED_COMM);
     // communication_protocol_version
     buffer_utils::packInt(buf, pos, 1);
     // data_protocol_version

@@ -1,17 +1,15 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+#define BUFFER_USE_SESSION_DATA
 
 #include "non_root/PerCoreMixedFrameBuffer.h"
-#include "Logging.h"
-#include "ISender.h"
 
-namespace non_root
-{
+#include "ISender.h"
+#include "Logging.h"
+#include "SessionData.h"
+
+namespace non_root {
     PerCoreMixedFrameBuffer::PerCoreMixedFrameBuffer(FrameType frameType_, int bufferSize_, sem_t & readerSem_)
-            : buffers(),
-              wrappers(),
-              readerSem(readerSem_),
-              frameType(frameType_),
-              bufferSize(bufferSize_)
+        : buffers(), wrappers(), readerSem(readerSem_), frameType(frameType_), bufferSize(bufferSize_)
     {
     }
 

@@ -1,12 +1,10 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_POPEN_H
 #define INCLUDE_LIB_POPEN_H
 
-namespace lib
-{
-    struct PopenResult
-    {
+namespace lib {
+    struct PopenResult {
         /**
          * Process pid or negative errno if invalid
          */
@@ -47,4 +45,3 @@ namespace lib
 }
 
 #endif // INCLUDE_LIB_POPEN_H
-

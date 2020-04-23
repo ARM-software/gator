@@ -1,16 +1,15 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+
+#include "linux/proc/ProcessPollerBase.h"
 
 #include "lib/Format.h"
-#include "linux/proc/ProcessPollerBase.h"
 
 #include <cctype>
 #include <cstdlib>
 #include <string>
 
-namespace lnx
-{
-    namespace
-    {
+namespace lnx {
+    namespace {
         /**
          * Checks the name of the FsEntry to see if it is a number, and checks the type
          * to see if it is a directory.
@@ -82,32 +81,23 @@ namespace lnx
         }
     }
 
-    ProcessPollerBase::IProcessPollerReceiver::~IProcessPollerReceiver()
-    {
-    }
+    ProcessPollerBase::IProcessPollerReceiver::~IProcessPollerReceiver() {}
 
-    void ProcessPollerBase::IProcessPollerReceiver::onProcessDirectory(int, const lib::FsEntry &)
-    {
-    }
+    void ProcessPollerBase::IProcessPollerReceiver::onProcessDirectory(int, const lib::FsEntry &) {}
 
-    void ProcessPollerBase::IProcessPollerReceiver::onThreadDirectory(int, int, const lib::FsEntry &)
-    {
-    }
+    void ProcessPollerBase::IProcessPollerReceiver::onThreadDirectory(int, int, const lib::FsEntry &) {}
 
-    void ProcessPollerBase::IProcessPollerReceiver::onThreadDetails(int, int, const ProcPidStatFileRecord &,
+    void ProcessPollerBase::IProcessPollerReceiver::onThreadDetails(int,
+                                                                    int,
+                                                                    const ProcPidStatFileRecord &,
                                                                     const lib::Optional<ProcPidStatmFileRecord> &,
                                                                     const lib::Optional<lib::FsEntry> &)
     {
     }
 
-    ProcessPollerBase::ProcessPollerBase()
-            : procDir(lib::FsEntry::create("/proc"))
-    {
-    }
+    ProcessPollerBase::ProcessPollerBase() : procDir(lib::FsEntry::create("/proc")) {}
 
-    ProcessPollerBase::~ProcessPollerBase()
-    {
-    }
+    ProcessPollerBase::~ProcessPollerBase() {}
 
     void ProcessPollerBase::poll(bool wantThreads, bool wantStats, IProcessPollerReceiver & receiver)
     {
@@ -121,7 +111,9 @@ namespace lnx
         }
     }
 
-    void ProcessPollerBase::processPidDirectory(bool wantThreads, bool wantStats, IProcessPollerReceiver & receiver,
+    void ProcessPollerBase::processPidDirectory(bool wantThreads,
+                                                bool wantStats,
+                                                IProcessPollerReceiver & receiver,
                                                 const lib::FsEntry & entry)
     {
         const std::string name = entry.name();
@@ -158,8 +150,11 @@ namespace lnx
         }
     }
 
-    void ProcessPollerBase::processTidDirectory(bool wantStats, IProcessPollerReceiver & receiver, const int pid,
-                                                const lib::FsEntry & entry, const lib::Optional<lib::FsEntry> & exe)
+    void ProcessPollerBase::processTidDirectory(bool wantStats,
+                                                IProcessPollerReceiver & receiver,
+                                                const int pid,
+                                                const lib::FsEntry & entry,
+                                                const lib::Optional<lib::FsEntry> & exe)
     {
         const long tid = std::strtol(entry.name().c_str(), nullptr, 0);
 
@@ -168,7 +163,7 @@ namespace lnx
 
         // process stats?
         if (wantStats) {
-            lib::Optional<ProcPidStatmFileRecord> statm_file_record { ProcPidStatmFileRecord() };
+            lib::Optional<ProcPidStatmFileRecord> statm_file_record{ProcPidStatmFileRecord()};
 
             // open /proc/[PID]/statm
             {

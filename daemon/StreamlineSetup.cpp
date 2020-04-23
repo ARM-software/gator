@@ -1,10 +1,4 @@
-/**
- * Copyright (C) Arm Limited 2011-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2011-2020 by Arm Limited. All rights reserved. */
 
 #include "StreamlineSetup.h"
 
@@ -14,13 +8,13 @@
 #include "CounterXML.h"
 #include "Driver.h"
 #include "Drivers.h"
-#include "xml/EventsXML.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
 #include "Sender.h"
 #include "SessionData.h"
+#include "xml/EventsXML.h"
 
 static const char TAG_SESSION[] = "session";
 static const char TAG_REQUEST[] = "request";
@@ -33,8 +27,8 @@ static const char VALUE_COUNTERS[] = "counters";
 static const char VALUE_CAPTURED[] = "captured";
 static const char VALUE_DEFAULTS[] = "defaults";
 
-StreamlineSetup::StreamlineSetup(OlySocket* s, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes)
-        : mSocket(s), mDrivers(drivers), mCapturedSpes(capturedSpes)
+StreamlineSetup::StreamlineSetup(OlySocket * s, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes)
+    : mSocket(s), mDrivers(drivers), mCapturedSpes(capturedSpes)
 {
     bool ready = false;
 
@@ -76,11 +70,9 @@ StreamlineSetup::StreamlineSetup(OlySocket* s, Drivers & drivers, lib::Span<cons
     }
 }
 
-StreamlineSetup::~StreamlineSetup()
-{
-}
+StreamlineSetup::~StreamlineSetup() {}
 
-std::vector<char> StreamlineSetup::readCommand(int* command)
+std::vector<char> StreamlineSetup::readCommand(int * command)
 {
     unsigned char header[5];
     int response;
@@ -106,7 +98,7 @@ std::vector<char> StreamlineSetup::readCommand(int* command)
     }
 
     // allocate memory to contain the xml file, size of zero returns a zero size object
-    std::vector<char> data (length + 1);
+    std::vector<char> data(length + 1);
 
     // receive data
     response = mSocket->receiveNBytes(data.data(), length);
@@ -124,7 +116,7 @@ std::vector<char> StreamlineSetup::readCommand(int* command)
     return data;
 }
 
-void StreamlineSetup::handleRequest(char* xml)
+void StreamlineSetup::handleRequest(char * xml)
 {
     mxml_node_t *tree, *node;
     const char * attr = NULL;
@@ -135,22 +127,29 @@ void StreamlineSetup::handleRequest(char* xml)
         attr = mxmlElementGetAttr(node, ATTR_TYPE);
     }
     if (attr && strcmp(attr, VALUE_EVENTS) == 0) {
-        const auto xml = events_xml::getXML(mDrivers.getAllConst(), mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+        const auto xml =
+            events_xml::getXML(mDrivers.getAllConst(), mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent events xml response");
     }
     else if (attr && strcmp(attr, VALUE_CONFIGURATION) == 0) {
-        const auto & xml = configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+        const auto & xml =
+            configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         sendString(xml.raw.get(), ResponseType::XML);
         logg.logMessage("Sent configuration xml response");
     }
     else if (attr && strcmp(attr, VALUE_COUNTERS) == 0) {
-        const auto xml = counters_xml::getXML(mDrivers.getPrimarySourceProvider().supportsMultiEbs(), mDrivers.getAllConst(), mDrivers.getPrimarySourceProvider().getCpuInfo());
+        const auto xml = counters_xml::getXML(mDrivers.getPrimarySourceProvider().supportsMultiEbs(),
+                                              mDrivers.getAllConst(),
+                                              mDrivers.getPrimarySourceProvider().getCpuInfo());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent counters xml response");
     }
     else if (attr && strcmp(attr, VALUE_CAPTURED) == 0) {
-        const auto xml = captured_xml::getXML(false, mCapturedSpes, mDrivers.getPrimarySourceProvider(), mDrivers.getMaliHwCntrs().getDeviceGpuIds());
+        const auto xml = captured_xml::getXML(false,
+                                              mCapturedSpes,
+                                              mDrivers.getPrimarySourceProvider(),
+                                              mDrivers.getMaliHwCntrs().getDeviceGpuIds());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent captured xml response");
     }
@@ -167,9 +166,9 @@ void StreamlineSetup::handleRequest(char* xml)
     mxmlDelete(tree);
 }
 
-void StreamlineSetup::handleDeliver(char* xml)
+void StreamlineSetup::handleDeliver(char * xml)
 {
-    mxml_node_t *tree;
+    mxml_node_t * tree;
 
     // Determine xml type
     tree = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
@@ -194,7 +193,7 @@ void StreamlineSetup::handleDeliver(char* xml)
     mxmlDelete(tree);
 }
 
-void StreamlineSetup::sendData(const char* data, uint32_t length, ResponseType type)
+void StreamlineSetup::sendData(const char * data, uint32_t length, ResponseType type)
 {
     char header[5];
     header[0] = static_cast<char>(type);
@@ -206,7 +205,8 @@ void StreamlineSetup::sendData(const char* data, uint32_t length, ResponseType t
 void StreamlineSetup::sendDefaults()
 {
     // Send the config built into the binary
-    auto xml = configuration_xml::getDefaultConfigurationXml(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+    auto xml =
+        configuration_xml::getDefaultConfigurationXml(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
     size_t size = strlen(xml.get());
 
     // Artificial size restriction
@@ -218,7 +218,7 @@ void StreamlineSetup::sendDefaults()
     sendData(xml.get(), size, ResponseType::XML);
 }
 
-void StreamlineSetup::writeConfiguration(char* xml)
+void StreamlineSetup::writeConfiguration(char * xml)
 {
     char path[PATH_MAX];
 
@@ -230,14 +230,15 @@ void StreamlineSetup::writeConfiguration(char* xml)
     }
 
     // Re-populate gSessionData with the configuration, as it has now changed
-    auto checkError = [] (const std::string & error) {
+    auto checkError = [](const std::string & error) {
         if (!error.empty()) {
             logg.logError("%s", error.c_str());
             handleException();
         }
     };
 
-    auto && result = configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+    auto && result =
+        configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
     std::set<CounterConfiguration> counterConfigs;
     for (auto && counter : result.counterConfigurations) {
         checkError(configuration_xml::addCounterToSet(counterConfigs, std::move(counter)));

@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
@@ -7,8 +7,6 @@
 #include <map>
 #include <string>
 
-#include "ClassBoilerPlate.h"
-
 class GatorCpu;
 class UncorePmu;
 
@@ -16,18 +14,9 @@ class UncorePmu;
 /// gatord specific grouping of events, some of which will be used as a
 /// perf_event_open group, some are just a collection of separate
 /// perf_event_open group leaders
-class PerfEventGroupIdentifier
-{
+class PerfEventGroupIdentifier {
 public:
-
-    enum class Type
-    {
-        PER_CLUSTER_CPU,
-        UNCORE_PMU,
-        SPECIFIC_CPU,
-        GLOBAL,
-        SPE
-    };
+    enum class Type { PER_CLUSTER_CPU, UNCORE_PMU, SPECIFIC_CPU, GLOBAL, SPE };
 
     /** Constructor, for global events on all CPUs */
     PerfEventGroupIdentifier();
@@ -45,44 +34,30 @@ public:
     PerfEventGroupIdentifier(const std::map<int, int> & cpuNumberToType);
 
     /** Equality operator, are they the same group? */
-    inline bool operator == (const PerfEventGroupIdentifier & that) const
+    inline bool operator==(const PerfEventGroupIdentifier & that) const
     {
-        return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber) && (cpuNumberToType == that.cpuNumberToType);
+        return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber) &&
+               (cpuNumberToType == that.cpuNumberToType);
     }
 
     /** Inequality operator, are they not the same group? */
-    inline bool operator != (const PerfEventGroupIdentifier & that) const
-    {
-        return !(*this == that);
-    }
+    inline bool operator!=(const PerfEventGroupIdentifier & that) const { return !(*this == that); }
 
     /** Less operator, to allow use in std::map as key */
-    bool operator < (const PerfEventGroupIdentifier & that) const;
+    bool operator<(const PerfEventGroupIdentifier & that) const;
 
     /** Convert to string for logging purposes */
-    operator std::string () const;
+    operator std::string() const;
 
     /* Accessors */
 
-    inline const GatorCpu * getCluster() const
-    {
-        return cluster;
-    }
+    inline const GatorCpu * getCluster() const { return cluster; }
 
-    inline const UncorePmu * getUncorePmu() const
-    {
-        return pmu;
-    }
+    inline const UncorePmu * getUncorePmu() const { return pmu; }
 
-    inline const std::map<int, int> * getSpeTypeMap() const
-    {
-        return cpuNumberToType;
-    }
+    inline const std::map<int, int> * getSpeTypeMap() const { return cpuNumberToType; }
 
-    inline int getCpuNumber() const
-    {
-        return cpuNumber;
-    }
+    inline int getCpuNumber() const { return cpuNumber; }
 
     inline Type getType() const
     {
@@ -104,7 +79,6 @@ public:
     }
 
 private:
-
     const GatorCpu * const cluster;
     const UncorePmu * const pmu;
     const int cpuNumber;

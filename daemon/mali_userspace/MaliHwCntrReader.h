@@ -1,27 +1,23 @@
-/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRREADER_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRREADER_H_
 
+#include "lib/AutoClosingFd.h"
+#include "mali_userspace/IMaliHwCntrReader.h"
+#include "mali_userspace/MaliDevice.h"
+
+#include <memory>
 #include <stddef.h>
 #include <stdint.h>
-#include <memory>
 
-#include "ClassBoilerPlate.h"
-#include "mali_userspace/MaliDevice.h"
-#include "mali_userspace/IMaliHwCntrReader.h"
-#include "lib/AutoClosingFd.h"
-
-namespace mali_userspace
-{
+namespace mali_userspace {
     class MaliHwCntrReader;
     /**
      * Hardware counter reader
      */
-    class MaliHwCntrReader : public IMaliHwCntrReader
-    {
+    class MaliHwCntrReader : public IMaliHwCntrReader {
     public:
-
         virtual ~MaliHwCntrReader() = default;
         virtual const MaliDevice & getDevice() const override;
         virtual HardwareVersion getHardwareVersion() const override;
@@ -33,10 +29,7 @@ namespace mali_userspace
          *
          * @return  The size of the hardware counters sample buffer
          */
-        inline size_t getSampleSize() const
-        {
-            return sampleBufferSize;
-        }
+        inline size_t getSampleSize() const { return sampleBufferSize; }
 
         /**
          * Trigger manual dump of hardware counters.
@@ -64,7 +57,6 @@ namespace mali_userspace
          */
         bool configureJobBasedSampled(bool preJob, bool postJob);
 
-
         /**
          * Interrupt a call to {@link #waitForBuffer(SampleBuffer &, int)} from another thread
          */
@@ -75,14 +67,13 @@ namespace mali_userspace
          * @param device
          * @return The new reader, or NULL if not able to initialize
          */
-        static std::unique_ptr<MaliHwCntrReader> createReader(const MaliDevice& device);
+        static std::unique_ptr<MaliHwCntrReader> createReader(const MaliDevice & device);
 
     private:
-
-        using MmappedBuffer = std::unique_ptr<uint8_t[], std::function<void(uint8_t*)>>;
+        using MmappedBuffer = std::unique_ptr<uint8_t[], std::function<void(uint8_t *)>>;
 
         /** Mali device object */
-        const MaliDevice& device;
+        const MaliDevice & device;
         /** File descriptor used to access vinstr client in kernel. */
         lib::AutoClosingFd hwcntReaderFd;
         /** Pipe to allow one thread to signal to poll to wake. Used to stop read. */
@@ -99,10 +90,14 @@ namespace mali_userspace
         /**
          * Constructor
          */
-        MaliHwCntrReader(const MaliDevice & device, lib::AutoClosingFd hwcntReaderFd,
-                         lib::AutoClosingFd selfPipe0, lib::AutoClosingFd selfPipe1,
+        MaliHwCntrReader(const MaliDevice & device,
+                         lib::AutoClosingFd hwcntReaderFd,
+                         lib::AutoClosingFd selfPipe0,
+                         lib::AutoClosingFd selfPipe1,
                          MmappedBuffer sampleMemory,
-                         uint32_t bufferCount, uint32_t sampleBufferSize, uint32_t hardwareVersion);
+                         uint32_t bufferCount,
+                         uint32_t sampleBufferSize,
+                         uint32_t hardwareVersion);
 
         /**
          * Create a Mali HW Cntr reader by probing multiple times the mmu block
@@ -113,9 +108,11 @@ namespace mali_userspace
          * @param tilerBitmask
          * @param mmuL2Bitmask
          */
-        static std::unique_ptr<MaliHwCntrReader> create(const MaliDevice& device,
-                                                        CounterBitmask jmBitmask, CounterBitmask shaderBitmask,
-                                                        CounterBitmask tilerBitmask, CounterBitmask mmuL2Bitmask);
+        static std::unique_ptr<MaliHwCntrReader> create(const MaliDevice & device,
+                                                        CounterBitmask jmBitmask,
+                                                        CounterBitmask shaderBitmask,
+                                                        CounterBitmask tilerBitmask,
+                                                        CounterBitmask mmuL2Bitmask);
         /**
          * Release hardware counters sampling buffer.
          *
@@ -135,7 +132,10 @@ namespace mali_userspace
          */
         unsigned probeBlockMaskCount();
 
-        CLASS_DELETE_COPY_MOVE(MaliHwCntrReader);
+        MaliHwCntrReader(const MaliHwCntrReader &) = delete;
+        MaliHwCntrReader & operator=(const MaliHwCntrReader &) = delete;
+        MaliHwCntrReader(MaliHwCntrReader &&) = delete;
+        MaliHwCntrReader & operator=(MaliHwCntrReader &&) = delete;
     };
 }
 

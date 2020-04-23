@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_CPU_ONLINE_MONITOR_H
 #define INCLUDE_LINUX_PERF_PERF_CPU_ONLINE_MONITOR_H
@@ -11,10 +11,8 @@
 /**
  * A thread that monitors CPU online / offline state (for when uevents are not available)
  */
-class PerfCpuOnlineMonitor
-{
+class PerfCpuOnlineMonitor {
 public:
-
     /** Notification callback */
     using NotificationCallback = std::function<void(unsigned /* cpu */, bool /* is_online */)>;
 
@@ -27,8 +25,8 @@ public:
     PerfCpuOnlineMonitor(const PerfCpuOnlineMonitor &) = delete;
     PerfCpuOnlineMonitor(PerfCpuOnlineMonitor &&) = delete;
     ~PerfCpuOnlineMonitor();
-    PerfCpuOnlineMonitor& operator=(const PerfCpuOnlineMonitor &) = delete;
-    PerfCpuOnlineMonitor& operator=(PerfCpuOnlineMonitor &&) = delete;
+    PerfCpuOnlineMonitor & operator=(const PerfCpuOnlineMonitor &) = delete;
+    PerfCpuOnlineMonitor & operator=(PerfCpuOnlineMonitor &&) = delete;
 
     /**
      * Terminate the thread
@@ -36,7 +34,6 @@ public:
     void terminate();
 
 private:
-
     static void launch(PerfCpuOnlineMonitor *) noexcept;
 
     void run() noexcept;

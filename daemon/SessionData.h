@@ -1,33 +1,25 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
 
-#include <list>
-#include <map>
-#include <memory>
-#include <set>
-#include <string>
-#include <stdint.h>
-#include <vector>
-#include <semaphore.h>
-
-#include "ClassBoilerPlate.h"
 #include "Config.h"
 #include "Configuration.h"
 #include "Counter.h"
 #include "GatorCLIFlags.h"
 #include "lib/SharedMemory.h"
-
 #include "mxml/mxml.h"
 
-#define PROTOCOL_VERSION 710
+#include <list>
+#include <map>
+#include <memory>
+#include <semaphore.h>
+#include <set>
+#include <stdint.h>
+#include <string>
+#include <vector>
+
+#define PROTOCOL_VERSION 720
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -38,8 +30,7 @@
 extern const char MALI_GRAPHICS[];
 extern const size_t MALI_GRAPHICS_SIZE;
 
-class SharedData
-{
+class SharedData {
 public:
     SharedData();
 
@@ -50,12 +41,13 @@ public:
 
 private:
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(SharedData)
-    ;
+    SharedData(const SharedData &) = delete;
+    SharedData & operator=(const SharedData &) = delete;
+    SharedData(SharedData &&) = delete;
+    SharedData & operator=(SharedData &&) = delete;
 };
 
-class SessionData
-{
+class SessionData {
 public:
     static const size_t MAX_STRING_LEN = 80;
 
@@ -63,22 +55,21 @@ public:
     ~SessionData();
 
     void initialize();
-    void parseSessionXML(char* xmlString);
-
+    void parseSessionXML(char * xmlString);
 
     shared_memory::unique_ptr<SharedData> mSharedData;
 
     std::list<std::string> mImages;
-    const char *mConfigurationXMLPath;
-    const char *mSessionXMLPath;
-    const char *mEventsXMLPath;
-    const char *mEventsXMLAppend;
-    const char *mTargetPath;
-    const char *mAPCDir;
-    const char *mCaptureWorkingDir;
+    const char * mConfigurationXMLPath;
+    const char * mSessionXMLPath;
+    const char * mEventsXMLPath;
+    const char * mEventsXMLAppend;
+    const char * mTargetPath;
+    const char * mAPCDir;
+    const char * mCaptureWorkingDir;
     std::vector<std::string> mCaptureCommand;
-    const char *mCaptureUser;
-    const char *mWaitForProcessCommand;
+    const char * mCaptureUser;
+    const char * mWaitForProcessCommand;
     std::set<int> mPids;
     bool mStopOnExit;
 
@@ -105,6 +96,7 @@ public:
     int mAnnotateStart;
     int64_t parameterSetFlag;
     int mPerfMmapSizeInPages;
+    int mSpeSampleRate;
 
     // PMU Counters
     Counter mCounters[MAX_PERFORMANCE_COUNTERS];
@@ -114,8 +106,10 @@ public:
 
 private:
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(SessionData)
-    ;
+    SessionData(const SessionData &) = delete;
+    SessionData & operator=(const SessionData &) = delete;
+    SessionData(SessionData &&) = delete;
+    SessionData & operator=(SessionData &&) = delete;
 };
 
 extern SessionData gSessionData;

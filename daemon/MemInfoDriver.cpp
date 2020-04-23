@@ -1,23 +1,15 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "MemInfoDriver.h"
 
-#include <unistd.h>
-
-#include "ClassBoilerPlate.h"
 #include "Logging.h"
 #include "SessionData.h"
 
-class MemInfoCounter : public DriverCounter
-{
+#include <unistd.h>
+
+class MemInfoCounter : public DriverCounter {
 public:
-    MemInfoCounter(DriverCounter *next, const char * const name, int64_t * const value);
+    MemInfoCounter(DriverCounter * next, const char * const name, int64_t * const value);
     ~MemInfoCounter();
 
     int64_t read();
@@ -26,18 +18,18 @@ private:
     int64_t * const mValue;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(MemInfoCounter);
+    MemInfoCounter(const MemInfoCounter &) = delete;
+    MemInfoCounter & operator=(const MemInfoCounter &) = delete;
+    MemInfoCounter(MemInfoCounter &&) = delete;
+    MemInfoCounter & operator=(MemInfoCounter &&) = delete;
 };
 
-MemInfoCounter::MemInfoCounter(DriverCounter *next, const char * const name, int64_t * const value)
-        : DriverCounter(next, name),
-          mValue(value)
+MemInfoCounter::MemInfoCounter(DriverCounter * next, const char * const name, int64_t * const value)
+    : DriverCounter(next, name), mValue(value)
 {
 }
 
-MemInfoCounter::~MemInfoCounter()
-{
-}
+MemInfoCounter::~MemInfoCounter() {}
 
 int64_t MemInfoCounter::read()
 {
@@ -45,19 +37,11 @@ int64_t MemInfoCounter::read()
 }
 
 MemInfoDriver::MemInfoDriver()
-        : PolledDriver("MemInfo"),
-          mBuf(),
-          mMemUsed(0),
-          mMemFree(0),
-          mBuffers(0),
-          mCached(0),
-          mSlab(0)
+    : PolledDriver("MemInfo"), mBuf(), mMemUsed(0), mMemFree(0), mBuffers(0), mCached(0), mSlab(0)
 {
 }
 
-MemInfoDriver::~MemInfoDriver()
-{
-}
+MemInfoDriver::~MemInfoDriver() {}
 
 void MemInfoDriver::readEvents(mxml_node_t * const)
 {
@@ -84,11 +68,11 @@ void MemInfoDriver::read(Buffer * const buffer)
         handleException();
     }
 
-    char *key = mBuf.getBuf();
-    char *colon;
+    char * key = mBuf.getBuf();
+    char * colon;
     int64_t memTotal = 0;
     while ((colon = strchr(key, ':')) != NULL) {
-        char *end = strchr(colon + 1, '\n');
+        char * end = strchr(colon + 1, '\n');
         if (end != NULL) {
             *end = '\0';
         }

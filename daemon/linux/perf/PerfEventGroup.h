@@ -1,58 +1,56 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 
-#include <cstdint>
+#include "Tracepoints.h"
+#include "k/perf_event.h" // Use a snapshot of perf_event.h as it may be more recent than what is on the target and if not newer features won't be supported anyways
+#include "lib/AutoClosingFd.h"
+#include "lib/Span.h"
+#include "linux/perf/IPerfGroups.h"
+#include "linux/perf/PerfConfig.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
+
 #include <climits>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <set>
 #include <vector>
 
-#include "ClassBoilerPlate.h"
-#include "k/perf_event.h" // Use a snapshot of perf_event.h as it may be more recent than what is on the target and if not newer features won't be supported anyways
-#include "lib/AutoClosingFd.h"
-#include "lib/Span.h"
-#include "linux/perf/PerfConfig.h"
-#include "linux/perf/PerfEventGroupIdentifier.h"
-#include "linux/perf/IPerfGroups.h"
-#include "Tracepoints.h"
-
 class IPerfAttrsConsumer;
 class GatorCpu;
 
-enum class OnlineResult
-{
+enum class OnlineResult {
     SUCCESS,
     FAILURE,
     CPU_OFFLINE,
     OTHER_FAILURE,
 };
 
-enum class OnlineEnabledState
-{
-    ENABLE_NOW,
-    ENABLE_ON_EXEC,
-    NOT_ENABLED
-};
+enum class OnlineEnabledState { ENABLE_NOW, ENABLE_ON_EXEC, NOT_ENABLED };
 
-struct PerfEventGroupSharedConfig
-{
-    inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig, size_t dataBufferLength, size_t auxBufferLength, int backtraceDepth,
-                                      int sampleRate, bool enablePeriodicSampling, lib::Span<const GatorCpu> clusters,
-                                      lib::Span<const int> clusterIds, int64_t schedSwitchId)
-            : perfConfig(perfConfig),
-              schedSwitchId(schedSwitchId),
-              schedSwitchKey(INT_MAX),
-              dummyKeyCounter(INT_MAX - 1),
-              dataBufferLength(dataBufferLength),
-              auxBufferLength(auxBufferLength),
-              backtraceDepth(backtraceDepth),
-              sampleRate(sampleRate),
-              enablePeriodicSampling(enablePeriodicSampling),
-              clusters(clusters),
-              clusterIds(clusterIds)
+struct PerfEventGroupSharedConfig {
+    inline PerfEventGroupSharedConfig(const PerfConfig & perfConfig,
+                                      size_t dataBufferLength,
+                                      size_t auxBufferLength,
+                                      int backtraceDepth,
+                                      int sampleRate,
+                                      bool enablePeriodicSampling,
+                                      lib::Span<const GatorCpu> clusters,
+                                      lib::Span<const int> clusterIds,
+                                      int64_t schedSwitchId)
+        : perfConfig(perfConfig),
+          schedSwitchId(schedSwitchId),
+          schedSwitchKey(INT_MAX),
+          dummyKeyCounter(INT_MAX - 1),
+          dataBufferLength(dataBufferLength),
+          auxBufferLength(auxBufferLength),
+          backtraceDepth(backtraceDepth),
+          sampleRate(sampleRate),
+          enablePeriodicSampling(enablePeriodicSampling),
+          clusters(clusters),
+          clusterIds(clusterIds)
     {
     }
 
@@ -70,35 +68,42 @@ struct PerfEventGroupSharedConfig
     lib::Span<const int> clusterIds;
 };
 
-class PerfEventGroup
-{
+class PerfEventGroup {
 public:
-
     PerfEventGroup(const PerfEventGroupIdentifier & groupIdentifier, PerfEventGroupSharedConfig & sharedConfig);
 
     bool requiresLeader() const;
     bool hasLeader() const;
-    bool addEvent(bool leader, uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer, int key,
-                  const IPerfGroups::Attr & attr, bool hasAuxData);
+    bool addEvent(bool leader,
+                  uint64_t timestamp,
+                  IPerfAttrsConsumer & attrsConsumer,
+                  int key,
+                  const IPerfGroups::Attr & attr,
+                  bool hasAuxData);
     bool createGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
 
-    std::pair<OnlineResult, std::string> onlineCPU(uint64_t timestamp, int cpu, std::set<int> & tids, OnlineEnabledState enabledState,
-                           IPerfAttrsConsumer & attrsConsumer, std::function<bool(int)> addToMonitor,
-                           std::function<bool(int, int, bool)> addToBuffer);
+    std::pair<OnlineResult, std::string> onlineCPU(uint64_t timestamp,
+                                                   int cpu,
+                                                   std::set<int> & tids,
+                                                   OnlineEnabledState enabledState,
+                                                   IPerfAttrsConsumer & attrsConsumer,
+                                                   std::function<bool(int)> addToMonitor,
+                                                   std::function<bool(int, int, bool)> addToBuffer);
 
     bool offlineCPU(int cpu);
     void start();
     void stop();
 
 private:
-
-    struct PerfEvent
-    {
+    struct PerfEvent {
         struct perf_event_attr attr;
         int key;
     };
 
-    CLASS_DELETE_COPY_MOVE(PerfEventGroup);
+    PerfEventGroup(const PerfEventGroup &) = delete;
+    PerfEventGroup & operator=(const PerfEventGroup &) = delete;
+    PerfEventGroup(PerfEventGroup &&) = delete;
+    PerfEventGroup & operator=(PerfEventGroup &&) = delete;
 
     bool createCpuGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
     bool createUncoreGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);

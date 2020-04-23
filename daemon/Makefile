@@ -1,4 +1,4 @@
-# Copyright (C) 2016, 2017, 2019 by Arm Limited. All rights reserved.
+# Copyright (C) 2016-2020 by Arm Limited. All rights reserved.
 
 #
 # Makefile for Arm Streamline - Gator Daemon

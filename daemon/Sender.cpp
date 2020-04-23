@@ -1,20 +1,6 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "Sender.h"
-
-#include <algorithm>
-
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <limits.h>
 
 #include "BufferUtils.h"
 #include "Logging.h"
@@ -22,15 +8,18 @@
 #include "SessionData.h"
 #include "lib/File.h"
 
-Sender::Sender(OlySocket* socket)
-        : mDataSocket(socket),
-          mDataFile(nullptr, fclose),
-          mDataFileName(nullptr),
-          mSendMutex()
+#include <algorithm>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+Sender::Sender(OlySocket * socket)
+    : mDataSocket(socket), mDataFile(nullptr, fclose), mDataFileName(nullptr), mSendMutex()
 {
     // Set up the socket connection
     if (socket) {
-        char streamline[64] = { 0 };
+        char streamline[64] = {0};
         mDataSocket = socket;
 
         // Receive magic sequence - can wait forever
@@ -52,8 +41,8 @@ Sender::Sender(OlySocket* socket)
     }
 
     pthread_mutexattr_t attr;
-    if (pthread_mutexattr_init(&attr) != 0 || pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0
-            || pthread_mutex_init(&mSendMutex, &attr) != 0 || pthread_mutexattr_destroy(&attr) != 0 || false) {
+    if (pthread_mutexattr_init(&attr) != 0 || pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0 ||
+        pthread_mutex_init(&mSendMutex, &attr) != 0 || pthread_mutexattr_destroy(&attr) != 0 || false) {
         logg.logError("Unable to setup mutex");
         handleException();
     }
@@ -68,7 +57,7 @@ Sender::~Sender()
     }
 }
 
-void Sender::createDataFile(const char* apcDir)
+void Sender::createDataFile(const char * apcDir)
 {
     if (apcDir == NULL) {
         return;
@@ -83,25 +72,24 @@ void Sender::createDataFile(const char* apcDir)
     }
 }
 
-void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts, ResponseType type, bool ignoreLockErrors)
+void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts,
+                            ResponseType type,
+                            bool ignoreLockErrors)
 {
     int length = 0;
     for (const auto & data : dataParts) {
         length += data.length;
-        if (data.length < 0)
-        {
+        if (data.length < 0) {
             logg.logError("Negative length message part (%d)", data.length);
             handleException();
         }
-        else if (data.length > MAX_RESPONSE_LENGTH)
-        {
+        else if (data.length > MAX_RESPONSE_LENGTH) {
             logg.logError("Message part too big (%d)", data.length);
             handleException();
         }
     }
 
-    if (length > MAX_RESPONSE_LENGTH)
-    {
+    if (length > MAX_RESPONSE_LENGTH) {
         logg.logError("Message too big (%d)", length);
         handleException();
     }
@@ -155,7 +143,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
     if (mDataFile && (type == ResponseType::APC_DATA || type == ResponseType::RAW)) {
         logg.logMessage("Writing data with length %d", length);
         // Send data to the data file
-        auto writeData = [this] (lib::Span<const char, int> data) {
+        auto writeData = [this](lib::Span<const char, int> data) {
             if (fwrite(data.data, 1, data.length, mDataFile.get()) != static_cast<size_t>(data.length)) {
                 logg.logError("Failed writing binary file %s", mDataFileName.get());
                 handleException();

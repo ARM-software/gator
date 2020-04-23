@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
 #define INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
@@ -9,10 +9,8 @@
 #include <set>
 #include <thread>
 
-class PerCoreIdentificationThread
-{
+class PerCoreIdentificationThread {
 public:
-
     static constexpr unsigned INVALID_CORE_ID = ~0u;
     static constexpr unsigned INVALID_PACKAGE_ID = ~0u;
     static constexpr std::uint64_t INVALID_MIDR_EL1 = ~0ull;
@@ -21,7 +19,9 @@ public:
      * Consumer function that takes sync event data:
      */
     using ConsumerFunction = std::function<void(unsigned /* cpu */,
-                                                unsigned /* core_id */, unsigned /* physical_package_id */, std::set<int> /* core_siblings */,
+                                                unsigned /* core_id */,
+                                                unsigned /* physical_package_id */,
+                                                std::set<int> /* core_siblings */,
                                                 std::uint64_t /* midr_el1 */)>;
 
     /**
@@ -37,7 +37,6 @@ public:
     ~PerCoreIdentificationThread();
 
 private:
-
     static void launch(PerCoreIdentificationThread *) noexcept;
 
     void run() noexcept;

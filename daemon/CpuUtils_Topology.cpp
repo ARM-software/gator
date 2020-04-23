@@ -1,10 +1,10 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils_Topology.h"
+
 #include "Logging.h"
 
-namespace cpu_utils
-{
+namespace cpu_utils {
     void updateCpuIdsFromTopologyInformation(lib::Span<int> cpuIds,
                                              const std::map<unsigned, unsigned> & cpuToCpuIds,
                                              const std::map<unsigned, unsigned> & cpuToCluster,
@@ -68,6 +68,3 @@ namespace cpu_utils
         }
     }
 }
-
-
-

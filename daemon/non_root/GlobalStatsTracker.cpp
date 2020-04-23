@@ -1,27 +1,28 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "non_root/GlobalStatsTracker.h"
+
 #include "non_root/GlobalStateChangeHandler.h"
 
-namespace non_root
-{
+namespace non_root {
     GlobalStatsTracker::PerCoreStatsTracker::PerCoreStatsTracker()
-            : timeUserTicks(),
-              timeNiceTicks(),
-              timeSystemTicks(),
-              timeIdleTicks(),
-              timeIowaitTicks(),
-              timeIrqTicks(),
-              timeSoftirqTicks(),
-              timeStealTicks(),
-              timeGuestTicks(),
-              timeGuestNiceTicks(),
-              first(true)
+        : timeUserTicks(),
+          timeNiceTicks(),
+          timeSystemTicks(),
+          timeIdleTicks(),
+          timeIowaitTicks(),
+          timeIrqTicks(),
+          timeSoftirqTicks(),
+          timeStealTicks(),
+          timeGuestTicks(),
+          timeGuestNiceTicks(),
+          first(true)
     {
     }
 
     void GlobalStatsTracker::PerCoreStatsTracker::sendStats(unsigned long long timestampNS,
-                                                            GlobalStateChangeHandler & handler, unsigned long cpuID)
+                                                            GlobalStateChangeHandler & handler,
+                                                            unsigned long cpuID)
     {
         writeCounter(timestampNS, handler, cpuID, DeltaGlobalCounter::TIME_CPU_USER, timeUserTicks);
         writeCounter(timestampNS, handler, cpuID, DeltaGlobalCounter::TIME_CPU_NICE, timeNiceTicks);
@@ -38,7 +39,7 @@ namespace non_root
     }
 
     void GlobalStatsTracker::PerCoreStatsTracker::updateFromProcStatFileRecordCpuTime(
-            const lnx::ProcStatFileRecord::CpuTime & record)
+        const lnx::ProcStatFileRecord::CpuTime & record)
     {
         timeUserTicks.update(record.user_ticks);
         timeNiceTicks.update(record.nice_ticks);
@@ -54,8 +55,10 @@ namespace non_root
 
     template<typename T>
     void GlobalStatsTracker::PerCoreStatsTracker::writeCounter(unsigned long long timestampNS,
-                                                               GlobalStateChangeHandler & handler, unsigned long cpuID,
-                                                               DeltaGlobalCounter id, DeltaCounter<T> & counter)
+                                                               GlobalStateChangeHandler & handler,
+                                                               unsigned long cpuID,
+                                                               DeltaGlobalCounter id,
+                                                               DeltaCounter<T> & counter)
     {
         // send zero for first event to avoid potential big spike
         handler.deltaCounter(timestampNS, cpuID, id, first ? 0 : counter.delta());
@@ -63,18 +66,18 @@ namespace non_root
     }
 
     GlobalStatsTracker::GlobalStatsTracker(GlobalStateChangeHandler & handler_)
-            : perCoreStats(),
-              loadavgOver1Minute(),
-              loadavgOver5Minutes(),
-              loadavgOver15Minutes(),
-              numProcessesRunning(),
-              numProcessesExist(),
-              numContextSwitchs(),
-              numIrq(),
-              numSoftIrq(),
-              numForks(),
-              handler(handler_),
-              first(true)
+        : perCoreStats(),
+          loadavgOver1Minute(),
+          loadavgOver5Minutes(),
+          loadavgOver15Minutes(),
+          numProcessesRunning(),
+          numProcessesExist(),
+          numContextSwitchs(),
+          numIrq(),
+          numSoftIrq(),
+          numForks(),
+          handler(handler_),
+          first(true)
     {
     }
 
@@ -104,8 +107,8 @@ namespace non_root
     {
         loadavgOver1Minute.update(record.getLoadAvgOver1Minutes() * non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
         loadavgOver5Minutes.update(record.getLoadAvgOver5Minutes() * non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
-        loadavgOver15Minutes.update(
-                record.getLoadAvgOver15Minutes() * non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
+        loadavgOver15Minutes.update(record.getLoadAvgOver15Minutes() *
+                                    non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
         numProcessesRunning.update(record.getNumRunnableThreads());
         numProcessesExist.update(record.getNumThreads());
     }
@@ -131,7 +134,8 @@ namespace non_root
     }
 
     template<typename T>
-    void GlobalStatsTracker::writeCounter(unsigned long long timestampNS, AbsoluteGlobalCounter id,
+    void GlobalStatsTracker::writeCounter(unsigned long long timestampNS,
+                                          AbsoluteGlobalCounter id,
                                           AbsoluteCounter<T> & counter)
     {
         handler.absoluteCounter(timestampNS, id, counter.value());
@@ -139,7 +143,8 @@ namespace non_root
     }
 
     template<typename T>
-    void GlobalStatsTracker::writeCounter(unsigned long long timestampNS, DeltaGlobalCounter id,
+    void GlobalStatsTracker::writeCounter(unsigned long long timestampNS,
+                                          DeltaGlobalCounter id,
                                           DeltaCounter<T> & counter)
     {
         // send zero for first event to avoid potential big spike

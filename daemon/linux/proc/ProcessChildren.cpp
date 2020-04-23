@@ -1,13 +1,12 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessChildren.h"
 
+#include <cstring>
 #include <dirent.h>
 #include <fstream>
-#include <cstring>
 
-namespace lnx
-{
+namespace lnx {
     static void addTidsRecursively(std::set<int> & tids, int tid)
     {
         auto result = tids.insert(tid);
@@ -18,7 +17,7 @@ namespace lnx
 
         // try to get all children (forked processes), available since Linux 3.5
         snprintf(filename, sizeof(filename), "/proc/%d/task/%d/children", tid, tid);
-        std::ifstream children { filename, std::ios_base::in };
+        std::ifstream children{filename, std::ios_base::in};
         if (children) {
             int child;
             while (children >> child) {
@@ -53,4 +52,3 @@ namespace lnx
         return result;
     }
 }
-

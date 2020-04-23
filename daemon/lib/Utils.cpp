@@ -1,28 +1,26 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <cerrno>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <cinttypes>
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+#include "lib/Utils.h"
 
 #include "Logging.h"
-
-#include "lib/Utils.h"
 #include "lib/FsEntry.h"
 
+#include <cerrno>
+#include <cinttypes>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-namespace lib
-{
+namespace lib {
     int parseLinuxVersion(struct utsname & utsname)
     {
-        int version[3] = { 0, 0, 0 };
+        int version[3] = {0, 0, 0};
 
         int part = 0;
-        char *ch = utsname.release;
+        char * ch = utsname.release;
         while (*ch >= '0' && *ch <= '9' && part < 3) {
             version[part] = 10 * version[part] + *ch - '0';
 
@@ -36,12 +34,12 @@ namespace lib
         return KERNEL_VERSION(version[0], version[1], version[2]);
     }
 
-    int readIntFromFile(const char *fullpath, int &value)
+    int readIntFromFile(const char * fullpath, int & value)
     {
         const std::string string = FsEntry::create(fullpath).readFileContents();
         const char * const data = string.c_str();
 
-        char *endptr;
+        char * endptr;
         errno = 0;
         value = strtol(data, &endptr, 10);
         if (errno != 0 || *endptr != '\n') {
@@ -52,12 +50,12 @@ namespace lib
         return 0;
     }
 
-    int readInt64FromFile(const char *fullpath, int64_t &value)
+    int readInt64FromFile(const char * fullpath, int64_t & value)
     {
         const std::string string = FsEntry::create(fullpath).readFileContents();
         const char * const data = string.c_str();
 
-        char *endptr;
+        char * endptr;
         errno = 0;
         value = strtoll(data, &endptr, 0);
         if (errno != 0 || (data == endptr) || (*endptr != '\n' && *endptr != '\0')) {
@@ -68,8 +66,7 @@ namespace lib
         return 0;
     }
 
-
-    int writeCStringToFile(const char *fullpath, const char *data)
+    int writeCStringToFile(const char * fullpath, const char * data)
     {
         const lib::FsEntry fsEntry = lib::FsEntry::create(fullpath);
 
@@ -85,21 +82,21 @@ namespace lib
             return -1;
     }
 
-    int writeIntToFile(const char *path, int value)
+    int writeIntToFile(const char * path, int value)
     {
         char data[40]; // Sufficiently large to hold any integer
         snprintf(data, sizeof(data), "%d", value);
         return writeCStringToFile(path, data);
     }
 
-    int writeInt64ToFile(const char *path, int64_t value)
+    int writeInt64ToFile(const char * path, int64_t value)
     {
         char data[40]; // Sufficiently large to hold any integer
         snprintf(data, sizeof(data), "%" PRIi64, value);
         return writeCStringToFile(path, data);
     }
 
-    int writeReadIntInFile(const char *path, int & value)
+    int writeReadIntInFile(const char * path, int & value)
     {
         if (writeIntToFile(path, value) || readIntFromFile(path, value)) {
             return -1;
@@ -107,7 +104,7 @@ namespace lib
         return 0;
     }
 
-    int writeReadInt64InFile(const char *path, int64_t & value)
+    int writeReadInt64InFile(const char * path, int64_t & value)
     {
         if (writeInt64ToFile(path, value) || readInt64FromFile(path, value)) {
             return -1;
@@ -178,4 +175,3 @@ namespace lib
         return result;
     }
 }
-

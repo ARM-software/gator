@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/CoreOnliner.h"
 
@@ -7,11 +7,7 @@
 
 #include <cstdio>
 
-CoreOnliner::CoreOnliner(unsigned core)
-        : core(core),
-          known(false),
-          changed(false),
-          online(false)
+CoreOnliner::CoreOnliner(unsigned core) : core(core), known(false), changed(false), online(false)
 {
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "/sys/devices/system/cpu/cpu%u/online", core);
@@ -36,20 +32,16 @@ CoreOnliner::~CoreOnliner()
     }
 }
 
-CoreOnliner::CoreOnliner(CoreOnliner && that)
-    : core(that.core),
-      known(false),
-      changed(false),
-      online(false)
+CoreOnliner::CoreOnliner(CoreOnliner && that) : core(that.core), known(false), changed(false), online(false)
 {
     std::swap(known, that.known);
     std::swap(online, that.online);
     std::swap(changed, that.changed);
 }
 
-CoreOnliner& CoreOnliner::operator=(CoreOnliner && that)
+CoreOnliner & CoreOnliner::operator=(CoreOnliner && that)
 {
-    CoreOnliner tmp (std::move(that));
+    CoreOnliner tmp(std::move(that));
 
     std::swap(core, tmp.core);
     std::swap(known, tmp.known);

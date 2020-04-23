@@ -1,31 +1,25 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "Fifo.h"
 
-#include <stdlib.h>
-
 #include "Logging.h"
+
+#include <stdlib.h>
 
 // bufferSize is the amount of data to be filled
 // singleBufferSize is the maximum size that may be filled during a single write
 // (bufferSize + singleBufferSize) will be allocated
-Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t* readerSem)
-        : mSingleBufferSize(singleBufferSize),
-          mWrite(0),
-          mRead(0),
-          mReadCommit(0),
-          mRaggedEnd(0),
-          mWrapThreshold(bufferSize),
-          mWaitForSpaceSem(),
-          mReaderSem(readerSem),
-          mBuffer(new char[bufferSize + singleBufferSize]),
-          mEnd(false)
+Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t * readerSem)
+    : mSingleBufferSize(singleBufferSize),
+      mWrite(0),
+      mRead(0),
+      mReadCommit(0),
+      mRaggedEnd(0),
+      mWrapThreshold(bufferSize),
+      mWaitForSpaceSem(),
+      mReaderSem(readerSem),
+      mBuffer(new char[bufferSize + singleBufferSize]),
+      mEnd(false)
 {
     if (mBuffer == nullptr) {
         logg.logError("failed to allocate %d bytes", bufferSize + singleBufferSize);
@@ -49,7 +43,7 @@ int Fifo::numBytesFilled() const
     return mWrite - mRead + mRaggedEnd;
 }
 
-char* Fifo::start() const
+char * Fifo::start() const
 {
     return mBuffer;
 }
@@ -82,7 +76,7 @@ bool Fifo::willFill(int additional) const
 }
 
 // This function will stall until contiguous singleBufferSize bytes are available
-char* Fifo::write(int length)
+char * Fifo::write(int length)
 {
     if (length <= 0) {
         length = 0;
@@ -124,7 +118,7 @@ void Fifo::release()
 }
 
 // This function will return null if no data is available
-char* Fifo::read(int * const length)
+char * Fifo::read(int * const length)
 {
     // wait for data
     if (isEmpty() && !mEnd) {

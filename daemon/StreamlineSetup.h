@@ -1,23 +1,14 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef __STREAMLINE_SETUP_H__
 #define __STREAMLINE_SETUP_H__
 
+#include "ISender.h"
+#include "lib/Span.h"
+
 #include <stdint.h>
 #include <string.h>
 #include <vector>
-
-#include "lib/Span.h"
-
-#include "ClassBoilerPlate.h"
-
-#include "ISender.h"
 
 class OlySocket;
 class Drivers;
@@ -25,8 +16,7 @@ class ICpuInfo;
 struct CapturedSpe;
 
 // Commands from Streamline
-enum
-{
+enum {
     COMMAND_REQUEST_XML = 0,
     COMMAND_DELIVER_XML = 1,
     COMMAND_APC_START = 2,
@@ -35,29 +25,29 @@ enum
     COMMAND_PING = 5
 };
 
-class StreamlineSetup
-{
+class StreamlineSetup {
 public:
-    StreamlineSetup(OlySocket *socket, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes);
+    StreamlineSetup(OlySocket * socket, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes);
     ~StreamlineSetup();
+
 private:
-    OlySocket* mSocket;
+    OlySocket * mSocket;
     Drivers & mDrivers;
     lib::Span<const CapturedSpe> mCapturedSpes;
 
-    std::vector<char> readCommand(int*);
-    void handleRequest(char* xml);
-    void handleDeliver(char* xml);
-    void sendData(const char* data, uint32_t length, ResponseType type);
-    void sendString(const char* string, ResponseType type)
-    {
-        sendData(string, strlen(string), type);
-    }
+    std::vector<char> readCommand(int *);
+    void handleRequest(char * xml);
+    void handleDeliver(char * xml);
+    void sendData(const char * data, uint32_t length, ResponseType type);
+    void sendString(const char * string, ResponseType type) { sendData(string, strlen(string), type); }
     void sendDefaults();
-    void writeConfiguration(char* xml);
+    void writeConfiguration(char * xml);
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(StreamlineSetup);
+    StreamlineSetup(const StreamlineSetup &) = delete;
+    StreamlineSetup & operator=(const StreamlineSetup &) = delete;
+    StreamlineSetup(StreamlineSetup &&) = delete;
+    StreamlineSetup & operator=(StreamlineSetup &&) = delete;
 };
 
 #endif //__STREAMLINE_SETUP_H__

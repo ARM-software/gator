@@ -1,25 +1,6 @@
-/**
- * Copyright (C) Arm Limited 2013-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils.h"
-
-#include <dirent.h>
-#include <atomic>
-#include <condition_variable>
-#include <cstring>
-#include <cstdio>
-#include <cstddef>
-#include <cstdint>
-#include <map>
-#include <mutex>
-#include <set>
-#include <vector>
-#include <unistd.h>
 
 #include "CpuUtils_Topology.h"
 #include "Logging.h"
@@ -27,20 +8,32 @@
 #include "lib/File.h"
 #include "linux/PerCoreIdentificationThread.h"
 
-namespace cpu_utils
-{
+#include <atomic>
+#include <condition_variable>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <dirent.h>
+#include <map>
+#include <mutex>
+#include <set>
+#include <unistd.h>
+#include <vector>
+
+namespace cpu_utils {
     unsigned int getMaxCoreNum()
     {
         // why don't we just use /sys/devices/system/cpu/kernel_max
         // or pick the highest in /sys/devices/system/cpu/possible?
-        DIR *dir = opendir("/sys/devices/system/cpu");
+        DIR * dir = opendir("/sys/devices/system/cpu");
         if (dir == NULL) {
             logg.logError("Unable to determine the number of cores on the target, opendir failed");
             handleException();
         }
 
         long maxCoreNum = -1;
-        struct dirent *dirent;
+        struct dirent * dirent;
         while ((dirent = readdir(dir)) != NULL) {
             if (strncmp(dirent->d_name, "cpu", 3) == 0) {
                 long coreNum;
@@ -90,10 +83,10 @@ namespace cpu_utils
         std::string hardwareName;
         char temp[256]; // arbitrarily large amount
 
-        FILE *f = lib::fopen_cloexec("/proc/cpuinfo", "r");
+        FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
         if (f == NULL) {
             logg.logMessage("Error opening /proc/cpuinfo\n"
-                    "The core name in the captured xml file will be 'unknown'.");
+                            "The core name in the captured xml file will be 'unknown'.");
             return hardwareName;
         }
 
@@ -127,10 +120,10 @@ namespace cpu_utils
             const bool foundCPUPart = strncmp(temp, CPU_PART, sizeof(CPU_PART) - 1) == 0;
             const bool foundProcessor = strncmp(temp, PROCESSOR, sizeof(PROCESSOR) - 1) == 0;
             if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
-                char* position = strchr(temp, ':');
+                char * position = strchr(temp, ':');
                 if (position == NULL || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
                     logg.logMessage("Unknown format of /proc/cpuinfo\n"
-                            "The core name in the captured xml file will be 'unknown'.");
+                                    "The core name in the captured xml file will be 'unknown'.");
                     return hardwareName;
                 }
                 position += 2;
@@ -213,7 +206,7 @@ namespace cpu_utils
 
         if (!foundCoreName) {
             logg.logMessage("Could not determine core name from /proc/cpuinfo\n"
-                    "The core name in the captured xml file will be 'unknown'.");
+                            "The core name in the captured xml file will be 'unknown'.");
         }
 
         return hardwareName;
@@ -237,53 +230,56 @@ namespace cpu_utils
         //   to ensure that the cores remain online until cpuinfo is read
         {
             for (unsigned cpu = 0; cpu < cpuIds.length; ++cpu) {
-                perCoreThreads.emplace_back(
-                        new PerCoreIdentificationThread(
-                                ignoreOffline, cpu,
-                                [&] (unsigned c, unsigned /*core_id*/, unsigned physical_package_id, std::set<int> core_siblings, std::uint64_t midr_el1) -> void
-                                {
-                                    std::lock_guard<std::mutex> guard {mutex};
+                perCoreThreads.emplace_back(new PerCoreIdentificationThread(
+                    ignoreOffline,
+                    cpu,
+                    [&](unsigned c,
+                        unsigned /*core_id*/,
+                        unsigned physical_package_id,
+                        std::set<int> core_siblings,
+                        std::uint64_t midr_el1) -> void {
+                        std::lock_guard<std::mutex> guard{mutex};
 
-                                    // update completed count
-                                    identificationThreadCallbackCounter += 1;
-                                    cv.notify_one();
+                        // update completed count
+                        identificationThreadCallbackCounter += 1;
+                        cv.notify_one();
 
-                                    const unsigned cpuId = makeCpuId(midr_el1);
+                        const unsigned cpuId = makeCpuId(midr_el1);
 
-                                    // store the cluster / core mappings to allow us to fill in any gaps by assuming the same core type per cluster
-                                    if (physical_package_id != PerCoreIdentificationThread::INVALID_PACKAGE_ID) {
-                                        cpuToCluster[c] = physical_package_id;
+                        // store the cluster / core mappings to allow us to fill in any gaps by assuming the same core type per cluster
+                        if (physical_package_id != PerCoreIdentificationThread::INVALID_PACKAGE_ID) {
+                            cpuToCluster[c] = physical_package_id;
 
-                                        // also map cluster to MIDR value if read
-                                        if (midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                                            clusterToCpuIds[physical_package_id].insert(cpuId);
-                                        }
+                            // also map cluster to MIDR value if read
+                            if (midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
+                                clusterToCpuIds[physical_package_id].insert(cpuId);
+                            }
 
-                                        for (int sibling : core_siblings) {
-                                            const unsigned sibling_cpu = sibling;
+                            for (int sibling : core_siblings) {
+                                const unsigned sibling_cpu = sibling;
 
-                                            if (cpuToCluster.count(sibling_cpu) == 0) {
-                                                cpuToCluster[sibling_cpu] = physical_package_id;
-                                            }
-                                        }
-                                    }
+                                if (cpuToCluster.count(sibling_cpu) == 0) {
+                                    cpuToCluster[sibling_cpu] = physical_package_id;
+                                }
+                            }
+                        }
 
-                                    // map cpu to MIDR value if read
-                                    if (midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                                        cpuToCpuIds[c] = cpuId;
-                                    }
-                                }));
+                        // map cpu to MIDR value if read
+                        if (midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
+                            cpuToCpuIds[c] = cpuId;
+                        }
+                    }));
             }
 
             // wait until all threads are online
-            std::unique_lock<std::mutex> lock {mutex};
+            std::unique_lock<std::mutex> lock{mutex};
             cv.wait_for(lock, std::chrono::seconds(10), [&] {
                 return identificationThreadCallbackCounter >= cpuIds.length;
             });
         }
 
         // lock to prevent concurrent access to maps
-        std::lock_guard<std::mutex> lock (mutex);
+        std::lock_guard<std::mutex> lock(mutex);
 
         // log what we learnt
         for (const auto & pair : cpuToCpuIds) {
@@ -311,6 +307,3 @@ namespace cpu_utils
         return hardwareName;
     }
 }
-
-
-

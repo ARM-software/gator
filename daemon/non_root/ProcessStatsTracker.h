@@ -1,79 +1,61 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATSTRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATSTRACKER_H
 
-#include "ClassBoilerPlate.h"
 #include "non_root/CounterHelpers.h"
 #include "non_root/ProcessCounter.h"
 
 #include <algorithm>
 #include <string>
 
-namespace lib
-{
+namespace lib {
     class FsEntry;
 }
 
-namespace lnx
-{
+namespace lnx {
     class ProcPidStatFileRecord;
     class ProcPidStatmFileRecord;
 }
 
-namespace non_root
-{
+namespace non_root {
     class ProcessStateChangeHandler;
 
     /**
      * Extracts and monitors interesting process stats from various sources such as ProcPidStatFileRecord and ProcPidStatmFileRecord
      */
-    class ProcessStatsTracker
-    {
+    class ProcessStatsTracker {
     public:
-
         ProcessStatsTracker(int pid, int tid, unsigned long pageSize);
 
-        CLASS_DEFAULT_COPY_MOVE(ProcessStatsTracker);
+        ProcessStatsTracker(const ProcessStatsTracker &) = default;
+        ProcessStatsTracker & operator=(const ProcessStatsTracker &) = default;
+        ProcessStatsTracker(ProcessStatsTracker &&) = default;
+        ProcessStatsTracker & operator=(ProcessStatsTracker &&) = default;
 
-        const std::string & getComm() const
-        {
-            return comm.value();
-        }
+        const std::string & getComm() const { return comm.value(); }
 
-        const std::string & getExePath() const
-        {
-            return exe_path.value();
-        }
+        const std::string & getExePath() const { return exe_path.value(); }
 
-        int getPid() const
-        {
-            return pid;
-        }
+        int getPid() const { return pid; }
 
-        int getTid() const
-        {
-            return tid;
-        }
+        int getTid() const { return tid; }
 
-        unsigned long getProcessor() const
-        {
-            return stat_processor.value();
-        }
+        unsigned long getProcessor() const { return stat_processor.value(); }
 
         unsigned long long getTimeRunningDelta() const
         {
             return std::max<long long>(stat_stime.delta(), 0) + std::max<long long>(stat_utime.delta(), 0);
         }
 
-        void sendStats(unsigned long long timestampNS, ProcessStateChangeHandler & handler,
+        void sendStats(unsigned long long timestampNS,
+                       ProcessStateChangeHandler & handler,
                        bool sendFakeSchedulingEvents);
         void updateFromProcPidStatFileRecord(const lnx::ProcPidStatFileRecord & record);
         void updateFromProcPidStatmFileRecord(const lnx::ProcPidStatmFileRecord & record);
         void updateExe(const lib::FsEntry & exe);
 
     private:
-
         AbsoluteCounter<std::string> comm;
         AbsoluteCounter<std::string> exe_path;
         DeltaCounter<unsigned long> stat_minflt;
@@ -95,11 +77,15 @@ namespace non_root
         bool newProcess;
 
         template<typename T>
-        void writeCounter(unsigned long long timestampNS, ProcessStateChangeHandler & handler,
-                          AbsoluteProcessCounter id, AbsoluteCounter<T> & counter);
+        void writeCounter(unsigned long long timestampNS,
+                          ProcessStateChangeHandler & handler,
+                          AbsoluteProcessCounter id,
+                          AbsoluteCounter<T> & counter);
 
         template<typename T>
-        void writeCounter(unsigned long long timestampNS, ProcessStateChangeHandler & handler, DeltaProcessCounter id,
+        void writeCounter(unsigned long long timestampNS,
+                          ProcessStateChangeHandler & handler,
+                          DeltaProcessCounter id,
                           DeltaCounter<T> & counter);
     };
 }

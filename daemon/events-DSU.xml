@@ -1,7 +1,7 @@
-<!-- Copyright (C) 2017, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2020 by Arm Limited. All rights reserved. -->
 
-  <counter_set name="DSU_cnt" count="6"/>
-  <category name="DSU" counter_set="DSU_cnt" per_cpu="no">
+<counter_set name="DSU_cnt" count="6"/>
+<category name="DSU" counter_set="DSU_cnt" per_cpu="no">
     <!--CYCLES-->
     <event counter="DSU_ccnt" title="DSU Clock" event="0x0011" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
     <!--BUS_ACCESS-->
@@ -10,8 +10,6 @@
     <event title="DSU Errors" event="0x001A" name="Local memory error" description="Counts every Correctable or Uncorrectable memory error (ECC or parity) in the protected RAMs." />
     <!--BUS_CYCLES-->
     <event title="DSU Bus Clock" event="0x001D" name="Bus cycles" description="ACE or CHI bus cycle counter." display="hertz" units="Hz" average_selection="yes" />
-    <!--CHAIN-->
-    <event title="DSU Chain" event="0x001E" name="Chain" description="Odd performance counter chain mode." />
     <!--L3D_CACHE_ALLOCATE-->
     <event title="DSU L3 Cache" event="0x0029" name="Level 3 unified cache allocation without refill" description="Counts every full cache line write into the L3 cache which does not cause a linefill." />
     <!--L3D_CACHE_REFILL-->
@@ -84,4 +82,4 @@
     <event title="DSU SCU Stash" event="0x0514" name="Stash terminated, ICN" description="Counts every killed stash transaction originating from the interconnect that is terminated due to an incompatible match." />
     <!--SCU_HZD_ADDRESS-->
     <event title="DSU SCU Hazard" event="0x00D0" name="Arbitration hazard, address" description="Counts every flush caused by an address hazard." />
-  </category>
+</category>

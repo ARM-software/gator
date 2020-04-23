@@ -1,39 +1,31 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIPARSER_H_
 #define GATORCLIPARSER_H_
 
-#include <unistd.h>
-#include <string>
-#include <sys/stat.h>
-#include <getopt.h>
-#include <map>
-#include <vector>
-#include <set>
-#include <string.h>
-
-#include "OlyUtility.h"
-#include "Logging.h"
-#include "ClassBoilerPlate.h"
 #include "Configuration.h"
 #include "GatorCLIFlags.h"
+#include "Logging.h"
+#include "OlyUtility.h"
+
+#include <getopt.h>
+#include <map>
+#include <set>
+#include <string.h>
+#include <string>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <vector>
 
 const int ERROR_PARSING = -101;
 
-#define DEFAULT_PORT                8080
-#define DISABLE_TCP_USE_UDS_PORT    -1
+#define DEFAULT_PORT 8080
+#define DISABLE_TCP_USE_UDS_PORT -1
 
 /**
  * For containing the results of parsing
  */
-class ParserResult
-{
+class ParserResult {
 public:
     enum class ExecutionMode {
         LOCAL_CAPTURE,
@@ -52,29 +44,29 @@ public:
     ~ParserResult();
 
     std::vector<SpeConfiguration> mSpeConfigs;
-    const char *mCaptureWorkingDir;
+    const char * mCaptureWorkingDir;
     std::vector<std::string> mCaptureCommand;
     std::set<int> mPids;
-    const char *mSessionXMLPath;
-    const char *mTargetPath;
-    const char *mConfigurationXMLPath;
-    const char *mEventsXMLPath;
-    const char *mEventsXMLAppend;
-    const char *mWaitForCommand;
+    const char * mSessionXMLPath;
+    const char * mTargetPath;
+    const char * mConfigurationXMLPath;
+    const char * mEventsXMLPath;
+    const char * mEventsXMLAppend;
+    const char * mWaitForCommand;
 
     int mBacktraceDepth;
     int mSampleRate;
     int mDuration;
     int mAndroidApiLevel;
     int mPerfMmapSizeInPages;
+    int mSpeSampleRate;
 
     bool mFtraceRaw;
     bool mStopGator;
     bool mSystemWide;
     bool mAllowCommands;
 
-    const char *module;
-    const char *pmuPath;
+    const char * pmuPath;
     int port;
 
     int64_t parameterSetFlag;
@@ -84,27 +76,33 @@ public:
     ExecutionMode mode;
     std::set<Printable> printables;
 
-    CLASS_DELETE_COPY_MOVE(ParserResult);
+    ParserResult(const ParserResult &) = delete;
+    ParserResult & operator=(const ParserResult &) = delete;
+    ParserResult(ParserResult &&) = delete;
+    ParserResult & operator=(ParserResult &&) = delete;
 };
 /**
  * This class is responsible for parsing all the command line arguments
  * passed to Gator.
  */
-class GatorCLIParser
-{
+class GatorCLIParser {
 public:
     GatorCLIParser();
     ~GatorCLIParser();
 
-    void parseCLIArguments(int argc, char* argv[], const char* version_string, int maxPerfCounter, const char* gSrcMd5);
-    bool hasDebugFlag(int argc, const char* const argv[]);
+    void parseCLIArguments(int argc,
+                           char * argv[],
+                           const char * version_string,
+                           int maxPerfCounter,
+                           const char * gSrcMd5);
+    bool hasDebugFlag(int argc, const char * const argv[]);
     struct cmdline_t getGatorSetting();
     ParserResult result;
 
 private:
     int perfCounterCount;
-    void addCounter(int startpos, int pos, std::string &counters);
-    int findAndUpdateCmndLineCmnd(int argc, char** argv);
+    void addCounter(int startpos, int pos, std::string & counters);
+    int findAndUpdateCmndLineCmnd(int argc, char ** argv);
     void parseAndUpdateSpe();
 };
 

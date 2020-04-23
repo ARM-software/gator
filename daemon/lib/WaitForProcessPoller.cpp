@@ -1,36 +1,23 @@
-/**
- * Copyright (C) Arm Limited 2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #include "lib/WaitForProcessPoller.h"
 
-#include <string>
 #include "Logging.h"
 
-namespace
-{
+#include <string>
+
+namespace {
     /**
      * Utility class that processes the results of a single pass
      */
-    class WaitForProcessPollerPass : public lnx::ProcessPollerBase::IProcessPollerReceiver
-    {
+    class WaitForProcessPollerPass : public lnx::ProcessPollerBase::IProcessPollerReceiver {
     public:
-
         WaitForProcessPollerPass(const std::string & commandName, const lib::Optional<lib::FsEntry> & realPath)
-            :   mCommandName (commandName),
-                mRealPath (realPath),
-                mPids ()
+            : mCommandName(commandName), mRealPath(realPath), mPids()
         {
         }
 
-        inline const std::set<int> & pids() const
-        {
-            return mPids;
-        }
+        inline const std::set<int> & pids() const { return mPids; }
 
         virtual void onProcessDirectory(int pid, const lib::FsEntry & path) override
         {
@@ -40,7 +27,6 @@ namespace
         }
 
     private:
-
         const std::string & mCommandName;
         const lib::Optional<lib::FsEntry> & mRealPath;
         std::set<int> mPids;
@@ -52,9 +38,11 @@ namespace
                 const auto cmdline = lib::readFileContents(cmdlineFile);
 
                 // cmdline is separated by nulls so use c_str() to extract the command name
-                const std::string command { cmdline.c_str() };
+                const std::string command{cmdline.c_str()};
                 if (!command.empty()) {
-                    logg.logMessage("Wait for Process: Scanning '%s': cmdline[0] = '%s'", path.path().c_str(), command.c_str());
+                    logg.logMessage("Wait for Process: Scanning '%s': cmdline[0] = '%s'",
+                                    path.path().c_str(),
+                                    command.c_str());
 
                     // track it if they are the same string
                     if (mCommandName == command) {
@@ -96,24 +84,19 @@ namespace
             return false;
         }
 
-        void trackPid(int pid)
-        {
-            mPids.insert(pid);
-        }
+        void trackPid(int pid) { mPids.insert(pid); }
     };
 }
 
-
 WaitForProcessPoller::WaitForProcessPoller(const char * commandName)
-    :   mCommandName (commandName),
-        mRealPath (lib::FsEntry::create(commandName).realpath())
+    : mCommandName(commandName), mRealPath(lib::FsEntry::create(commandName).realpath())
 {
 }
 
 bool WaitForProcessPoller::poll(std::set<int> & pids)
 {
     // poll
-    WaitForProcessPollerPass pass { mCommandName, mRealPath };
+    WaitForProcessPollerPass pass{mCommandName, mRealPath};
     ProcessPollerBase::poll(false, false, pass);
 
     const auto & detectedPids = pass.pids();

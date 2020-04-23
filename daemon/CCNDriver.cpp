@@ -1,25 +1,17 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #include "CCNDriver.h"
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include "k/perf_event.h"
-
 #include "Config.h"
-#include "lib/Utils.h"
 #include "Logging.h"
 #include "SessionData.h"
+#include "k/perf_event.h"
+#include "lib/Utils.h"
+
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 static const char TAG_CATEGORY[] = "category";
 static const char TAG_COUNTER_SET[] = "counter_set";
@@ -48,59 +40,109 @@ static const char CCN_5XX[] = "CCN-5xx";
 #define CCN_COUNT 8
 static const char ARM_CCN_5XX_CNT[] = ARM_CCN_5XX "cnt";
 
-static const char * const VC_TYPES[] = { "REQ", "RSP", "SNP", "DAT" };
-static const char * const XP_EVENT_NAMES[] = { NULL, "H-bit", "S-bit", "P-Cnt", "TknV" };
+static const char * const VC_TYPES[] = {"REQ", "RSP", "SNP", "DAT"};
+static const char * const XP_EVENT_NAMES[] = {NULL, "H-bit", "S-bit", "P-Cnt", "TknV"};
 static const char * const XP_EVENT_DESCRIPTIONS[] = {
-        NULL, "Set H-bit, signaled when this XP sets the H-bit.", "Set S-bit, signaled when this XP sets the S-bit.",
-        "Set P-Cnt, signaled when this XP sets the P-Cnt. This is not applicable for the SNP VC.",
-        "No TknV, signaled when this XP transmits a valid packet." };
-static const char * const HNF_EVENT_NAMES[] = { NULL, "Cache Miss", "L3 SF Cache Access", "Cache Fill", "POCQ Retry",
-                                                "POCQ Reqs Recvd", "SF Hit", "SF Evictions", "Snoops Sent",
-                                                "Snoops Broadcast", "L3 Eviction", "L3 Fill Invalid Way", "MC Retries",
-                                                "MC Reqs", "QOS HH Retry" };
+    NULL,
+    "Set H-bit, signaled when this XP sets the H-bit.",
+    "Set S-bit, signaled when this XP sets the S-bit.",
+    "Set P-Cnt, signaled when this XP sets the P-Cnt. This is not applicable for the SNP VC.",
+    "No TknV, signaled when this XP transmits a valid packet."};
+static const char * const HNF_EVENT_NAMES[] = {NULL,
+                                               "Cache Miss",
+                                               "L3 SF Cache Access",
+                                               "Cache Fill",
+                                               "POCQ Retry",
+                                               "POCQ Reqs Recvd",
+                                               "SF Hit",
+                                               "SF Evictions",
+                                               "Snoops Sent",
+                                               "Snoops Broadcast",
+                                               "L3 Eviction",
+                                               "L3 Fill Invalid Way",
+                                               "MC Retries",
+                                               "MC Reqs",
+                                               "QOS HH Retry"};
 static const char * const HNF_EVENT_DESCRIPTIONS[] = {
-        NULL, "Counts the total cache misses. This is the first time lookup result, and is high priority.",
-        "Counts the number of cache accesses. This is the first time access, and is high priority.",
-        "Counts the total allocations in the HN L3 cache, and all cache line allocations to the L3 cache.",
-        "Counts the number of requests that have been retried.", "Counts the number of requests received by HN.",
-        "Counts the number of snoop filter hits.",
-        "Counts the number of snoop filter evictions. Cache invalidations are initiated.",
-        "Counts the number of snoops sent. Does not differentiate between broadcast or directed snoops.",
-        "Counts the number of snoop broadcasts sent.", "Counts the number of L3 evictions.",
-        "Counts the number of L3 fills to an invalid way.",
-        "Counts the number of transactions retried by the memory controller.",
-        "Counts the number of requests to the memory controller.",
-        "Counts the number of times a highest-priority QoS class was retried at the HN-F." };
-static const char * const RNI_EVENT_NAMES[] = { NULL, "S0 RDataBeats", "S1 RDataBeats", "S2 RDataBeats",
-                                                "RXDAT Flits received", "TXDAT Flits sent", "Total TXREQ Flits sent",
-                                                "Retried TXREQ Flits sent", "RRT full", "WRT full",
-                                                "Replayed TXREQ Flits" };
-static const char * const RNI_EVENT_DESCRIPTIONS[] = { NULL, "S0 RDataBeats.", "S1 RDataBeats.", "S2 RDataBeats.",
-                                                       "RXDAT Flits received.", "TXDAT Flits sent.",
-                                                       "Total TXREQ Flits sent.", "Retried TXREQ Flits sent.",
-                                                       "RRT full.", "WRT full.", "Replayed TXREQ Flits." };
-static const char * const SBAS_EVENT_NAMES[] = { NULL, "S0 RDataBeats", NULL, NULL, "RXDAT Flits received",
-                                                 "TXDAT Flits sent", "Total TXREQ Flits sent",
-                                                 "Retried TXREQ Flits sent", "RRT full", "WRT full",
-                                                 "Replayed TXREQ Flits" };
-static const char * const SBAS_EVENT_DESCRIPTIONS[] = { NULL, "S0 RDataBeats.", NULL, NULL, "RXDAT Flits received.",
-                                                        "TXDAT Flits sent.", "Total TXREQ Flits sent.",
-                                                        "Retried TXREQ Flits sent.", "RRT full.", "WRT full.",
-                                                        "Replayed TXREQ Flits." };
+    NULL,
+    "Counts the total cache misses. This is the first time lookup result, and is high priority.",
+    "Counts the number of cache accesses. This is the first time access, and is high priority.",
+    "Counts the total allocations in the HN L3 cache, and all cache line allocations to the L3 cache.",
+    "Counts the number of requests that have been retried.",
+    "Counts the number of requests received by HN.",
+    "Counts the number of snoop filter hits.",
+    "Counts the number of snoop filter evictions. Cache invalidations are initiated.",
+    "Counts the number of snoops sent. Does not differentiate between broadcast or directed snoops.",
+    "Counts the number of snoop broadcasts sent.",
+    "Counts the number of L3 evictions.",
+    "Counts the number of L3 fills to an invalid way.",
+    "Counts the number of transactions retried by the memory controller.",
+    "Counts the number of requests to the memory controller.",
+    "Counts the number of times a highest-priority QoS class was retried at the HN-F."};
+static const char * const RNI_EVENT_NAMES[] = {NULL,
+                                               "S0 RDataBeats",
+                                               "S1 RDataBeats",
+                                               "S2 RDataBeats",
+                                               "RXDAT Flits received",
+                                               "TXDAT Flits sent",
+                                               "Total TXREQ Flits sent",
+                                               "Retried TXREQ Flits sent",
+                                               "RRT full",
+                                               "WRT full",
+                                               "Replayed TXREQ Flits"};
+static const char * const RNI_EVENT_DESCRIPTIONS[] = {NULL,
+                                                      "S0 RDataBeats.",
+                                                      "S1 RDataBeats.",
+                                                      "S2 RDataBeats.",
+                                                      "RXDAT Flits received.",
+                                                      "TXDAT Flits sent.",
+                                                      "Total TXREQ Flits sent.",
+                                                      "Retried TXREQ Flits sent.",
+                                                      "RRT full.",
+                                                      "WRT full.",
+                                                      "Replayed TXREQ Flits."};
+static const char * const SBAS_EVENT_NAMES[] = {NULL,
+                                                "S0 RDataBeats",
+                                                NULL,
+                                                NULL,
+                                                "RXDAT Flits received",
+                                                "TXDAT Flits sent",
+                                                "Total TXREQ Flits sent",
+                                                "Retried TXREQ Flits sent",
+                                                "RRT full",
+                                                "WRT full",
+                                                "Replayed TXREQ Flits"};
+static const char * const SBAS_EVENT_DESCRIPTIONS[] = {NULL,
+                                                       "S0 RDataBeats.",
+                                                       NULL,
+                                                       NULL,
+                                                       "RXDAT Flits received.",
+                                                       "TXDAT Flits sent.",
+                                                       "Total TXREQ Flits sent.",
+                                                       "Retried TXREQ Flits sent.",
+                                                       "RRT full.",
+                                                       "WRT full.",
+                                                       "Replayed TXREQ Flits."};
 
 // This class is used only to poll for CCN-5xx configuration and emit events XML for it. All other operations are handled by PerfDriver
 
-static int sys_perf_event_open(struct perf_event_attr * const attr, const pid_t pid, const int cpu, const int group_fd,
+static int sys_perf_event_open(struct perf_event_attr * const attr,
+                               const pid_t pid,
+                               const int cpu,
+                               const int group_fd,
                                const unsigned long flags)
 {
     return syscall(__NR_perf_event_open, attr, pid, cpu, group_fd, flags);
 }
 
-static unsigned int getConfig(unsigned int node, unsigned int type, unsigned int event, unsigned int port,
+static unsigned int getConfig(unsigned int node,
+                              unsigned int type,
+                              unsigned int event,
+                              unsigned int port,
                               unsigned int vc)
 {
-    return ((node & 0xff) << 0) | ((type & 0xff) << 8) | ((event & 0xff) << 16) | ((port & 0x03) << 24)
-            | ((vc & 0x07) << 26) | 0;
+    return ((node & 0xff) << 0) | ((type & 0xff) << 8) | ((event & 0xff) << 16) | ((port & 0x03) << 24) |
+           ((vc & 0x07) << 26) | 0;
 }
 
 static bool perfPoll(struct perf_event_attr * const pea)
@@ -113,12 +155,7 @@ static bool perfPoll(struct perf_event_attr * const pea)
     return true;
 }
 
-CCNDriver::CCNDriver()
-        : Driver("CCN"),
-          mNodeTypes(NULL),
-          mXpCount(0)
-{
-}
+CCNDriver::CCNDriver() : Driver("CCN"), mNodeTypes(NULL), mXpCount(0) {}
 
 CCNDriver::~CCNDriver()
 {
@@ -259,7 +296,11 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
                 mxmlElementSetAttr(event, ATTR_OPTION_SET, XP_REGION);
                 mxmlElementSetAttr(event, ATTR_TITLE, CCN_5XX);
                 mxmlElementSetAttrf(event, ATTR_NAME, "Bus %i: %s: %s", bus, VC_TYPES[vc], XP_EVENT_NAMES[eventId]);
-                mxmlElementSetAttrf(event, ATTR_DESCRIPTION, "Bus %i: %s: %s", bus, VC_TYPES[vc],
+                mxmlElementSetAttrf(event,
+                                    ATTR_DESCRIPTION,
+                                    "Bus %i: %s: %s",
+                                    bus,
+                                    VC_TYPES[vc],
                                     XP_EVENT_DESCRIPTIONS[eventId]);
             }
         }
@@ -312,36 +353,36 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
 
     for (int i = 0; i < 2 * mXpCount; ++i) {
         switch (mNodeTypes[i]) {
-        case NT_HNF: {
-            mxml_node_t * const option = mxmlNewElement(hnf_option_set, TAG_OPTION);
-            mxmlElementSetAttrf(option, ATTR_EVENT_DELTA, "0x%x", getConfig(i, 0, 0, 0, 0));
-            mxmlElementSetAttrf(option, ATTR_NAME, "HN-F %i", i);
-            mxmlElementSetAttrf(option, ATTR_DESCRIPTION, "Fully-coherent Home Node %i", i);
-            break;
-        }
-        case NT_RNI: {
-            mxml_node_t * const option = mxmlNewElement(rni_option_set, TAG_OPTION);
-            mxmlElementSetAttrf(option, ATTR_EVENT_DELTA, "0x%x", getConfig(i, 0, 0, 0, 0));
-            mxmlElementSetAttrf(option, ATTR_NAME, "RN-I %i", i);
-            mxmlElementSetAttrf(option, ATTR_DESCRIPTION, "I/O-coherent Requesting Node %i", i);
-            break;
-        }
-        case NT_SBAS: {
-            mxml_node_t * const option = mxmlNewElement(sbas_option_set, TAG_OPTION);
-            mxmlElementSetAttrf(option, ATTR_EVENT_DELTA, "0x%x", getConfig(i, 0, 0, 0, 0));
-            mxmlElementSetAttrf(option, ATTR_NAME, "SBAS %i", i);
-            mxmlElementSetAttrf(option, ATTR_DESCRIPTION, "ACE master to CHI protocol bridge %i", i);
-            break;
-        }
-        default:
-            continue;
+            case NT_HNF: {
+                mxml_node_t * const option = mxmlNewElement(hnf_option_set, TAG_OPTION);
+                mxmlElementSetAttrf(option, ATTR_EVENT_DELTA, "0x%x", getConfig(i, 0, 0, 0, 0));
+                mxmlElementSetAttrf(option, ATTR_NAME, "HN-F %i", i);
+                mxmlElementSetAttrf(option, ATTR_DESCRIPTION, "Fully-coherent Home Node %i", i);
+                break;
+            }
+            case NT_RNI: {
+                mxml_node_t * const option = mxmlNewElement(rni_option_set, TAG_OPTION);
+                mxmlElementSetAttrf(option, ATTR_EVENT_DELTA, "0x%x", getConfig(i, 0, 0, 0, 0));
+                mxmlElementSetAttrf(option, ATTR_NAME, "RN-I %i", i);
+                mxmlElementSetAttrf(option, ATTR_DESCRIPTION, "I/O-coherent Requesting Node %i", i);
+                break;
+            }
+            case NT_SBAS: {
+                mxml_node_t * const option = mxmlNewElement(sbas_option_set, TAG_OPTION);
+                mxmlElementSetAttrf(option, ATTR_EVENT_DELTA, "0x%x", getConfig(i, 0, 0, 0, 0));
+                mxmlElementSetAttrf(option, ATTR_NAME, "SBAS %i", i);
+                mxmlElementSetAttrf(option, ATTR_DESCRIPTION, "ACE master to CHI protocol bridge %i", i);
+                break;
+            }
+            default:
+                continue;
         }
     }
 }
 
 std::string CCNDriver::validateCounters() const
 {
-    int counts[CCN_COUNT][2] = { { 0 } };
+    int counts[CCN_COUNT][2] = {{0}};
     const unsigned int mask = getConfig(0xff, 0xff, 0, 0, 0);
 
     for (int i = 0; i < ARRAY_LENGTH(gSessionData.mCounters); ++i) {

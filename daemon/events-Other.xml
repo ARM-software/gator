@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016, 2018, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
 
 <counter_set name="Other_cnt" count="6"/>
 <category name="Other" counter_set="Other_cnt" per_cpu="yes" supports_event_based_sampling="yes">

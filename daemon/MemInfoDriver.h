@@ -1,20 +1,12 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #ifndef MEMINFODRIVER_H
 #define MEMINFODRIVER_H
 
-#include "ClassBoilerPlate.h"
-#include "PolledDriver.h"
 #include "DynBuf.h"
+#include "PolledDriver.h"
 
-class MemInfoDriver : public PolledDriver
-{
+class MemInfoDriver : public PolledDriver {
 private:
     typedef PolledDriver super;
 
@@ -34,7 +26,10 @@ private:
     int64_t mSlab;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(MemInfoDriver);
+    MemInfoDriver(const MemInfoDriver &) = delete;
+    MemInfoDriver & operator=(const MemInfoDriver &) = delete;
+    MemInfoDriver(MemInfoDriver &&) = delete;
+    MemInfoDriver & operator=(MemInfoDriver &&) = delete;
 };
 
 #endif // MEMINFODRIVER_H

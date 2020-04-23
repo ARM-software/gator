@@ -1,25 +1,17 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef EXTERNALDRIVER_H
 #define EXTERNALDRIVER_H
 
-#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
 
-class ExternalDriver : public SimpleDriver
-{
+class ExternalDriver : public SimpleDriver {
 public:
     ExternalDriver();
 
-    bool claimCounter(Counter &counter) const;
+    bool claimCounter(Counter & counter) const;
     void resetCounters();
-    void setupCounter(Counter &counter);
+    void setupCounter(Counter & counter);
 
     void start();
 
@@ -36,7 +28,10 @@ private:
     bool mStarted;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(ExternalDriver);
+    ExternalDriver(const ExternalDriver &) = delete;
+    ExternalDriver & operator=(const ExternalDriver &) = delete;
+    ExternalDriver(ExternalDriver &&) = delete;
+    ExternalDriver & operator=(ExternalDriver &&) = delete;
 };
 
 #endif // EXTERNALDRIVER_H

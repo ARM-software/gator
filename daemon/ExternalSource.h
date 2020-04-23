@@ -1,29 +1,21 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef EXTERNALSOURCE_H
 #define EXTERNALSOURCE_H
 
-#include <semaphore.h>
-
-#include "ClassBoilerPlate.h"
 #include "Buffer.h"
 #include "Monitor.h"
 #include "OlySocket.h"
 #include "Source.h"
 
+#include <semaphore.h>
+
 class Drivers;
 
 // Counters from external sources like graphics drivers and annotations
-class ExternalSource : public Source
-{
+class ExternalSource : public Source {
 public:
-    ExternalSource(Child & child, sem_t *senderSem, Drivers & drivers);
+    ExternalSource(Child & child, sem_t * senderSem, Drivers & drivers);
     ~ExternalSource();
 
     virtual bool prepare() override;
@@ -56,7 +48,10 @@ private:
     Drivers & mDrivers;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(ExternalSource);
+    ExternalSource(const ExternalSource &) = delete;
+    ExternalSource & operator=(const ExternalSource &) = delete;
+    ExternalSource(ExternalSource &&) = delete;
+    ExternalSource & operator=(ExternalSource &&) = delete;
 };
 
 #endif // EXTERNALSOURCE_H

@@ -1,17 +1,19 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef EVENTS_XML_PROCESSOR_H
 #define EVENTS_XML_PROCESSOR_H
 
-#include <memory>
-
+#include "../lib/Optional.h"
+#include "Events.h"
 #include "lib/Span.h"
 #include "xml/MxmlUtils.h"
 
+#include <memory>
+#include <tuple>
+
 class GatorCpu;
 
-namespace events_xml
-{
+namespace events_xml {
     /**
      * Merge the 'append' tree into the 'main' tree
      *
@@ -35,6 +37,12 @@ namespace events_xml
      * @return The element
      */
     mxml_node_t * getEventsElement(mxml_node_t * xml);
+
+    /**
+     * Create a category node and the matching counter set if needed
+     * @return a pair where the first element is the category and the second is the possibly null counter set
+     */
+    std::pair<mxml_unique_ptr, mxml_unique_ptr> createCategoryAndCounterSetNodes(const Category & category);
 }
 
 #endif // EVENTS_XML_PROCESSOR_H

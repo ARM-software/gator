@@ -1,17 +1,16 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcStatFileRecord.h"
+
 #include "lib/Assert.h"
 #include "lib/Format.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
-#include <cctype>
 
-namespace lnx
-{
-    namespace
-    {
+namespace lnx {
+    namespace {
         /**
          * Skip over any spaces
          *
@@ -65,7 +64,10 @@ namespace lnx
          *
          * @return True if the strings match, false otherwise
          */
-        static bool matchToken(const char * string, const unsigned from, const unsigned to, const char * against,
+        static bool matchToken(const char * string,
+                               const unsigned from,
+                               const unsigned to,
+                               const char * against,
                                const bool full)
         {
             unsigned apos = 0;
@@ -106,7 +108,8 @@ namespace lnx
          *
          * @return As per skipLine
          */
-        static unsigned parseUnsignedLong(lib::Optional<unsigned long> & result, const char * string,
+        static unsigned parseUnsignedLong(lib::Optional<unsigned long> & result,
+                                          const char * string,
                                           const unsigned from)
         {
             // just decode a single value
@@ -128,7 +131,8 @@ namespace lnx
          *
          * @return As per skipLine
          */
-        static unsigned parsePagingCounts(lib::Optional<ProcStatFileRecord::PagingCounts> & result, const char * string,
+        static unsigned parsePagingCounts(lib::Optional<ProcStatFileRecord::PagingCounts> & result,
+                                          const char * string,
                                           const unsigned from)
         {
             // decode two values
@@ -162,7 +166,9 @@ namespace lnx
          * Extract the time fields for `CpuTimes`
          */
         template<unsigned N>
-        static unsigned decodeCpuTimes(const char * string, const unsigned from, unsigned long long (&times)[N],
+        static unsigned decodeCpuTimes(const char * string,
+                                       const unsigned from,
+                                       unsigned long long (&times)[N],
                                        unsigned & out_num_decoded)
         {
             unsigned last_pos = from;
@@ -196,11 +202,13 @@ namespace lnx
          *
          * @return As per skipLine
          */
-        static unsigned parseCpuTime(std::vector<ProcStatFileRecord::CpuTime> & cpus, const char * string,
-                                     unsigned identifier_from, unsigned token_end)
+        static unsigned parseCpuTime(std::vector<ProcStatFileRecord::CpuTime> & cpus,
+                                     const char * string,
+                                     unsigned identifier_from,
+                                     unsigned token_end)
         {
             unsigned long cpu_id;
-            unsigned long long times[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            unsigned long long times[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
             // decode the cpu number
             if ((identifier_from + 1) < token_end) {
@@ -224,8 +232,7 @@ namespace lnx
         }
     }
 
-    ProcStatFileRecord::ProcStatFileRecord(const char * stat_contents)
-            : ProcStatFileRecord()
+    ProcStatFileRecord::ProcStatFileRecord(const char * stat_contents) : ProcStatFileRecord()
     {
         if (stat_contents != nullptr) {
             unsigned current_offset = 0;
@@ -318,37 +325,30 @@ namespace lnx
     }
 
     ProcStatFileRecord::ProcStatFileRecord()
-            : cpus(),
-              page(),
-              swap(),
-              intr(),
-              soft_irq(),
-              ctxt(),
-              btime(),
-              processes(),
-              procs_running(),
-              procs_blocked()
+        : cpus(), page(), swap(), intr(), soft_irq(), ctxt(), btime(), processes(), procs_running(), procs_blocked()
     {
     }
 
-    ProcStatFileRecord::ProcStatFileRecord(std::vector<CpuTime> && cpus_, lib::Optional<PagingCounts> && page_,
-                                           lib::Optional<PagingCounts> && swap_, lib::Optional<unsigned long> && intr_,
+    ProcStatFileRecord::ProcStatFileRecord(std::vector<CpuTime> && cpus_,
+                                           lib::Optional<PagingCounts> && page_,
+                                           lib::Optional<PagingCounts> && swap_,
+                                           lib::Optional<unsigned long> && intr_,
                                            lib::Optional<unsigned long> && soft_irq_,
                                            lib::Optional<unsigned long> && ctxt_,
                                            lib::Optional<unsigned long> && btime_,
                                            lib::Optional<unsigned long> && processes_,
                                            lib::Optional<unsigned long> && procs_running_,
                                            lib::Optional<unsigned long> && procs_blocked_)
-            : cpus(std::move(cpus_)),
-              page(std::move(page_)),
-              swap(std::move(swap_)),
-              intr(std::move(intr_)),
-              soft_irq(std::move(soft_irq_)),
-              ctxt(std::move(ctxt_)),
-              btime(std::move(btime_)),
-              processes(std::move(processes_)),
-              procs_running(std::move(procs_running_)),
-              procs_blocked(std::move(procs_blocked_))
+        : cpus(std::move(cpus_)),
+          page(std::move(page_)),
+          swap(std::move(swap_)),
+          intr(std::move(intr_)),
+          soft_irq(std::move(soft_irq_)),
+          ctxt(std::move(ctxt_)),
+          btime(std::move(btime_)),
+          processes(std::move(processes_)),
+          procs_running(std::move(procs_running_)),
+          procs_blocked(std::move(procs_blocked_))
     {
     }
 }

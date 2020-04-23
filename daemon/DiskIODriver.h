@@ -1,20 +1,12 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #ifndef DISKIODRIVER_H
 #define DISKIODRIVER_H
 
-#include "ClassBoilerPlate.h"
-#include "PolledDriver.h"
 #include "DynBuf.h"
+#include "PolledDriver.h"
 
-class DiskIODriver : public PolledDriver
-{
+class DiskIODriver : public PolledDriver {
 private:
     typedef PolledDriver super;
 
@@ -34,7 +26,10 @@ private:
     uint64_t mWriteBytes;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(DiskIODriver);
+    DiskIODriver(const DiskIODriver &) = delete;
+    DiskIODriver & operator=(const DiskIODriver &) = delete;
+    DiskIODriver(DiskIODriver &&) = delete;
+    DiskIODriver & operator=(DiskIODriver &&) = delete;
 };
 
 #endif // DISKIODRIVER_H

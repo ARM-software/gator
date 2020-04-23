@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2018, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2018-2020 by Arm Limited. All rights reserved. -->
 
 <!-- Generic Armv8.2 SPE properties
 
@@ -178,7 +178,7 @@
            description="Load/store operation caused an access to at least the Last Level cache but is not completed by the Last Level cache. The event is not set for operations that are completed by a cache above the Last Level cache.">
         <valid-op-type class="load-store" />
     </event>
-    <event bit="10" ratio-label="Muli-socket Data Access" set-label="Remote Socket Access" clear-label="Local Socket Access"
+    <event bit="10" ratio-label="Multi-socket Data Access" set-label="Remote Socket Access" clear-label="Local Socket Access"
            name="Remote access"
            description="Load/store operation caused an access to another socket in a multi-socket system. This includes each data memory access that accesses another socket in a multi-socket system, including those that do not return data.">
         <valid-op-type class="load-store" />

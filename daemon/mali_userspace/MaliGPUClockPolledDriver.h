@@ -1,55 +1,52 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
 #define MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
 
-#include <unistd.h>
-#include <cstdint>
-#include <cstdlib>
 #include "DynBuf.h"
 #include "Logging.h"
-
-#include "PolledDriver.h"
 #include "MaliGPUClockPolledDriverCounter.h"
+#include "PolledDriver.h"
+
+#include <cstdint>
+#include <cstdlib>
+#include <unistd.h>
 
 namespace mali_userspace {
 
-    class MaliGPUClockPolledDriver : public PolledDriver
-    {
+    class MaliGPUClockPolledDriver : public PolledDriver {
     private:
-
         typedef PolledDriver super;
 
     public:
-
         MaliGPUClockPolledDriver(std::string clockPath)
-                : PolledDriver("MaliGPUClock"),
-                  mClockPath(clockPath),
-                  mClockValue(0),
-                  mBuf()
+            : PolledDriver("MaliGPUClock"), mClockPath(clockPath), mClockValue(0), mBuf()
         {
             logg.logMessage("GPU CLOCK POLLING '%s'", mClockPath.c_str());
         }
 
         // Intentionally unimplemented
-        CLASS_DELETE_COPY_MOVE(MaliGPUClockPolledDriver)
-        ;
+        MaliGPUClockPolledDriver(const MaliGPUClockPolledDriver &) = delete;
+        MaliGPUClockPolledDriver & operator=(const MaliGPUClockPolledDriver &) = delete;
+        MaliGPUClockPolledDriver(MaliGPUClockPolledDriver &&) = delete;
+        MaliGPUClockPolledDriver & operator=(MaliGPUClockPolledDriver &&) = delete;
 
         void readEvents(mxml_node_t * const /*root*/)
         {
             if (access(mClockPath.c_str(), R_OK) == 0) {
-                logg.logSetup("Mali GPU counters\nAccess %s is OK. GPU frequency counters available.", mClockPath.c_str());
-                setCounters(new mali_userspace::MaliGPUClockPolledDriverCounter(getCounters(), "ARM_Mali-clock", mClockValue));
+                logg.logSetup("Mali GPU counters\nAccess %s is OK. GPU frequency counters available.",
+                              mClockPath.c_str());
+                setCounters(
+                    new mali_userspace::MaliGPUClockPolledDriverCounter(getCounters(), "ARM_Mali-clock", mClockValue));
             }
             else {
 
-                logg.logSetup("Mali GPU counters\nCannot access %s. GPU frequency counters not available.", mClockPath.c_str());
+                logg.logSetup("Mali GPU counters\nCannot access %s. GPU frequency counters not available.",
+                              mClockPath.c_str());
             }
         }
 
-        void start()
-        {
-        }
+        void start() {}
 
         void read(Buffer * const buffer)
         {
@@ -61,7 +58,6 @@ namespace mali_userspace {
         }
 
     private:
-
         std::string mClockPath;
         uint64_t mClockValue;
         DynBuf mBuf;

@@ -1,12 +1,16 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "Proc.h"
+
+#include "Config.h"
+#include "DynBuf.h"
+#include "FtraceDriver.h"
+#include "Logging.h"
+#include "OlyUtility.h"
+#include "lib/Utils.h"
+#include "linux/perf/IPerfAttrsConsumer.h"
+#include "linux/proc/ProcPidStatFileRecord.h"
+#include "linux/proc/ProcessPollerBase.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -16,41 +20,24 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "linux/perf/IPerfAttrsConsumer.h"
-#include "Config.h"
-#include "DynBuf.h"
-#include "FtraceDriver.h"
-#include "Logging.h"
-#include "OlyUtility.h"
-#include "lib/Utils.h"
-
-#include "linux/proc/ProcessPollerBase.h"
-#include "linux/proc/ProcPidStatFileRecord.h"
-
-namespace
-{
+namespace {
     class ReadProcSysDependenciesPollerVisiter : private lnx::ProcessPollerBase::IProcessPollerReceiver,
-                                                 private lnx::ProcessPollerBase
-    {
+                                                 private lnx::ProcessPollerBase {
     public:
-
         ReadProcSysDependenciesPollerVisiter(uint64_t currTime_, IPerfAttrsConsumer & buffer_)
-                : currTime(currTime_),
-                  buffer(buffer_)
+            : currTime(currTime_), buffer(buffer_)
         {
         }
 
-        void poll()
-        {
-            ProcessPollerBase::poll(true, true, *this);
-        }
+        void poll() { ProcessPollerBase::poll(true, true, *this); }
 
     private:
-
         uint64_t currTime;
         IPerfAttrsConsumer & buffer;
 
-        virtual void onThreadDetails(int pid, int tid, const lnx::ProcPidStatFileRecord & statRecord,
+        virtual void onThreadDetails(int pid,
+                                     int tid,
+                                     const lnx::ProcPidStatFileRecord & statRecord,
                                      const lib::Optional<lnx::ProcPidStatmFileRecord> &,
                                      const lib::Optional<lib::FsEntry> & exe) override
         {
@@ -59,23 +46,16 @@ namespace
     };
 
     class ReadProcMapsPollerVisiter : private lnx::ProcessPollerBase::IProcessPollerReceiver,
-                                      private lnx::ProcessPollerBase
-    {
+                                      private lnx::ProcessPollerBase {
     public:
-
         ReadProcMapsPollerVisiter(uint64_t currTime_, IPerfAttrsConsumer & buffer_)
-                : currTime(currTime_),
-                  buffer(buffer_)
+            : currTime(currTime_), buffer(buffer_)
         {
         }
 
-        void poll()
-        {
-            ProcessPollerBase::poll(false, false, *this);
-        }
+        void poll() { ProcessPollerBase::poll(false, false, *this); }
 
     private:
-
         uint64_t currTime;
         IPerfAttrsConsumer & buffer;
 
@@ -89,7 +69,11 @@ namespace
     };
 }
 
-bool readProcSysDependencies(const uint64_t currTime, IPerfAttrsConsumer & buffer, DynBuf * const printb, DynBuf * const b1, FtraceDriver & ftraceDriver)
+bool readProcSysDependencies(const uint64_t currTime,
+                             IPerfAttrsConsumer & buffer,
+                             DynBuf * const printb,
+                             DynBuf * const b1,
+                             FtraceDriver & ftraceDriver)
 {
     ReadProcSysDependenciesPollerVisiter poller(currTime, buffer);
     poller.poll();

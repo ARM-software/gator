@@ -1,4 +1,4 @@
-# Copyright (C) 2016, 2017, 2018, 2019 by Arm Limited. All rights reserved.
+# Copyright (C) 2016-2020 by Arm Limited. All rights reserved.
 
 GATORD_C_SRC_FILES := \
     libsensors/access.c \
@@ -37,7 +37,6 @@ GATORD_CXX_SRC_FILES := \
     DiskIODriver.cpp \
     DriverCounter.cpp \
     Drivers.cpp \
-    DriverSource.cpp \
     DynBuf.cpp \
     ExternalDriver.cpp \
     ExternalSource.cpp \
@@ -46,7 +45,25 @@ GATORD_CXX_SRC_FILES := \
     FtraceDriver.cpp \
     GatorCLIParser.cpp \
     HwmonDriver.cpp \
-    KMod.cpp \
+    armnn/PacketDecoder.cpp \
+    armnn/PacketEncoder.cpp \
+    armnn/DecoderUtility.cpp \
+    armnn/CounterDirectoryDecoder.cpp \
+    armnn/CounterDirectoryStateUtils.cpp \
+    armnn/Driver.cpp \
+    armnn/GlobalState.cpp \
+    armnn/PacketDecoderEncoderFactory.cpp \
+    armnn/PacketUtility.cpp \
+    armnn/SessionStateTracker.cpp \
+    armnn/Session.cpp \
+    armnn/SessionThread.cpp \
+    armnn/SessionPacketSender.cpp \
+    armnn/SenderQueue.cpp \
+    armnn/SenderThread.cpp \
+    armnn/SocketAcceptor.cpp \
+    armnn/SocketAcceptorLoop.cpp \
+    armnn/SocketListener.cpp \
+    armnn/SocketIO.cpp \
     lib/Assert.cpp \
     lib/File.cpp \
     lib/FileDescriptor.cpp \

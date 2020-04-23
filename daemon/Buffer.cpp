@@ -1,41 +1,49 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "Buffer.h"
+
 #include "BufferUtils.h"
 #include "Logging.h"
 #include "Protocol.h"
 #include "Sender.h"
-#include "SessionData.h"
 #include "lib/Assert.h"
+
+#include <cstring>
 
 #define mask (mSize - 1)
 #define FRAME_HEADER_SIZE 3
 #define INVALID_LAST_EVENT_TIME (~0ull)
 
-Buffer::Buffer(const int32_t core, const FrameType frameType, const int size, sem_t * const readerSem)
-        : mBuf(new char[size]),
-          mReaderSem(readerSem),
-          mCommitTime(gSessionData.mLiveRate),
-          mWriterSem(),
-          mSize(size),
-          mReadPos(0),
-          mWritePos(0),
-          mCommitPos(0),
-          mAvailable(true),
-          mIsDone(false),
-          mCore(core),
-          mFrameType(frameType),
-          mLastEventTime(INVALID_LAST_EVENT_TIME),
-          mLastEventCore(core),
-          mLastEventTid(0)
+// Fraction of size that should be kept free
+// if less than that is free we should send
+constexpr int FRACTION_TO_KEEP_FREE = 4;
+
+Buffer::Buffer(const int32_t core,
+               const FrameType frameType,
+               const int size,
+               sem_t * const readerSem,
+               uint64_t commitRate,
+               bool includeResponseType)
+    : mBuf(new char[size]),
+      mReaderSem(readerSem),
+      mCommitRate(commitRate),
+      mCommitTime(commitRate),
+      mWriterSem(),
+      mSize(size),
+      mReadPos(0),
+      mWritePos(0),
+      mCommitPos(0),
+      mAvailable(true),
+      mIsDone(false),
+      mIncludeResponseType(includeResponseType),
+      mCore(core),
+      mFrameType(frameType),
+      mLastEventTime(INVALID_LAST_EVENT_TIME),
+      mLastEventCore(core),
+      mLastEventTid(0)
 {
     if ((mSize & mask) != 0) {
+        delete[] mBuf;
         logg.logError("Buffer size is not a power of 2");
         handleException();
     }
@@ -68,9 +76,9 @@ void Buffer::write(ISender * const sender)
 
     // determine the size of two halves
     int length1 = commitPos - readPos;
-    char *buffer1 = mBuf + readPos;
+    char * buffer1 = mBuf + readPos;
     int length2 = 0;
-    char *buffer2 = mBuf;
+    char * buffer2 = mBuf;
     // possible wrap around
     if (length1 < 0) {
         length1 = mSize - readPos;
@@ -80,8 +88,8 @@ void Buffer::write(ISender * const sender)
     logg.logMessage("Sending data length1: %i length2: %i", length1, length2);
 
     constexpr std::size_t numberOfParts = 2;
-    const lib::Span<const char, int> parts[numberOfParts] = { { buffer1, length1 }, { buffer2, length2 } };
-    sender->writeDataParts( { parts, numberOfParts }, ResponseType::RAW);
+    const lib::Span<const char, int> parts[numberOfParts] = {{buffer1, length1}, {buffer2, length2}};
+    sender->writeDataParts({parts, numberOfParts}, ResponseType::RAW);
 
     // release the space only after we have finished reading the data
     mReadPos.store(commitPos, std::memory_order_release);
@@ -89,7 +97,6 @@ void Buffer::write(ISender * const sender)
     // send a notification that space is available
     sem_post(&mWriterSem);
 }
-
 
 int Buffer::bytesAvailable() const
 {
@@ -110,6 +117,23 @@ int Buffer::bytesAvailable() const
     }
 
     return remaining;
+}
+
+void Buffer::waitForSpace(int bytes, uint64_t time)
+{
+    while (!checkSpace(bytes)) {
+        // do all this in the slow path where we have to wait
+        if (bytes > mSize) {
+            logg.logError("Buffer not big enough, %d but need %d", mSize, bytes);
+            handleException();
+        }
+        if (bytes >= mSize / FRACTION_TO_KEEP_FREE) {
+            // this means the sender will have not been notified
+            // so we must do it ourselves
+            commit(time);
+        }
+        sem_wait(&mWriterSem);
+    }
 }
 
 bool Buffer::checkSpace(const int bytes)
@@ -141,7 +165,7 @@ int Buffer::contiguousSpaceAvailable() const
 bool Buffer::commit(const uint64_t time, const bool force)
 {
     // post-populate the length, which does not include the response type length nor the length itself, i.e. only the length of the payload
-    const int typeLength = gSessionData.mLocalCapture ? 0 : 1;
+    const int typeLength = mIncludeResponseType ? 1 : 0;
     // only we, the producer, write to mCommitPos so only relaxed load needed
     const int commitPos = mCommitPos.load(std::memory_order_relaxed);
     int length = mWritePos - commitPos;
@@ -157,13 +181,16 @@ bool Buffer::commit(const uint64_t time, const bool force)
         mBuf[(commitPos + typeLength + byte) & mask] = (length >> byte * 8) & 0xFF;
     }
 
-    logg.logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i", mReadPos.load(std::memory_order_relaxed), mWritePos, commitPos);
+    logg.logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i",
+                    mReadPos.load(std::memory_order_relaxed),
+                    mWritePos,
+                    commitPos);
     // release the commited data for the consumer to acquire
     mCommitPos.store(mWritePos, std::memory_order_release);
 
-    if (gSessionData.mLiveRate > 0) {
+    if (mCommitRate > 0) {
         while (time > mCommitTime) {
-            mCommitTime += gSessionData.mLiveRate;
+            mCommitTime += mCommitRate;
         }
     }
 
@@ -183,7 +210,8 @@ bool Buffer::check(const uint64_t time)
     if (filled < 0) {
         filled += mSize;
     }
-    if (filled >= ((mSize * 3) / 4) || (gSessionData.mLiveRate > 0 && time >= mCommitTime)) {
+    if (filled >= ((mSize * (FRACTION_TO_KEEP_FREE - 1)) / FRACTION_TO_KEEP_FREE) ||
+        (mCommitRate > 0 && time >= mCommitTime)) {
         return commit(time);
     }
     return false;
@@ -233,18 +261,17 @@ int Buffer::beginFrameOrMessage(FrameType frameType, int32_t core)
 
 bool Buffer::frameTypeSendsCpu(FrameType frameType)
 {
-   return ((frameType == FrameType::BLOCK_COUNTER) || (frameType == FrameType::PERF_ATTRS) || (frameType == FrameType::PERF_DATA)
-                    || (frameType == FrameType::PERF_SYNC)
-                    || (frameType == FrameType::NAME) || (frameType == FrameType::SCHED_TRACE));
+    return ((frameType == FrameType::BLOCK_COUNTER) || (frameType == FrameType::PERF_ATTRS) ||
+            (frameType == FrameType::PERF_DATA) || (frameType == FrameType::PERF_SYNC) ||
+            (frameType == FrameType::NAME) || (frameType == FrameType::SCHED_TRACE));
 }
 
 int Buffer::beginFrameOrMessage(FrameType frameType, int32_t core, bool force)
 {
     force |= (mFrameType == FrameType::UNKNOWN);
 
-    if (force)
-    {
-        if (!gSessionData.mLocalCapture) {
+    if (force) {
+        if (mIncludeResponseType) {
             packInt(static_cast<int32_t>(ResponseType::APC_DATA));
         }
 
@@ -263,8 +290,7 @@ int Buffer::beginFrameOrMessage(FrameType frameType, int32_t core, bool force)
 
         return result;
     }
-    else
-    {
+    else {
         return mWritePos;
     }
 }

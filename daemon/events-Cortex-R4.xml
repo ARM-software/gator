@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017, 2019 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2020 by Arm Limited. All rights reserved. -->
 
   <counter_set name="ARMv7R_Cortex_R4_cnt" count="3"/>
   <category name="Cortex_R4" counter_set="ARMv7R_Cortex_R4_cnt" per_cpu="yes">

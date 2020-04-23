@@ -1,20 +1,13 @@
-/**
- * Copyright (C) Arm Limited 2014-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
 
 #ifndef COMMAND_H
 #define COMMAND_H
 
+#include <functional>
 #include <semaphore.h>
 #include <thread>
-#include <functional>
 
-struct Command
-{
+struct Command {
     int pid;
     std::thread thread;
 };

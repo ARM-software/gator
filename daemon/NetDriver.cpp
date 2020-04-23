@@ -1,26 +1,19 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
 
 #include "NetDriver.h"
 
-#include <inttypes.h>
-#include <unistd.h>
-
 #include "Logging.h"
 #include "SessionData.h"
 
-class NetCounter : public DriverCounter
-{
+#include <inttypes.h>
+#include <unistd.h>
+
+class NetCounter : public DriverCounter {
 public:
-    NetCounter(DriverCounter *next, const char * const name, uint64_t * const value);
+    NetCounter(DriverCounter * next, const char * const name, uint64_t * const value);
     ~NetCounter();
 
     int64_t read();
@@ -30,19 +23,18 @@ private:
     uint64_t mPrev;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(NetCounter);
+    NetCounter(const NetCounter &) = delete;
+    NetCounter & operator=(const NetCounter &) = delete;
+    NetCounter(NetCounter &&) = delete;
+    NetCounter & operator=(NetCounter &&) = delete;
 };
 
-NetCounter::NetCounter(DriverCounter *next, const char * const name, uint64_t * const value)
-        : DriverCounter(next, name),
-          mValue(value),
-          mPrev(0)
+NetCounter::NetCounter(DriverCounter * next, const char * const name, uint64_t * const value)
+    : DriverCounter(next, name), mValue(value), mPrev(0)
 {
 }
 
-NetCounter::~NetCounter()
-{
-}
+NetCounter::~NetCounter() {}
 
 int64_t NetCounter::read()
 {
@@ -51,17 +43,9 @@ int64_t NetCounter::read()
     return result;
 }
 
-NetDriver::NetDriver()
-        : PolledDriver("Net"),
-          mBuf(),
-          mReceiveBytes(0),
-          mTransmitBytes(0)
-{
-}
+NetDriver::NetDriver() : PolledDriver("Net"), mBuf(), mReceiveBytes(0), mTransmitBytes(0) {}
 
-NetDriver::~NetDriver()
-{
-}
+NetDriver::~NetDriver() {}
 
 void NetDriver::readEvents(mxml_node_t * const)
 {
@@ -70,7 +54,8 @@ void NetDriver::readEvents(mxml_node_t * const)
         setCounters(new NetCounter(getCounters(), "Linux_net_tx", &mTransmitBytes));
     }
     else {
-        logg.logSetup("Linux counters\nCannot access /proc/net/dev. Network transmit and receive counters not available.");
+        logg.logSetup(
+            "Linux counters\nCannot access /proc/net/dev. Network transmit and receive counters not available.");
     }
 }
 
@@ -85,7 +70,7 @@ bool NetDriver::doRead()
     }
 
     // Skip the header
-    char *key;
+    char * key;
     if (((key = strchr(mBuf.getBuf(), '\n')) == NULL) || ((key = strchr(key + 1, '\n')) == NULL)) {
         return false;
     }
@@ -94,9 +79,9 @@ bool NetDriver::doRead()
     mReceiveBytes = 0;
     mTransmitBytes = 0;
 
-    char *colon;
+    char * colon;
     while ((colon = strchr(key, ':')) != NULL) {
-        char *end = strchr(colon + 1, '\n');
+        char * end = strchr(colon + 1, '\n');
         if (end != NULL) {
             *end = '\0';
         }
@@ -104,8 +89,8 @@ bool NetDriver::doRead()
 
         uint64_t receiveBytes;
         uint64_t transmitBytes;
-        const int count = sscanf(colon + 1, " %" SCNu64 " %*u %*u %*u %*u %*u %*u %*u %" SCNu64, &receiveBytes,
-                                 &transmitBytes);
+        const int count =
+            sscanf(colon + 1, " %" SCNu64 " %*u %*u %*u %*u %*u %*u %*u %" SCNu64, &receiveBytes, &transmitBytes);
         if (count != 2) {
             return false;
         }
@@ -128,7 +113,7 @@ void NetDriver::start()
         handleException();
     }
     // Initialize previous values
-    for (DriverCounter *counter = getCounters(); counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = getCounters(); counter != NULL; counter = counter->getNext()) {
         if (!counter->isEnabled()) {
             continue;
         }

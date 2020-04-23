@@ -1,10 +1,4 @@
-/**
- * Copyright (C) Arm Limited 2010-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef I_CPU_INFO_H
 #define I_CPU_INFO_H
@@ -12,16 +6,11 @@
 #include "lib/Span.h"
 #include "xml/PmuXML.h"
 
-class ICpuInfo
-{
+class ICpuInfo {
 public:
-
     virtual lib::Span<const int> getCpuIds() const = 0;
 
-    size_t getNumberOfCores() const
-    {
-        return getCpuIds().size();
-    }
+    size_t getNumberOfCores() const { return getCpuIds().size(); }
 
     virtual lib::Span<const GatorCpu> getClusters() const = 0;
     virtual lib::Span<const int> getClusterIds() const = 0;
@@ -42,7 +31,6 @@ public:
     virtual const char * getModelName() const = 0;
 
     virtual ~ICpuInfo() = default;
-
 };
 
 #endif

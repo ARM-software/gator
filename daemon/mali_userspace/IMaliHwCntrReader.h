@@ -1,32 +1,24 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_IMALIHWCNTRREADER_H_
 #define MALI_USERSPACE_IMALIHWCNTRREADER_H_
 
-#include <cstdint>
 #include "MaliDevice.h"
-#include <memory>
-#include <functional>
 
-namespace mali_userspace
-{
-    struct kbase_hwcnt_reader_metadata
-    {
-        uint64_t timestamp; /**< Time when sample was collected. */
-        uint32_t event_id; /**< Id of an event that triggered sample collection. */
+#include <cstdint>
+#include <functional>
+#include <memory>
+
+namespace mali_userspace {
+    struct kbase_hwcnt_reader_metadata {
+        uint64_t timestamp;  /**< Time when sample was collected. */
+        uint32_t event_id;   /**< Id of an event that triggered sample collection. */
         uint32_t buffer_idx; /**< Position in sampling area where sample buffer was stored. */
 
-        kbase_hwcnt_reader_metadata()
-                : timestamp(0),
-                  event_id(0),
-                  buffer_idx(0)
-        {
-        }
+        kbase_hwcnt_reader_metadata() : timestamp(0), event_id(0), buffer_idx(0) {}
 
         kbase_hwcnt_reader_metadata(uint64_t timestamp_, uint32_t event_id_, uint32_t buffer_idx_)
-                : timestamp(timestamp_),
-                  event_id(event_id_),
-                  buffer_idx(buffer_idx_)
+            : timestamp(timestamp_), event_id(event_id_), buffer_idx(buffer_idx_)
         {
         }
     };
@@ -34,15 +26,14 @@ namespace mali_userspace
     class MaliHwCntrReader;
 
     /** Wait status result */
-    typedef enum
-    {
-        WAIT_STATUS_ERROR, /**< The wait failed due to error */
-        WAIT_STATUS_SUCCESS, /**< The wait succeeded and buffer contains data */
+    typedef enum {
+        WAIT_STATUS_ERROR,     /**< The wait failed due to error */
+        WAIT_STATUS_SUCCESS,   /**< The wait succeeded and buffer contains data */
         WAIT_STATUS_TERMINATED /**< The wait ended as the connection was terminated */
     } WaitStatus;
 
     template<typename T>
-    using unique_ptr_with_deleter = std::unique_ptr<T,std::function<void(T*)>>;
+    using unique_ptr_with_deleter = std::unique_ptr<T, std::function<void(T *)>>;
 
     struct SampleBuffer {
 
@@ -51,27 +42,23 @@ namespace mali_userspace
         uint32_t eventId = 0;
         uint32_t bufferId = 0;
         size_t size = 0;
-        unique_ptr_with_deleter<uint8_t> data= nullptr;
+        unique_ptr_with_deleter<uint8_t> data = nullptr;
     };
 
-
-    class IMaliHwCntrReader
-    {
+    class IMaliHwCntrReader {
 
     public:
         virtual ~IMaliHwCntrReader() = default;
-
 
         typedef uint32_t CounterBitmask;
         typedef uint32_t HardwareVersion;
 
         /** Hwcnt dumping events. */
-        typedef enum
-        {
-            HWCNT_READER_EVENT_MANUAL, /**< Manual request for dump. */
+        typedef enum {
+            HWCNT_READER_EVENT_MANUAL,   /**< Manual request for dump. */
             HWCNT_READER_EVENT_PERIODIC, /**< Periodic dump. */
-            HWCNT_READER_EVENT_PREJOB, /**< Prejob dump request. */
-            HWCNT_READER_EVENT_POSTJOB, /**< Postjob dump request. */
+            HWCNT_READER_EVENT_PREJOB,   /**< Prejob dump request. */
+            HWCNT_READER_EVENT_POSTJOB,  /**< Postjob dump request. */
 
             HWCNT_READER_EVENT_COUNT /**< Number of supported events. */
         } HwcntReaderEvent;
@@ -95,7 +82,7 @@ namespace mali_userspace
          * WAIT_STATUS_SUCCES      The wait succeeded and buffer contains data (but may not be valid if timeout == 0)
          * WAIT_STATUS_TERMINATED  The wait ended as the connection was terminated
          */
-        virtual SampleBuffer waitForBuffer(int timeout)= 0;
+        virtual SampleBuffer waitForBuffer(int timeout) = 0;
 
         /**
          * Initiate periodic dumping of hardware counters.
@@ -129,8 +116,7 @@ namespace mali_userspace
          * @return  Architecture version of the hardware counters, or 0 if not available
          */
         virtual HardwareVersion getHardwareVersion() const = 0;
-
     };
-}  // namespace
+} // namespace
 
 #endif /* MALI_USERSPACE_IMALIHWCNTRREADER_H_ */

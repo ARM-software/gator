@@ -1,25 +1,22 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICEAPI_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICEAPI_H_
+
+#include "lib/AutoClosingFd.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 
-#include "lib/AutoClosingFd.h"
-
-namespace mali_userspace
-{
+namespace mali_userspace {
     /**
      * Interface that abstracts the main ioctl interface to /dev/mali.
      * Allows talking to different driver versions with different APIs.
      */
-    class IMaliDeviceApi
-    {
+    class IMaliDeviceApi {
     public:
-
         /**
          * For a given device driver path, probe the device and return an appropriate implementation
          * of the interface, or return nullptr if the device path is invalid / not supported

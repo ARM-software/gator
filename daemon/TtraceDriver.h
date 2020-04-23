@@ -1,23 +1,14 @@
-/**
- * Copyright (C) Arm Limited 2015-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2015-2020 by Arm Limited. All rights reserved. */
 
 #ifndef TTRACEDRIVER_H
 #define TTRACEDRIVER_H
 
-#include "mxml/mxml.h"
-
-#include "ClassBoilerPlate.h"
 #include "SimpleDriver.h"
+#include "mxml/mxml.h"
 
 class FtraceDriver;
 
-class TtraceDriver : public SimpleDriver
-{
+class TtraceDriver : public SimpleDriver {
 public:
     TtraceDriver(const FtraceDriver & ftraceDriver);
     ~TtraceDriver();
@@ -27,10 +18,7 @@ public:
     void start();
     void stop();
 
-    bool isSupported() const
-    {
-        return mSupported;
-    }
+    bool isSupported() const { return mSupported; }
 
 private:
     void setTtrace(const int flags);
@@ -39,7 +27,10 @@ private:
     const FtraceDriver & mFtraceDriver;
 
     // Intentionally unimplemented
-    CLASS_DELETE_COPY_MOVE(TtraceDriver);
+    TtraceDriver(const TtraceDriver &) = delete;
+    TtraceDriver & operator=(const TtraceDriver &) = delete;
+    TtraceDriver(TtraceDriver &&) = delete;
+    TtraceDriver & operator=(TtraceDriver &&) = delete;
 };
 
 #endif // TTRACEDRIVER_H

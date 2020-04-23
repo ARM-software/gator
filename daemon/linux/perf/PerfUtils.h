@@ -1,22 +1,15 @@
-/**
- * Copyright (C) Arm Limited 2010-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_UTILS_H
 #define PERF_UTILS_H
 
-#include <set>
-#include <string>
-
 #include "lib/Format.h"
 #include "lib/Utils.h"
 
-namespace perf_utils
-{
+#include <set>
+#include <string>
+
+namespace perf_utils {
     static inline std::set<int> readCpuMask(const char * pmncName)
     {
         std::string path = lib::Format() << "/sys/bus/event_source/devices/" << pmncName << "/cpumask";

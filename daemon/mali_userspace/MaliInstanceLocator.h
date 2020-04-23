@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIINSTANCELOCATOR_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIINSTANCELOCATOR_H_
@@ -8,8 +8,7 @@
 #include <map>
 #include <memory>
 
-namespace mali_userspace
-{
+namespace mali_userspace {
 
     /**
      * Scan the system for Mali devices and create MaliHwCntrDrivers for all Mali devices

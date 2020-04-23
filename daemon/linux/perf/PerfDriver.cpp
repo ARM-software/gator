@@ -1,98 +1,99 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriver.h"
 
-#include <sys/wait.h>
-#include <sys/utsname.h>
-#include <unistd.h>
-
-#include "ISummaryConsumer.h"
 #include "Config.h"
 #include "ConfigurationXML.h"
 #include "Counter.h"
 #include "ICpuInfo.h"
+#include "ISummaryConsumer.h"
 #include "Logging.h"
-#include "linux/SysfsSummaryInformation.h"
-#include "linux/perf/PerfAttrsBuffer.h"
-#include "linux/perf/IPerfGroups.h"
-#include "linux/perf/PerfEventGroupIdentifier.h"
-#include "xml/PmuXML.h"
-#include "Tracepoints.h"
 #include "SessionData.h"
+#include "Tracepoints.h"
+#include "k/perf_event.h"
 #include "lib/Assert.h"
 #include "lib/Time.h"
 #include "lib/Utils.h"
-#include "k/perf_event.h"
+#include "linux/SysfsSummaryInformation.h"
+#include "linux/perf/IPerfGroups.h"
+#include "linux/perf/PerfAttrsBuffer.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
+#include "xml/PmuXML.h"
+
+#include <sys/utsname.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define TYPE_DERIVED ~0U
 
 // from driver/perf/arm_spe_pmu.c
 // alternatively we could read them from /sys/devices/arm_spe_0/format/*
-#define SPE_ts_enable_CFG      config  /* PMSCR_EL1.TS */
-#define SPE_ts_enable_LO       0
-#define SPE_ts_enable_HI       0
-#define SPE_pa_enable_CFG      config  /* PMSCR_EL1.PA */
-#define SPE_pa_enable_LO       1
-#define SPE_pa_enable_HI       1
-#define SPE_pct_enable_CFG     config  /* PMSCR_EL1.PCT */
-#define SPE_pct_enable_LO      2
-#define SPE_pct_enable_HI      2
-#define SPE_jitter_CFG         config  /* PMSIRR_EL1.RND */
-#define SPE_jitter_LO          16
-#define SPE_jitter_HI          16
-#define SPE_branch_filter_CFG      config  /* PMSFCR_EL1.B */
-#define SPE_branch_filter_LO       32
-#define SPE_branch_filter_HI       32
-#define SPE_load_filter_CFG        config  /* PMSFCR_EL1.LD */
-#define SPE_load_filter_LO     33
-#define SPE_load_filter_HI     33
-#define SPE_store_filter_CFG       config  /* PMSFCR_EL1.ST */
-#define SPE_store_filter_LO        34
-#define SPE_store_filter_HI        34
+#define SPE_ts_enable_CFG config /* PMSCR_EL1.TS */
+#define SPE_ts_enable_LO 0
+#define SPE_ts_enable_HI 0
+#define SPE_pa_enable_CFG config /* PMSCR_EL1.PA */
+#define SPE_pa_enable_LO 1
+#define SPE_pa_enable_HI 1
+#define SPE_pct_enable_CFG config /* PMSCR_EL1.PCT */
+#define SPE_pct_enable_LO 2
+#define SPE_pct_enable_HI 2
+#define SPE_jitter_CFG config /* PMSIRR_EL1.RND */
+#define SPE_jitter_LO 16
+#define SPE_jitter_HI 16
+#define SPE_branch_filter_CFG config /* PMSFCR_EL1.B */
+#define SPE_branch_filter_LO 32
+#define SPE_branch_filter_HI 32
+#define SPE_load_filter_CFG config /* PMSFCR_EL1.LD */
+#define SPE_load_filter_LO 33
+#define SPE_load_filter_HI 33
+#define SPE_store_filter_CFG config /* PMSFCR_EL1.ST */
+#define SPE_store_filter_LO 34
+#define SPE_store_filter_HI 34
 
-#define SPE_event_filter_CFG       config1 /* PMSEVFR_EL1 */
-#define SPE_event_filter_LO        0
-#define SPE_event_filter_HI        63
+#define SPE_event_filter_CFG config1 /* PMSEVFR_EL1 */
+#define SPE_event_filter_LO 0
+#define SPE_event_filter_HI 63
 
-#define SPE_min_latency_CFG        config2 /* PMSLATFR_EL1.MINLAT */
-#define SPE_min_latency_LO     0
-#define SPE_min_latency_HI     11
+#define SPE_min_latency_CFG config2 /* PMSLATFR_EL1.MINLAT */
+#define SPE_min_latency_LO 0
+#define SPE_min_latency_HI 11
 
 // An improved version would mask out old value be we assume 0
 #define SET_SPE_CFG(cfg, value) SPE_##cfg##_CFG |= static_cast<uint64_t>(value) << SPE_##cfg##_LO
 
-
-
 static constexpr uint64_t armv7AndLaterClockCyclesEvent = 0x11;
 static constexpr uint64_t armv7PmuDriverCycleCounterPsuedoEvent = 0xFF;
 
-class PerfCounter : public DriverCounter
-{
+class PerfCounter : public DriverCounter {
 public:
     static constexpr uint64_t noConfigId2 = ~0ull;
 
-    PerfCounter(DriverCounter *next, const PerfEventGroupIdentifier & groupIdentifier, const char *name, const IPerfGroups::Attr & attr, bool usesAux, uint64_t config_id2 = noConfigId2,
+    PerfCounter(DriverCounter * next,
+                const PerfEventGroupIdentifier & groupIdentifier,
+                const char * name,
+                const IPerfGroups::Attr & attr,
+                bool usesAux,
+                uint64_t config_id2 = noConfigId2,
                 bool fixUpClockCyclesEvent = false)
-            : DriverCounter(next, name),
-              eventGroupIdentifier(groupIdentifier),
-              attr(attr),
-              mConfigId2(config_id2),
-              mFixUpClockCyclesEvent(fixUpClockCyclesEvent),
-              mUsesAux(usesAux)
+        : DriverCounter(next, name),
+          eventGroupIdentifier(groupIdentifier),
+          attr(attr),
+          mConfigId2(config_id2),
+          mFixUpClockCyclesEvent(fixUpClockCyclesEvent),
+          mUsesAux(usesAux)
     {
     }
 
-    PerfCounter(DriverCounter *next, const PerfEventGroupIdentifier & groupIdentifier, const char *name, uint32_t type,
-                uint64_t config, uint64_t sampleType, uint64_t count, uint64_t config_id2 = noConfigId2,
+    PerfCounter(DriverCounter * next,
+                const PerfEventGroupIdentifier & groupIdentifier,
+                const char * name,
+                uint32_t type,
+                uint64_t config,
+                uint64_t sampleType,
+                uint64_t count,
+                uint64_t config_id2 = noConfigId2,
                 bool fixUpClockCyclesEvent = false)
-            : PerfCounter(next, groupIdentifier, name, IPerfGroups::Attr {}, false,
-                          config_id2, fixUpClockCyclesEvent)
+        : PerfCounter(next, groupIdentifier, name, IPerfGroups::Attr{}, false, config_id2, fixUpClockCyclesEvent)
     {
         attr.type = type;
         attr.config = config;
@@ -108,40 +109,24 @@ public:
      * @param cpu
      * @param cluster maybe null if unknown
      */
-    virtual void read(IPerfAttrsConsumer &, const int /* cpu */, const GatorCpu * /* cluster */)
-    {
-    }
+    virtual void read(IPerfAttrsConsumer &, const int /* cpu */, const GatorCpu * /* cluster */) {}
 
-    inline const PerfEventGroupIdentifier & getPerfEventGroupIdentifier() const
-    {
-        return eventGroupIdentifier;
-    }
+    inline const PerfEventGroupIdentifier & getPerfEventGroupIdentifier() const { return eventGroupIdentifier; }
 
-    const IPerfGroups::Attr getAttr() const {
-        return attr;
-    }
+    const IPerfGroups::Attr getAttr() const { return attr; }
 
-    inline bool hasConfigId2() const
-    {
-        return mConfigId2 != noConfigId2;
-    }
+    inline bool hasConfigId2() const { return mConfigId2 != noConfigId2; }
 
-    inline bool usesAux() const
-    {
-        return mUsesAux;
-    }
+    inline bool usesAux() const { return mUsesAux; }
 
     IPerfGroups::Attr getAttr2() const
     {
-        IPerfGroups::Attr attr2 {attr};
+        IPerfGroups::Attr attr2{attr};
         attr2.config = mConfigId2;
         return attr2;
     }
 
-    inline void setCount(const uint64_t count)
-    {
-        attr.periodOrFreq = count;
-    }
+    inline void setCount(const uint64_t count) { attr.periodOrFreq = count; }
 
     inline void setConfig(const uint64_t config)
     {
@@ -154,22 +139,13 @@ public:
             attr.config = config;
     }
 
-    inline void setConfig1(const uint64_t config)
-    {
-        attr.config1 = config;
-    }
+    inline void setConfig1(const uint64_t config) { attr.config1 = config; }
 
-    inline void setConfig2(const uint64_t config)
-    {
-        attr.config2 = config;
-    }
+    inline void setConfig2(const uint64_t config) { attr.config2 = config; }
 
-    inline void setSampleType(uint64_t sampleType)
-    {
-        attr.sampleType = sampleType;
-    }
+    inline void setSampleType(uint64_t sampleType) { attr.sampleType = sampleType; }
+
 private:
-
     const PerfEventGroupIdentifier eventGroupIdentifier;
     IPerfGroups::Attr attr;
     const uint64_t mConfigId2;
@@ -177,15 +153,16 @@ private:
     bool mUsesAux;
 
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(PerfCounter);
+    PerfCounter(const PerfCounter &) = delete;
+    PerfCounter & operator=(const PerfCounter &) = delete;
+    PerfCounter(PerfCounter &&) = delete;
+    PerfCounter & operator=(PerfCounter &&) = delete;
 };
 
-class CPUFreqDriver : public PerfCounter
-{
+class CPUFreqDriver : public PerfCounter {
 public:
-    CPUFreqDriver(DriverCounter *next, const char *name, uint64_t id, const GatorCpu & cluster)
-            : PerfCounter(next, PerfEventGroupIdentifier(cluster),
-                          name, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_RAW, 1)
+    CPUFreqDriver(DriverCounter * next, const char * name, uint64_t id, const GatorCpu & cluster)
+        : PerfCounter(next, PerfEventGroupIdentifier(cluster), name, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_RAW, 1)
     {
     }
 
@@ -206,12 +183,14 @@ public:
     }
 
 private:
-
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(CPUFreqDriver);
+    CPUFreqDriver(const CPUFreqDriver &) = delete;
+    CPUFreqDriver & operator=(const CPUFreqDriver &) = delete;
+    CPUFreqDriver(CPUFreqDriver &&) = delete;
+    CPUFreqDriver & operator=(CPUFreqDriver &&) = delete;
 };
 
-template <typename T>
+template<typename T>
 inline static T & neverNull(T * t)
 {
     if (t == nullptr) {
@@ -229,22 +208,22 @@ static long long getTracepointId(const char * const counter, const char * const 
     return result;
 }
 
-
-PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXml, const char * maliFamilyName, const ICpuInfo & cpuInfo)
-        : SimpleDriver("Perf"),
-          mTracepoints(nullptr),
-          mIsSetup(false),
-          mConfig(std::move(configuration)),
-          mPmuXml(pmuXml),
-          mCpuInfo(cpuInfo)
+PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
+                       PmuXML && pmuXml,
+                       const char * maliFamilyName,
+                       const ICpuInfo & cpuInfo)
+    : SimpleDriver("Perf"), mTracepoints(nullptr), mConfig(std::move(configuration)), mPmuXml(pmuXml), mCpuInfo(cpuInfo)
 {
     // add CPU PMUs
     for (const auto & perfCpu : mConfig.cpus) {
 
         if ((perfCpu.pmu_type != PERF_TYPE_RAW) && (perfCpu.pmu_type != PERF_TYPE_HARDWARE)) {
-            logg.logMessage("Adding cpu counters for %s with type %i", perfCpu.gator_cpu.getCoreName(), perfCpu.pmu_type);
+            logg.logMessage("Adding cpu counters for %s with type %i",
+                            perfCpu.gator_cpu.getCoreName(),
+                            perfCpu.pmu_type);
         }
-        else if ((perfCpu.gator_cpu.getCpuIds().size() > 1) || (!perfCpu.gator_cpu.hasCpuId(PerfDriverConfiguration::UNKNOWN_CPUID))) {
+        else if ((perfCpu.gator_cpu.getCpuIds().size() > 1) ||
+                 (!perfCpu.gator_cpu.hasCpuId(PerfDriverConfiguration::UNKNOWN_CPUID))) {
             logg.logMessage("Adding cpu counters (based on cpuid) for %s", perfCpu.gator_cpu.getCoreName());
         }
         else {
@@ -256,7 +235,9 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
 
     // add uncore PMUs
     for (const auto & perfUncore : mConfig.uncores) {
-        logg.logMessage("Adding uncore counters for %s with type %i", perfUncore.uncore_pmu.getCoreName(), perfUncore.pmu_type);
+        logg.logMessage("Adding uncore counters for %s with type %i",
+                        perfUncore.uncore_pmu.getCoreName(),
+                        perfUncore.pmu_type);
         addUncoreCounters(perfUncore);
     }
 
@@ -264,16 +245,18 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
     long long id;
     char buf[40];
 
-    if (getConfig().can_access_tracepoints)
-    {
+    if (getConfig().can_access_tracepoints) {
         id = getTracepointId("Interrupts: SoftIRQ", "irq/softirq_exit");
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_softirq", perfCpu.gator_cpu.getId());
-                setCounters(
-                        new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
-                                        buf, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_READ,
-                                        0));
+                setCounters(new PerfCounter(getCounters(),
+                                            PerfEventGroupIdentifier(perfCpu.gator_cpu),
+                                            buf,
+                                            PERF_TYPE_TRACEPOINT,
+                                            id,
+                                            PERF_SAMPLE_READ,
+                                            0));
             }
         }
 
@@ -281,10 +264,13 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_irq", perfCpu.gator_cpu.getId());
-                setCounters(
-                        new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
-                                        buf, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_READ,
-                                        0));
+                setCounters(new PerfCounter(getCounters(),
+                                            PerfEventGroupIdentifier(perfCpu.gator_cpu),
+                                            buf,
+                                            PERF_TYPE_TRACEPOINT,
+                                            id,
+                                            PERF_SAMPLE_READ,
+                                            0));
             }
         }
 
@@ -292,10 +278,13 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_switch", perfCpu.gator_cpu.getId());
-                setCounters(
-                        new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
-                                        buf, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_READ,
-                                        0));
+                setCounters(new PerfCounter(getCounters(),
+                                            PerfEventGroupIdentifier(perfCpu.gator_cpu),
+                                            buf,
+                                            PERF_TYPE_TRACEPOINT,
+                                            id,
+                                            PERF_SAMPLE_READ,
+                                            0));
             }
         }
 
@@ -303,21 +292,36 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
         if (id >= 0 && access("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq", R_OK) == 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_freq", perfCpu.gator_cpu.getId());
-                setCounters(
-                        new CPUFreqDriver(getCounters(), buf, id, perfCpu.gator_cpu));
+                setCounters(new CPUFreqDriver(getCounters(), buf, id, perfCpu.gator_cpu));
             }
         }
     }
 
     if (getConfig().can_access_tracepoints || getConfig().has_attr_context_switch) {
-        setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "Linux_cpu_wait_contention", TYPE_DERIVED, -1, 0, 0));
+        setCounters(new PerfCounter(getCounters(),
+                                    PerfEventGroupIdentifier(),
+                                    "Linux_cpu_wait_contention",
+                                    TYPE_DERIVED,
+                                    -1,
+                                    0,
+                                    0));
         for (const auto & perfCpu : mConfig.cpus) {
             snprintf(buf, sizeof(buf), "%s_system", perfCpu.gator_cpu.getId());
-            setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
-                                        buf, TYPE_DERIVED, -1, 0, 0));
+            setCounters(new PerfCounter(getCounters(),
+                                        PerfEventGroupIdentifier(perfCpu.gator_cpu),
+                                        buf,
+                                        TYPE_DERIVED,
+                                        -1,
+                                        0,
+                                        0));
             snprintf(buf, sizeof(buf), "%s_user", perfCpu.gator_cpu.getId());
-            setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(perfCpu.gator_cpu),
-                                        buf, TYPE_DERIVED, -1, 0, 0));
+            setCounters(new PerfCounter(getCounters(),
+                                        PerfEventGroupIdentifier(perfCpu.gator_cpu),
+                                        buf,
+                                        TYPE_DERIVED,
+                                        -1,
+                                        0,
+                                        0));
         }
     }
 
@@ -328,44 +332,84 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration, PmuXML && pmuXm
     }
 
     //Adding for performance counters for perf software
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CPU_CLOCK", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_TASK_CLOCK", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_TASK_CLOCK, 0, 0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_CPU_CLOCK",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_CPU_CLOCK,
+                                0,
+                                0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_TASK_CLOCK",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_TASK_CLOCK,
+                                0,
+                                0));
     if (!getConfig().exclude_kernel) {
         // requires ability to read kernel events
-        setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CONTEXT_SWITCHES", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES, 0, 0));
+        setCounters(new PerfCounter(getCounters(),
+                                    PerfEventGroupIdentifier(),
+                                    "PERF_COUNT_SW_CONTEXT_SWITCHES",
+                                    PERF_TYPE_SOFTWARE,
+                                    PERF_COUNT_SW_CONTEXT_SWITCHES,
+                                    0,
+                                    0));
     }
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_CPU_MIGRATIONS", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_PAGE_FAULTS", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_PAGE_FAULTS_MAJ", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_PAGE_FAULTS_MIN", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MIN, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_ALIGNMENT_FAULTS", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_ALIGNMENT_FAULTS, 0, 0));
-    setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "PERF_COUNT_SW_EMULATION_FAULTS", PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS, 0, 0));
-
-    mIsSetup = true;
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_CPU_MIGRATIONS",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_CPU_MIGRATIONS,
+                                0,
+                                0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_PAGE_FAULTS",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_PAGE_FAULTS,
+                                0,
+                                0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_PAGE_FAULTS_MAJ",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_PAGE_FAULTS_MAJ,
+                                0,
+                                0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_PAGE_FAULTS_MIN",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_PAGE_FAULTS_MIN,
+                                0,
+                                0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_ALIGNMENT_FAULTS",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_ALIGNMENT_FAULTS,
+                                0,
+                                0));
+    setCounters(new PerfCounter(getCounters(),
+                                PerfEventGroupIdentifier(),
+                                "PERF_COUNT_SW_EMULATION_FAULTS",
+                                PERF_TYPE_SOFTWARE,
+                                PERF_COUNT_SW_EMULATION_FAULTS,
+                                0,
+                                0));
 }
 
-class PerfTracepoint
-{
+class PerfTracepoint {
 public:
     PerfTracepoint(PerfTracepoint * const next, const DriverCounter * const counter, const char * const tracepoint)
-            : mNext(next),
-              mCounter(counter),
-              mTracepoint(tracepoint)
+        : mNext(next), mCounter(counter), mTracepoint(tracepoint)
     {
     }
 
-    PerfTracepoint *getNext() const
-    {
-        return mNext;
-    }
-    const DriverCounter *getCounter() const
-    {
-        return mCounter;
-    }
-    const char *getTracepoint() const
-    {
-        return mTracepoint.c_str();
-    }
+    PerfTracepoint * getNext() const { return mNext; }
+    const DriverCounter * getCounter() const { return mCounter; }
+    const char * getTracepoint() const { return mTracepoint.c_str(); }
 
 private:
     PerfTracepoint * const mNext;
@@ -373,19 +417,20 @@ private:
     const std::string mTracepoint;
 
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(PerfTracepoint)
-    ;
+    PerfTracepoint(const PerfTracepoint &) = delete;
+    PerfTracepoint & operator=(const PerfTracepoint &) = delete;
+    PerfTracepoint(PerfTracepoint &&) = delete;
+    PerfTracepoint & operator=(PerfTracepoint &&) = delete;
 };
 
 PerfDriver::~PerfDriver()
 {
-    for (PerfTracepoint* nextTracepoint = mTracepoints; nextTracepoint != nullptr;) {
-        PerfTracepoint* tracepoint = nextTracepoint;
+    for (PerfTracepoint * nextTracepoint = mTracepoints; nextTracepoint != nullptr;) {
+        PerfTracepoint * tracepoint = nextTracepoint;
         nextTracepoint = tracepoint->getNext();
         delete tracepoint;
     }
 }
-
 
 void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
 {
@@ -394,28 +439,33 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
 
     {
         const int len = snprintf(NULL, 0, "%s_ccnt", cpu.getId()) + 1;
-        const std::unique_ptr<char[]> name { new char[len] };
+        const std::unique_ptr<char[]> name{new char[len]};
         snprintf(name.get(), len, "%s_ccnt", cpu.getId());
-        setCounters(
-                new PerfCounter(getCounters(), PerfEventGroupIdentifier(cpu), name.get(), type, -1, PERF_SAMPLE_READ, 0,
-                                PerfCounter::noConfigId2, getConfig().has_armv7_pmu_driver));
+        setCounters(new PerfCounter(getCounters(),
+                                    PerfEventGroupIdentifier(cpu),
+                                    name.get(),
+                                    type,
+                                    -1,
+                                    PERF_SAMPLE_READ,
+                                    0,
+                                    PerfCounter::noConfigId2,
+                                    getConfig().has_armv7_pmu_driver));
     }
 
     for (int j = 0; j < cpu.getPmncCounters(); ++j) {
         const int len = snprintf(NULL, 0, "%s_cnt%d", cpu.getId(), j) + 1;
-        const std::unique_ptr<char[]> name { new char[len] };
+        const std::unique_ptr<char[]> name{new char[len]};
         snprintf(name.get(), len, "%s_cnt%d", cpu.getId(), j);
         setCounters(
-                new PerfCounter(getCounters(), PerfEventGroupIdentifier(cpu),
-                                name.get(), type, -1, PERF_SAMPLE_READ,
-                                0));
+            new PerfCounter(getCounters(), PerfEventGroupIdentifier(cpu), name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }
 
     const char * speId = cpu.getSpeName();
     if (speId != nullptr) {
         IPerfGroups::Attr attr;
         attr.sampleType |= PERF_SAMPLE_TID;
-        setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(mConfig.cpuNumberToSpeType), speId, attr, true));
+        setCounters(
+            new PerfCounter(getCounters(), PerfEventGroupIdentifier(mConfig.cpuNumberToSpeType), speId, attr, true));
     }
 }
 
@@ -426,27 +476,27 @@ void PerfDriver::addUncoreCounters(const PerfUncore & perfUncore)
 
     if (pmu.getHasCyclesCounter()) {
         const int len = snprintf(NULL, 0, "%s_ccnt", pmu.getCounterSet()) + 1;
-        const std::unique_ptr<char[]> name { new char[len] };
+        const std::unique_ptr<char[]> name{new char[len]};
         snprintf(name.get(), len, "%s_ccnt", pmu.getCounterSet());
-        setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu),
-                                    name.get(), type, -1, PERF_SAMPLE_READ, 0));
+        setCounters(
+            new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu), name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }
 
     for (int j = 0; j < pmu.getPmncCounters(); ++j) {
         const int len = snprintf(NULL, 0, "%s_cnt%d", pmu.getCounterSet(), j) + 1;
-        const std::unique_ptr<char[]> name { new char[len] };
+        const std::unique_ptr<char[]> name{new char[len]};
         snprintf(name.get(), len, "%s_cnt%d", pmu.getCounterSet(), j);
-        setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu),
-                                    name.get(), type, -1, PERF_SAMPLE_READ, 0));
+        setCounters(
+            new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu), name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }
 }
 
 void PerfDriver::readEvents(mxml_node_t * const xml)
 {
-    mxml_node_t *node = xml;
+    mxml_node_t * node = xml;
 
     // Only for use with perf
-    if (!mIsSetup || !getConfig().can_access_tracepoints) {
+    if (!getConfig().can_access_tracepoints) {
         return;
     }
 
@@ -455,7 +505,7 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
         if (node == NULL) {
             break;
         }
-        const char *counter = mxmlElementGetAttr(node, "counter");
+        const char * counter = mxmlElementGetAttr(node, "counter");
         if (counter == NULL) {
             continue;
         }
@@ -464,9 +514,9 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
             continue;
         }
 
-        const char *tracepoint = mxmlElementGetAttr(node, "tracepoint");
+        const char * tracepoint = mxmlElementGetAttr(node, "tracepoint");
         if (tracepoint == NULL) {
-            const char *regex = mxmlElementGetAttr(node, "regex");
+            const char * regex = mxmlElementGetAttr(node, "regex");
             if (regex == NULL) {
                 logg.logError("The tracepoint counter %s is missing the required tracepoint attribute", counter);
                 handleException();
@@ -477,16 +527,18 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
             }
         }
 
-        const char *arg = mxmlElementGetAttr(node, "arg");
+        const char * arg = mxmlElementGetAttr(node, "arg");
 
         long long id = getTracepointId(counter, tracepoint);
         if (id >= 0) {
             logg.logMessage("Using perf for %s", counter);
-            setCounters(
-                    new PerfCounter(getCounters(), PerfEventGroupIdentifier(),
-                                    counter, PERF_TYPE_TRACEPOINT, id,
-                                    arg == NULL ? 0 : PERF_SAMPLE_RAW,
-                                    1));
+            setCounters(new PerfCounter(getCounters(),
+                                        PerfEventGroupIdentifier(),
+                                        counter,
+                                        PERF_TYPE_TRACEPOINT,
+                                        id,
+                                        arg == NULL ? 0 : PERF_SAMPLE_RAW,
+                                        1));
             mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), tracepoint);
         }
     }
@@ -496,17 +548,21 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
 
 void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
 {
-    bool isSystemWide =  getConfig().is_system_wide ;
+    bool isSystemWide = getConfig().is_system_wide;
     bool canAccessTrcPnt = getConfig().can_access_tracepoints;
     if (!isSystemWide || !canAccessTrcPnt) {
-        logg.logMessage("No Mali Tracepoint counters added, (systemwide (%d), canAccessTracepoints(%d))", isSystemWide, canAccessTrcPnt);
+        logg.logMessage("No Mali Tracepoint counters added, (systemwide (%d), canAccessTracepoints(%d))",
+                        isSystemWide,
+                        canAccessTrcPnt);
         return;
     }
 
-    static const char * const MALI_MIDGARD_AS_IN_USE_RELEASED[] = { "MMU_AS_0", "MMU_AS_1", "MMU_AS_2", "MMU_AS_3" };
+    static const char * const MALI_MIDGARD_AS_IN_USE_RELEASED[] = {"MMU_AS_0", "MMU_AS_1", "MMU_AS_2", "MMU_AS_3"};
 
-    static const char * const MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES[] = { "MMU_PAGE_FAULT_0", "MMU_PAGE_FAULT_1",
-                                                                         "MMU_PAGE_FAULT_2", "MMU_PAGE_FAULT_3" };
+    static const char * const MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES[] = {"MMU_PAGE_FAULT_0",
+                                                                        "MMU_PAGE_FAULT_1",
+                                                                        "MMU_PAGE_FAULT_2",
+                                                                        "MMU_PAGE_FAULT_3"};
 
     static const char * const MALI_MIDGARD_TOTAL_ALLOC_PAGES = "TOTAL_ALLOC_PAGES";
 
@@ -514,8 +570,8 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
     char buf[256];
 
     // add midgard software tracepoints
-    auto addCounterWithConfigId2 = [this] (const char * name, uint64_t id, uint64_t configId2) {
-        IPerfGroups::Attr attr {};
+    auto addCounterWithConfigId2 = [this](const char * name, uint64_t id, uint64_t configId2) {
+        IPerfGroups::Attr attr{};
         attr.type = PERF_TYPE_TRACEPOINT;
         attr.config = id;
         attr.periodOrFreq = 1;
@@ -523,15 +579,22 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         attr.task = true;
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), name, attr, false, configId2, false));
     };
-    auto addCounter = [addCounterWithConfigId2] (const char * name, uint64_t id) {
+    auto addCounter = [addCounterWithConfigId2](const char * name, uint64_t id) {
         addCounterWithConfigId2(name, id, PerfCounter::noConfigId2);
     };
 
     if (false) { /* These are disabled because they never generate events */
-        static const char * const MALI_MIDGARD_PM_STATUS_EVENTS[] = { "PM_SHADER_0", "PM_SHADER_1", "PM_SHADER_2",
-                                                                      "PM_SHADER_3", "PM_SHADER_4", "PM_SHADER_5",
-                                                                      "PM_SHADER_6", "PM_SHADER_7", "PM_TILER_0",
-                                                                      "PM_L2_0", "PM_L2_1" };
+        static const char * const MALI_MIDGARD_PM_STATUS_EVENTS[] = {"PM_SHADER_0",
+                                                                     "PM_SHADER_1",
+                                                                     "PM_SHADER_2",
+                                                                     "PM_SHADER_3",
+                                                                     "PM_SHADER_4",
+                                                                     "PM_SHADER_5",
+                                                                     "PM_SHADER_6",
+                                                                     "PM_SHADER_7",
+                                                                     "PM_TILER_0",
+                                                                     "PM_L2_0",
+                                                                     "PM_L2_1"};
 
         id = getTracepointId("Mali: PM Status", "mali/mali_pm_status");
         if (id >= 0) {
@@ -545,7 +608,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
 
     id = getTracepointId(MALI_MMU_IN_USE, MALI_TRC_PNT_PATH[MALI_MMU_IN_USE]);
     if (id >= 0) {
-        const int id2 = getTracepointId(MALI_PM_STATUS, MALI_TRC_PNT_PATH[MALI_PM_STATUS] );
+        const int id2 = getTracepointId(MALI_PM_STATUS, MALI_TRC_PNT_PATH[MALI_PM_STATUS]);
         for (size_t i = 0; i < COUNT_OF(MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES); ++i) {
             snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_AS_IN_USE_RELEASED[i]);
             addCounterWithConfigId2(buf, id, id2);
@@ -594,8 +657,14 @@ bool PerfDriver::summary(ISummaryConsumer & consumer, std::function<uint64_t()> 
     }
 
     char buf[512];
-    snprintf(buf, sizeof(buf), "%s %s %s %s %s GNU/Linux", utsname.sysname, utsname.nodename, utsname.release,
-             utsname.version, utsname.machine);
+    snprintf(buf,
+             sizeof(buf),
+             "%s %s %s %s %s GNU/Linux",
+             utsname.sysname,
+             utsname.nodename,
+             utsname.release,
+             utsname.version,
+             utsname.machine);
 
     long pageSize = sysconf(_SC_PAGESIZE);
     if (pageSize < 0) {
@@ -623,7 +692,14 @@ bool PerfDriver::summary(ISummaryConsumer & consumer, std::function<uint64_t()> 
 
     lnx::addDefaultSysfsSummaryInformation(additionalAttributes);
 
-    consumer.summary(currTime, timestamp, monotonicStarted, monotonicStarted, buf, pageSize, getConfig().has_attr_clockid_support, additionalAttributes);
+    consumer.summary(currTime,
+                     timestamp,
+                     monotonicStarted,
+                     monotonicStarted,
+                     buf,
+                     pageSize,
+                     getConfig().has_attr_clockid_support,
+                     additionalAttributes);
 
     for (size_t i = 0; i < mCpuInfo.getCpuIds().size(); ++i) {
         coreName(currTime, consumer, i);
@@ -655,7 +731,7 @@ void PerfDriver::coreName(const uint64_t currTime, ISummaryConsumer & consumer, 
     }
 }
 
-void PerfDriver::setupCounter(Counter &counter)
+void PerfDriver::setupCounter(Counter & counter)
 {
     PerfCounter * const perfCounter = static_cast<PerfCounter *>(findCounter(counter));
     if (perfCounter == NULL) {
@@ -677,19 +753,19 @@ void PerfDriver::setupCounter(Counter &counter)
     counter.setKey(perfCounter->getKey());
 }
 
-lib::Optional<CapturedSpe> PerfDriver::setupSpe(const SpeConfiguration & spe)
+lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfiguration & spe)
 {
-    for (PerfCounter *counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<PerfCounter *>(counter->getNext())) {
+    for (PerfCounter * counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<PerfCounter *>(counter->getNext())) {
         if (spe.id == counter->getName()) {
             uint64_t config = 0;
             uint64_t config1 = 0;
             uint64_t config2 = 0;
 
             SET_SPE_CFG(event_filter, spe.event_filter_mask);
-            logg.logMessage("Set Spe Event filter mask : 0x%jx\n ",  spe.event_filter_mask);
+            logg.logMessage("Set Spe Event filter mask : 0x%jx\n ", spe.event_filter_mask);
             SET_SPE_CFG(min_latency, spe.min_latency);
-            logg.logMessage("Set Spe Event min latency : %d\n ",  spe.min_latency);
+            logg.logMessage("Set Spe Event min latency : %d\n ", spe.min_latency);
             size_t branchCount = spe.ops.count(SpeOps::BRANCH);
             SET_SPE_CFG(branch_filter, branchCount);
             logg.logMessage("Set Spe branch ops count : %zu\n ", branchCount);
@@ -712,10 +788,18 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(const SpeConfiguration & spe)
             counter->setConfig(config);
             counter->setConfig1(config1);
             counter->setConfig2(config2);
-            counter->setCount(100000 /* approx 10KHz sample rate at 1GHz CPU clock */);
+
+            if (sampleRate < 0) {
+                logg.logMessage("SPE: Using default sample rate");
+                counter->setCount(100000 /* approx 10KHz sample rate at 1GHz CPU clock */);
+            }
+            else {
+                logg.logMessage("SPE: Using user supplied sample rate %d", sampleRate);
+                counter->setCount(sampleRate);
+            }
             counter->setEnabled(true);
 
-            return { {spe.id, counter->getKey()}};
+            return {{spe.id, counter->getKey()}};
         }
     }
 
@@ -724,7 +808,9 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(const SpeConfiguration & spe)
 
 bool PerfDriver::enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const
 {
-    const uint64_t id = getConfig().can_access_tracepoints ? getTracepointId("Mali: Job slot events", "mali/mali_job_slots_event") : 0 /* never used */;
+    const uint64_t id = getConfig().can_access_tracepoints
+                            ? getTracepointId("Mali: Job slot events", "mali/mali_job_slots_event")
+                            : 0 /* never used */;
     bool sentMaliJobSlotEvents = false;
 
     for (const PerfCpu & cluster : mConfig.cpus) {
@@ -732,23 +818,32 @@ bool PerfDriver::enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrs
         group.addGroupLeader(currTime, attrsConsumer, clusterGroupIdentifier);
     }
 
-    for (PerfCounter *counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<PerfCounter *>(counter->getNext()))
-    {
+    for (PerfCounter * counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<PerfCounter *>(counter->getNext())) {
         if (counter->isEnabled() && (counter->getAttr().type != TYPE_DERIVED)) {
             // do not sent mali_job_slots_event tracepoint multiple times; just send it once and let the processing on the host side
             // deal with multiple counters that are generated from it
-            const bool isMaliJobSlotEvents = getConfig().can_access_tracepoints && (counter->getAttr().type == PERF_TYPE_TRACEPOINT) &&
+            const bool isMaliJobSlotEvents = getConfig().can_access_tracepoints &&
+                                             (counter->getAttr().type == PERF_TYPE_TRACEPOINT) &&
                                              (counter->getAttr().config == id);
             const bool skip = (isMaliJobSlotEvents && sentMaliJobSlotEvents);
 
             sentMaliJobSlotEvents |= isMaliJobSlotEvents;
 
             if (!skip) {
-                if (group.add(currTime, attrsConsumer, counter->getPerfEventGroupIdentifier(), counter->getKey(), counter->getAttr(), counter->usesAux())) {
+                if (group.add(currTime,
+                              attrsConsumer,
+                              counter->getPerfEventGroupIdentifier(),
+                              counter->getKey(),
+                              counter->getAttr(),
+                              counter->usesAux())) {
                     if (counter->hasConfigId2()) {
-                        if (!group.add(currTime, attrsConsumer, counter->getPerfEventGroupIdentifier(),
-                                       counter->getKey() | 0x40000000, counter->getAttr2(), counter->usesAux())) {
+                        if (!group.add(currTime,
+                                       attrsConsumer,
+                                       counter->getPerfEventGroupIdentifier(),
+                                       counter->getKey() | 0x40000000,
+                                       counter->getAttr2(),
+                                       counter->usesAux())) {
                             logg.logMessage("PerfGroups::add (2nd) failed");
                             return false;
                         }
@@ -769,8 +864,8 @@ void PerfDriver::read(IPerfAttrsConsumer & attrsConsumer, const int cpu)
 {
     const GatorCpu * const cluster = mCpuInfo.getCluster(cpu);
 
-    for (PerfCounter *counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
-            counter = static_cast<PerfCounter *>(counter->getNext())) {
+    for (PerfCounter * counter = static_cast<PerfCounter *>(getCounters()); counter != NULL;
+         counter = static_cast<PerfCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
         }
@@ -780,15 +875,15 @@ void PerfDriver::read(IPerfAttrsConsumer & attrsConsumer, const int cpu)
 
 bool PerfDriver::sendTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer)
 {
-    if (!readTracepointFormat(currTime, attrsConsumer, SCHED_SWITCH)
-            || !readTracepointFormat(currTime, attrsConsumer, CPU_IDLE)
-            || !readTracepointFormat(currTime, attrsConsumer, CPU_FREQUENCY) || false) {
+    if (!readTracepointFormat(currTime, attrsConsumer, SCHED_SWITCH) ||
+        !readTracepointFormat(currTime, attrsConsumer, CPU_IDLE) ||
+        !readTracepointFormat(currTime, attrsConsumer, CPU_FREQUENCY) || false) {
         return false;
     }
 
-    for (PerfTracepoint *tracepoint = mTracepoints; tracepoint != NULL; tracepoint = tracepoint->getNext()) {
-        if (tracepoint->getCounter()->isEnabled()
-                && !readTracepointFormat(currTime, attrsConsumer, tracepoint->getTracepoint())) {
+    for (PerfTracepoint * tracepoint = mTracepoints; tracepoint != NULL; tracepoint = tracepoint->getNext()) {
+        if (tracepoint->getCounter()->isEnabled() &&
+            !readTracepointFormat(currTime, attrsConsumer, tracepoint->getTracepoint())) {
             return false;
         }
     }
@@ -796,13 +891,13 @@ bool PerfDriver::sendTracepointFormats(const uint64_t currTime, IPerfAttrsConsum
     return true;
 }
 
-int PerfDriver::writeCounters(mxml_node_t *root) const
+int PerfDriver::writeCounters(mxml_node_t * root) const
 {
     int count = SimpleDriver::writeCounters(root);
     for (const auto & perfCpu : mConfig.cpus) {
         const char * const speName = perfCpu.gator_cpu.getSpeName();
         if (speName != nullptr) {
-            mxml_node_t *node = mxmlNewElement(root, "spe");
+            mxml_node_t * node = mxmlNewElement(root, "spe");
             mxmlElementSetAttr(node, "id", speName);
             ++count;
         }

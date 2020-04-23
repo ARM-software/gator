@@ -1,17 +1,15 @@
-/* Copyright (c) 2016 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FSENTRY_H
 #define INCLUDE_LIB_FSENTRY_H
 
-#include "ClassBoilerPlate.h"
 #include "lib/Optional.h"
 
+#include <dirent.h>
 #include <memory>
 #include <string>
-#include <dirent.h>
 
-namespace lib
-{
+namespace lib {
     /* forward decls */
     class FsEntryDirectoryIterator;
 
@@ -19,51 +17,28 @@ namespace lib
      * @class   FsEntry
      * @brief   Represents a file system entry
      */
-    class FsEntry
-    {
+    class FsEntry {
     public:
-
         /**
          * Enumerate file type
          */
-        enum class Type
-        {
-            UNKNOWN,
-            FILE,
-            DIR,
-            CHAR_DEV,
-            BLOCK_DEV,
-            FIFO,
-            SOCKET
-        };
+        enum class Type { UNKNOWN, FILE, DIR, CHAR_DEV, BLOCK_DEV, FIFO, SOCKET };
 
         /**
          * Stats about file (type, whether it exists etc)
          */
-        class Stats
-        {
+        class Stats {
         public:
-
             Stats();
             Stats(Type type, bool exists, bool symlink);
 
-            Type type() const
-            {
-                return type_;
-            }
+            Type type() const { return type_; }
 
-            bool exists() const
-            {
-                return exists_;
-            }
+            bool exists() const { return exists_; }
 
-            bool is_symlink() const
-            {
-                return symlink_;
-            }
+            bool is_symlink() const { return symlink_; }
 
         private:
-
             friend class FsEntry;
 
             Type type_;
@@ -76,10 +51,7 @@ namespace lib
          *
          * @param   path    The path the entry should point to. If the path is not rooted, will use CWD.
          */
-        inline static FsEntry create(const std::string & path)
-        {
-            return FsEntry(path);
-        }
+        inline static FsEntry create(const std::string & path) { return FsEntry(path); }
 
         /**
          * Factory method, for sub path
@@ -87,10 +59,7 @@ namespace lib
          * @param   parent  The parent path
          * @param   path    The sub path string (any leading '/' is ignored)
          */
-        inline static FsEntry create(const FsEntry & parent, const std::string & path)
-        {
-            return FsEntry(parent, path);
-        }
+        inline static FsEntry create(const FsEntry & parent, const std::string & path) { return FsEntry(parent, path); }
 
         /** @return Object representing the parent directory for some path, or empty for root directory */
         Optional<FsEntry> parent() const;
@@ -108,9 +77,9 @@ namespace lib
         Optional<FsEntry> realpath() const;
 
         /** Equality operator */
-        bool operator ==(const FsEntry & that) const;
+        bool operator==(const FsEntry & that) const;
         /** Less operator (for use in sorted collections such as std::map); result is equivalent to `this->path() < that.path()` */
-        bool operator <(const FsEntry & that) const;
+        bool operator<(const FsEntry & that) const;
 
         /** @return Current stats for file */
         Stats read_stats() const;
@@ -126,10 +95,7 @@ namespace lib
         bool canAccess(bool read, bool write, bool exec) const;
 
         /** @return True if the file exists */
-        bool exists() const
-        {
-            return canAccess(false, false, false);
-        }
+        bool exists() const { return canAccess(false, false, false); }
 
         /**
          * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
@@ -155,7 +121,6 @@ namespace lib
         bool writeFileContents(const char * data) const;
 
     private:
-
         std::string path_;
         std::string::size_type name_offset;
 
@@ -181,10 +146,8 @@ namespace lib
      * @class   FsEntryDirectoryIterator
      * @brief   Allows enumeration of children of a directory.
      */
-    class FsEntryDirectoryIterator
-    {
+    class FsEntryDirectoryIterator {
     public:
-
         /**
          * Constructor
          * @param   parent  The directory to iterate the children of
@@ -192,11 +155,12 @@ namespace lib
         FsEntryDirectoryIterator(const FsEntry & parent);
 
         /* Copy operations are not available */
-        CLASS_DELETE_COPY(FsEntryDirectoryIterator);
+        FsEntryDirectoryIterator(const FsEntryDirectoryIterator &) = delete;
+        FsEntryDirectoryIterator & operator=(const FsEntryDirectoryIterator &) = delete;
 
         /* But move are */
         FsEntryDirectoryIterator(FsEntryDirectoryIterator &&) = default;
-        FsEntryDirectoryIterator& operator=(FsEntryDirectoryIterator &&) = default;
+        FsEntryDirectoryIterator & operator=(FsEntryDirectoryIterator &&) = default;
 
         /**
          * Get the next child entry. Users should repeatedly call this function to enumerate children until it returns nothing.
@@ -206,10 +170,8 @@ namespace lib
         Optional<FsEntry> next();
 
     private:
-
         Optional<FsEntry> parent_;
-        std::unique_ptr<DIR, int(*)(DIR *)> directory_;
-
+        std::unique_ptr<DIR, int (*)(DIR *)> directory_;
     };
 
     /**
@@ -218,10 +180,7 @@ namespace lib
      * @param   entry   The file entry to read
      * @return  The contents of that file
      */
-    static inline std::string readFileContents(const FsEntry & entry)
-    {
-        return entry.readFileContents();
-    }
+    static inline std::string readFileContents(const FsEntry & entry) { return entry.readFileContents(); }
 
     /**
      * Write the contents of a file

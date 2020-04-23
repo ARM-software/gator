@@ -1,20 +1,13 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #include "OlyUtility.h"
 
 #include <ctype.h>
 #include <errno.h>
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <memory>
 
 #if defined(WIN32)
 #include <windows.h>
@@ -24,7 +17,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-bool stringToBool(const char* string, bool defValue)
+bool stringToBool(const char * string, bool defValue)
 {
     char value[32];
 
@@ -45,12 +38,12 @@ bool stringToBool(const char* string, bool defValue)
         i++;
     }
 
-    if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0
-            || strcmp(value, "on") == 0) {
+    if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0 ||
+        strcmp(value, "on") == 0) {
         return true;
     }
-    else if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0
-            || strcmp(value, "off") == 0) {
+    else if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 ||
+             strcmp(value, "off") == 0) {
         return false;
     }
     else {
@@ -58,7 +51,7 @@ bool stringToBool(const char* string, bool defValue)
     }
 }
 
-void stringToLower(char* string)
+void stringToLower(char * string)
 {
     if (string == NULL) {
         return;
@@ -70,9 +63,9 @@ void stringToLower(char* string)
     }
 }
 
-bool stringToLongLong(long long * const value, const char *str, const int base)
+bool stringToLongLong(long long * const value, const char * str, const int base)
 {
-    char *endptr;
+    char * endptr;
     long long v;
     errno = 0;
     if (base >= 2) {
@@ -86,9 +79,9 @@ bool stringToLongLong(long long * const value, const char *str, const int base)
     return false;
 }
 
-bool stringToLong(long * const value, const char *str, const int base)
+bool stringToLong(long * const value, const char * str, const int base)
 {
-    char *endptr;
+    char * endptr;
     long v;
     errno = 0;
 
@@ -103,7 +96,7 @@ bool stringToLong(long * const value, const char *str, const int base)
     return false;
 }
 
-bool stringToInt(int * const value, const char *str, const int base)
+bool stringToInt(int * const value, const char * str, const int base)
 {
     long v;
     if (!stringToLong(&v, str, base)) {
@@ -115,7 +108,7 @@ bool stringToInt(int * const value, const char *str, const int base)
 }
 
 // Modifies fullpath with the path part including the trailing path separator
-int getApplicationFullPath(char* fullpath, int sizeOfPath)
+int getApplicationFullPath(char * fullpath, int sizeOfPath)
 {
     if (fullpath && sizeOfPath > 0) {
         memset(fullpath, 0, sizeOfPath);
@@ -124,10 +117,9 @@ int getApplicationFullPath(char* fullpath, int sizeOfPath)
 #elif defined(__linux__)
         int length = readlink("/proc/self/exe", fullpath, sizeOfPath);
 #elif defined(DARWIN)
-        uint32_t length_u = (uint32_t)sizeOfPath;
+        uint32_t length_u = (uint32_t) sizeOfPath;
         int length = sizeOfPath;
-        if (_NSGetExecutablePath(fullpath, &length_u) == 0)
-        {
+        if (_NSGetExecutablePath(fullpath, &length_u) == 0) {
             length = strlen(fullpath);
         }
 #endif
@@ -142,10 +134,10 @@ int getApplicationFullPath(char* fullpath, int sizeOfPath)
     return -1;
 }
 
-char* readFromDisk(const char* file, unsigned int *size, bool appendNull)
+char * readFromDisk(const char * file, unsigned int * size, bool appendNull)
 {
     // Open the file
-    FILE* pFile = fopen(file, "rb");
+    FILE * pFile = fopen(file, "rb");
     if (pFile == NULL) {
         return NULL;
     }
@@ -156,7 +148,8 @@ char* readFromDisk(const char* file, unsigned int *size, bool appendNull)
     rewind(pFile);
 
     // Allocate memory to contain the whole file
-    std::unique_ptr<char[], void(*)(void *)> buffer (reinterpret_cast<char *>(malloc(lSize + (appendNull ? 1 : 0))), free);
+    std::unique_ptr<char[], void (*)(void *)> buffer(reinterpret_cast<char *>(malloc(lSize + (appendNull ? 1 : 0))),
+                                                     free);
     if (buffer == nullptr) {
         fclose(pFile);
         return nullptr;
@@ -182,10 +175,10 @@ char* readFromDisk(const char* file, unsigned int *size, bool appendNull)
     return buffer.release();
 }
 
-int writeToDisk(const char* path, const char* data)
+int writeToDisk(const char * path, const char * data)
 {
     // Open the file
-    FILE* pFile = fopen(path, "wb");
+    FILE * pFile = fopen(path, "wb");
     if (pFile == NULL) {
         return -1;
     }
@@ -201,10 +194,10 @@ int writeToDisk(const char* path, const char* data)
     return 0;
 }
 
-int appendToDisk(const char* path, const char* data)
+int appendToDisk(const char * path, const char * data)
 {
     // Open the file
-    FILE* pFile = fopen(path, "a");
+    FILE * pFile = fopen(path, "a");
     if (pFile == NULL) {
         return -1;
     }
@@ -226,7 +219,7 @@ int appendToDisk(const char* path, const char* data)
  * 0 is returned on an error; otherwise 1.
  */
 #define TRANSFER_SIZE 1024
-int copyFile(const char* srcFile, const char* dstFile)
+int copyFile(const char * srcFile, const char * dstFile)
 {
     char buffer[TRANSFER_SIZE];
     FILE * f_src = fopen(srcFile, "rb");
@@ -257,10 +250,10 @@ int copyFile(const char* srcFile, const char* dstFile)
     return 1;
 }
 
-const char* getFilePart(const char* path, char pathSeparator)
+const char * getFilePart(const char * path, char pathSeparator)
 {
     if (path) {
-        const char* last_sep = strrchr(path, pathSeparator);
+        const char * last_sep = strrchr(path, pathSeparator);
         // in case path is not a full path
         if (last_sep == NULL) {
             return path;
@@ -272,11 +265,11 @@ const char* getFilePart(const char* path, char pathSeparator)
 
 // getPathPart may modify the contents of path
 // returns the path including the trailing path separator
-char* getPathPart(char* path, char pathSeparator)
+char * getPathPart(char * path, char pathSeparator)
 {
     // check against null-pointer passed
     if (path) {
-        char* last_sep = strrchr(path, pathSeparator);
+        char * last_sep = strrchr(path, pathSeparator);
 
         // in case path is not a full path
         if (last_sep == NULL) {

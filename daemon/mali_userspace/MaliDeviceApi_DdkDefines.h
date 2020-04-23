@@ -1,20 +1,17 @@
-/* Copyright (c) 2019 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICEAPI_DDKDEFINES_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICEAPI_DDKDEFINES_H_
 
 #include <cstdint>
 
-namespace mali_userspace
-{
+namespace mali_userspace {
     /**
      * Supporting DDK versions m_r12-m_r21, b_r0-b_r9
      */
-    namespace ddk_pre_r21
-    {
+    namespace ddk_pre_r21 {
         /** Message header */
-        union kbase_uk_header
-        {
+        union kbase_uk_header {
             /* 32-bit number identifying the UK function to be called. */
             uint32_t id;
             /* The int return code returned by the called UK function. */
@@ -24,8 +21,7 @@ namespace mali_userspace
         };
 
         /** IOCTL parameters to check version */
-        struct kbase_uk_version_check_args
-        {
+        struct kbase_uk_version_check_args {
             kbase_uk_header header;
 
             uint16_t major;
@@ -34,8 +30,7 @@ namespace mali_userspace
         };
 
         /** IOCTL parameters to set flags */
-        struct kbase_uk_set_flags
-        {
+        struct kbase_uk_set_flags {
             kbase_uk_header header;
 
             uint32_t create_flags;
@@ -47,14 +42,11 @@ namespace mali_userspace
         static constexpr std::size_t GPU_MAX_JOB_SLOTS = 16;
 
         /** IOCTL parameters to probe GPU properties */
-        struct kbase_uk_gpuprops
-        {
+        struct kbase_uk_gpuprops {
             kbase_uk_header header;
 
-            struct mali_base_gpu_props
-            {
-                struct mali_base_gpu_core_props
-                {
+            struct mali_base_gpu_props {
+                struct mali_base_gpu_core_props {
                     uint32_t product_id;
                     uint16_t version_status;
                     uint16_t minor_revision;
@@ -68,8 +60,7 @@ namespace mali_userspace
                     uint64_t gpu_available_memory_size;
                 } core_props;
 
-                struct mali_base_gpu_l2_cache_props
-                {
+                struct mali_base_gpu_l2_cache_props {
                     uint8_t log2_line_size;
                     uint8_t log2_cache_size;
                     uint8_t num_l2_slices;
@@ -78,14 +69,12 @@ namespace mali_userspace
 
                 uint64_t unused;
 
-                struct mali_base_gpu_tiler_props
-                {
+                struct mali_base_gpu_tiler_props {
                     uint32_t bin_size_bytes;
                     uint32_t max_active_levels;
                 } tiler_props;
 
-                struct mali_base_gpu_thread_props
-                {
+                struct mali_base_gpu_thread_props {
                     uint32_t max_threads;
                     uint32_t max_workgroup_size;
                     uint32_t max_barrier_size;
@@ -96,8 +85,7 @@ namespace mali_userspace
                     uint8_t padding[7];
                 } thread_props;
 
-                struct gpu_raw_gpu_props
-                {
+                struct gpu_raw_gpu_props {
                     uint64_t shader_present;
                     uint64_t tiler_present;
                     uint64_t l2_present;
@@ -125,15 +113,13 @@ namespace mali_userspace
                     uint32_t coherency_mode;
                 } raw_props;
 
-                struct mali_base_gpu_coherent_group_info
-                {
+                struct mali_base_gpu_coherent_group_info {
                     uint32_t num_groups;
                     uint32_t num_core_groups;
                     uint32_t coherency;
                     uint32_t padding;
 
-                    struct mali_base_gpu_coherent_group
-                    {
+                    struct mali_base_gpu_coherent_group {
                         uint64_t core_mask;
                         uint16_t num_cores;
                         uint16_t padding[3];
@@ -143,8 +129,7 @@ namespace mali_userspace
         };
 
         /** IOCTL parameters to configure reader */
-        struct kbase_uk_hwcnt_reader_setup
-        {
+        struct kbase_uk_hwcnt_reader_setup {
             kbase_uk_header header;
 
             /* IN */
@@ -158,8 +143,7 @@ namespace mali_userspace
             int32_t fd;
         };
 
-        enum
-        {
+        enum {
             /* Related to mali0 ioctl interface */
             LINUX_UK_BASE_MAGIC = 0x80,
             BASE_CONTEXT_CREATE_KERNEL_FLAGS = 0x2,
@@ -175,8 +159,7 @@ namespace mali_userspace
     /**
      * Supporting DDK versions m_r22-m_r28, b_r10+
      */
-    namespace ddk_post_r21
-    {
+    namespace ddk_post_r21 {
         /** IOCTL parameters to check version */
         struct kbase_ioctl_version_check {
             uint16_t major;
@@ -189,8 +172,7 @@ namespace mali_userspace
         };
 
         /** IOCTL parameters to configure reader */
-        struct kbase_ioctl_hwcnt_reader_setup
-        {
+        struct kbase_ioctl_hwcnt_reader_setup {
             uint32_t buffer_count;
             uint32_t jm_bm;
             uint32_t shader_bm;
@@ -199,23 +181,20 @@ namespace mali_userspace
         };
 
         /** IOCTL parameters to read GPU properties */
-        struct kbase_ioctl_get_gpuprops
-        {
-            union kbase_pointer
-            {
-                void *   value;
+        struct kbase_ioctl_get_gpuprops {
+            union kbase_pointer {
+                void * value;
                 uint32_t compat_value;
                 uint64_t sizer;
             } buffer;
-            uint32_t      size;
-            uint32_t      flags;
+            uint32_t size;
+            uint32_t flags;
         };
 
         static constexpr std::size_t BASE_MAX_COHERENT_GROUPS = 16;
 
         /** GPU properties decoded from data blob */
-        struct gpu_propeties
-        {
+        struct gpu_propeties {
             uint32_t product_id;
             uint32_t minor_revision;
             uint32_t major_revision;
@@ -225,17 +204,10 @@ namespace mali_userspace
         };
 
         /** Identify the size of a gpuprop value */
-        enum class KBaseGpuPropValueSize
-        {
-            U8  = 0,
-            U16 = 1,
-            U32 = 2,
-            U64 = 3
-        };
+        enum class KBaseGpuPropValueSize { U8 = 0, U16 = 1, U32 = 2, U64 = 3 };
 
         /** Identify which property a gpuprop value is */
-        enum class KBaseGpuPropKey
-        {
+        enum class KBaseGpuPropKey {
             PRODUCT_ID = 1,
             MINOR_REVISION = 3,
             MAJOR_REVISION = 4,

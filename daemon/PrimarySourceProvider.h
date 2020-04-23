@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
@@ -8,8 +8,6 @@
 #include <semaphore.h>
 #include <set>
 #include <vector>
-
-#include "ClassBoilerPlate.h"
 
 class Child;
 class Driver;
@@ -23,17 +21,17 @@ class ICpuInfo;
  * Interface for different primary source types.
  * Primary source types currently are:
  *
- *    - gator.ko
  *    - Linux perf API
+ *    - Non-root proc polling
  */
-class PrimarySourceProvider
-{
+class PrimarySourceProvider {
 public:
-
     /**
      * Static initialization / detection
      */
-    static std::unique_ptr<PrimarySourceProvider> detect(const char * module, bool systemWide, PmuXML && pmuXml, const char * maliFamilyName);
+    static std::unique_ptr<PrimarySourceProvider> detect(bool systemWide,
+                                                         PmuXML && pmuXml,
+                                                         const char * maliFamilyName);
 
     virtual ~PrimarySourceProvider();
 
@@ -74,22 +72,26 @@ public:
     virtual Driver & getPrimaryDriver() = 0;
 
     /** Create the primary Source instance */
-    virtual std::unique_ptr<Source> createPrimarySource(Child & child, sem_t & senderSem, sem_t & startProfile,
-                                                        const std::set<int> & appTids, FtraceDriver & ftraceDriver,
+    virtual std::unique_ptr<Source> createPrimarySource(Child & child,
+                                                        sem_t & senderSem,
+                                                        sem_t & startProfile,
+                                                        const std::set<int> & appTids,
+                                                        FtraceDriver & ftraceDriver,
                                                         bool enableOnCommandExec) = 0;
 
     virtual const ICpuInfo & getCpuInfo() const = 0;
     virtual ICpuInfo & getCpuInfo() = 0;
 
 protected:
-
     PrimarySourceProvider(const std::vector<PolledDriver *> & polledDrivers);
 
 private:
-
     std::vector<PolledDriver *> polledDrivers;
 
-    CLASS_DELETE_COPY_MOVE(PrimarySourceProvider);
+    PrimarySourceProvider(const PrimarySourceProvider &) = delete;
+    PrimarySourceProvider & operator=(const PrimarySourceProvider &) = delete;
+    PrimarySourceProvider(PrimarySourceProvider &&) = delete;
+    PrimarySourceProvider & operator=(PrimarySourceProvider &&) = delete;
 };
 
 #endif /* INCLUDE_PRIMARYSOURCEPROVIDER_H */

@@ -1,10 +1,4 @@
-/**
- * Copyright (C) Arm Limited 2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef PMUXML_PARSER_H
 #define PMUXML_PARSER_H

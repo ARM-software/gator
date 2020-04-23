@@ -1,28 +1,23 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+
+#define BUFFER_USE_SESSION_DATA
 
 #include "ExternalSource.h"
+
+#include "BufferUtils.h"
+#include "Child.h"
+#include "Drivers.h"
+#include "Logging.h"
+#include "OlySocket.h"
+#include "PrimarySourceProvider.h"
+#include "SessionData.h"
+#include "lib/FileDescriptor.h"
 
 #include <fcntl.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-
-#include "BufferUtils.h"
-#include "Child.h"
-#include "DriverSource.h"
-#include "Logging.h"
-#include "OlySocket.h"
-#include "PrimarySourceProvider.h"
-#include "SessionData.h"
-#include "lib/FileDescriptor.h"
-#include "Drivers.h"
 
 static const char STREAMLINE_ANNOTATE[] = "\0streamline-annotate";
 static const char MALI_VIDEO[] = "\0mali-video";
@@ -34,29 +29,27 @@ static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
 static const char FTRACE_V2[] = "FTRACE 2\n";
 
-ExternalSource::ExternalSource(Child & child, sem_t *senderSem, Drivers & mDrivers)
-        : Source(child),
-          mBufferSem(),
-          mBuffer(0, FrameType::EXTERNAL, 128 * 1024, senderSem),
-          mMonitor(),
-          mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)),
-          mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
-          mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
+ExternalSource::ExternalSource(Child & child, sem_t * senderSem, Drivers & mDrivers)
+    : Source(child),
+      mBufferSem(),
+      mBuffer(0, FrameType::EXTERNAL, 128 * 1024, senderSem),
+      mMonitor(),
+      mMveStartupUds(MALI_VIDEO_STARTUP, sizeof(MALI_VIDEO_STARTUP)),
+      mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
+      mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
 #ifdef TCP_ANNOTATIONS
-          mAnnotate(8083),
+      mAnnotate(8083),
 #endif
-          mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true),
-          mInterruptFd(-1),
-          mMidgardUds(-1),
-          mMveUds(-1),
-          mDrivers(mDrivers)
+      mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true),
+      mInterruptFd(-1),
+      mMidgardUds(-1),
+      mMveUds(-1),
+      mDrivers(mDrivers)
 {
     sem_init(&mBufferSem, 0, 0);
 }
 
-ExternalSource::~ExternalSource()
-{
-}
+ExternalSource::~ExternalSource() {}
 
 void ExternalSource::waitFor(const int bytes)
 {
@@ -131,7 +124,7 @@ void ExternalSource::connectFtrace()
     }
 
     const std::pair<std::vector<int>, bool> ftraceFds = mDrivers.getFtraceDriver().prepare();
-    const char *handshake;
+    const char * handshake;
     size_t size;
     if (ftraceFds.second) {
         handshake = FTRACE_V1;
@@ -149,13 +142,13 @@ void ExternalSource::connectFtrace()
 
 bool ExternalSource::prepare()
 {
-    if (!mMonitor.init() || !lib::setNonblock(mMveStartupUds.getFd()) || !mMonitor.add(mMveStartupUds.getFd())
-            || !lib::setNonblock(mMidgardStartupUds.getFd()) || !mMonitor.add(mMidgardStartupUds.getFd())
-            || !lib::setNonblock(mUtgardStartupUds.getFd()) || !mMonitor.add(mUtgardStartupUds.getFd())
+    if (!mMonitor.init() || !lib::setNonblock(mMveStartupUds.getFd()) || !mMonitor.add(mMveStartupUds.getFd()) ||
+        !lib::setNonblock(mMidgardStartupUds.getFd()) || !mMonitor.add(mMidgardStartupUds.getFd()) ||
+        !lib::setNonblock(mUtgardStartupUds.getFd()) || !mMonitor.add(mUtgardStartupUds.getFd())
 #ifdef TCP_ANNOTATIONS
-            || !lib::setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
+        || !lib::setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
 #endif
-            || !lib::setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd())) {
+        || !lib::setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd())) {
         return false;
     }
 
@@ -365,7 +358,7 @@ bool ExternalSource::isDone()
     return mBuffer.isDone();
 }
 
-void ExternalSource::write(ISender *sender)
+void ExternalSource::write(ISender * sender)
 {
     // Don't send external data until the summary packet is sent so that monotonic delta is available
     if (!gSessionData.mSentSummary) {

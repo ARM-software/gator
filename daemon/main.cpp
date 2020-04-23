@@ -1,19 +1,34 @@
-/**
- * Copyright (C) Arm Limited 2010-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+
+#include "AnnotateListener.h"
+#include "Child.h"
+#include "ConfigurationXML.h"
+#include "CounterXML.h"
+#include "Drivers.h"
+#include "GatorCLIParser.h"
+#include "ICpuInfo.h"
+#include "Logging.h"
+#include "Monitor.h"
+#include "OlySocket.h"
+#include "OlyUtility.h"
+#include "Sender.h"
+#include "SessionData.h"
+#include "lib/FileDescriptor.h"
+#include "lib/Memory.h"
+#include "lib/Utils.h"
+#include "xml/EventsXML.h"
+#include "xml/PmuXMLParser.h"
 
 #include <algorithm>
-#include <cinttypes>
-
 #include <arpa/inet.h>
+#include <atomic>
+#include <cinttypes>
 #include <fcntl.h>
-#include <unistd.h>
-#include <pwd.h>
+#include <iostream>
+#include <iterator>
+#include <map>
 #include <pthread.h>
+#include <pwd.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -23,42 +38,17 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#include <atomic>
-#include <map>
+#include <unistd.h>
 #include <vector>
-#include <iterator>
-#include <iostream>
 
-#include "AnnotateListener.h"
-#include "Child.h"
-#include "CounterXML.h"
-#include "ConfigurationXML.h"
-#include "Drivers.h"
-#include "xml/EventsXML.h"
-#include "ICpuInfo.h"
-#include "Logging.h"
-#include "Monitor.h"
-#include "OlySocket.h"
-#include "OlyUtility.h"
-#include "xml/PmuXMLParser.h"
-#include "SessionData.h"
-#include "Sender.h"
-#include "GatorCLIParser.h"
-#include "lib/FileDescriptor.h"
-#include "lib/Memory.h"
-#include "lib/Utils.h"
-
-static int shutdownFilesystem();
 static pthread_mutex_t numChildProcesses_mutex;
-static OlyServerSocket* sock = NULL;
+static std::unique_ptr<OlyServerSocket> socketUds;
+static std::unique_ptr<OlyServerSocket> socketTcp;
 static Monitor monitor;
-static bool driverRunningAtStart = false;
-static bool driverMountedAtStart = false;
 
 static const char NO_TCP_PIPE[] = "\0streamline-data";
 
-enum State
-{
+enum State {
     IDLE,
     CAPTURING,
     WAITING_FOR_TEAR_DOWN,
@@ -69,10 +59,8 @@ static std::atomic_int localCapturePid = ATOMIC_VAR_INIT(0);
 
 void cleanUp()
 {
-    if (shutdownFilesystem() == -1) {
-        logg.logMessage("Error shutting down gator filesystem");
-    }
-    delete sock;
+    socketUds.reset();
+    socketTcp.reset();
 }
 
 // Arbitrary sleep of up to 2 seconds to give time for the child to exit;
@@ -94,28 +82,24 @@ static bool poll_state()
 }
 
 // CTRL C Signal Handler
-__attribute__((noreturn))
-static void handler(int signum)
+__attribute__((noreturn)) static void handler(int signum)
 {
     logg.logMessage("Received signal %d, gator daemon exiting", signum);
 
     // Case 1: both child and parent receive the signal, in which has poll_state will return true
-    if (!poll_state())
-    {
+    if (!poll_state()) {
         // Case 2: only the parent received the signal - Kill child threads - the first signal exits gracefully
         logg.logMessage("Killing process group as more than one gator-child was running when signal was received");
         kill(0, SIGINT);
 
         // Give time for the child to exit
-        if (!poll_state())
-        {
+        if (!poll_state()) {
             // The second signal should kill the child
             logg.logMessage("Sending SIGINT again");
             kill(0, SIGINT);
 
             // Again, wait for status update
-            if (!poll_state())
-            {
+            if (!poll_state()) {
                 // try to cleanup
                 cleanUp();
 
@@ -158,8 +142,7 @@ static void child_exit(int)
 
 static const int UDP_REQ_PORT = 30001;
 
-typedef struct
-{
+typedef struct {
     char rviHeader[8];
     uint32_t messageID;
     uint8_t ethernetAddress[8];
@@ -172,16 +155,11 @@ typedef struct
     uint32_t activeConnections;
 } RVIConfigureInfo;
 
-static const char DST_REQ[] = { 'D', 'S', 'T', '_', 'R', 'E', 'Q', ' ', 0, 0, 0, 0x64 };
+static const char DST_REQ[] = {'D', 'S', 'T', '_', 'R', 'E', 'Q', ' ', 0, 0, 0, 0x64};
 
-class UdpListener
-{
+class UdpListener {
 public:
-    UdpListener()
-            : mDstAns(),
-              mReq(-1)
-    {
-    }
+    UdpListener() : mDstAns(), mReq(-1) {}
 
     void setup(int port)
     {
@@ -202,10 +180,7 @@ public:
         mDstAns.subnetMask = PROTOCOL_VERSION;
     }
 
-    int getReq() const
-    {
-        return mReq;
-    }
+    int getReq() const { return mReq; }
 
     void handle()
     {
@@ -225,10 +200,7 @@ public:
         }
     }
 
-    void close()
-    {
-        ::close(mReq);
-    }
+    void close() { ::close(mReq); }
 
 private:
     int udpPort(int port)
@@ -277,133 +249,13 @@ private:
 };
 
 static UdpListener udpListener;
-
-// retval: -1 = failure; 0 = was already mounted; 1 = successfully mounted
-static int mountGatorFS()
-{
-    // If already mounted,
-    if (access("/dev/gator/buffer", F_OK) == 0) {
-        return 0;
-    }
-
-    // else, mount the filesystem
-    mkdir("/dev/gator", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (mount("nodev", "/dev/gator", "gatorfs", 0, NULL) != 0) {
-        return -1;
-    }
-    else {
-        return 1;
-    }
-}
-
-static bool init_module(const char * const location)
-{
-    bool ret(false);
-    const int fd = open(location, O_RDONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct stat st;
-        if (fstat(fd, &st) == 0) {
-            void * const p = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-            if (p != MAP_FAILED) {
-                if (syscall(__NR_init_module, p, static_cast<unsigned long>(st.st_size), "") == 0) {
-                    ret = true;
-                }
-                munmap(p, st.st_size);
-            }
-        }
-        close(fd);
-    }
-
-    return ret;
-}
-
-bool setupFilesystem(const char * module)
-{
-    if (module) {
-        // unmount and rmmod if the module was specified on the commandline, i.e. ensure that the specified module is indeed running
-        shutdownFilesystem();
-
-        // if still mounted
-        if (access("/dev/gator/buffer", F_OK) == 0) {
-            logg.logError("Unable to remove the running gator.ko. Manually remove the module or use the running module by not specifying one on the commandline");
-            handleException();
-        }
-    }
-
-    const int retval = mountGatorFS();
-    if (retval == 1) {
-        logg.logMessage("Driver already running at startup");
-        driverRunningAtStart = true;
-    }
-    else if (retval == 0) {
-        logg.logMessage("Driver already mounted at startup");
-        driverRunningAtStart = driverMountedAtStart = true;
-    }
-    else {
-        char location[256]; // arbitrarily large amount
-
-        if (module) {
-            strncpy(location, module, sizeof(location) - 1);
-        }
-        else {
-            // Is the driver co-located in the same directory?
-            if (getApplicationFullPath(location, sizeof(location)) != 0) { // allow some buffer space
-                logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
-            }
-            strncat(location, "gator.ko", sizeof(location) - strlen(location) - 1);
-        }
-
-        if (access(location, F_OK) == -1) {
-            if (module == NULL) {
-                // The gator kernel is not already loaded and unable to locate gator.ko in the default location
-                return false;
-            }
-            else {
-                // gator location specified on the command line but it was not found
-                logg.logError("gator module not found at %s", location);
-                handleException();
-            }
-        }
-
-        // Load driver
-        if (!init_module(location)) {
-            logg.logMessage("Unable to load gator.ko driver from location %s", location);
-            logg.logError("Unable to load (insmod) gator.ko driver:\n  >>> gator.ko must be built against the current kernel version & configuration\n  >>> See dmesg for more details");
-            handleException();
-        }
-
-        if (mountGatorFS() == -1) {
-            logg.logError("Unable to mount the gator filesystem needed for profiling.");
-            handleException();
-        }
-    }
-
-    return true;
-}
-
-static int shutdownFilesystem()
-{
-    if (driverMountedAtStart == false) {
-        umount("/dev/gator");
-    }
-    if (driverRunningAtStart == false) {
-        if (syscall(__NR_delete_module, "gator", O_NONBLOCK) != 0) {
-            return -1;
-        }
-    }
-
-    return 0; // success
-}
-
 static AnnotateListener annotateListener;
 
-static void handleClient(Drivers & drivers)
+static void handleClient(Drivers & drivers, OlyServerSocket & sock, OlyServerSocket * otherSock)
 {
-    assert(sock != nullptr);
-
     if (state.load() == State::CAPTURING) {
         // A temporary socket connection to host, to transfer error message
-        OlySocket client(sock->acceptConnection());
+        OlySocket client(sock.acceptConnection());
         logg.logError("Session already in progress");
         Sender sender(&client);
         sender.writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
@@ -414,7 +266,7 @@ static void handleClient(Drivers & drivers)
         client.closeSocket();
     }
     else {
-        OlySocket client(sock->acceptConnection());
+        OlySocket client(sock.acceptConnection());
         int pid = fork();
         if (pid < 0) {
             // Error
@@ -423,7 +275,11 @@ static void handleClient(Drivers & drivers)
         }
         else if (pid == 0) {
             // Child
-            sock->closeServerSocket();
+            sock.closeServerSocket();
+            if (otherSock != nullptr) {
+                otherSock->closeServerSocket();
+            }
+
             udpListener.close();
             monitor.close();
             annotateListener.close();
@@ -466,7 +322,8 @@ static void doLocalCapture(Drivers & drivers, const Child::Config & config)
     }
 }
 
-void setDefaults() {
+void setDefaults()
+{
     //default system wide.
     gSessionData.mSystemWide = false;
     //buffer_mode is streaming
@@ -484,7 +341,7 @@ void setDefaults() {
 #if defined(WIN32)
     //TODO
     gSessionData.mCaptureUser = nullptr;
-    gSessionData.mCaptureWorkingDir= nullptr;
+    gSessionData.mCaptureWorkingDir = nullptr;
 #else
     // default to current user
     gSessionData.mCaptureUser = nullptr;
@@ -517,6 +374,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.parameterSetFlag = result.parameterSetFlag;
     gSessionData.mStopOnExit = result.mStopGator;
     gSessionData.mPerfMmapSizeInPages = result.mPerfMmapSizeInPages;
+    gSessionData.mSpeSampleRate = result.mSpeSampleRate;
 
     // use value from perf_event_mlock_kb
     if ((gSessionData.mPerfMmapSizeInPages <= 0) && (geteuid() != 0) && (gSessionData.mPageSize >= 1024)) {
@@ -550,8 +408,8 @@ void updateSessionData(const ParserResult & result)
     if (result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) {
         gSessionData.mCaptureWorkingDir = strdup(result.mCaptureWorkingDir);
     }
-    if(result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) {
-        gSessionData.mCaptureCommand  = result.mCaptureCommand;
+    if (result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) {
+        gSessionData.mCaptureCommand = result.mCaptureCommand;
     }
     if (result.parameterSetFlag & USE_CMDLINE_ARG_DURATION) {
         gSessionData.mDuration = result.mDuration;
@@ -561,7 +419,7 @@ void updateSessionData(const ParserResult & result)
     }
 }
 // Gator data flow: collector -> collector fifo -> sender
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
     // Ensure proper signal handling by making gatord the process group leader
     //   e.g. it may not be the group leader when launched as 'sudo gatord'
@@ -599,7 +457,9 @@ int main(int argc, char** argv)
             rlim.rlim_max = std::max(rlim.rlim_cur, rlim.rlim_max);
             rlim.rlim_cur = std::min(std::max(rlim_t(1) << 15, rlim.rlim_cur), rlim.rlim_max);
             if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-                logg.logMessage("Unable to increase the maximum number of files (%" PRIuMAX ", %" PRIuMAX ")", static_cast<uintmax_t>(rlim.rlim_cur), static_cast<uintmax_t>(rlim.rlim_max));
+                logg.logMessage("Unable to increase the maximum number of files (%" PRIuMAX ", %" PRIuMAX ")",
+                                static_cast<uintmax_t>(rlim.rlim_cur),
+                                static_cast<uintmax_t>(rlim.rlim_max));
                 // Not good, but not a fatal error either
             }
         }
@@ -612,14 +472,21 @@ int main(int argc, char** argv)
         const int minorVersion = (PROTOCOL_VERSION / 10) % 10;
         const int revisionVersion = PROTOCOL_VERSION % 10;
         if (revisionVersion == 0) {
-            snprintf(versionString, sizeof(versionString), "Streamline gatord version %d (Streamline v%d.%d)",
-            PROTOCOL_VERSION,
-                     majorVersion, minorVersion);
+            snprintf(versionString,
+                     sizeof(versionString),
+                     "Streamline gatord version %d (Streamline v%d.%d)",
+                     PROTOCOL_VERSION,
+                     majorVersion,
+                     minorVersion);
         }
         else {
-            snprintf(versionString, sizeof(versionString), "Streamline gatord version %d (Streamline v%d.%d.%d)",
-            PROTOCOL_VERSION,
-                     majorVersion, minorVersion, revisionVersion);
+            snprintf(versionString,
+                     sizeof(versionString),
+                     "Streamline gatord version %d (Streamline v%d.%d.%d)",
+                     PROTOCOL_VERSION,
+                     majorVersion,
+                     minorVersion,
+                     revisionVersion);
         }
     }
     else {
@@ -637,20 +504,19 @@ int main(int argc, char** argv)
     // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
 
-
-Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
+    Drivers drivers{result.mSystemWide, std::move(pmuXml)};
 
     {
         auto xml = events_xml::getTree(drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         // Initialize all drivers
-        for (Driver *driver : drivers.getAll()) {
+        for (Driver * driver : drivers.getAll()) {
             driver->readEvents(xml.get());
         }
         // build map of counter->event
         {
             gSessionData.globalCounterToEventMap.clear();
 
-            mxml_node_t *node = xml.get();
+            mxml_node_t * node = xml.get();
             while (true) {
                 node = mxmlFindElement(node, xml.get(), "event", NULL, NULL, MXML_DESCEND);
                 if (node == nullptr) {
@@ -675,13 +541,20 @@ Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
 
     if (result.mode == ParserResult::ExecutionMode::PRINT) {
         if (result.printables.count(ParserResult::Printable::EVENTS_XML) == 1) {
-            std::cout << events_xml::getXML(drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo().getClusters()).get();
+            std::cout << events_xml::getXML(drivers.getAllConst(),
+                                            drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+                             .get();
         }
         if (result.printables.count(ParserResult::Printable::COUNTERS_XML) == 1) {
-            std::cout << counters_xml::getXML(drivers.getPrimarySourceProvider().supportsMultiEbs(), drivers.getAllConst(), drivers.getPrimarySourceProvider().getCpuInfo()).get();
+            std::cout << counters_xml::getXML(drivers.getPrimarySourceProvider().supportsMultiEbs(),
+                                              drivers.getAllConst(),
+                                              drivers.getPrimarySourceProvider().getCpuInfo())
+                             .get();
         }
         if (result.printables.count(ParserResult::Printable::DEFAULT_CONFIGURATION_XML) == 1) {
-            std::cout << configuration_xml::getDefaultConfigurationXml(drivers.getPrimarySourceProvider().getCpuInfo().getClusters()).get();
+            std::cout << configuration_xml::getDefaultConfigurationXml(
+                             drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+                             .get();
         }
         cleanUp();
         return 0;
@@ -703,17 +576,16 @@ Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
     gSessionData.mAnnotateStart = pipefd[1];
     if (!monitor.init()
 #ifdef TCP_ANNOTATIONS
-            || !monitor.add(annotateListener.getSockFd())
+        || !monitor.add(annotateListener.getSockFd())
 #endif
-            || !monitor.add(annotateListener.getUdsFd())
-            || !monitor.add(pipefd[0])) {
+        || !monitor.add(annotateListener.getUdsFd()) || !monitor.add(pipefd[0])) {
         logg.logError("Monitor setup failed");
         handleException();
     }
 
     // If the command line argument is a session xml file, no need to open a socket
     if (gSessionData.mLocalCapture) {
-        Child::Config childConfig { { }, { } };
+        Child::Config childConfig{{}, {}};
         for (const auto & event : result.events) {
             CounterConfiguration config;
             config.counterName = event.first;
@@ -726,17 +598,19 @@ Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
         doLocalCapture(drivers, childConfig);
     }
     else {
-        if (result.port == DISABLE_TCP_USE_UDS_PORT) {
-            sock = new OlyServerSocket(NO_TCP_PIPE, sizeof(NO_TCP_PIPE), true);
-            if (!monitor.add(sock->getFd())) {
+        // enable TCP socket
+        if (result.port != DISABLE_TCP_USE_UDS_PORT) {
+            socketTcp.reset(new OlyServerSocket(result.port));
+            udpListener.setup(result.port);
+            if (!monitor.add(socketTcp->getFd()) || !monitor.add(udpListener.getReq())) {
                 logg.logError("Monitor setup failed: couldn't add host listeners");
                 handleException();
             }
         }
-        else {
-            sock = new OlyServerSocket(result.port);
-            udpListener.setup(result.port);
-            if (!monitor.add(sock->getFd()) || !monitor.add(udpListener.getReq())) {
+        // always enable UDS socket
+        {
+            socketUds.reset(new OlyServerSocket(NO_TCP_PIPE, sizeof(NO_TCP_PIPE), true));
+            if (!monitor.add(socketUds->getFd())) {
                 logg.logError("Monitor setup failed: couldn't add host listeners");
                 handleException();
             }
@@ -745,17 +619,21 @@ Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
 
     // Forever loop, can be exited via a signal or exception
     while (1) {
-        struct epoll_event events[2];
+        struct epoll_event events[3];
         int ready = monitor.wait(events, ARRAY_LENGTH(events), -1);
         if (ready < 0) {
             logg.logError("Monitor::wait failed");
             handleException();
         }
+
         for (int i = 0; i < ready; ++i) {
-            if (!gSessionData.mLocalCapture && events[i].data.fd == sock->getFd()) {
-                handleClient(drivers);
+            if ((socketUds != nullptr) && (events[i].data.fd == socketUds->getFd())) {
+                handleClient(drivers, *socketUds, socketTcp.get());
             }
-            else if (!gSessionData.mLocalCapture && events[i].data.fd == udpListener.getReq()) {
+            else if ((socketTcp != nullptr) && (events[i].data.fd == socketTcp->getFd())) {
+                handleClient(drivers, *socketTcp, socketUds.get());
+            }
+            else if (events[i].data.fd == udpListener.getReq()) {
                 udpListener.handle();
             }
 #ifdef TCP_ANNOTATIONS
@@ -772,6 +650,11 @@ Drivers drivers { result.module, result.mSystemWide, std::move(pmuXml) };
                     logg.logMessage("Reading annotate pipe failed");
                 }
                 annotateListener.signal();
+            }
+            else {
+                // shouldn't really happen unless we forgot to handle a new item
+                logg.logError("Unexpected fd in monitor");
+                handleException();
             }
         }
     }

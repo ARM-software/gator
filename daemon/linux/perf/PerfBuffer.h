@@ -1,28 +1,19 @@
-/**
- * Copyright (C) Arm Limited 2013-2016. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_BUFFER
 #define PERF_BUFFER
+
+#include "Config.h"
 
 #include <map>
 #include <set>
 #include <vector>
 
-#include "ClassBoilerPlate.h"
-#include "Config.h"
-
 class ISender;
 
-class PerfBuffer
-{
+class PerfBuffer {
 public:
-    struct Config
-    {
+    struct Config {
         /// must be power of 2
         size_t pageSize;
         /// must be power of 2 multiple of pageSize
@@ -43,12 +34,10 @@ public:
     std::size_t getDataBufferLength() const;
     std::size_t getAuxBufferLength() const;
 
-
 private:
     Config mConfig;
 
-    struct Buffer
-    {
+    struct Buffer {
         void * data_buffer;
         void * aux_buffer; // may be null
         int fd;
@@ -59,9 +48,11 @@ private:
     // After the buffer is flushed it should be unmapped
     std::set<int> mDiscard;
 
-
     // Intentionally undefined
-    CLASS_DELETE_COPY_MOVE(PerfBuffer);
+    PerfBuffer(const PerfBuffer &) = delete;
+    PerfBuffer & operator=(const PerfBuffer &) = delete;
+    PerfBuffer(PerfBuffer &&) = delete;
+    PerfBuffer & operator=(PerfBuffer &&) = delete;
 };
 
 /**

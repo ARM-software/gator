@@ -1,22 +1,13 @@
-/**
- * Copyright (C) Arm Limited 2010-2018. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- */
+/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
 #ifndef __ISENDER_H__
 #define __ISENDER_H__
 
 #include "lib/Span.h"
 
-enum class ResponseType : char
-{
+enum class ResponseType : char {
     /// Special value used by ISender meaning do not frame the response.
     RAW = 0,
-    /// Special value used by gator.ko meaning do not put type in the frame.
-    NONE = 0,
 
     // Actual values understood by streamline
     XML = 1,
@@ -26,8 +17,7 @@ enum class ResponseType : char
     ERROR = '\xFF'
 };
 
-class ISender
-{
+class ISender {
 public:
     /**
      *
@@ -35,12 +25,14 @@ public:
      * @param type
      * @param ignoreLockErrors
      */
-    virtual void writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts, ResponseType type, bool ignoreLockErrors = false) = 0;
+    virtual void writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts,
+                                ResponseType type,
+                                bool ignoreLockErrors = false) = 0;
 
-    void writeData(const char* data, int length, ResponseType type, bool ignoreLockErrors = false)
+    void writeData(const char * data, int length, ResponseType type, bool ignoreLockErrors = false)
     {
-        lib::Span<const char, int> dataSpan = { data, length };
-        writeDataParts(lib::Span<const lib::Span<const char, int>> { &dataSpan, 1 }, type, ignoreLockErrors);
+        lib::Span<const char, int> dataSpan = {data, length};
+        writeDataParts(lib::Span<const lib::Span<const char, int>>{&dataSpan, 1}, type, ignoreLockErrors);
     }
 
     virtual ~ISender() = default;

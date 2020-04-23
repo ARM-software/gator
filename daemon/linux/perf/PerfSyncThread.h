@@ -1,17 +1,15 @@
-/* Copyright (c) 2018 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERFSYNCTHREAD_H
 #define INCLUDE_LINUX_PERF_PERFSYNCTHREAD_H
 
 #include <atomic>
-#include <functional>
 #include <cstdint>
+#include <functional>
 #include <thread>
 
-class PerfSyncThread
-{
+class PerfSyncThread {
 public:
-
     /**
      * Consumer function that takes sync event data:
      *
@@ -33,7 +31,11 @@ public:
      * @param monotonicRawBase The base CLOCK_MONOTONIC_RAW considered zero
      * @param consumerFunction The data consumer function
      */
-    PerfSyncThread(unsigned cpu, bool enableSyncThreadMode, bool readTimer, std::uint64_t monotonicRawBase, ConsumerFunction consumerFunction);
+    PerfSyncThread(unsigned cpu,
+                   bool enableSyncThreadMode,
+                   bool readTimer,
+                   std::uint64_t monotonicRawBase,
+                   ConsumerFunction consumerFunction);
 
     ~PerfSyncThread();
 
@@ -43,7 +45,6 @@ public:
     void terminate();
 
 private:
-
     static void launch(PerfSyncThread *) noexcept;
 
     void run() noexcept;
