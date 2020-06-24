@@ -15,5 +15,6 @@
     <event counter="ttrace_media_content" flag="0x1000" title="Ttrace" name="Media Content" description="Media Content"/>
     <event counter="ttrace_media_db" flag="0x2000" title="Ttrace" name="Media DB" description="Media DB"/>
     <event counter="ttrace_screen_mirroring" flag="0x4000" title="Ttrace" name="Screen Mirroring" description="Screen Mirroring"/>
-    <event counter="ttrace_app" flag="0x8000" title="Ttrace" name="App" description="App"/>
+    <event counter="ttrace_efl" flag="0x8000" title="Ttrace" name="EFL" description="EFL"/>
+    <event counter="ttrace_app" flag="0x100000" title="Ttrace" name="App" description="App"/>
   </category>
