@@ -3,27 +3,27 @@
 #ifndef DYNBUF_H
 #define DYNBUF_H
 
-#include <stdarg.h>
-#include <stdlib.h>
+#include <cstdarg>
+#include <cstdlib>
 
 class DynBuf {
 public:
-    DynBuf() : capacity(0), length(0), buf(NULL) {}
+    DynBuf() : capacity(0), length(0), buf(nullptr) {}
     ~DynBuf() { reset(); }
 
     inline void reset()
     {
         capacity = 0;
         length = 0;
-        if (buf != NULL) {
+        if (buf != nullptr) {
             free(buf);
-            buf = NULL;
+            buf = nullptr;
         }
     }
 
-    bool read(const char * const path);
+    bool read(const char * path);
     // On error instead of printing the error and returning false, this returns -errno
-    int readlink(const char * const path);
+    int readlink(const char * path);
     __attribute__((format(printf, 2, 3))) bool printf(const char * format, ...);
     __attribute__((format(printf, 2, 3))) bool append(const char * format, ...);
     bool append(const char * format, va_list ap);
@@ -34,7 +34,7 @@ public:
     char * getBuf() { return buf; }
 
 private:
-    int resize(const size_t minCapacity);
+    int resize(size_t minCapacity);
 
     size_t capacity;
     size_t length;

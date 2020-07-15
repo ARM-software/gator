@@ -6,8 +6,8 @@
 #include "ISender.h"
 #include "lib/Span.h"
 
-#include <stdint.h>
-#include <string.h>
+#include <cstdint>
+#include <cstring>
 #include <vector>
 
 class OlySocket;
@@ -28,7 +28,6 @@ enum {
 class StreamlineSetup {
 public:
     StreamlineSetup(OlySocket * socket, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes);
-    ~StreamlineSetup();
 
 private:
     OlySocket * mSocket;

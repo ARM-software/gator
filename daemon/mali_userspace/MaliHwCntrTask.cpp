@@ -7,6 +7,7 @@
 #include "lib/Syscall.h"
 
 #include <unistd.h>
+#include <utility>
 
 namespace mali_userspace {
     MaliHwCntrTask::MaliHwCntrTask(std::function<void()> endSession_,
@@ -16,10 +17,10 @@ namespace mali_userspace {
                                    IMaliDeviceCounterDumpCallback & callback_,
                                    IMaliHwCntrReader & reader)
         : mBuffer(std::move(buffer_)),
-          mGetMonotonicStarted(getMonotonicStarted),
+          mGetMonotonicStarted(std::move(getMonotonicStarted)),
           mCallback(callback_),
-          endSession(endSession_),
-          isSessionActive(isSessionActive_),
+          endSession(std::move(endSession_)),
+          isSessionActive(std::move(isSessionActive_)),
           mReader(reader)
     {
     }
@@ -36,7 +37,7 @@ namespace mali_userspace {
         bool terminated = false;
         // set sample interval, if sample rate == 0, then sample at 100Hz as currently the job dumping based sampling does not work... (driver issue?)
         const uint32_t sampleIntervalNs =
-            (sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000u / sampleRate) : 1u) : 10000000u);
+            (sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000U / sampleRate) : 1U) : 10000000U);
 
         if (!mReader.startPeriodicSampling(sampleIntervalNs)) {
             logg.logError("Could not enable periodic sampling");
@@ -51,15 +52,16 @@ namespace mali_userspace {
                 case WAIT_STATUS_SUCCESS: {
                     if (waitStatus.data) {
                         const uint64_t sampleTime = waitStatus.timestamp - monotonicStarted;
-                        if (mBuffer->eventHeader(sampleTime)) {
+                        IBlockCounterFrameBuilder & builder = *mBuffer;
+                        if (builder.eventHeader(sampleTime)) {
                             mReader.getDevice().dumpAllCounters(
                                 mReader.getHardwareVersion(),
                                 countersList,
                                 reinterpret_cast<const uint32_t *>(waitStatus.data.get()),
                                 waitStatus.size / sizeof(uint32_t),
-                                *mBuffer,
+                                builder,
                                 mCallback);
-                            mBuffer->check(sampleTime);
+                            builder.check(sampleTime);
                         }
                     }
                     break;
@@ -89,7 +91,7 @@ namespace mali_userspace {
 
     bool MaliHwCntrTask::isDone() { return mBuffer->isDone(); }
 
-    void MaliHwCntrTask::write(ISender * sender)
+    void MaliHwCntrTask::write(ISender & sender)
     {
         if (!mBuffer->isDone()) {
             mBuffer->write(sender);

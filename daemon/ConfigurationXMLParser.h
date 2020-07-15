@@ -18,7 +18,7 @@ static const int VERSION_ERROR = -2;
 class ConfigurationXMLParser {
 public:
     ConfigurationXMLParser();
-    virtual ~ConfigurationXMLParser();
+    virtual ~ConfigurationXMLParser() = default;
     int parseConfigurationContent(const char * config_xml_content);
     const std::vector<CounterConfiguration> & getCounterConfiguration();
     const std::vector<SpeConfiguration> & getSpeConfiguration();

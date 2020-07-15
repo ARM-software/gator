@@ -8,23 +8,23 @@
 
 class SummaryBuffer : public ISummaryConsumer {
 public:
-    SummaryBuffer(int size, sem_t * const readerSem);
+    SummaryBuffer(int size, sem_t & readerSem);
 
-    void write(ISender * sender);
+    void write(ISender & sender);
 
     int bytesAvailable() const;
-    virtual void commit(const uint64_t time) override;
+    virtual void commit(uint64_t time) override;
 
     // Summary messages
-    virtual void summary(const uint64_t currTime,
-                         const int64_t timestamp,
-                         const int64_t uptime,
-                         const int64_t monotonicDelta,
-                         const char * const uname,
-                         const long pageSize,
-                         const bool nosync,
+    virtual void summary(uint64_t currTime,
+                         int64_t timestamp,
+                         int64_t uptime,
+                         int64_t monotonicDelta,
+                         const char * uname,
+                         long pageSize,
+                         bool nosync,
                          const std::map<std::string, std::string> & additionalAttributes) override;
-    virtual void coreName(const uint64_t currTime, const int core, const int cpuid, const char * const name) override;
+    virtual void coreName(uint64_t currTime, int core, int cpuid, const char * name) override;
 
     void setDone();
     bool isDone() const;

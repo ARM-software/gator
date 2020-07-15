@@ -7,7 +7,7 @@
 #include <string>
 
 namespace local_capture {
-    void copyImages(const std::list<std::string> & ptr);
+    void copyImages(const std::list<std::string> & list);
     void createAPCDirectory(const char * target_path);
     int removeDirAndAllContents(const char * path);
 };

@@ -4,13 +4,13 @@
 
 #include "Logging.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cerrno>
 #include <cinttypes>
-#include <errno.h>
+#include <climits>
+#include <cstring>
 #include <iterator>
-#include <limits.h>
 #include <numeric>
-#include <string.h>
 #include <sys/resource.h>
 #include <unistd.h>
 
@@ -134,7 +134,7 @@ bool PerfGroups::add(const uint64_t timestamp,
                     attr.context_switch,
                     hasAuxData);
 
-    IPerfGroups::Attr newAttr{attr};
+    IPerfGroups::Attr newAttr {attr};
 
     // Collect EBS samples
     if (attr.periodOrFreq != 0) {
@@ -164,9 +164,9 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(uint64_t timestamp,
                                                            const std::set<int> & appPids,
                                                            OnlineEnabledState enabledState,
                                                            IPerfAttrsConsumer & attrsConsumer,
-                                                           std::function<bool(int)> addToMonitor,
-                                                           std::function<bool(int, int, bool)> addToBuffer,
-                                                           std::function<std::set<int>(int)> childTids)
+                                                           const std::function<bool(int)> & addToMonitor,
+                                                           const std::function<bool(int, int, bool)> & addToBuffer,
+                                                           const std::function<std::set<int>(int)> & childTids)
 {
     logg.logMessage("Onlining cpu %i", cpu);
     if (!sharedConfig.perfConfig.is_system_wide && appPids.empty()) {
@@ -174,7 +174,7 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(uint64_t timestamp,
         return std::make_pair(OnlineResult::FAILURE, message.c_str());
     }
 
-    std::set<int> tids{};
+    std::set<int> tids {};
     if (sharedConfig.perfConfig.is_system_wide) {
         tids.insert(-1);
     }
@@ -211,7 +211,7 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(uint64_t timestamp,
     return std::make_pair(OnlineResult::SUCCESS, "");
 }
 
-bool PerfGroups::offlineCPU(int cpu, std::function<void(int)> removeFromBuffer)
+bool PerfGroups::offlineCPU(int cpu, const std::function<void(int)> & removeFromBuffer)
 {
     logg.logMessage("Offlining cpu %i", cpu);
 
@@ -245,7 +245,7 @@ void PerfGroups::stop()
 
 bool PerfGroups::hasSPE() const
 {
-    for (auto & pair : perfEventGroupMap) {
+    for (const auto & pair : perfEventGroupMap) {
         if (pair.first.getType() == PerfEventGroupIdentifier::Type::SPE) {
             return true;
         }

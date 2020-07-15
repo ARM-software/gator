@@ -10,17 +10,17 @@
 class CCNDriver : public Driver {
 public:
     CCNDriver();
-    ~CCNDriver();
+    ~CCNDriver() override;
 
-    bool claimCounter(Counter & counter) const;
-    void resetCounters();
-    void setupCounter(Counter & counter);
+    bool claimCounter(Counter & counter) const override;
+    void resetCounters() override;
+    void setupCounter(Counter & counter) override;
 
-    void readEvents(mxml_node_t * const);
-    int writeCounters(mxml_node_t * const root) const;
-    void writeEvents(mxml_node_t * const) const;
+    void readEvents(mxml_node_t * const /*unused*/) override;
+    int writeCounters(mxml_node_t * root) const override;
+    void writeEvents(mxml_node_t * const /*unused*/) const override;
 
-    std::string validateCounters() const;
+    static std::string validateCounters();
 
 private:
     enum NodeType {

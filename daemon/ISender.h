@@ -32,7 +32,7 @@ public:
     void writeData(const char * data, int length, ResponseType type, bool ignoreLockErrors = false)
     {
         lib::Span<const char, int> dataSpan = {data, length};
-        writeDataParts(lib::Span<const lib::Span<const char, int>>{&dataSpan, 1}, type, ignoreLockErrors);
+        writeDataParts(lib::Span<const lib::Span<const char, int>> {&dataSpan, 1}, type, ignoreLockErrors);
     }
 
     virtual ~ISender() = default;

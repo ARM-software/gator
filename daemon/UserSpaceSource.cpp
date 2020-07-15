@@ -13,22 +13,21 @@
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <utility>
 
 UserSpaceSource::UserSpaceSource(Child & child,
-                                 sem_t * senderSem,
+                                 sem_t & senderSem,
                                  std::function<std::int64_t()> getMonotonicStarted,
                                  lib::Span<PolledDriver * const> drivers)
     : Source(child),
       mBuffer(0, FrameType::BLOCK_COUNTER, gSessionData.mTotalBufferSize * 1024 * 1024, senderSem),
-      mGetMonotonicStarted(getMonotonicStarted),
+      mGetMonotonicStarted(std::move(getMonotonicStarted)),
       mDrivers(drivers)
 {
 }
-
-UserSpaceSource::~UserSpaceSource() {}
 
 bool UserSpaceSource::shouldStart(lib::Span<const PolledDriver * const> drivers)
 {
@@ -74,12 +73,13 @@ void UserSpaceSource::run()
             nextTime = currTime;
         }
 
-        if (mBuffer.eventHeader(currTime)) {
+        IBlockCounterFrameBuilder & builder = mBuffer;
+        if (builder.eventHeader(currTime)) {
             for (PolledDriver * usDriver : allUserspaceDrivers) {
-                usDriver->read(&mBuffer);
+                usDriver->read(builder);
             }
             // Only check after writing all counters so that time and corresponding counters appear in the same frame
-            mBuffer.check(currTime);
+            builder.check(currTime);
         }
 
         if (gSessionData.mOneShot && gSessionData.mSessionIsActive && (mBuffer.bytesAvailable() <= 0)) {
@@ -103,7 +103,7 @@ bool UserSpaceSource::isDone()
     return mBuffer.isDone();
 }
 
-void UserSpaceSource::write(ISender * sender)
+void UserSpaceSource::write(ISender & sender)
 {
     if (!mBuffer.isDone()) {
         mBuffer.write(sender);

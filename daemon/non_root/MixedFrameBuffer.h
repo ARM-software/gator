@@ -35,8 +35,8 @@ namespace non_root {
             bool checkSize(int size);
         };
 
-        typedef unsigned long size_type;
-        typedef long size_diff_type;
+        using size_type = unsigned long;
+        using size_diff_type = long;
 
         MixedFrameBuffer(Buffer & buffer);
 

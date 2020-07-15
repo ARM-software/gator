@@ -3,8 +3,12 @@
 
 #include "../Logging.h"
 
+#include <sstream>
+
 namespace armnn {
-    static const std::size_t sizeOfUint32 = sizeof(std::uint32_t);
+    static const std::size_t UINT32_SIZE = sizeof(std::uint32_t);
+    static const std::size_t COUNTERINDEX_VALUE_SIZE = sizeof(std::uint16_t) + sizeof(std::uint32_t);
+
     bool readCString(Bytes bytes, std::uint32_t offset, std::string & out)
     {
         if (offset > bytes.length) {
@@ -32,7 +36,7 @@ namespace armnn {
             return false;
         }
 
-        std::uint16_t packetVersionCount = (byte_order::get_unaligned_32(byteOrder, bytes, offset) & 0xFFFF0000) >> 16;
+        std::uint16_t packetVersionCount = (byte_order::get_32(byteOrder, bytes, offset) & 0xFFFF0000) >> 16;
         std::uint32_t position = offset + sizeof(std::uint32_t);
         std::uint32_t total = position + (packetVersionCount * (sizeof(std::uint64_t)));
 
@@ -41,7 +45,7 @@ namespace armnn {
         }
         while (total > position) {
             //0:31
-            const std::uint32_t packetIdAndFamily = byte_order::get_unaligned_32(byteOrder, bytes, position);
+            const std::uint32_t packetIdAndFamily = byte_order::get_32(byteOrder, bytes, position);
             //26:31
             std::uint8_t packetFamily = getBits(packetIdAndFamily, 26, 31);
             //16:25
@@ -49,7 +53,7 @@ namespace armnn {
 
             ///read packetversion
             position += sizeof(std::uint32_t);
-            std::uint32_t packetVersion = byte_order::get_unaligned_32(byteOrder, bytes, position);
+            std::uint32_t packetVersion = byte_order::get_32(byteOrder, bytes, position);
             PacketVersionTable table = {packetVersion, packetId, packetFamily};
 
             out.push_back(table);
@@ -78,24 +82,24 @@ namespace armnn {
             return false;
         }
         for (; position <= bytes.length - sizeOfUint16; position += sizeOfUint16) {
-            const std::uint16_t data = byte_order::get_aligned_16(byteOrder, bytes, position);
+            const std::uint16_t data = byte_order::get_16(byteOrder, bytes, position);
             counterIds.insert(data);
         }
         return true;
     }
-    lib::Optional<StreamMetadataContent> decodeStreamMetaData(Bytes bytes, const ByteOrder byteOrder)
+    lib::Optional<StreamMetadataContent> decodeStreamMetaData(Bytes packetBodyAfterMagic, const ByteOrder byteOrder)
     {
-        if (bytes.length > 9 * 4) { //Excluding pipe magic message
+        if (packetBodyAfterMagic.length > 9 * 4) { //Excluding pipe magic message
             std::vector<std::uint32_t> offsets;
-            std::size_t sizeOfUint32 = sizeof(std::uint32_t);
+
             //reading non offset values, pipe magic is removed from the bytes
-            const std::uint32_t streamMetaVersion = byte_order::get_aligned_32(byteOrder, bytes, 0);
-            //const std::uint32_t maxDataLength = byte_order::get_aligned_32(byteOrder, bytes, 1 * sizeOfUint32);
-            const std::uint32_t pid = byte_order::get_aligned_32(byteOrder, bytes, 2 * sizeOfUint32);
+            const std::uint32_t streamMetaVersion = byte_order::get_32(byteOrder, packetBodyAfterMagic, 0);
+            //const std::uint32_t maxDataLength = byte_order::get_32(byteOrder, packetBodyAfterMagic, 1 * UINT32_SIZE);
+            const std::uint32_t pid = byte_order::get_32(byteOrder, packetBodyAfterMagic, 2 * UINT32_SIZE);
 
             for (int i = 3; i < 8; i++) {
                 //offset is the position in the byte array to read the actual value.
-                const std::uint32_t offset = byte_order::get_aligned_32(byteOrder, bytes, i * sizeOfUint32);
+                const std::uint32_t offset = byte_order::get_32(byteOrder, packetBodyAfterMagic, i * UINT32_SIZE);
                 offsets.emplace_back(offset);
             }
 
@@ -113,9 +117,9 @@ namespace armnn {
             std::vector<PacketVersionTable> pktVersionTables;
 
             if (offSetInfo >= 40) {
-                //since the pipe_magic is not included in the byte array removing the 4 bytes from offset
+                //since the pipe_magic is not included in the byte array removing the 4 packetBodyAfterMagic from offset
                 //doing this for all offsets
-                if (!readCString(bytes, (offSetInfo - sizeof(std::uint32_t)), info)) {
+                if (!readCString(packetBodyAfterMagic, (offSetInfo - sizeof(std::uint32_t)), info)) {
                     logg.logError("Decoding Info from stream metadata failed");
                     return lib::Optional<StreamMetadataContent>();
                 }
@@ -125,7 +129,7 @@ namespace armnn {
                 return lib::Optional<StreamMetadataContent>();
             }
             if (offsetHwVersion >= 40) {
-                if (!readCString(bytes, (offsetHwVersion - sizeof(std::uint32_t)), hwVersion)) {
+                if (!readCString(packetBodyAfterMagic, (offsetHwVersion - sizeof(std::uint32_t)), hwVersion)) {
                     logg.logError("Decoding HW version from stream metadata failed");
                     return lib::Optional<StreamMetadataContent>();
                 }
@@ -135,7 +139,7 @@ namespace armnn {
                 return lib::Optional<StreamMetadataContent>();
             }
             if (offSetSwVersion >= 40) {
-                if (!readCString(bytes, (offSetSwVersion - sizeof(std::uint32_t)), swVersion)) {
+                if (!readCString(packetBodyAfterMagic, (offSetSwVersion - sizeof(std::uint32_t)), swVersion)) {
                     logg.logError("Decoding SW version from stream metadata failed");
                     return lib::Optional<StreamMetadataContent>();
                 }
@@ -145,7 +149,7 @@ namespace armnn {
                 return lib::Optional<StreamMetadataContent>();
             }
             if (offSetProcessName >= 40) {
-                if (!readCString(bytes, (offSetProcessName - sizeof(std::uint32_t)), processName)) {
+                if (!readCString(packetBodyAfterMagic, (offSetProcessName - sizeof(std::uint32_t)), processName)) {
                     logg.logError("Decoding Process name from stream metadata failed");
                     return lib::Optional<StreamMetadataContent>();
                 }
@@ -155,7 +159,7 @@ namespace armnn {
                 return lib::Optional<StreamMetadataContent>();
             }
             if (offSetPktVerTable >= 40) {
-                if (!fillPacketVersionTable(bytes,
+                if (!fillPacketVersionTable(packetBodyAfterMagic,
                                             (offSetPktVerTable - sizeof(std::uint32_t)),
                                             byteOrder,
                                             pktVersionTables)) {
@@ -167,21 +171,19 @@ namespace armnn {
                 logg.logError("Offset for packet version table incorrect in stream metadata packet");
                 return lib::Optional<StreamMetadataContent>();
             }
-            return StreamMetadataContent{pid,
-                                         processName,
-                                         info,
-                                         hwVersion,
-                                         swVersion,
-                                         streamMetaVersion,
-                                         pktVersionTables};
+            return StreamMetadataContent {pid,
+                                          processName,
+                                          info,
+                                          hwVersion,
+                                          swVersion,
+                                          streamMetaVersion,
+                                          pktVersionTables};
         }
         logg.logError("Insufficient number of bytes received for decoding steam metadata packet");
         return lib::Optional<StreamMetadataContent>();
     }
 
-    bool decodeAndConsumePeriodicCounterSelectionPkt(Bytes bytes,
-                                                     const ByteOrder byteOrder,
-                                                     IPacketConsumer & consumer)
+    bool decodeAndConsumePeriodicCounterSelectionPkt(Bytes bytes, const ByteOrder byteOrder, IPacketConsumer & consumer)
     {
         if (bytes.length == 0) {
             logg.logMessage("Data length is 0, hence counter collection is disabled.");
@@ -193,11 +195,11 @@ namespace armnn {
                 return true;
             }
         }
-        if (bytes.length < sizeOfUint32) { //not even the size of period at the offset
+        if (bytes.length < UINT32_SIZE) { //not even the size of period at the offset
             logg.logError("Insufficient number of bytes received for decoding Periodic counter selection packet");
             return false;
         }
-        const std::uint32_t period = byte_order::get_unaligned_32(byteOrder, bytes, 0);
+        const std::uint32_t period = byte_order::get_32(byteOrder, bytes, 0);
         std::set<std::uint16_t> counterIds;
         if (!addCounterIds(2, byteOrder, bytes, counterIds)) {
             return false;
@@ -208,9 +210,7 @@ namespace armnn {
         return true;
     }
 
-    bool decodeAndConsumePerJobCounterSelectionPkt(Bytes bytes,
-                                                   const ByteOrder byteOrder,
-                                                   IPacketConsumer & consumer)
+    bool decodeAndConsumePerJobCounterSelectionPkt(Bytes bytes, const ByteOrder byteOrder, IPacketConsumer & consumer)
     {
         if (bytes.length == 0) {
             logg.logMessage("Data length is 0, hence per job counter collection is disabled.");
@@ -226,7 +226,7 @@ namespace armnn {
             logg.logMessage("Insufficient number of bytes passed for decoding Per job counter selection packet");
             return false;
         }
-        const std::uint64_t objectId = byte_order::get_aligned_64(byteOrder, bytes, 0);
+        const std::uint64_t objectId = byte_order::get_64(byteOrder, bytes, 0);
         std::set<std::uint16_t> counterIds;
         if (!addCounterIds(4, byteOrder, bytes, counterIds)) {
             return false;
@@ -249,7 +249,7 @@ namespace armnn {
     {
         std::uint32_t size = sizeof(std::uint16_t) + sizeof(std::uint32_t);
 
-        std::uint32_t position = startPosition * sizeOfUint32;
+        std::uint32_t position = startPosition * UINT32_SIZE;
         int remaningBytes = bytes.length - position;
 
         if (remaningBytes > 0 && ((remaningBytes % size) != 0)) {
@@ -257,9 +257,8 @@ namespace armnn {
             return false;
         }
         for (; (position + size) <= bytes.length; position += size) {
-            const std::uint16_t index = byte_order::get_unaligned_16(byteOrder, bytes, position);
-            const std::uint32_t value =
-                byte_order::get_unaligned_32(byteOrder, bytes, position + sizeof(std::uint16_t));
+            const std::uint16_t index = byte_order::get_16(byteOrder, bytes, position);
+            const std::uint32_t value = byte_order::get_32(byteOrder, bytes, position + sizeof(std::uint16_t));
             counterIndexValues.insert({index, value});
         }
         return true;
@@ -269,11 +268,14 @@ namespace armnn {
                                                    const ByteOrder byteOrder,
                                                    IPacketConsumer & consumer)
     {
-        if ((bytes.length < sizeof(std::uint64_t)) || (bytes.length % sizeOfUint32 != 0)) {
-            logg.logMessage("Insufficient number of bytes passed for parsing PeriodicCounterCapturePkt");
+        std::size_t timestampSize = sizeof(std::uint64_t);
+
+        if ((bytes.length < timestampSize) || ((bytes.length - timestampSize) % COUNTERINDEX_VALUE_SIZE != 0)) {
+            logg.logError("Received a malformed periodic counter capture packet");
             return false;
         }
-        const std::uint64_t timeStamp = byte_order::get_aligned_64(byteOrder, bytes, 0);
+
+        const std::uint64_t timeStamp = byte_order::get_64(byteOrder, bytes, 0);
         std::map<std::uint16_t, std::uint32_t> counterIndexValueMap;
 
         if (!addCounterIndexValues(2, byteOrder, bytes, counterIndexValueMap)) {
@@ -290,12 +292,15 @@ namespace armnn {
                                                  const ByteOrder byteOrder,
                                                  IPacketConsumer & consumer)
     {
-        if ((bytes.length < 2 * sizeof(std::uint64_t))) {
-            logg.logMessage("Insufficient number of bytes passed for parsing PerJobCounterCapturePkt");
+        std::size_t timestampAndObjectRefSize = 2 * sizeof(std::uint64_t);
+
+        if ((bytes.length < timestampAndObjectRefSize) ||
+            ((bytes.length - timestampAndObjectRefSize) % COUNTERINDEX_VALUE_SIZE != 0)) {
+            logg.logError("Received a malformed per job counter capture packet");
             return false;
         }
-        const std::uint64_t timeStamp = byte_order::get_aligned_64(byteOrder, bytes, 0);
-        const std::uint64_t objectRef = byte_order::get_aligned_64(byteOrder, bytes, 2 * sizeOfUint32);
+        const std::uint64_t timeStamp = byte_order::get_64(byteOrder, bytes, 0);
+        const std::uint64_t objectRef = byte_order::get_64(byteOrder, bytes, 2 * UINT32_SIZE);
         std::map<std::uint16_t, std::uint32_t> counterIndexValueMap;
         if (!addCounterIndexValues(4, byteOrder, bytes, counterIndexValueMap)) {
             return false;

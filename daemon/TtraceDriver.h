@@ -11,9 +11,8 @@ class FtraceDriver;
 class TtraceDriver : public SimpleDriver {
 public:
     TtraceDriver(const FtraceDriver & ftraceDriver);
-    ~TtraceDriver();
 
-    void readEvents(mxml_node_t * const xml);
+    void readEvents(mxml_node_t * xml) override;
 
     void start();
     void stop();
@@ -21,7 +20,7 @@ public:
     bool isSupported() const { return mSupported; }
 
 private:
-    void setTtrace(const int flags);
+    static void setTtrace(int flags);
 
     bool mSupported;
     const FtraceDriver & mFtraceDriver;

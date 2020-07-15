@@ -9,10 +9,10 @@
 #include "k/perf_event.h"
 #include "lib/Syscall.h"
 
+#include <cerrno>
 #include <cinttypes>
+#include <climits>
 #include <cstring>
-#include <errno.h>
-#include <limits.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -76,15 +76,16 @@ PerfBuffer::~PerfBuffer()
 {
     for (auto cpuAndBuf : mBuffers) {
         lib::munmap(cpuAndBuf.second.data_buffer, getDataMMapLength(mConfig));
-        if (cpuAndBuf.second.aux_buffer != nullptr)
+        if (cpuAndBuf.second.aux_buffer != nullptr) {
             lib::munmap(cpuAndBuf.second.aux_buffer, getAuxBufferLength());
+        }
     }
 }
 
 bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
 {
     auto mmap = [this, cpu](size_t length, size_t offset, int fd) {
-        void * const buf = lib::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+        void * const buf = lib::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 
         if (buf == MAP_FAILED) {
             logg.logMessage("mmap failed for fd %i (errno=%d, %s, mmapLength=%zu, offset=%zu)",
@@ -117,10 +118,11 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
     }
     else {
         void * buf = mmap(getDataMMapLength(mConfig), 0, fd);
-        if (buf == MAP_FAILED)
+        if (buf == MAP_FAILED) {
             return false;
+        }
 
-        mBuffers[cpu] = Buffer{buf, nullptr, fd, -1};
+        mBuffers[cpu] = Buffer {buf, nullptr, fd, -1};
 
         struct perf_event_mmap_page & pemp = *static_cast<struct perf_event_mmap_page *>(buf);
         // Check the version
@@ -142,8 +144,9 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
             pemp.aux_size = length;
 
             void * buf = mmap(length, offset, fd);
-            if (buf == MAP_FAILED)
+            if (buf == MAP_FAILED) {
                 return false;
+            }
 
             buffer.aux_buffer = buf;
             if (buffer.aux_fd >= 0) {
@@ -170,7 +173,7 @@ bool PerfBuffer::isEmpty()
 {
     for (auto cpuAndBuf : mBuffers) {
         // Take a snapshot of the positions
-        struct perf_event_mmap_page * pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
+        auto * pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
         const uint64_t dataTail = readOnceAtomicRelaxed(pemp->data_tail);
         const uint64_t dataHead = readOnceAtomicRelaxed(pemp->data_head);
 
@@ -190,7 +193,7 @@ bool PerfBuffer::isFull()
 {
     for (auto cpuAndBuf : mBuffers) {
         // Take a snapshot of the positions
-        struct perf_event_mmap_page * pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
+        auto * pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
         const uint64_t dataHead = readOnceAtomicRelaxed(pemp->data_head);
 
         if ((dataHead + 2000) >= getDataBufferLength()) {
@@ -343,7 +346,7 @@ bool PerfBuffer::send(ISender & sender)
         // We read the data buffer positions before we read the aux buffer positions
         // so that we never send records more recent than the aux
         void * const dataBuf = cpuAndBufIt->second.data_buffer;
-        struct perf_event_mmap_page * pemp = static_cast<struct perf_event_mmap_page *>(dataBuf);
+        auto * pemp = static_cast<struct perf_event_mmap_page *>(dataBuf);
         const uint64_t dataHead = __atomic_load_n(&pemp->data_head, __ATOMIC_ACQUIRE);
         // Only we write this so no atomic load needed
         const uint64_t dataTail = pemp->data_tail;
@@ -390,8 +393,9 @@ bool PerfBuffer::send(ISender & sender)
 
         if (shouldDiscard) {
             lib::munmap(dataBuf, getDataMMapLength(mConfig));
-            if (auxBuf != nullptr)
+            if (auxBuf != nullptr) {
                 lib::munmap(auxBuf, auxBufferLength);
+            }
             mDiscard.erase(discard);
             logg.logMessage("Unmapped cpu %i", cpu);
             cpuAndBufIt = mBuffers.erase(cpuAndBufIt);

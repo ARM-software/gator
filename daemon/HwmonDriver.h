@@ -8,13 +8,13 @@
 class HwmonDriver : public PolledDriver {
 public:
     HwmonDriver();
-    ~HwmonDriver();
+    ~HwmonDriver() override;
 
-    void readEvents(mxml_node_t * const root);
+    void readEvents(mxml_node_t * root) override;
 
-    void writeEvents(mxml_node_t * root) const;
+    void writeEvents(mxml_node_t * root) const override;
 
-    void start();
+    void start() override;
 
 private:
     // Intentionally unimplemented

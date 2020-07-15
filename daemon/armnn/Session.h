@@ -8,34 +8,34 @@
 
 #pragma once
 
-#include "armnn/SocketIO.h"
+#include "ISession.h"
 #include "armnn/ByteOrder.h"
-#include "armnn/ISender.h"
+#include "armnn/IGlobalState.h"
 #include "armnn/IPacketDecoder.h"
-#include "armnn/IPacketConsumer.h"
+#include "armnn/ISender.h"
+#include "armnn/ISessionPacketSender.h"
+#include "armnn/SessionStateTracker.h"
+#include "armnn/SocketIO.h"
 
+#include <functional>
 #include <mutex>
-#include <atomic>
-#include <thread>
 #include <queue>
+#include <thread>
 #include <utility>
 
-namespace armnn
-{
+namespace armnn {
     // Struct to store the metadata for the connection
-    struct HeaderPacket
-    {
-        std::uint32_t firstHeaderWord;
-        std::uint32_t length;
+    struct HeaderPacket {
         ByteOrder byteOrder;
-        std::vector<std::uint8_t> data;
+        std::vector<std::uint8_t> streamMetadataPacketBodyAfterMagic;
     };
 
-    class Session
-    {
+    class Session : public ISession {
     public:
         /** Creates a unique pointer to a Session object **/
-        static std::unique_ptr<Session> create(std::unique_ptr<SocketIO> connection, IPacketConsumer & consumer);
+        static std::unique_ptr<Session> create(std::unique_ptr<SocketIO> connection,
+                                               IGlobalState & globalState,
+                                               ICounterConsumer & counterConsumer);
 
         /**
          * Initialises the connection.
@@ -45,8 +45,19 @@ namespace armnn
          **/
         static bool initialiseConnection(SocketIO & connection, HeaderPacket & headerPacket);
 
+        /**
+         * @param socket will need to be initialised prior
+         * @param byteOrder
+         * @param decoder will outlive sst
+         * @param sst will outlive socket
+         */
+        Session(std::unique_ptr<SocketIO> connection,
+                ByteOrder byteOrder,
+                std::unique_ptr<IPacketDecoder> decoder,
+                std::unique_ptr<SessionStateTracker> sst);
+
         Session() = delete;
-        ~Session();
+        ~Session() override;
 
         // No copying
         Session(const Session &) = delete;
@@ -54,34 +65,30 @@ namespace armnn
 
         // No moving
         Session(Session && that) = delete;
-        Session& operator=(Session&& that) = delete;
+        Session & operator=(Session && that) = delete;
 
-        /** Run the read loop **/
-        void readLoop();
+        /** Run the read loop.
+         *  Will loop until an invalid packet is recieved
+         **/
+        void runReadLoop() override;
 
         /** Closes the connection **/
-        void close();
+        void close() override;
 
-        /** @return The byte order of the client connection **/
-        ByteOrder getEndianness() const { return mEndianness; }
+        /** Enable the capture **/
+        bool enableCapture() override { return mSessionStateTracker->doEnableCapture(); }
 
-        /** @return Whether the session is closed or not **/
-        bool isSessionClosed() const { return mSessionClosed; }
+        /** Disable the capture **/
+        bool disableCapture() override { return mSessionStateTracker->doDisableCapture(); }
 
     private:
-        // Private constructor, use factory create method
-        Session(std::unique_ptr<SocketIO> socket, ByteOrder byteOrder, std::unique_ptr<IPacketDecoder> decoder);
-
-        static const uint32_t MAGIC_BE = 0x45495434;
-        static const uint32_t MAGIC_LE = 0x34544945;
         static const std::size_t TIMEOUT = 3000;
         const ByteOrder mEndianness;
-        std::unique_ptr<ISender> mSender;
+        // the order of these is important because they hold references to each other
         std::unique_ptr<SocketIO> mConnection;
-        std::atomic_bool mSessionClosed;
+        std::unique_ptr<SessionStateTracker> mSessionStateTracker;
         std::unique_ptr<IPacketDecoder> mDecoder;
 
         bool receiveNextPacket();
-        void disconnectInvalidPacket();
     };
 }

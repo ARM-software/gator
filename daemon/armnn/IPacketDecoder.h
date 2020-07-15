@@ -5,11 +5,9 @@
 
 #include "PacketUtility.h"
 
-namespace armnn
-{
+namespace armnn {
     //Handles arm-nn packet decoding
-    class IPacketDecoder
-    {
+    class IPacketDecoder {
     public:
         /**
          * type - defined on packet family and id

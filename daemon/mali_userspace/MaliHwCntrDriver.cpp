@@ -37,13 +37,13 @@ namespace mali_userspace {
 
                 // allocate the enable map
                 const uint32_t enabledMapLength = (numNameBlocks * MaliDevice::NUM_COUNTERS_PER_BLOCK);
-                std::unique_ptr<int[]> mEnabledCounterKeys(new int[enabledMapLength]{});
+                std::unique_ptr<int[]> mEnabledCounterKeys(new int[enabledMapLength] {});
 
                 for (uint32_t nameBlockIndex = 0; nameBlockIndex < numNameBlocks; ++nameBlockIndex) {
                     for (uint32_t counterIndex = 0; counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK; ++counterIndex) {
                         // get the next counter name
                         const char * counterName = t_device.getCounterName(nameBlockIndex, counterIndex);
-                        if (counterName == NULL) {
+                        if (counterName == nullptr) {
                             continue;
                         }
                         // create a counter object for it
@@ -81,7 +81,7 @@ namespace mali_userspace {
     bool MaliHwCntrDriver::claimCounter(Counter & counter) const
     {
         // do not claim if another driver already has
-        if (counter.getDriver() != NULL) {
+        if (counter.getDriver() != nullptr) {
             return false;
         }
         return super::claimCounter(counter);
@@ -102,9 +102,8 @@ namespace mali_userspace {
 
     void MaliHwCntrDriver::setupCounter(Counter & counter)
     {
-        mali_userspace::MaliHwCntr * const malihwcCounter =
-            static_cast<mali_userspace::MaliHwCntr *>(findCounter(counter));
-        if (malihwcCounter == NULL) {
+        auto * const malihwcCounter = static_cast<mali_userspace::MaliHwCntr *>(findCounter(counter));
+        if (malihwcCounter == nullptr) {
             counter.setEnabled(false);
             return;
         }
@@ -138,7 +137,7 @@ namespace mali_userspace {
             const char * supportedDevice = mDevices.begin()->second->getSupportedDeviceFamilyName();
             return supportedDevice;
         }
-        return NULL;
+        return nullptr;
     }
 
     std::map<unsigned, unsigned> MaliHwCntrDriver::getDeviceGpuIds() const

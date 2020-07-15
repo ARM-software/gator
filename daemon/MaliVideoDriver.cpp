@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 // From instr/src/mve_instr_comm_protocol.h
-typedef enum mve_instr_configuration_type {
+enum mve_instr_configuration_type_t {
     MVE_INSTR_RAW = 1 << 0,
     MVE_INSTR_COUNTERS = 1 << 1,
     MVE_INSTR_EVENTS = 1 << 2,
@@ -24,7 +24,7 @@ typedef enum mve_instr_configuration_type {
     MVE_INSTR_PACKED_COMM = 1 << 13,
     // Don’t send ACKt response
     MVE_INSTR_NO_AUTO_ACK = 1 << 14,
-} mve_instr_configuration_type_t;
+};
 
 static const char COUNTER[] = "ARM_Mali-V500_cnt";
 static const char EVENT[] = "ARM_Mali-V500_evn";
@@ -37,8 +37,6 @@ public:
     {
     }
 
-    ~MaliVideoCounter() {}
-
     MaliVideoCounterType getType() const { return mType; }
     int getId() const { return mId; }
 
@@ -48,21 +46,21 @@ private:
     const int mId;
 };
 
-MaliVideoDriver::MaliVideoDriver() : SimpleDriver("MaliVideoDriver") {}
-
-MaliVideoDriver::~MaliVideoDriver() {}
+MaliVideoDriver::MaliVideoDriver() : SimpleDriver("MaliVideoDriver")
+{
+}
 
 void MaliVideoDriver::readEvents(mxml_node_t * const xml)
 {
     // Always create the counters as /dev/mv500 may show up after gatord starts
     mxml_node_t * node = xml;
     while (true) {
-        node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
-        if (node == NULL) {
+        node = mxmlFindElement(node, xml, "event", nullptr, nullptr, MXML_DESCEND);
+        if (node == nullptr) {
             break;
         }
         const char * counter = mxmlElementGetAttr(node, "counter");
-        if (counter == NULL) {
+        if (counter == nullptr) {
             // Ignore
         }
         else if (strncmp(counter, COUNTER, sizeof(COUNTER) - 1) == 0) {
@@ -116,14 +114,14 @@ void MaliVideoDriver::marshalEnable(const MaliVideoCounterType type, char * cons
 {
     // size
     int numEnabled = 0;
-    for (MaliVideoCounter * counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<MaliVideoCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
         if (counter->isEnabled() && (counter->getType() == type)) {
             ++numEnabled;
         }
     }
     buffer_utils::packInt(buf, pos, numEnabled * sizeof(uint32_t));
-    for (MaliVideoCounter * counter = static_cast<MaliVideoCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<MaliVideoCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<MaliVideoCounter *>(counter->getNext())) {
         if (counter->isEnabled() && (counter->getType() == type)) {
             buffer_utils::packInt(buf, pos, counter->getId());

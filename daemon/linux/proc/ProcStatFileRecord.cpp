@@ -16,7 +16,7 @@ namespace lnx {
          *
          * @return Index into string of next non-space character
          */
-        static unsigned skipSpaces(const char * string, unsigned from)
+        unsigned skipSpaces(const char * string, unsigned from)
         {
             while (string[from] == ' ') {
                 from += 1;
@@ -29,7 +29,7 @@ namespace lnx {
          *
          * @return Index into string of next space, newline or null terminator
          */
-        static unsigned findNextBreak(const char * string, unsigned from)
+        unsigned findNextBreak(const char * string, unsigned from)
         {
             while ((string[from] != ' ') && (string[from] != '\n') && (string[from] != '\0')) {
                 from += 1;
@@ -42,7 +42,7 @@ namespace lnx {
          *
          * @return Index into string of start of next line, or of null terminator
          */
-        static unsigned skipLine(const char * string, unsigned from)
+        unsigned skipLine(const char * string, unsigned from)
         {
             // find the end of the line/string
             while (string[from] == ' ') {
@@ -64,11 +64,11 @@ namespace lnx {
          *
          * @return True if the strings match, false otherwise
          */
-        static bool matchToken(const char * string,
-                               const unsigned from,
-                               const unsigned to,
-                               const char * against,
-                               const bool full)
+        bool matchToken(const char * string,
+                        const unsigned from,
+                        const unsigned to,
+                        const char * against,
+                        const bool full)
         {
             unsigned apos = 0;
             unsigned spos = from;
@@ -90,12 +90,12 @@ namespace lnx {
          *
          * @return The index of the next character starting at `from` that is not a digit
          */
-        static unsigned decodeUnsignedLong(unsigned long & result, const char * string, const unsigned from)
+        unsigned decodeUnsignedLong(unsigned long & result, const char * string, const unsigned from)
         {
             result = 0;
 
             unsigned pos = from;
-            while (std::isdigit(string[pos])) {
+            while (std::isdigit(string[pos]) != 0) {
                 result = (result * 10) + (string[pos] - '0');
                 pos += 1;
             }
@@ -108,9 +108,7 @@ namespace lnx {
          *
          * @return As per skipLine
          */
-        static unsigned parseUnsignedLong(lib::Optional<unsigned long> & result,
-                                          const char * string,
-                                          const unsigned from)
+        unsigned parseUnsignedLong(lib::Optional<unsigned long> & result, const char * string, const unsigned from)
         {
             // just decode a single value
             unsigned long value = 0;
@@ -131,9 +129,9 @@ namespace lnx {
          *
          * @return As per skipLine
          */
-        static unsigned parsePagingCounts(lib::Optional<ProcStatFileRecord::PagingCounts> & result,
-                                          const char * string,
-                                          const unsigned from)
+        unsigned parsePagingCounts(lib::Optional<ProcStatFileRecord::PagingCounts> & result,
+                                   const char * string,
+                                   const unsigned from)
         {
             // decode two values
             unsigned long in = 0;
@@ -202,10 +200,10 @@ namespace lnx {
          *
          * @return As per skipLine
          */
-        static unsigned parseCpuTime(std::vector<ProcStatFileRecord::CpuTime> & cpus,
-                                     const char * string,
-                                     unsigned identifier_from,
-                                     unsigned token_end)
+        unsigned parseCpuTime(std::vector<ProcStatFileRecord::CpuTime> & cpus,
+                              const char * string,
+                              unsigned identifier_from,
+                              unsigned token_end)
         {
             unsigned long cpu_id;
             unsigned long long times[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

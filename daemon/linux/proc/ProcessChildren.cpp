@@ -10,14 +10,15 @@ namespace lnx {
     static void addTidsRecursively(std::set<int> & tids, int tid)
     {
         auto result = tids.insert(tid);
-        if (!result.second)
+        if (!result.second) {
             return; // we've already added this and its children
+        }
 
         char filename[50];
 
         // try to get all children (forked processes), available since Linux 3.5
         snprintf(filename, sizeof(filename), "/proc/%d/task/%d/children", tid, tid);
-        std::ifstream children{filename, std::ios_base::in};
+        std::ifstream children {filename, std::ios_base::in};
         if (children) {
             int child;
             while (children >> child) {

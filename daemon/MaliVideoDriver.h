@@ -15,22 +15,21 @@ enum MaliVideoCounterType {
 
 class MaliVideoDriver : public SimpleDriver {
 private:
-    typedef SimpleDriver super;
+    using super = SimpleDriver;
 
 public:
     MaliVideoDriver();
-    ~MaliVideoDriver();
 
-    void readEvents(mxml_node_t * const root);
+    void readEvents(mxml_node_t * xml) override;
 
-    int writeCounters(mxml_node_t * root) const;
-    bool claimCounter(Counter & counter) const;
+    int writeCounters(mxml_node_t * root) const override;
+    bool claimCounter(Counter & counter) const override;
 
-    bool start(const int mveUds);
-    void stop(const int mveUds);
+    bool start(int mveUds);
+    void stop(int mveUds);
 
 private:
-    void marshalEnable(const MaliVideoCounterType type, char * const buf, int & pos);
+    void marshalEnable(MaliVideoCounterType type, char * buf, int & pos);
 
     // Intentionally unimplemented
     MaliVideoDriver(const MaliVideoDriver &) = delete;

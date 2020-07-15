@@ -43,7 +43,7 @@ namespace lnx {
                      : lib::Format() << prefix << "." << deviceName << "." << dataDirName << "." << dataFile.name());
 
             logg.logMessage("Read summary metadata item '%s' = '%s'", key.c_str(), contents.c_str());
-            additionalAttributes[std::move(key)] = std::move(contents);
+            additionalAttributes[key] = contents;
         }
     }
 

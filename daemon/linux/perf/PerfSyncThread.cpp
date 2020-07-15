@@ -7,11 +7,12 @@
 #include "lib/GenericTimer.h"
 
 #include <cerrno>
+#include <csignal>
 #include <cstring>
-#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <utility>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -52,7 +53,7 @@ PerfSyncThread::PerfSyncThread(unsigned cpu,
                                std::uint64_t monotonicRawBase,
                                ConsumerFunction consumerFunction)
     : thread(),
-      consumerFunction(consumerFunction),
+      consumerFunction(std::move(consumerFunction)),
       monotonicRawBase(monotonicRawBase),
       cpu(cpu),
       terminateFlag(false),
@@ -82,7 +83,7 @@ void PerfSyncThread::launch(PerfSyncThread * _this) noexcept
     _this->run();
 }
 
-void PerfSyncThread::rename(std::uint64_t currentTime)
+void PerfSyncThread::rename(std::uint64_t currentTime) const
 {
     // we need a way to provoke a record to appear in the perf ring buffer that we can correlated back to an action here
     // rename thread which will generate a PERF_RECORD_COMM - encode the monotonic delta in uSeconds into the name
@@ -90,7 +91,7 @@ void PerfSyncThread::rename(std::uint64_t currentTime)
     if (enableSyncThreadMode && (cpu == 0)) {
         char buffer[16];
         const std::uint64_t uSeconds = (currentTime - monotonicRawBase) / NS_TO_US;
-        if (uSeconds <= 9999999999ull) {
+        if (uSeconds <= 9999999999ULL) {
             snprintf(buffer, sizeof(buffer), "gds-%010u-", static_cast<unsigned>(uSeconds));
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&buffer[0]), 0, 0, 0);
         }

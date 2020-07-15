@@ -10,40 +10,29 @@ struct perf_event_attr;
 
 class PerfAttrsBuffer : public IPerfAttrsConsumer {
 public:
-    PerfAttrsBuffer(int size, sem_t * const readerSem);
-    ~PerfAttrsBuffer() = default;
+    PerfAttrsBuffer(int size, sem_t & readerSem);
+    ~PerfAttrsBuffer() override = default;
 
-    void write(ISender * sender);
+    void write(ISender & sender);
 
     int bytesAvailable() const;
-    void commit(const uint64_t time);
+    void commit(uint64_t time);
 
     // Perf Attrs messages
-    void marshalPea(const uint64_t currTime, const struct perf_event_attr * const pea, int key) override;
-    void marshalKeys(const uint64_t currTime,
-                     const int count,
-                     const uint64_t * const ids,
-                     const int * const keys) override;
-    void marshalKeysOld(const uint64_t currTime,
-                        const int keyCount,
-                        const int * const keys,
-                        const int bytes,
-                        const char * const buf) override;
-    void marshalFormat(const uint64_t currTime, const int length, const char * const format) override;
-    void marshalMaps(const uint64_t currTime, const int pid, const int tid, const char * const maps) override;
-    void marshalComm(const uint64_t currTime,
-                     const int pid,
-                     const int tid,
-                     const char * const image,
-                     const char * const comm) override;
-    void onlineCPU(const uint64_t currTime, const int cpu) override;
-    void offlineCPU(const uint64_t currTime, const int cpu) override;
-    void marshalKallsyms(const uint64_t currTime, const char * const kallsyms) override;
-    void perfCounterHeader(const uint64_t time, const int numberOfCounters) override;
-    void perfCounter(const int core, const int key, const int64_t value) override;
-    void perfCounterFooter(const uint64_t currTime) override;
-    void marshalHeaderPage(const uint64_t currTime, const char * const headerPage) override;
-    void marshalHeaderEvent(const uint64_t currTime, const char * const headerEvent) override;
+    void marshalPea(uint64_t currTime, const struct perf_event_attr * pea, int key) override;
+    void marshalKeys(uint64_t currTime, int count, const uint64_t * ids, const int * keys) override;
+    void marshalKeysOld(uint64_t currTime, int keyCount, const int * keys, int bytes, const char * buf) override;
+    void marshalFormat(uint64_t currTime, int length, const char * format) override;
+    void marshalMaps(uint64_t currTime, int pid, int tid, const char * maps) override;
+    void marshalComm(uint64_t currTime, int pid, int tid, const char * image, const char * comm) override;
+    void onlineCPU(uint64_t currTime, int cpu) override;
+    void offlineCPU(uint64_t currTime, int cpu) override;
+    void marshalKallsyms(uint64_t currTime, const char * kallsyms) override;
+    void perfCounterHeader(uint64_t time, int numberOfCounters) override;
+    void perfCounter(int core, int key, int64_t value) override;
+    void perfCounterFooter(uint64_t currTime) override;
+    void marshalHeaderPage(uint64_t currTime, const char * headerPage) override;
+    void marshalHeaderEvent(uint64_t currTime, const char * headerEvent) override;
 
     void setDone();
     bool isDone() const;

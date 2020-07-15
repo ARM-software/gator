@@ -86,8 +86,8 @@ namespace non_root {
 
             ProcessInfo();
             ProcessInfo(int pid, int tid, unsigned long pageSize, unsigned long long timestampNS);
-            ProcessInfo(ProcessInfo &&);
-            ProcessInfo & operator=(ProcessInfo &&);
+            ProcessInfo(ProcessInfo &&) noexcept;
+            ProcessInfo & operator=(ProcessInfo &&) noexcept;
 
             bool isEmpty() const { return (state == State::EMPTY); }
 
@@ -119,7 +119,7 @@ namespace non_root {
                                             unsigned long clktck,
                                             int pid,
                                             int tid,
-                                            const lnx::ProcPidStatFileRecord & record);
+                                            const lnx::ProcPidStatFileRecord & record) const;
             void setSeenSinceLastScan(bool seen);
             unsigned long long update(unsigned long long bootTimeBaseNS,
                                       unsigned long clktck,

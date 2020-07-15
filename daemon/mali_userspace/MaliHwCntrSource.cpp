@@ -16,23 +16,22 @@
 #include "mali_userspace/MaliHwCntrReader.h"
 
 #include <algorithm>
-#include <inttypes.h>
+#include <cinttypes>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <utility>
 
 namespace mali_userspace {
     MaliHwCntrSource::MaliHwCntrSource(Child & child,
-                                       sem_t * senderSem,
+                                       sem_t & senderSem,
                                        std::function<std::int64_t()> getMonotonicStarted,
                                        MaliHwCntrDriver & driver)
-        : Source(child), mDriver(driver), mGetMonotonicStarted(getMonotonicStarted), mReaders(), tasks()
+        : Source(child), mDriver(driver), mGetMonotonicStarted(std::move(getMonotonicStarted)), mReaders(), tasks()
     {
         createTasks(senderSem);
     }
 
-    MaliHwCntrSource::~MaliHwCntrSource() {}
-
-    void MaliHwCntrSource::createTasks(sem_t * mSenderSem)
+    void MaliHwCntrSource::createTasks(sem_t & mSenderSem)
     {
         auto funChildEndSession = [&] { mChild.endSession(); };
         auto funIsSessionActive = [&]() -> bool { return gSessionData.mSessionIsActive; };
@@ -77,10 +76,10 @@ namespace mali_userspace {
         const bool isOneShot = gSessionData.mOneShot;
         for (auto const & task : tasks) {
             MaliHwCntrTask * const taskPtr = task.get();
-            threadsCreated.push_back(std::thread([=]() -> void {
+            threadsCreated.emplace_back([=]() -> void {
                 prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-malihtsk"), 0, 0, 0);
                 taskPtr->execute(sampleRate, isOneShot);
-            }));
+            });
         }
         std::for_each(threadsCreated.begin(), threadsCreated.end(), std::mem_fn(&std::thread::join));
     }
@@ -102,7 +101,7 @@ namespace mali_userspace {
         return true;
     }
 
-    void MaliHwCntrSource::write(ISender * sender)
+    void MaliHwCntrSource::write(ISender & sender)
     {
         for (auto & task : tasks) {
             if (!task->isDone()) {
@@ -115,7 +114,7 @@ namespace mali_userspace {
                                             uint32_t counterIndex,
                                             uint64_t delta,
                                             uint32_t gpuId,
-                                            IBuffer & buffer)
+                                            IBlockCounterFrameBuilder & buffer)
     {
         const int key = mDriver.getCounterKey(nameBlockIndex, counterIndex, gpuId);
         if (key != 0) {

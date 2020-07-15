@@ -78,6 +78,7 @@
     <pmu id="ARMv8_Cortex_A75" cpuid="0x41d0a" core_name="Cortex-A75" dt_name="arm,cortex-a75" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A76" cpuid="0x41d0b" core_name="Cortex-A76" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A77" cpuid="0x41d0d" core_name="Cortex-A77" dt_name="arm,cortex-a77" pmnc_counters="6" profile="8a"/>
+    <pmu id="ARMv8_Cortex_A78" cpuid="0x41d41" core_name="Cortex-A78" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu"/>
 
     <pmu id="ARMv8_Cortex_A65AE" cpuid="0x41d43" core_name="Cortex-A65AE" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A65AE" id="ARMv8_Cortex_A65" cpuid="0x41d06" core_name="Cortex-A65" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
@@ -85,6 +86,11 @@
 
     <pmu id="ARMv8_Neoverse_E1" cpuid="0x41d4a" core_name="Neoverse-E1" dt_name="arm,neoverse-e1" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu"/>
+
+    <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu"/>
+
+    <!-- Arm China -->
+    <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>
 
     <!-- Qualcomm -->
     <pmu counter_set="Scorpion" id="ARMv7_Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4" profile="7a"/>
@@ -109,6 +115,7 @@
     <pmu id="ARMv8_Exynos_M1" cpuid="0x53001" core_name="Exynos-M1/M2" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Exynos_M3" cpuid="0x53002" core_name="Exynos-M3" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="Other" id="ARMv8_Exynos_M4" cpuid="0x53003" core_name="Exynos-M4" pmnc_counters="6" profile="8a"/>
+    <pmu counter_set="Other" id="ARMv8_Exynos_M5" cpuid="0x53004" core_name="Exynos-M5" pmnc_counters="6" profile="8a"/>
 
     <!-- Cavium -->
     <pmu id="ARMv8_Cavium_Thunder" core_name="ThunderX" pmnc_counters="6" profile="8a">

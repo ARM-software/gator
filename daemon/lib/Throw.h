@@ -6,7 +6,7 @@
 #ifdef __EXCEPTIONS
 #define GATOR_THROW(exception) (throw(exception))
 #else
-#include <stdlib.h>
+#include <cstdlib>
 #define GATOR_THROW(exception) (::abort())
 #endif
 

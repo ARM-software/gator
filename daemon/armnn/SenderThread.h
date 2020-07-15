@@ -2,20 +2,18 @@
 
 #pragma once
 
-#include "armnn/SocketIO.h"
-#include "SenderQueue.h"
 #include "ISender.h"
+#include "SenderQueue.h"
+#include "armnn/SocketIO.h"
 
 #include <thread>
 
-namespace armnn
-{
-    class SenderThread : public ISender
-    {
+namespace armnn {
+    class SenderThread : public ISender {
     public:
         SenderThread(SocketIO & connection);
         SenderThread() = delete;
-        ~SenderThread();
+        ~SenderThread() override;
 
         // No copying
         SenderThread(const SenderThread &) = delete;
@@ -23,19 +21,14 @@ namespace armnn
 
         // No moving
         SenderThread(SenderThread && that) = delete;
-        SenderThread& operator=(SenderThread&& that) = delete;
+        SenderThread & operator=(SenderThread && that) = delete;
 
         /**
          * Adds a packet to the sender queue
          * @param data: the packet to send
          * @return whether the add was successful or not.
          **/
-        bool send(std::vector<std::uint8_t> && data);
-
-        /**
-         * Stop sending on the connection
-         **/
-        void stopSending();
+        bool send(std::vector<std::uint8_t> && data) override;
 
     private:
         std::unique_ptr<SenderQueue> mSenderQueue;

@@ -13,7 +13,7 @@ namespace lnx {
      */
     class ProcStatFileRecord {
     public:
-        static constexpr const unsigned long GLOBAL_CPU_TIME_ID = ~0ul;
+        static constexpr const unsigned long GLOBAL_CPU_TIME_ID = ~0UL;
 
         /**
          * `cpu` record, time is converted to nanoseconds from USER_HZ numbers

@@ -41,7 +41,7 @@ public:
                          unsigned cpu,
                          bool enableSyncThreadMode,
                          bool readTimer,
-                         sem_t * readerSem);
+                         sem_t & readerSem);
 
     /**
      * Stop thread

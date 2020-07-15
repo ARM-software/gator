@@ -7,11 +7,11 @@
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfDriverConfiguration.h"
 
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <memory>
 #include <set>
-#include <stdint.h>
 
 static constexpr const char * SCHED_SWITCH = "sched/sched_switch";
 static constexpr const char * CPU_IDLE = "power/cpu_idle";
@@ -44,19 +44,19 @@ public:
                PmuXML && pmuXml,
                const char * maliFamilyName,
                const ICpuInfo & cpuInfo);
-    ~PerfDriver();
+    ~PerfDriver() override;
 
     const PerfConfig & getConfig() const { return mConfig.config; }
 
-    void readEvents(mxml_node_t * const xml) override;
+    void readEvents(mxml_node_t * xml) override;
     int writeCounters(mxml_node_t * root) const override;
-    bool summary(ISummaryConsumer & consumer, std::function<uint64_t()> getAndSetMonotonicStarted);
-    void coreName(const uint64_t currTime, ISummaryConsumer & consumer, const int cpu);
+    bool summary(ISummaryConsumer & consumer, const std::function<uint64_t()> & getAndSetMonotonicStarted);
+    void coreName(uint64_t currTime, ISummaryConsumer & consumer, int cpu);
     void setupCounter(Counter & counter) override;
     lib::Optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
-    bool enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
-    void read(IPerfAttrsConsumer & attrsConsumer, const int cpu);
-    bool sendTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
+    bool enable(uint64_t currTime, IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
+    void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
+    bool sendTracepointFormats(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
 
 private:
     void addCpuCounters(const PerfCpu & cpu);
@@ -72,7 +72,7 @@ private:
     PerfDriver(PerfDriver &&) = delete;
     PerfDriver & operator=(PerfDriver &&) = delete;
 
-    void addMidgardHwTracepoints(const char * const maliFamilyName);
+    void addMidgardHwTracepoints(const char * maliFamilyName);
 };
 
 #endif // PERFDRIVER_H

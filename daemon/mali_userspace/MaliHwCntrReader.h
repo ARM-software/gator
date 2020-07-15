@@ -7,9 +7,9 @@
 #include "mali_userspace/IMaliHwCntrReader.h"
 #include "mali_userspace/MaliDevice.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <stddef.h>
-#include <stdint.h>
 
 namespace mali_userspace {
     class MaliHwCntrReader;
@@ -18,7 +18,7 @@ namespace mali_userspace {
      */
     class MaliHwCntrReader : public IMaliHwCntrReader {
     public:
-        virtual ~MaliHwCntrReader() = default;
+        ~MaliHwCntrReader() override = default;
         virtual const MaliDevice & getDevice() const override;
         virtual HardwareVersion getHardwareVersion() const override;
         virtual SampleBuffer waitForBuffer(int timeout) override;
@@ -65,7 +65,7 @@ namespace mali_userspace {
          * Create a new instance of the MaliHwCntrReader object associated with the device object
          *
          * @param device
-         * @return The new reader, or NULL if not able to initialize
+         * @return The new reader, or nullptr if not able to initialize
          */
         static std::unique_ptr<MaliHwCntrReader> createReader(const MaliDevice & device);
 

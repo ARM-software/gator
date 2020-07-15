@@ -26,11 +26,11 @@ namespace mali_userspace {
     class MaliHwCntrReader;
 
     /** Wait status result */
-    typedef enum {
+    enum WaitStatus {
         WAIT_STATUS_ERROR,     /**< The wait failed due to error */
         WAIT_STATUS_SUCCESS,   /**< The wait succeeded and buffer contains data */
         WAIT_STATUS_TERMINATED /**< The wait ended as the connection was terminated */
-    } WaitStatus;
+    };
 
     template<typename T>
     using unique_ptr_with_deleter = std::unique_ptr<T, std::function<void(T *)>>;
@@ -50,18 +50,18 @@ namespace mali_userspace {
     public:
         virtual ~IMaliHwCntrReader() = default;
 
-        typedef uint32_t CounterBitmask;
-        typedef uint32_t HardwareVersion;
+        using CounterBitmask = uint32_t;
+        using HardwareVersion = uint32_t;
 
         /** Hwcnt dumping events. */
-        typedef enum {
+        enum HwcntReaderEvent {
             HWCNT_READER_EVENT_MANUAL,   /**< Manual request for dump. */
             HWCNT_READER_EVENT_PERIODIC, /**< Periodic dump. */
             HWCNT_READER_EVENT_PREJOB,   /**< Prejob dump request. */
             HWCNT_READER_EVENT_POSTJOB,  /**< Postjob dump request. */
 
             HWCNT_READER_EVENT_COUNT /**< Number of supported events. */
-        } HwcntReaderEvent;
+        };
 
         /**
          * Obtain hardware counters sampling buffer.
@@ -70,7 +70,7 @@ namespace mali_userspace {
          * buffer contains information about time when it was collected
          * and event that triggered the sampling. If no buffer is available, the function
          * will block for specified number of milliseconds or until a buffer is acquired.
-         * In the case of timeout, the sample buffer will have its data pointer set to NULL.
+         * In the case of timeout, the sample buffer will have its data pointer set to nullptr.
          * In this case remaining members of sample buffer structure shall be considered invalid.
          *
          * @param   timeout Number of milliseconds function shall wait for sample buffer.

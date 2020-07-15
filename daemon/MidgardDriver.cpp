@@ -74,8 +74,6 @@ public:
     {
     }
 
-    ~MidgardCounter() {}
-
     int getType() const { return mCounterData.mType; }
 
     // PERF
@@ -98,9 +96,9 @@ private:
     MidgardCounter & operator=(MidgardCounter &&) = delete;
 };
 
-MidgardDriver::MidgardDriver() : SimpleDriver("MidgardDriver"), mQueried(false) {}
-
-MidgardDriver::~MidgardDriver() {}
+MidgardDriver::MidgardDriver() : SimpleDriver("MidgardDriver"), mQueried(false)
+{
+}
 
 void MidgardDriver::query() const
 {
@@ -228,7 +226,7 @@ void MidgardDriver::query() const
     CounterData cd;
     cd.mType = CounterData::PERF;
     for (int i = 0; i + sizeof(HardwareCounter) < size;) {
-        const HardwareCounter * counter = reinterpret_cast<const HardwareCounter *>(buf + i);
+        const auto * counter = reinterpret_cast<const HardwareCounter *>(buf + i);
         char * name;
         if (asprintf(&name, "ARM_Mali-%s", counter->mCounterName) <= 0) {
             logg.logError("asprintf failed");
@@ -267,7 +265,7 @@ bool MidgardDriver::start(const int uds)
     // not always received
     usleep(10000);
 
-    for (MidgardCounter * counter = static_cast<MidgardCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<MidgardCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<MidgardCounter *>(counter->getNext())) {
         if (!counter->isEnabled() || counter->getType() != CounterData::PERF) {
             continue;
@@ -297,7 +295,7 @@ bool MidgardDriver::start(const int uds)
     }
 
     bool foundWindumpCounter = false;
-    for (MidgardCounter * counter = static_cast<MidgardCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<MidgardCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<MidgardCounter *>(counter->getNext())) {
         if (!counter->isEnabled() || counter->getType() != CounterData::WINDUMP) {
             continue;
@@ -335,7 +333,7 @@ bool MidgardDriver::start(const int uds)
 bool MidgardDriver::claimCounter(Counter & counter) const
 {
     // do not claim if another driver already has
-    if (counter.getDriver() != NULL) {
+    if (counter.getDriver() != nullptr) {
         return false;
     }
 
@@ -351,8 +349,8 @@ void MidgardDriver::resetCounters()
 
 void MidgardDriver::setupCounter(Counter & counter)
 {
-    MidgardCounter * const midgardCounter = static_cast<MidgardCounter *>(findCounter(counter));
-    if (midgardCounter == NULL) {
+    auto * const midgardCounter = static_cast<MidgardCounter *>(findCounter(counter));
+    if (midgardCounter == nullptr) {
         counter.setEnabled(false);
         return;
     }

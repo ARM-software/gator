@@ -4,20 +4,17 @@
 #define ARMNN_PACKETUTILITYMODELS_H_
 
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 
-namespace armnn
-{
-    struct PacketVersionTable
-    {
+namespace armnn {
+    struct PacketVersionTable {
         std::uint32_t packetVersion;
         std::uint16_t packetId;
         std::uint8_t packetFamily;
     };
 
-    struct StreamMetadataContent
-    {
+    struct StreamMetadataContent {
         std::uint32_t pid;
         std::string processName;
         std::string info;

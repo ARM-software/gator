@@ -8,15 +8,14 @@
 #include "Logging.h"
 #include "SessionData.h"
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <unistd.h>
 
 class DiskIOCounter : public DriverCounter {
 public:
-    DiskIOCounter(DriverCounter * next, const char * const name, uint64_t * const value);
-    ~DiskIOCounter();
+    DiskIOCounter(DriverCounter * next, const char * name, uint64_t * value);
 
-    int64_t read();
+    int64_t read() override;
 
 private:
     uint64_t * const mValue;
@@ -34,8 +33,6 @@ DiskIOCounter::DiskIOCounter(DriverCounter * next, const char * const name, uint
 {
 }
 
-DiskIOCounter::~DiskIOCounter() {}
-
 int64_t DiskIOCounter::read()
 {
     int64_t result = *mValue - mPrev;
@@ -44,11 +41,11 @@ int64_t DiskIOCounter::read()
     return result << 9;
 }
 
-DiskIODriver::DiskIODriver() : PolledDriver("DiskIO"), mBuf(), mReadBytes(0), mWriteBytes(0) {}
+DiskIODriver::DiskIODriver() : PolledDriver("DiskIO"), mBuf(), mReadBytes(0), mWriteBytes(0)
+{
+}
 
-DiskIODriver::~DiskIODriver() {}
-
-void DiskIODriver::readEvents(mxml_node_t * const)
+void DiskIODriver::readEvents(mxml_node_t * const /*unused*/)
 {
     if (access("/proc/diskstats", R_OK) == 0) {
         setCounters(new DiskIOCounter(getCounters(), "Linux_block_rq_rd", &mReadBytes));
@@ -73,12 +70,12 @@ void DiskIODriver::doRead()
     mReadBytes = 0;
     mWriteBytes = 0;
 
-    char * lastName = NULL;
+    char * lastName = nullptr;
     int lastNameLen = -1;
     char * line = mBuf.getBuf();
     while (*line != '\0') {
         char * end = strchr(line, '\n');
-        if (end != NULL) {
+        if (end != nullptr) {
             *end = '\0';
         }
 
@@ -98,14 +95,14 @@ void DiskIODriver::doRead()
         }
 
         // Skip partitions which are identified if the name is a substring of the last non-partition
-        if ((lastName == NULL) || (strncmp(lastName, line + nameStart, lastNameLen) != 0)) {
+        if ((lastName == nullptr) || (strncmp(lastName, line + nameStart, lastNameLen) != 0)) {
             lastName = line + nameStart;
             lastNameLen = nameEnd - nameStart;
             mReadBytes += readBytes;
             mWriteBytes += writeBytes;
         }
 
-        if (end == NULL) {
+        if (end == nullptr) {
             break;
         }
         line = end + 1;
@@ -116,7 +113,7 @@ void DiskIODriver::start()
 {
     doRead();
     // Initialize previous values
-    for (DriverCounter * counter = getCounters(); counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = getCounters(); counter != nullptr; counter = counter->getNext()) {
         if (!counter->isEnabled()) {
             continue;
         }
@@ -124,7 +121,7 @@ void DiskIODriver::start()
     }
 }
 
-void DiskIODriver::read(Buffer * const buffer)
+void DiskIODriver::read(IBlockCounterFrameBuilder & buffer)
 {
     doRead();
     super::read(buffer);

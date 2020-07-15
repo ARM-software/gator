@@ -13,9 +13,9 @@ namespace non_root {
     template<typename T>
     class AbsoluteCounter {
     public:
-        typedef T value_type;
-        typedef typename std::
-            conditional<std::is_integral<T>::value || std::is_floating_point<T>::value, T, const T &>::type cref_type;
+        using value_type = T;
+        using cref_type = typename std::
+            conditional<std::is_integral<T>::value || std::is_floating_point<T>::value, T, const T &>::type;
 
         AbsoluteCounter() : currentValue_(), changed_(true) {}
 
@@ -45,7 +45,7 @@ namespace non_root {
         static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value,
                       "T must be integral or float type");
 
-        typedef T value_type;
+        using value_type = T;
 
         DeltaCounter() : currentValue(), newValue() {}
 

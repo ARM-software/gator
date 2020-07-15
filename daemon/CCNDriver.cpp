@@ -41,14 +41,14 @@ static const char CCN_5XX[] = "CCN-5xx";
 static const char ARM_CCN_5XX_CNT[] = ARM_CCN_5XX "cnt";
 
 static const char * const VC_TYPES[] = {"REQ", "RSP", "SNP", "DAT"};
-static const char * const XP_EVENT_NAMES[] = {NULL, "H-bit", "S-bit", "P-Cnt", "TknV"};
+static const char * const XP_EVENT_NAMES[] = {nullptr, "H-bit", "S-bit", "P-Cnt", "TknV"};
 static const char * const XP_EVENT_DESCRIPTIONS[] = {
-    NULL,
+    nullptr,
     "Set H-bit, signaled when this XP sets the H-bit.",
     "Set S-bit, signaled when this XP sets the S-bit.",
     "Set P-Cnt, signaled when this XP sets the P-Cnt. This is not applicable for the SNP VC.",
     "No TknV, signaled when this XP transmits a valid packet."};
-static const char * const HNF_EVENT_NAMES[] = {NULL,
+static const char * const HNF_EVENT_NAMES[] = {nullptr,
                                                "Cache Miss",
                                                "L3 SF Cache Access",
                                                "Cache Fill",
@@ -64,7 +64,7 @@ static const char * const HNF_EVENT_NAMES[] = {NULL,
                                                "MC Reqs",
                                                "QOS HH Retry"};
 static const char * const HNF_EVENT_DESCRIPTIONS[] = {
-    NULL,
+    nullptr,
     "Counts the total cache misses. This is the first time lookup result, and is high priority.",
     "Counts the number of cache accesses. This is the first time access, and is high priority.",
     "Counts the total allocations in the HN L3 cache, and all cache line allocations to the L3 cache.",
@@ -79,7 +79,7 @@ static const char * const HNF_EVENT_DESCRIPTIONS[] = {
     "Counts the number of transactions retried by the memory controller.",
     "Counts the number of requests to the memory controller.",
     "Counts the number of times a highest-priority QoS class was retried at the HN-F."};
-static const char * const RNI_EVENT_NAMES[] = {NULL,
+static const char * const RNI_EVENT_NAMES[] = {nullptr,
                                                "S0 RDataBeats",
                                                "S1 RDataBeats",
                                                "S2 RDataBeats",
@@ -90,7 +90,7 @@ static const char * const RNI_EVENT_NAMES[] = {NULL,
                                                "RRT full",
                                                "WRT full",
                                                "Replayed TXREQ Flits"};
-static const char * const RNI_EVENT_DESCRIPTIONS[] = {NULL,
+static const char * const RNI_EVENT_DESCRIPTIONS[] = {nullptr,
                                                       "S0 RDataBeats.",
                                                       "S1 RDataBeats.",
                                                       "S2 RDataBeats.",
@@ -101,10 +101,10 @@ static const char * const RNI_EVENT_DESCRIPTIONS[] = {NULL,
                                                       "RRT full.",
                                                       "WRT full.",
                                                       "Replayed TXREQ Flits."};
-static const char * const SBAS_EVENT_NAMES[] = {NULL,
+static const char * const SBAS_EVENT_NAMES[] = {nullptr,
                                                 "S0 RDataBeats",
-                                                NULL,
-                                                NULL,
+                                                nullptr,
+                                                nullptr,
                                                 "RXDAT Flits received",
                                                 "TXDAT Flits sent",
                                                 "Total TXREQ Flits sent",
@@ -112,10 +112,10 @@ static const char * const SBAS_EVENT_NAMES[] = {NULL,
                                                 "RRT full",
                                                 "WRT full",
                                                 "Replayed TXREQ Flits"};
-static const char * const SBAS_EVENT_DESCRIPTIONS[] = {NULL,
+static const char * const SBAS_EVENT_DESCRIPTIONS[] = {nullptr,
                                                        "S0 RDataBeats.",
-                                                       NULL,
-                                                       NULL,
+                                                       nullptr,
+                                                       nullptr,
                                                        "RXDAT Flits received.",
                                                        "TXDAT Flits sent.",
                                                        "Total TXREQ Flits sent.",
@@ -155,14 +155,16 @@ static bool perfPoll(struct perf_event_attr * const pea)
     return true;
 }
 
-CCNDriver::CCNDriver() : Driver("CCN"), mNodeTypes(NULL), mXpCount(0) {}
+CCNDriver::CCNDriver() : Driver("CCN"), mNodeTypes(nullptr), mXpCount(0)
+{
+}
 
 CCNDriver::~CCNDriver()
 {
     delete mNodeTypes;
 }
 
-bool CCNDriver::claimCounter(Counter &) const
+bool CCNDriver::claimCounter(Counter & /*counter*/) const
 {
     // Handled by PerfDriver
     return false;
@@ -173,12 +175,12 @@ void CCNDriver::resetCounters()
     // Handled by PerfDriver
 }
 
-void CCNDriver::setupCounter(Counter &)
+void CCNDriver::setupCounter(Counter & /*counter*/)
 {
     // Handled by PerfDriver
 }
 
-void CCNDriver::readEvents(mxml_node_t * const)
+void CCNDriver::readEvents(mxml_node_t * const /*unused*/)
 {
     struct stat st;
     if (stat("/sys/bus/event_source/devices/ccn", &st) != 0) {
@@ -246,7 +248,7 @@ void CCNDriver::readEvents(mxml_node_t * const)
     }
 }
 
-int CCNDriver::writeCounters(mxml_node_t * const) const
+int CCNDriver::writeCounters(mxml_node_t * const /*root*/) const
 {
     // Handled by PerfDriver
     return 0;
@@ -283,12 +285,12 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
     }
 
     for (int vc = 0; vc < ARRAY_LENGTH(VC_TYPES); ++vc) {
-        if (VC_TYPES[vc] == NULL) {
+        if (VC_TYPES[vc] == nullptr) {
             continue;
         }
         for (int bus = 0; bus < 2; ++bus) {
             for (int eventId = 0; eventId < ARRAY_LENGTH(XP_EVENT_NAMES); ++eventId) {
-                if (XP_EVENT_NAMES[eventId] == NULL) {
+                if (XP_EVENT_NAMES[eventId] == nullptr) {
                     continue;
                 }
                 mxml_node_t * const event = mxmlNewElement(category, TAG_EVENT);
@@ -310,7 +312,7 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
     mxmlElementSetAttr(hnf_option_set, ATTR_NAME, HNF_REGION);
 
     for (int eventId = 0; eventId < ARRAY_LENGTH(HNF_EVENT_NAMES); ++eventId) {
-        if (HNF_EVENT_NAMES[eventId] == NULL) {
+        if (HNF_EVENT_NAMES[eventId] == nullptr) {
             continue;
         }
         mxml_node_t * const event = mxmlNewElement(category, TAG_EVENT);
@@ -325,7 +327,7 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
     mxmlElementSetAttr(rni_option_set, ATTR_NAME, RNI_REGION);
 
     for (int eventId = 0; eventId < ARRAY_LENGTH(RNI_EVENT_NAMES); ++eventId) {
-        if (RNI_EVENT_NAMES[eventId] == NULL) {
+        if (RNI_EVENT_NAMES[eventId] == nullptr) {
             continue;
         }
         mxml_node_t * const event = mxmlNewElement(category, TAG_EVENT);
@@ -340,7 +342,7 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
     mxmlElementSetAttr(sbas_option_set, ATTR_NAME, SBAS_REGION);
 
     for (int eventId = 0; eventId < ARRAY_LENGTH(SBAS_EVENT_NAMES); ++eventId) {
-        if (SBAS_EVENT_NAMES[eventId] == NULL) {
+        if (SBAS_EVENT_NAMES[eventId] == nullptr) {
             continue;
         }
         mxml_node_t * const event = mxmlNewElement(category, TAG_EVENT);
@@ -380,28 +382,27 @@ void CCNDriver::writeEvents(mxml_node_t * const root) const
     }
 }
 
-std::string CCNDriver::validateCounters() const
+std::string CCNDriver::validateCounters()
 {
     int counts[CCN_COUNT][2] = {{0}};
     const unsigned int mask = getConfig(0xff, 0xff, 0, 0, 0);
 
-    for (int i = 0; i < ARRAY_LENGTH(gSessionData.mCounters); ++i) {
-        const Counter * const counter = &gSessionData.mCounters[i];
+    for (auto & counter : gSessionData.mCounters) {
 
-        if (!counter->isEnabled()) {
+        if (!counter.isEnabled()) {
             continue;
         }
 
-        if (strncmp(counter->getType(), ARM_CCN_5XX_CNT, sizeof(ARM_CCN_5XX_CNT) - 1) == 0) {
-            const int node = counter->getEvent() & mask;
+        if (strncmp(counter.getType(), ARM_CCN_5XX_CNT, sizeof(ARM_CCN_5XX_CNT) - 1) == 0) {
+            const int node = counter.getEvent() & mask;
 
-            for (int j = 0; j < ARRAY_LENGTH(counts); ++j) {
-                if (counts[j][0] == 0) {
-                    counts[j][0] = node;
+            for (auto & count : counts) {
+                if (count[0] == 0) {
+                    count[0] = node;
                 }
-                if (counts[j][0] == node) {
-                    ++counts[j][1];
-                    if (counts[j][1] > 4) {
+                if (count[0] == node) {
+                    ++count[1];
+                    if (count[1] > 4) {
                         return "More than 4 events are assigned to the same CCN node";
                     }
                 }

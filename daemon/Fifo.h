@@ -6,9 +6,9 @@
 #ifdef WIN32
 #include <windows.h>
 #define sem_t HANDLE
-#define sem_init(sem, pshared, value) ((*(sem) = CreateSemaphore(NULL, value, LONG_MAX, NULL)) == NULL)
+#define sem_init(sem, pshared, value) ((*(sem) = CreateSemaphore(nullptr, value, LONG_MAX, nullptr)) == nullptr)
 #define sem_wait(sem) WaitForSingleObject(*(sem), INFINITE)
-#define sem_post(sem) ReleaseSemaphore(*(sem), 1, NULL)
+#define sem_post(sem) ReleaseSemaphore(*(sem), 1, nullptr)
 #define sem_destroy(sem) CloseHandle(*(sem))
 #else
 #include <semaphore.h>
@@ -25,7 +25,7 @@ public:
     char * start() const;
     char * write(int length);
     void release();
-    char * read(int * const length);
+    char * read(int * length);
 
 private:
     int mSingleBufferSize, mWrite, mRead, mReadCommit, mRaggedEnd, mWrapThreshold;

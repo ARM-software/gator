@@ -8,14 +8,13 @@
 
 class MemInfoDriver : public PolledDriver {
 private:
-    typedef PolledDriver super;
+    using super = PolledDriver;
 
 public:
     MemInfoDriver();
-    ~MemInfoDriver();
 
-    void readEvents(mxml_node_t * const root);
-    void read(Buffer * const buffer);
+    void readEvents(mxml_node_t * root) override;
+    void read(IBlockCounterFrameBuilder & buffer) override;
 
 private:
     DynBuf mBuf;

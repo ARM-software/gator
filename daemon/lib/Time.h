@@ -3,7 +3,7 @@
 #ifndef INCLUDE_LIB_TIME_H
 #define INCLUDE_LIB_TIME_H
 
-#include <time.h>
+#include <ctime>
 
 // some toolchains appear not to provide these defines, manually provide it as they supported on all
 // kernel versions supported by gatord (they are both since Linux 2.6.39)

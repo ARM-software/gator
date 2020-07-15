@@ -66,18 +66,18 @@ public:
                                                    const std::set<int> & appPids,
                                                    OnlineEnabledState enabledState,
                                                    IPerfAttrsConsumer & attrsConsumer,
-                                                   std::function<bool(int)> addToMonitor,
-                                                   std::function<bool(int, int, bool)> addToBuffer,
-                                                   std::function<std::set<int>(int)> childTids);
+                                                   const std::function<bool(int)> & addToMonitor,
+                                                   const std::function<bool(int, int, bool)> & addToBuffer,
+                                                   const std::function<std::set<int>(int)> & childTids);
 
-    bool offlineCPU(int cpu, std::function<void(int)> removeFromBuffer);
+    bool offlineCPU(int cpu, const std::function<void(int)> & removeFromBuffer);
     void start();
     void stop();
     bool hasSPE() const;
 
 private:
     /// Get the group and create the group leader if needed
-    PerfEventGroup & getGroup(const uint64_t timestamp,
+    PerfEventGroup & getGroup(uint64_t timestamp,
                               IPerfAttrsConsumer & attrsConsumer,
                               const PerfEventGroupIdentifier & groupIdentifier);
 

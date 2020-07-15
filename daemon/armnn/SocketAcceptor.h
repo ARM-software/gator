@@ -9,28 +9,31 @@
 #ifndef ARMNN_SOCKET_ACCEPTOR_H
 #define ARMNN_SOCKET_ACCEPTOR_H
 
-#include <functional>
+#include "armnn/IAcceptor.h"
+#include "armnn/ISession.h"
 #include "armnn/SocketIO.h"
 
-namespace armnn
-{
-    using SocketIOConsumer = std::function<void(std::unique_ptr<SocketIO>)>;
+#include <functional>
+#include <utility>
 
-    class SocketAcceptor
-    {
+namespace armnn {
+    /// Input will not be nullptr
+    /// May return nullptr if a session could not be created from the socket
+    using SessionSupplier = std::function<std::unique_ptr<ISession>(std::unique_ptr<SocketIO>)>;
+
+    class SocketAcceptor : public IAcceptor {
     public:
-
-        SocketAcceptor(SocketIO & socket, SocketIOConsumer consumer) :
-            mAcceptingSocket(socket),
-            mConsumer(consumer)
+        SocketAcceptor(SocketIO & socket, SessionSupplier supplier)
+            : mAcceptingSocket(socket), mSupplier(std::move(supplier))
         {
-
         }
-        bool acceptOne();
+
+        std::unique_ptr<ISession> accept() override;
+        void interrupt() override;
 
     private:
         SocketIO & mAcceptingSocket;
-        SocketIOConsumer mConsumer;
+        SessionSupplier mSupplier;
     };
 
 }

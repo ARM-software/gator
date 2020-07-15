@@ -11,31 +11,20 @@ class IPerfAttrsConsumer {
 public:
     virtual ~IPerfAttrsConsumer() = default;
 
-    virtual void marshalPea(const uint64_t currTime, const struct perf_event_attr * const pea, int key) = 0;
-    virtual void marshalKeys(const uint64_t currTime,
-                             const int count,
-                             const uint64_t * const ids,
-                             const int * const keys) = 0;
-    virtual void marshalKeysOld(const uint64_t currTime,
-                                const int keyCount,
-                                const int * const keys,
-                                const int bytes,
-                                const char * const buf) = 0;
-    virtual void marshalFormat(const uint64_t currTime, const int length, const char * const format) = 0;
-    virtual void marshalMaps(const uint64_t currTime, const int pid, const int tid, const char * const maps) = 0;
-    virtual void marshalComm(const uint64_t currTime,
-                             const int pid,
-                             const int tid,
-                             const char * const image,
-                             const char * const comm) = 0;
-    virtual void onlineCPU(const uint64_t currTime, const int cpu) = 0;
-    virtual void offlineCPU(const uint64_t currTime, const int cpu) = 0;
-    virtual void marshalKallsyms(const uint64_t currTime, const char * const kallsyms) = 0;
-    virtual void perfCounterHeader(const uint64_t time, const int numberOfCounters) = 0;
-    virtual void perfCounter(const int core, const int key, const int64_t value) = 0;
-    virtual void perfCounterFooter(const uint64_t currTime) = 0;
-    virtual void marshalHeaderPage(const uint64_t currTime, const char * const headerPage) = 0;
-    virtual void marshalHeaderEvent(const uint64_t currTime, const char * const headerEvent) = 0;
+    virtual void marshalPea(uint64_t currTime, const struct perf_event_attr * pea, int key) = 0;
+    virtual void marshalKeys(uint64_t currTime, int count, const uint64_t * ids, const int * keys) = 0;
+    virtual void marshalKeysOld(uint64_t currTime, int keyCount, const int * keys, int bytes, const char * buf) = 0;
+    virtual void marshalFormat(uint64_t currTime, int length, const char * format) = 0;
+    virtual void marshalMaps(uint64_t currTime, int pid, int tid, const char * maps) = 0;
+    virtual void marshalComm(uint64_t currTime, int pid, int tid, const char * image, const char * comm) = 0;
+    virtual void onlineCPU(uint64_t currTime, int cpu) = 0;
+    virtual void offlineCPU(uint64_t currTime, int cpu) = 0;
+    virtual void marshalKallsyms(uint64_t currTime, const char * kallsyms) = 0;
+    virtual void perfCounterHeader(uint64_t time, int numberOfCounters) = 0;
+    virtual void perfCounter(int core, int key, int64_t value) = 0;
+    virtual void perfCounterFooter(uint64_t currTime) = 0;
+    virtual void marshalHeaderPage(uint64_t currTime, const char * headerPage) = 0;
+    virtual void marshalHeaderEvent(uint64_t currTime, const char * headerEvent) = 0;
 };
 
 #endif // PERF_ATTRS_CONSUMER_H

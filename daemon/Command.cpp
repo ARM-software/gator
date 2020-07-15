@@ -6,10 +6,10 @@
 #include "SessionData.h"
 #include "lib/FileDescriptor.h"
 
+#include <cstdio>
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
-#include <stdio.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -39,12 +39,14 @@ static bool getUid(const char * const name, const char * const tmpDir, uid_t * c
         logg.logError("fork failed");
         handleException();
     }
+
     if (pid == 0) {
         execlp("sh", "sh", "-c", cmd, nullptr);
         exit(-1);
     }
-    while ((waitpid(pid, NULL, 0) < 0) && (errno == EINTR))
-        ;
+
+    while ((waitpid(pid, nullptr, 0) < 0) && (errno == EINTR)) {
+    }
 
     struct stat st;
     int result = -1;
@@ -61,7 +63,7 @@ static bool getUid(const char * const name, uid_t * const uid, gid_t * const gid
 {
     // Look up the username
     struct passwd * const user = getpwnam(name);
-    if (user != NULL) {
+    if (user != nullptr) {
         *uid = user->pw_uid;
         *gid = user->pw_gid;
         return true;
@@ -83,8 +85,16 @@ static bool getUid(const char * const name, uid_t * const uid, gid_t * const gid
     return false;
 }
 
-static void checkCommandStatus(int status)
+static void checkCommandStatus(int pid)
 {
+    int status;
+    while (waitpid(pid, &status, WNOHANG) == -1) {
+        if (errno != EINTR) {
+            logg.logError("Could not waitpid(%d) on child command. (%s)", pid, strerror(errno));
+            return;
+        }
+    }
+
     if (WIFEXITED(status)) {
         const int exitCode = WEXITSTATUS(status);
 
@@ -111,19 +121,54 @@ static void checkCommandStatus(int status)
     }
     else if (WIFSIGNALED(status)) {
         const int signal = WTERMSIG(status);
-        if (signal != SIGTERM && signal != SIGINT) // should we consider any others normal?
+        if (signal != SIGTERM && signal != SIGINT) { // should we consider any others normal?
             logg.logError("command terminated abnormally: %s", strsignal(signal));
+        }
     }
 }
 
-Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallback)
+void Command::start()
+{
+    sem_post(&(sharedData->start));
+}
+
+void Command::cancel()
+{
+    State expected = INITIALIZING;
+    if (sharedData->state.compare_exchange_strong(expected, KILLED_OR_EXITED)) {
+        // command will kill itself when it's finished initializing
+        return;
+    }
+
+    expected = RUNNING;
+    if (!sharedData->state.compare_exchange_strong(expected, BEING_KILLED)) {
+        // already cancelled by someone else or already exited
+        return;
+    }
+
+    start(); // just in case it was still waiting to start
+
+    // once it is RUNNING, the command will have created it's own process group
+    // so we can signal the whole process group
+    if (::kill(-pid, SIGTERM) == -1) {
+        logg.logError("kill(%d) failed (%d) %s", -pid, errno, strerror(errno));
+    }
+
+    if (sharedData->state.exchange(KILLED_OR_EXITED) != BEING_KILLED) {
+        // then must of exited in the meantime
+        // the waiter thread recognized it was BEING_KILLED, so left us to reap it.
+        checkCommandStatus(pid);
+    }
+}
+
+Command Command::run(const std::function<void()> & terminationCallback)
 {
     uid_t uid = geteuid();
     gid_t gid = getegid();
     const char * const name = gSessionData.mCaptureUser;
 
     // if name is null then just use the current user
-    if (name != NULL) {
+    if (name != nullptr) {
         // for non root.
         // Verify root permissions
         const bool isRoot = (geteuid() == 0);
@@ -137,6 +182,11 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
             handleException();
         }
     }
+
+    auto sharedData = shared_memory::make_unique<SharedData>();
+    // get references now before we move the pointer
+    auto & state = sharedData->state;
+    auto & start = sharedData->start;
 
     constexpr size_t bufSize = 1 << 8;
     int pipefd[2];
@@ -163,13 +213,19 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         //Need to change the GPID so that all children of this process will have this processes PID as their GPID.
         setpgid(pid, pid);
 
+        State expected = INITIALIZING;
+        if (!state.compare_exchange_strong(expected, RUNNING)) {
+            // we've been cancelled before even starting
+            exit(0);
+        }
+
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
 
         char buf[bufSize];
         buf[0] = '\0';
         close(pipefd[0]);
 
-        std::vector<char *> cmd_str{};
+        std::vector<char *> cmd_str {};
         for (const auto & string : gSessionData.mCaptureCommand) {
             cmd_str.push_back(const_cast<char *>(string.c_str()));
         }
@@ -182,7 +238,7 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
             goto fail_exit;
         }
 
-        if (name != NULL) {
+        if (name != nullptr) {
             if (setgroups(1, &gid) != 0) {
                 snprintf(buf,
                          sizeof(buf),
@@ -209,7 +265,8 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
         }
 
         {
-            const char * const path = gSessionData.mCaptureWorkingDir == NULL ? "/" : gSessionData.mCaptureWorkingDir;
+            const char * const path =
+                gSessionData.mCaptureWorkingDir == nullptr ? "/" : gSessionData.mCaptureWorkingDir;
             if (chdir(path) != 0) {
                 snprintf(buf,
                          sizeof(buf),
@@ -219,8 +276,7 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
                 goto fail_exit;
             }
         }
-        sem_wait(&waitToStart);
-        sem_post(&waitToStart); // some other thread might be waiting on this too.
+        sem_wait(&start);
 
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(commands[0]), 0, 0, 0);
         execvp(commands[0], commands);
@@ -240,7 +296,8 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
 
         close(pipefd[1]);
 
-        return {pid, std::thread{[pipefd, pid, terminationCallback]() {
+        return {pid,
+                std::thread {[pipefd, pid, terminationCallback, &state]() {
                     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command-reader"), 0, 0, 0);
                     char buf[bufSize];
                     ssize_t bytesRead = 0;
@@ -266,22 +323,23 @@ Command runCommand(sem_t & waitToStart, std::function<void()> terminationCallbac
                         handleException();
                     }
                     else {
-                        // wait for the process to exit and read its status.
-                        while (true) {
-                            int status;
-                            if (waitpid(pid, &status, 0) != -1) {
-                                checkCommandStatus(status);
+                        siginfo_t info;
+                        while (waitid(P_PID, pid, &info, WEXITED | WNOWAIT) == -1) {
+                            if (errno != EINTR) {
+                                logg.logError("waitid(%d) failed (%d) %s", pid, errno, strerror(errno));
+                                break;
                             }
-                            else if (errno == EINTR) {
-                                continue;
-                            }
-                            else {
-                                logg.logMessage("Could not waitpid on child command. (%s)", strerror(errno));
-                            }
-                            break;
                         }
+
+                        if (state.exchange(KILLED_OR_EXITED) != BEING_KILLED) {
+                            checkCommandStatus(pid);
+                        }
+                        // else cancel is being called. We don't want to reap
+                        // the pid while it's trying to kill it in case the pid gets reused.
+
                         terminationCallback();
                     }
-                }}};
+                }},
+                std::move(sharedData)};
     }
 }

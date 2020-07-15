@@ -2,12 +2,12 @@
 
 #include "OlyUtility.h"
 
-#include <ctype.h>
-#include <errno.h>
+#include <cctype>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #if defined(WIN32)
 #include <windows.h>
@@ -21,7 +21,7 @@ bool stringToBool(const char * string, bool defValue)
 {
     char value[32];
 
-    if (string == NULL) {
+    if (string == nullptr) {
         return defValue;
     }
 
@@ -33,7 +33,7 @@ bool stringToBool(const char * string, bool defValue)
 
     // Convert to lowercase
     int i = 0;
-    while (value[i]) {
+    while (value[i] != 0) {
         value[i] = tolower(value[i]);
         i++;
     }
@@ -53,11 +53,11 @@ bool stringToBool(const char * string, bool defValue)
 
 void stringToLower(char * string)
 {
-    if (string == NULL) {
+    if (string == nullptr) {
         return;
     }
 
-    while (*string) {
+    while (*string != 0) {
         *string = tolower(*string);
         string++;
     }
@@ -110,10 +110,10 @@ bool stringToInt(int * const value, const char * str, const int base)
 // Modifies fullpath with the path part including the trailing path separator
 int getApplicationFullPath(char * fullpath, int sizeOfPath)
 {
-    if (fullpath && sizeOfPath > 0) {
+    if ((fullpath != nullptr) && sizeOfPath > 0) {
         memset(fullpath, 0, sizeOfPath);
 #if defined(WIN32)
-        int length = GetModuleFileName(NULL, fullpath, sizeOfPath);
+        int length = GetModuleFileName(nullptr, fullpath, sizeOfPath);
 #elif defined(__linux__)
         int length = readlink("/proc/self/exe", fullpath, sizeOfPath);
 #elif defined(DARWIN)
@@ -137,9 +137,9 @@ int getApplicationFullPath(char * fullpath, int sizeOfPath)
 char * readFromDisk(const char * file, unsigned int * size, bool appendNull)
 {
     // Open the file
-    FILE * pFile = fopen(file, "rb");
-    if (pFile == NULL) {
-        return NULL;
+    FILE * pFile = fopen(file, "rbe");
+    if (pFile == nullptr) {
+        return nullptr;
     }
 
     // Obtain file size
@@ -168,7 +168,7 @@ char * readFromDisk(const char * file, unsigned int * size, bool appendNull)
         buffer[lSize] = 0;
     }
 
-    if (size) {
+    if (size != nullptr) {
         *size = lSize;
     }
 
@@ -178,8 +178,8 @@ char * readFromDisk(const char * file, unsigned int * size, bool appendNull)
 int writeToDisk(const char * path, const char * data)
 {
     // Open the file
-    FILE * pFile = fopen(path, "wb");
-    if (pFile == NULL) {
+    FILE * pFile = fopen(path, "wbe");
+    if (pFile == nullptr) {
         return -1;
     }
 
@@ -197,8 +197,8 @@ int writeToDisk(const char * path, const char * data)
 int appendToDisk(const char * path, const char * data)
 {
     // Open the file
-    FILE * pFile = fopen(path, "a");
-    if (pFile == NULL) {
+    FILE * pFile = fopen(path, "ae");
+    if (pFile == nullptr) {
         return -1;
     }
 
@@ -222,18 +222,18 @@ int appendToDisk(const char * path, const char * data)
 int copyFile(const char * srcFile, const char * dstFile)
 {
     char buffer[TRANSFER_SIZE];
-    FILE * f_src = fopen(srcFile, "rb");
-    if (!f_src) {
+    FILE * f_src = fopen(srcFile, "rbe");
+    if (f_src == nullptr) {
         return 0;
     }
-    FILE * f_dst = fopen(dstFile, "wb");
-    if (!f_dst) {
+    FILE * f_dst = fopen(dstFile, "wbe");
+    if (f_dst == nullptr) {
         fclose(f_src);
         return 0;
     }
-    while (!feof(f_src)) {
+    while (feof(f_src) == 0) {
         int num_bytes_read = fread(buffer, 1, TRANSFER_SIZE, f_src);
-        if (num_bytes_read < TRANSFER_SIZE && !feof(f_src)) {
+        if (num_bytes_read < TRANSFER_SIZE && (feof(f_src) == 0)) {
             fclose(f_src);
             fclose(f_dst);
             return 0;
@@ -252,15 +252,15 @@ int copyFile(const char * srcFile, const char * dstFile)
 
 const char * getFilePart(const char * path, char pathSeparator)
 {
-    if (path) {
+    if (path != nullptr) {
         const char * last_sep = strrchr(path, pathSeparator);
         // in case path is not a full path
-        if (last_sep == NULL) {
+        if (last_sep == nullptr) {
             return path;
         }
         return last_sep + 1;
     }
-    return NULL;
+    return nullptr;
 }
 
 // getPathPart may modify the contents of path
@@ -268,11 +268,11 @@ const char * getFilePart(const char * path, char pathSeparator)
 char * getPathPart(char * path, char pathSeparator)
 {
     // check against null-pointer passed
-    if (path) {
+    if (path != nullptr) {
         char * last_sep = strrchr(path, pathSeparator);
 
         // in case path is not a full path
-        if (last_sep == NULL) {
+        if (last_sep == nullptr) {
             // null-terminate the buffer and return it.
             path[0] = 0;
             return path;
@@ -283,6 +283,6 @@ char * getPathPart(char * path, char pathSeparator)
         return path;
     }
     else {
-        return NULL;
+        return nullptr;
     }
 }

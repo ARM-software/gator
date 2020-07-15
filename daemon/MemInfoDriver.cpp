@@ -9,10 +9,9 @@
 
 class MemInfoCounter : public DriverCounter {
 public:
-    MemInfoCounter(DriverCounter * next, const char * const name, int64_t * const value);
-    ~MemInfoCounter();
+    MemInfoCounter(DriverCounter * next, const char * name, int64_t * value);
 
-    int64_t read();
+    int64_t read() override;
 
 private:
     int64_t * const mValue;
@@ -29,8 +28,6 @@ MemInfoCounter::MemInfoCounter(DriverCounter * next, const char * const name, in
 {
 }
 
-MemInfoCounter::~MemInfoCounter() {}
-
 int64_t MemInfoCounter::read()
 {
     return *mValue;
@@ -41,9 +38,7 @@ MemInfoDriver::MemInfoDriver()
 {
 }
 
-MemInfoDriver::~MemInfoDriver() {}
-
-void MemInfoDriver::readEvents(mxml_node_t * const)
+void MemInfoDriver::readEvents(mxml_node_t * const /*unused*/)
 {
     if (access("/proc/meminfo", R_OK) == 0) {
         setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_memused2", &mMemUsed));
@@ -57,7 +52,7 @@ void MemInfoDriver::readEvents(mxml_node_t * const)
     }
 }
 
-void MemInfoDriver::read(Buffer * const buffer)
+void MemInfoDriver::read(IBlockCounterFrameBuilder & buffer)
 {
     if (!countersEnabled()) {
         return;
@@ -71,30 +66,30 @@ void MemInfoDriver::read(Buffer * const buffer)
     char * key = mBuf.getBuf();
     char * colon;
     int64_t memTotal = 0;
-    while ((colon = strchr(key, ':')) != NULL) {
+    while ((colon = strchr(key, ':')) != nullptr) {
         char * end = strchr(colon + 1, '\n');
-        if (end != NULL) {
+        if (end != nullptr) {
             *end = '\0';
         }
         *colon = '\0';
 
         if (strcmp(key, "MemTotal") == 0) {
-            memTotal = strtoll(colon + 1, NULL, 10) << 10;
+            memTotal = strtoll(colon + 1, nullptr, 10) << 10;
         }
         else if (strcmp(key, "MemFree") == 0) {
-            mMemFree = strtoll(colon + 1, NULL, 10) << 10;
+            mMemFree = strtoll(colon + 1, nullptr, 10) << 10;
         }
         else if (strcmp(key, "Buffers") == 0) {
-            mBuffers = strtoll(colon + 1, NULL, 10) << 10;
+            mBuffers = strtoll(colon + 1, nullptr, 10) << 10;
         }
         else if (strcmp(key, "Cached") == 0) {
-            mCached = strtoll(colon + 1, NULL, 10) << 10;
+            mCached = strtoll(colon + 1, nullptr, 10) << 10;
         }
         else if (strcmp(key, "Slab") == 0) {
-            mSlab = strtoll(colon + 1, NULL, 10) << 10;
+            mSlab = strtoll(colon + 1, nullptr, 10) << 10;
         }
 
-        if (end == NULL) {
+        if (end == nullptr) {
             break;
         }
         key = end + 1;

@@ -7,8 +7,8 @@
 
 namespace lnx {
     namespace {
-        static const char PROC_STAT_SCANF_FORMAT[] = "%lu %lu %lu %lu %lu %lu %lu";
-        static constexpr const int PROC_STAT_SCANF_FIELD_COUNT = 7;
+        const char PROC_STAT_SCANF_FORMAT[] = "%lu %lu %lu %lu %lu %lu %lu";
+        constexpr const int PROC_STAT_SCANF_FIELD_COUNT = 7;
     }
 
     bool ProcPidStatmFileRecord::parseStatmFile(ProcPidStatmFileRecord & result, const char * statm_contents)

@@ -13,9 +13,9 @@
 
 namespace non_root {
     namespace {
-        static inline unsigned long long convertClkTicksToNS(unsigned long long ticks,
-                                                             unsigned long long bootTimeBaseNS,
-                                                             unsigned long divider)
+        inline unsigned long long convertClkTicksToNS(unsigned long long ticks,
+                                                      unsigned long long bootTimeBaseNS,
+                                                      unsigned long divider)
         {
             return std::max<long long>((ticks * (1e9 / divider)) - bootTimeBaseNS, 0);
         }
@@ -57,7 +57,7 @@ namespace non_root {
     {
     }
 
-    ProcessStateTracker::ProcessInfo::ProcessInfo(ProcessInfo && that)
+    ProcessStateTracker::ProcessInfo::ProcessInfo(ProcessInfo && that) noexcept
         : statsTracker(std::move(that.statsTracker)),
           startTimeNS(that.startTimeNS),
           parentPid(that.parentPid),
@@ -67,7 +67,7 @@ namespace non_root {
         that.state = State::EMPTY;
     }
 
-    ProcessStateTracker::ProcessInfo & ProcessStateTracker::ProcessInfo::operator=(ProcessInfo && that)
+    ProcessStateTracker::ProcessInfo & ProcessStateTracker::ProcessInfo::operator=(ProcessInfo && that) noexcept
     {
         this->statsTracker = std::move(that.statsTracker);
         this->startTimeNS = that.startTimeNS;
@@ -125,7 +125,7 @@ namespace non_root {
                                                                       unsigned long clktck,
                                                                       int pid,
                                                                       int tid,
-                                                                      const lnx::ProcPidStatFileRecord & record)
+                                                                      const lnx::ProcPidStatFileRecord & record) const
     {
 
         if (!isNew()) {

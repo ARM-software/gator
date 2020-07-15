@@ -9,23 +9,28 @@
 #ifndef ARMNN_SOCKET_IO_H
 #define ARMNN_SOCKET_IO_H
 
+#include "lib/AutoClosingFd.h"
+#include "lib/Span.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
 
-#include "lib/AutoClosingFd.h"
-#include "lib/Span.h"
-
 struct sockaddr;
 
-namespace armnn
-{
+namespace armnn {
     using lib::AutoClosingFd;
 
-    class SocketIO
-    {
+    class SocketIO {
     public:
+        /**
+         * Construct a SocketIO object for a unix-domain socket
+         *
+         * @param address The socket identifier string
+         * @param use_struct_size Uses sizeof(sockaddr_un) instead of length for socket identifier size
+         */
+        static SocketIO udsClientConnect(lib::Span<const char> address, bool useStructSize);
 
         /**
          * Construct a SocketIO object for a unix-domain socket
@@ -33,28 +38,16 @@ namespace armnn
          * @param address The socket identifier string
          * @param use_struct_size Uses sizeof(sockaddr_un) instead of length for socket identifier size
          */
-        static SocketIO udsClientConnect(lib::Span<const char> address, bool use_struct_size);
-
-        /**
-         * Construct a SocketIO object for a unix-domain socket
-         *
-         * @param address The socket identifier string
-         * @param use_struct_size Uses sizeof(sockaddr_un) instead of length for socket identifier size
-         */
-        static SocketIO udsServerListen(lib::Span<const char> address, bool use_struct_size);
+        static SocketIO udsServerListen(lib::Span<const char> address, bool useStructSize);
 
         /* socket is not copyable */
         inline SocketIO(const SocketIO & that) = delete;
         inline SocketIO & operator=(const SocketIO & that) = delete;
 
         /* but it is movable */
-        inline SocketIO(SocketIO && that)
-                : fd(std::move(that.fd)),
-                  type(that.type)
-        {
-        }
+        inline SocketIO(SocketIO && that) noexcept : fd(std::move(that.fd)), type(that.type) {}
 
-        inline SocketIO & operator=(SocketIO && that)
+        inline SocketIO & operator=(SocketIO && that) noexcept
         {
             type = that.type;
             fd = std::move(that.fd);
@@ -73,18 +66,12 @@ namespace armnn
         /**
          * Close the connection
          */
-        inline void close()
-        {
-            fd.close();
-        }
+        inline void close() { fd.close(); }
 
         /**
          * @return True if the connection is open
          */
-        inline bool isOpen() const
-        {
-            return !!fd;
-        }
+        inline bool isOpen() const { return !!fd; }
 
         /**
          * Write exactly the number of bytes contained in the Span.
@@ -108,9 +95,13 @@ namespace armnn
          */
         std::size_t queryBufferSize(bool recv) const;
 
+        /**
+         * Interrupts the connection by shutting down the fd (stopping both receptions and transmissions)
+         * Use this instead of close to avoid race condtitions because close will free OS level fd
+         **/
+        void interrupt();
 
     private:
-
         int write(const std::uint8_t * buffer, std::size_t length, int timeout = 1000);
         int read(std::uint8_t * buffer, std::size_t length, int timeout = 1000);
 
@@ -126,5 +117,3 @@ namespace armnn
 }
 
 #endif /*  ARMNN_SOCKET_IO_H */
-
-

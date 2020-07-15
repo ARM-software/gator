@@ -2,12 +2,12 @@
 
 #include "non_root/GlobalStateChangeHandler.h"
 
-#include "Buffer.h"
+#include "IBlockCounterMessageConsumer.h"
 
 #include <algorithm>
 
 namespace non_root {
-    GlobalStateChangeHandler::GlobalStateChangeHandler(Buffer & outputBuffer_,
+    GlobalStateChangeHandler::GlobalStateChangeHandler(IBlockCounterMessageConsumer & outputBuffer_,
                                                        const std::map<NonRootCounter, int> & enabledCounters_)
         : outputBuffer(outputBuffer_), enabledCounters(enabledCounters_)
     {

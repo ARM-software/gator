@@ -33,6 +33,7 @@
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -48,14 +49,17 @@ static Monitor monitor;
 
 static const char NO_TCP_PIPE[] = "\0streamline-data";
 
-enum State {
-    IDLE,
-    CAPTURING,
-    WAITING_FOR_TEAR_DOWN,
-};
-
-static std::atomic<State> state(State::IDLE);
-static std::atomic_int localCapturePid = ATOMIC_VAR_INIT(0);
+namespace {
+    enum class State {
+        IDLE,
+        CAPTURING,
+        EXITING, //< CAPTURING but we have received a request to exit
+    };
+    struct StateAndPid {
+        State state;
+        int pid;
+    };
+}
 
 void cleanUp()
 {
@@ -63,86 +67,86 @@ void cleanUp()
     socketTcp.reset();
 }
 
-// Arbitrary sleep of up to 2 seconds to give time for the child to exit;
-// if something bad happens, continue the shutdown process regardless
-static bool poll_state()
-{
-    // sleep 10ms, 200 times
-    for (int n = 0; n < 200; ++n) {
-        // check exited
-        if (state.load() == State::IDLE) {
-            return true;
-        }
+static int signalPipe[2];
 
-        // sleep for 10ms
-        usleep(10000);
+// Signal Handler
+static void handler(int signum)
+{
+    if (::write(signalPipe[1], &signum, sizeof(signum)) != sizeof(signum)) {
+        logg.logError("read failed (%d) %s", errno, strerror(errno));
+        handleException();
     }
-
-    return (state.load() == State::IDLE);
 }
 
-// CTRL C Signal Handler
-__attribute__((noreturn)) static void handler(int signum)
-{
-    logg.logMessage("Received signal %d, gator daemon exiting", signum);
-
-    // Case 1: both child and parent receive the signal, in which has poll_state will return true
-    if (!poll_state()) {
-        // Case 2: only the parent received the signal - Kill child threads - the first signal exits gracefully
-        logg.logMessage("Killing process group as more than one gator-child was running when signal was received");
-        kill(0, SIGINT);
-
-        // Give time for the child to exit
-        if (!poll_state()) {
-            // The second signal should kill the child
-            logg.logMessage("Sending SIGINT again");
-            kill(0, SIGINT);
-
-            // Again, wait for status update
-            if (!poll_state()) {
-                // try to cleanup
-                cleanUp();
-
-                // now get terminal (this will also bring down gatord)
-                logg.logError("Failed to shut down child. Possible deadlock. Sending SIGKILL to kill everything");
-                kill(0, SIGKILL);
-            }
-        }
-    }
-
-    cleanUp();
-    exit(0);
-}
-
-static void liveCaptureStoppedSigHandler(int)
-{
-    state.store(State::WAITING_FOR_TEAR_DOWN);
-}
-
-// Child exit Signal Handler
-static void child_exit(int)
+static StateAndPid handleSigchld(StateAndPid currentStateAndChildPid, Drivers & drivers)
 {
     int status;
-    int pid = wait(&status);
-    if (pid != -1) {
-        logg.logMessage("Child process %d exited with status %d", pid, status);
-        if (pid == localCapturePid.load()) {
-            cleanUp();
-            if (WIFEXITED(status))
-                exit(WEXITSTATUS(status));
-            else if (WIFSIGNALED(status))
-                exit(-WTERMSIG(status));
-            else
-                // shouldn't get here but just in case
-                exit(127);
-        }
-        state.store(State::IDLE);
+    int pid = waitpid(currentStateAndChildPid.pid, &status, WNOHANG);
+    if (pid == -1 || !(WIFEXITED(status) || WIFSIGNALED(status))) {
+        // wasn't gator-child  or it was but just a stop/continue
+        // so just ignore it
+        return currentStateAndChildPid;
     }
+
+    for (const auto & driver : drivers.getAll()) {
+        driver->postChildExitInParent();
+    }
+
+    int exitStatus;
+    if (WIFEXITED(status)) {
+        exitStatus = WEXITSTATUS(status);
+        logg.logMessage("Child process %d terminated normally with status %d", pid, exitStatus);
+    }
+    else {
+        assert(WIFSIGNALED(status));
+        int signal = WTERMSIG(status);
+        logg.logMessage("Child process %d was terminated by signal %s (%d)", pid, strsignal(signal), signal);
+        // child exit codes start from 1 so should be less than 64.
+        // add 64 for signal to differentiate from normal exit.
+        // can't use 128 to 255 because that would be used by a shell
+        // if this process (gator-main) signalled.
+        exitStatus = 64 + signal;
+    }
+
+    assert(currentStateAndChildPid.state != State::IDLE);
+    if (currentStateAndChildPid.state == State::CAPTURING) {
+        return {.state = State::IDLE, .pid = -1};
+    }
+
+    // currentStateAndChildPid.state == State::EXITING
+    cleanUp();
+    exit(exitStatus);
+}
+
+static StateAndPid handleSignal(StateAndPid currentStateAndChildPid, Drivers & drivers, int signum)
+{
+
+    if (signum == SIGCHLD) {
+        return handleSigchld(currentStateAndChildPid, drivers);
+    }
+
+    logg.logMessage("Received signal %d, gator daemon exiting", signum);
+
+    switch (currentStateAndChildPid.state) {
+        case State::CAPTURING:
+            // notify child to exit
+            logg.logError("Waiting for gator-child to finish, send SIGKILL or SIGQUIT (Ctrl+\\) to force exit");
+            kill(currentStateAndChildPid.pid, SIGINT);
+            currentStateAndChildPid.state = State::EXITING;
+            break;
+        case State::IDLE:
+            cleanUp();
+            exit(0);
+        case State::EXITING:
+            logg.logError("Still waiting for gator-child to finish, send SIGKILL or SIGQUIT (Ctrl+\\) to force exit");
+            break;
+    }
+    return currentStateAndChildPid;
 }
 
 static const int UDP_REQ_PORT = 30001;
 
-typedef struct {
+struct RVIConfigureInfo {
     char rviHeader[8];
     uint32_t messageID;
     uint8_t ethernetAddress[8];
@@ -153,7 +157,7 @@ typedef struct {
     uint32_t defaultGateway;
     uint32_t subnetMask;
     uint32_t activeConnections;
-} RVIConfigureInfo;
+};
 
 static const char DST_REQ[] = {'D', 'S', 'T', '_', 'R', 'E', 'Q', ' ', 0, 0, 0, 0x64};
 
@@ -200,10 +204,10 @@ public:
         }
     }
 
-    void close() { ::close(mReq); }
+    void close() const { ::close(mReq); }
 
 private:
-    int udpPort(int port)
+    static int udpPort(int port)
     {
         int s;
         struct sockaddr_in6 sockaddr;
@@ -251,9 +255,12 @@ private:
 static UdpListener udpListener;
 static AnnotateListener annotateListener;
 
-static void handleClient(Drivers & drivers, OlyServerSocket & sock, OlyServerSocket * otherSock)
+static StateAndPid handleClient(StateAndPid currentStateAndChildPid,
+                                Drivers & drivers,
+                                OlyServerSocket & sock,
+                                OlyServerSocket * otherSock)
 {
-    if (state.load() == State::CAPTURING) {
+    if (currentStateAndChildPid.state != State::IDLE) {
         // A temporary socket connection to host, to transfer error message
         OlySocket client(sock.acceptConnection());
         logg.logError("Session already in progress");
@@ -264,42 +271,13 @@ static void handleClient(Drivers & drivers, OlyServerSocket & sock, OlyServerSoc
         sleep(1);
         client.shutdownConnection();
         client.closeSocket();
+        return currentStateAndChildPid;
     }
-    else {
-        OlySocket client(sock.acceptConnection());
-        int pid = fork();
-        if (pid < 0) {
-            // Error
-            logg.logError("Fork process failed with errno: %d.", errno);
-            handleException();
-        }
-        else if (pid == 0) {
-            // Child
-            sock.closeServerSocket();
-            if (otherSock != nullptr) {
-                otherSock->closeServerSocket();
-            }
 
-            udpListener.close();
-            monitor.close();
-            annotateListener.close();
-
-            auto child = Child::createLive(drivers, client);
-            child->run();
-            child.reset();
-            exit(0);
-        }
-        else {
-            // Parent
-            client.closeSocket();
-            state.store(State::CAPTURING);
-        }
+    OlySocket client(sock.acceptConnection());
+    for (const auto & driver : drivers.getAll()) {
+        driver->preChildFork();
     }
-}
-
-static void doLocalCapture(Drivers & drivers, const Child::Config & config)
-{
-    state.store(State::CAPTURING);
     int pid = fork();
     if (pid < 0) {
         // Error
@@ -308,17 +286,66 @@ static void doLocalCapture(Drivers & drivers, const Child::Config & config)
     }
     else if (pid == 0) {
         // Child
+        for (const auto & driver : drivers.getAll()) {
+            driver->postChildForkInChild();
+        }
+        sock.closeServerSocket();
+        if (otherSock != nullptr) {
+            otherSock->closeServerSocket();
+        }
+
+        udpListener.close();
+        monitor.close();
+        annotateListener.close();
+
+        auto child = Child::createLive(drivers, client);
+        child->run();
+        child.reset();
+        exit(0);
+    }
+    else {
+        // Parent
+        for (const auto & driver : drivers.getAll()) {
+            driver->postChildForkInParent();
+        }
+        client.closeSocket();
+        return {.state = State::CAPTURING, .pid = pid};
+    }
+}
+
+static StateAndPid doLocalCapture(Drivers & drivers, const Child::Config & config)
+{
+    for (const auto & driver : drivers.getAll()) {
+        driver->preChildFork();
+    }
+    int pid = fork();
+    if (pid < 0) {
+        // Error
+        logg.logError("Fork process failed with errno: %d.", errno);
+        handleException();
+    }
+    else if (pid == 0) {
+        // Child
+        for (const auto & driver : drivers.getAll()) {
+            driver->postChildForkInChild();
+        }
         monitor.close();
         annotateListener.close();
 
         auto child = Child::createLocal(drivers, config);
         child->run();
+        logg.logMessage("gator-child finished running");
         child.reset();
 
+        logg.logMessage("gator-child exiting");
         exit(0);
     }
     else {
-        localCapturePid.store(pid);
+        for (const auto & driver : drivers.getAll()) {
+            driver->postChildForkInParent();
+        }
+        return {.state = State::EXITING, // we should exit immediately after this capture finishes
+                .pid = pid};
     }
 }
 
@@ -385,7 +412,7 @@ void updateSessionData(const ParserResult & result)
                 gSessionData.mPerfMmapSizeInPages = int(std::min<std::uint64_t>(perfEventMlockPages - 1, INT_MAX));
                 logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
                                 gSessionData.mPerfMmapSizeInPages,
-                                gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ull);
+                                gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ULL);
             }
         }
         else {
@@ -394,51 +421,51 @@ void updateSessionData(const ParserResult & result)
             gSessionData.mPerfMmapSizeInPages = 128;
             logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
                             gSessionData.mPerfMmapSizeInPages,
-                            gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ull);
+                            gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ULL);
         }
     }
     //These values are set from command line and are alos part of session.xml
     //and hence cannot be modified during parse session
-    if (result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) {
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) != 0) {
         gSessionData.mSampleRate = result.mSampleRate;
     }
-    if (result.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) {
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) != 0) {
         gSessionData.mBacktraceDepth = result.mBacktraceDepth;
     }
-    if (result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) {
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) != 0) {
         gSessionData.mCaptureWorkingDir = strdup(result.mCaptureWorkingDir);
     }
-    if (result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) {
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) != 0) {
         gSessionData.mCaptureCommand = result.mCaptureCommand;
     }
-    if (result.parameterSetFlag & USE_CMDLINE_ARG_DURATION) {
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_DURATION) != 0) {
         gSessionData.mDuration = result.mDuration;
     }
-    if (result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) {
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) != 0) {
         gSessionData.mFtraceRaw = result.mFtraceRaw;
     }
 }
+
 // Gator data flow: collector -> collector fifo -> sender
 int main(int argc, char ** argv)
 {
-    // Ensure proper signal handling by making gatord the process group leader
-    //   e.g. it may not be the group leader when launched as 'sudo gatord'
-    setsid();
-
     GatorCLIParser parser;
     // Set up global thread-safe logging
-    logg.setDebug(parser.hasDebugFlag(argc, argv));
+    logg.setDebug(GatorCLIParser::hasDebugFlag(argc, argv));
     gSessionData.initialize();
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);
-    pthread_mutex_init(&numChildProcesses_mutex, NULL);
+    pthread_mutex_init(&numChildProcesses_mutex, nullptr);
+
+    const int pipeResult = pipe2(signalPipe, O_CLOEXEC);
+    if (pipeResult == -1) {
+        logg.logError("pipe failed (%d) %s", errno, strerror(errno));
+        handleException();
+    }
 
     signal(SIGINT, handler);
     signal(SIGTERM, handler);
     signal(SIGABRT, handler);
-
-    // handle custom capture stop signal using dedicated handler
-    signal(Child::SIG_LIVE_CAPTURE_STOPPED, liveCaptureStoppedSigHandler);
 
     // Set to high priority
     if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {
@@ -504,45 +531,12 @@ int main(int argc, char ** argv)
     // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
 
-    Drivers drivers{result.mSystemWide, std::move(pmuXml)};
-
-    {
-        auto xml = events_xml::getTree(drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
-        // Initialize all drivers
-        for (Driver * driver : drivers.getAll()) {
-            driver->readEvents(xml.get());
-        }
-        // build map of counter->event
-        {
-            gSessionData.globalCounterToEventMap.clear();
-
-            mxml_node_t * node = xml.get();
-            while (true) {
-                node = mxmlFindElement(node, xml.get(), "event", NULL, NULL, MXML_DESCEND);
-                if (node == nullptr) {
-                    break;
-                }
-                const char * counter = mxmlElementGetAttr(node, "counter");
-                const char * event = mxmlElementGetAttr(node, "event");
-                if (counter == nullptr) {
-                    continue;
-                }
-
-                if (event != nullptr) {
-                    const int eventNo = (int) strtol(event, nullptr, 0);
-                    gSessionData.globalCounterToEventMap[counter] = eventNo;
-                }
-                else {
-                    gSessionData.globalCounterToEventMap[counter] = -1;
-                }
-            }
-        }
-    }
+    Drivers drivers {result.mSystemWide, std::move(pmuXml), result.mDisableCpuOnlining};
 
     if (result.mode == ParserResult::ExecutionMode::PRINT) {
         if (result.printables.count(ParserResult::Printable::EVENTS_XML) == 1) {
-            std::cout << events_xml::getXML(drivers.getAllConst(),
-                                            drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+            std::cout << events_xml::getDynamicXML(drivers.getAllConst(),
+                                                   drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
                              .get();
         }
         if (result.printables.count(ParserResult::Printable::COUNTERS_XML) == 1) {
@@ -561,7 +555,7 @@ int main(int argc, char ** argv)
     }
 
     // Handle child exit codes
-    signal(SIGCHLD, child_exit);
+    signal(SIGCHLD, handler);
 
     // Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal
     // Handling the error at the send function call is much easier than trying to do anything intelligent in the sig handler
@@ -578,14 +572,16 @@ int main(int argc, char ** argv)
 #ifdef TCP_ANNOTATIONS
         || !monitor.add(annotateListener.getSockFd())
 #endif
-        || !monitor.add(annotateListener.getUdsFd()) || !monitor.add(pipefd[0])) {
+        || !monitor.add(annotateListener.getUdsFd()) || !monitor.add(pipefd[0]) || !monitor.add(signalPipe[0])) {
         logg.logError("Monitor setup failed");
         handleException();
     }
 
+    StateAndPid stateAndChildPid = {.state = State::IDLE, .pid = -1};
+
     // If the command line argument is a session xml file, no need to open a socket
     if (gSessionData.mLocalCapture) {
-        Child::Config childConfig{{}, {}};
+        Child::Config childConfig {{}, {}};
         for (const auto & event : result.events) {
             CounterConfiguration config;
             config.counterName = event.first;
@@ -595,7 +591,7 @@ int main(int argc, char ** argv)
         for (const auto & spe : result.mSpeConfigs) {
             childConfig.spes.insert(spe);
         }
-        doLocalCapture(drivers, childConfig);
+        stateAndChildPid = doLocalCapture(drivers, childConfig);
     }
     else {
         // enable TCP socket
@@ -628,10 +624,10 @@ int main(int argc, char ** argv)
 
         for (int i = 0; i < ready; ++i) {
             if ((socketUds != nullptr) && (events[i].data.fd == socketUds->getFd())) {
-                handleClient(drivers, *socketUds, socketTcp.get());
+                stateAndChildPid = handleClient(stateAndChildPid, drivers, *socketUds, socketTcp.get());
             }
             else if ((socketTcp != nullptr) && (events[i].data.fd == socketTcp->getFd())) {
-                handleClient(drivers, *socketTcp, socketUds.get());
+                stateAndChildPid = handleClient(stateAndChildPid, drivers, *socketTcp, socketUds.get());
             }
             else if (events[i].data.fd == udpListener.getReq()) {
                 udpListener.handle();
@@ -650,6 +646,15 @@ int main(int argc, char ** argv)
                     logg.logMessage("Reading annotate pipe failed");
                 }
                 annotateListener.signal();
+            }
+            else if (events[i].data.fd == signalPipe[0]) {
+                int signum;
+                const int amountRead = ::read(signalPipe[0], &signum, sizeof(signum));
+                if (amountRead != sizeof(signum)) {
+                    logg.logError("read failed (%d) %s", errno, strerror(errno));
+                    handleException();
+                }
+                stateAndChildPid = handleSignal(stateAndChildPid, drivers, signum);
             }
             else {
                 // shouldn't really happen unless we forgot to handle a new item

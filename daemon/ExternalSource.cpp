@@ -29,7 +29,7 @@ static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
 static const char FTRACE_V2[] = "FTRACE 2\n";
 
-ExternalSource::ExternalSource(Child & child, sem_t * senderSem, Drivers & mDrivers)
+ExternalSource::ExternalSource(Child & child, sem_t & senderSem, Drivers & mDrivers)
     : Source(child),
       mBufferSem(),
       mBuffer(0, FrameType::EXTERNAL, 128 * 1024, senderSem),
@@ -48,8 +48,6 @@ ExternalSource::ExternalSource(Child & child, sem_t * senderSem, Drivers & mDriv
 {
     sem_init(&mBufferSem, 0, 0);
 }
-
-ExternalSource::~ExternalSource() {}
 
 void ExternalSource::waitFor(const int bytes)
 {
@@ -205,8 +203,8 @@ void ExternalSource::run()
     while (gSessionData.mSessionIsActive) {
         struct epoll_event events[16];
         // Clear any pending sem posts
-        while (sem_trywait(&mBufferSem) == 0)
-            ;
+        while (sem_trywait(&mBufferSem) == 0) {
+        }
         int ready = mMonitor.wait(events, ARRAY_LENGTH(events), -1);
         if (ready < 0) {
             logg.logError("Monitor::wait failed");
@@ -358,7 +356,7 @@ bool ExternalSource::isDone()
     return mBuffer.isDone();
 }
 
-void ExternalSource::write(ISender * sender)
+void ExternalSource::write(ISender & sender)
 {
     // Don't send external data until the summary packet is sent so that monotonic delta is available
     if (!gSessionData.mSentSummary) {

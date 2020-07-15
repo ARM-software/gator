@@ -3,10 +3,10 @@
 #ifndef __OLY_SOCKET_H__
 #define __OLY_SOCKET_H__
 
-#include <stddef.h>
+#include <cstddef>
 
 #ifdef WIN32
-typedef int socklen_t;
+using socklen_t = int;
 #else
 #include <sys/socket.h>
 #endif
@@ -16,7 +16,7 @@ typedef int socklen_t;
 class OlySocket {
 public:
 #ifndef WIN32
-    static int connect(const char * path, const size_t pathSize, const bool calculateAddrlen = false);
+    static int connect(const char * path, size_t pathSize, bool calculateAddrlen = false);
 #endif
 
     OlySocket(int socketID);
@@ -31,6 +31,8 @@ public:
 
     bool isValid() const { return mSocketID >= 0; }
 
+    int getFd() const { return mSocketID; }
+
 private:
     int mSocketID;
 };
@@ -39,14 +41,14 @@ class OlyServerSocket {
 public:
     OlyServerSocket(int port);
 #ifndef WIN32
-    OlyServerSocket(const char * path, const size_t pathSize, const bool calculateAddrlen = false);
+    OlyServerSocket(const char * path, size_t pathSize, bool calculateAddrlen = false);
 #endif
     ~OlyServerSocket();
 
     int acceptConnection();
     void closeServerSocket();
 
-    int getFd() { return mFDServer; }
+    int getFd() const { return mFDServer; }
 
 private:
     int mFDServer;

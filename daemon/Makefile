@@ -65,13 +65,16 @@ ndk-prerequisites: $(OBJ_DIR)events_xml.h $(OBJ_DIR)defaults_xml.h $(OBJ_DIR)pmu
 
 clean:
 	$(ECHO_CLEAN)
-	$(Q)rm -f $(OBJ_DIR)*.d \
+	$(Q)rm -f \
+          $(OBJ_DIR)*.d \
           $(OBJ_DIR)*.o \
+          $(OBJ_DIR)armnn/*.d \
+          $(OBJ_DIR)armnn/*.o \
           $(OBJ_DIR)lib/*.d \
-          $(OBJ_DIR)linux/*.d \
-          $(OBJ_DIR)linux/*/*.d \
           $(OBJ_DIR)lib/*.o \
+          $(OBJ_DIR)linux/*.d \
           $(OBJ_DIR)linux/*.o \
+          $(OBJ_DIR)linux/*/*.d \
           $(OBJ_DIR)linux/*/*.o \
           $(OBJ_DIR)mali_userspace/*.d \
           $(OBJ_DIR)mali_userspace/*.o \
@@ -143,7 +146,7 @@ $(OBJ_DIR):
 $(OBJ_DIR)%/:
 	$(Q)mkdir -p $@
 
-include $(wildcard $(OBJ_DIR)*.d $(OBJ_DIR)lib/*.d $(OBJ_DIR)linux/*.d $(OBJ_DIR)linux/*/*.d $(OBJ_DIR)mali_userspace/*.d $(OBJ_DIR)non_root/*.d $(OBJ_DIR)xml/*.d)
+include $(wildcard $(OBJ_DIR)*.d $(OBJ_DIR)armnn/*.d $(OBJ_DIR)lib/*.d $(OBJ_DIR)linux/*.d $(OBJ_DIR)linux/*/*.d $(OBJ_DIR)mali_userspace/*.d $(OBJ_DIR)non_root/*.d $(OBJ_DIR)xml/*.d)
 include $(wildcard $(OBJ_DIR)mxml/*.d)
 include $(wildcard $(OBJ_DIR)libsensors/*.d)
 

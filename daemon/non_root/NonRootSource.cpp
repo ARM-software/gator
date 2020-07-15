@@ -19,22 +19,23 @@
 #include <sys/prctl.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <utility>
 
 namespace non_root {
     NonRootSource::NonRootSource(NonRootDriver & driver_,
                                  Child & child_,
                                  sem_t & senderSem_,
-                                 sem_t & startProfile_,
+                                 std::function<void()> profilingStartedCallback_,
                                  const ICpuInfo & cpuInfo)
         : Source(child_),
           mSwitchBuffers(FrameType::SCHED_TRACE, 1 * 1024 * 1024, senderSem_),
-          mGlobalCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
-          mProcessCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, &senderSem_),
-          mMiscBuffer(0, FrameType::UNKNOWN, 1 * 1024 * 1024, &senderSem_),
+          mGlobalCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, senderSem_),
+          mProcessCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, senderSem_),
+          mMiscBuffer(0, FrameType::UNKNOWN, 1 * 1024 * 1024, senderSem_),
           interrupted(false),
           timestampSource(CLOCK_MONOTONIC_RAW),
           driver(driver_),
-          startProfile(startProfile_),
+          profilingStartedCallback(std::move(profilingStartedCallback_)),
           done(false),
           cpuInfo(cpuInfo)
 
@@ -54,19 +55,21 @@ namespace non_root {
         const long pageSize = sysconf(_SC_PAGESIZE);
 
         // global stuff
-        GlobalStateChangeHandler globalChangeHandler(mGlobalCounterBuffer, enabledCounters);
+        IBlockCounterMessageConsumer & globalCounterConsumer = mGlobalCounterBuffer;
+        GlobalStateChangeHandler globalChangeHandler(globalCounterConsumer, enabledCounters);
         GlobalStatsTracker globalStatsTracker(globalChangeHandler);
         GlobalPoller globalPoller(globalStatsTracker, timestampSource);
 
         // process related stuff
-        ProcessStateChangeHandler processChangeHandler(mProcessCounterBuffer,
+        IBlockCounterMessageConsumer & processCounterConsumer = mProcessCounterBuffer;
+        ProcessStateChangeHandler processChangeHandler(processCounterConsumer,
                                                        mMiscBuffer,
                                                        mSwitchBuffers,
                                                        enabledCounters);
         ProcessStateTracker processStateTracker(processChangeHandler, getBootTimeTicksBase(), clktck, pageSize);
         ProcessPoller processPoller(processStateTracker, timestampSource);
 
-        sem_post(&startProfile);
+        profilingStartedCallback();
 
         const useconds_t sleepIntervalUs =
             (gSessionData.mSampleRate < 1000 ? 10000 : 1000); // select 1ms or 10ms depending on normal or low rate
@@ -74,8 +77,8 @@ namespace non_root {
         while (gSessionData.mSessionIsActive) {
             // check buffer not full
             if (gSessionData.mOneShot && gSessionData.mSessionIsActive &&
-                ((mGlobalCounterBuffer.bytesAvailable() <= 0) || (mProcessCounterBuffer.bytesAvailable() <= 0) ||
-                 (mMiscBuffer.bytesAvailable() <= 0) || mSwitchBuffers.anyFull())) {
+                (mGlobalCounterBuffer.isFull() || mProcessCounterBuffer.isFull() || mMiscBuffer.isFull() ||
+                 mSwitchBuffers.anyFull())) {
                 logg.logMessage("One shot (nrsrc)");
                 mChild.endSession();
             }
@@ -109,7 +112,7 @@ namespace non_root {
                mSwitchBuffers.allDone();
     }
 
-    void NonRootSource::write(ISender * sender)
+    void NonRootSource::write(ISender & sender)
     {
         if (!mGlobalCounterBuffer.isDone()) {
             mGlobalCounterBuffer.write(sender);

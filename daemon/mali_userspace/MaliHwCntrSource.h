@@ -9,6 +9,7 @@
 #include "mali_userspace/MaliDevice.h"
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <semaphore.h>
 #include <thread>
@@ -20,16 +21,15 @@ namespace mali_userspace {
     class MaliHwCntrSource : public Source, private virtual IMaliDeviceCounterDumpCallback {
     public:
         MaliHwCntrSource(Child & child,
-                         sem_t * senderSem,
+                         sem_t & senderSem,
                          std::function<std::int64_t()> getMonotonicStarted,
                          MaliHwCntrDriver & driver);
-        ~MaliHwCntrSource();
 
         virtual bool prepare() override;
         virtual void run() override;
         virtual void interrupt() override;
         virtual bool isDone() override;
-        virtual void write(ISender * sender) override;
+        virtual void write(ISender & sender) override;
 
     private:
         MaliHwCntrDriver & mDriver;
@@ -37,7 +37,7 @@ namespace mali_userspace {
         std::map<unsigned, std::unique_ptr<MaliHwCntrReader>> mReaders;
         std::vector<std::unique_ptr<MaliHwCntrTask>> tasks;
 
-        void createTasks(sem_t * mSenderSem);
+        void createTasks(sem_t & mSenderSem);
 
         // Intentionally unimplemented
         MaliHwCntrSource(const MaliHwCntrSource &) = delete;
@@ -49,7 +49,7 @@ namespace mali_userspace {
                                       uint32_t counterIndex,
                                       uint64_t delta,
                                       uint32_t gpuId,
-                                      IBuffer & bufferData) override;
+                                      IBlockCounterFrameBuilder & bufferData) override;
         virtual bool isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const override;
     };
 }

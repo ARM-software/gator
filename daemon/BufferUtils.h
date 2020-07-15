@@ -11,8 +11,8 @@ namespace buffer_utils {
     static constexpr const size_t MAXSIZE_PACK64 = 10;
     static constexpr const size_t MAX_FRAME_HEADER_SIZE = (2 * MAXSIZE_PACK32) + sizeof(int32_t);
 
-    int packInt(char * const buf, int & writePos, int32_t x, int writePosWrapMask = -1);
-    int packInt64(char * const buf, int & writePos, int64_t x, int writePosWrapMask = -1);
+    int packInt(char * buf, int & writePos, int32_t x, int writePosWrapMask = -1);
+    int packInt64(char * buf, int & writePos, int64_t x, int writePosWrapMask = -1);
 
     int32_t unpackInt(const char * buf, int & readPos);
     int64_t unpackInt64(const char * buf, int & readPos);

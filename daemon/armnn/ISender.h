@@ -2,16 +2,13 @@
 
 #pragma once
 
-#include <vector>
 #include <cstdint>
+#include <vector>
 
-namespace armnn
-{
-    class ISender
-    {
+namespace armnn {
+    class ISender {
     public:
-        virtual ~ISender() {}
+        virtual ~ISender() = default;
         virtual bool send(std::vector<std::uint8_t> && data) = 0;
-        virtual void stopSending() = 0;
     };
 }

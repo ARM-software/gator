@@ -44,7 +44,7 @@ namespace non_root {
         return true;
     }
 
-    void PerCoreMixedFrameBuffer::write(ISender * sender)
+    void PerCoreMixedFrameBuffer::write(ISender & sender)
     {
         for (auto & entry : buffers) {
             if (entry.second && !entry.second->isDone()) {
@@ -60,7 +60,7 @@ namespace non_root {
         if (wrapperPtrRef == nullptr) {
             auto & bufferPtrRef = buffers[core];
             if (bufferPtrRef == nullptr) {
-                bufferPtrRef.reset(new Buffer(core, frameType, bufferSize, &readerSem));
+                bufferPtrRef.reset(new Buffer(core, frameType, bufferSize, readerSem));
             }
 
             wrapperPtrRef.reset(new MixedFrameBuffer(*bufferPtrRef));

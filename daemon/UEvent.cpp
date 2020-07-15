@@ -5,8 +5,8 @@
 #include "Logging.h"
 #include "OlySocket.h"
 
+#include <cstring>
 #include <linux/netlink.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -15,7 +15,9 @@ static const char ACTION[] = "ACTION=";
 static const char DEVPATH[] = "DEVPATH=";
 static const char SUBSYSTEM[] = "SUBSYSTEM=";
 
-UEvent::UEvent() : mFd(-1) {}
+UEvent::UEvent() : mFd(-1)
+{
+}
 
 UEvent::~UEvent()
 {

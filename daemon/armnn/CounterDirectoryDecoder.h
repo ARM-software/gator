@@ -17,7 +17,7 @@ namespace armnn {
         using Bytes = lib::Span<const std::uint8_t>;
 
         CounterDirectoryDecoder(ByteOrder byteOrder, ICounterDirectoryConsumer & consumer)
-            : byteOrder(byteOrder), consumer(consumer){};
+            : byteOrder(byteOrder), consumer(consumer) {};
 
         /**
          * Decode a packet

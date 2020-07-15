@@ -8,11 +8,10 @@
 class FSDriver : public PolledDriver {
 public:
     FSDriver();
-    ~FSDriver();
 
-    void readEvents(mxml_node_t * const xml);
+    void readEvents(mxml_node_t * xml) override;
 
-    int writeCounters(mxml_node_t * root) const;
+    int writeCounters(mxml_node_t * root) const override;
 
 private:
     // Intentionally unimplemented

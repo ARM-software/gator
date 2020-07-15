@@ -7,34 +7,30 @@
  */
 
 #include "armnn/SocketIO.h"
-#include "OlySocket.h"
+
 #include "Logging.h"
+#include "OlySocket.h"
 
 #include <cassert>
 #include <cerrno>
 #include <cstring>
 #include <exception>
-#include <utility>
-
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <utility>
 
 /** The number of connections to queue whilst waiting for accept */
 constexpr int MAX_LISTEN_BACKLOG = 128;
 
 constexpr int READ_TIMEDOUT = 0;
-constexpr int READ_ERROR = -1;
-constexpr int READ_EOF = -2;
+constexpr int READ_EOF = -1;
 
 constexpr int DEFAULT_READ_TIMEOUT_MILLIS = 100;
 
-extern void handleException();
-
-namespace armnn
-{
+namespace armnn {
     /**
      * Initialize a socket, make it cloexec
      *
@@ -45,7 +41,7 @@ namespace armnn
      */
     static AutoClosingFd socket_cloexec(int domain, int type, int protocol)
     {
-        return  { ::socket_cloexec(domain, type, protocol) };
+        return {::socket_cloexec(domain, type, protocol)};
     }
 
     /**
@@ -57,8 +53,10 @@ namespace armnn
      * @param use_struct_size
      * @return The length to pass to bind/connect
      */
-    static socklen_t init_sockaddr_un(sockaddr_un & udsAddress, const char * const address,
-                                      const std::size_t length, const bool useStructSize)
+    static socklen_t init_sockaddr_un(sockaddr_un & udsAddress,
+                                      const char * const address,
+                                      const std::size_t length,
+                                      const bool useStructSize)
     {
         memset(&udsAddress, 0, sizeof(sockaddr_un));
         memcpy(udsAddress.sun_path, address, length);
@@ -108,18 +106,24 @@ namespace armnn
             logg.logWarning("Failed to set no sigpipe socket due to %s (%d)", std::strerror(errno), errno);
             return false;
         }
+#else
+        (void) fd;
 #endif
         return true;
     }
 
-    template<typename RTYPE, typename ACTION, typename ... ARGS>
-    static RTYPE pollAction(int socket, bool pollIn, int timeout, RTYPE defaultReturnValue, ACTION action,
-                             ARGS && ... args)
+    template<typename RTYPE, typename ACTION, typename... ARGS>
+    static RTYPE pollAction(int socket,
+                            bool pollIn,
+                            int timeout,
+                            RTYPE defaultReturnValue,
+                            ACTION action,
+                            ARGS &&... args)
     {
         const short int pollFlag = (pollIn ? POLLIN : POLLOUT);
 
         // Poll parameter
-        struct pollfd pollFds[1] = { { socket, pollFlag, 0 } };
+        struct pollfd pollFds[1] = {{socket, pollFlag, 0}};
 
         // Wait on socket
         int pollResult = poll(pollFds, 1, timeout);
@@ -156,12 +160,12 @@ namespace armnn
 
     SocketIO SocketIO::udsClientConnect(lib::Span<const char> address, bool useStructSize)
     {
-        const std::size_t length { address.size() };
+        const std::size_t length {address.size()};
 
         assert((length < sizeof(sockaddr_un::sun_path)) && "Socket name is too long");
 
         // open it
-        AutoClosingFd fd { armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0) };
+        AutoClosingFd fd {armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0)};
         if (!fd) {
             logg.logError("Failed to create client socket");
             handleException();
@@ -184,7 +188,6 @@ namespace armnn
         }
 
         return SocketIO(std::move(fd), AF_UNIX);
-
     }
 
     SocketIO SocketIO::udsServerListen(lib::Span<const char> address, bool useStructSize)
@@ -193,9 +196,11 @@ namespace armnn
         assert((length < sizeof(sockaddr_un::sun_path)) && "Socket name is too long");
 
         // open it
-        AutoClosingFd fd { armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0) };
+        AutoClosingFd fd {armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0)};
         if (!fd) {
-            logg.logError("Failed to obtain file descriptor when preparing to listen on socket due to %s (%d)", std::strerror(errno), errno);
+            logg.logError("Failed to obtain file descriptor when preparing to listen on socket due to %s (%d)",
+                          std::strerror(errno),
+                          errno);
             handleException();
         }
 
@@ -221,9 +226,9 @@ namespace armnn
         return SocketIO(std::move(fd), AF_UNIX);
     }
 
-    std::unique_ptr<SocketIO> SocketIO::doAccept(const SocketIO & host, int timeout)
+    std::unique_ptr<SocketIO> SocketIO::doAccept(const SocketIO & host, int /*timeout*/)
     {
-        AutoClosingFd acceptFd { ::accept_cloexec(*host.fd, nullptr, nullptr) };
+        AutoClosingFd acceptFd {::accept_cloexec(*host.fd, nullptr, nullptr)};
 
         if (!!acceptFd) {
             setNoSigPipe(*acceptFd);
@@ -247,11 +252,12 @@ namespace armnn
 
     std::unique_ptr<SocketIO> SocketIO::accept(int timeout) const
     {
-        return pollAction<std::unique_ptr<SocketIO>>(*fd, true, timeout, nullptr, &SocketIO::doAccept, *this,
-                                                       timeout);
+        return pollAction<std::unique_ptr<SocketIO>>(*fd, true, timeout, nullptr, &SocketIO::doAccept, *this, timeout);
     }
 
-    int SocketIO::doWrite(SocketIO & host, const std::uint8_t * buffer, std::size_t length, int timeout)
+    void SocketIO::interrupt() { ::shutdown(*fd, SHUT_RDWR); }
+
+    int SocketIO::doWrite(SocketIO & host, const std::uint8_t * buffer, std::size_t length, int /*timeout*/)
     {
         int bytesSent = send(*host.fd, buffer, length, MSG_NOSIGNAL);
 
@@ -277,28 +283,25 @@ namespace armnn
 
     bool SocketIO::writeExact(lib::Span<const std::uint8_t> buf)
     {
-        const std::uint8_t * const buffer { buf.data };
-        std::size_t length { buf.size() };
+        const std::uint8_t * const buffer {buf.data};
+        std::size_t length {buf.size()};
         int timeoutMillis = 100;
         int bytesRemaining = length;
         int bytesWritten = 0;
 
-        while (bytesWritten < bytesRemaining)
-        {
+        while (bytesWritten < bytesRemaining) {
             int wrote = write(buffer + bytesWritten, bytesRemaining - bytesWritten, timeoutMillis);
-            if (wrote > 0)
-            {
+            if (wrote > 0) {
                 bytesWritten += wrote;
             }
-            else
-            {
+            else {
                 return false;
             }
         }
         return true;
     }
 
-    int SocketIO::doRead(SocketIO & host, std::uint8_t * buffer, std::size_t length, int timeout)
+    int SocketIO::doRead(SocketIO & host, std::uint8_t * buffer, std::size_t length, int /*timeout*/)
     {
         int bytesRead = recv(*host.fd, buffer, length, 0);
 
@@ -327,23 +330,19 @@ namespace armnn
 
     bool SocketIO::readExact(lib::Span<std::uint8_t> buf)
     {
-        std::uint8_t * const buffer { buf.data };
-        const std::size_t length { buf.size() };
+        std::uint8_t * const buffer {buf.data};
+        const std::size_t length {buf.size()};
         std::size_t accumulatedBytes = 0;
 
-        while (accumulatedBytes < length)
-        {
+        while (accumulatedBytes < length) {
             int result = read(buffer + accumulatedBytes, length - accumulatedBytes, DEFAULT_READ_TIMEOUT_MILLIS);
-            if (result <= 0)
-            {
-                if (result == READ_TIMEDOUT)
-                {
+            if (result <= 0) {
+                if (result == READ_TIMEDOUT) {
                     continue;
                 }
                 return false;
             }
-            else
-            {
+            else {
                 accumulatedBytes += result;
             }
         }
@@ -367,10 +366,6 @@ namespace armnn
         return result;
     }
 
-    SocketIO::SocketIO(AutoClosingFd && fd, int type)
-            : fd(std::move(fd)),
-              type(type)
-    {
-    }
+    SocketIO::SocketIO(AutoClosingFd && fd, int type) : fd(std::move(fd)), type(type) {}
 
 }

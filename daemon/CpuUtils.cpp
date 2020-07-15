@@ -27,14 +27,14 @@ namespace cpu_utils {
         // why don't we just use /sys/devices/system/cpu/kernel_max
         // or pick the highest in /sys/devices/system/cpu/possible?
         DIR * dir = opendir("/sys/devices/system/cpu");
-        if (dir == NULL) {
+        if (dir == nullptr) {
             logg.logError("Unable to determine the number of cores on the target, opendir failed");
             handleException();
         }
 
         long maxCoreNum = -1;
         struct dirent * dirent;
-        while ((dirent = readdir(dir)) != NULL) {
+        while ((dirent = readdir(dir)) != nullptr) {
             if (strncmp(dirent->d_name, "cpu", 3) == 0) {
                 long coreNum;
                 if (stringToLong(&coreNum, dirent->d_name + 3, 10) && (coreNum >= maxCoreNum)) {
@@ -84,7 +84,7 @@ namespace cpu_utils {
         char temp[256]; // arbitrarily large amount
 
         FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
-        if (f == NULL) {
+        if (f == nullptr) {
             logg.logMessage("Error opening /proc/cpuinfo\n"
                             "The core name in the captured xml file will be 'unknown'.");
             return hardwareName;
@@ -98,7 +98,7 @@ namespace cpu_utils {
         bool foundProcessorInSection = false;
         int outOfPlaceCpuId = -1;
         bool invalidFormat = false;
-        while (fgets(temp, sizeof(temp), f)) {
+        while (fgets(temp, sizeof(temp), f) != nullptr) {
             const size_t len = strlen(temp);
 
             if (len > 0) {
@@ -121,7 +121,7 @@ namespace cpu_utils {
             const bool foundProcessor = strncmp(temp, PROCESSOR, sizeof(PROCESSOR) - 1) == 0;
             if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
                 char * position = strchr(temp, ':');
-                if (position == NULL || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
+                if (position == nullptr || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
                     logg.logMessage("Unknown format of /proc/cpuinfo\n"
                                     "The core name in the captured xml file will be 'unknown'.");
                     return hardwareName;
@@ -236,9 +236,9 @@ namespace cpu_utils {
                     [&](unsigned c,
                         unsigned /*core_id*/,
                         unsigned physical_package_id,
-                        std::set<int> core_siblings,
+                        const std::set<int> & core_siblings,
                         std::uint64_t midr_el1) -> void {
-                        std::lock_guard<std::mutex> guard{mutex};
+                        std::lock_guard<std::mutex> guard {mutex};
 
                         // update completed count
                         identificationThreadCallbackCounter += 1;
@@ -272,7 +272,7 @@ namespace cpu_utils {
             }
 
             // wait until all threads are online
-            std::unique_lock<std::mutex> lock{mutex};
+            std::unique_lock<std::mutex> lock {mutex};
             cv.wait_for(lock, std::chrono::seconds(10), [&] {
                 return identificationThreadCallbackCounter >= cpuIds.length;
             });

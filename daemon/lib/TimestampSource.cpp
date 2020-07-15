@@ -14,6 +14,6 @@ namespace lib {
         ::timespec ts;
         clock_gettime(id, &ts);
 
-        return ts.tv_sec * 1000000000ull + ts.tv_nsec;
+        return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
     }
 }

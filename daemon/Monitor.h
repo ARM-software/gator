@@ -12,8 +12,8 @@ public:
 
     void close();
     bool init();
-    bool add(const int fd);
-    int wait(struct epoll_event * const events, int maxevents, int timeout);
+    bool add(int fd);
+    int wait(struct epoll_event * events, int maxevents, int timeout) const;
 
 private:
     int mFd;

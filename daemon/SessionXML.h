@@ -26,14 +26,13 @@ struct ConfigParameters {
 class SessionXML {
 public:
     SessionXML(const char * str);
-    ~SessionXML();
     void parse();
     ConfigParameters parameters;
 
 private:
     const char * mSessionXML;
     void sessionTag(mxml_node_t * tree, mxml_node_t * node);
-    void sessionImage(mxml_node_t * node);
+    static void sessionImage(mxml_node_t * node);
 
     // Intentionally unimplemented
     SessionXML(const SessionXML &) = delete;

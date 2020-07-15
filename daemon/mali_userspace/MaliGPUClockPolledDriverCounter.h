@@ -10,7 +10,7 @@ namespace mali_userspace {
             : DriverCounter(next, name), mValue(value)
         {
         }
-        ~MaliGPUClockPolledDriverCounter() {}
+        ~MaliGPUClockPolledDriverCounter() = default;
 
         int64_t read() { return mValue; }
 

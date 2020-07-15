@@ -3,8 +3,8 @@
 #include "Logging.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdint>
-#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -12,24 +12,18 @@ namespace lib {
 
     int pipe_cloexec(int pipefd[2])
     {
-        if (pipe(pipefd) != 0) {
+        const int result = pipe2(pipefd, O_CLOEXEC);
+
+        if (result != 0) {
             if (errno == EMFILE) {
                 logg.logError("The process limit on the number of open file descriptors has been reached.");
             }
             else if (errno == ENFILE) {
                 logg.logError("The system wide limit on the number of open files has been reached.");
             }
-            return -1;
         }
 
-        int fdf;
-        if (((fdf = fcntl(pipefd[0], F_GETFD)) == -1) || (fcntl(pipefd[0], F_SETFD, fdf | FD_CLOEXEC) != 0) ||
-            ((fdf = fcntl(pipefd[1], F_GETFD)) == -1) || (fcntl(pipefd[1], F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-            close(pipefd[0]);
-            close(pipefd[1]);
-            return -1;
-        }
-        return 0;
+        return result;
     }
 
     bool setNonblock(const int fd)

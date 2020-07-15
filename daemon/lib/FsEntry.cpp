@@ -14,6 +14,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <utility>
 
 namespace lib {
     FsEntryDirectoryIterator::FsEntryDirectoryIterator(const FsEntry & parent)
@@ -34,8 +35,9 @@ namespace lib {
                 if ((::strcmp(entry->d_name, ".") == 0) ||
                     (::strcmp(entry->d_name, "..") == 0)
                     // this shouldn't happen but was seen on a device in /sys/bus/usb/devices
-                    || (::strcmp(entry->d_name, "") == 0))
+                    || (::strcmp(entry->d_name, "") == 0)) {
                     return next();
+                }
 
                 return FsEntry(parent_->path().append("/").append(entry->d_name));
             }
@@ -48,7 +50,7 @@ namespace lib {
 
     FsEntry::Stats::Stats(Type t, bool e, bool s) : type_(t), exists_(e), symlink_(s) {}
 
-    FsEntry::FsEntry(const std::string & p) : path_(p), name_offset(std::string::npos)
+    FsEntry::FsEntry(std::string p) : path_(std::move(p)), name_offset(std::string::npos)
     {
         // add CWD if not starting with '/'
         if ((path_.length() == 0) || (path_[0] != '/')) {
@@ -97,7 +99,7 @@ namespace lib {
 
     Optional<FsEntry> FsEntry::realpath() const
     {
-        std::unique_ptr<char[], void (*)(void *)> real_path{::realpath(path_.c_str(), nullptr), std::free};
+        std::unique_ptr<char[], void (*)(void *)> real_path {::realpath(path_.c_str(), nullptr), std::free};
 
         if (real_path != nullptr) {
             return FsEntry(real_path.get());
@@ -204,8 +206,9 @@ namespace lib {
     bool FsEntry::writeFileContents(const char * data) const
     {
         std::ofstream stream(path());
-        if (!stream)
+        if (!stream) {
             return false;
+        }
         stream << data;
         return bool(stream);
     }

@@ -6,17 +6,16 @@
 #include "SimpleDriver.h"
 
 class MidgardDriver : public SimpleDriver {
-    typedef SimpleDriver super;
+    using super = SimpleDriver;
 
 public:
     MidgardDriver();
-    ~MidgardDriver();
 
-    bool claimCounter(Counter & counter) const;
-    void resetCounters();
-    void setupCounter(Counter & counter);
+    bool claimCounter(Counter & counter) const override;
+    void resetCounters() override;
+    void setupCounter(Counter & counter) override;
 
-    bool start(const int midgardUds);
+    bool start(int midgardUds);
 
 private:
     void query() const;

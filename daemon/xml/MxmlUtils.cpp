@@ -6,8 +6,9 @@
 // Copy all the attributes from src to dst
 void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src)
 {
-    if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr || mxmlGetType(src) != MXML_ELEMENT)
+    if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr || mxmlGetType(src) != MXML_ELEMENT) {
         return;
+    }
 
     const int numAttrs = mxmlElementGetAttrCount(src);
     for (int i = 0; i < numAttrs; ++i) {
@@ -26,16 +27,19 @@ const char * mxmlWhitespaceCB(mxml_node_t * node, int loc)
 
     if (loc == MXML_WS_BEFORE_OPEN) {
         // Single indentation
-        if (!strcmp(name, "target") || !strcmp(name, "counters"))
+        if ((strcmp(name, "target") == 0) || (strcmp(name, "counters") == 0)) {
             return "\n  ";
+        }
 
         // Double indentation
-        if (!strcmp(name, "counter"))
+        if (strcmp(name, "counter") == 0) {
             return "\n    ";
+        }
 
         // Avoid a carriage return on the first line of the xml file
-        if (!strncmp(name, "?xml", 4))
+        if (strncmp(name, "?xml", 4) == 0) {
             return nullptr;
+        }
 
         // Default - no indentation
         return "\n";
@@ -43,12 +47,14 @@ const char * mxmlWhitespaceCB(mxml_node_t * node, int loc)
 
     if (loc == MXML_WS_BEFORE_CLOSE) {
         // No indentation
-        if (!strcmp(name, "captured"))
+        if (strcmp(name, "captured") == 0) {
             return "\n";
+        }
 
         // Single indentation
-        if (!strcmp(name, "counters"))
+        if (strcmp(name, "counters") == 0) {
             return "\n  ";
+        }
 
         // Default - no carriage return
         return nullptr;

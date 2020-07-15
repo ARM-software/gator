@@ -17,7 +17,7 @@ namespace lnx {
     class ProcessPollerBase {
     public:
         struct IProcessPollerReceiver {
-            virtual ~IProcessPollerReceiver();
+            virtual ~IProcessPollerReceiver() = default;
 
             /**
              * Called for each /proc/[PID] directory
@@ -40,7 +40,7 @@ namespace lnx {
         };
 
         ProcessPollerBase();
-        virtual ~ProcessPollerBase();
+        virtual ~ProcessPollerBase() = default;
 
     protected:
         void poll(bool wantThreads, bool wantStats, IProcessPollerReceiver & receiver);
@@ -48,15 +48,15 @@ namespace lnx {
     private:
         lib::FsEntry procDir;
 
-        void processPidDirectory(bool wantThreads,
-                                 bool wantStats,
-                                 IProcessPollerReceiver & receiver,
-                                 const lib::FsEntry & entry);
-        void processTidDirectory(bool wantStats,
-                                 IProcessPollerReceiver & receiver,
-                                 int pid,
-                                 const lib::FsEntry & entry,
-                                 const lib::Optional<lib::FsEntry> & exe);
+        static void processPidDirectory(bool wantThreads,
+                                        bool wantStats,
+                                        IProcessPollerReceiver & receiver,
+                                        const lib::FsEntry & entry);
+        static void processTidDirectory(bool wantStats,
+                                        IProcessPollerReceiver & receiver,
+                                        int pid,
+                                        const lib::FsEntry & entry,
+                                        const lib::Optional<lib::FsEntry> & exe);
     };
 }
 

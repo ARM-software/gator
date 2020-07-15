@@ -11,10 +11,10 @@ class CoreOnliner {
 public:
     CoreOnliner(unsigned core);
     CoreOnliner(const CoreOnliner &) = delete;
-    CoreOnliner(CoreOnliner &&);
+    CoreOnliner(CoreOnliner &&) noexcept;
     ~CoreOnliner();
     CoreOnliner & operator=(const CoreOnliner &) = delete;
-    CoreOnliner & operator=(CoreOnliner &&);
+    CoreOnliner & operator=(CoreOnliner &&) noexcept;
     inline bool stateKnown() const { return known; }
     inline bool stateChanged() const { return changed; }
     inline bool isOnline() const { return online; }

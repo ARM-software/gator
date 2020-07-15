@@ -26,7 +26,7 @@ std::vector<std::unique_ptr<PerfSyncThreadBuffer>> PerfSyncThreadBuffer::create(
         const bool enableSyncThreadMode = (!supportsClockId) && (cpu == 0);
         const bool readTimer = hasSPEConfiguration;
         result.emplace_back(
-            new PerfSyncThreadBuffer(monotonicRawBase, cpu, enableSyncThreadMode, readTimer, &senderSem));
+            new PerfSyncThreadBuffer(monotonicRawBase, cpu, enableSyncThreadMode, readTimer, senderSem));
     }
 
     return result;
@@ -36,7 +36,7 @@ PerfSyncThreadBuffer::PerfSyncThreadBuffer(std::uint64_t monotonicRawBase,
                                            unsigned cpu,
                                            bool enableSyncThreadMode,
                                            bool readTimer,
-                                           sem_t * readerSem)
+                                           sem_t & readerSem)
     : monotonicRawBase(monotonicRawBase),
       buffer(cpu, FrameType::PERF_SYNC, 1024 * 1024, readerSem),
       thread(cpu,
@@ -60,7 +60,7 @@ bool PerfSyncThreadBuffer::complete() const
     return buffer.isDone();
 }
 
-void PerfSyncThreadBuffer::write(unsigned,
+void PerfSyncThreadBuffer::write(unsigned /*unused*/,
                                  pid_t pid,
                                  pid_t tid,
                                  std::uint64_t monotonicRaw,
@@ -94,5 +94,5 @@ void PerfSyncThreadBuffer::write(unsigned,
 
 void PerfSyncThreadBuffer::send(ISender & sender)
 {
-    buffer.write(&sender);
+    buffer.write(sender);
 }

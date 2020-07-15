@@ -93,8 +93,8 @@ static bool parseCpuId(std::set<int> & cpuIds,
 
 bool parseXml(const char * const xml, PmuXML & pmuXml)
 {
-    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> documentPtr{mxmlLoadString(nullptr, xml, MXML_NO_CALLBACK),
-                                                                      mxmlDelete};
+    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> documentPtr {mxmlLoadString(nullptr, xml, MXML_NO_CALLBACK),
+                                                                       mxmlDelete};
 
     // find the root
     mxml_node_t * const root =
@@ -275,7 +275,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
 
 PmuXML readPmuXml(const char * const path)
 {
-    PmuXML pmuXml{};
+    PmuXML pmuXml {};
 
     {
         if (!parseXml(PmuXML::DEFAULT_XML, pmuXml)) {
@@ -285,7 +285,7 @@ PmuXML readPmuXml(const char * const path)
 
     if (path != nullptr) {
         // Parse user defined items second as they will show up first in the linked list
-        std::unique_ptr<char, void (*)(void *)> xml{readFromDisk(path), std::free};
+        std::unique_ptr<char, void (*)(void *)> xml {readFromDisk(path), std::free};
         if (xml == nullptr) {
             logg.logError("Unable to open additional pmus XML %s", path);
             handleException();

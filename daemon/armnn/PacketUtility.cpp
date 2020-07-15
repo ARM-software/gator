@@ -3,8 +3,7 @@
 #include "PacketUtility.h"
 
 #include <cstdint>
-namespace armnn
-{
+namespace armnn {
     /**
      * Get bits from a given number, between msb and lsb , ([msb, lsb])
      */
@@ -14,4 +13,3 @@ namespace armnn
         return (((1 << range) - 1) & (number >> (lsb)));
     }
 }
-

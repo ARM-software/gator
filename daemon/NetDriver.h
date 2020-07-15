@@ -8,15 +8,14 @@
 
 class NetDriver : public PolledDriver {
 private:
-    typedef PolledDriver super;
+    using super = PolledDriver;
 
 public:
     NetDriver();
-    ~NetDriver();
 
-    void readEvents(mxml_node_t * const root);
-    void start();
-    void read(Buffer * const buffer);
+    void readEvents(mxml_node_t * root) override;
+    void start() override;
+    void read(IBlockCounterFrameBuilder & buffer) override;
 
 private:
     bool doRead();

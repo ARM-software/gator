@@ -11,10 +11,12 @@
 #include <map>
 #include <string>
 
+class IBlockCounterMessageConsumer;
+
 namespace non_root {
     class ProcessStateChangeHandler {
     public:
-        ProcessStateChangeHandler(Buffer & counterBuffer,
+        ProcessStateChangeHandler(IBlockCounterMessageConsumer & counterBuffer,
                                   Buffer & miscBuffer,
                                   PerCoreMixedFrameBuffer & switchBuffers,
                                   const std::map<NonRootCounter, int> & enabledCounters);
@@ -47,14 +49,14 @@ namespace non_root {
         void idle(unsigned long long timestampNS, unsigned long core);
 
     private:
-        typedef int cookie_type;
+        using cookie_type = int;
 
         static constexpr const cookie_type COOKIE_KERNEL = 0;
         static constexpr const cookie_type COOKIE_UNKNOWN = ~cookie_type(0);
 
         MixedFrameBuffer miscBuffer;
         std::map<std::string, cookie_type> cookies;
-        Buffer & counterBuffer;
+        IBlockCounterMessageConsumer & counterBuffer;
         PerCoreMixedFrameBuffer & switchBuffers;
         const std::map<NonRootCounter, int> & enabledCounters;
         int cookieCounter;

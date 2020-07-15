@@ -8,15 +8,14 @@
 #include "Logging.h"
 #include "SessionData.h"
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <unistd.h>
 
 class NetCounter : public DriverCounter {
 public:
-    NetCounter(DriverCounter * next, const char * const name, uint64_t * const value);
-    ~NetCounter();
+    NetCounter(DriverCounter * next, const char * name, uint64_t * value);
 
-    int64_t read();
+    int64_t read() override;
 
 private:
     uint64_t * const mValue;
@@ -34,8 +33,6 @@ NetCounter::NetCounter(DriverCounter * next, const char * const name, uint64_t *
 {
 }
 
-NetCounter::~NetCounter() {}
-
 int64_t NetCounter::read()
 {
     int64_t result = *mValue - mPrev;
@@ -43,11 +40,11 @@ int64_t NetCounter::read()
     return result;
 }
 
-NetDriver::NetDriver() : PolledDriver("Net"), mBuf(), mReceiveBytes(0), mTransmitBytes(0) {}
+NetDriver::NetDriver() : PolledDriver("Net"), mBuf(), mReceiveBytes(0), mTransmitBytes(0)
+{
+}
 
-NetDriver::~NetDriver() {}
-
-void NetDriver::readEvents(mxml_node_t * const)
+void NetDriver::readEvents(mxml_node_t * const /*unused*/)
 {
     if (access("/proc/net/dev", R_OK) == 0) {
         setCounters(new NetCounter(getCounters(), "Linux_net_rx", &mReceiveBytes));
@@ -71,7 +68,7 @@ bool NetDriver::doRead()
 
     // Skip the header
     char * key;
-    if (((key = strchr(mBuf.getBuf(), '\n')) == NULL) || ((key = strchr(key + 1, '\n')) == NULL)) {
+    if (((key = strchr(mBuf.getBuf(), '\n')) == nullptr) || ((key = strchr(key + 1, '\n')) == nullptr)) {
         return false;
     }
     key = key + 1;
@@ -80,9 +77,9 @@ bool NetDriver::doRead()
     mTransmitBytes = 0;
 
     char * colon;
-    while ((colon = strchr(key, ':')) != NULL) {
+    while ((colon = strchr(key, ':')) != nullptr) {
         char * end = strchr(colon + 1, '\n');
-        if (end != NULL) {
+        if (end != nullptr) {
             *end = '\0';
         }
         *colon = '\0';
@@ -97,7 +94,7 @@ bool NetDriver::doRead()
         mReceiveBytes += receiveBytes;
         mTransmitBytes += transmitBytes;
 
-        if (end == NULL) {
+        if (end == nullptr) {
             break;
         }
         key = end + 1;
@@ -113,7 +110,7 @@ void NetDriver::start()
         handleException();
     }
     // Initialize previous values
-    for (DriverCounter * counter = getCounters(); counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = getCounters(); counter != nullptr; counter = counter->getNext()) {
         if (!counter->isEnabled()) {
             continue;
         }
@@ -121,7 +118,7 @@ void NetDriver::start()
     }
 }
 
-void NetDriver::read(Buffer * const buffer)
+void NetDriver::read(IBlockCounterFrameBuilder & buffer)
 {
     if (!doRead()) {
         logg.logError("Unable to read network stats");

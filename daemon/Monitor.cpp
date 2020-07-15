@@ -4,12 +4,14 @@
 
 #include "Logging.h"
 
-#include <errno.h>
+#include <cerrno>
+#include <cstring>
 #include <fcntl.h>
-#include <string.h>
 #include <unistd.h>
 
-Monitor::Monitor() : mFd(-1) {}
+Monitor::Monitor() : mFd(-1)
+{
+}
 
 Monitor::~Monitor()
 {
@@ -50,7 +52,7 @@ bool Monitor::init()
     return true;
 }
 
-bool Monitor::add(const int fd)
+bool Monitor::add(int fd)
 {
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
@@ -64,7 +66,7 @@ bool Monitor::add(const int fd)
     return true;
 }
 
-int Monitor::wait(struct epoll_event * const events, int maxevents, int timeout)
+int Monitor::wait(struct epoll_event * const events, int maxevents, int timeout) const
 {
     int result = epoll_wait(mFd, events, maxevents, timeout);
     if (result < 0) {

@@ -14,11 +14,11 @@
 class FSCounter : public DriverCounter {
 public:
     FSCounter(DriverCounter * next, const char * name, char * path, const char * regex);
-    ~FSCounter();
+    ~FSCounter() override;
 
     const char * getPath() const { return mPath; }
 
-    int64_t read();
+    int64_t read() override;
 
 private:
     char * const mPath;
@@ -33,7 +33,7 @@ private:
 };
 
 FSCounter::FSCounter(DriverCounter * next, const char * name, char * path, const char * regex)
-    : DriverCounter(next, name), mPath(path), mReg(), mUseRegex(regex != NULL)
+    : DriverCounter(next, name), mPath(path), mReg(), mUseRegex(regex != nullptr)
 {
     if (mUseRegex) {
         int result = regcomp(&mReg, regex, REG_EXTENDED);
@@ -89,7 +89,7 @@ int64_t FSCounter::read()
         }
         else {
             errno = 0;
-            value = strtoll(buf + match[1].rm_so, NULL, 0);
+            value = strtoll(buf + match[1].rm_so, nullptr, 0);
             if (errno != 0) {
                 logg.logError("Parsing %s failed: %s", mPath, strerror(errno));
                 handleException();
@@ -108,20 +108,20 @@ fail:
     handleException();
 }
 
-FSDriver::FSDriver() : PolledDriver("FS") {}
-
-FSDriver::~FSDriver() {}
+FSDriver::FSDriver() : PolledDriver("FS")
+{
+}
 
 void FSDriver::readEvents(mxml_node_t * const xml)
 {
     mxml_node_t * node = xml;
     while (true) {
-        node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
-        if (node == NULL) {
+        node = mxmlFindElement(node, xml, "event", nullptr, nullptr, MXML_DESCEND);
+        if (node == nullptr) {
             break;
         }
         const char * counter = mxmlElementGetAttr(node, "counter");
-        if (counter == NULL) {
+        if (counter == nullptr) {
             continue;
         }
 
@@ -137,7 +137,7 @@ void FSDriver::readEvents(mxml_node_t * const xml)
         }
 
         const char * path = mxmlElementGetAttr(node, "path");
-        if (path == NULL) {
+        if (path == nullptr) {
             logg.logError("The filesystem counter %s is missing the required path attribute", counter);
             handleException();
         }
@@ -149,7 +149,7 @@ void FSDriver::readEvents(mxml_node_t * const xml)
 int FSDriver::writeCounters(mxml_node_t * root) const
 {
     int count = 0;
-    for (FSCounter * counter = static_cast<FSCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<FSCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FSCounter *>(counter->getNext())) {
         if (access(counter->getPath(), R_OK) == 0) {
             mxml_node_t * node = mxmlNewElement(root, "counter");

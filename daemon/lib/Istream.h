@@ -4,6 +4,7 @@
 #define INCLUDE_LIB_ISTREAM_H
 
 #include <istream>
+#include <vector>
 
 namespace lib {
     /**
@@ -14,7 +15,7 @@ namespace lib {
     template<typename IntType>
     static std::vector<IntType> parseCommaSeparatedNumbers(std::istream & stream)
     {
-        std::vector<IntType> ints{};
+        std::vector<IntType> ints {};
 
         IntType value;
         while (!(stream >> std::ws).eof() && stream >> value) {

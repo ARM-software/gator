@@ -2,10 +2,10 @@
 
 #include "lib/Popen.h"
 
-#include <errno.h>
+#include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <fcntl.h>
-#include <limits.h>
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -16,6 +16,8 @@ namespace lib {
         int in[2];
         int out[2];
         int err[2];
+        // in/out/err pipes should not be CLOEXEC since we need them for the exec'ed child process
+        // NOLINTNEXTLINE(android-cloexec-pipe)
         if (pipe2(execerr, O_CLOEXEC) == -1 || pipe(in) == -1 || pipe(out) == -1 || pipe(err) == -1) {
             return {-errno, -1, -1, -1};
         }
@@ -59,8 +61,8 @@ namespace lib {
                 close(in[1]);
                 close(out[0]);
                 close(err[0]);
-                while (waitpid(pid, nullptr, 0) == -1 && errno == EINTR)
-                    ;
+                while (waitpid(pid, nullptr, 0) == -1 && errno == EINTR) {
+                }
                 return {-error, -1, -1, -1};
             }
 
@@ -71,17 +73,19 @@ namespace lib {
 
     int pclose(const PopenResult & result)
     {
-        if (result.pid < 0)
+        if (result.pid < 0) {
             return result.pid;
+        }
 
         int status;
         close(result.in);
         close(result.out);
         close(result.err);
         while (waitpid(result.pid, &status, 0) == -1) {
-            if (errno != EINTR)
+            if (errno != EINTR) {
                 // use INT_MIN because -errno theoretically could go to -INT_MAX == INT_MIN + 1
                 return INT_MIN;
+            }
         }
         // WIFEXITED and friends only use lowest 16 bits
         // so the mask probably isn't needed but just to be safe

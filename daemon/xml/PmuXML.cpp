@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <utility>
 
 GatorCpu::GatorCpu(std::string coreName,
                    std::string id,
@@ -15,9 +16,9 @@ GatorCpu::GatorCpu(std::string coreName,
                    const std::set<int> & cpuIds,
                    int pmncCounters,
                    bool isV8)
-    : mCoreName(coreName),
-      mId(id),
-      mCounterSet(counterSet),
+    : mCoreName(std::move(coreName)),
+      mId(std::move(id)),
+      mCounterSet(std::move(counterSet)),
       mDtName(dtName != nullptr ? dtName : ""),
       mSpeName(speName != nullptr ? speName : ""),
       mCpuIds(cpuIds.begin(), cpuIds.end()),
@@ -83,9 +84,9 @@ UncorePmu::UncorePmu(std::string coreName,
                      std::string counterSet,
                      int pmncCounters,
                      bool hasCyclesCounter)
-    : mCoreName(coreName),
-      mId(id),
-      mCounterSet(counterSet),
+    : mCoreName(std::move(coreName)),
+      mId(std::move(id)),
+      mCounterSet(std::move(counterSet)),
       mPmncCounters(pmncCounters),
       mHasCyclesCounter(hasCyclesCounter)
 {

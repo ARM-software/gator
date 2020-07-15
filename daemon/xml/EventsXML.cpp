@@ -13,7 +13,7 @@
 
 namespace events_xml {
 
-    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getTree(lib::Span<const GatorCpu> clusters)
+    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getStaticTree(lib::Span<const GatorCpu> clusters)
     {
 #include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
         mxml_unique_ptr mainXml = makeMxmlUniquePtr(nullptr);
@@ -22,8 +22,8 @@ namespace events_xml {
         (void) events_xml_len;
 
         // Load the provided or default events xml
-        if (gSessionData.mEventsXMLPath) {
-            std::unique_ptr<FILE, int (*)(FILE *)> fl{lib::fopen_cloexec(gSessionData.mEventsXMLPath, "r"), fclose};
+        if (gSessionData.mEventsXMLPath != nullptr) {
+            std::unique_ptr<FILE, int (*)(FILE *)> fl {lib::fopen_cloexec(gSessionData.mEventsXMLPath, "r"), fclose};
             if (fl != nullptr) {
                 mainXml = makeMxmlUniquePtr(mxmlLoadFile(nullptr, fl.get(), MXML_NO_CALLBACK));
                 if (mainXml == nullptr) {
@@ -39,8 +39,8 @@ namespace events_xml {
         }
 
         // Append additional events XML
-        if (gSessionData.mEventsXMLAppend) {
-            std::unique_ptr<FILE, int (*)(FILE *)> fl{lib::fopen_cloexec(gSessionData.mEventsXMLAppend, "r"), fclose};
+        if (gSessionData.mEventsXMLAppend != nullptr) {
+            std::unique_ptr<FILE, int (*)(FILE *)> fl {lib::fopen_cloexec(gSessionData.mEventsXMLAppend, "r"), fclose};
             if (fl == nullptr) {
                 logg.logError("Unable to open additional events XML %s", gSessionData.mEventsXMLAppend);
                 handleException();
@@ -56,17 +56,15 @@ namespace events_xml {
             mergeTrees(mainXml.get(), std::move(appendXml));
         }
 
-        // inject addtional counter sets
+        // inject additional counter sets
         processClusters(mainXml.get(), clusters);
-
         return mainXml;
     }
 
-    std::unique_ptr<char, void (*)(void *)> getXML(lib::Span<const Driver * const> drivers,
-                                                   lib::Span<const GatorCpu> clusters)
+    static std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getDynamicTree(lib::Span<const Driver * const> drivers,
+                                                                                lib::Span<const GatorCpu> clusters)
     {
-        const auto xml = getTree(clusters);
-
+        auto xml = getStaticTree(clusters);
         // Add dynamic events from the drivers
         mxml_node_t * events = getEventsElement(xml.get());
         if (events == nullptr) {
@@ -80,7 +78,45 @@ namespace events_xml {
             driver->writeEvents(events);
         }
 
+        return xml;
+    }
+
+    std::unique_ptr<char, void (*)(void *)> getDynamicXML(lib::Span<const Driver * const> drivers,
+                                                          lib::Span<const GatorCpu> clusters)
+    {
+        const auto xml = getDynamicTree(drivers, clusters);
         return {mxmlSaveAllocString(xml.get(), mxmlWhitespaceCB), &free};
+    }
+
+    std::map<std::string, int> getCounterToEventMap(lib::Span<const Driver * const> drivers,
+                                                    lib::Span<const GatorCpu> clusters)
+    {
+        std::map<std::string, int> counterToEventMap {};
+
+        auto xml = events_xml::getDynamicTree(drivers, clusters);
+
+        // build map of counter->event
+        mxml_node_t * node = xml.get();
+        while (true) {
+            node = mxmlFindElement(node, xml.get(), "event", nullptr, nullptr, MXML_DESCEND);
+            if (node == nullptr) {
+                break;
+            }
+            const char * counter = mxmlElementGetAttr(node, "counter");
+            const char * event = mxmlElementGetAttr(node, "event");
+            if (counter == nullptr) {
+                continue;
+            }
+
+            if (event != nullptr) {
+                const int eventNo = (int) strtol(event, nullptr, 0);
+                counterToEventMap[counter] = eventNo;
+            }
+            else {
+                counterToEventMap[counter] = -1;
+            }
+        }
+        return counterToEventMap;
     }
 
     void write(const char * path, lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters)
@@ -90,7 +126,7 @@ namespace events_xml {
         // Set full path
         snprintf(file, PATH_MAX, "%s/events.xml", path);
 
-        if (writeToDisk(file, getXML(drivers, clusters).get()) < 0) {
+        if (writeToDisk(file, getDynamicXML(drivers, clusters).get()) < 0) {
             logg.logError("Error writing %s\nPlease verify the path.", file);
             handleException();
         }

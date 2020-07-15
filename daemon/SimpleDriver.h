@@ -8,16 +8,16 @@
 
 class SimpleDriver : public Driver {
 public:
-    virtual ~SimpleDriver();
+    ~SimpleDriver() override;
 
-    bool claimCounter(Counter & counter) const;
+    bool claimCounter(Counter & counter) const override;
     bool countersEnabled() const;
-    void resetCounters();
-    void setupCounter(Counter & counter);
-    int writeCounters(mxml_node_t * root) const;
+    void resetCounters() override;
+    void setupCounter(Counter & counter) override;
+    int writeCounters(mxml_node_t * root) const override;
 
 protected:
-    SimpleDriver(const char * name) : Driver(name), mCounters(NULL) {}
+    SimpleDriver(const char * name) : Driver(name), mCounters(nullptr) {}
 
     DriverCounter * getCounters() const { return mCounters; }
 

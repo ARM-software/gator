@@ -15,22 +15,21 @@ class Drivers;
 // Counters from external sources like graphics drivers and annotations
 class ExternalSource : public Source {
 public:
-    ExternalSource(Child & child, sem_t * senderSem, Drivers & drivers);
-    ~ExternalSource();
+    ExternalSource(Child & child, sem_t & senderSem, Drivers & drivers);
 
     virtual bool prepare() override;
     virtual void run() override;
     virtual void interrupt() override;
     virtual bool isDone() override;
-    virtual void write(ISender * sender) override;
+    virtual void write(ISender & sender) override;
 
 private:
-    void waitFor(const int bytes);
-    void configureConnection(const int fd, const char * const handshake, size_t size);
+    void waitFor(int bytes);
+    void configureConnection(int fd, const char * handshake, size_t size);
     bool connectMidgard();
     bool connectMve();
     void connectFtrace();
-    bool transfer(const uint64_t currTime, const int fd);
+    bool transfer(uint64_t currTime, int fd);
 
     sem_t mBufferSem;
     Buffer mBuffer;

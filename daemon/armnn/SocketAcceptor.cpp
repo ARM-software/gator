@@ -8,19 +8,22 @@
 
 #include "armnn/SocketAcceptor.h"
 
-namespace armnn
-{
-    bool SocketAcceptor::acceptOne()
+namespace armnn {
+    std::unique_ptr<ISession> SocketAcceptor::accept()
     {
-        std::unique_ptr<SocketIO> ptr = mAcceptingSocket.accept(-1);
-        if (ptr == nullptr)
-        {
-            return false;
-        }
-        else
-        {
-            mConsumer(std::move(ptr));
-            return true;
+        while (true) {
+            std::unique_ptr<SocketIO> socket = mAcceptingSocket.accept(-1);
+            if (socket == nullptr) {
+                return nullptr;
+            }
+            else {
+                auto session = mSupplier(std::move(socket));
+                if (session != nullptr) {
+                    return session;
+                }
+            }
         }
     }
+
+    void SocketAcceptor::interrupt() { mAcceptingSocket.interrupt(); }
 }

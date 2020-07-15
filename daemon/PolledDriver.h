@@ -5,14 +5,12 @@
 
 #include "SimpleDriver.h"
 
-class Buffer;
+class IBlockCounterFrameBuilder;
 
 class PolledDriver : public SimpleDriver {
 public:
-    virtual ~PolledDriver();
-
     virtual void start() {}
-    virtual void read(Buffer * const buffer);
+    virtual void read(IBlockCounterFrameBuilder & buffer);
 
 protected:
     PolledDriver(const char * name) : SimpleDriver(name) {}

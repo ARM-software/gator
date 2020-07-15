@@ -18,7 +18,7 @@
 #include "mali_userspace/MaliInstanceLocator.h"
 
 #include <algorithm>
-#include <string.h>
+#include <cstring>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -68,12 +68,9 @@ SessionData::SessionData()
       parameterSetFlag(),
       mPerfMmapSizeInPages(),
       mSpeSampleRate(-1),
-      mCounters(),
-      globalCounterToEventMap()
+      mCounters()
 {
 }
-
-SessionData::~SessionData() {}
 
 void SessionData::initialize()
 {
@@ -87,14 +84,14 @@ void SessionData::initialize()
     mFtraceRaw = false;
     mSystemWide = false;
     mImages.clear();
-    mConfigurationXMLPath = NULL;
-    mSessionXMLPath = NULL;
-    mEventsXMLPath = NULL;
-    mEventsXMLAppend = NULL;
-    mTargetPath = NULL;
-    mAPCDir = NULL;
-    mCaptureWorkingDir = NULL;
-    mCaptureUser = NULL;
+    mConfigurationXMLPath = nullptr;
+    mSessionXMLPath = nullptr;
+    mEventsXMLPath = nullptr;
+    mEventsXMLAppend = nullptr;
+    mTargetPath = nullptr;
+    mAPCDir = nullptr;
+    mCaptureWorkingDir = nullptr;
+    mCaptureUser = nullptr;
     mSampleRate = 0;
     mLiveRate = 0;
     mDuration = 0;
@@ -137,7 +134,7 @@ void SessionData::parseSessionXML(char * xmlString)
         }
     }
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) == 0) {
-        mBacktraceDepth = session.parameters.call_stack_unwinding == true ? 128 : 0;
+        mBacktraceDepth = session.parameters.call_stack_unwinding ? 128 : 0;
     }
 
     // Determine buffer size (in MB) based on buffer mode
@@ -161,7 +158,7 @@ void SessionData::parseSessionXML(char * xmlString)
     }
 
     // Convert milli- to nanoseconds
-    mLiveRate = session.parameters.live_rate * 1000000ll;
+    mLiveRate = session.parameters.live_rate * 1000000LL;
     if (mLiveRate > 0 && mLocalCapture) {
         logg.logMessage("Local capture is not compatable with live, disabling live");
         mLiveRate = 0;

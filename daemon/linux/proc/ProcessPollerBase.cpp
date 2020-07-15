@@ -16,7 +16,7 @@ namespace lnx {
          *
          * @return True if criteria are met, false otherwise
          */
-        static bool isPidDirectory(const lib::FsEntry & entry)
+        bool isPidDirectory(const lib::FsEntry & entry)
         {
             // type must be directory
             const lib::FsEntry::Stats stats = entry.read_stats();
@@ -27,7 +27,7 @@ namespace lnx {
             // name must be only digits
             const std::string name = entry.name();
             for (char chr : name) {
-                if (!std::isdigit(chr)) {
+                if (std::isdigit(chr) == 0) {
                     return false;
                 }
             }
@@ -38,23 +38,23 @@ namespace lnx {
         /**
          * Get the exe path for a process by reading /proc/[PID]/cmdline
          */
-        static lib::Optional<lib::FsEntry> getProcessCmdlineExePath(const lib::FsEntry & entry)
+        lib::Optional<lib::FsEntry> getProcessCmdlineExePath(const lib::FsEntry & entry)
         {
             const lib::FsEntry cmdline_file = lib::FsEntry::create(entry, "cmdline");
             const std::string cmdline_contents = lib::readFileContents(cmdline_file);
             // need to extract just the first part of cmdline_contents (as it is an packed sequence of c-strings)
             // so use .c_str() to extract the first string (which is the exe path) and create a new string from it
-            const std::string cmdline_exe = cmdline_contents.c_str();
+            const std::string cmdline_exe = cmdline_contents.c_str(); // NOLINT(readability-redundant-string-cstr)
             if ((!cmdline_exe.empty()) && (cmdline_exe.at(0) != '\n') && (cmdline_exe.at(0) != '\r')) {
                 return lib::FsEntry::create(cmdline_exe);
             }
-            return lib::Optional<lib::FsEntry>{};
+            return lib::Optional<lib::FsEntry> {};
         }
 
         /**
          * Get the exe path for the process
          */
-        static lib::Optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry)
+        lib::Optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry)
         {
             const lib::FsEntry exe_file = lib::FsEntry::create(entry, "exe");
 
@@ -81,23 +81,26 @@ namespace lnx {
         }
     }
 
-    ProcessPollerBase::IProcessPollerReceiver::~IProcessPollerReceiver() {}
+    void ProcessPollerBase::IProcessPollerReceiver::onProcessDirectory(int /*unused*/, const lib::FsEntry & /*unused*/)
+    {
+    }
 
-    void ProcessPollerBase::IProcessPollerReceiver::onProcessDirectory(int, const lib::FsEntry &) {}
+    void ProcessPollerBase::IProcessPollerReceiver::onThreadDirectory(int /*unused*/,
+                                                                      int /*unused*/,
+                                                                      const lib::FsEntry & /*unused*/)
+    {
+    }
 
-    void ProcessPollerBase::IProcessPollerReceiver::onThreadDirectory(int, int, const lib::FsEntry &) {}
-
-    void ProcessPollerBase::IProcessPollerReceiver::onThreadDetails(int,
-                                                                    int,
-                                                                    const ProcPidStatFileRecord &,
-                                                                    const lib::Optional<ProcPidStatmFileRecord> &,
-                                                                    const lib::Optional<lib::FsEntry> &)
+    void ProcessPollerBase::IProcessPollerReceiver::onThreadDetails(
+        int /*unused*/,
+        int /*unused*/,
+        const ProcPidStatFileRecord & /*unused*/,
+        const lib::Optional<ProcPidStatmFileRecord> & /*unused*/,
+        const lib::Optional<lib::FsEntry> & /*unused*/)
     {
     }
 
     ProcessPollerBase::ProcessPollerBase() : procDir(lib::FsEntry::create("/proc")) {}
-
-    ProcessPollerBase::~ProcessPollerBase() {}
 
     void ProcessPollerBase::poll(bool wantThreads, bool wantStats, IProcessPollerReceiver & receiver)
     {
@@ -163,7 +166,7 @@ namespace lnx {
 
         // process stats?
         if (wantStats) {
-            lib::Optional<ProcPidStatmFileRecord> statm_file_record{ProcPidStatmFileRecord()};
+            lib::Optional<ProcPidStatmFileRecord> statm_file_record {ProcPidStatmFileRecord()};
 
             // open /proc/[PID]/statm
             {

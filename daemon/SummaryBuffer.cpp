@@ -9,12 +9,12 @@
 
 #include <cstring>
 
-SummaryBuffer::SummaryBuffer(const int size, sem_t * const readerSem)
+SummaryBuffer::SummaryBuffer(const int size, sem_t & readerSem)
     : buffer(0 /* ignored */, FrameType::SUMMARY, size, readerSem)
 {
 }
 
-void SummaryBuffer::write(ISender * const sender)
+void SummaryBuffer::write(ISender & sender)
 {
     buffer.write(sender);
 }

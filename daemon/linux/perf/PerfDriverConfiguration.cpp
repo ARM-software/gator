@@ -70,8 +70,9 @@ static void setPerfHarden(bool on)
  */
 static bool disablePerfHarden()
 {
-    if (!getPerfHarden())
+    if (!getPerfHarden()) {
         return true;
+    }
 
     logg.logWarning("disabling property security.perf_harden");
 
@@ -224,7 +225,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     }
 
     // create the configuration object, from this point on perf is supported
-    std::unique_ptr<PerfDriverConfiguration> configuration{new PerfDriverConfiguration()};
+    std::unique_ptr<PerfDriverConfiguration> configuration {new PerfDriverConfiguration()};
 
     configuration->config.has_fd_cloexec = (kernelVersion >= KERNEL_VERSION(3, 14, 0));
     configuration->config.has_count_sw_dummy = (kernelVersion >= KERNEL_VERSION(3, 12, 0));
@@ -256,24 +257,25 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
             const char * const name = nameString.c_str();
             logg.logMessage("perf pmu: %s", name);
             const GatorCpu * gatorCpu = pmuXml.findCpuByName(name);
-            if (gatorCpu != NULL) {
+            if (gatorCpu != nullptr) {
                 int type;
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
-                    configuration->cpus.push_back(PerfCpu{*gatorCpu, type});
+                    configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
                     cpusDetectedViaSysFs.insert(gatorCpu);
-                    if (gatorCpu->getSpeName() != nullptr)
+                    if (gatorCpu->getSpeName() != nullptr) {
                         haveFoundKnownCpuWithSpe = true;
+                    }
                     continue;
                 }
             }
 
             const UncorePmu * uncorePmu = pmuXml.findUncoreByName(name);
-            if (uncorePmu != NULL) {
+            if (uncorePmu != nullptr) {
                 int type;
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
-                    configuration->uncores.push_back(PerfUncore{*uncorePmu, type});
+                    configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
                     continue;
                 }
             }
@@ -292,8 +294,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
             }
         }
     }
-    else
+    else {
         logg.logMessage(PERF_DEVICES " doesn't exist");
+    }
 
     // additionally add any by CPUID
     std::set<int> unrecognisedCpuIds;
@@ -307,10 +310,11 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         }
         else if ((cpusDetectedViaSysFs.count(gatorCpu) == 0) && (cpusDetectedViaCpuid.count(gatorCpu) == 0)) {
             logg.logMessage("generic pmu: %s", gatorCpu->getCoreName());
-            configuration->cpus.push_back(PerfCpu{*gatorCpu, PERF_TYPE_RAW});
+            configuration->cpus.push_back(PerfCpu {*gatorCpu, PERF_TYPE_RAW});
             cpusDetectedViaCpuid.insert(gatorCpu);
-            if (gatorCpu->getSpeName() != nullptr)
+            if (gatorCpu->getSpeName() != nullptr) {
                 haveFoundKnownCpuWithSpe = true;
+            }
         }
     }
 
@@ -339,9 +343,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 
     // need to update or create a record to set the SPE flag?
     if (haveUnknownSpe && !configuration->cpus.empty()) {
-        for (unsigned int i = 0; i < configuration->cpus.size(); ++i) {
-            const auto & currentValue = configuration->cpus[i];
-            configuration->cpus[i] = PerfCpu{GatorCpu(currentValue.gator_cpu, ARMV82_SPE), currentValue.pmu_type};
+        for (auto & cpu : configuration->cpus) {
+            const auto & currentValue = cpu;
+            cpu = PerfCpu {GatorCpu(currentValue.gator_cpu, ARMV82_SPE), currentValue.pmu_type};
         }
     }
 
@@ -356,14 +360,14 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 
 #if defined(__aarch64__)
         configuration->cpus.push_back(
-            PerfCpu{{"Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, true}, PERF_TYPE_RAW});
+            PerfCpu {{"Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, true}, PERF_TYPE_RAW});
 #elif defined(__arm__)
         configuration->cpus.push_back(
-            PerfCpu{{"Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, anyV8}, PERF_TYPE_RAW});
+            PerfCpu {{"Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, anyV8}, PERF_TYPE_RAW});
 #else
         configuration->cpus.push_back(
-            PerfCpu{{"Other", "Perf_Hardware", "Perf_Hardware", nullptr, speName, unrecognisedCpuIds, 6, false},
-                    PERF_TYPE_HARDWARE});
+            PerfCpu {{"Other", "Perf_Hardware", "Perf_Hardware", nullptr, speName, unrecognisedCpuIds, 6, false},
+                     PERF_TYPE_HARDWARE});
 #endif
     }
 

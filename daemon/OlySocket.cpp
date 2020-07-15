@@ -2,17 +2,17 @@
 
 #include "OlySocket.h"
 
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
+#include <cstddef>
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <stddef.h>
 #include <sys/un.h>
 #include <unistd.h>
 #endif
@@ -89,7 +89,7 @@ int accept_cloexec(int sockfd, struct sockaddr * addr, socklen_t * addrlen)
     }
     // accept4 with SOCK_CLOEXEC may not work on all kernels, so fallback
 #endif
-    sock = accept(sockfd, addr, addrlen);
+    sock = accept(sockfd, addr, addrlen); // NOLINT(android-cloexec-accept)
 #ifdef FD_CLOEXEC
     if (sock < 0) {
         return -1;
@@ -116,7 +116,9 @@ OlyServerSocket::OlyServerSocket(int port) : mFDServer(0)
     createServerSocket(port);
 }
 
-OlySocket::OlySocket(int socketID) : mSocketID(socketID) {}
+OlySocket::OlySocket(int socketID) : mSocketID(socketID)
+{
+}
 
 #ifndef WIN32
 
@@ -288,7 +290,7 @@ int OlyServerSocket::acceptConnection()
     }
 
     // Accept a connection, note that this call blocks until a client connects
-    socketID = accept_cloexec(mFDServer, NULL, NULL);
+    socketID = accept_cloexec(mFDServer, nullptr, nullptr);
     if (socketID < 0) {
         logg.logError("Socket acceptance failed");
         handleException();
@@ -298,7 +300,7 @@ int OlyServerSocket::acceptConnection()
 
 void OlySocket::send(const char * buffer, int size)
 {
-    if (size <= 0 || buffer == NULL) {
+    if (size <= 0 || buffer == nullptr) {
         return;
     }
 
@@ -316,7 +318,7 @@ void OlySocket::send(const char * buffer, int size)
 // Returns the number of bytes received
 int OlySocket::receive(char * buffer, int size)
 {
-    if (size <= 0 || buffer == NULL) {
+    if (size <= 0 || buffer == nullptr) {
         return 0;
     }
 
@@ -336,7 +338,7 @@ int OlySocket::receive(char * buffer, int size)
 int OlySocket::receiveNBytes(char * buffer, int size)
 {
     int bytes = 0;
-    while (size > 0 && buffer != NULL) {
+    while (size > 0 && buffer != nullptr) {
         bytes = recv(mSocketID, buffer, size, 0);
         if (bytes < 0) {
             logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
@@ -358,7 +360,7 @@ int OlySocket::receiveString(char * buffer, int size)
     int bytes_received = 0;
     bool found = false;
 
-    if (buffer == 0) {
+    if (buffer == nullptr) {
         return 0;
     }
 

@@ -21,7 +21,7 @@ constexpr int FRACTION_TO_KEEP_FREE = 4;
 Buffer::Buffer(const int32_t core,
                const FrameType frameType,
                const int size,
-               sem_t * const readerSem,
+               sem_t & readerSem,
                uint64_t commitRate,
                bool includeResponseType)
     : mBuf(new char[size]),
@@ -33,7 +33,6 @@ Buffer::Buffer(const int32_t core,
       mReadPos(0),
       mWritePos(0),
       mCommitPos(0),
-      mAvailable(true),
       mIsDone(false),
       mIncludeResponseType(includeResponseType),
       mCore(core),
@@ -63,7 +62,7 @@ Buffer::~Buffer()
     sem_destroy(&mWriterSem);
 }
 
-void Buffer::write(ISender * const sender)
+void Buffer::write(ISender & sender)
 {
     // acquire the data written to the buffer
     const int commitPos = mCommitPos.load(std::memory_order_acquire);
@@ -89,7 +88,7 @@ void Buffer::write(ISender * const sender)
 
     constexpr std::size_t numberOfParts = 2;
     const lib::Span<const char, int> parts[numberOfParts] = {{buffer1, length1}, {buffer2, length2}};
-    sender->writeDataParts({parts, numberOfParts}, ResponseType::RAW);
+    sender.writeDataParts({parts, numberOfParts}, ResponseType::RAW);
 
     // release the space only after we have finished reading the data
     mReadPos.store(commitPos, std::memory_order_release);
@@ -107,14 +106,12 @@ int Buffer::bytesAvailable() const
 
     int remaining = mSize - filled;
 
-    if (mAvailable) {
-        // Give some extra room; also allows space to insert the overflow error packet
-        remaining -= 200;
-    }
-    else {
-        // Hysteresis, prevents multiple overflow messages
-        remaining -= 2000;
-    }
+    // Give some extra room;
+    // this is required because in one shot mode we check this to see
+    // if we've filled the buffer. We might get to the end and need to write
+    // say 8 bytes but there's only 1 byte left, for the purpose of one-shot,
+    // this is full.
+    remaining -= 200;
 
     return remaining;
 }
@@ -136,18 +133,9 @@ void Buffer::waitForSpace(int bytes, uint64_t time)
     }
 }
 
-bool Buffer::checkSpace(const int bytes)
+bool Buffer::checkSpace(const int bytes) const
 {
-    const int remaining = bytesAvailable();
-
-    if (remaining < bytes) {
-        mAvailable = false;
-    }
-    else {
-        mAvailable = true;
-    }
-
-    return mAvailable;
+    return bytesAvailable() >= bytes;
 }
 
 int Buffer::contiguousSpaceAvailable() const
@@ -199,7 +187,7 @@ bool Buffer::commit(const uint64_t time, const bool force)
     }
 
     // send a notification that data is ready
-    sem_post(mReaderSem);
+    sem_post(&mReaderSem);
     return true;
 }
 
@@ -229,8 +217,9 @@ int Buffer::packInt64(int64_t x)
 
 void Buffer::writeBytes(const void * const data, size_t count)
 {
-    size_t i;
-    for (i = 0; i < count; ++i) {
+    size_t i = 0;
+
+    for (; i < count; ++i) {
         mBuf[(mWritePos + i) & mask] = static_cast<const char *>(data)[i];
     }
 
@@ -354,18 +343,6 @@ bool Buffer::eventTid(const int tid)
     return false;
 }
 
-bool Buffer::event(const int key, const int32_t value)
-{
-    if (checkSpace(2 * buffer_utils::MAXSIZE_PACK32)) {
-        packInt(key);
-        packInt(value);
-
-        return true;
-    }
-
-    return false;
-}
-
 bool Buffer::event64(const int key, const int64_t value)
 {
     if (checkSpace(buffer_utils::MAXSIZE_PACK64 + buffer_utils::MAXSIZE_PACK32)) {
@@ -376,11 +353,6 @@ bool Buffer::event64(const int key, const int64_t value)
     }
 
     return false;
-}
-
-bool Buffer::counterMessage(uint64_t curr_time, int core, int key, int64_t value)
-{
-    return threadCounterMessage(curr_time, core, 0, key, value);
 }
 
 bool Buffer::threadCounterMessage(uint64_t curr_time, int core, int tid, int key, int64_t value)

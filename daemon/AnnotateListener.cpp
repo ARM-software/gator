@@ -14,11 +14,11 @@ struct AnnotateClient {
 };
 
 AnnotateListener::AnnotateListener()
-    : mClients(NULL),
+    : mClients(nullptr),
 #ifdef TCP_ANNOTATIONS
-      mSock(NULL),
+      mSock(nullptr),
 #endif
-      mUds(NULL)
+      mUds(nullptr)
 {
 }
 
@@ -63,7 +63,7 @@ int AnnotateListener::getUdsFd()
 
 void AnnotateListener::handleUds()
 {
-    AnnotateClient * const client = new AnnotateClient();
+    auto * const client = new AnnotateClient();
     client->fd = mUds->acceptConnection();
     client->next = mClients;
     mClients = client;
@@ -71,15 +71,15 @@ void AnnotateListener::handleUds()
 
 void AnnotateListener::close()
 {
-    if (mUds != NULL) {
+    if (mUds != nullptr) {
         mUds->closeServerSocket();
     }
 #ifdef TCP_ANNOTATIONS
-    if (mSock != NULL) {
+    if (mSock != nullptr) {
         mSock->closeServerSocket();
     }
 #endif
-    while (mClients != NULL) {
+    while (mClients != nullptr) {
         ::close(mClients->fd);
         AnnotateClient * next = mClients->next;
         delete mClients;
@@ -92,7 +92,7 @@ void AnnotateListener::signal()
     const char ch = 0;
     AnnotateClient ** ptr = &mClients;
     AnnotateClient * client = mClients;
-    while (client != NULL) {
+    while (client != nullptr) {
         if (write(client->fd, &ch, sizeof(ch)) != 1) {
             ::close(client->fd);
             AnnotateClient * next = client->next;

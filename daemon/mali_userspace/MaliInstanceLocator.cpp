@@ -32,8 +32,8 @@ namespace mali_userspace {
         const bool dirIsCalledMisc = (currentDirectory.name() == "misc");
         const lib::Optional<lib::FsEntry> dirsParent = currentDirectory.parent();
         const lib::Optional<lib::FsEntry> parentClockPath =
-            (dirsParent.valid() ? lib::Optional<lib::FsEntry>{lib::FsEntry::create(dirsParent.get(), "clock")}
-                                : lib::Optional<lib::FsEntry>{});
+            (dirsParent.valid() ? lib::Optional<lib::FsEntry> {lib::FsEntry::create(dirsParent.get(), "clock")}
+                                : lib::Optional<lib::FsEntry> {});
 
         // walk children looking for directories named 'mali%d'
         lib::FsEntryDirectoryIterator iterator = currentDirectory.children();

@@ -10,6 +10,7 @@
 #include "linux/perf/PerfBuffer.h"
 #include "linux/perf/PerfGroups.h"
 
+#include <functional>
 #include <semaphore.h>
 #include <set>
 
@@ -25,8 +26,8 @@ public:
     PerfSource(PerfDriver & driver,
                Child & child,
                sem_t & senderSem,
-               sem_t & startProfile,
-               const std::set<int> & appTids,
+               std::function<void()> profilingStartedCallback,
+               std::set<int> appTids,
                FtraceDriver & ftraceDriver,
                bool enableOnCommandExec,
                ICpuInfo & cpuInfo);
@@ -35,10 +36,10 @@ public:
     virtual void run() override;
     virtual void interrupt() override;
     virtual bool isDone() override;
-    virtual void write(ISender * sender) override;
+    virtual void write(ISender & sender) override;
 
 private:
-    bool handleUEvent(const uint64_t currTime);
+    bool handleUEvent(uint64_t currTime);
     bool handleCpuOnline(uint64_t currTime, unsigned cpu);
     bool handleCpuOffline(uint64_t currTime, unsigned cpu);
 
@@ -52,7 +53,7 @@ private:
     std::unique_ptr<PerfAttrsBuffer> mAttrsBuffer;
     std::unique_ptr<PerfAttrsBuffer> mProcBuffer;
     sem_t & mSenderSem;
-    sem_t & mStartProfile;
+    std::function<void()> mProfilingStartedCallback;
     int mInterruptFd;
     bool mIsDone;
     FtraceDriver & mFtraceDriver;

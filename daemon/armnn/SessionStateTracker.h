@@ -3,37 +3,21 @@
 #ifndef INCLUDE_ARMNN_SESSION_STATE_TRACKER_H
 #define INCLUDE_ARMNN_SESSION_STATE_TRACKER_H
 
-#include "armnn/IPacketConsumer.h"
-#include "armnn/IGlobalState.h"
+#include "armnn/ICounterConsumer.h"
 #include "armnn/ICounterDirectoryConsumer.h"
+#include "armnn/IGlobalState.h"
+#include "armnn/IPacketConsumer.h"
 #include "armnn/IPeriodicCounterSelectionConsumer.h"
 #include "armnn/ISessionPacketSender.h"
 
 #include <map>
 #include <mutex>
 #include <set>
+#include <tuple>
 #include <vector>
 
 namespace armnn {
-    /** Tuple of (key, core) where 'key' is the APC counter key identifier, core is the core number associated with the counter */
-    struct ApcCounterKeyAndCoreNumber {
-        int key;
-        unsigned core;
-
-        inline bool operator==(ApcCounterKeyAndCoreNumber that) const
-        {
-            return (key == that.key) && (core == that.core);
-        }
-    };
-
-    class IGlobalCounterConsumer {
-    public:
-        virtual ~IGlobalCounterConsumer() = default;
-
-        virtual bool consumerCounterValue(std::uint64_t timestamp,
-                                          ApcCounterKeyAndCoreNumber keyAndCore,
-                                          std::uint32_t counterValue) = 0;
-    };
+    using EventUIDKeyAndCoreMap = std::map<std::uint16_t, ApcCounterKeyAndCoreNumber>;
 
     /**
      * This class manages the state for each connected Session
@@ -41,14 +25,8 @@ namespace armnn {
     class SessionStateTracker : public IPacketConsumer {
     public:
         SessionStateTracker(IGlobalState & globalState,
-                            IGlobalCounterConsumer & globalCounterConsumer,
-                            ISessionPacketSender & sendQueue);
-
-        virtual ~SessionStateTracker();
-        SessionStateTracker(const SessionStateTracker &) = delete;
-        SessionStateTracker & operator=(const SessionStateTracker & rhs) = delete;
-        SessionStateTracker(SessionStateTracker &&) = delete;
-        SessionStateTracker & operator=(SessionStateTracker && rhs) = delete;
+                            ICounterConsumer & counterConsumer,
+                            std::unique_ptr<ISessionPacketSender> sendQueue);
 
         // see ICounterDirectoryConsumer
         virtual bool onCounterDirectory(std::map<std::uint16_t, DeviceRecord> devices,
@@ -66,17 +44,6 @@ namespace armnn {
                                             std::uint64_t timestamp,
                                             std::uint64_t objectRef,
                                             std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
-        /**
-         * Request that the provided events are enabled.
-         *
-         * The map's key is the global id string of the event.
-         * The mapped value is the APC key used to identify that counter
-         *
-         * @param eventIdAndKey
-         * @return True on success, false on error
-         */
-        bool doRequestEnableEvents(const std::map<EventId, int> & eventIdAndKey);
-
         /** Start capturing data */
         bool doEnableCapture();
 
@@ -96,43 +63,26 @@ namespace armnn {
             std::uint16_t uid;
         };
 
-        /**
-         * Utility method to handle update to requested/active event set
-         *
-         * @param newRequestedEventUIDs
-         * @param newActiveEventUIDs
-         * @param captureIsActive
-         * @param key
-         * @param cat
-         * @param event
-         * @return True if updated correctly, false on error
-         */
-        static bool insertRequested(std::map<std::uint16_t, ApcCounterKeyAndCoreNumber> & newRequestedEventUIDs,
-                                    std::set<std::uint16_t> & newActiveEventUIDs,
-                                    bool captureIsActive,
-                                    int key,
-                                    const CategoryRecord & cat,
-                                    const EventRecord & event);
+        bool sendCounterSelection();
 
-        static EventId makeEventId(
-            const std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> & deviceMap,
-            const std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> & counterSetMap,
-            const ICounterDirectoryConsumer::CategoryRecord & category,
-            const ICounterDirectoryConsumer::EventRecord & record);
-
-        void updateGlobalWithNewCategories(
+        void updateGlobalWithAvailableEvents(
             const std::map<EventId, CategoryIndexEventUID> & newGlobalIdToCategoryAndEvent,
             const std::vector<CategoryRecord> & categories,
             const std::map<std::uint16_t, DeviceRecord> & devicesById,
             const std::map<std::uint16_t, CounterSetRecord> & counterSetsById);
 
+        static EventUIDKeyAndCoreMap formRequestedUIDs(
+            const EventKeyMap & eventIdsToKey,
+            const std::map<armnn::EventId, CategoryIndexEventUID> & eventIdToCategoryAndEvent,
+            const std::vector<CategoryRecord> & availableCategories);
+
         // global state object
         IGlobalState & globalState;
 
-        IGlobalCounterConsumer & globalCounterConsumer;
+        ICounterConsumer & counterConsumer;
 
         // The sender for commands to target
-        ISessionPacketSender & sendQueue;
+        std::unique_ptr<ISessionPacketSender> sendQueue;
 
         // mutex to protect access/modification of maps
         std::mutex mutex;
@@ -150,6 +100,8 @@ namespace armnn {
 
         // active event UIDs
         std::set<std::uint16_t> activeEventUIDs;
+
+        bool captureIsActive;
     };
 }
 

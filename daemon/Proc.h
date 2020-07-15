@@ -4,18 +4,18 @@
 #define PROC_H
 
 #include <atomic>
-#include <stdint.h>
+#include <cstdint>
 
 class IPerfAttrsConsumer;
 class DynBuf;
 class FtraceDriver;
 
 bool readProcSysDependencies(uint64_t currTime,
-                             IPerfAttrsConsumer & attrsConsumer,
-                             DynBuf * const printb,
-                             DynBuf * const b1,
+                             IPerfAttrsConsumer & buffer,
+                             DynBuf * printb,
+                             DynBuf * b1,
                              FtraceDriver & ftraceDriver);
-bool readProcMaps(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
-bool readKallsyms(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & isDone);
+bool readProcMaps(uint64_t currTime, IPerfAttrsConsumer & buffer);
+bool readKallsyms(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & isDone);
 
 #endif // PROC_H

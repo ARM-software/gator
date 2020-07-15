@@ -5,10 +5,10 @@
 
 namespace lib {
     int pipe_cloexec(int pipefd[2]);
-    bool setNonblock(const int fd);
-    bool writeAll(const int fd, const void * const buf, const size_t pos);
-    bool readAll(const int fd, void * const buf, const size_t count);
-    bool skipAll(const int fd, const size_t count);
+    bool setNonblock(int fd);
+    bool writeAll(int fd, const void * buf, size_t pos);
+    bool readAll(int fd, void * buf, size_t count);
+    bool skipAll(int fd, size_t count);
 }
 
 #endif // INCLUDE_LIB_FILE_DESCRIPTOR_H

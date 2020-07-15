@@ -31,7 +31,7 @@ public:
     PerfEventGroupIdentifier(int cpuNumber);
 
     /** Constructor, for SPE events that have a core specific type */
-    PerfEventGroupIdentifier(const std::map<int, int> & cpuNumberToType);
+    PerfEventGroupIdentifier(const std::map<int, int> & cpuToTypeMap);
 
     /** Equality operator, are they the same group? */
     inline bool operator==(const PerfEventGroupIdentifier & that) const

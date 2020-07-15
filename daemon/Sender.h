@@ -5,16 +5,16 @@
 
 #include "ISender.h"
 
+#include <cstdio>
 #include <memory>
 #include <pthread.h>
-#include <stdio.h>
 
 class OlySocket;
 
 class Sender : public ISender {
 public:
     Sender(OlySocket * socket);
-    ~Sender();
+    ~Sender() override;
     void writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts,
                         ResponseType type,
                         bool ignoreLockErrors = false) override;

@@ -21,13 +21,14 @@
 
 #include <algorithm>
 #include <cinttypes>
+#include <csignal>
 #include <cstring>
-#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utility>
 
 #ifndef SCHED_RESET_ON_FORK
 #define SCHED_RESET_ON_FORK 0x40000000
@@ -49,13 +50,13 @@ static PerfBuffer::Config createPerfBufferConfig()
 PerfSource::PerfSource(PerfDriver & driver,
                        Child & child,
                        sem_t & senderSem,
-                       sem_t & startProfile,
-                       const std::set<int> & appTids,
+                       std::function<void()> profilingStartedCallback,
+                       std::set<int> appTids,
                        FtraceDriver & ftraceDriver,
                        bool enableOnCommandExec,
                        ICpuInfo & cpuInfo)
     : Source(child),
-      mSummary(1024 * 1024, &senderSem),
+      mSummary(1024 * 1024, senderSem),
       mCountersBuf(createPerfBufferConfig()),
       mCountersGroup(driver.getConfig(),
                      mCountersBuf.getDataBufferLength(),
@@ -70,12 +71,12 @@ PerfSource::PerfSource(PerfDriver & driver,
                      getTracepointId(SCHED_SWITCH)),
       mMonitor(),
       mUEvent(),
-      mAppTids(appTids),
+      mAppTids(std::move(appTids)),
       mDriver(driver),
       mAttrsBuffer(),
       mProcBuffer(),
       mSenderSem(senderSem),
-      mStartProfile(startProfile),
+      mProfilingStartedCallback(std::move(profilingStartedCallback)),
       mInterruptFd(-1),
       mIsDone(false),
       mFtraceDriver(ftraceDriver),
@@ -103,8 +104,8 @@ bool PerfSource::prepare()
     // MonotonicStarted has not yet been assigned!
     const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
 
-    mAttrsBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem));
-    mProcBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, &mSenderSem));
+    mAttrsBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
+    mProcBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
 
     // Reread cpuinfo since cores may have changed since startup
     mCpuInfo.updateIds(false);
@@ -176,14 +177,14 @@ bool PerfSource::prepare()
 }
 
 struct ProcThreadArgs {
-    PerfAttrsBuffer * mProcBuffer{nullptr};
-    uint64_t mCurrTime{0};
-    std::atomic_bool mIsDone{false};
+    PerfAttrsBuffer * mProcBuffer {nullptr};
+    uint64_t mCurrTime {0};
+    std::atomic_bool mIsDone {false};
 };
 
 static void * procFunc(void * arg)
 {
-    const ProcThreadArgs * const args = reinterpret_cast<const ProcThreadArgs *>(arg);
+    const auto * const args = reinterpret_cast<const ProcThreadArgs *>(arg);
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-proc"), 0, 0, 0);
 
@@ -204,7 +205,7 @@ static void * procFunc(void * arg)
     }
     args->mProcBuffer->commit(args->mCurrTime);
 
-    return NULL;
+    return nullptr;
 }
 
 static const char CPU_DEVPATH[] = "/devices/system/cpu/cpu";
@@ -261,7 +262,7 @@ void PerfSource::run()
         procThreadArgs.mProcBuffer = mProcBuffer.get();
         procThreadArgs.mCurrTime = currTime;
         procThreadArgs.mIsDone = false;
-        if (pthread_create(&procThread, NULL, procFunc, &procThreadArgs)) {
+        if (pthread_create(&procThread, nullptr, procFunc, &procThreadArgs) != 0) {
             logg.logError("pthread_create failed");
             handleException();
         }
@@ -289,7 +290,7 @@ void PerfSource::run()
                                                 mSenderSem);
 
     // start profiling
-    sem_post(&mStartProfile);
+    mProfilingStartedCallback();
 
     const uint64_t NO_RATE = ~0ULL;
     const uint64_t rate = gSessionData.mLiveRate > 0 && gSessionData.mSampleRate > 0 ? gSessionData.mLiveRate : NO_RATE;
@@ -297,7 +298,7 @@ void PerfSource::run()
     int timeout = rate != NO_RATE ? 0 : -1;
     while (gSessionData.mSessionIsActive) {
         // +1 for uevents, +1 for pipe
-        std::vector<struct epoll_event> events{mCpuInfo.getNumberOfCores() + 2};
+        std::vector<struct epoll_event> events {mCpuInfo.getNumberOfCores() + 2};
         int ready = mMonitor.wait(events.data(), events.size(), timeout);
         if (ready < 0) {
             logg.logError("Monitor::wait failed");
@@ -341,7 +342,7 @@ void PerfSource::run()
     }
 
     procThreadArgs.mIsDone = true;
-    pthread_join(procThread, NULL);
+    pthread_join(procThread, nullptr);
     mCountersGroup.stop();
     mAttrsBuffer->setDone();
     mProcBuffer->setDone();
@@ -474,7 +475,7 @@ bool PerfSource::isDone()
            && mCountersBuf.isEmpty();
 }
 
-void PerfSource::write(ISender * sender)
+void PerfSource::write(ISender & sender)
 {
     if (!mSummary.isDone()) {
         mSummary.write(sender);
@@ -486,13 +487,13 @@ void PerfSource::write(ISender * sender)
     if (!mProcBuffer->isDone()) {
         mProcBuffer->write(sender);
     }
-    if (!mCountersBuf.send(*sender)) {
+    if (!mCountersBuf.send(sender)) {
         logg.logError("PerfBuffer::send failed");
         handleException();
     }
     for (auto & syncThread : mSyncThreads) {
         if (!syncThread->complete()) {
-            syncThread->send(*sender);
+            syncThread->send(sender);
         }
     }
 }

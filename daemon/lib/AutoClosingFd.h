@@ -19,9 +19,9 @@ namespace lib {
         /** Constructor, take ownership of fd */
         inline AutoClosingFd(int fd) : fd(fd) {}
         /** Constructor, move operation */
-        inline AutoClosingFd(AutoClosingFd && that) : fd(-1) { std::swap(fd, that.fd); }
+        inline AutoClosingFd(AutoClosingFd && that) noexcept : fd(-1) { std::swap(fd, that.fd); }
         /** Move assignment */
-        inline AutoClosingFd & operator=(AutoClosingFd && that)
+        inline AutoClosingFd & operator=(AutoClosingFd && that) noexcept
         {
             AutoClosingFd destroyable;
             // destroyable takes ownership of fd, that gets -1
@@ -35,10 +35,7 @@ namespace lib {
         AutoClosingFd & operator=(const AutoClosingFd &) = delete;
 
         /** Destructor */
-        inline ~AutoClosingFd()
-        {
-            close();
-        }
+        inline ~AutoClosingFd() { close(); }
 
         /** Explicitly close the fd */
         inline void close()
@@ -50,11 +47,10 @@ namespace lib {
             }
         }
 
-
         /** Take ownership of new fd */
         inline void reset(int fd)
         {
-            AutoClosingFd that{fd};
+            AutoClosingFd that {fd};
             std::swap(this->fd, that.fd);
         }
 

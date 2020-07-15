@@ -2,10 +2,18 @@
 #pragma once
 
 #include "../Driver.h"
+#include "DriverSourceIpc.h"
 #include "GlobalState.h"
+#include "Session.h"
+#include "SessionStateTracker.h"
+#include "SocketAcceptor.h"
+#include "SocketIO.h"
+#include "ThreadManagementServer.h"
+
+#include <memory>
 
 namespace armnn {
-    class Driver : ::Driver {
+    class Driver : public ::Driver {
     public:
         Driver();
 
@@ -19,13 +27,28 @@ namespace armnn {
         virtual void setupCounter(Counter & counter) override;
 
         // Emits available counters
-        virtual int writeCounters(mxml_node_t * const root) const override;
+        virtual int writeCounters(mxml_node_t * root) const override;
 
         // Emits possible dynamically generated events/counters
-        virtual void writeEvents(mxml_node_t * const) const override;
+        void writeEvents(mxml_node_t * const /*unused*/) const override;
+
+        // Called before the gator-child process is forked
+        void preChildFork() override { mDriverSourceIpc.prepareForFork(); }
+
+        // Called in the parent after the gator-child process exits
+        void postChildExitInParent() override { mDriverSourceIpc.onChildDeath(); }
+
+        ICaptureController & getCaptureController() { return mDriverSourceIpc; }
 
     private:
-        GlobalState globalState;
+        GlobalState mGlobalState;
+        SocketIO mAcceptingSocket;
+        DriverSourceIpc mDriverSourceIpc;
+
+        SessionSupplier createSession = [&](std::unique_ptr<SocketIO> connection) {
+            return Session::create(std::move(connection), mGlobalState, mDriverSourceIpc);
+        };
+        ThreadManagementServer mSessionManager;
     };
 
 }

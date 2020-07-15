@@ -25,11 +25,7 @@ namespace lib {
     void * mmap(void * addr, size_t length, int prot, int flags, int fd, off_t offset);
     int munmap(void * addr, size_t length);
 
-    int perf_event_open(struct perf_event_attr * const attr,
-                        const pid_t pid,
-                        const int cpu,
-                        const int group_fd,
-                        const unsigned long flags);
+    int perf_event_open(struct perf_event_attr * attr, pid_t pid, int cpu, int group_fd, unsigned long flags);
 
     int accept4(int sockfd, struct sockaddr * addr, socklen_t * addrlen, int flags);
 

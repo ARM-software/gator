@@ -11,12 +11,13 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 #include "lib/Format.h"
+#include "xml/EventsXML.h"
 #include "xml/MxmlUtils.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <dirent.h>
 #include <sstream>
-#include <stdlib.h>
-#include <string.h>
 
 static const char TAG_CONFIGURATION[] = "configuration";
 
@@ -44,7 +45,8 @@ namespace configuration_xml {
                            int cores,
                            int mIndex,
                            bool printWarningIfUnclaimed,
-                           lib::Span<Driver * const> drivers);
+                           lib::Span<Driver * const> drivers,
+                           const std::map<std::string, int> & counterToEventMap);
 
     Contents getConfigurationXML(lib::Span<const GatorCpu> clusters)
     {
@@ -52,7 +54,7 @@ namespace configuration_xml {
         {
             char path[PATH_MAX];
             getPath(path, sizeof(path));
-            std::unique_ptr<char, void (*)(void *)> configurationXML{readFromDisk(path), &free};
+            std::unique_ptr<char, void (*)(void *)> configurationXML {readFromDisk(path), &free};
 
             if (configurationXML) {
                 ConfigurationXMLParser parser;
@@ -125,13 +127,15 @@ namespace configuration_xml {
         std::ostringstream error;
 
         // disable all counters prior to parsing the configuration xml
-        for (int i = 0; i < MAX_PERFORMANCE_COUNTERS; i++) {
-            gSessionData.mCounters[i].setEnabled(false);
+        for (auto & mCounter : gSessionData.mCounters) {
+            mCounter.setEnabled(false);
         }
-
+        const std::map<std::string, int> counterToEventMap =
+            events_xml::getCounterToEventMap(drivers.getAllConst(),
+                                             drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         //Add counter
         int index = 0;
-        for (CounterConfiguration cc : counterConfigurations) {
+        for (const CounterConfiguration & cc : counterConfigurations) {
             if (index >= MAX_PERFORMANCE_COUNTERS) {
                 error << "Only "                                 //
                       << MAX_PERFORMANCE_COUNTERS                //
@@ -146,7 +150,8 @@ namespace configuration_xml {
                                           cc.cores,
                                           index,
                                           printWarningIfUnclaimed,
-                                          drivers.getAll());
+                                          drivers.getAll(),
+                                          counterToEventMap);
             if (added) {
                 // update counter index
                 index++;
@@ -164,13 +169,13 @@ namespace configuration_xml {
         (void) defaults_xml_len;
 
         // Resolve ${cluster}
-        mxml_node_t * xml = mxmlLoadString(NULL, reinterpret_cast<const char *>(defaults_xml), MXML_NO_CALLBACK);
-        for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND),
-                         *next = mxmlFindElement(node, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND);
-             node != NULL;
-             node = next, next = mxmlFindElement(node, xml, TAG_CONFIGURATION, NULL, NULL, MXML_DESCEND)) {
+        mxml_node_t * xml = mxmlLoadString(nullptr, reinterpret_cast<const char *>(defaults_xml), MXML_NO_CALLBACK);
+        for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND),
+                         *next = mxmlFindElement(node, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND);
+             node != nullptr;
+             node = next, next = mxmlFindElement(node, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND)) {
             const char * counter = mxmlElementGetAttr(node, ATTR_COUNTER);
-            if (counter != NULL && strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0) {
+            if (counter != nullptr && strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0) {
                 for (const GatorCpu & cluster : clusters) {
                     mxml_node_t * n = mxmlNewElement(mxmlGetParent(node), TAG_CONFIGURATION);
                     copyMxmlElementAttrs(n, node);
@@ -189,7 +194,7 @@ namespace configuration_xml {
 
     void getPath(char * path, size_t n)
     {
-        if (gSessionData.mConfigurationXMLPath) {
+        if (gSessionData.mConfigurationXMLPath != nullptr) {
             strncpy(path, gSessionData.mConfigurationXMLPath, n - 1);
         }
         else {
@@ -219,15 +224,15 @@ namespace configuration_xml {
                            int cores,
                            int mIndex,
                            bool printWarningIfUnclaimed,
-                           lib::Span<Driver * const> drivers)
+                           lib::Span<Driver * const> drivers,
+                           const std::map<std::string, int> & counterToEventMap)
     {
 
-        const auto end = gSessionData.globalCounterToEventMap.end();
-        const auto it = std::find_if(gSessionData.globalCounterToEventMap.begin(),
-                                     end,
-                                     [&counterName](const std::pair<std::string, int> & pair) {
-                                         return strcasecmp(pair.first.c_str(), counterName) == 0;
-                                     });
+        const auto end = counterToEventMap.end();
+        const auto it =
+            std::find_if(counterToEventMap.begin(), end, [&counterName](const std::pair<std::string, int> & pair) {
+                return strcasecmp(pair.first.c_str(), counterName) == 0;
+            });
         const bool hasEventsXmlCounter = (it != end);
         const int counterEvent = (hasEventsXmlCounter ? it->second : -1);
         // read attributes
@@ -250,7 +255,7 @@ namespace configuration_xml {
         }
         // the counter is not in events.xml. This usually means it is a PMU slot counter, but since
         // the user has not specified an event code, this is probably incorrect.
-        else if (strcasestr(counterName, "_cnt")) {
+        else if (strcasestr(counterName, "_cnt") != nullptr) {
             logg.logWarning(
                 "Counter '%s' does not have an event code specified, PMU slot counters require an event code",
                 counterName);
@@ -280,8 +285,9 @@ namespace configuration_xml {
         }
         // If no driver is associated with the counter, disable it
         if (counter.getDriver() == nullptr) {
-            if (printWarningIfUnclaimed)
+            if (printWarningIfUnclaimed) {
                 logg.logWarning("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
+            }
             counter.setEnabled(false);
         }
         return counter.isEnabled();

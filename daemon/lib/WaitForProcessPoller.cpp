@@ -38,7 +38,7 @@ namespace {
                 const auto cmdline = lib::readFileContents(cmdlineFile);
 
                 // cmdline is separated by nulls so use c_str() to extract the command name
-                const std::string command{cmdline.c_str()};
+                const std::string command {cmdline.c_str()}; // NOLINT(readability-redundant-string-cstr)
                 if (!command.empty()) {
                     logg.logMessage("Wait for Process: Scanning '%s': cmdline[0] = '%s'",
                                     path.path().c_str(),
@@ -96,7 +96,7 @@ WaitForProcessPoller::WaitForProcessPoller(const char * commandName)
 bool WaitForProcessPoller::poll(std::set<int> & pids)
 {
     // poll
-    WaitForProcessPollerPass pass{mCommandName, mRealPath};
+    WaitForProcessPollerPass pass {mCommandName, mRealPath};
     ProcessPollerBase::poll(false, false, pass);
 
     const auto & detectedPids = pass.pids();

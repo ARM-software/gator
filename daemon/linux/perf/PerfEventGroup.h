@@ -87,8 +87,8 @@ public:
                                                    std::set<int> & tids,
                                                    OnlineEnabledState enabledState,
                                                    IPerfAttrsConsumer & attrsConsumer,
-                                                   std::function<bool(int)> addToMonitor,
-                                                   std::function<bool(int, int, bool)> addToBuffer);
+                                                   const std::function<bool(int)> & addToMonitor,
+                                                   const std::function<bool(int, int, bool)> & addToBuffer);
 
     bool offlineCPU(int cpu);
     void start();

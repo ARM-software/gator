@@ -102,9 +102,9 @@ struct PmuXML {
     static const char * const DEFAULT_XML;
     static const unsigned DEFAULT_XML_LEN;
 
-    const GatorCpu * findCpuByName(const char * const name) const;
-    const GatorCpu * findCpuById(const int cpuid) const;
-    const UncorePmu * findUncoreByName(const char * const name) const;
+    const GatorCpu * findCpuByName(const char * name) const;
+    const GatorCpu * findCpuById(int cpuid) const;
+    const UncorePmu * findUncoreByName(const char * name) const;
 
     std::vector<GatorCpu> cpus;
     std::vector<UncorePmu> uncores;

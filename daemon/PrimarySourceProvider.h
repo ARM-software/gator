@@ -4,6 +4,7 @@
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <semaphore.h>
 #include <set>
@@ -31,7 +32,8 @@ public:
      */
     static std::unique_ptr<PrimarySourceProvider> detect(bool systemWide,
                                                          PmuXML && pmuXml,
-                                                         const char * maliFamilyName);
+                                                         const char * maliFamilyName,
+                                                         bool disableCpuOnlining);
 
     virtual ~PrimarySourceProvider();
 
@@ -47,17 +49,8 @@ public:
     /** Return true if the primary source is responsible for capturing tracepoints */
     virtual bool supportsTracepointCapture() const = 0;
 
-    /** Return true if the primary source is responsible for capturing mali counters */
-    virtual bool supportsMaliCapture() const = 0;
-
-    /** Return true if the sample rate is supported for mali counters */
-    virtual bool supportsMaliCaptureSampleRate(int rate) const = 0;
-
     /** Return true if the source supports setting more than one EBS counter */
     virtual bool supportsMultiEbs() const = 0;
-
-    /** Return true if the target is capturing mali counters */
-    virtual bool isCapturingMaliCounters() const = 0;
 
     /** Return list of additional polled drivers required for source */
     virtual const std::vector<PolledDriver *> & getAdditionalPolledDrivers() const;
@@ -74,7 +67,7 @@ public:
     /** Create the primary Source instance */
     virtual std::unique_ptr<Source> createPrimarySource(Child & child,
                                                         sem_t & senderSem,
-                                                        sem_t & startProfile,
+                                                        std::function<void()> profilingStartedCallback,
                                                         const std::set<int> & appTids,
                                                         FtraceDriver & ftraceDriver,
                                                         bool enableOnCommandExec) = 0;
@@ -83,7 +76,7 @@ public:
     virtual ICpuInfo & getCpuInfo() = 0;
 
 protected:
-    PrimarySourceProvider(const std::vector<PolledDriver *> & polledDrivers);
+    PrimarySourceProvider(std::vector<PolledDriver *> polledDrivers);
 
 private:
     std::vector<PolledDriver *> polledDrivers;

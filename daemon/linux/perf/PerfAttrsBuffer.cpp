@@ -10,12 +10,12 @@
 
 #include <cstring>
 
-PerfAttrsBuffer::PerfAttrsBuffer(const int size, sem_t * const readerSem)
+PerfAttrsBuffer::PerfAttrsBuffer(const int size, sem_t & readerSem)
     : buffer(0 /* ignored */, FrameType::PERF_ATTRS, size, readerSem)
 {
 }
 
-void PerfAttrsBuffer::write(ISender * const sender)
+void PerfAttrsBuffer::write(ISender & sender)
 {
     buffer.write(sender);
 }

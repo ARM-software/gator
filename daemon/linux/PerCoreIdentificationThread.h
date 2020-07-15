@@ -11,9 +11,9 @@
 
 class PerCoreIdentificationThread {
 public:
-    static constexpr unsigned INVALID_CORE_ID = ~0u;
-    static constexpr unsigned INVALID_PACKAGE_ID = ~0u;
-    static constexpr std::uint64_t INVALID_MIDR_EL1 = ~0ull;
+    static constexpr unsigned INVALID_CORE_ID = ~0U;
+    static constexpr unsigned INVALID_PACKAGE_ID = ~0U;
+    static constexpr std::uint64_t INVALID_MIDR_EL1 = ~0ULL;
 
     /**
      * Consumer function that takes sync event data:
@@ -21,7 +21,7 @@ public:
     using ConsumerFunction = std::function<void(unsigned /* cpu */,
                                                 unsigned /* core_id */,
                                                 unsigned /* physical_package_id */,
-                                                std::set<int> /* core_siblings */,
+                                                const std::set<int> & /* core_siblings */,
                                                 std::uint64_t /* midr_el1 */)>;
 
     /**

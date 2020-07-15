@@ -11,6 +11,7 @@
 #include "MidgardDriver.h"
 #include "PrimarySourceProvider.h"
 #include "TtraceDriver.h"
+#include "armnn/Driver.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfDriver.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
@@ -19,7 +20,9 @@
 
 class Drivers {
 public:
-    Drivers(bool systemWide, PmuXML && pmuXml);
+    Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining);
+
+    armnn::Driver & getArmnnDriver() { return mArmnnDriver; }
 
     MidgardDriver & getMidgard() { return mMidgard; }
 
@@ -59,6 +62,7 @@ private:
     TtraceDriver mTtraceDriver;
     ExternalDriver mExternalDriver;
     CCNDriver mCcnDriver;
+    armnn::Driver mArmnnDriver;
     std::vector<Driver *> all;
     std::vector<PolledDriver *> allPolled;
 

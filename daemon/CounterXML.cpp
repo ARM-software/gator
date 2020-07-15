@@ -10,17 +10,14 @@
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <dirent.h>
-#include <stdlib.h>
-#include <string.h>
 
 static mxml_node_t * getTree(bool supportsMultiEbs, lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo)
 {
-    mxml_node_t * xml;
-    mxml_node_t * counters;
-
-    xml = mxmlNewXML("1.0");
-    counters = mxmlNewElement(xml, "counters");
+    auto * const xml = mxmlNewXML("1.0");
+    auto * const counters = mxmlNewElement(xml, "counters");
 
     if (supportsMultiEbs) {
         mxmlElementSetAttr(counters, "supports-multiple-ebs", "yes");
@@ -62,9 +59,8 @@ namespace counters_xml {
                                                    lib::Span<const Driver * const> drivers,
                                                    const ICpuInfo & cpuInfo)
     {
-        char * xml_string;
         mxml_node_t * xml = getTree(supportsMultiEbs, drivers, cpuInfo);
-        xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
+        auto * const xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
         mxmlDelete(xml);
         return {xml_string, &::free};
     }

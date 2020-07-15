@@ -7,13 +7,13 @@
 
 namespace lnx {
     namespace {
-        static const char PROC_STAT_SCANF_FORMAT_BEFORE_COMM[] = "%d (";
-        static const char PROC_STAT_SCANF_FORMAT_AFTER_COMM[] =
+        const char PROC_STAT_SCANF_FORMAT_BEFORE_COMM[] = "%d (";
+        const char PROC_STAT_SCANF_FORMAT_AFTER_COMM[] =
             ") %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %llu %lu %ld %lu %lu %lu %lu %lu "
             "%lu %lu "
             "%lu %lu %lu %lu %lu %lu %d %d %u %u %llu %lu %ld";
-        static constexpr const int PROC_STAT_SCANF_BEFORE_COMM_FIELD_COUNT = 1;
-        static constexpr const int PROC_STAT_SCANF_AFTER_COMM_FIELD_COUNT = 42;
+        constexpr const int PROC_STAT_SCANF_BEFORE_COMM_FIELD_COUNT = 1;
+        constexpr const int PROC_STAT_SCANF_AFTER_COMM_FIELD_COUNT = 42;
     }
 
     bool ProcPidStatFileRecord::parseStatFile(ProcPidStatFileRecord & result, const char * stat_contents)

@@ -9,12 +9,13 @@
 #include "linux/CoreOnliner.h"
 
 #include <cerrno>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
-#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <utility>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -27,7 +28,11 @@
 PerCoreIdentificationThread::PerCoreIdentificationThread(bool ignoreOffline,
                                                          unsigned cpu,
                                                          ConsumerFunction consumerFunction)
-    : thread(), consumerFunction(consumerFunction), terminatedFlag(false), cpu(cpu), ignoreOffline(ignoreOffline)
+    : thread(),
+      consumerFunction(std::move(consumerFunction)),
+      terminatedFlag(false),
+      cpu(cpu),
+      ignoreOffline(ignoreOffline)
 {
     thread = std::thread(launch, this);
 }
@@ -65,17 +70,6 @@ bool PerCoreIdentificationThread::configureAffinity()
     if (!affinitySucceeded) {
         logg.logMessage("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, strerror(errno));
         return false;
-    }
-
-    // change thread priority
-    struct sched_param param;
-    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    if (sched_setscheduler(tid, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
-        logg.logMessage("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
-        param.sched_priority = sched_get_priority_max(SCHED_OTHER);
-        if (sched_setscheduler(tid, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
-            logg.logMessage("sched_setscheduler failed for %u: %d (%s)", cpu, errno, strerror(errno));
-        }
     }
 
     // sched_setaffinity only updates the CPU mask associated with the thread, it doesn't do the migration

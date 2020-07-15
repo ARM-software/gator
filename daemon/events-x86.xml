@@ -1,0 +1,14 @@
+<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
+
+  <counter_set name="X86_cnt" count="99"/><!-- ? -->
+  <category name="X86" counter_set="X86_cnt" per_cpu="yes" supports_event_based_sampling="yes">
+    <event counter="X86_ccnt" event="0x3c" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <!-- Intel PerfMon, used on Core and later from perf_event_intel.c -->
+    <event event="0xc0" title="Instruction" name="Executed" description="Instruction architecturally executed"/>
+    <event event="0x4f2e" title="Cache" name="Data access" description="Memory Read or Write operation that causes a cache access to at least the level of data or unified cache closest to the processor"/>
+    <event event="0x412e" title="Cache" name="Data refill" description="Memory Read or Write operation that causes a refill of at least the level of data or unified cache closest to the processor"/>
+    <event event="0xc4" title="Branch" name="PC change" description="Software change of the Program Counter, except by an exception, architecturally executed"/>
+    <event event="0xc5" title="Branch" name="Mispredicted" description="Branch mispredicted or not predicted"/>
+    <event event="0x13c" title="PERF_COUNT" name="BUS_CYCLES" description="Intel PERF_COUNT_HW_BUS_CYCLES"/>
+    <event event="0x300" title="PERF_COUNT" name="REF_CPU_CYCLES" description="Intel PERF_COUNT_HW_REF_CPU_CYCLES"/>
+  </category>

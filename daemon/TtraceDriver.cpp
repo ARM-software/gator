@@ -15,7 +15,6 @@
 class TtraceCounter : public DriverCounter {
 public:
     TtraceCounter(DriverCounter * next, const char * name, int flag);
-    ~TtraceCounter();
 
     int getFlag() const { return mFlag; }
 
@@ -33,14 +32,10 @@ TtraceCounter::TtraceCounter(DriverCounter * next, const char * name, int flag) 
 {
 }
 
-TtraceCounter::~TtraceCounter() {}
-
 TtraceDriver::TtraceDriver(const FtraceDriver & ftraceDriver)
     : SimpleDriver("Ttrace"), mSupported(false), mFtraceDriver(ftraceDriver)
 {
 }
-
-TtraceDriver::~TtraceDriver() {}
 
 void TtraceDriver::readEvents(mxml_node_t * const xml)
 {
@@ -58,12 +53,12 @@ void TtraceDriver::readEvents(mxml_node_t * const xml)
 
     mxml_node_t * node = xml;
     while (true) {
-        node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
-        if (node == NULL) {
+        node = mxmlFindElement(node, xml, "event", nullptr, nullptr, MXML_DESCEND);
+        if (node == nullptr) {
             break;
         }
         const char * counter = mxmlElementGetAttr(node, "counter");
-        if (counter == NULL) {
+        if (counter == nullptr) {
             continue;
         }
 
@@ -72,7 +67,7 @@ void TtraceDriver::readEvents(mxml_node_t * const xml)
         }
 
         const char * flagStr = mxmlElementGetAttr(node, "flag");
-        if (flagStr == NULL) {
+        if (flagStr == nullptr) {
             logg.logError("The ttrace counter %s is missing the required flag attribute", counter);
             handleException();
         }
@@ -99,8 +94,8 @@ void TtraceDriver::setTtrace(const int flags)
         handleException();
     }
 
-    uint64_t * const buf =
-        static_cast<uint64_t *>(mmap(NULL, sizeof(uint64_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+    auto * const buf =
+        static_cast<uint64_t *>(mmap(nullptr, sizeof(uint64_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
     if (buf == MAP_FAILED) {
         logg.logError("mmap failed");
         handleException();
@@ -119,7 +114,7 @@ void TtraceDriver::start()
     }
 
     int flags = 0;
-    for (TtraceCounter * counter = static_cast<TtraceCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<TtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<TtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;

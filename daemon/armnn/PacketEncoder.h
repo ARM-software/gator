@@ -4,32 +4,35 @@
 #define ARMNN_PACKETENCODER_H_
 #include "ByteOrder.h"
 #include "IEncoder.h"
-#include "PacketUtilityModels.h"
 #include "PacketUtility.h"
+#include "PacketUtilityModels.h"
 
+#include <map>
 #include <set>
 #include <vector>
-#include <map>
 
 namespace armnn {
     class PacketEncoder : public IEncoder {
     public:
         PacketEncoder(ByteOrder byteOrder);
 
-        std::vector<std::uint8_t> encodePeriodicCounterSelectionRequest(std::uint32_t period,
-                                                                        const std::set<std::uint16_t> & eventUids) override;
-        std::vector<std::uint8_t> encodePerJobCounterSelectionRequest(std::uint64_t objectId,
-                                                                      const std::set<std::uint16_t> & eventUids) override;
+        std::vector<std::uint8_t> encodePeriodicCounterSelectionRequest(
+            std::uint32_t period,
+            const std::set<std::uint16_t> & eventUids) override;
+        std::vector<std::uint8_t> encodePerJobCounterSelectionRequest(
+            std::uint64_t objectId,
+            const std::set<std::uint16_t> & eventUids) override;
         std::vector<std::uint8_t> encodeConnectionAcknowledge() override;
         std::vector<std::uint8_t> encodeCounterDirectoryRequest() override;
         /**
-         *Currently support 1.x.x version of packet decoders only.
+         * Currently support 1.x.x version of packet decoders only.
          */
-        static bool isValidPacketVersions(std::vector<PacketVersionTable> pktVersionTable);
+        static bool isValidPacketVersions(const std::vector<PacketVersionTable> & pktVersionTable);
+
     private:
         ByteOrder byteOrder;
-        void appendHeader(const std::uint32_t packetIdentifier,
-                          const std::uint32_t dataLength,
+        void appendHeader(std::uint32_t packetIdentifier,
+                          std::uint32_t dataLength,
                           std::vector<std::uint8_t> & payload);
     };
 

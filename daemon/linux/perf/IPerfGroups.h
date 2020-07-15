@@ -33,7 +33,7 @@ public:
                      const Attr & attr,
                      bool hasAuxData = false) = 0;
 
-    virtual void addGroupLeader(const uint64_t timestamp,
+    virtual void addGroupLeader(uint64_t timestamp,
                                 IPerfAttrsConsumer & attrsConsumer,
                                 const PerfEventGroupIdentifier & groupIdentifier) = 0;
 

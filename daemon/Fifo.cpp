@@ -4,7 +4,7 @@
 
 #include "Logging.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 // bufferSize is the amount of data to be filled
 // singleBufferSize is the maximum size that may be filled during a single write
@@ -26,7 +26,7 @@ Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t * readerSem)
         handleException();
     }
 
-    if (sem_init(&mWaitForSpaceSem, 0, 0)) {
+    if (sem_init(&mWaitForSpaceSem, 0, 0) != 0) {
         logg.logError("sem_init() failed");
         handleException();
     }
@@ -122,12 +122,12 @@ char * Fifo::read(int * const length)
 {
     // wait for data
     if (isEmpty() && !mEnd) {
-        return NULL;
+        return nullptr;
     }
 
     // obtain the length
     do {
-        mReadCommit = mRaggedEnd ? mRaggedEnd : mWrite;
+        mReadCommit = mRaggedEnd != 0 ? mRaggedEnd : mWrite;
         *length = mReadCommit - mRead;
     } while (*length < 0); // plugs race condition without using semaphores
 

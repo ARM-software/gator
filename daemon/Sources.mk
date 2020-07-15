@@ -51,19 +51,20 @@ GATORD_CXX_SRC_FILES := \
     armnn/CounterDirectoryDecoder.cpp \
     armnn/CounterDirectoryStateUtils.cpp \
     armnn/Driver.cpp \
+    armnn/DriverSourceIpc.cpp \
     armnn/GlobalState.cpp \
     armnn/PacketDecoderEncoderFactory.cpp \
     armnn/PacketUtility.cpp \
     armnn/SessionStateTracker.cpp \
     armnn/Session.cpp \
-    armnn/SessionThread.cpp \
     armnn/SessionPacketSender.cpp \
     armnn/SenderQueue.cpp \
     armnn/SenderThread.cpp \
     armnn/SocketAcceptor.cpp \
-    armnn/SocketAcceptorLoop.cpp \
-    armnn/SocketListener.cpp \
     armnn/SocketIO.cpp \
+    armnn/Source.cpp \
+    armnn/ThreadManagementServer.cpp \
+    armnn/TimestampCorrector.cpp \
     lib/Assert.cpp \
     lib/File.cpp \
     lib/FileDescriptor.cpp \

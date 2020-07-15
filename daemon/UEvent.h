@@ -16,7 +16,7 @@ public:
     ~UEvent();
 
     bool init();
-    bool read(UEventResult * const result);
+    bool read(UEventResult * result);
 
     int getFd() const { return mFd; }
 

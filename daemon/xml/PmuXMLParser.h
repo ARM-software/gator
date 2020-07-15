@@ -10,7 +10,7 @@
  * @param path The path to the file to parse
  * @return The parse result
  */
-PmuXML readPmuXml(const char * const path);
+PmuXML readPmuXml(const char * path);
 
 /**
  * Parse pmus.xml
@@ -18,6 +18,6 @@ PmuXML readPmuXml(const char * const path);
  * @param result [OUT] The object to modify with the parse results
  * @return The parse result (true if parsed successfully, false if not)
  */
-bool parseXml(const char * const xml, PmuXML & result);
+bool parseXml(const char * xml, PmuXML & pmuXml);
 
 #endif // PMUXML_PARSER_H

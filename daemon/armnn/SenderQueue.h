@@ -4,14 +4,12 @@
 
 #include "armnn/SocketIO.h"
 
-#include <queue>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <queue>
 
-namespace armnn
-{
-    class SenderQueue
-    {
+namespace armnn {
+    class SenderQueue {
     public:
         SenderQueue(SocketIO & connection);
         SenderQueue() = delete;

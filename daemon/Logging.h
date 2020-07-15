@@ -10,7 +10,6 @@
 class Logging {
 public:
     Logging();
-    ~Logging();
 
     void setDebug(bool debug) { mDebug = debug; }
 
@@ -30,7 +29,7 @@ public:
                                                          int line,
                                                          const char * fmt,
                                                          ...);
-    const char * getSetup() { return mSetup.getBuf() == NULL ? "" : mSetup.getBuf(); }
+    const char * getSetup() { return mSetup.getBuf() == nullptr ? "" : mSetup.getBuf(); }
 
 #define logMessage(...) _logMessage(__func__, __FILE__, __LINE__, __VA_ARGS__)
     __attribute__((format(printf, 5, 6))) void _logMessage(const char * function,

@@ -9,16 +9,16 @@
 #include "lib/File.h"
 
 #include <algorithm>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
+#include <climits>
+#include <cstdlib>
+#include <cstring>
 #include <unistd.h>
 
 Sender::Sender(OlySocket * socket)
     : mDataSocket(socket), mDataFile(nullptr, fclose), mDataFileName(nullptr), mSendMutex()
 {
     // Set up the socket connection
-    if (socket) {
+    if (socket != nullptr) {
         char streamline[64] = {0};
         mDataSocket = socket;
 
@@ -42,7 +42,7 @@ Sender::Sender(OlySocket * socket)
 
     pthread_mutexattr_t attr;
     if (pthread_mutexattr_init(&attr) != 0 || pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0 ||
-        pthread_mutex_init(&mSendMutex, &attr) != 0 || pthread_mutexattr_destroy(&attr) != 0 || false) {
+        pthread_mutex_init(&mSendMutex, &attr) != 0 || pthread_mutexattr_destroy(&attr) != 0) {
         logg.logError("Unable to setup mutex");
         handleException();
     }
@@ -51,15 +51,15 @@ Sender::Sender(OlySocket * socket)
 Sender::~Sender()
 {
     // Just close it as the client socket is on the stack
-    if (mDataSocket != NULL) {
+    if (mDataSocket != nullptr) {
         mDataSocket->closeSocket();
-        mDataSocket = NULL;
+        mDataSocket = nullptr;
     }
 }
 
 void Sender::createDataFile(const char * apcDir)
 {
-    if (apcDir == NULL) {
+    if (apcDir == nullptr) {
         return;
     }
 
@@ -104,7 +104,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
     }
 
     // Send data over the socket connection
-    if (mDataSocket) {
+    if (mDataSocket != nullptr) {
         // Start alarm
         const int alarmDuration = 8;
         alarm(alarmDuration);

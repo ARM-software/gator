@@ -33,11 +33,8 @@ static sensors_subfeature_type getInput(const sensors_feature_type type)
 
 class HwmonCounter : public DriverCounter {
 public:
-    HwmonCounter(DriverCounter * next,
-                 char * const name,
-                 const sensors_chip_name * chip,
-                 const sensors_feature * feature);
-    ~HwmonCounter();
+    HwmonCounter(DriverCounter * next, char * name, const sensors_chip_name * chip, const sensors_feature * feature);
+    ~HwmonCounter() override;
 
     const char * getLabel() const { return mLabel; }
     const char * getTitle() const { return mTitle; }
@@ -47,7 +44,7 @@ public:
     const char * getUnit() const { return mUnit; }
     double getMultiplier() const { return mMultiplier; }
 
-    int64_t read();
+    int64_t read() override;
 
 private:
     void init(const sensors_chip_name * chip, const sensors_feature * feature);
@@ -151,7 +148,7 @@ HwmonCounter::HwmonCounter(DriverCounter * next,
             handleException();
     }
 
-    for (HwmonCounter * counter = static_cast<HwmonCounter *>(next); counter != NULL;
+    for (auto * counter = static_cast<HwmonCounter *>(next); counter != nullptr;
          counter = static_cast<HwmonCounter *>(counter->getNext())) {
         if (strcmp(mLabel, counter->getLabel()) == 0 && strcmp(mTitle, counter->getTitle()) == 0) {
             mDuplicate = true;
@@ -174,7 +171,7 @@ int64_t HwmonCounter::read()
 
     // Keep in sync with the read check in HwmonDriver::readEvents
     subfeature = sensors_get_subfeature(mChip, mFeature, getInput(mFeature->type));
-    if (!subfeature) {
+    if (subfeature == nullptr) {
         logg.logError("No input value for hwmon sensor %s", mLabel);
         handleException();
     }
@@ -190,17 +187,19 @@ int64_t HwmonCounter::read()
     return result;
 }
 
-HwmonDriver::HwmonDriver() : PolledDriver("Hwmon") {}
+HwmonDriver::HwmonDriver() : PolledDriver("Hwmon")
+{
+}
 
 HwmonDriver::~HwmonDriver()
 {
     sensors_cleanup();
 }
 
-void HwmonDriver::readEvents(mxml_node_t * const)
+void HwmonDriver::readEvents(mxml_node_t * const /*unused*/)
 {
-    int err = sensors_init(NULL);
-    if (err) {
+    int err = sensors_init(nullptr);
+    if (err != 0) {
         logg.logSetup("Libsensors is disabled\nInitialize failed (%d)", err);
         return;
     }
@@ -208,25 +207,25 @@ void HwmonDriver::readEvents(mxml_node_t * const)
 
     int chip_nr = 0;
     const sensors_chip_name * chip;
-    while ((chip = sensors_get_detected_chips(NULL, &chip_nr))) {
+    while ((chip = sensors_get_detected_chips(nullptr, &chip_nr)) != nullptr) {
         int feature_nr = 0;
         const sensors_feature * feature;
-        while ((feature = sensors_get_features(chip, &feature_nr))) {
+        while ((feature = sensors_get_features(chip, &feature_nr)) != nullptr) {
             // Keep in sync with HwmonCounter::read
             // Can this counter be read?
             double value;
             const sensors_subfeature * const subfeature =
                 sensors_get_subfeature(chip, feature, getInput(feature->type));
-            if ((subfeature == NULL) || (sensors_get_value(chip, subfeature->number, &value) != 0)) {
+            if ((subfeature == nullptr) || (sensors_get_value(chip, subfeature->number, &value) != 0)) {
                 continue;
             }
 
             // Get the name of the counter
-            int len = sensors_snprintf_chip_name(NULL, 0, chip) + 1;
-            const std::unique_ptr<char[]> chip_name{new char[len]};
+            int len = sensors_snprintf_chip_name(nullptr, 0, chip) + 1;
+            const std::unique_ptr<char[]> chip_name {new char[len]};
             sensors_snprintf_chip_name(chip_name.get(), len, chip);
-            len = snprintf(NULL, 0, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number) + 1;
-            const std::unique_ptr<char[]> name{new char[len]};
+            len = snprintf(nullptr, 0, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number) + 1;
+            const std::unique_ptr<char[]> name {new char[len]};
             snprintf(name.get(), len, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number);
 
             setCounters(new HwmonCounter(getCounters(), name.get(), chip, feature));
@@ -240,7 +239,7 @@ void HwmonDriver::writeEvents(mxml_node_t * root) const
     mxmlElementSetAttr(root, "name", "Hardware Monitor");
 
     char buf[1024];
-    for (HwmonCounter * counter = static_cast<HwmonCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<HwmonCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<HwmonCounter *>(counter->getNext())) {
         mxml_node_t * node = mxmlNewElement(root, "event");
         mxmlElementSetAttr(node, "counter", counter->getName());
@@ -274,7 +273,7 @@ void HwmonDriver::writeEvents(mxml_node_t * root) const
 
 void HwmonDriver::start()
 {
-    for (DriverCounter * counter = getCounters(); counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = getCounters(); counter != nullptr; counter = counter->getNext()) {
         if (!counter->isEnabled()) {
             continue;
         }

@@ -19,8 +19,9 @@ namespace armnn {
          * @param eventUids The UIDs of events, which could be empty if nothing was selected in this session
          * @return True if request was successful, false if not
          */
-        virtual bool requestActivateCounterSelection(CaptureMode mode, std::uint32_t period,
-                                                     const std::set<std::uint16_t> &eventUids) = 0;
+        virtual bool requestActivateCounterSelection(CaptureMode mode,
+                                                     std::uint32_t period,
+                                                     const std::set<std::uint16_t> & eventUids) = 0;
         /**
          * Send a counter selection packet, disabling all counters
          *

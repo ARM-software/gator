@@ -9,16 +9,16 @@ class ExternalDriver : public SimpleDriver {
 public:
     ExternalDriver();
 
-    bool claimCounter(Counter & counter) const;
-    void resetCounters();
-    void setupCounter(Counter & counter);
+    bool claimCounter(Counter & counter) const override;
+    void resetCounters() override;
+    void setupCounter(Counter & counter) override;
 
     void start();
 
     void disconnect();
 
 private:
-    typedef SimpleDriver super;
+    using super = SimpleDriver;
 
     bool connect() const;
     void query() const;

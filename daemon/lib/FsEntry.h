@@ -131,7 +131,7 @@ namespace lib {
          *
          * @param   path    The path the entry should point to. If the path is not rooted, will use CWD.
          */
-        FsEntry(const std::string & path);
+        FsEntry(std::string path);
 
         /**
          * Constructor, for sub path
@@ -139,7 +139,7 @@ namespace lib {
          * @param   parent  The parent path
          * @param   path    The sub path string (any leading '/' is ignored)
          */
-        FsEntry(const FsEntry & parent, const std::string & path);
+        FsEntry(const FsEntry & parent, const std::string & n);
     };
 
     /**

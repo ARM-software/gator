@@ -2,8 +2,8 @@
 
 #include "ConfigurationXMLParser.h"
 
+#include <cstdlib>
 #include <memory>
-#include <stdlib.h>
 
 static const char TAG_CONFIGURATIONS[] = "configurations";
 static const char TAG_CONFIGURATION[] = "configuration";
@@ -22,9 +22,9 @@ static const char * ATTR_STORE_FILTER = "store-filter";
 static const char * ATTR_BRANCH_FILTER = "branch-filter";
 static const char * ATTR_MIN_LATENCY = "min-latency";
 
-ConfigurationXMLParser::ConfigurationXMLParser() : counterConfigurations(), speConfigurations() {}
-
-ConfigurationXMLParser::~ConfigurationXMLParser() {}
+ConfigurationXMLParser::ConfigurationXMLParser() : counterConfigurations(), speConfigurations()
+{
+}
 
 #define CONFIGURATION_REVISION 3
 int static configurationsTag(mxml_node_t * node)
@@ -32,7 +32,7 @@ int static configurationsTag(mxml_node_t * node)
     const char * revision_string;
 
     revision_string = mxmlElementGetAttr(node, ATTR_REVISION);
-    if (!revision_string) {
+    if (revision_string == nullptr) {
         return 1; //revision issue;
     }
 
@@ -61,14 +61,14 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     const char * eventStr = mxmlElementGetAttr(node, ATTR_EVENT);
     CounterConfiguration counter;
     counter.counterName = counterName;
-    if (mxmlElementGetAttr(node, ATTR_COUNT)) {
+    if (mxmlElementGetAttr(node, ATTR_COUNT) != nullptr) {
         if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), 10)) {
             logg.logError("Configuration XML count must be an integer");
             return PARSER_ERROR;
         }
         counter.count = count;
     }
-    if (mxmlElementGetAttr(node, ATTR_CORES)) {
+    if (mxmlElementGetAttr(node, ATTR_CORES) != nullptr) {
         if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), 10)) {
             logg.logError("Configuration XML cores must be an integer");
             return PARSER_ERROR;
@@ -76,7 +76,7 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
         counter.cores = cores;
     }
     int event;
-    if (eventStr) {
+    if (eventStr != nullptr) {
         if (!stringToInt(&event, eventStr, 16)) {
             logg.logError("Configuration XML event must be an integer");
             return PARSER_ERROR;
@@ -98,7 +98,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
     SpeConfiguration spe;
     spe.id = id;
     const char * attrEventFilter = mxmlElementGetAttr(node, ATTR_EVENT_FILTER);
-    if (attrEventFilter) {
+    if (attrEventFilter != nullptr) {
         char * end;
         errno = 0;
         uint64_t event_mask = strtoull(attrEventFilter, &end, 0);
@@ -110,14 +110,14 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
             logg.logError("Configuration XML spe event-filter must be in the range of unsigned long long");
             return PARSER_ERROR;
         }
-        else if (*end) {
+        else if (*end != 0) {
             logg.logError("Configuration XML spe event-filter must be an integer");
             return PARSER_ERROR;
         }
         spe.event_filter_mask = event_mask;
     }
     const char * attrLoadFilter = mxmlElementGetAttr(node, ATTR_LOAD_FILTER);
-    if (attrLoadFilter) {
+    if (attrLoadFilter != nullptr) {
         if (strcmp(attrLoadFilter, "true") == 0) {
             spe.ops.insert(SpeOps::LOAD); //set
         }
@@ -127,7 +127,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
         }
     }
     const char * attrStoreFilter = mxmlElementGetAttr(node, ATTR_STORE_FILTER);
-    if (attrStoreFilter) {
+    if (attrStoreFilter != nullptr) {
         if (strcmp(attrStoreFilter, "true") == 0) {
             spe.ops.insert(SpeOps::STORE); //set
         }
@@ -137,7 +137,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
         }
     }
     const char * attrBranchFilter = mxmlElementGetAttr(node, ATTR_BRANCH_FILTER);
-    if (attrBranchFilter) {
+    if (attrBranchFilter != nullptr) {
         if (strcmp(attrBranchFilter, "true") == 0) {
             spe.ops.insert(SpeOps::BRANCH); //set
         }
@@ -147,7 +147,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
         }
     }
     const char * attrMinLatency = mxmlElementGetAttr(node, ATTR_MIN_LATENCY);
-    if (attrMinLatency) {
+    if (attrMinLatency != nullptr) {
         if (!stringToInt(&minLatency, attrMinLatency, 10)) {
             logg.logError("Configuration XML spe min-latency must be an integer");
             return PARSER_ERROR;
@@ -163,20 +163,21 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
  */
 int ConfigurationXMLParser::parseConfigurationContent(const char * config_xml_content)
 {
-    std::unique_ptr<mxml_node_t, decltype(mxmlDelete) *> tree{
+    std::unique_ptr<mxml_node_t, decltype(mxmlDelete) *> tree {
         mxmlLoadString(nullptr, config_xml_content, MXML_NO_CALLBACK),
         &mxmlDelete};
     mxml_node_t * node = mxmlGetFirstChild(tree.get());
-    if (node) {
-        while (node && mxmlGetType(node) != MXML_ELEMENT)
-            node = mxmlFindElement(node, tree.get(), TAG_CONFIGURATIONS, ATTR_REVISION, NULL, MXML_NO_DESCEND);
+    if (node != nullptr) {
+        while ((node != nullptr) && mxmlGetType(node) != MXML_ELEMENT) {
+            node = mxmlFindElement(node, tree.get(), TAG_CONFIGURATIONS, ATTR_REVISION, nullptr, MXML_NO_DESCEND);
+        }
         int revision = configurationsTag(node);
         if (revision != 0) {
             return revision;
         }
 
         node = mxmlGetFirstChild(node);
-        while (node) {
+        while (node != nullptr) {
             if (mxmlGetType(node) != MXML_ELEMENT) {
                 node = mxmlWalkNext(node, tree.get(), MXML_NO_DESCEND);
                 continue;

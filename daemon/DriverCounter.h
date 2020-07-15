@@ -14,7 +14,7 @@ public:
      * @param next
      * @param name will be copied
      */
-    DriverCounter(DriverCounter * const next, const char * const name);
+    DriverCounter(DriverCounter * next, const char * name);
     virtual ~DriverCounter() = default;
 
     DriverCounter * getNext() const { return mNext; }

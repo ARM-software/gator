@@ -7,9 +7,10 @@
 #include <cstring>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <utility>
 
 PerfCpuOnlineMonitor::PerfCpuOnlineMonitor(NotificationCallback callback)
-    : thread(), onlineCores(), callback(callback), terminated(false)
+    : thread(), onlineCores(), callback(std::move(callback)), terminated(false)
 {
     thread = std::thread(launch, this);
 }

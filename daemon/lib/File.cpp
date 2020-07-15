@@ -8,14 +8,14 @@ namespace lib {
     FILE * fopen_cloexec(const char * path, const char * mode)
     {
         FILE * fh = fopen(path, mode);
-        if (fh == NULL) {
-            return NULL;
+        if (fh == nullptr) {
+            return nullptr;
         }
         int fd = fileno(fh);
         int fdf = fcntl(fd, F_GETFD);
         if ((fdf == -1) || (fcntl(fd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
             fclose(fh);
-            return NULL;
+            return nullptr;
         }
         return fh;
     }

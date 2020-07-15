@@ -8,39 +8,40 @@
 #include <algorithm>
 #include <sstream>
 
-static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:o:p:r:s:t:u:vw:x:A:C:E:F:N:P:Q:R:S:VX:Z:";
+static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:o:p:r:s:t:u:vw:x:A:C:E:F:N:O:P:Q:R:S:VX:Z:";
 
 static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                                 // OF NEW ITEMS.
-    {"allow-command", /*********/ no_argument, /****/ NULL, 'a'}, //
-    {"config-xml", /************/ required_argument, NULL, 'c'},  //
-    {"debug", /*****************/ no_argument, /****/ NULL, 'd'}, //
-    {"events-xml", /************/ required_argument, NULL, 'e'},  //
-    {"use-efficient-ftrace", /**/ required_argument, NULL, 'f'},  //
-    {"help", /******************/ no_argument, /****/ NULL, 'h'}, //
-    {"pid", /*******************/ required_argument, NULL, 'i'},  //
-    {"output", /****************/ required_argument, NULL, 'o'},  //
-    {"port", /******************/ required_argument, NULL, 'p'},  //
-    {"sample-rate", /***********/ required_argument, NULL, 'r'},  //
-    {"session-xml", /***********/ required_argument, NULL, 's'},  //
-    {"max-duration", /**********/ required_argument, NULL, 't'},  //
-    {"call-stack-unwinding", /**/ required_argument, NULL, 'u'},  //
-    {"version", /***************/ required_argument, NULL, 'v'},  //
-    {"app-cwd", /***************/ required_argument, NULL, 'w'},  //
-    {"stop-on-exit", /**********/ required_argument, NULL, 'x'},  //
-    {"app", /*******************/ required_argument, NULL, 'A'},  //
-    {"counters", /**************/ required_argument, NULL, 'C'},  //
-    {"append-events-xml", /*****/ required_argument, NULL, 'E'},  //
-    {"spe-sample-rate", /*******/ required_argument, NULL, 'F'},  //
-    /***************************************************** 'N' ****/
-    {"pmus-xml", /**************/ required_argument, NULL, 'P'},  //
-    {"wait-process", /**********/ required_argument, NULL, 'Q'},  //
-    {"print", /*****************/ required_argument, NULL, 'R'},  //
-    {"system-wide", /***********/ required_argument, NULL, 'S'},  //
-    {"version", /***************/ no_argument, /****/ NULL, 'V'}, //
-    {"spe", /*******************/ required_argument, NULL, 'X'},  //
-    {"mmap-pages", /************/ required_argument, NULL, 'Z'},  //
-    {NULL, 0, NULL, 0}};
+    {"allow-command", /*********/ no_argument, /***/ nullptr, 'a'}, //
+    {"config-xml", /************/ required_argument, nullptr, 'c'}, //
+    {"debug", /*****************/ no_argument, /***/ nullptr, 'd'}, //
+    {"events-xml", /************/ required_argument, nullptr, 'e'}, //
+    {"use-efficient-ftrace", /**/ required_argument, nullptr, 'f'}, //
+    {"help", /******************/ no_argument, /***/ nullptr, 'h'}, //
+    {"pid", /*******************/ required_argument, nullptr, 'i'}, //
+    {"output", /****************/ required_argument, nullptr, 'o'}, //
+    {"port", /******************/ required_argument, nullptr, 'p'}, //
+    {"sample-rate", /***********/ required_argument, nullptr, 'r'}, //
+    {"session-xml", /***********/ required_argument, nullptr, 's'}, //
+    {"max-duration", /**********/ required_argument, nullptr, 't'}, //
+    {"call-stack-unwinding", /**/ required_argument, nullptr, 'u'}, //
+    {"version", /***************/ required_argument, nullptr, 'v'}, //
+    {"app-cwd", /***************/ required_argument, nullptr, 'w'}, //
+    {"stop-on-exit", /**********/ required_argument, nullptr, 'x'}, //
+    {"app", /*******************/ required_argument, nullptr, 'A'}, //
+    {"counters", /**************/ required_argument, nullptr, 'C'}, //
+    {"append-events-xml", /*****/ required_argument, nullptr, 'E'}, //
+    {"spe-sample-rate", /*******/ required_argument, nullptr, 'F'}, //
+    /******************************************************** 'N' ***/
+    {"disable-cpu-onlining", /**/ required_argument, nullptr, 'O'}, //
+    {"pmus-xml", /**************/ required_argument, nullptr, 'P'}, //
+    {"wait-process", /**********/ required_argument, nullptr, 'Q'}, //
+    {"print", /*****************/ required_argument, nullptr, 'R'}, //
+    {"system-wide", /***********/ required_argument, nullptr, 'S'}, //
+    {"version", /***************/ no_argument, /***/ nullptr, 'V'}, //
+    {"spe", /*******************/ required_argument, nullptr, 'X'}, //
+    {"mmap-pages", /************/ required_argument, nullptr, 'Z'}, //
+    {nullptr, 0, nullptr, 0}};
 
 static const char PRINTABLE_SEPARATOR = ',';
 
@@ -78,6 +79,7 @@ ParserResult::ParserResult()
       mStopGator(false),
       mSystemWide(true),
       mAllowCommands(false),
+      mDisableCpuOnlining(false),
       pmuPath(nullptr),
       port(DEFAULT_PORT),
       parameterSetFlag(0),
@@ -87,24 +89,22 @@ ParserResult::ParserResult()
 {
 }
 
-ParserResult::~ParserResult() {}
-
-GatorCLIParser::GatorCLIParser() : result(), perfCounterCount(0) {}
-
-GatorCLIParser::~GatorCLIParser() {}
-
-SampleRate getSampleRate(std::string value)
+GatorCLIParser::GatorCLIParser() : result(), perfCounterCount(0)
 {
-    if (value.compare("high") == 0) {
+}
+
+SampleRate getSampleRate(const std::string & value)
+{
+    if (value == "high") {
         return high;
     }
-    else if (value.compare("normal") == 0) {
+    else if (value == "normal") {
         return normal;
     }
-    else if (value.compare("low") == 0) {
+    else if (value == "low") {
         return low;
     }
-    else if (value.compare("none") == 0) {
+    else if (value == "none") {
 
         return none;
     }
@@ -113,13 +113,13 @@ SampleRate getSampleRate(std::string value)
 
 void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
 {
-    std::string counterType = "";
+    std::string counterType;
     std::string subStr = counters.substr(startpos, pos);
     int event = -1;
     size_t eventpos = 0;
 
     //TODO : support for A53:Cycles:1:2:8:0x1
-    if ((eventpos = subStr.find(":")) != std::string::npos) {
+    if ((eventpos = subStr.find(':')) != std::string::npos) {
         if (!stringToInt(&event, subStr.substr(eventpos + 1, subStr.size()).c_str(), 10)) {     //check for decimal
             if (!stringToInt(&event, subStr.substr(eventpos + 1, subStr.size()).c_str(), 16)) { //check for hex
                 logg.logError("event must be an integer");
@@ -132,10 +132,10 @@ void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
         counterType = subStr;
     }
     else {
-        counterType = subStr.substr(0, eventpos).c_str();
+        counterType = subStr.substr(0, eventpos);
     }
 
-    std::map<std::string, int>::iterator it = result.events.begin();
+    auto it = result.events.begin();
 
     while (it != result.events.end()) {
         if (strcasecmp(it->first.c_str(), counterType.c_str()) == 0) {
@@ -156,7 +156,7 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
     std::string longAppArg("--app");
     for (int j = 1; j < argc; j++) {
         std::string arg(argv[j]);
-        if (arg.compare(shortAppArg) == 0 || arg.compare(longAppArg) == 0) {
+        if (arg == shortAppArg || arg == longAppArg) {
             found = j;
             break;
         }
@@ -165,7 +165,7 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
         if (argc > found) {
             if (argc > found + 1) {
                 for (int i = found + 1; i < argc; i++) {
-                    result.mCaptureCommand.push_back(argv[i]);
+                    result.mCaptureCommand.emplace_back(argv[i]);
                 }
             }
 
@@ -185,24 +185,28 @@ static int parseBoolean(const char * value)
     if (strcasecmp(value, "yes") == 0     //
         || strcasecmp(value, "y") == 0    //
         || strcasecmp(value, "true") == 0 //
-        || strcmp(value, "1") == 0)
+        || strcmp(value, "1") == 0) {
         return 1;
+    }
     else if (strcasecmp(value, "no") == 0       //
              || strcasecmp(value, "n") == 0     //
              || strcasecmp(value, "false") == 0 //
-             || strcmp(value, "0") == 0)
+             || strcmp(value, "0") == 0) {
         return 0;
-    else
+    }
+    else {
         return -1;
+    }
 }
 
 // trim
 static void trim(std::string & data)
 {
     //trim from  left
-    data.erase(data.begin(), std::find_if(data.begin(), data.end(), [](int ch) { return !std::isspace(ch); }));
+    data.erase(data.begin(), std::find_if(data.begin(), data.end(), [](int ch) { return std::isspace(ch) == 0; }));
     //trim from right
-    data.erase(std::find_if(data.rbegin(), data.rend(), [](int ch) { return !std::isspace(ch); }).base(), data.end());
+    data.erase(std::find_if(data.rbegin(), data.rend(), [](int ch) { return std::isspace(ch) == 0; }).base(),
+               data.end());
 }
 
 static void split(const std::string & data, char delimiter, std::vector<std::string> & tokens)
@@ -229,7 +233,7 @@ void GatorCLIParser::parseAndUpdateSpe()
                 std::vector<std::string> spe;
                 split(spe_data_it, SPE_KEY_VALUE_DELIMITER, spe);
                 if (spe.size() == 2) { //should be a key value pair to add
-                    if (spe[0].compare(SPE_MIN_LATENCY_KEY) == 0) {
+                    if (spe[0] == SPE_MIN_LATENCY_KEY) {
                         if (!stringToInt(&(data.min_latency), spe[1].c_str(), 0)) {
                             logg.logError("latency not an integer %s (%s)", data.id.c_str(), spe[1].c_str());
                             result.mode = ExecutionMode::EXIT;
@@ -241,10 +245,10 @@ void GatorCLIParser::parseAndUpdateSpe()
                             return;
                         }
                     }
-                    else if (spe[0].compare(SPE_EVENTS_KEY) == 0) {
+                    else if (spe[0] == SPE_EVENTS_KEY) {
                         std::vector<std::string> spe_events;
                         split(spe[1], SPES_KEY_VALUE_DELIMITER, spe_events);
-                        for (std::string spe_event : spe_events) {
+                        for (const std::string & spe_event : spe_events) {
                             int event;
                             if (!stringToInt(&event, spe_event.c_str(), 10)) {
                                 logg.logError("Event filter cannot be a non integer , failed for %s ",
@@ -261,7 +265,7 @@ void GatorCLIParser::parseAndUpdateSpe()
                             data.event_filter_mask = data.event_filter_mask | 1 << event;
                         }
                     }
-                    else if (spe[0].compare(SPE_OPS_KEY) == 0) {
+                    else if (spe[0] == SPE_OPS_KEY) {
                         std::vector<std::string> spe_ops;
                         split(spe[1], SPES_KEY_VALUE_DELIMITER, spe_ops);
                         if (!spe_ops.empty()) {
@@ -323,10 +327,10 @@ void GatorCLIParser::parseCLIArguments(int argc,
     optind = 1;
     opterr = 1;
     int c;
-    while ((c = getopt_long(argc, argv, OPTSTRING_SHORT, OPTSTRING_LONG, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, OPTSTRING_SHORT, OPTSTRING_LONG, nullptr)) != -1) {
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
         SampleRate sampleRate;
-        std::string value = "";
+        std::string value;
         int startpos = -1;
         size_t counterSplitPos = 0;
         switch (c) {
@@ -460,7 +464,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 }
                 value = std::string(optarg);
 
-                while ((counterSplitPos = value.find(",", startpos + 1)) != std::string::npos) {
+                while ((counterSplitPos = value.find(',', startpos + 1)) != std::string::npos) {
                     addCounter(startpos + 1, counterSplitPos, value);
                     startpos = counterSplitPos;
                 }
@@ -476,7 +480,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
             } break;
             case 'i': // pid
             {
-                std::stringstream stream{optarg};
+                std::stringstream stream {optarg};
                 std::vector<int> pids = lib::parseCommaSeparatedNumbers<int>(stream);
                 if (stream.fail() || !stream.eof()) {
                     logg.logError("Invalid value for --pid (%s), comma separated and numeric list expected.", optarg);
@@ -548,6 +552,11 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "  -Z|--mmap-pages <n>                   The maximum number of pages to map per\n"
                     "                                        mmap'ed perf buffer is equal to <n+1>.\n"
                     "                                        Must be a power of 2.\n"
+                    "  -O|--disable-cpu-onlining (yes|no)    Disables turning CPUs temporarily online\n"
+                    "                                        to read their information. This option\n"
+                    "                                        is useful for kernels that fail to\n"
+                    "                                        handle this correctly (e.g., they\n"
+                    "                                        reboot) (defaults to 'no').\n"
                     "* Arguments available in daemon mode only:\n"
                     "  -p|--port <port_number>|uds           Port upon which the server listens;\n"
                     "                                        default is 8080.\n"
@@ -621,6 +630,14 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 logg.logError("%s\nSRC_MD5: %s\nBUILD_ID: %s", version_string, gSrcMd5, STRIFY(GATORD_BUILD_ID));
                 result.mode = ExecutionMode::EXIT;
                 return;
+            case 'O':
+                if (optionInt < 0) {
+                    logg.logError("Invalid value for --disable-cpu-onlining (%s), 'yes' or 'no' expected.", optarg);
+                    result.mode = ExecutionMode::EXIT;
+                    return;
+                }
+                result.mDisableCpuOnlining = optionInt == 1;
+                break;
             case 'Q':
                 result.mWaitForCommand = optarg;
                 break;
@@ -647,12 +664,15 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 std::vector<std::string> parts;
                 split(optarg, PRINTABLE_SEPARATOR, parts);
                 for (const auto & part : parts) {
-                    if (strcasecmp(part.c_str(), "events.xml") == 0)
+                    if (strcasecmp(part.c_str(), "events.xml") == 0) {
                         result.printables.insert(ParserResult::Printable::EVENTS_XML);
-                    else if (strcasecmp(part.c_str(), "counters.xml") == 0)
+                    }
+                    else if (strcasecmp(part.c_str(), "counters.xml") == 0) {
                         result.printables.insert(ParserResult::Printable::COUNTERS_XML);
-                    else if (strcasecmp(part.c_str(), "defaults.xml") == 0)
+                    }
+                    else if (strcasecmp(part.c_str(), "defaults.xml") == 0) {
                         result.printables.insert(ParserResult::Printable::DEFAULT_CONFIGURATION_XML);
+                    }
                     else {
                         logg.logError("Invalid value for --print (%s)", optarg);
                         result.mode = ExecutionMode::EXIT;
@@ -729,7 +749,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
             result.mode = ExecutionMode::EXIT;
             return;
         }
-        if (result.mSessionXMLPath != NULL) {
+        if (result.mSessionXMLPath != nullptr) {
             logg.logError("--session-xml is not applicable in daemon mode.");
             result.mode = ExecutionMode::EXIT;
             return;
@@ -771,11 +791,11 @@ void GatorCLIParser::parseCLIArguments(int argc,
     }
 }
 
-static int findIndexOfArg(std::string arg_toCheck, int argc, const char * const argv[])
+static int findIndexOfArg(const std::string & arg_toCheck, int argc, const char * const argv[])
 {
     for (int j = 1; j < argc; j++) {
         std::string arg(argv[j]);
-        if (arg.compare(arg_toCheck) == 0) {
+        if (arg == arg_toCheck) {
             return j;
         }
     }
@@ -793,15 +813,12 @@ bool GatorCLIParser::hasDebugFlag(int argc, const char * const argv[])
     std::string debugArgLong = "--debug";
     for (int j = 1; j < argc; j++) {
         std::string arg(argv[j]);
-        if (arg.compare(debugArgShort) == 0 || arg.compare(debugArgLong) == 0) {
+        if (arg == debugArgShort || arg == debugArgLong) {
             int appIndex = findIndexOfArg("--app", argc, argv);
             if (appIndex == -1) {
                 appIndex = findIndexOfArg("-A", argc, argv);
             }
-            if (appIndex > -1 && j > appIndex) {
-                return false;
-            }
-            return true;
+            return !(appIndex > -1 && j > appIndex);
         }
     }
     return false;

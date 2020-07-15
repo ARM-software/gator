@@ -11,16 +11,17 @@
 #include <cstdint>
 #include <cstdlib>
 #include <unistd.h>
+#include <utility>
 
 namespace mali_userspace {
 
     class MaliGPUClockPolledDriver : public PolledDriver {
     private:
-        typedef PolledDriver super;
+        using super = PolledDriver;
 
     public:
         MaliGPUClockPolledDriver(std::string clockPath)
-            : PolledDriver("MaliGPUClock"), mClockPath(clockPath), mClockValue(0), mBuf()
+            : PolledDriver("MaliGPUClock"), mClockPath(std::move(clockPath)), mClockValue(0), mBuf()
         {
             logg.logMessage("GPU CLOCK POLLING '%s'", mClockPath.c_str());
         }
@@ -31,7 +32,7 @@ namespace mali_userspace {
         MaliGPUClockPolledDriver(MaliGPUClockPolledDriver &&) = delete;
         MaliGPUClockPolledDriver & operator=(MaliGPUClockPolledDriver &&) = delete;
 
-        void readEvents(mxml_node_t * const /*root*/)
+        void readEvents(mxml_node_t * const /*root*/) override
         {
             if (access(mClockPath.c_str(), R_OK) == 0) {
                 logg.logSetup("Mali GPU counters\nAccess %s is OK. GPU frequency counters available.",
@@ -46,9 +47,9 @@ namespace mali_userspace {
             }
         }
 
-        void start() {}
+        void start() override {}
 
-        void read(Buffer * const buffer)
+        void read(IBlockCounterFrameBuilder & buffer) override
         {
             if (!doRead()) {
                 logg.logError("Unable to read GPU clock frequency");
@@ -72,7 +73,7 @@ namespace mali_userspace {
                 return false;
             }
 
-            mClockValue = strtoull(mBuf.getBuf(), nullptr, 0) * 1000000ull;
+            mClockValue = strtoull(mBuf.getBuf(), nullptr, 0) * 1000000ULL;
             return true;
         }
     };

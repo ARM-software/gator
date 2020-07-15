@@ -9,18 +9,18 @@
 
 class ISummaryConsumer {
 public:
-    virtual void commit(const uint64_t time) = 0;
+    virtual void commit(uint64_t time) = 0;
 
     // Summary messages
-    virtual void summary(const uint64_t currTime,
-                         const int64_t timestamp,
-                         const int64_t uptime,
-                         const int64_t monotonicDelta,
-                         const char * const uname,
-                         const long pageSize,
-                         const bool nosync,
+    virtual void summary(uint64_t currTime,
+                         int64_t timestamp,
+                         int64_t uptime,
+                         int64_t monotonicDelta,
+                         const char * uname,
+                         long pageSize,
+                         bool nosync,
                          const std::map<std::string, std::string> & additionalAttributes) = 0;
-    virtual void coreName(const uint64_t currTime, const int core, const int cpuid, const char * const name) = 0;
+    virtual void coreName(uint64_t currTime, int core, int cpuid, const char * name) = 0;
 
     virtual ~ISummaryConsumer() = default;
 };

@@ -4,10 +4,10 @@
 
 #include "Logging.h"
 
-#include <errno.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 #include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 
 // Pick an aggressive size as buffer is primarily used for disk IO
@@ -25,7 +25,7 @@ int DynBuf::resize(const size_t minCapacity)
     capacity = scaledCapacity;
 
     buf = static_cast<char *>(realloc(buf, capacity));
-    if (buf == NULL) {
+    if (buf == nullptr) {
         return -errno;
     }
 
@@ -102,12 +102,11 @@ int DynBuf::readlink(const char * const path)
 bool DynBuf::printf(const char * format, ...)
 {
     va_list ap;
-    bool result;
 
     length = 0;
 
     va_start(ap, format);
-    result = append(format, ap);
+    const bool result = append(format, ap);
     va_end(ap);
 
     return result;
@@ -116,10 +115,9 @@ bool DynBuf::printf(const char * format, ...)
 bool DynBuf::append(const char * format, ...)
 {
     va_list ap;
-    bool result;
 
     va_start(ap, format);
-    result = append(format, ap);
+    const bool result = append(format, ap);
     va_end(ap);
 
     return result;

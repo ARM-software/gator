@@ -3,8 +3,8 @@
 #ifndef COUNTER_H
 #define COUNTER_H
 
+#include <cstring>
 #include <new>
-#include <string.h>
 
 class Driver;
 

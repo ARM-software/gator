@@ -15,14 +15,14 @@ class ISender;
 namespace non_root {
     class PerCoreMixedFrameBuffer {
     public:
-        typedef unsigned long core_type;
+        using core_type = unsigned long;
 
         PerCoreMixedFrameBuffer(FrameType frameType, int bufferSize, sem_t & readerSem);
 
         bool anyFull() const;
         void setDone();
         bool allDone() const;
-        void write(ISender * sender);
+        void write(ISender & sender);
 
         MixedFrameBuffer & operator[](core_type core);
 

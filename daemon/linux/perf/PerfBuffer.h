@@ -25,7 +25,7 @@ public:
     PerfBuffer(Config config);
     ~PerfBuffer();
 
-    bool useFd(const int fd, int cpu, bool collectAuxTrace = false);
+    bool useFd(int fd, int cpu, bool collectAuxTrace = false);
     void discard(int cpu);
     bool isEmpty();
     bool isFull();

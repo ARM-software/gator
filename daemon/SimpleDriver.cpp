@@ -7,7 +7,7 @@
 SimpleDriver::~SimpleDriver()
 {
     DriverCounter * counters = mCounters;
-    while (counters != NULL) {
+    while (counters != nullptr) {
         DriverCounter * counter = counters;
         counters = counter->getNext();
         delete counter;
@@ -16,12 +16,12 @@ SimpleDriver::~SimpleDriver()
 
 bool SimpleDriver::claimCounter(Counter & counter) const
 {
-    return findCounter(counter) != NULL;
+    return findCounter(counter) != nullptr;
 }
 
 bool SimpleDriver::countersEnabled() const
 {
-    for (DriverCounter * counter = mCounters; counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = mCounters; counter != nullptr; counter = counter->getNext()) {
         if (counter->isEnabled()) {
             return true;
         }
@@ -31,7 +31,7 @@ bool SimpleDriver::countersEnabled() const
 
 void SimpleDriver::resetCounters()
 {
-    for (DriverCounter * counter = mCounters; counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = mCounters; counter != nullptr; counter = counter->getNext()) {
         counter->setEnabled(false);
     }
 }
@@ -39,7 +39,7 @@ void SimpleDriver::resetCounters()
 void SimpleDriver::setupCounter(Counter & counter)
 {
     DriverCounter * const driverCounter = findCounter(counter);
-    if (driverCounter == NULL) {
+    if (driverCounter == nullptr) {
         counter.setEnabled(false);
         return;
     }
@@ -50,7 +50,7 @@ void SimpleDriver::setupCounter(Counter & counter)
 int SimpleDriver::writeCounters(mxml_node_t * root) const
 {
     int count = 0;
-    for (DriverCounter * counter = mCounters; counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = mCounters; counter != nullptr; counter = counter->getNext()) {
         mxml_node_t * node = mxmlNewElement(root, "counter");
         mxmlElementSetAttr(node, "name", counter->getName());
         ++count;
@@ -61,8 +61,9 @@ int SimpleDriver::writeCounters(mxml_node_t * root) const
 
 DriverCounter * SimpleDriver::findCounter(Counter & counter) const
 {
-    DriverCounter * dcounter = NULL;
-    for (DriverCounter * driverCounter = mCounters; driverCounter != NULL; driverCounter = driverCounter->getNext()) {
+    DriverCounter * dcounter = nullptr;
+    for (DriverCounter * driverCounter = mCounters; driverCounter != nullptr;
+         driverCounter = driverCounter->getNext()) {
         if (strcasecmp(driverCounter->getName(), counter.getType()) == 0) {
             dcounter = driverCounter;
             counter.setType(driverCounter->getName());

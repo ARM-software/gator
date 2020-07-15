@@ -28,10 +28,10 @@ struct PerfUncore {
  * Contains the detected parameters of perf
  */
 struct PerfDriverConfiguration {
-    std::vector<PerfCpu> cpus{};
-    std::vector<PerfUncore> uncores{};
-    std::map<int, int> cpuNumberToSpeType{};
-    PerfConfig config{false, false, false, false, false, false, false, false, false, false, false, false, false};
+    std::vector<PerfCpu> cpus {};
+    std::vector<PerfUncore> uncores {};
+    std::map<int, int> cpuNumberToSpeType {};
+    PerfConfig config {false, false, false, false, false, false, false, false, false, false, false, false, false};
 
     static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide,
                                                            lib::Span<const int> cpuIds,

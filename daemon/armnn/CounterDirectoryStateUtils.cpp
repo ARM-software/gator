@@ -10,7 +10,7 @@
 namespace armnn {
 
     namespace {
-        static std::string makeId(std::string str)
+        std::string makeId(std::string str)
         {
             const auto & loc = std::locale::classic();
             const auto length = str.length();
@@ -45,12 +45,12 @@ namespace armnn {
             return str;
         }
 
-        static void append(lib::Format & formatter,
-                           const std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> & deviceMap,
-                           const std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> & counterSetMap,
-                           std::uint16_t device_uid,
-                           std::uint16_t counter_set_uid,
-                           const std::string & name)
+        void append(lib::Format & formatter,
+                    const std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> & deviceMap,
+                    const std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> & counterSetMap,
+                    std::uint16_t device_uid,
+                    std::uint16_t counter_set_uid,
+                    const std::string & name)
         {
             formatter << makeId(name);
 

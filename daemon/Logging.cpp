@@ -29,11 +29,9 @@ static const char FILE_PREFIX[] = __FILE__;
 
 Logging::Logging() : mSetup(), mLoggingMutex(), mDebug(true), mErrBuf()
 {
-    pthread_mutex_init(&mLoggingMutex, NULL);
+    pthread_mutex_init(&mLoggingMutex, nullptr);
     reset();
 }
-
-Logging::~Logging() {}
 
 void Logging::reset()
 {

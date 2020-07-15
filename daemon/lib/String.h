@@ -3,7 +3,7 @@
 #ifndef INCLUDE_LIB_STRING_H
 #define INCLUDE_LIB_STRING_H
 
-#include <string.h>
+#include <cstring>
 
 namespace lib {
     /**
@@ -13,8 +13,9 @@ namespace lib {
      */
     inline char * strdup_null(const char * s)
     {
-        if (s == nullptr)
+        if (s == nullptr) {
             return nullptr;
+        }
         return ::strdup(s);
     }
 }

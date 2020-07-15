@@ -3,10 +3,11 @@
 #include "non_root/ProcessStateChangeHandler.h"
 
 #include "Buffer.h"
+#include "IBlockCounterMessageConsumer.h"
 #include "Logging.h"
 
 namespace non_root {
-    ProcessStateChangeHandler::ProcessStateChangeHandler(Buffer & counterBuffer_,
+    ProcessStateChangeHandler::ProcessStateChangeHandler(IBlockCounterMessageConsumer & counterBuffer_,
                                                          Buffer & miscBuffer_,
                                                          PerCoreMixedFrameBuffer & switchBuffers_,
                                                          const std::map<NonRootCounter, int> & enabledCounters_)

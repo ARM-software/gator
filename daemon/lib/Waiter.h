@@ -14,7 +14,7 @@ namespace lib {
          */
         void wait() const
         {
-            std::unique_lock<std::mutex> lock{mutex};
+            std::unique_lock<std::mutex> lock {mutex};
             cv.wait(lock, [&] { return !enabled; });
         }
 
@@ -27,7 +27,7 @@ namespace lib {
         template<class Clock, class Duration>
         bool wait_until(const std::chrono::time_point<Clock, Duration> & timeout_time) const
         {
-            std::unique_lock<std::mutex> lock{mutex};
+            std::unique_lock<std::mutex> lock {mutex};
             return !cv.wait_until(lock, timeout_time, [&] { return !enabled; });
         }
 
@@ -40,19 +40,19 @@ namespace lib {
         template<class Rep, class Period>
         bool wait_for(const std::chrono::duration<Rep, Period> & timeout_duration) const
         {
-            std::unique_lock<std::mutex> lock{mutex};
+            std::unique_lock<std::mutex> lock {mutex};
             return !cv.wait_for(lock, timeout_duration, [&] { return !enabled; });
         }
 
         bool is_enabled()
         {
-            std::lock_guard<std::mutex> guard{mutex};
+            std::lock_guard<std::mutex> guard {mutex};
             return enabled;
         }
 
         bool enable()
         {
-            std::lock_guard<std::mutex> guard{mutex};
+            std::lock_guard<std::mutex> guard {mutex};
             const bool prev = enabled;
             enabled = true;
             return prev;
@@ -67,7 +67,7 @@ namespace lib {
         {
             bool prev;
             {
-                std::lock_guard<std::mutex> guard{mutex};
+                std::lock_guard<std::mutex> guard {mutex};
                 prev = enabled;
                 enabled = false;
             }
@@ -76,9 +76,9 @@ namespace lib {
         }
 
     private:
-        bool enabled{true};
-        mutable std::mutex mutex{};
-        mutable std::condition_variable cv{};
+        bool enabled {true};
+        mutable std::mutex mutex {};
+        mutable std::condition_variable cv {};
     };
 }
 

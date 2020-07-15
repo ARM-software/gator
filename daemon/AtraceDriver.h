@@ -11,9 +11,8 @@ class FtraceDriver;
 class AtraceDriver : public SimpleDriver {
 public:
     AtraceDriver(const FtraceDriver & ftraceDriver);
-    ~AtraceDriver();
 
-    void readEvents(mxml_node_t * const xml);
+    void readEvents(mxml_node_t * xml) override;
 
     void start();
     void stop();
@@ -21,7 +20,7 @@ public:
     bool isSupported() const { return mSupported; }
 
 private:
-    void setAtrace(const int flags);
+    void setAtrace(int flags);
 
     bool mSupported;
     char mNotifyPath[256];

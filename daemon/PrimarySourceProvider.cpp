@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <unistd.h>
+#include <utility>
 
 static const char CORE_NAME_UNKNOWN[] = "unknown";
 
@@ -36,8 +37,9 @@ namespace {
     public:
         Ids(unsigned int maxCoreNumber) : maxCoreNumber(maxCoreNumber)
         {
-            for (unsigned int i = 0; i < maxCoreNumber * 2; ++i)
+            for (unsigned int i = 0; i < maxCoreNumber * 2; ++i) {
                 ids.get()[i] = -1; // Unknown
+            }
         }
 
         lib::Span<int> getCpuIds() { return {ids.get(), maxCoreNumber}; }
@@ -55,8 +57,11 @@ namespace {
 
     class CpuInfo : public ICpuInfo {
     public:
-        CpuInfo(Ids && ids, std::vector<GatorCpu> && clusters, const char * modelName)
-            : ids(std::move(ids)), clusters(std::move(clusters)), modelName(modelName)
+        CpuInfo(Ids && ids, std::vector<GatorCpu> && clusters, const char * modelName, bool disableCpuOnlining)
+            : ids(std::move(ids)),
+              clusters(std::move(clusters)),
+              modelName(modelName),
+              disableCpuOnlining(disableCpuOnlining)
         {
             std::sort(this->clusters.begin(), this->clusters.end());
             updateClusterIds();
@@ -70,7 +75,7 @@ namespace {
 
         virtual void updateIds(bool ignoreOffline) override
         {
-            cpu_utils::readCpuInfo(ignoreOffline, ids.getCpuIds());
+            cpu_utils::readCpuInfo(disableCpuOnlining || ignoreOffline, ids.getCpuIds());
             updateClusterIds();
         }
 
@@ -102,6 +107,7 @@ namespace {
         Ids ids;
         std::vector<GatorCpu> clusters;
         std::string modelName;
+        bool disableCpuOnlining;
     };
 
 #if CONFIG_SUPPORT_PERF
@@ -120,7 +126,8 @@ namespace {
                                                                 PmuXML & pmuXml,
                                                                 const char * maliFamilyName,
                                                                 Ids & ids,
-                                                                const char * modelName)
+                                                                const char * modelName,
+                                                                bool disableCpuOnlining)
         {
             std::unique_ptr<PerfDriverConfiguration> configuration =
                 PerfDriverConfiguration::detect(systemWide, ids.getCpuIds(), pmuXml);
@@ -129,11 +136,11 @@ namespace {
                 for (const auto & perfCpu : configuration->cpus) {
                     clusters.push_back(perfCpu.gator_cpu);
                 }
-                CpuInfo cpuInfo{std::move(ids), std::move(clusters), modelName};
-                return std::unique_ptr<PrimarySourceProvider>{new PerfPrimarySource(std::move(*configuration),
-                                                                                    std::move(pmuXml),
-                                                                                    maliFamilyName,
-                                                                                    std::move(cpuInfo))};
+                CpuInfo cpuInfo {std::move(ids), std::move(clusters), modelName, disableCpuOnlining};
+                return std::unique_ptr<PrimarySourceProvider> {new PerfPrimarySource(std::move(*configuration),
+                                                                                     std::move(pmuXml),
+                                                                                     maliFamilyName,
+                                                                                     std::move(cpuInfo))};
             }
 
             return nullptr;
@@ -147,13 +154,7 @@ namespace {
 
         virtual bool supportsTracepointCapture() const override { return true; }
 
-        virtual bool supportsMaliCapture() const override { return false; }
-
-        virtual bool supportsMaliCaptureSampleRate(int) const override { return false; }
-
         virtual bool supportsMultiEbs() const override { return true; }
-
-        virtual bool isCapturingMaliCounters() const override { return false; }
 
         virtual const char * getPrepareFailedMessage() const override
         {
@@ -172,7 +173,7 @@ namespace {
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child,
                                                             sem_t & senderSem,
-                                                            sem_t & startProfile,
+                                                            std::function<void()> profilingStartedCallback,
                                                             const std::set<int> & appTids,
                                                             FtraceDriver & ftraceDriver,
                                                             bool enableOnCommandExec) override
@@ -180,7 +181,7 @@ namespace {
             return std::unique_ptr<Source>(new PerfSource(driver,
                                                           child,
                                                           senderSem,
-                                                          startProfile,
+                                                          profilingStartedCallback,
                                                           appTids,
                                                           ftraceDriver,
                                                           enableOnCommandExec,
@@ -190,7 +191,7 @@ namespace {
     private:
         static std::vector<PolledDriver *> createPolledDrivers()
         {
-            return std::vector<PolledDriver *>{
+            return std::vector<PolledDriver *> {
                 {new HwmonDriver(), new FSDriver(), new DiskIODriver(), new MemInfoDriver(), new NetDriver()}};
         }
 
@@ -215,7 +216,10 @@ namespace {
      */
     class NonRootPrimarySource : public PrimarySourceProvider {
     public:
-        static std::unique_ptr<PrimarySourceProvider> tryCreate(PmuXML && pmuXml, Ids & ids, const char * modelName)
+        static std::unique_ptr<PrimarySourceProvider> tryCreate(PmuXML && pmuXml,
+                                                                Ids & ids,
+                                                                const char * modelName,
+                                                                bool disableCpuOnlining)
         {
             // detect clusters so we can generate activity events
             std::set<int> added;
@@ -233,23 +237,24 @@ namespace {
 
             if (clusters.empty()) {
 #if defined(__aarch64__)
-                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int>{0xfffff}, 6, true);
+                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int> {0xfffff}, 6, true);
 #elif defined(__arm__)
-                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int>{0xfffff}, 6, false);
+                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int> {0xfffff}, 6, false);
 #else
                 clusters.emplace_back("Other",
                                       "Perf_Hardware",
                                       "Perf_Hardware",
                                       nullptr,
                                       nullptr,
-                                      std::set<int>{0xfffff},
+                                      std::set<int> {0xfffff},
                                       6,
                                       false);
 #endif
             }
 
             return std::unique_ptr<PrimarySourceProvider>(
-                new NonRootPrimarySource(std::move(pmuXml), {std::move(ids), std::move(clusters), modelName}));
+                new NonRootPrimarySource(std::move(pmuXml),
+                                         {std::move(ids), std::move(clusters), modelName, disableCpuOnlining}));
         }
 
         virtual const char * getCaptureXmlTypeValue() const override
@@ -260,17 +265,14 @@ namespace {
 
         virtual const char * getBacktraceProcessingMode() const override { return "none"; }
 
+        /**
+         * @returns the monotonic clock time at which this capture was started, or -1 if not started yet
+         **/
         virtual std::int64_t getMonotonicStarted() const override { return gSessionData.mMonotonicStarted; }
 
         virtual bool supportsTracepointCapture() const override { return true; }
 
-        virtual bool supportsMaliCapture() const override { return false; }
-
-        virtual bool supportsMaliCaptureSampleRate(int) const override { return false; }
-
         virtual bool supportsMultiEbs() const override { return false; }
-
-        virtual bool isCapturingMaliCounters() const override { return false; }
 
         virtual const char * getPrepareFailedMessage() const override
         {
@@ -287,19 +289,19 @@ namespace {
 
         virtual std::unique_ptr<Source> createPrimarySource(Child & child,
                                                             sem_t & senderSem,
-                                                            sem_t & startProfile,
-                                                            const std::set<int> &,
-                                                            FtraceDriver &,
-                                                            bool) override
+                                                            std::function<void()> profilingStartedCallback,
+                                                            const std::set<int> & /*appTids*/,
+                                                            FtraceDriver & /*ftraceDriver*/,
+                                                            bool /*enableOnCommandExec*/) override
         {
             return std::unique_ptr<Source>(
-                new non_root::NonRootSource(driver, child, senderSem, startProfile, cpuInfo));
+                new non_root::NonRootSource(driver, child, senderSem, profilingStartedCallback, cpuInfo));
         }
 
     private:
         static std::vector<PolledDriver *> createPolledDrivers()
         {
-            return std::vector<PolledDriver *>{
+            return std::vector<PolledDriver *> {
                 {new HwmonDriver(), new FSDriver(), new DiskIODriver(), new MemInfoDriver(), new NetDriver()}};
         }
 
@@ -316,8 +318,8 @@ namespace {
 #endif /* CONFIG_SUPPORT_PROC_POLLING */
 }
 
-PrimarySourceProvider::PrimarySourceProvider(const std::vector<PolledDriver *> & polledDrivers_)
-    : polledDrivers(polledDrivers_)
+PrimarySourceProvider::PrimarySourceProvider(std::vector<PolledDriver *> polledDrivers_)
+    : polledDrivers(std::move(polledDrivers_))
 {
 }
 
@@ -335,11 +337,12 @@ const std::vector<PolledDriver *> & PrimarySourceProvider::getAdditionalPolledDr
 
 std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool systemWide,
                                                                      PmuXML && pmuXml,
-                                                                     const char * maliFamilyName)
+                                                                     const char * maliFamilyName,
+                                                                     bool disableCpuOnlining)
 {
-    Ids ids{cpu_utils::getMaxCoreNum()};
+    Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
-    const std::string hardwareName = cpu_utils::readCpuInfo(false, ids.getCpuIds());
+    const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, ids.getCpuIds());
     const char * modelNameToUse =
         !modelName.empty() ? modelName.c_str() : !hardwareName.empty() ? hardwareName.c_str() : CORE_NAME_UNKNOWN;
     std::unique_ptr<PrimarySourceProvider> result;
@@ -351,29 +354,34 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
 
     // try perf
 #if CONFIG_SUPPORT_PERF
-    if (isRoot)
+    if (isRoot) {
         logg.logMessage("Trying perf API as root...");
-    else
+    }
+    else {
         logg.logMessage("Trying perf API as non-root...");
+    }
 
-    result = PerfPrimarySource::tryCreate(systemWide, pmuXml, maliFamilyName, ids, modelNameToUse);
+    result = PerfPrimarySource::tryCreate(systemWide, pmuXml, maliFamilyName, ids, modelNameToUse, disableCpuOnlining);
     if (result != nullptr) {
         logg.logMessage("...Success");
         logg.logSetup("Profiling Source\nUsing perf API for primary data source");
         return result;
     }
-    else
+    else {
         logg.logError("...Perf API is not available.");
+    }
 #endif /* CONFIG_SUPPORT_PERF */
 
-        // fall back to proc mode
+    // fall back to proc mode
 #if CONFIG_SUPPORT_PROC_POLLING
-    if (isRoot)
+    if (isRoot) {
         logg.logMessage("Trying /proc counters as root...");
-    else
+    }
+    else {
         logg.logMessage("Trying /proc counters as non-root; limited system profiling information available...");
+    }
 
-    result = NonRootPrimarySource::tryCreate(std::move(pmuXml), ids, modelNameToUse);
+    result = NonRootPrimarySource::tryCreate(std::move(pmuXml), ids, modelNameToUse, disableCpuOnlining);
     if (result != nullptr) {
         logg.logMessage("...Success");
         logg.logSetup("Profiling Source\nUsing /proc polling for primary data source");
@@ -381,8 +389,9 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
             "Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
         return result;
     }
-    else
+    else {
         logg.logMessage("...Unable to set /proc counters");
+    }
 #endif /* CONFIG_SUPPORT_PROC_POLLING */
 
     return result;

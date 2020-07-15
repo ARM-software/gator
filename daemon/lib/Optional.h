@@ -11,7 +11,7 @@ namespace lib {
     template<typename T>
     class Optional {
     public:
-        typedef T value_type;
+        using value_type = T;
 
         Optional() : wrapper(), hasValue(false) {}
 
@@ -21,7 +21,7 @@ namespace lib {
 
         Optional(const Optional<value_type> & t) : wrapper(), hasValue(false) { *this = t; }
 
-        Optional(Optional<value_type> && t) : wrapper(), hasValue(false) { *this = std::move(t); }
+        Optional(Optional<value_type> && t) noexcept : wrapper(), hasValue(false) { *this = std::move(t); }
 
         ~Optional() { clear(); }
 
@@ -48,7 +48,7 @@ namespace lib {
             return *this;
         }
 
-        Optional & operator=(Optional<value_type> && t)
+        Optional & operator=(Optional<value_type> && t) noexcept
         {
             if (t) {
                 set(std::move(t.get()));
@@ -158,10 +158,16 @@ namespace lib {
             value_type data;
 
             /* let Optional do the construction / destruction */
-            Wrapper(){};
+            Wrapper() {}  // NOLINT(modernize-use-equals-default)
+            ~Wrapper() {} // NOLINT(modernize-use-equals-default)
+
+            Wrapper(const Wrapper &) = delete;
+            Wrapper & operator=(const Wrapper &) = delete;
+            Wrapper(Wrapper &&) = delete;
+            Wrapper & operator=(Wrapper &&) = delete;
+
             Wrapper(const value_type & t) : data(t) {}
             Wrapper(value_type && t) : data(std::move(t)) {}
-            ~Wrapper() {}
         };
 
         Wrapper wrapper;

@@ -71,15 +71,17 @@ namespace lib {
         const lib::FsEntry fsEntry = lib::FsEntry::create(fullpath);
 
         if (fsEntry.canAccess(false, true, false)) {
-            if (lib::writeFileContents(fsEntry, data))
+            if (lib::writeFileContents(fsEntry, data)) {
                 return 0;
+            }
             else {
                 logg.logMessage("Opened but could not write to %s", fullpath);
                 return -1;
             }
         }
-        else
+        else {
             return -1;
+        }
     }
 
     int writeIntToFile(const char * path, int value)
@@ -98,7 +100,7 @@ namespace lib {
 
     int writeReadIntInFile(const char * path, int & value)
     {
-        if (writeIntToFile(path, value) || readIntFromFile(path, value)) {
+        if ((writeIntToFile(path, value) != 0) || (readIntFromFile(path, value) != 0)) {
             return -1;
         }
         return 0;
@@ -106,7 +108,7 @@ namespace lib {
 
     int writeReadInt64InFile(const char * path, int64_t & value)
     {
-        if (writeInt64ToFile(path, value) || readInt64FromFile(path, value)) {
+        if ((writeInt64ToFile(path, value) != 0) || (readInt64FromFile(path, value) != 0)) {
             return -1;
         }
         return 0;
@@ -125,7 +127,9 @@ namespace lib {
 
             // split the input
             const std::size_t length = contents.length();
-            std::size_t from = 0, split = 0, to = 0;
+            std::size_t from = 0;
+            std::size_t split = 0;
+            std::size_t to = 0;
 
             while (to < length) {
                 // move end pointer

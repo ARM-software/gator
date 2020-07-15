@@ -12,32 +12,31 @@
 
 namespace events_xml {
     namespace {
-        static const char TAG_EVENTS[] = "events";
-        static const char TAG_CATEGORY[] = "category";
-        static const char TAG_COUNTER_SET[] = "counter_set";
-        static const char TAG_EVENT[] = "event";
+        const char TAG_EVENTS[] = "events";
+        const char TAG_CATEGORY[] = "category";
+        const char TAG_COUNTER_SET[] = "counter_set";
+        const char TAG_EVENT[] = "event";
 
-        static const char ATTR_CLASS[] = "class";
-        static const char ATTR_COUNT[] = "count";
-        static const char ATTR_COUNTER[] = "counter";
-        static const char ATTR_COUNTER_SET[] = "counter_set";
-        static const char ATTR_DESCRIPTION[] = "description";
-        static const char ATTR_MULTIPLIER[] = "multiplier";
-        static const char ATTR_NAME[] = "name";
-        static const char ATTR_TITLE[] = "title";
-        static const char ATTR_UNITS[] = "units";
+        const char ATTR_CLASS[] = "class";
+        const char ATTR_COUNT[] = "count";
+        const char ATTR_COUNTER[] = "counter";
+        const char ATTR_COUNTER_SET[] = "counter_set";
+        const char ATTR_DESCRIPTION[] = "description";
+        const char ATTR_MULTIPLIER[] = "multiplier";
+        const char ATTR_NAME[] = "name";
+        const char ATTR_TITLE[] = "title";
+        const char ATTR_UNITS[] = "units";
 
-        static const char CLUSTER_VAR[] = "${cluster}";
+        const char CLUSTER_VAR[] = "${cluster}";
 
-        static const std::map<Event::Class, std::string> classToStringMap = {
-            { Event::Class::DELTA, "delta" },
-            { Event::Class::INCIDENT, "incident" },
-            { Event::Class::ABSOLUTE, "absolute" },
-            { Event::Class::ACTIVITY, "activity" }
-        };
+        const std::map<Event::Class, std::string> classToStringMap = {{Event::Class::DELTA, "delta"},
+                                                                      {Event::Class::INCIDENT, "incident"},
+                                                                      {Event::Class::ABSOLUTE, "absolute"},
+                                                                      {Event::Class::ACTIVITY, "activity"}};
 
-        static const auto NOP_ATTR_MODIFICATION_FUNCTION =
-            [](const char *, const char *, const char *, std::string &) -> bool { return false; };
+        const auto NOP_ATTR_MODIFICATION_FUNCTION =
+            [](const char * /*unused*/, const char * /*unused*/, const char * /*unused*/, std::string &
+               /*unused*/) -> bool { return false; };
 
         template<typename T>
         static void addAllIdToCounterSetMappings(
@@ -47,7 +46,7 @@ namespace events_xml {
             for (const T & pmu : pmus) {
                 idToCounterSetAndName.emplace(
                     pmu.getId(),
-                    std::pair<std::string, std::string>{pmu.getCounterSet(), pmu.getCoreName()});
+                    std::pair<std::string, std::string> {pmu.getCounterSet(), pmu.getCoreName()});
             }
         }
 
@@ -55,8 +54,9 @@ namespace events_xml {
         static void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
         {
             if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr ||
-                mxmlGetType(src) != MXML_ELEMENT)
+                mxmlGetType(src) != MXML_ELEMENT) {
                 return;
+            }
 
             const char * elementName = mxmlGetElement(src);
 
@@ -80,8 +80,9 @@ namespace events_xml {
         {
             for (mxml_node_t * child = mxmlGetFirstChild(src); child != nullptr; child = mxmlGetNextSibling(child)) {
                 const char * childName = mxmlGetElement(child);
-                if (childName == nullptr)
+                if (childName == nullptr) {
                     continue;
+                }
 
                 mxml_node_t * newChild = mxmlNewElement(dest, childName);
                 copyMxmlElementAttrs(newChild, child, attributeFilter);
@@ -426,11 +427,9 @@ namespace events_xml {
         // Create the category node
         mxml_unique_ptr categoryNode {makeMxmlUniquePtr(mxmlNewElement(MXML_NO_PARENT, TAG_CATEGORY))};
 
-
         // Create the counter set node
         mxml_unique_ptr counterSetNode {makeMxmlUniquePtr(nullptr)};
-        if(category.counterSet)
-        {
+        if (category.counterSet) {
             const CounterSet & counterSet = category.counterSet.get();
 
             counterSetNode.reset(mxmlNewElement(MXML_NO_PARENT, TAG_COUNTER_SET));
@@ -443,16 +442,13 @@ namespace events_xml {
 
         // Populate the category node
         mxmlElementSetAttr(categoryNode.get(), ATTR_NAME, category.name.c_str());
-        for (auto event : category.events)
-        {
-            mxml_node_t * eventNode{mxmlNewElement(categoryNode.get(), TAG_EVENT)};
+        for (auto event : category.events) {
+            mxml_node_t * eventNode {mxmlNewElement(categoryNode.get(), TAG_EVENT)};
 
-            if (event.eventNumber)
-            {
+            if (event.eventNumber) {
                 mxmlElementSetAttrf(eventNode, TAG_EVENT, "0x%x", event.eventNumber.get());
             }
-            if(event.counter)
-            {
+            if (event.counter) {
                 mxmlElementSetAttr(eventNode, ATTR_COUNTER, event.counter.get().c_str());
             }
             mxmlElementSetAttr(eventNode, ATTR_TITLE, event.title.c_str());

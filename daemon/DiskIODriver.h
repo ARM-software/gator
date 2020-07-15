@@ -8,15 +8,14 @@
 
 class DiskIODriver : public PolledDriver {
 private:
-    typedef PolledDriver super;
+    using super = PolledDriver;
 
 public:
     DiskIODriver();
-    ~DiskIODriver();
 
-    void readEvents(mxml_node_t * const root);
-    void start();
-    void read(Buffer * const buffer);
+    void readEvents(mxml_node_t * root) override;
+    void start() override;
+    void read(IBlockCounterFrameBuilder & buffer) override;
 
 private:
     void doRead();

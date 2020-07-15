@@ -17,7 +17,7 @@ namespace mali_userspace {
      * Allows reading counters from userspace, without modification to mali driver
      */
     class MaliHwCntrDriver : public SimpleDriver {
-        typedef SimpleDriver super;
+        using super = SimpleDriver;
 
     public:
         MaliHwCntrDriver();

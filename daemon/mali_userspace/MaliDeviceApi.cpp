@@ -9,8 +9,8 @@
 #include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/MaliDeviceApi_DdkDefines.h"
 
+#include <cerrno>
 #include <cstring>
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <utility>
@@ -126,7 +126,7 @@ namespace mali_userspace {
                                 tilerBitmask,
                                 mmuL2Bitmask);
 
-                kbase_uk_hwcnt_reader_setup setup_args{};
+                kbase_uk_hwcnt_reader_setup setup_args {};
                 setup_args.header.id = KBASE_FUNC_HWCNT_READER_SETUP;
                 setup_args.buffer_count = bufferCount;
                 setup_args.jm_bm = jmBitmask;
@@ -164,8 +164,9 @@ namespace mali_userspace {
             static uint32_t calcNumShaders(const kbase_uk_gpuprops & props)
             {
                 uint64_t core_mask = 0;
-                for (uint32_t i = 0; i < props.props.coherency_info.num_core_groups; i++)
+                for (uint32_t i = 0; i < props.props.coherency_info.num_core_groups; i++) {
                     core_mask |= props.props.coherency_info.group[i].core_mask;
+                }
                 return __builtin_popcountll(core_mask);
             }
 
@@ -180,7 +181,7 @@ namespace mali_userspace {
         {
             // get & check API version
             {
-                kbase_uk_version_check_args version_check{};
+                kbase_uk_version_check_args version_check {};
                 version_check.major = 0;
                 version_check.minor = 0;
 
@@ -200,7 +201,7 @@ namespace mali_userspace {
 
             // set the flags / create context
             {
-                kbase_uk_set_flags flags{};
+                kbase_uk_set_flags flags {};
                 flags.header.id = KBASE_FUNC_SET_FLAGS;
                 flags.create_flags = BASE_CONTEXT_CREATE_KERNEL_FLAGS;
 
@@ -212,7 +213,7 @@ namespace mali_userspace {
 
             // probe properties
             {
-                kbase_uk_gpuprops props{};
+                kbase_uk_gpuprops props {};
                 props.header.id = KBASE_FUNC_GET_PROPS;
 
                 if (doMaliIoctl(*devFd, props) != 0) {
@@ -220,7 +221,7 @@ namespace mali_userspace {
                     return {};
                 }
 
-                return std::unique_ptr<IMaliDeviceApi>{new MaliDeviceApi(maliDevicePath, std::move(devFd), props)};
+                return std::unique_ptr<IMaliDeviceApi> {new MaliDeviceApi(maliDevicePath, std::move(devFd), props)};
             }
         }
     }
@@ -248,7 +249,7 @@ namespace mali_userspace {
         }
 
         /** Read a u16 from the gpu properties blob */
-        static inline uint16_t readU16(uint8_t * buffer, int & pos, int size)
+        static inline uint16_t readU16(const uint8_t * buffer, int & pos, int size)
         {
             runtime_assert((pos + 2) <= size, "Buffer overflow reading GPU properties");
 
@@ -258,7 +259,7 @@ namespace mali_userspace {
         }
 
         /** Read a u32 from the gpu properties blob */
-        static inline uint32_t readU32(uint8_t * buffer, int & pos, int size)
+        static inline uint32_t readU32(const uint8_t * buffer, int & pos, int size)
         {
             runtime_assert((pos + 4) <= size, "Buffer overflow reading GPU properties");
 
@@ -269,7 +270,7 @@ namespace mali_userspace {
         }
 
         /** Read a u64 from the gpu properties blob */
-        static inline uint64_t readU64(uint8_t * buffer, int & pos, int size)
+        static inline uint64_t readU64(const uint8_t * buffer, int & pos, int size)
         {
             runtime_assert((pos + 8) <= size, "Buffer overflow reading GPU properties");
 
@@ -306,12 +307,12 @@ namespace mali_userspace {
          */
         static gpu_propeties decodeProperties(uint8_t * buffer, int size)
         {
-            gpu_propeties result{};
+            gpu_propeties result {};
 
             for (int pos = 0; pos < size;) {
                 const uint32_t token = readU32(buffer, pos, size);
-                const KBaseGpuPropKey key = KBaseGpuPropKey(token >> 2);
-                const KBaseGpuPropValueSize value_type = KBaseGpuPropValueSize(token & 3);
+                const auto key = KBaseGpuPropKey(token >> 2);
+                const auto value_type = KBaseGpuPropValueSize(token & 3);
                 const uint64_t value = readValue(value_type, buffer, pos, size);
 
                 switch (key) {
@@ -445,8 +446,9 @@ namespace mali_userspace {
             static uint32_t calcNumShaders(const gpu_propeties & props)
             {
                 uint64_t core_mask = 0;
-                for (uint32_t i = 0; i < props.num_core_groups; i++)
+                for (uint32_t i = 0; i < props.num_core_groups; i++) {
                     core_mask |= props.core_mask[i];
+                }
                 return __builtin_popcountll(core_mask);
             }
 
@@ -461,11 +463,12 @@ namespace mali_userspace {
         {
             // get & check API version
             {
-                kbase_ioctl_version_check version_check{};
+                kbase_ioctl_version_check version_check {};
                 version_check.major = 0;
                 version_check.minor = 0;
 
-                if (lib::ioctl(*devFd, KBASE_IOCTL_VERSION_CHECK, reinterpret_cast<unsigned long>(&version_check))) {
+                if (lib::ioctl(*devFd, KBASE_IOCTL_VERSION_CHECK, reinterpret_cast<unsigned long>(&version_check)) !=
+                    0) {
                     logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl");
                     return {};
                 }
@@ -481,10 +484,10 @@ namespace mali_userspace {
 
             // set the flags
             {
-                kbase_ioctl_set_flags flags{};
+                kbase_ioctl_set_flags flags {};
                 flags.create_flags = BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED;
 
-                if (lib::ioctl(*devFd, KBASE_IOCTL_SET_FLAGS, reinterpret_cast<unsigned long>(&flags))) {
+                if (lib::ioctl(*devFd, KBASE_IOCTL_SET_FLAGS, reinterpret_cast<unsigned long>(&flags)) != 0) {
                     logg.logMessage("MaliDeviceApi: Failed setting flags ioctl");
                     return {};
                 }
@@ -492,7 +495,7 @@ namespace mali_userspace {
 
             // read the GPU properties
             {
-                kbase_ioctl_get_gpuprops get_props{};
+                kbase_ioctl_get_gpuprops get_props {};
 
                 // probe first for size
                 int size = lib::ioctl(*devFd, KBASE_IOCTL_GET_GPUPROPS, reinterpret_cast<unsigned long>(&get_props));
@@ -502,7 +505,7 @@ namespace mali_userspace {
                 }
 
                 // now probe again for data
-                std::unique_ptr<uint8_t[]> buffer{new uint8_t[size]};
+                std::unique_ptr<uint8_t[]> buffer {new uint8_t[size]};
                 get_props.size = size;
                 get_props.buffer.value = buffer.get();
 
@@ -515,7 +518,7 @@ namespace mali_userspace {
                 // decode the properties data
                 {
                     const gpu_propeties properties = decodeProperties(buffer.get(), size);
-                    return std::unique_ptr<IMaliDeviceApi>{
+                    return std::unique_ptr<IMaliDeviceApi> {
                         new MaliDeviceApi(maliDevicePath, std::move(devFd), properties)};
                 }
             }
@@ -527,7 +530,7 @@ namespace mali_userspace {
     std::unique_ptr<IMaliDeviceApi> IMaliDeviceApi::probe(const char * devMaliPath)
     {
         {
-            lib::AutoClosingFd devFd{lib::open(devMaliPath, O_RDWR | O_CLOEXEC | O_NONBLOCK)};
+            lib::AutoClosingFd devFd {lib::open(devMaliPath, O_RDWR | O_CLOEXEC | O_NONBLOCK)};
             if (!devFd) {
                 if (errno != ENOENT) {
                     logg.logMessage("MaliDeviceApi: Failed to open mali device '%s' due to '%s'",
@@ -545,7 +548,7 @@ namespace mali_userspace {
         }
 
         {
-            lib::AutoClosingFd devFd{lib::open(devMaliPath, O_RDWR | O_CLOEXEC | O_NONBLOCK)};
+            lib::AutoClosingFd devFd {lib::open(devMaliPath, O_RDWR | O_CLOEXEC | O_NONBLOCK)};
             if (!devFd) {
                 if (errno != ENOENT) {
                     logg.logMessage("MaliDeviceApi: Failed to open mali device '%s' due to '%s'",

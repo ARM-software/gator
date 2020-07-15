@@ -2,14 +2,12 @@
 
 #pragma once
 
-#include <vector>
 #include <cstdint>
 #include <set>
+#include <vector>
 
-namespace armnn
-{
-    class IEncoder
-    {
+namespace armnn {
+    class IEncoder {
     public:
         virtual ~IEncoder() = default;
 
@@ -20,7 +18,8 @@ namespace armnn
          * @return - return header for the request
          */
         virtual std::vector<std::uint8_t> encodePeriodicCounterSelectionRequest(
-                std::uint32_t period, const std::set<std::uint16_t> &eventUids) = 0;
+            std::uint32_t period,
+            const std::set<std::uint16_t> & eventUids) = 0;
 
         /**
          * @param - objectId - representing the ID of the object that the job is associated with.
@@ -29,7 +28,8 @@ namespace armnn
          * @return - return header for the request
          */
         virtual std::vector<std::uint8_t> encodePerJobCounterSelectionRequest(
-                std::uint64_t objectId, const std::set<std::uint16_t> &eventUids) = 0;
+            std::uint64_t objectId,
+            const std::set<std::uint16_t> & eventUids) = 0;
 
         /**
          * acknowledge that a valid connection has been established.

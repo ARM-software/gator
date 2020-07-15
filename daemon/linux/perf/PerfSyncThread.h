@@ -49,7 +49,7 @@ private:
 
     void run() noexcept;
 
-    void rename(std::uint64_t currentTime);
+    void rename(std::uint64_t currentTime) const;
 
     std::thread thread;
     ConsumerFunction consumerFunction;

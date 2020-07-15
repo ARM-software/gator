@@ -4,28 +4,26 @@
 #define __CHILD_H__
 
 #include "Configuration.h"
-#include "lib/SharedMemory.h"
+#include "Source.h"
+#include "lib/AutoClosingFd.h"
 
 #include <atomic>
-#include <functional>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <semaphore.h>
 #include <set>
-#include <signal.h>
 #include <vector>
 
 class Drivers;
 class Sender;
-class Source;
 class OlySocket;
+class Command;
 
 namespace lib {
     class Waiter;
 }
 
-void handleException();
+void handleException() __attribute__((noreturn));
 
 class Child {
 public:
@@ -37,25 +35,14 @@ public:
     static std::unique_ptr<Child> createLocal(Drivers & drivers, const Config & config);
     static std::unique_ptr<Child> createLive(Drivers & drivers, OlySocket & sock);
 
-    // using one of user signals for interprocess communication based on Linux signals
-    static const int SIG_LIVE_CAPTURE_STOPPED = SIGUSR1;
-
     ~Child();
 
     void run();
-    void endSession();
+
+    void endSession(int signum = 0);
 
 private:
     friend void ::handleException();
-
-    // Stuff that needs to be accessed in any child processes
-    struct SharedData {
-        sem_t startProfile;
-
-        SharedData() : startProfile() { sem_init(&startProfile, 1, 0); }
-
-        ~SharedData() { sem_destroy(&startProfile); }
-    };
 
     static std::atomic<Child *> gSingleton;
 
@@ -63,46 +50,41 @@ private:
     static void signalHandler(int signum);
     static void childSignalHandler(int signum);
 
-    /**
-     * Sleeps for a specified time but can be interrupted
-     *
-     * @param timeout_duration
-     * @return true if slept for whole time
-     */
-    template<class Rep, class Period>
-    bool sleep(const std::chrono::duration<Rep, Period> & timeout_duration);
-
     sem_t haltPipeline;
-    sem_t senderThreadStarted;
     sem_t senderSem;
     std::unique_ptr<Source> primarySource;
-    std::unique_ptr<Source> externalSource;
-    std::unique_ptr<Source> userSpaceSource;
-    std::unique_ptr<Source> maliHwSource;
+    std::vector<std::unique_ptr<Source>> otherSources {};
     std::unique_ptr<Sender> sender;
     Drivers & drivers;
     OlySocket * socket;
     int numExceptions;
+    std::mutex sessionEndedMutex {};
+    lib::AutoClosingFd sessionEndEventFd {};
     std::atomic_bool sessionEnded;
-    std::atomic_bool commandTerminated;
-    int commandPid;
+    std::atomic_int signalNumber {0};
 
     Config config;
-    shared_memory::unique_ptr<SharedData> sharedData;
+    std::shared_ptr<Command> command {};
 
-    Child(Drivers & drivers, OlySocket * sock, const Config & config);
+    Child(Drivers & drivers, OlySocket * sock, Config config);
     // Intentionally unimplemented
     Child(const Child &) = delete;
     Child & operator=(const Child &) = delete;
     Child(Child &&) = delete;
     Child & operator=(Child &&) = delete;
 
+    /**
+     * Prepares and if that was successful, starts and add to other sources
+     * return true if prepare did
+     */
+    bool prepareAndStart(Source * source);
+
     void cleanupException();
-    void terminateCommand();
-    void durationThreadEntryPoint(const lib::Waiter & waiter);
+    void durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd);
     void stopThreadEntryPoint();
     void senderThreadEntryPoint();
     void watchPidsThreadEntryPoint(std::set<int> &, const lib::Waiter & waiter);
+    void doEndSession();
 };
 
 #endif //__CHILD_H__

@@ -11,11 +11,12 @@ namespace armnn {
     namespace {
         static_assert(sizeof(std::uint32_t) == 4, "Expected uint32_t to be 4 bytes");
 
-        static constexpr std::size_t BODY_HEADER_SIZE = 6 * sizeof(std::uint32_t);
-        static constexpr std::size_t DEVICE_RECORD_SIZE = 2 * sizeof(std::uint32_t);
-        static constexpr std::size_t COUNTER_SET_RECORD_SIZE = 2 * sizeof(std::uint32_t);
-        static constexpr std::size_t CATEGORY_RECORD_SIZE = 4 * sizeof(std::uint32_t);
-        static constexpr std::size_t EVENT_RECORD_SIZE = 8 * sizeof(std::uint32_t);
+        constexpr std::size_t BODY_HEADER_SIZE = 6 * sizeof(std::uint32_t);
+        constexpr std::size_t DEVICE_RECORD_SIZE = 2 * sizeof(std::uint32_t);
+        constexpr std::size_t COUNTER_SET_RECORD_SIZE = 2 * sizeof(std::uint32_t);
+        constexpr std::size_t CATEGORY_RECORD_SIZE = 3 * sizeof(std::uint32_t);
+        constexpr std::size_t EVENT_RECORD_SIZE = 8 * sizeof(std::uint32_t);
+        constexpr std::size_t OFFSET_SIZE = sizeof(std::uint32_t);
 
         struct BodyHeader {
             std::uint16_t device_records_count;
@@ -31,14 +32,14 @@ namespace armnn {
         /**
          * Decode a string from the packet
          */
-        static bool decodeString(ByteOrder byteOrder, const Bytes & bytes, std::uint32_t offset, std::string & str)
+        bool decodeString(ByteOrder byteOrder, const Bytes & bytes, std::uint32_t offset, std::string & str)
         {
             if ((offset + sizeof(std::uint32_t)) > bytes.length) {
                 logg.logError("Failed to decode packet, invalid string offset 0x%x", offset);
                 return false;
             }
 
-            const std::uint32_t length = byte_order::get_aligned_32(byteOrder, bytes, offset);
+            const std::uint32_t length = byte_order::get_32(byteOrder, bytes, offset);
 
             if ((offset + sizeof(std::uint32_t) + length) > bytes.length) {
                 logg.logError("Failed to decode packet, invalid string length %u at 0x%x", length, offset);
@@ -60,111 +61,111 @@ namespace armnn {
         /**
          * Decode a device record, add it to the map, by UID
          */
-        static bool decodeDeviceRecord(ByteOrder byteOrder,
-                                       const Bytes & bytes,
-                                       std::uint32_t offset,
-                                       std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> & map)
+        bool decodeDeviceRecord(ByteOrder byteOrder,
+                                Bytes bytes,
+                                std::uint32_t offset,
+                                std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> & map)
         {
             if ((offset + DEVICE_RECORD_SIZE) > bytes.length) {
                 logg.logError("Failed to decode packet, invalid device record offset 0x%x", offset);
                 return false;
             }
 
-            const std::uint32_t w0 = byte_order::get_aligned_32(byteOrder, bytes, (0 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w1 = byte_order::get_aligned_32(byteOrder, bytes, (1 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t name_offset = w1 + offset + DEVICE_RECORD_SIZE;
+            const auto deviceRecord = bytes.subspan(offset);
+
+            const std::uint32_t cores_and_uid = byte_order::get_32(byteOrder, deviceRecord, 0 * sizeof(std::uint32_t));
+            const std::uint32_t name_offset = byte_order::get_32(byteOrder, deviceRecord, 1 * sizeof(std::uint32_t));
 
             std::string name;
-            if (!decodeString(byteOrder, bytes, name_offset, name)) {
+            if (!decodeString(byteOrder, deviceRecord, name_offset, name)) {
                 logg.logError("Failed to decode packet, could not decode device_record@%x.name offset 0x%x",
                               offset,
                               name_offset);
                 return false;
             }
 
-            const std::uint16_t uid = ((w0 >> 16) & 0xffff);
-            const std::uint16_t cores = (w0 & 0xffff);
+            const std::uint16_t uid = ((cores_and_uid >> 16) & 0xffff);
+            const std::uint16_t cores = (cores_and_uid & 0xffff);
 
-            auto pair = map.emplace(uid, ICounterDirectoryConsumer::DeviceRecord{uid, cores, std::move(name)});
+            auto pair = map.emplace(uid, ICounterDirectoryConsumer::DeviceRecord {uid, cores, std::move(name)});
             return pair.second;
         }
 
         /**
          * Decode a counter set record, add it to the map, by UID
          */
-        static bool decodeCounterSetRecord(ByteOrder byteOrder,
-                                           const Bytes & bytes,
-                                           std::uint32_t offset,
-                                           std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> & map)
+        bool decodeCounterSetRecord(ByteOrder byteOrder,
+                                    Bytes bytes,
+                                    std::uint32_t offset,
+                                    std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> & map)
         {
             if ((offset + COUNTER_SET_RECORD_SIZE) > bytes.length) {
                 logg.logError("Failed to decode packet, invalid counter set record offset 0x%x", offset);
                 return false;
             }
 
-            const std::uint32_t w0 = byte_order::get_aligned_32(byteOrder, bytes, (0 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w1 = byte_order::get_aligned_32(byteOrder, bytes, (1 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t name_offset = w1 + offset + COUNTER_SET_RECORD_SIZE;
+            const auto counterSet = bytes.subspan(offset);
+
+            const std::uint32_t count_and_uid = byte_order::get_32(byteOrder, counterSet, 0 * sizeof(std::uint32_t));
+            const std::uint32_t name_offset = byte_order::get_32(byteOrder, counterSet, 1 * sizeof(std::uint32_t));
 
             std::string name;
-            if (!decodeString(byteOrder, bytes, name_offset, name)) {
+            if (!decodeString(byteOrder, counterSet, name_offset, name)) {
                 logg.logError("Failed to decode packet, could not decode counter_set_record@%x.name offset 0x%x",
                               offset,
                               name_offset);
                 return false;
             }
 
-            const std::uint16_t uid = ((w0 >> 16) & 0xffff);
-            const std::uint16_t count = (w0 & 0xffff);
+            const std::uint16_t uid = ((count_and_uid >> 16) & 0xffff);
+            const std::uint16_t count = (count_and_uid & 0xffff);
 
-            auto pair = map.emplace(uid, ICounterDirectoryConsumer::CounterSetRecord{uid, count, std::move(name)});
+            auto pair = map.emplace(uid, ICounterDirectoryConsumer::CounterSetRecord {uid, count, std::move(name)});
             return pair.second;
         }
 
-        /** Convert the bits from a pair of u32's into a double */
-        static double bits_to_double(std::uint32_t l, std::uint32_t h)
+        /** Convert the bits from u64 into a double */
+        double bits_to_double(std::uint64_t bits)
         {
-            struct {
-                std::uint32_t l;
-                std::uint32_t h;
-            } pair{l, h};
-
-            static_assert(sizeof(pair) == sizeof(double), "Double != 8 bytes");
+            static_assert(sizeof(bits) == sizeof(double), "Double != 8 bytes");
 
             double result;
-            std::memcpy(&result, &pair, sizeof(double));
+            std::memcpy(&result, &bits, sizeof(double));
             return result;
         }
 
         /**
          * Decode an event record, add it to the map, by UID
          */
-        static bool decodeEventRecord(ByteOrder byteOrder,
-                                      const Bytes & bytes,
-                                      std::uint32_t offset,
-                                      std::map<std::uint16_t, ICounterDirectoryConsumer::EventRecord> & map)
+        bool decodeEventRecord(ByteOrder byteOrder,
+                               Bytes bytes,
+                               std::uint32_t offset,
+                               std::map<std::uint16_t, ICounterDirectoryConsumer::EventRecord> & map)
         {
             if ((offset + EVENT_RECORD_SIZE) > bytes.length) {
                 logg.logError("Failed to decode packet, invalid event record offset 0x%x", offset);
                 return false;
             }
 
-            const std::uint32_t w0 = byte_order::get_aligned_32(byteOrder, bytes, (0 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w1 = byte_order::get_aligned_32(byteOrder, bytes, (1 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w2 = byte_order::get_aligned_32(byteOrder, bytes, (2 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w3 = byte_order::get_aligned_32(byteOrder, bytes, (3 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w4 = byte_order::get_aligned_32(byteOrder, bytes, (4 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w5 = byte_order::get_aligned_32(byteOrder, bytes, (5 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w6 = byte_order::get_aligned_32(byteOrder, bytes, (6 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w7 = byte_order::get_aligned_32(byteOrder, bytes, (7 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t pool_offset = offset + EVENT_RECORD_SIZE;
+            const auto eventRecord = bytes.subspan(offset);
 
-            std::uint32_t name_offset = pool_offset + w5;
-            std::uint32_t description_offset = pool_offset + w6;
-            std::uint32_t units_offset = pool_offset + w7;
+            const std::uint32_t counter_uid_and_max_counter_uid =
+                byte_order::get_32(byteOrder, bytes, (0 * sizeof(std::uint32_t)) + offset);
+            const std::uint32_t counter_set_and_device =
+                byte_order::get_32(byteOrder, bytes, (1 * sizeof(std::uint32_t)) + offset);
+            const std::uint32_t interpolation_and_class =
+                byte_order::get_32(byteOrder, bytes, (2 * sizeof(std::uint32_t)) + offset);
+            const std::uint64_t multiplier_bits =
+                byte_order::get_64(byteOrder, bytes, (3 * sizeof(std::uint32_t)) + offset);
+            const std::uint32_t name_offset =
+                byte_order::get_32(byteOrder, bytes, (5 * sizeof(std::uint32_t)) + offset);
+            const std::uint32_t description_offset =
+                byte_order::get_32(byteOrder, bytes, (6 * sizeof(std::uint32_t)) + offset);
+            const std::uint32_t units_offset =
+                byte_order::get_32(byteOrder, bytes, (7 * sizeof(std::uint32_t)) + offset);
 
             std::string name;
-            if (!decodeString(byteOrder, bytes, name_offset, name)) {
+            if (!decodeString(byteOrder, eventRecord, name_offset, name)) {
                 logg.logError("Failed to decode packet, could not decode event_record@%x.name offset 0x%x",
                               offset,
                               name_offset);
@@ -172,7 +173,7 @@ namespace armnn {
             }
 
             std::string description;
-            if (!decodeString(byteOrder, bytes, description_offset, description)) {
+            if (!decodeString(byteOrder, eventRecord, description_offset, description)) {
                 logg.logError("Failed to decode packet, could not decode event_record@%x.description offset 0x%x",
                               offset,
                               description_offset);
@@ -180,68 +181,59 @@ namespace armnn {
             }
 
             std::string units;
-            if ((w7 != 0) && !decodeString(byteOrder, bytes, units_offset, units)) {
+            if ((units_offset != 0) && !decodeString(byteOrder, eventRecord, units_offset, units)) {
                 logg.logError("Failed to decode packet, could not decode event_record@%x.units offset 0x%x",
                               offset,
                               units_offset);
                 return false;
             }
 
-            const std::uint16_t max_uid = ((w0 >> 16) & 0xffff);
-            const std::uint16_t uid = (w0 & 0xffff);
-            const std::uint16_t device_uid = ((w1 >> 16) & 0xffff);
-            const std::uint16_t counter_set_uid = (w1 & 0xffff);
-            const std::uint16_t clazz = ((w2 >> 16) & 0xffff);
-            const std::uint16_t interpolation = (w2 & 0xffff);
-            const double multiplier = bits_to_double(w3, w4);
+            const std::uint16_t max_uid = ((counter_uid_and_max_counter_uid >> 16) & 0xffff);
+            const std::uint16_t uid = (counter_uid_and_max_counter_uid & 0xffff);
+            const std::uint16_t device_uid = ((counter_set_and_device >> 16) & 0xffff);
+            const std::uint16_t counter_set_uid = (counter_set_and_device & 0xffff);
+            const std::uint16_t clazz = ((interpolation_and_class >> 16) & 0xffff);
+            const std::uint16_t interpolation = (interpolation_and_class & 0xffff);
+            const double multiplier = bits_to_double(multiplier_bits);
 
             auto pair = map.emplace(
                 uid,
-                ICounterDirectoryConsumer::EventRecord{uid,
-                                                       max_uid,
-                                                       device_uid,
-                                                       counter_set_uid,
-                                                       ICounterDirectoryConsumer::Class(clazz),
-                                                       ICounterDirectoryConsumer::Interpolation(interpolation),
-                                                       multiplier,
-                                                       std::move(name),
-                                                       std::move(description),
-                                                       std::move(units)});
+                ICounterDirectoryConsumer::EventRecord {uid,
+                                                        max_uid,
+                                                        device_uid,
+                                                        counter_set_uid,
+                                                        ICounterDirectoryConsumer::Class(clazz),
+                                                        ICounterDirectoryConsumer::Interpolation(interpolation),
+                                                        multiplier,
+                                                        std::move(name),
+                                                        std::move(description),
+                                                        std::move(units)});
             return pair.second;
         }
 
         /**
          * Decode a category record, add it to the map, by UID
          */
-        static bool decodeCategoryRecord(ByteOrder byteOrder,
-                                         const Bytes & bytes,
-                                         std::uint32_t offset,
-                                         ICounterDirectoryConsumer::CategoryRecord & record)
+        bool decodeCategoryRecord(ByteOrder byteOrder,
+                                  const Bytes & bytes,
+                                  std::uint32_t offset,
+                                  ICounterDirectoryConsumer::CategoryRecord & record)
         {
             if ((offset + CATEGORY_RECORD_SIZE) > bytes.length) {
                 logg.logError("Failed to decode packet, invalid category record offset 0x%x", offset);
                 return false;
             }
 
-            const std::uint32_t w0 = byte_order::get_aligned_32(byteOrder, bytes, (0 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w1 = byte_order::get_aligned_32(byteOrder, bytes, (1 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w2 = byte_order::get_aligned_32(byteOrder, bytes, (2 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t w3 = byte_order::get_aligned_32(byteOrder, bytes, (3 * sizeof(std::uint32_t)) + offset);
-            const std::uint32_t pool_offset = offset + CATEGORY_RECORD_SIZE;
+            const auto category = bytes.subspan(offset);
 
-            // reserved word
-            if ((w1 & 0xffff) != 0) {
-                logg.logError("Failed to decode packet, invalid res0 field in category record at offset 0x%x", offset);
-                return false;
-            }
-
-            // header fields
-            record.device_uid = ((w0 >> 16) & 0xffff);
-            record.counter_set_uid = (w0 & 0xffff);
+            const std::uint32_t reserved_and_event_count =
+                byte_order::get_32(byteOrder, category, 0 * sizeof(std::uint32_t));
+            const std::uint32_t event_pointer_table_offset =
+                byte_order::get_32(byteOrder, category, 1 * sizeof(std::uint32_t));
+            const std::uint32_t name_offset = byte_order::get_32(byteOrder, category, 2 * sizeof(std::uint32_t));
 
             // decode name
-            const std::uint32_t name_offset = pool_offset + w3;
-            if (!decodeString(byteOrder, bytes, name_offset, record.name)) {
+            if (!decodeString(byteOrder, category, name_offset, record.name)) {
                 logg.logError("Failed to decode packet, could not decode category_record@%x.name offset 0x%x",
                               offset,
                               name_offset);
@@ -249,32 +241,30 @@ namespace armnn {
             }
 
             // decode event records
-            const std::uint16_t event_count = ((w1 >> 16) & 0xffff);
-            const std::uint32_t event_pointer_table_offset = pool_offset + w2;
+            const std::uint16_t event_count = ((reserved_and_event_count >> 16) & 0xffff);
 
             record.events_by_uid.clear();
 
             if (event_count == 0) {
                 return true;
             }
-            else if ((event_pointer_table_offset + (event_count * sizeof(std::uint32_t))) > bytes.length) {
+            else if ((event_pointer_table_offset + (event_count * sizeof(std::uint32_t))) > category.length) {
                 logg.logError(
                     "Failed to decode packet, could not decode event_record_table in category record at offset 0x%x",
                     offset);
                 return false;
             }
 
-            for (std::uint32_t i = 0; i < event_count; ++i) {
-                const std::uint32_t event_offset =
-                    byte_order::get_aligned_32(byteOrder,
-                                               bytes,
-                                               (i * sizeof(std::uint32_t)) + event_pointer_table_offset);
+            const auto events = category.subspan(event_pointer_table_offset);
 
-                if (!decodeEventRecord(byteOrder, bytes, event_offset + pool_offset, record.events_by_uid)) {
+            for (std::uint32_t i = 0; i < event_count; ++i) {
+                const std::uint32_t event_offset = byte_order::get_32(byteOrder, events, i * OFFSET_SIZE);
+
+                if (!decodeEventRecord(byteOrder, events, event_offset, record.events_by_uid)) {
                     logg.logError("Failed to decode packet, could not decode event_record[%u]@%x in category record at "
                                   "offset 0x%x",
                                   i,
-                                  event_offset + pool_offset,
+                                  event_offset,
                                   offset);
                     return false;
                 }
@@ -286,11 +276,6 @@ namespace armnn {
 
     bool CounterDirectoryDecoder::decode(Bytes bytes) const
     {
-        // it is ok to skip empty packets
-        if (bytes.length == 0) {
-            return true;
-        }
-
         // body_header section must exist
         if (bytes.length < BODY_HEADER_SIZE) {
             logg.logError("Failed to decode packet, too short (%zu)", bytes.length);
@@ -298,100 +283,77 @@ namespace armnn {
         }
 
         // read body header
-        BodyHeader body_header;
+        const std::uint32_t reserved_and_device_records_count =
+            byte_order::get_32(byteOrder, bytes, 0 * sizeof(std::uint32_t));
+        const std::uint32_t device_records_pointer_table_offset =
+            byte_order::get_32(byteOrder, bytes, 1 * sizeof(std::uint32_t));
+        const std::uint32_t reserved_and_counter_set_count =
+            byte_order::get_32(byteOrder, bytes, 2 * sizeof(std::uint32_t));
+        const std::uint32_t counter_set_pointer_table_offset =
+            byte_order::get_32(byteOrder, bytes, 3 * sizeof(std::uint32_t));
+        const std::uint32_t reserved_and_categories_count =
+            byte_order::get_32(byteOrder, bytes, 4 * sizeof(std::uint32_t));
+        const std::uint32_t categories_pointer_table_offset =
+            byte_order::get_32(byteOrder, bytes, 5 * sizeof(std::uint32_t));
 
-        {
-            const std::uint32_t w0 = byte_order::get_aligned_32(byteOrder, bytes, 0 * sizeof(std::uint32_t));
-            const std::uint32_t w1 = byte_order::get_aligned_32(byteOrder, bytes, 1 * sizeof(std::uint32_t));
-            const std::uint32_t w2 = byte_order::get_aligned_32(byteOrder, bytes, 2 * sizeof(std::uint32_t));
-            const std::uint32_t w3 = byte_order::get_aligned_32(byteOrder, bytes, 3 * sizeof(std::uint32_t));
-            const std::uint32_t w4 = byte_order::get_aligned_32(byteOrder, bytes, 4 * sizeof(std::uint32_t));
-            const std::uint32_t w5 = byte_order::get_aligned_32(byteOrder, bytes, 5 * sizeof(std::uint32_t));
+        const auto device_records_count = (reserved_and_device_records_count >> 16) & 0xffff;
+        const auto counter_set_count = (reserved_and_counter_set_count >> 16) & 0xffff;
+        const auto categories_count = (reserved_and_categories_count >> 16) & 0xffff;
 
-            // reserved words must be zero
-            if (((w0 & 0xffff) != 0) || ((w2 & 0xffff) != 0) || ((w4 & 0xffff) != 0)) {
-                logg.logError("Failed to decode packet, invalid res0 fields in header (%04x:%04x:%04x)",
-                              w0 & 0xffff,
-                              w2 & 0xffff,
-                              w4 & 0xffff);
-                return false;
-            }
+        // validate counts
+        if (bytes.size() < device_records_pointer_table_offset + device_records_count * OFFSET_SIZE) {
+            logg.logError(
+                "Failed to decode packet, device_records_pointer_table_offset/count out of bounds (0x%x:0x%x)",
+                device_records_pointer_table_offset,
+                device_records_count);
+            return false;
+        }
 
-            body_header.device_records_count = (w0 >> 16) & 0xffff;
-            body_header.device_records_pointer_table_offset = w1;
-            body_header.counter_set_count = (w2 >> 16) & 0xffff;
-            body_header.counter_set_pointer_table_offset = w3;
-            body_header.categories_count = (w4 >> 16) & 0xffff;
-            body_header.categories_pointer_table_offset = w5;
+        if (bytes.size() < counter_set_pointer_table_offset + counter_set_count * OFFSET_SIZE) {
+            logg.logError("Failed to decode packet, counter_set_pointer_table_offset/count out of bounds (0x%x:0x%x)",
+                          counter_set_pointer_table_offset,
+                          counter_set_count);
+            return false;
+        }
 
-            // validate counts
-            if ((body_header.device_records_count > 0) &&
-                ((body_header.device_records_pointer_table_offset < BODY_HEADER_SIZE) ||
-                 (((body_header.device_records_count * 4) + body_header.device_records_pointer_table_offset) >
-                  bytes.length))) {
-                logg.logError("Failed to decode packet, device record pointer table out of bounds (%u: %u)",
-                              body_header.device_records_count,
-                              body_header.device_records_pointer_table_offset);
-                return false;
-            }
-
-            if ((body_header.counter_set_count > 0) &&
-                ((body_header.counter_set_pointer_table_offset < BODY_HEADER_SIZE) ||
-                 (((body_header.counter_set_count * 4) + body_header.counter_set_pointer_table_offset) >
-                  bytes.length))) {
-                logg.logError("Failed to decode packet, counter set record pointer table out of bounds (%u: %u)",
-                              body_header.counter_set_count,
-                              body_header.counter_set_pointer_table_offset);
-                return false;
-            }
-
-            if ((body_header.categories_count > 0) &&
-                ((body_header.categories_pointer_table_offset < BODY_HEADER_SIZE) ||
-                 (((body_header.categories_count * 4) + body_header.categories_pointer_table_offset) > bytes.length))) {
-                logg.logError("Failed to decode packet, categories record pointer table out of bounds (%u: %u)",
-                              body_header.categories_count,
-                              body_header.categories_pointer_table_offset);
-                return false;
-            }
+        if (bytes.size() < categories_pointer_table_offset + categories_count * OFFSET_SIZE) {
+            logg.logError("Failed to decode packet, categories_pointer_table_offset/count out of bounds (0x%x:0x%x)",
+                          categories_pointer_table_offset,
+                          categories_count);
+            return false;
         }
 
         // read the device_record_offsets
+        const auto deviceRecords = bytes.subspan(device_records_pointer_table_offset);
         std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> device_record_map;
-        for (std::uint32_t i = 0; i < body_header.device_records_count; ++i) {
-            const std::uint32_t offset = byte_order::get_aligned_32(
-                byteOrder,
-                bytes, //
-                (i * sizeof(std::uint32_t)) + body_header.device_records_pointer_table_offset);
+        for (std::uint32_t i = 0; i < device_records_count; ++i) {
+            const std::uint32_t offset = byte_order::get_32(byteOrder, deviceRecords, i * OFFSET_SIZE);
 
-            if (!decodeDeviceRecord(byteOrder, bytes, offset, device_record_map)) {
+            if (!decodeDeviceRecord(byteOrder, deviceRecords, offset, device_record_map)) {
                 logg.logError("Failed to decode packet, failed to decode device record[%u]@%x", i, offset);
                 return false;
             }
         }
 
         // read the counter_set_offsets
+        const auto counterSets = bytes.subspan(counter_set_pointer_table_offset);
         std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> counter_set_map;
-        for (std::uint32_t i = 0; i < body_header.counter_set_count; ++i) {
-            const std::uint32_t offset =
-                byte_order::get_aligned_32(byteOrder,
-                                           bytes, //
-                                           (i * sizeof(std::uint32_t)) + body_header.counter_set_pointer_table_offset);
+        for (std::uint32_t i = 0; i < counter_set_count; ++i) {
+            const std::uint32_t offset = byte_order::get_32(byteOrder, counterSets, i * OFFSET_SIZE);
 
-            if (!decodeCounterSetRecord(byteOrder, bytes, offset, counter_set_map)) {
+            if (!decodeCounterSetRecord(byteOrder, counterSets, offset, counter_set_map)) {
                 logg.logError("Failed to decode packet, failed to decode counter set record[%u]@%x", i, offset);
                 return false;
             }
         }
 
         // read the categories_offsets
-        std::vector<ICounterDirectoryConsumer::CategoryRecord> categories_list{body_header.categories_count};
-        for (std::uint32_t i = 0; i < body_header.categories_count; ++i) {
-            const std::uint32_t offset =
-                byte_order::get_aligned_32(byteOrder,
-                                           bytes, //
-                                           (i * sizeof(std::uint32_t)) + body_header.categories_pointer_table_offset);
+        const auto categories = bytes.subspan(categories_pointer_table_offset);
+        std::vector<ICounterDirectoryConsumer::CategoryRecord> categories_list {categories_count};
+        for (std::uint32_t i = 0; i < categories_count; ++i) {
+            const std::uint32_t offset = byte_order::get_32(byteOrder, categories, i * OFFSET_SIZE);
 
-            if (!decodeCategoryRecord(byteOrder, bytes, offset, categories_list[i])) {
+            if (!decodeCategoryRecord(byteOrder, categories, offset, categories_list[i])) {
                 logg.logError("Failed to decode packet, failed to decode category record[%u]@%x", i, offset);
                 return false;
             }

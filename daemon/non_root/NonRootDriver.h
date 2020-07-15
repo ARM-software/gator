@@ -18,8 +18,8 @@ namespace non_root {
     public:
         NonRootDriver(PmuXML && pmuXml, lib::Span<const GatorCpu> clusters);
 
-        virtual void readEvents(mxml_node_t * const) override;
-        virtual void writeEvents(mxml_node_t * const) const override;
+        virtual void readEvents(mxml_node_t * const /*unused*/) override;
+        virtual void writeEvents(mxml_node_t * const /*unused*/) const override;
 
         std::map<NonRootCounter, int> getEnabledCounters() const;
 

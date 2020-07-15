@@ -2,14 +2,10 @@
 #ifndef ARMNN_DECODERUTILITY_H_
 #define ARMNN_DECODERUTILITY_H_
 
-#include "../Logging.h"
-#include "PacketDecoder.h"
 #include "IPacketConsumer.h"
 #include "PacketUtility.h"
-
-#include <map>
-#include <sstream>
-#include <string>
+#include "PacketUtilityModels.h"
+#include "lib/Optional.h"
 
 namespace armnn {
 
@@ -17,23 +13,22 @@ namespace armnn {
 
     bool fillPacketVersionTable(Bytes bytes,
                                 std::uint32_t offset,
-                                const ByteOrder byteOrder,
+                                ByteOrder byteOrder,
                                 std::vector<PacketVersionTable> & out);
 
-    lib::Optional<StreamMetadataContent> decodeStreamMetaData(Bytes bytes, const ByteOrder byteOrder);
-    bool decodeAndConsumePeriodicCounterSelectionPkt(Bytes bytes,
-                                                     const ByteOrder byteOrder,
-                                                     IPacketConsumer & consumer);
-    bool decodeAndConsumePerJobCounterSelectionPkt(Bytes bytes,
-                                                   const ByteOrder byteOrder,
-                                                   IPacketConsumer & consumer);
+    lib::Optional<StreamMetadataContent> decodeStreamMetaData(Bytes packetBodyAfterMagic, ByteOrder byteOrder);
+
+    bool decodeAndConsumePeriodicCounterSelectionPkt(Bytes bytes, ByteOrder byteOrder, IPacketConsumer & consumer);
+
+    bool decodeAndConsumePerJobCounterSelectionPkt(Bytes bytes, ByteOrder byteOrder, IPacketConsumer & consumer);
 
     bool decodeAndConsumePeriodicCounterCapturePkt(const Bytes & bytes,
-                                                   const ByteOrder byteOrder,
+                                                   ByteOrder byteOrder,
                                                    IPacketConsumer & consumer);
+
     bool decodeAndConsumePerJobCounterCapturePkt(bool isPreJob,
                                                  const Bytes & bytes,
-                                                 const ByteOrder byteOrder,
+                                                 ByteOrder byteOrder,
                                                  IPacketConsumer & consumer);
 
 }

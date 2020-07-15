@@ -8,7 +8,7 @@
 #include "SessionData.h"
 #include "lib/FileDescriptor.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include <unistd.h>
 
 static const char MALI_UTGARD_SETUP[] = "\0mali-utgard-setup";
@@ -22,19 +22,18 @@ static const size_t HEADER_SIZE = 1 + sizeof(uint32_t);
 #define HEADER_ENABLE_COUNTERS (char(0x84))
 #define HEADER_START (char(0x85))
 
-static uint32_t readLEInt(char * const buf)
+static uint32_t readLEInt(const char * const buf)
 {
-    size_t i;
-    uint32_t v;
+    uint32_t v = 0;
 
-    v = 0;
-    for (i = 0; i < sizeof(v); ++i)
+    for (size_t i = 0; i < sizeof(v); ++i) {
         v |= uint32_t(buf[i]) << 8 * i;
+    }
 
     return v;
 }
 
-static int readPackedInt(char * const buf, const size_t bufSize, size_t * const pos, uint64_t * const l)
+static int readPackedInt(const char * const buf, const size_t bufSize, size_t * const pos, uint64_t * const l)
 {
     uint8_t shift = 0;
     uint8_t b = ~0;
@@ -64,8 +63,6 @@ public:
     {
     }
 
-    ~ExternalCounter() {}
-
     int getCores() const { return mCores; }
     void setEvent(const int event) { mEvent = event; }
     int getEvent() const { return mEvent; }
@@ -81,7 +78,9 @@ private:
     ExternalCounter & operator=(ExternalCounter &&) = delete;
 };
 
-ExternalDriver::ExternalDriver() : SimpleDriver("External"), mUds(-1), mQueried(false), mStarted(false) {}
+ExternalDriver::ExternalDriver() : SimpleDriver("External"), mUds(-1), mQueried(false), mStarted(false)
+{
+}
 
 bool ExternalDriver::connect() const
 {
@@ -149,7 +148,7 @@ void ExternalDriver::query() const
     size_t pos = 0;
     while (pos < size) {
         size_t begin = pos;
-        char * name = NULL;
+        char * name = nullptr;
         uint64_t cores = -1;
         while (pos < size && buf[pos] != '\0') {
             ++pos;
@@ -160,7 +159,7 @@ void ExternalDriver::query() const
         if (pos < size && buf[pos] == '\0') {
             ++pos;
         };
-        if (name != NULL) {
+        if (name != nullptr) {
             if (readPackedInt(buf, bufSize, &pos, &cores) == 0) {
                 // Cheat so that this can be 'const'
                 const_cast<ExternalDriver *>(this)->setCounters(new ExternalCounter(getCounters(), name, cores));
@@ -188,11 +187,10 @@ void ExternalDriver::start()
     mStarted = true;
 
     char buf[1 << 12];
-    int pos;
-
     buf[0] = HEADER_ENABLE_COUNTERS;
-    pos = HEADER_SIZE;
-    for (ExternalCounter * counter = static_cast<ExternalCounter *>(getCounters()); counter != NULL;
+
+    int pos = HEADER_SIZE;
+    for (auto * counter = static_cast<ExternalCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<ExternalCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
@@ -254,8 +252,8 @@ bool ExternalDriver::claimCounter(Counter & counter) const
 
 void ExternalDriver::setupCounter(Counter & counter)
 {
-    ExternalCounter * const externalCounter = static_cast<ExternalCounter *>(findCounter(counter));
-    if (externalCounter == NULL) {
+    auto * const externalCounter = static_cast<ExternalCounter *>(findCounter(counter));
+    if (externalCounter == nullptr) {
         counter.setEnabled(false);
         return;
     }

@@ -11,16 +11,16 @@ class ISender;
 class Source {
 public:
     Source(Child & child);
-    virtual ~Source();
+    virtual ~Source() = default;
 
     virtual bool prepare() = 0;
     void start();
     virtual void run() = 0;
     virtual void interrupt() = 0;
-    void join();
+    void join() const;
 
     virtual bool isDone() = 0;
-    virtual void write(ISender * sender) = 0;
+    virtual void write(ISender & sender) = 0;
 
 protected:
     // active child object

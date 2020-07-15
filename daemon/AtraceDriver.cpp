@@ -11,7 +11,6 @@
 class AtraceCounter : public DriverCounter {
 public:
     AtraceCounter(DriverCounter * next, const char * name, int flag);
-    ~AtraceCounter();
 
     int getFlag() const { return mFlag; }
 
@@ -29,14 +28,10 @@ AtraceCounter::AtraceCounter(DriverCounter * next, const char * name, int flag) 
 {
 }
 
-AtraceCounter::~AtraceCounter() {}
-
 AtraceDriver::AtraceDriver(const FtraceDriver & ftraceDriver)
     : SimpleDriver("Atrace"), mSupported(false), mNotifyPath(), mFtraceDriver(ftraceDriver)
 {
 }
-
-AtraceDriver::~AtraceDriver() {}
 
 void AtraceDriver::readEvents(mxml_node_t * const xml)
 {
@@ -62,12 +57,12 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
 
     mxml_node_t * node = xml;
     while (true) {
-        node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
-        if (node == NULL) {
+        node = mxmlFindElement(node, xml, "event", nullptr, nullptr, MXML_DESCEND);
+        if (node == nullptr) {
             break;
         }
         const char * counter = mxmlElementGetAttr(node, "counter");
-        if (counter == NULL) {
+        if (counter == nullptr) {
             continue;
         }
 
@@ -76,7 +71,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
         }
 
         const char * flagStr = mxmlElementGetAttr(node, "flag");
-        if (flagStr == NULL) {
+        if (flagStr == nullptr) {
             logg.logError("The atrace counter %s is missing the required flag attribute", counter);
             handleException();
         }
@@ -117,7 +112,7 @@ void AtraceDriver::start()
     }
 
     int flags = 0;
-    for (AtraceCounter * counter = static_cast<AtraceCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<AtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<AtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;

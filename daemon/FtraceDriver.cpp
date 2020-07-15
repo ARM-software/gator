@@ -11,10 +11,10 @@
 #include "lib/Utils.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
+#include <csignal>
 #include <dirent.h>
 #include <fcntl.h>
 #include <regex.h>
-#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -24,8 +24,8 @@
 
 Barrier::Barrier() : mMutex(), mCond(), mCount(0)
 {
-    pthread_mutex_init(&mMutex, NULL);
-    pthread_cond_init(&mCond, NULL);
+    pthread_mutex_init(&mMutex, nullptr);
+    pthread_cond_init(&mCond, nullptr);
 }
 
 Barrier::~Barrier()
@@ -63,9 +63,9 @@ void Barrier::wait()
 class FtraceCounter : public DriverCounter {
 public:
     FtraceCounter(DriverCounter * next, const char * name, const char * enable);
-    ~FtraceCounter();
+    ~FtraceCounter() override;
 
-    bool readTracepointFormat(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
+    bool readTracepointFormat(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
 
     void prepare();
     void stop();
@@ -82,20 +82,20 @@ private:
 };
 
 FtraceCounter::FtraceCounter(DriverCounter * next, const char * name, const char * enable)
-    : DriverCounter(next, name), mEnable(enable == NULL ? NULL : strdup(enable)), mWasEnabled(false)
+    : DriverCounter(next, name), mEnable(enable == nullptr ? nullptr : strdup(enable)), mWasEnabled(0)
 {
 }
 
 FtraceCounter::~FtraceCounter()
 {
-    if (mEnable != NULL) {
+    if (mEnable != nullptr) {
         free(mEnable);
     }
 }
 
 void FtraceCounter::prepare()
 {
-    if (mEnable == NULL) {
+    if (mEnable == nullptr) {
         if (gSessionData.mFtraceRaw) {
             logg.logError("The ftrace counter %s is not compatible with the more efficient ftrace collection as it is "
                           "missing the enable attribute. Please either add the enable attribute to the counter in "
@@ -116,7 +116,7 @@ void FtraceCounter::prepare()
 
 void FtraceCounter::stop()
 {
-    if (mEnable == NULL) {
+    if (mEnable == nullptr) {
         return;
     }
 
@@ -148,8 +148,8 @@ public:
     }
 
     void start();
-    bool interrupt();
-    bool join();
+    bool interrupt() const;
+    bool join() const;
 
     static FtraceReader * getHead() { return mHead; }
     FtraceReader * getNext() const { return mNext; }
@@ -173,27 +173,27 @@ FtraceReader * FtraceReader::mHead;
 
 void FtraceReader::start()
 {
-    if (pthread_create(&mThread, NULL, runStatic, this) != 0) {
+    if (pthread_create(&mThread, nullptr, runStatic, this) != 0) {
         logg.logError("Unable to start the ftraceReader thread");
         handleException();
     }
 }
 
-bool FtraceReader::interrupt()
+bool FtraceReader::interrupt() const
 {
     return pthread_kill(mThread, SIGUSR1) == 0;
 }
 
-bool FtraceReader::join()
+bool FtraceReader::join() const
 {
-    return pthread_join(mThread, NULL) == 0;
+    return pthread_join(mThread, nullptr) == 0;
 }
 
 void * FtraceReader::runStatic(void * arg)
 {
-    FtraceReader * const ftraceReader = static_cast<FtraceReader *>(arg);
+    auto * const ftraceReader = static_cast<FtraceReader *>(arg);
     ftraceReader->run();
-    return NULL;
+    return nullptr;
 }
 
 #ifndef SPLICE_F_MOVE
@@ -229,7 +229,7 @@ void FtraceReader::run()
     mBarrier->wait();
 
     while (gSessionData.mSessionIsActive) {
-        const ssize_t bytes = splice(mTfd, NULL, mPfd1, NULL, pageSize, SPLICE_F_MOVE);
+        const ssize_t bytes = splice(mTfd, nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
         if (bytes == 0) {
             logg.logError("ftrace splice unexpectedly returned 0");
             handleException();
@@ -258,7 +258,7 @@ void FtraceReader::run()
     for (;;) {
         ssize_t bytes;
 
-        bytes = splice(mTfd, NULL, mPfd1, NULL, pageSize, SPLICE_F_MOVE);
+        bytes = splice(mTfd, nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
         if (bytes <= 0) {
             break;
         }
@@ -313,7 +313,7 @@ void FtraceReader::run()
 
 FtraceDriver::FtraceDriver(bool useForTracepoints, size_t numberOfCores)
     : SimpleDriver("Ftrace"),
-      mValues(NULL),
+      mValues(nullptr),
       mBarrier(),
       mTracingOn(0),
       mSupported(false),
@@ -366,12 +366,12 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     mxml_node_t * node = xml;
     int count = 0;
     while (true) {
-        node = mxmlFindElement(node, xml, "event", NULL, NULL, MXML_DESCEND);
-        if (node == NULL) {
+        node = mxmlFindElement(node, xml, "event", nullptr, nullptr, MXML_DESCEND);
+        if (node == nullptr) {
             break;
         }
         const char * counter = mxmlElementGetAttr(node, "counter");
-        if (counter == NULL) {
+        if (counter == nullptr) {
             continue;
         }
 
@@ -380,21 +380,21 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         }
 
         const char * regex = mxmlElementGetAttr(node, "regex");
-        if (regex == NULL) {
+        if (regex == nullptr) {
             logg.logError("The regex counter %s is missing the required regex attribute", counter);
             handleException();
         }
 
         const char * tracepoint = mxmlElementGetAttr(node, "tracepoint");
         const char * enable = mxmlElementGetAttr(node, "enable");
-        if (enable == NULL) {
+        if (enable == nullptr) {
             enable = tracepoint;
         }
-        if (!mUseForTracepoints && tracepoint != NULL) {
+        if (!mUseForTracepoints && tracepoint != nullptr) {
             logg.logMessage("Not using ftrace for counter %s", counter);
             continue;
         }
-        if (enable != NULL) {
+        if (enable != nullptr) {
             char buf[1 << 10];
             snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", enable);
             if (access(buf, W_OK) != 0) {
@@ -421,7 +421,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         }
     }
 
-    for (FtraceCounter * counter = static_cast<FtraceCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<FtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
@@ -429,7 +429,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         counter->prepare();
     }
 
-    if (lib::readIntFromFile(TRACING_PATH "/tracing_on", mTracingOn)) {
+    if (lib::readIntFromFile(TRACING_PATH "/tracing_on", mTracingOn) != 0) {
         logg.logError("Unable to read if ftrace is enabled");
         handleException();
     }
@@ -462,7 +462,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     // core count systems. The idea is that hopefully only on the first
     // capture, the trace clock needs to be changed. On subsequent captures,
     // the right clock is already being used.
-    int fd = open(trace_clock_path, O_RDONLY);
+    int fd = open(trace_clock_path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         logg.logError("Couldn't open %s", trace_clock_path);
         handleException();
@@ -474,7 +474,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     }
     close(fd);
     trace_clock_file_content[trace_clock_file_length] = 0;
-    if (::strstr(trace_clock_file_content, clock_selected)) {
+    if (::strstr(trace_clock_file_content, clock_selected) != nullptr) {
         // the right clock was already selected :)
         must_switch_clock = false;
     }
@@ -500,7 +500,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     struct sigaction act;
     memset(&act, 0, sizeof(act));
     act.sa_handler = handlerUsr1;
-    if (sigaction(SIGUSR1, &act, NULL) != 0) {
+    if (sigaction(SIGUSR1, &act, nullptr) != 0) {
         logg.logError("sigaction failed");
         handleException();
     }
@@ -513,7 +513,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
 
     mBarrier.init(mNumberOfCores + 1);
 
-    std::pair<std::vector<int>, bool> result{{}, false};
+    std::pair<std::vector<int>, bool> result {{}, false};
     for (size_t cpu = 0; cpu < mNumberOfCores; ++cpu) {
         int pfd[2];
         if (pipe2(pfd, O_CLOEXEC) != 0) {
@@ -547,7 +547,7 @@ std::vector<int> FtraceDriver::stop()
 {
     lib::writeIntToFile(TRACING_PATH "/tracing_on", mTracingOn);
 
-    for (FtraceCounter * counter = static_cast<FtraceCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<FtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
@@ -557,11 +557,11 @@ std::vector<int> FtraceDriver::stop()
 
     std::vector<int> fds;
     if (gSessionData.mFtraceRaw) {
-        for (FtraceReader * reader = FtraceReader::getHead(); reader != NULL; reader = reader->getNext()) {
+        for (FtraceReader * reader = FtraceReader::getHead(); reader != nullptr; reader = reader->getNext()) {
             reader->interrupt();
             fds.push_back(reader->getPfd0());
         }
-        for (FtraceReader * reader = FtraceReader::getHead(); reader != NULL; reader = reader->getNext()) {
+        for (FtraceReader * reader = FtraceReader::getHead(); reader != nullptr; reader = reader->getNext()) {
             reader->join();
         }
     }
@@ -598,12 +598,12 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime,
     attrsConsumer.marshalHeaderEvent(currTime, b->getBuf());
 
     DIR * dir = opendir(EVENTS_PATH "/ftrace");
-    if (dir == NULL) {
+    if (dir == nullptr) {
         logg.logError("Unable to open events ftrace folder");
         handleException();
     }
     struct dirent * dirent;
-    while ((dirent = readdir(dir)) != NULL) {
+    while ((dirent = readdir(dir)) != nullptr) {
         if (dirent->d_name[0] == '.' || dirent->d_type != DT_DIR) {
             continue;
         }
@@ -619,7 +619,7 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime,
     }
     closedir(dir);
 
-    for (FtraceCounter * counter = static_cast<FtraceCounter *>(getCounters()); counter != NULL;
+    for (auto * counter = static_cast<FtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;

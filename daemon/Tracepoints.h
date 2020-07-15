@@ -3,7 +3,7 @@
 #ifndef TRACEPOINTS_H
 #define TRACEPOINTS_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 
 class IPerfAttrsConsumer;
@@ -17,9 +17,9 @@ class DynBuf;
  */
 std::string getTracepointPath(const char * name, const char * file);
 
-bool readTracepointFormat(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const char * const name);
+bool readTracepointFormat(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const char * name);
 
 constexpr int64_t UNKNOWN_TRACEPOINT_ID = -1;
-int64_t getTracepointId(const char * const name);
+int64_t getTracepointId(const char * name);
 
 #endif // TRACEPOINTS_H

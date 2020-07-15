@@ -40,7 +40,7 @@ namespace armnn {
     {
         const std::uint32_t packetIdentifier = lib::toEnumValue(PacketType::PeriodicCounterSelectionPkt);
         const std::uint32_t dataLength =
-            eventUids.size() == 0 ? 0 : (sizeof(period) + (eventUids.size() * sizeof(std::uint16_t)));
+            eventUids.empty() ? 0 : (sizeof(period) + (eventUids.size() * sizeof(std::uint16_t)));
         std::vector<std::uint8_t> payload;
         appendHeader(packetIdentifier, dataLength, payload);
 
@@ -64,7 +64,7 @@ namespace armnn {
     {
         const std::uint32_t packetIdentifier = lib::toEnumValue(PacketType::PerJobCounterSelectionPkt);
         const std::uint32_t dataLength =
-            eventUids.size() == 0 ? 0 : (sizeof(objectId) + (eventUids.size() * sizeof(std::uint16_t)));
+            eventUids.empty() ? 0 : (sizeof(objectId) + (eventUids.size() * sizeof(std::uint16_t)));
         std::vector<std::uint8_t> payload;
         appendHeader(packetIdentifier, dataLength, payload);
 
@@ -85,7 +85,7 @@ namespace armnn {
     std::vector<std::uint8_t> PacketEncoder::encodeConnectionAcknowledge()
     {
         std::vector<std::uint8_t> payload;
-        const std::uint32_t packetIdentifier = static_cast<uint32_t>(PacketType::ConnectionAckPkt);
+        const auto packetIdentifier = static_cast<uint32_t>(PacketType::ConnectionAckPkt);
         appendHeader(packetIdentifier, 0, payload);
         return payload;
     }
@@ -93,37 +93,42 @@ namespace armnn {
     std::vector<std::uint8_t> PacketEncoder::encodeCounterDirectoryRequest()
     {
         std::vector<std::uint8_t> payload;
-        const std::uint32_t packetIdentifier = static_cast<uint32_t>(PacketType::CounterDirectoryReqPkt);
+        const auto packetIdentifier = static_cast<uint32_t>(PacketType::CounterDirectoryReqPkt);
         appendHeader(packetIdentifier, 0, payload);
         return payload;
     }
 
-    bool PacketEncoder::isValidPacketVersions(std::vector<PacketVersionTable> pktVersionTable)
-       {
-           bool validPacket = false;
-           for (auto pktVersion : pktVersionTable) {
-               auto packetVersion = pktVersion.packetVersion;
-               auto packetType = makePacketType(pktVersion.packetFamily, pktVersion.packetId, 0);
-               switch (packetType) {
-                   case lib::toEnumValue(PacketType::CounterDirectoryReqPkt):
-                   case lib::toEnumValue(PacketType::ConnectionAckPkt):
-                   case lib::toEnumValue(PacketType::PerJobCounterSelectionPkt):
-                   case lib::toEnumValue(PacketType::PeriodicCounterSelectionPkt): //
-                   {
-                       auto majorVersion = getBits(packetVersion, 22, 31);
-                       if (majorVersion != SUPPORTED_PACKET_MAJOR_VERSION[0]) {
-                           logg.logError("Unsupported packet version (%u:%u:%u)", majorVersion,getBits(packetVersion, 12, 22),getBits(packetVersion, 0, 11));
-                           return false;
-                       }
-                       validPacket = true;
-                   }
-                       break;
-                   default:
-                       logg.logError("No encoders supported yet for packet type (%u)", packetType);
-                       break;
-               }
-           }
-           return validPacket;
-       }
+    bool PacketEncoder::isValidPacketVersions(const std::vector<PacketVersionTable> & pktVersionTable)
+    {
+        bool validPacket = false;
+        for (auto pktVersion : pktVersionTable) {
+            auto packetVersion = pktVersion.packetVersion;
+            auto packetType = makePacketType(pktVersion.packetFamily, pktVersion.packetId, 0);
+            switch (packetType) {
+                case lib::toEnumValue(PacketType::CounterDirectoryReqPkt):
+                case lib::toEnumValue(PacketType::ConnectionAckPkt):
+                case lib::toEnumValue(PacketType::PerJobCounterSelectionPkt):
+                case lib::toEnumValue(PacketType::PeriodicCounterSelectionPkt): //
+                {
+                    auto majorVersion = getBits(packetVersion, 22, 31);
+                    if (majorVersion != SUPPORTED_PACKET_MAJOR_VERSION[0]) {
+                        logg.logError(
+                            "Unsupported packet version (%u:%u:%u) for packet type (family=0x%02x, id=0x%03x)",
+                            majorVersion,
+                            getBits(packetVersion, 12, 22),
+                            getBits(packetVersion, 0, 11),
+                            pktVersion.packetFamily,
+                            pktVersion.packetId);
+                        return false;
+                    }
+                    validPacket = true;
+                } break;
+                default:
+                    // We don't care about anything we don't need to encode
+                    break;
+            }
+        }
+        return validPacket;
+    }
 
 } /* namespace armnn */

@@ -26,9 +26,10 @@ namespace shared_memory {
     T * allocate(std::size_t n)
     {
         void * const allocation =
-            mmap(nullptr, sizeof(T) * n, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-        if (allocation == MAP_FAILED)
+            ::mmap(nullptr, sizeof(T) * n, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        if (allocation == MAP_FAILED) {
             GATOR_THROW(std::bad_alloc());
+        }
         return static_cast<T *>(allocation);
     }
 
@@ -41,7 +42,7 @@ namespace shared_memory {
     template<typename T>
     void deallocate(T * p, std::size_t n)
     {
-        munmap(p, sizeof(T) * n);
+        ::munmap(p, sizeof(T) * n);
     }
 
     /**
@@ -59,7 +60,7 @@ namespace shared_memory {
 
         // The construction could throw so we use a temporary unique pointer to hold the allocation
         // that won't try to destruct the uninitialized allocation
-        unique_ptr<T> uninitialized_ptr{allocation, uninitialized_deleter};
+        unique_ptr<T> uninitialized_ptr {allocation, uninitialized_deleter};
 
         new (allocation) T(std::forward<Args>(args)...);
 
@@ -68,7 +69,7 @@ namespace shared_memory {
             deallocate<T>(p, 1);
         };
 
-        return unique_ptr<T>{uninitialized_ptr.release(), initialized_deleter};
+        return unique_ptr<T> {uninitialized_ptr.release(), initialized_deleter};
     }
 
     /**
@@ -93,7 +94,7 @@ namespace shared_memory {
 
         // The construction could throw so we use a temporary unique pointer to hold the allocation
         // that won't try to destruct the uninitialized allocation
-        unique_ptr<T> uninitialized_ptr{allocation, uninitialized_deleter};
+        unique_ptr<T> uninitialized_ptr {allocation, uninitialized_deleter};
 
         for (; number_initialized < size; ++number_initialized) {
             new (allocation + number_initialized) element_type();
@@ -106,7 +107,7 @@ namespace shared_memory {
             deallocate<element_type>(p, size);
         };
 
-        return unique_ptr<T>{uninitialized_ptr.release(), initialized_deleter};
+        return unique_ptr<T> {uninitialized_ptr.release(), initialized_deleter};
     }
 }
 

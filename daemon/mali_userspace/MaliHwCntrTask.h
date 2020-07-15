@@ -22,7 +22,7 @@ namespace mali_userspace {
                        IMaliHwCntrReader & reader);
         void execute(int sampleRate, bool isOneShot);
         bool isDone();
-        void write(ISender * sender);
+        void write(ISender & sender);
 
     private:
         std::unique_ptr<IBuffer> mBuffer;

@@ -7,8 +7,8 @@
 
 namespace lnx {
     namespace {
-        static const char PROC_LOADAVG_SCANF_FORMAT[] = "%lf %lf %lf %lu/%lu %lu";
-        static constexpr const int PROC_LOADAVG_SCANF_FIELD_COUNT = 6;
+        const char PROC_LOADAVG_SCANF_FORMAT[] = "%lf %lf %lf %lu/%lu %lu";
+        constexpr const int PROC_LOADAVG_SCANF_FIELD_COUNT = 6;
     }
 
     bool ProcLoadAvgFileRecord::parseLoadAvgFile(ProcLoadAvgFileRecord & result, const char * loadavg_contents)

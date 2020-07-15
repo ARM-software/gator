@@ -18,16 +18,15 @@ class PrimarySourceProvider;
 class UserSpaceSource : public Source {
 public:
     UserSpaceSource(Child & child,
-                    sem_t * senderSem,
+                    sem_t & senderSem,
                     std::function<std::int64_t()> mGetMonotonicStarted,
                     lib::Span<PolledDriver * const> drivers);
-    ~UserSpaceSource();
 
     virtual bool prepare() override;
     virtual void run() override;
     virtual void interrupt() override;
     virtual bool isDone() override;
-    virtual void write(ISender * sender) override;
+    virtual void write(ISender & sender) override;
 
     static bool shouldStart(lib::Span<const PolledDriver * const>);
 

@@ -3,14 +3,14 @@
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 
-#include "IBuffer.h"
+#include "IBlockCounterFrameBuilder.h"
 #include "lib/AutoClosingFd.h"
 #include "mali_userspace/MaliDeviceApi.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <stddef.h>
-#include <stdint.h>
 #include <string>
 
 namespace mali_userspace {
@@ -23,7 +23,7 @@ namespace mali_userspace {
      * Interface implemented by counter value receiver; the object that is passed data by MaliDevice::dumpAllCounters
      */
     struct IMaliDeviceCounterDumpCallback {
-        virtual ~IMaliDeviceCounterDumpCallback();
+        virtual ~IMaliDeviceCounterDumpCallback() = default;
 
         /**
          * Receive the next counter value
@@ -37,7 +37,7 @@ namespace mali_userspace {
                                       uint32_t counterIndex,
                                       uint64_t delta,
                                       uint32_t gpuId,
-                                      IBuffer & buffer) = 0;
+                                      IBlockCounterFrameBuilder & buffer) = 0;
 
         /**
          * Used to check if the user selected the counter in the config dialog when building the fast lookup list
@@ -72,7 +72,7 @@ namespace mali_userspace {
              * @param numWords
              */
         MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords);
-        MaliDeviceCounterList(MaliDeviceCounterList &&);
+        MaliDeviceCounterList(MaliDeviceCounterList &&) noexcept;
         ~MaliDeviceCounterList();
 
         /** @return The number of enabled counters in the list */
@@ -129,7 +129,7 @@ namespace mali_userspace {
          *
          * @param deviceApi
          * @param clockPath (Which may be empty meaning no clock)
-         * @return The MaliDevice object, or NULL on failure
+         * @return The MaliDevice object, or nullptr on failure
          */
         static std::unique_ptr<MaliDevice> create(std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath);
 
@@ -176,7 +176,7 @@ namespace mali_userspace {
          *
          * @param nameBlockIndex
          * @param counterIndex
-         * @return The name of the counter, or NULL if invalid combination of indexes
+         * @return The name of the counter, or nullptr if invalid combination of indexes
          */
         const char * getCounterName(uint32_t nameBlockIndex, uint32_t counterIndex) const;
 
@@ -201,7 +201,7 @@ namespace mali_userspace {
                              const MaliDeviceCounterList & counterList,
                              const uint32_t * buffer,
                              size_t bufferLength,
-                             IBuffer & bufferData,
+                             IBlockCounterFrameBuilder & bufferData,
                              IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
@@ -260,7 +260,7 @@ namespace mali_userspace {
         void dumpAllCounters_V4(const MaliDeviceCounterList & counterList,
                                 const uint32_t * buffer,
                                 size_t bufferLength,
-                                IBuffer & bufferData,
+                                IBlockCounterFrameBuilder & bufferData,
                                 IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
@@ -274,7 +274,7 @@ namespace mali_userspace {
         void dumpAllCounters_V56(const MaliDeviceCounterList & counterList,
                                  const uint32_t * buffer,
                                  size_t bufferLength,
-                                 IBuffer & bufferData,
+                                 IBlockCounterFrameBuilder & bufferData,
                                  IMaliDeviceCounterDumpCallback & callback) const;
     };
 

@@ -4,13 +4,15 @@
 
 #include "ICpuInfo.h"
 #include "Logging.h"
+#include "xml/EventsXML.h"
 
 static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool systemWide,
                                                                           PmuXML && pmuXml,
-                                                                          const char * maliFamilyName)
+                                                                          const char * maliFamilyName,
+                                                                          bool disableCpuOnlining)
 {
     std::unique_ptr<PrimarySourceProvider> primarySourceProvider =
-        PrimarySourceProvider::detect(systemWide, std::move(pmuXml), maliFamilyName);
+        PrimarySourceProvider::detect(systemWide, std::move(pmuXml), maliFamilyName, disableCpuOnlining);
     if (!primarySourceProvider) {
         logg.logError(
             "Unable to initialize primary capture source:\n"
@@ -22,20 +24,23 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
     return primarySourceProvider;
 }
 
-Drivers::Drivers(bool systemWide, PmuXML && pmuXml)
-    : mMaliHwCntrs{},
-      mPrimarySourceProvider{
-          createPrimarySourceProvider(systemWide, std::move(pmuXml), mMaliHwCntrs.getSupportedDeviceFamilyName())},
-      mMaliVideo{},
-      mMidgard{},
-      mFtraceDriver{!mPrimarySourceProvider->supportsTracepointCapture(),
-                    mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
-      mAtraceDriver{mFtraceDriver},
-      mTtraceDriver{mFtraceDriver},
-      mExternalDriver{},
-      mCcnDriver{},
-      all{},
-      allPolled{}
+Drivers::Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining)
+    : mMaliHwCntrs {},
+      mPrimarySourceProvider {createPrimarySourceProvider(systemWide,
+                                                          std::move(pmuXml),
+                                                          mMaliHwCntrs.getSupportedDeviceFamilyName(),
+                                                          disableCpuOnlining)},
+      mMaliVideo {},
+      mMidgard {},
+      mFtraceDriver {!mPrimarySourceProvider->supportsTracepointCapture(),
+                     mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
+      mAtraceDriver {mFtraceDriver},
+      mTtraceDriver {mFtraceDriver},
+      mExternalDriver {},
+      mCcnDriver {},
+      mArmnnDriver {},
+      all {},
+      allPolled {}
 {
     all.push_back(&mPrimarySourceProvider->getPrimaryDriver());
     for (PolledDriver * driver : mPrimarySourceProvider->getAdditionalPolledDrivers()) {
@@ -55,4 +60,10 @@ Drivers::Drivers(bool systemWide, PmuXML && pmuXml)
     all.push_back(&mTtraceDriver);
     all.push_back(&mExternalDriver);
     all.push_back(&mCcnDriver);
+    all.push_back(&mArmnnDriver);
+
+    auto staticEventsXml = events_xml::getStaticTree(mPrimarySourceProvider->getCpuInfo().getClusters());
+    for (Driver * driver : all) {
+        driver->readEvents(staticEventsXml.get());
+    }
 }

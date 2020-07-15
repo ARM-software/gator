@@ -6,10 +6,10 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <dirent.h>
 #include <memory>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -20,12 +20,12 @@ static char * createUniqueDirectory(const char * initialPath, const char * endin
     char path[PATH_MAX];
 
     // Ensure the path is an absolute path, i.e. starts with a slash
-    if (initialPath == 0 || strlen(initialPath) == 0) {
+    if (initialPath == nullptr || strlen(initialPath) == 0) {
         logg.logError("Missing -o command line option required for a local capture.");
         handleException();
     }
     else if (initialPath[0] != '/') {
-        if (getcwd(path, PATH_MAX) == 0) {
+        if (getcwd(path, PATH_MAX) == nullptr) {
             logg.logMessage("Unable to retrieve the current working directory");
         }
         strncat(path, "/", PATH_MAX - strlen(path) - 1);
@@ -64,15 +64,15 @@ namespace local_capture {
         // Does the path exist?
         if (stat(path, &mFileInfo) == 0) {
             // Is it a directory?
-            if (mFileInfo.st_mode & S_IFDIR) {
+            if ((mFileInfo.st_mode & S_IFDIR) != 0U) {
                 DIR * dir = opendir(path);
                 dirent * entry = readdir(dir);
-                while (entry) {
+                while (entry != nullptr) {
                     if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                         std::unique_ptr<char[]> newpath(new char[strlen(path) + strlen(entry->d_name) + 2]);
                         sprintf(newpath.get(), "%s/%s", path, entry->d_name);
                         error = removeDirAndAllContents(newpath.get());
-                        if (error) {
+                        if (error != 0) {
                             break;
                         }
                     }
@@ -101,7 +101,7 @@ namespace local_capture {
                 strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);
             }
             strncat(dstfilename, getFilePart(element.c_str()), PATH_MAX - strlen(dstfilename) - 1);
-            if (copyFile(element.c_str(), dstfilename)) {
+            if (copyFile(element.c_str(), dstfilename) != 0) {
                 logg.logMessage("copied file %s to %s", element.c_str(), dstfilename);
             }
             else {

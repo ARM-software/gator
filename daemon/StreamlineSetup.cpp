@@ -61,7 +61,7 @@ StreamlineSetup::StreamlineSetup(OlySocket * s, Drivers & drivers, lib::Span<con
                 break;
             case COMMAND_PING:
                 logg.logMessage("Received ping command");
-                sendData(NULL, 0, ResponseType::ACK);
+                sendData(nullptr, 0, ResponseType::ACK);
                 break;
             default:
                 logg.logError("Target error: Unknown command type, %d", type);
@@ -69,8 +69,6 @@ StreamlineSetup::StreamlineSetup(OlySocket * s, Drivers & drivers, lib::Span<con
         }
     }
 }
-
-StreamlineSetup::~StreamlineSetup() {}
 
 std::vector<char> StreamlineSetup::readCommand(int * command)
 {
@@ -118,34 +116,33 @@ std::vector<char> StreamlineSetup::readCommand(int * command)
 
 void StreamlineSetup::handleRequest(char * xml)
 {
-    mxml_node_t *tree, *node;
-    const char * attr = NULL;
+    const char * attr = nullptr;
 
-    tree = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
-    node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_TYPE, NULL, MXML_DESCEND_FIRST);
-    if (node) {
+    auto * const tree = mxmlLoadString(nullptr, xml, MXML_NO_CALLBACK);
+    auto * const node = mxmlFindElement(tree, tree, TAG_REQUEST, ATTR_TYPE, nullptr, MXML_DESCEND_FIRST);
+    if (node != nullptr) {
         attr = mxmlElementGetAttr(node, ATTR_TYPE);
     }
-    if (attr && strcmp(attr, VALUE_EVENTS) == 0) {
-        const auto xml =
-            events_xml::getXML(mDrivers.getAllConst(), mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+    if ((attr != nullptr) && strcmp(attr, VALUE_EVENTS) == 0) {
+        const auto xml = events_xml::getDynamicXML(mDrivers.getAllConst(),
+                                                   mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent events xml response");
     }
-    else if (attr && strcmp(attr, VALUE_CONFIGURATION) == 0) {
+    else if ((attr != nullptr) && strcmp(attr, VALUE_CONFIGURATION) == 0) {
         const auto & xml =
             configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         sendString(xml.raw.get(), ResponseType::XML);
         logg.logMessage("Sent configuration xml response");
     }
-    else if (attr && strcmp(attr, VALUE_COUNTERS) == 0) {
+    else if ((attr != nullptr) && strcmp(attr, VALUE_COUNTERS) == 0) {
         const auto xml = counters_xml::getXML(mDrivers.getPrimarySourceProvider().supportsMultiEbs(),
                                               mDrivers.getAllConst(),
                                               mDrivers.getPrimarySourceProvider().getCpuInfo());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent counters xml response");
     }
-    else if (attr && strcmp(attr, VALUE_CAPTURED) == 0) {
+    else if ((attr != nullptr) && strcmp(attr, VALUE_CAPTURED) == 0) {
         const auto xml = captured_xml::getXML(false,
                                               mCapturedSpes,
                                               mDrivers.getPrimarySourceProvider(),
@@ -153,7 +150,7 @@ void StreamlineSetup::handleRequest(char * xml)
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent captured xml response");
     }
-    else if (attr && strcmp(attr, VALUE_DEFAULTS) == 0) {
+    else if ((attr != nullptr) && strcmp(attr, VALUE_DEFAULTS) == 0) {
         sendDefaults();
         logg.logMessage("Sent default configuration xml response");
     }
@@ -171,23 +168,23 @@ void StreamlineSetup::handleDeliver(char * xml)
     mxml_node_t * tree;
 
     // Determine xml type
-    tree = mxmlLoadString(NULL, xml, MXML_NO_CALLBACK);
-    if (mxmlFindElement(tree, tree, TAG_SESSION, NULL, NULL, MXML_DESCEND_FIRST)) {
+    tree = mxmlLoadString(nullptr, xml, MXML_NO_CALLBACK);
+    if (mxmlFindElement(tree, tree, TAG_SESSION, nullptr, nullptr, MXML_DESCEND_FIRST) != nullptr) {
         // Session XML
         gSessionData.parseSessionXML(xml);
-        sendData(NULL, 0, ResponseType::ACK);
+        sendData(nullptr, 0, ResponseType::ACK);
         logg.logMessage("Received session xml");
     }
-    else if (mxmlFindElement(tree, tree, TAG_CONFIGURATIONS, NULL, NULL, MXML_DESCEND_FIRST)) {
+    else if (mxmlFindElement(tree, tree, TAG_CONFIGURATIONS, nullptr, nullptr, MXML_DESCEND_FIRST) != nullptr) {
         // Configuration XML
         writeConfiguration(xml);
-        sendData(NULL, 0, ResponseType::ACK);
+        sendData(nullptr, 0, ResponseType::ACK);
         logg.logMessage("Received configuration xml");
     }
     else {
         // Unknown XML
         logg.logMessage("Received unknown XML delivery type");
-        sendData(NULL, 0, ResponseType::NAK);
+        sendData(nullptr, 0, ResponseType::NAK);
     }
 
     mxmlDelete(tree);

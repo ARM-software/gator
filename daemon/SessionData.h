@@ -10,16 +10,17 @@
 #include "lib/SharedMemory.h"
 #include "mxml/mxml.h"
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
 #include <semaphore.h>
 #include <set>
-#include <stdint.h>
 #include <string>
 #include <vector>
 
-#define PROTOCOL_VERSION 720
+//development version for PROTOCOL_VERSION is of format YYYYMMDD
+#define PROTOCOL_VERSION 730
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -52,7 +53,6 @@ public:
     static const size_t MAX_STRING_LEN = 80;
 
     SessionData();
-    ~SessionData();
 
     void initialize();
     void parseSessionXML(char * xmlString);
@@ -100,9 +100,6 @@ public:
 
     // PMU Counters
     Counter mCounters[MAX_PERFORMANCE_COUNTERS];
-
-    // map used to lookup counter names to events (e.g for cycle counters)
-    std::map<std::string, int> globalCounterToEventMap;
 
 private:
     // Intentionally unimplemented

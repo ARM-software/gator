@@ -21,14 +21,14 @@
 #include <sys/ioctl.h>
 
 namespace {
-    static constexpr unsigned long NANO_SECONDS_IN_ONE_SECOND = 1000000000UL;
-    static constexpr unsigned long NANO_SECONDS_IN_100_MS = 100000000UL;
+    constexpr unsigned long NANO_SECONDS_IN_ONE_SECOND = 1000000000UL;
+    constexpr unsigned long NANO_SECONDS_IN_100_MS = 100000000UL;
 
-    static int sys_perf_event_open(struct perf_event_attr * const attr,
-                                   const pid_t pid,
-                                   const int cpu,
-                                   const int group_fd,
-                                   const unsigned long flags)
+    int sys_perf_event_open(struct perf_event_attr * const attr,
+                            const pid_t pid,
+                            const int cpu,
+                            const int group_fd,
+                            const unsigned long flags)
     {
         int fd = lib::perf_event_open(attr, pid, cpu, group_fd, flags);
         if (fd < 0) {
@@ -42,12 +42,12 @@ namespace {
         return fd;
     }
 
-    static bool readAndSend(const uint64_t currTime,
-                            IPerfAttrsConsumer & attrsConsumer,
-                            const struct perf_event_attr & attr,
-                            const int fd,
-                            const int keyCount,
-                            const int * const keys)
+    bool readAndSend(const uint64_t currTime,
+                     IPerfAttrsConsumer & attrsConsumer,
+                     const struct perf_event_attr & attr,
+                     const int fd,
+                     const int keyCount,
+                     const int * const keys)
     {
         for (int retry = 0; retry < 10; ++retry) {
             char buf[1024];
@@ -72,19 +72,20 @@ namespace {
         return true;
     }
 
-    static std::string perfAttrToString(const perf_event_attr & attr,
-                                        const char * typeLabel,
-                                        const char * indentation,
-                                        const char * separator)
+    std::string perfAttrToString(const perf_event_attr & attr,
+                                 const char * typeLabel,
+                                 const char * indentation,
+                                 const char * separator)
     {
-        return (lib::Format() << indentation << "type: " << attr.type << " (" << (typeLabel ? typeLabel : "<unk>")
-                              << ")" << separator << indentation << "config: " << attr.config << separator
-                              << indentation << "config1: " << attr.config1 << separator << indentation << "config2: "
-                              << attr.config2 << separator << indentation << "sample: " << attr.sample_period
-                              << separator << std::hex << indentation << "sample_type: 0x" << attr.sample_type
-                              << separator << indentation << "read_format: 0x" << attr.read_format << separator
-                              << std::dec << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator
-                              << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator << indentation
+        return (lib::Format() << indentation << "type: " << attr.type << " ("
+                              << (typeLabel != nullptr ? typeLabel : "<unk>") << ")" << separator << indentation
+                              << "config: " << attr.config << separator << indentation << "config1: " << attr.config1
+                              << separator << indentation << "config2: " << attr.config2 << separator << indentation
+                              << "sample: " << attr.sample_period << separator << std::hex << indentation
+                              << "sample_type: 0x" << attr.sample_type << separator << indentation << "read_format: 0x"
+                              << attr.read_format << separator << std::dec << indentation
+                              << "pinned: " << (attr.pinned ? "true" : "false") << separator << indentation
+                              << "mmap: " << (attr.mmap ? "true" : "false") << separator << indentation
                               << "comm: " << (attr.comm ? "true" : "false") << separator << indentation
                               << "freq: " << (attr.freq ? "true" : "false") << separator << indentation
                               << "task: " << (attr.task ? "true" : "false") << separator << indentation
@@ -156,10 +157,8 @@ bool PerfEventGroup::addEvent(const bool leader,
                                                          : PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_ID)
         // see https://lkml.org/lkml/2012/7/18/355
         | (attr.type == PERF_TYPE_TRACEPOINT ? PERF_SAMPLE_PERIOD : 0)
-        // always sample TID if cannot sample context switches
-        | (sharedConfig.perfConfig.can_access_tracepoints || sharedConfig.perfConfig.has_attr_context_switch
-               ? 0
-               : PERF_SAMPLE_TID)
+        // always sample TID for application mode; we use it to attribute counter values to their processes
+        | (sharedConfig.perfConfig.is_system_wide && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
         // must sample PERIOD is used if 'freq' to read the actual period value
         | (attr.freq ? PERF_SAMPLE_PERIOD : 0);
 
@@ -229,7 +228,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
 {
     const bool enableCallChain = (sharedConfig.backtraceDepth > 0);
 
-    IPerfGroups::Attr attr{};
+    IPerfGroups::Attr attr {};
     attr.sampleType = PERF_SAMPLE_TID | PERF_SAMPLE_READ;
     attr.mmap = true;
     attr.comm = true;
@@ -297,7 +296,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
     // Periodic PC sampling
     if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && sharedConfig.sampleRate > 0 &&
         sharedConfig.enablePeriodicSampling) {
-        IPerfGroups::Attr pcAttr{};
+        IPerfGroups::Attr pcAttr {};
         pcAttr.type = PERF_TYPE_SOFTWARE;
         pcAttr.config = PERF_COUNT_SW_CPU_CLOCK;
         pcAttr.sampleType =
@@ -311,10 +310,10 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
     // use high frequency task clock to attempt to catch the first switch back to a process after a switch out
     // this should give us approximate 'switch-in' events
     if (enableTaskClock) {
-        IPerfGroups::Attr taskClockAttr{};
+        IPerfGroups::Attr taskClockAttr {};
         taskClockAttr.type = PERF_TYPE_SOFTWARE;
         taskClockAttr.config = PERF_COUNT_SW_TASK_CLOCK;
-        taskClockAttr.periodOrFreq = 100000ul; // equivalent to 100us
+        taskClockAttr.periodOrFreq = 100000UL; // equivalent to 100us
         taskClockAttr.sampleType = PERF_SAMPLE_TID;
         if (!addEvent(false, timestamp, attrsConsumer, nextDummyKey(), taskClockAttr, false)) {
             return false;
@@ -326,7 +325,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
 
 bool PerfEventGroup::createUncoreGroupLeader(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer)
 {
-    IPerfGroups::Attr attr{};
+    IPerfGroups::Attr attr {};
     attr.type = PERF_TYPE_SOFTWARE;
     attr.config = PERF_COUNT_SW_CPU_CLOCK;
     attr.sampleType = PERF_SAMPLE_READ;
@@ -362,8 +361,8 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestam
                                                                std::set<int> & tids,
                                                                OnlineEnabledState enabledState,
                                                                IPerfAttrsConsumer & attrsConsumer,
-                                                               std::function<bool(int)> addToMonitor,
-                                                               std::function<bool(int, int, bool)> addToBuffer)
+                                                               const std::function<bool(int)> & addToMonitor,
+                                                               const std::function<bool(int, int, bool)> & addToBuffer)
 {
     if (events.empty()) {
         return std::make_pair(OnlineResult::SUCCESS, "");
@@ -552,8 +551,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestam
                 std::ostringstream stringStream;
 
                 stringStream << "perf_event_open failed to online counter for " << typeLabel << ":" << event.attr.config
-                        << " on CPU " << cpu << " due to errno = " << errno << "("
-                                            << strerror(errno) << ").";
+                             << " on CPU " << cpu << " due to errno = " << errno << "(" << strerror(errno) << ").";
 
                 if (sharedConfig.perfConfig.is_system_wide) {
                     if (errno == EINVAL) {
@@ -567,7 +565,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestam
                             case PERF_TYPE_RAW:
                             default:
                                 stringStream
-                                        << "\nAnother process may be using the PMU counter. Try removing some events.";
+                                    << "\nAnother process may be using the PMU counter. Try removing some events.";
                                 break;
                         }
                     }

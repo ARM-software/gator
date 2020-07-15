@@ -3,24 +3,21 @@
 #ifndef ARMNN_IPACKETCONSUMER_H_
 #define ARMNN_IPACKETCONSUMER_H_
 
-
 #include "ICounterDirectoryConsumer.h"
-#include "IPeriodicCounterSelectionConsumer.h"
+#include "IPerJobCounterCaptureConsumer.h"
 #include "IPerJobCounterSelectionConsumer.h"
 #include "IPeriodicCounterCaptureConsumer.h"
-#include "IPerJobCounterCaptureConsumer.h"
+#include "IPeriodicCounterSelectionConsumer.h"
 
-namespace armnn
-{
+namespace armnn {
 
     class IPacketConsumer : public ICounterDirectoryConsumer,
-                                 public IPeriodicCounterSelectionConsumer,
-                                 public IPerJobCounterSelectionConsumer,
-                                 public IPeriodicCounterCaptureConsumer,
-                                 public IPerJobCounterCaptureConsumer
-    {
+                            public IPeriodicCounterSelectionConsumer,
+                            public IPerJobCounterSelectionConsumer,
+                            public IPeriodicCounterCaptureConsumer,
+                            public IPerJobCounterCaptureConsumer {
     public:
-        virtual ~IPacketConsumer() = default;
+        ~IPacketConsumer() override = default;
     };
 
 }

@@ -12,12 +12,12 @@
 #include "linux/proc/ProcPidStatFileRecord.h"
 #include "linux/proc/ProcessPollerBase.h"
 
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 namespace {
@@ -38,7 +38,7 @@ namespace {
         virtual void onThreadDetails(int pid,
                                      int tid,
                                      const lnx::ProcPidStatFileRecord & statRecord,
-                                     const lib::Optional<lnx::ProcPidStatmFileRecord> &,
+                                     const lib::Optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
                                      const lib::Optional<lib::FsEntry> & exe) override
         {
             buffer.marshalComm(currTime, pid, tid, (exe ? exe->path().c_str() : ""), statRecord.getComm().c_str());

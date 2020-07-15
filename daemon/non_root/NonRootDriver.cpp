@@ -107,7 +107,7 @@ namespace non_root {
     {
     }
 
-    void NonRootDriver::readEvents(mxml_node_t *)
+    void NonRootDriver::readEvents(mxml_node_t * /*unused*/)
     {
         const double ticks_mult = 1.0 / sysconf(_SC_CLK_TCK);
 
@@ -656,7 +656,7 @@ namespace non_root {
         root = mxmlNewElement(root, "category");
         mxmlElementSetAttr(root, "name", "/proc");
 
-        for (NonRootDriverCounter * counter = static_cast<NonRootDriverCounter *>(getCounters()); counter != nullptr;
+        for (auto * counter = static_cast<NonRootDriverCounter *>(getCounters()); counter != nullptr;
              counter = static_cast<NonRootDriverCounter *>(counter->getNext())) {
 
             if ((counter->getType() != NonRootCounter::ACTIVITY_SYSTEM) &&
@@ -691,7 +691,7 @@ namespace non_root {
     {
         std::map<NonRootCounter, int> result;
 
-        for (NonRootDriverCounter * counter = static_cast<NonRootDriverCounter *>(getCounters()); counter != nullptr;
+        for (auto * counter = static_cast<NonRootDriverCounter *>(getCounters()); counter != nullptr;
              counter = static_cast<NonRootDriverCounter *>(counter->getNext())) {
             if (counter->isEnabled()) {
                 result[counter->getType()] = counter->getKey();

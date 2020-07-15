@@ -7,7 +7,7 @@
 #include "lib/Optional.h"
 #include "mxml/mxml.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 class Counter;
 struct SpeConfiguration;
@@ -34,16 +34,25 @@ public:
     }
 
     // Performs any actions needed for setup or based on eventsXML
-    virtual void readEvents(mxml_node_t * const) {}
+    virtual void readEvents(mxml_node_t * const /*unused*/) {}
 
     // Emits available counters
     // @return number of counters added
-    virtual int writeCounters(mxml_node_t * const root) const = 0;
+    virtual int writeCounters(mxml_node_t * root) const = 0;
 
     // Emits possible dynamically generated events/counters
-    virtual void writeEvents(mxml_node_t * const) const {}
+    virtual void writeEvents(mxml_node_t * const /*unused*/) const {}
 
     inline const char * getName() const { return name; }
+
+    /// Called before the gator-child process is forked
+    virtual void preChildFork() {}
+    /// Called in the parent immediately after the gator-child process is forked
+    virtual void postChildForkInParent() {}
+    /// Called in the child immediately after the gator-child process is forked
+    virtual void postChildForkInChild() {}
+    /// Called in the parent after the gator-child process exits
+    virtual void postChildExitInParent() {}
 
     // name pointer is not owned by this so should just be copied
     Driver(const Driver &) = default;

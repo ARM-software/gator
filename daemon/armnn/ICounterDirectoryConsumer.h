@@ -92,20 +92,12 @@ namespace armnn {
         };
 
         struct CategoryRecord {
-            std::uint16_t device_uid;
-            std::uint16_t counter_set_uid;
             std::string name;
             std::map<std::uint16_t, EventRecord> events_by_uid;
 
-            CategoryRecord() : device_uid(0), counter_set_uid(0), name(), events_by_uid() {}
-            CategoryRecord(std::uint16_t device_uid,
-                           std::uint16_t counter_set_uid,
-                           std::string name,
-                           std::map<std::uint16_t, EventRecord> events_by_uid)
-                : device_uid(device_uid),
-                  counter_set_uid(counter_set_uid),
-                  name(std::move(name)),
-                  events_by_uid(std::move(events_by_uid))
+            CategoryRecord() : name(), events_by_uid() {}
+            CategoryRecord(std::string name, std::map<std::uint16_t, EventRecord> events_by_uid)
+                : name(std::move(name)), events_by_uid(std::move(events_by_uid))
             {
             }
         };

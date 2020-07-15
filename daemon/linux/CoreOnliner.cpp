@@ -32,14 +32,14 @@ CoreOnliner::~CoreOnliner()
     }
 }
 
-CoreOnliner::CoreOnliner(CoreOnliner && that) : core(that.core), known(false), changed(false), online(false)
+CoreOnliner::CoreOnliner(CoreOnliner && that) noexcept : core(that.core), known(false), changed(false), online(false)
 {
     std::swap(known, that.known);
     std::swap(online, that.online);
     std::swap(changed, that.changed);
 }
 
-CoreOnliner & CoreOnliner::operator=(CoreOnliner && that)
+CoreOnliner & CoreOnliner::operator=(CoreOnliner && that) noexcept
 {
     CoreOnliner tmp(std::move(that));
 

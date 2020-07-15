@@ -34,17 +34,15 @@
 #define STREAMLINE_ANNOTATE_H
 
 /*
- *  User-space only macros:
- *  ANNOTATE_DEFINE            Deprecated and no longer used
- *  ANNOTATE_SETUP             Execute at the start of the program before other ANNOTATE macros are called
- *  ANNOTATE_DELTA_COUNTER     Define a delta counter for use
- *  ANNOTATE_ABSOLUTE_COUNTER  Define an absolute counter for use
- *  ANNOTATE_COUNTER_VALUE     Emit a counter value
- *  CAM_TRACK                  Create a new custom activity map track
- *  CAM_JOB                    Add a new job to a CAM track, use gator_get_time() to obtain the time in nanoseconds
- *  CAM_VIEW_NAME              Name the custom activity map view
+ *  ANNOTATE_DEFINE                              Deprecated and no longer used
+ *  ANNOTATE_SETUP                               Execute at the start of the program before other ANNOTATE macros are called
+ *  ANNOTATE_DELTA_COUNTER                       Define a delta counter for use
+ *  ANNOTATE_ABSOLUTE_COUNTER                    Define an absolute counter for use
+ *  ANNOTATE_COUNTER_VALUE                       Emit a counter value
+ *  CAM_TRACK                                    Create a new custom activity map track
+ *  CAM_JOB                                      Add a new job to a CAM track, use gator_get_time() to obtain the time in nanoseconds
+ *  CAM_VIEW_NAME                                Name the custom activity map view
  *
- *  User-space and Kernel-space macros:
  *  ANNOTATE(str)                                String annotation
  *  ANNOTATE_CHANNEL(channel, str)               String annotation on a channel
  *  ANNOTATE_COLOR(color, str)                   String annotation with color
@@ -63,8 +61,6 @@
  *  channel number is used on different threads they are in fact separate
  *  channels. A channel can belong to only one group per thread. This means
  *  channel 1 cannot be part of both group 1 and group 2 on the same thread.
- *
- *  NOTE: Kernel annotations are not supported in interrupt context.
  */
 
 /* ESC character, hex RGB (little endian) */
@@ -84,98 +80,6 @@
 #define ANNOTATE_COLOR_T2    0x00000002
 #define ANNOTATE_COLOR_T3    0x00000003
 #define ANNOTATE_COLOR_T4    0x00000004
-
-#ifdef __KERNEL__  /* Start of kernel-space macro definitions */
-
-#include <linux/module.h>
-
-void gator_annotate(const char* str);
-void gator_annotate_channel(int channel, const char* str);
-void gator_annotate_color(int color, const char* str);
-void gator_annotate_channel_color(int channel, int color, const char* str);
-void gator_annotate_end(void);
-void gator_annotate_channel_end(int channel);
-void gator_annotate_name_channel(int channel, int group, const char* str);
-void gator_annotate_name_group(int group, const char* str);
-void gator_annotate_visual(const char* data, unsigned int length, const char* str);
-void gator_annotate_marker(void);
-void gator_annotate_marker_str(const char* str);
-void gator_annotate_marker_color(int color);
-void gator_annotate_marker_color_str(int color, const char* str);
-
-#define ANNOTATE_INVOKE(func, args) \
-    func##_ptr = symbol_get(gator_##func); \
-    if (func##_ptr) { \
-        func##_ptr args; \
-        symbol_put(gator_##func); \
-    } \
-
-#define ANNOTATE(str) do { \
-    void (*annotate_ptr)(const char*); \
-    ANNOTATE_INVOKE(annotate, (str)); \
-    } while(0)
-
-#define ANNOTATE_CHANNEL(channel, str) do { \
-    void (*annotate_channel_ptr)(int, const char*); \
-    ANNOTATE_INVOKE(annotate_channel, (channel, str)); \
-    } while(0)
-
-#define ANNOTATE_COLOR(color, str) do { \
-    void (*annotate_color_ptr)(int, const char*); \
-    ANNOTATE_INVOKE(annotate_color, (color, str)); \
-    } while(0)
-
-#define ANNOTATE_CHANNEL_COLOR(channel, color, str) do { \
-    void (*annotate_channel_color_ptr)(int, int, const char*); \
-    ANNOTATE_INVOKE(annotate_channel_color, (channel, color, str)); \
-    } while(0)
-
-#define ANNOTATE_END() do { \
-    void (*annotate_end_ptr)(void); \
-    ANNOTATE_INVOKE(annotate_end, ()); \
-    } while(0)
-
-#define ANNOTATE_CHANNEL_END(channel) do { \
-    void (*annotate_channel_end_ptr)(int); \
-    ANNOTATE_INVOKE(annotate_channel_end, (channel)); \
-    } while(0)
-
-#define ANNOTATE_NAME_CHANNEL(channel, group, str) do { \
-    void (*annotate_name_channel_ptr)(int, int, const char*); \
-    ANNOTATE_INVOKE(annotate_name_channel, (channel, group, str)); \
-    } while(0)
-
-#define ANNOTATE_NAME_GROUP(group, str) do { \
-    void (*annotate_name_group_ptr)(int, const char*); \
-    ANNOTATE_INVOKE(annotate_name_group, (group, str)); \
-    } while(0)
-
-#define ANNOTATE_VISUAL(data, length, str) do { \
-    void (*annotate_visual_ptr)(const char*, unsigned int, const char*); \
-    ANNOTATE_INVOKE(annotate_visual, (data, length, str)); \
-    } while(0)
-
-#define ANNOTATE_MARKER() do { \
-    void (*annotate_marker_ptr)(void); \
-    ANNOTATE_INVOKE(annotate_marker, ()); \
-    } while(0)
-
-#define ANNOTATE_MARKER_STR(str) do { \
-    void (*annotate_marker_str_ptr)(const char*); \
-    ANNOTATE_INVOKE(annotate_marker_str, (str)); \
-    } while(0)
-
-#define ANNOTATE_MARKER_COLOR(color) do { \
-    void (*annotate_marker_color_ptr)(int); \
-    ANNOTATE_INVOKE(annotate_marker_color, (color)); \
-    } while(0)
-
-#define ANNOTATE_MARKER_COLOR_STR(color, str) do { \
-    void (*annotate_marker_color_str_ptr)(int, const char*); \
-    ANNOTATE_INVOKE(annotate_marker_color_str, (color, str)); \
-    } while(0)
-
-#else  /* Start of user-space macro definitions */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -272,5 +176,4 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name);
 }
 #endif
 
-#endif /* _KERNEL_ */
 #endif /* STREAMLINE_ANNOTATE_H */

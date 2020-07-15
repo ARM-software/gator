@@ -5,13 +5,13 @@
 #include "Logging.h"
 #include "lib/Syscall.h"
 
-#include <errno.h>
+#include <cerrno>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <poll.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -67,7 +67,7 @@ namespace mali_userspace {
         };
 
         /** Write a single byte into the pipe to interrupt the reader thread */
-        typedef char poll_data_t;
+        using poll_data_t = char;
     }
 
     MaliHwCntrReader::MaliHwCntrReader(const MaliDevice & device,
@@ -99,11 +99,7 @@ namespace mali_userspace {
 
     bool MaliHwCntrReader::startPeriodicSampling(uint32_t interval)
     {
-        if (lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_SET_INTERVAL, interval) != 0) {
-            return false;
-        }
-
-        return true;
+        return lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_SET_INTERVAL, interval) == 0;
     }
 
     bool MaliHwCntrReader::configureJobBasedSampled(bool preJob, bool postJob)
@@ -180,7 +176,7 @@ namespace mali_userspace {
             temp.bufferId = metadata.buffer_idx;
             temp.size = sampleBufferSize;
             unique_ptr_with_deleter<uint8_t> data_temp(&(sampleMemory[sampleBufferSize * metadata.buffer_idx]),
-                                                       [=](uint8_t *) {
+                                                       [=](uint8_t * /*unused*/) {
                                                            kbase_hwcnt_reader_metadata metadata_tmp = metadata;
                                                            releaseBuffer(metadata_tmp);
                                                        });
@@ -307,23 +303,23 @@ namespace mali_userspace {
             }
 
             // mmap the data
-            uint8_t * const sampleMemoryPtr = reinterpret_cast<uint8_t *>(
+            auto * const sampleMemoryPtr = reinterpret_cast<uint8_t *>(
                 lib::mmap(nullptr, bufferCount * sampleBufferSize, PROT_READ, MAP_PRIVATE, *hwcntReaderFd, 0));
-            if ((sampleMemoryPtr == nullptr) || (sampleMemoryPtr == reinterpret_cast<uint8_t *>(-1ul))) {
+            if ((sampleMemoryPtr == nullptr) || (sampleMemoryPtr == reinterpret_cast<uint8_t *>(-1UL))) {
                 logg.logMessage("MaliHwCntrReader: Could not mmap sample buffer");
                 continue;
             }
-            MmappedBuffer sampleMemory{sampleMemoryPtr, [bufferCount, sampleBufferSize](uint8_t * ptr) -> void {
-                                           if (ptr != nullptr) {
-                                               lib::munmap(ptr, bufferCount * sampleBufferSize);
-                                           }
-                                       }};
+            MmappedBuffer sampleMemory {sampleMemoryPtr, [bufferCount, sampleBufferSize](uint8_t * ptr) -> void {
+                                            if (ptr != nullptr) {
+                                                lib::munmap(ptr, bufferCount * sampleBufferSize);
+                                            }
+                                        }};
 
             // create the thread notification pipe
             lib::AutoClosingFd selfPipe[2];
             {
                 int selfPipeFd[2] = {-1, -1};
-                if (pipe(selfPipeFd) != 0) {
+                if (pipe2(selfPipeFd, O_CLOEXEC) != 0) {
                     logg.logError("MaliHwCntrReader: Could not create pipe (%s)", strerror(errno));
                     return {};
                 }
@@ -332,20 +328,20 @@ namespace mali_userspace {
             }
 
             logg.logMessage("MaliHwCntrReader: Successfully created reader, with buffer size of %u", bufferCount);
-            return std::unique_ptr<MaliHwCntrReader>{new MaliHwCntrReader(device,
-                                                                          std::move(hwcntReaderFd),
-                                                                          std::move(selfPipe[0]),
-                                                                          std::move(selfPipe[1]),
-                                                                          std::move(sampleMemory),
-                                                                          bufferCount,
-                                                                          sampleBufferSize,
-                                                                          hardwareVersion)};
+            return std::unique_ptr<MaliHwCntrReader> {new MaliHwCntrReader(device,
+                                                                           std::move(hwcntReaderFd),
+                                                                           std::move(selfPipe[0]),
+                                                                           std::move(selfPipe[1]),
+                                                                           std::move(sampleMemory),
+                                                                           bufferCount,
+                                                                           sampleBufferSize,
+                                                                           hardwareVersion)};
         }
         return nullptr;
     }
 
     std::unique_ptr<MaliHwCntrReader> MaliHwCntrReader::createReader(const MaliDevice & device)
     {
-        return create(device, ~0u, ~0u, ~0u, ~0u);
+        return create(device, ~0U, ~0U, ~0U, ~0U);
     }
 }

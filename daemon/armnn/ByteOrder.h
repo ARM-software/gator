@@ -31,112 +31,9 @@ namespace armnn {
         static constexpr ByteOrder SYSTEM =
             (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) ? ByteOrder::LITTLE : ByteOrder::BIG;
 
-        /**
-         * Convert the endianness to/ from the system endianness.
-         * E.g. will change the endianess of the data if the order is not equal to the systems byte order.
-        */
-        inline std::uint16_t convertEndianness(ByteOrder order, std::uint16_t data)
-        {
-            if (order == SYSTEM)
-            {
-                return data;
-            }
-            else
-            {
-                return ((((data) >> 8) & 0x00FF) | (((data) << 8) & 0xFF00));
-            }
-        }
-
-        inline std::uint32_t convertEndianness(ByteOrder order, std::uint32_t data)
-        {
-            if (order == SYSTEM)
-            {
-                return data;
-            }
-            else
-            {
-                return ((((data) >> 24) & 0x000000FF) | (((data) >>  8) & 0x0000FF00) \
-                        | (((data) <<  8) & 0x00FF0000) | (((data) << 24) & 0xFF000000));
-            }
-        }
-
-        inline std::uint64_t convertEndianness(ByteOrder order, std::uint64_t data)
-        {
-            if (order == SYSTEM)
-            {
-                return data;
-            }
-            else
-            {
-                return ((((data) >> 56) & 0x00000000000000FF) | (((data) >> 40) & 0x000000000000FF00) \
-                        | (((data) >> 24) & 0x0000000000FF0000) | (((data) >>  8) & 0x00000000FF000000) \
-                        | (((data) <<  8) & 0x000000FF00000000) | (((data) << 24) & 0x0000FF0000000000) \
-                        | (((data) << 40) & 0x00FF000000000000) | (((data) << 56) & 0xFF00000000000000));
-            }
-        }
-
-        /** Read an aligned 16-bit value from some byte array. The caller is responsible for ensuring the access is aligned and within bounds */
-        template<typename T>
-        inline std::uint16_t get_aligned_16(ByteOrder order, ByteArray<T> data, std::size_t offset)
-        {
-            runtime_assert((offset + 2) <= data.length, "Invalid offset");
-
-            const std::uint16_t result = *reinterpret_cast<const std::uint16_t *>(&(data[offset]));
-
-            if (order == SYSTEM) {
-                return result;
-            }
-            else {
-                return ((result >> 8) & 0x00ff) //
-                       | ((result << 8) & 0xff00);
-            }
-        }
-
-        /** Read an aligned 32-bit value from some byte array. The caller is responsible for ensuring the access is aligned and within bounds */
-        template<typename T>
-        inline std::uint32_t get_aligned_32(ByteOrder order, ByteArray<T> data, std::size_t offset)
-        {
-            runtime_assert((offset + 4) <= data.length, "Invalid offset");
-
-            const std::uint32_t result = *reinterpret_cast<const std::uint32_t *>(&(data[offset]));
-
-            if (order == SYSTEM) {
-                return result;
-            }
-            else {
-                return ((result >> 24) & 0x000000ff)  //
-                       | ((result >> 8) & 0x0000ff00) //
-                       | ((result << 8) & 0x00ff0000) //
-                       | ((result << 24) & 0xff000000);
-            }
-        }
-
-        /** Read an aligned 64-bit value from some byte array. The caller is responsible for ensuring the access is aligned and within bounds */
-        template<typename T>
-        inline std::uint64_t get_aligned_64(ByteOrder order, ByteArray<T> data, std::size_t offset)
-        {
-            runtime_assert((offset + 8) <= data.length, "Invalid offset");
-
-            const std::uint64_t result = *reinterpret_cast<const std::uint64_t *>(&(data[offset]));
-
-            if (order == SYSTEM) {
-                return result;
-            }
-            else {
-                return ((result >> 56) & 0x00000000000000ffull)   //
-                       | ((result >> 40) & 0x000000000000ff00ull) //
-                       | ((result >> 24) & 0x0000000000ff0000ull) //
-                       | ((result >> 8) & 0x00000000ff000000ull)  //
-                       | ((result << 8) & 0x000000ff00000000ull)  //
-                       | ((result << 24) & 0x0000ff0000000000ull) //
-                       | ((result << 40) & 0x00ff000000000000ull) //
-                       | ((result << 56) & 0xff00000000000000ull);
-            }
-        }
-
         /** Read an unaligned 16-bit value from some byte array. */
         template<typename T>
-        inline std::uint16_t get_unaligned_16(ByteOrder order, ByteArray<T> data, std::size_t offset)
+        inline std::uint16_t get_16(ByteOrder order, ByteArray<T> data, std::size_t offset = 0)
         {
             runtime_assert((offset + 2) <= data.length, "Invalid offset");
 
@@ -152,7 +49,7 @@ namespace armnn {
 
         /** Read an unaligned 32-bit value from some byte array. */
         template<typename T>
-        inline std::uint32_t get_unaligned_32(ByteOrder order, ByteArray<T> data, std::size_t offset)
+        inline std::uint32_t get_32(ByteOrder order, ByteArray<T> data, std::size_t offset = 0)
         {
             runtime_assert((offset + 4) <= data.length, "Invalid offset");
 
@@ -172,7 +69,7 @@ namespace armnn {
 
         /** Read an unaligned 64-bit value from some byte array. */
         template<typename T>
-        inline std::uint64_t get_unaligned_64(ByteOrder order, ByteArray<T> data, std::size_t offset)
+        inline std::uint64_t get_64(ByteOrder order, ByteArray<T> data, std::size_t offset = 0)
         {
             runtime_assert((offset + 8) <= data.length, "Invalid offset");
 

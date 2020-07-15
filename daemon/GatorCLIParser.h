@@ -8,10 +8,10 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 
+#include <cstring>
 #include <getopt.h>
 #include <map>
 #include <set>
-#include <string.h>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -20,7 +20,7 @@
 const int ERROR_PARSING = -101;
 
 #define DEFAULT_PORT 8080
-#define DISABLE_TCP_USE_UDS_PORT -1
+#define DISABLE_TCP_USE_UDS_PORT (-1)
 
 /**
  * For containing the results of parsing
@@ -41,7 +41,6 @@ public:
     };
 
     ParserResult();
-    ~ParserResult();
 
     std::vector<SpeConfiguration> mSpeConfigs;
     const char * mCaptureWorkingDir;
@@ -65,6 +64,7 @@ public:
     bool mStopGator;
     bool mSystemWide;
     bool mAllowCommands;
+    bool mDisableCpuOnlining;
 
     const char * pmuPath;
     int port;
@@ -88,14 +88,13 @@ public:
 class GatorCLIParser {
 public:
     GatorCLIParser();
-    ~GatorCLIParser();
 
     void parseCLIArguments(int argc,
                            char * argv[],
                            const char * version_string,
-                           int maxPerfCounter,
+                           int maxPerformanceCounter,
                            const char * gSrcMd5);
-    bool hasDebugFlag(int argc, const char * const argv[]);
+    static bool hasDebugFlag(int argc, const char * const argv[]);
     struct cmdline_t getGatorSetting();
     ParserResult result;
 

@@ -3,42 +3,41 @@
 #ifndef ARMNN_PACKETDECODERENCODERFACTORY_H_
 #define ARMNN_PACKETDECODERENCODERFACTORY_H_
 
-#include "PacketUtility.h"
+#include "../Logging.h"
 #include "DecoderUtility.h"
-#include "PacketUtilityModels.h"
-#include "IPacketDecoder.h"
 #include "IEncoder.h"
-#include "lib/Optional.h"
 #include "IPacketConsumer.h"
+#include "IPacketDecoder.h"
 #include "PacketDecoder.h"
 #include "PacketEncoder.h"
-#include "../Logging.h"
+#include "PacketUtility.h"
+#include "PacketUtilityModels.h"
+#include "lib/Optional.h"
 
 #include <memory>
 #include <tuple>
 
-namespace armnn
-{
+namespace armnn {
     /**
      * Checks if the stream meta data version is in the supported versions
      */
-    bool validateStreamMetadataVersion(const std::uint32_t streamMetaVersion);
+    bool validateStreamMetadataVersion(std::uint32_t streamMetaVersion);
     /**
      * get stream meta data packet body based on the stream meta data version
      */
-    lib::Optional<StreamMetadataContent> getStreamMetadata(Bytes bytes, const ByteOrder byteOrder);
+    lib::Optional<StreamMetadataContent> getStreamMetadata(Bytes packetBodyAfterMagic, ByteOrder byteOrder);
 
     /**
      * Create decoders based on PacketVersionTable
      *
      */
-    std::unique_ptr<IPacketDecoder> createDecoder(std::vector<PacketVersionTable> pktVersionTable,
-                                                  ByteOrder order, IPacketConsumer &consumer);
+    std::unique_ptr<IPacketDecoder> createDecoder(const std::vector<PacketVersionTable> & pktVersionTable,
+                                                  ByteOrder order,
+                                                  IPacketConsumer & consumer);
     /**
      * Create encoder based on PacketVersionTable
      */
-    std::unique_ptr<IEncoder> createEncoder(std::vector<PacketVersionTable> pktVersionTable,
-                                            ByteOrder order);
+    std::unique_ptr<IEncoder> createEncoder(const std::vector<PacketVersionTable> & pktVersionTable, ByteOrder order);
 }
 
 #endif /* ARMNN_PACKETDECODERENCODERFACTORY_H_ */

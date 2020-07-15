@@ -2,16 +2,14 @@
 
 #include "PolledDriver.h"
 
-#include "Buffer.h"
+#include "IBlockCounterFrameBuilder.h"
 
-PolledDriver::~PolledDriver() {}
-
-void PolledDriver::read(Buffer * const buffer)
+void PolledDriver::read(IBlockCounterFrameBuilder & buffer)
 {
-    for (DriverCounter * counter = getCounters(); counter != NULL; counter = counter->getNext()) {
+    for (DriverCounter * counter = getCounters(); counter != nullptr; counter = counter->getNext()) {
         if (!counter->isEnabled()) {
             continue;
         }
-        buffer->event64(counter->getKey(), counter->read());
+        buffer.event64(counter->getKey(), counter->read());
     }
 }

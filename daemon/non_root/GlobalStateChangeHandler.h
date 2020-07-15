@@ -7,12 +7,13 @@
 
 #include <map>
 
-class Buffer;
+class IBlockCounterMessageConsumer;
 
 namespace non_root {
     class GlobalStateChangeHandler {
     public:
-        GlobalStateChangeHandler(Buffer & outputBuffer, const std::map<NonRootCounter, int> & enabledCounters);
+        GlobalStateChangeHandler(IBlockCounterMessageConsumer & outputBuffer,
+                                 const std::map<NonRootCounter, int> & enabledCounters);
 
         void absoluteCounter(unsigned long long timestampNS,
                              unsigned long core,
@@ -29,7 +30,7 @@ namespace non_root {
         void deltaCounter(unsigned long long timestampNS, DeltaGlobalCounter id, unsigned long long delta);
 
     private:
-        Buffer & outputBuffer;
+        IBlockCounterMessageConsumer & outputBuffer;
         const std::map<NonRootCounter, int> & enabledCounters;
     };
 }

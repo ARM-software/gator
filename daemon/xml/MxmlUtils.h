@@ -18,7 +18,7 @@ inline mxml_unique_ptr makeMxmlUniquePtr(mxml_node_t * node)
     return {node, mxmlDelete};
 }
 
-const char * mxmlWhitespaceCB(mxml_node_t * node, int where);
+const char * mxmlWhitespaceCB(mxml_node_t * node, int loc);
 void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src);
 
 #endif // MXML_UTILS_H

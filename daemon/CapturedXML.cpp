@@ -13,10 +13,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <cstring>
 #include <dirent.h>
 #include <set>
-#include <stdlib.h>
-#include <string.h>
 
 /* Basic target OS detection */
 #undef GATOR_TARGET_OS
@@ -33,7 +33,7 @@
 #endif
 // not an android NDK build
 #else
-#include <limits.h>
+#include <climits>
 #if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__UCLIBC__)
 //      using GLIBC or UCLIBC so must be linux
 #define GATOR_TARGET_OS "linux"
@@ -74,14 +74,8 @@ static mxml_node_t * getTree(bool includeTime,
                              const PrimarySourceProvider & primarySourceProvider,
                              const std::map<unsigned, unsigned> & maliGpuIds)
 {
-    mxml_node_t * xml;
-    mxml_node_t * captured;
-    mxml_node_t * target;
-    int x;
-
-    xml = mxmlNewXML("1.0");
-
-    captured = mxmlNewElement(xml, "captured");
+    auto * const xml = mxmlNewXML("1.0");
+    auto * const captured = mxmlNewElement(xml, "captured");
     mxmlElementSetAttr(captured, "version", "1");
     mxmlElementSetAttr(captured,
                        "backtrace_processing",
@@ -89,13 +83,13 @@ static mxml_node_t * getTree(bool includeTime,
                                                           : "none");
     mxmlElementSetAttr(captured, "type", primarySourceProvider.getCaptureXmlTypeValue());
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
-    if (includeTime) {                 // Send the following only after the capture is complete
-        if (time(NULL) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
-            mxmlElementSetAttrf(captured, "created", "%lu", time(NULL)); // Valid until the year 2038
+    if (includeTime) {                    // Send the following only after the capture is complete
+        if (time(nullptr) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
+            mxmlElementSetAttrf(captured, "created", "%lu", time(nullptr)); // Valid until the year 2038
         }
     }
 
-    target = mxmlNewElement(captured, "target");
+    auto * const target = mxmlNewElement(captured, "target");
     mxmlElementSetAttrf(target, "sample_rate", "%d", gSessionData.mSampleRate);
     const auto & cpuInfo = primarySourceProvider.getCpuInfo();
     mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
@@ -146,11 +140,10 @@ static mxml_node_t * getTree(bool includeTime,
         }
     }
 
-    mxml_node_t * counters = NULL;
-    for (x = 0; x < MAX_PERFORMANCE_COUNTERS; x++) {
-        const Counter & counter = gSessionData.mCounters[x];
+    mxml_node_t * counters = nullptr;
+    for (const auto & counter : gSessionData.mCounters) {
         if (counter.isEnabled()) {
-            if (counters == NULL) {
+            if (counters == nullptr) {
                 counters = mxmlNewElement(captured, "counters");
             }
             mxml_node_t * const node = mxmlNewElement(counters, "counter");
@@ -169,7 +162,7 @@ static mxml_node_t * getTree(bool includeTime,
     }
 
     for (const auto & spe : spes) {
-        if (counters == NULL) {
+        if (counters == nullptr) {
             counters = mxmlNewElement(captured, "counters");
         }
         mxml_node_t * const node = mxmlNewElement(counters, "spe");

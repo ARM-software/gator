@@ -29,7 +29,7 @@ namespace mali_userspace {
         bool mLegacyLayout;
     };
 
-#define COUNT_OF(A) (sizeof(A) / sizeof(A[0]))
+#define COUNT_OF(A) (sizeof(A) / sizeof((A)[0]))
 #define MALI_COUNTER_BLOCK(N, B, NB)                                                                                   \
     {                                                                                                                  \
         (N), (B), (NB), (NB)                                                                                           \
@@ -63,112 +63,126 @@ namespace mali_userspace {
             PRODUCT_ID_TDVX = 0x7003,
             PRODUCT_ID_TTRX = 0x9000,
             PRODUCT_ID_TNAXa = 0x9001,
-            PRODUCT_ID_TNAXb = 0x9003
+            PRODUCT_ID_TNAXb = 0x9003,
+            PRODUCT_ID_TOTX = 0x9004,
+            PRODUCT_ID_TBOX = 0x9002
         };
 
         /* supported product versions */
-        static const MaliProductVersion PRODUCT_VERSIONS[] = {MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T60X,
-                                                                                   "T60x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t60x,
-                                                                                   true),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T62X,
-                                                                                   "T62x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t62x,
-                                                                                   true),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T72X,
-                                                                                   "T72x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t72x,
-                                                                                   true),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T76X,
-                                                                                   "T76x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t76x,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T82X,
-                                                                                   "T82x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t82x,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T83X,
-                                                                                   "T83x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t83x,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_T86X,
-                                                                                   "T86x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t86x,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
-                                                                                   PRODUCT_ID_TFRX,
-                                                                                   "T88x",
-                                                                                   "Midgard",
-                                                                                   hardware_counters_mali_t88x,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TMIX,
-                                                                                   "G71",
-                                                                                   "Bifrost",
-                                                                                   hardware_counters_mali_tMIx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_THEX,
-                                                                                   "G72",
-                                                                                   "Bifrost",
-                                                                                   hardware_counters_mali_tHEx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TDVX,
-                                                                                   "G31",
-                                                                                   "Bifrost",
-                                                                                   hardware_counters_mali_tDVx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TSIX,
-                                                                                   "G51",
-                                                                                   "Bifrost",
-                                                                                   hardware_counters_mali_tSIx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TGOX,
-                                                                                   "G52",
-                                                                                   "Bifrost",
-                                                                                   hardware_counters_mali_tGOx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TNOX,
-                                                                                   "G76",
-                                                                                   "Bifrost",
-                                                                                   hardware_counters_mali_tNOx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TNAXa,
-                                                                                   "G57",
-                                                                                   "Valhall",
-                                                                                   hardware_counters_mali_tNAx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TNAXb,
-                                                                                   "G57",
-                                                                                   "Valhall",
-                                                                                   hardware_counters_mali_tNAx,
-                                                                                   false),
-                                                              MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
-                                                                                   PRODUCT_ID_TTRX,
-                                                                                   "G77",
-                                                                                   "Valhall",
-                                                                                   hardware_counters_mali_tTRx,
-                                                                                   false)};
+        const MaliProductVersion PRODUCT_VERSIONS[] = {MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T60X,
+                                                                            "T60x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t60x,
+                                                                            true),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T62X,
+                                                                            "T62x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t62x,
+                                                                            true),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T72X,
+                                                                            "T72x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t72x,
+                                                                            true),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T76X,
+                                                                            "T76x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t76x,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T82X,
+                                                                            "T82x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t82x,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T83X,
+                                                                            "T83x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t83x,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_T86X,
+                                                                            "T86x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t86x,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_OLD,
+                                                                            PRODUCT_ID_TFRX,
+                                                                            "T88x",
+                                                                            "Midgard",
+                                                                            hardware_counters_mali_t88x,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TMIX,
+                                                                            "G71",
+                                                                            "Bifrost",
+                                                                            hardware_counters_mali_tMIx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_THEX,
+                                                                            "G72",
+                                                                            "Bifrost",
+                                                                            hardware_counters_mali_tHEx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TDVX,
+                                                                            "G31",
+                                                                            "Bifrost",
+                                                                            hardware_counters_mali_tDVx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TSIX,
+                                                                            "G51",
+                                                                            "Bifrost",
+                                                                            hardware_counters_mali_tSIx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TGOX,
+                                                                            "G52",
+                                                                            "Bifrost",
+                                                                            hardware_counters_mali_tGOx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TNOX,
+                                                                            "G76",
+                                                                            "Bifrost",
+                                                                            hardware_counters_mali_tNOx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TNAXa,
+                                                                            "G57",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tNAx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TNAXb,
+                                                                            "G57",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tNAx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TTRX,
+                                                                            "G77",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tTRx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TOTX,
+                                                                            "G68",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tOTx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TBOX,
+                                                                            "G78",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tBOx,
+                                                                            false)};
 
         enum { NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS) };
 
@@ -199,7 +213,7 @@ namespace mali_userspace {
          * @param index
          * @return The actual physical block number
          */
-        static inline uint32_t mapV4BlockIndexToBlockNumber(MaliCounterBlockName nameBlock, uint32_t index)
+        inline uint32_t mapV4BlockIndexToBlockNumber(MaliCounterBlockName nameBlock, uint32_t index)
         {
             /*
              * BLOCKS ARE LAYED OUT AS:
@@ -239,10 +253,10 @@ namespace mali_userspace {
          * @param index
          * @return The actual physical block number
          */
-        static inline uint32_t mapV56BlockIndexToBlockNumber(MaliCounterBlockName nameBlock,
-                                                             uint32_t numL2MmuBlocks,
-                                                             uint32_t numShaderBlocks,
-                                                             uint32_t index)
+        inline uint32_t mapV56BlockIndexToBlockNumber(MaliCounterBlockName nameBlock,
+                                                      uint32_t numL2MmuBlocks,
+                                                      uint32_t numShaderBlocks,
+                                                      uint32_t index)
         {
             /*
              * BLOCKS ARE LAYED OUT AS:
@@ -273,20 +287,18 @@ namespace mali_userspace {
             }
         }
 
-        static constexpr uint32_t mapNameBlockToIndex(MaliCounterBlockName nameBlock) { return uint32_t(nameBlock); }
+        constexpr uint32_t mapNameBlockToIndex(MaliCounterBlockName nameBlock) { return uint32_t(nameBlock); }
 
-        static const MaliProductVersion * findMaliProductRecordFromId(uint32_t productId)
+        const MaliProductVersion * findMaliProductRecordFromId(uint32_t productId)
         {
-            for (int index = 0; index < NUM_PRODUCT_VERSIONS; ++index) {
-                if ((productId & PRODUCT_VERSIONS[index].mGpuIdMask) == PRODUCT_VERSIONS[index].mGpuIdValue) {
-                    return &PRODUCT_VERSIONS[index];
+            for (const auto & index : PRODUCT_VERSIONS) {
+                if ((productId & index.mGpuIdMask) == index.mGpuIdValue) {
+                    return &index;
                 }
             }
             return nullptr;
         }
     }
-
-    IMaliDeviceCounterDumpCallback::~IMaliDeviceCounterDumpCallback() {}
 
     MaliDeviceCounterList::MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords)
         : countersListLength(numBlocks * numGroups * numWords),
@@ -295,7 +307,7 @@ namespace mali_userspace {
     {
     }
 
-    MaliDeviceCounterList::MaliDeviceCounterList(MaliDeviceCounterList && that)
+    MaliDeviceCounterList::MaliDeviceCounterList(MaliDeviceCounterList && that) noexcept
         : countersListLength(that.countersListLength),
           countersListValid(that.countersListValid),
           countersList(that.countersList)
@@ -305,12 +317,7 @@ namespace mali_userspace {
         that.countersList = nullptr;
     }
 
-    MaliDeviceCounterList::~MaliDeviceCounterList()
-    {
-        if (countersList != nullptr) {
-            delete[] countersList;
-        }
-    }
+    MaliDeviceCounterList::~MaliDeviceCounterList() { delete[] countersList; }
 
     void MaliDeviceCounterList::enable(MaliCounterBlockName nameBlock,
                                        uint32_t repeatCount,
@@ -356,9 +363,9 @@ namespace mali_userspace {
 
     uint32_t MaliDevice::getGpuId() const { return mProductVersion.mGpuIdValue; }
 
-    uint32_t MaliDevice::getShaderBlockCount() const { return std::max(1u, deviceApi->getNumberOfShaderCores()); }
+    uint32_t MaliDevice::getShaderBlockCount() const { return std::max(1U, deviceApi->getNumberOfShaderCores()); }
 
-    uint32_t MaliDevice::getL2MmuBlockCount() const { return std::max(1u, deviceApi->getNumberOfL2Slices()); }
+    uint32_t MaliDevice::getL2MmuBlockCount() const { return std::max(1U, deviceApi->getNumberOfL2Slices()); }
 
     const char * MaliDevice::getProductName() const { return mProductVersion.mName; }
 
@@ -433,7 +440,7 @@ namespace mali_userspace {
                                      const MaliDeviceCounterList & counterList,
                                      const uint32_t * buffer,
                                      size_t bufferLength,
-                                     IBuffer & bufferData,
+                                     IBlockCounterFrameBuilder & bufferData,
                                      IMaliDeviceCounterDumpCallback & callback) const
     {
         switch (hardwareVersion) {
@@ -460,7 +467,7 @@ namespace mali_userspace {
     void MaliDevice::dumpAllCounters_V4(const MaliDeviceCounterList & counterList,
                                         const uint32_t * buffer,
                                         size_t bufferLength,
-                                        IBuffer & bufferData,
+                                        IBlockCounterFrameBuilder & bufferData,
                                         IMaliDeviceCounterDumpCallback & callback) const
     {
         const size_t counterListSize = counterList.size();
@@ -485,7 +492,7 @@ namespace mali_userspace {
 
                 const uint32_t mask = buffer[maskBufferIndex];
 
-                if (mask & (1 << counterAddress.groupIndex)) {
+                if ((mask & (1 << counterAddress.groupIndex)) != 0U) {
                     const uint32_t counterIndex =
                         (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
                     const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
@@ -527,7 +534,7 @@ namespace mali_userspace {
     void MaliDevice::dumpAllCounters_V56(const MaliDeviceCounterList & counterList,
                                          const uint32_t * buffer,
                                          size_t bufferLength,
-                                         IBuffer & bufferData,
+                                         IBlockCounterFrameBuilder & bufferData,
                                          IMaliDeviceCounterDumpCallback & callback) const
     {
         const uint32_t numL2MmuBlocks = getL2MmuBlockCount();
@@ -558,7 +565,7 @@ namespace mali_userspace {
 
                 const uint32_t mask = buffer[maskBufferIndex];
 
-                if (mask & (1 << counterAddress.groupIndex)) {
+                if ((mask & (1 << counterAddress.groupIndex)) != 0U) {
                     const uint32_t counterIndex =
                         (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
                     const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
