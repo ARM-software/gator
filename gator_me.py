@@ -187,10 +187,11 @@ class Device:
         if DEBUG_GATORD:
             stde = sys.stderr
             process = sp.Popen(commands, universal_newlines=True,
-                               stdin=stde, stdout=stde)
+                               stdin=stde, stdout=stde, encoding="utf-8")
         else:
             devn = sp.DEVNULL
-            process = sp.Popen(commands, stdin=devn, stdout=devn, stderr=devn)
+            process = sp.Popen(commands, stdin=devn, stdout=devn, stderr=devn,
+                               encoding="utf-8")
 
         return process
 
@@ -207,7 +208,8 @@ class Device:
         commands.extend(args)
 
         # Note do not use shell=True; arguments are not safely escaped
-        ret = sp.run(commands, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        ret = sp.run(commands, stdout=sp.DEVNULL, stderr=sp.DEVNULL,
+                     encoding="utf-8")
 
     def adb(self, *args, **kwargs):
         """
@@ -242,7 +244,7 @@ class Device:
                 commands = " ".join(quotedCommands)
 
         rep = sp.run(commands, check=True, shell=shell, stdout=sp.PIPE,
-                     stderr=sp.PIPE, universal_newlines=text)
+                     stderr=sp.PIPE, universal_newlines=text, encoding="utf-8")
 
         return rep.stdout
 
