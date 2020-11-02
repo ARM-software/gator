@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "ISession.h"
 #include "armnn/ByteOrder.h"
 #include "armnn/IGlobalState.h"
 #include "armnn/IPacketDecoder.h"
 #include "armnn/ISender.h"
+#include "armnn/ISession.h"
 #include "armnn/ISessionPacketSender.h"
 #include "armnn/SessionStateTracker.h"
 #include "armnn/SocketIO.h"
@@ -27,7 +27,7 @@ namespace armnn {
     // Struct to store the metadata for the connection
     struct HeaderPacket {
         ByteOrder byteOrder;
-        std::vector<std::uint8_t> streamMetadataPacketBodyAfterMagic;
+        std::vector<std::uint8_t> packet;
     };
 
     class Session : public ISession {
@@ -35,7 +35,8 @@ namespace armnn {
         /** Creates a unique pointer to a Session object **/
         static std::unique_ptr<Session> create(std::unique_ptr<SocketIO> connection,
                                                IGlobalState & globalState,
-                                               ICounterConsumer & counterConsumer);
+                                               ICounterConsumer & counterConsumer,
+                                               const std::uint32_t sessionID);
 
         /**
          * Initialises the connection.

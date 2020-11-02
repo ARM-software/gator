@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "lib/Span.h"
+
 #include <cstdint>
 
 namespace armnn {
@@ -23,9 +25,14 @@ namespace armnn {
         /**
          * @return whether the value was successfully consumed
          */
-        virtual bool consumerCounterValue(std::uint64_t timestamp,
-                                          ApcCounterKeyAndCoreNumber keyAndCore,
-                                          std::uint32_t counterValue) = 0;
+        virtual bool consumeCounterValue(std::uint64_t timestamp,
+                                         ApcCounterKeyAndCoreNumber keyAndCore,
+                                         std::uint32_t counterValue) = 0;
+
+        /**
+         * @return whether the data was successfully consumed
+         */
+        virtual bool consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data) = 0;
     };
 
 }

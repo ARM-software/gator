@@ -30,7 +30,7 @@ GATORD_CXX_SRC_FILES := \
     Child.cpp \
     Command.cpp \
     ConfigurationXML.cpp \
-    ConfigurationXMLParser.cpp\
+    ConfigurationXMLParser.cpp \
     CounterXML.cpp \
     CpuUtils.cpp \
     CpuUtils_Topology.cpp \
@@ -45,24 +45,51 @@ GATORD_CXX_SRC_FILES := \
     FtraceDriver.cpp \
     GatorCLIParser.cpp \
     HwmonDriver.cpp \
-    armnn/PacketDecoder.cpp \
-    armnn/PacketEncoder.cpp \
-    armnn/DecoderUtility.cpp \
+    BlockCounterFrameBuilder.cpp \
+    BlockCounterMessageConsumer.cpp \
+    LocalCapture.cpp \
+    Logging.cpp \
+    main.cpp \
+    MemInfoDriver.cpp \
+    MidgardDriver.cpp \
+    Monitor.cpp \
+    NetDriver.cpp \
+    OlySocket.cpp \
+    OlyUtility.cpp \
+    pmus_xml.cpp \
+    PolledDriver.cpp \
+    PrimarySourceProvider.cpp \
+    Proc.cpp \
+    Sender.cpp \
+    SessionData.cpp \
+    SessionXML.cpp \
+    SimpleDriver.cpp \
+    StreamlineSetup.cpp \
+    StreamlineSetupLoop.cpp \
+    SummaryBuffer.cpp \
+    Tracepoints.cpp \
+    TtraceDriver.cpp \
+    UEvent.cpp \
+    UserSpaceSource.cpp \
+    armnn/ArmNNDriver.cpp \
+    armnn/ArmNNSource.cpp \
     armnn/CounterDirectoryDecoder.cpp \
     armnn/CounterDirectoryStateUtils.cpp \
-    armnn/Driver.cpp \
+    armnn/DecoderUtility.cpp \
     armnn/DriverSourceIpc.cpp \
+    armnn/FrameBuilderFactory.cpp \
     armnn/GlobalState.cpp \
+    armnn/PacketDecoder.cpp \
     armnn/PacketDecoderEncoderFactory.cpp \
+    armnn/PacketEncoder.cpp \
     armnn/PacketUtility.cpp \
-    armnn/SessionStateTracker.cpp \
-    armnn/Session.cpp \
-    armnn/SessionPacketSender.cpp \
     armnn/SenderQueue.cpp \
     armnn/SenderThread.cpp \
+    armnn/Session.cpp \
+    armnn/SessionPacketSender.cpp \
+    armnn/SessionStateTracker.cpp \
     armnn/SocketAcceptor.cpp \
     armnn/SocketIO.cpp \
-    armnn/Source.cpp \
     armnn/ThreadManagementServer.cpp \
     armnn/TimestampCorrector.cpp \
     lib/Assert.cpp \
@@ -70,45 +97,37 @@ GATORD_CXX_SRC_FILES := \
     lib/FileDescriptor.cpp \
     lib/FsEntry.cpp \
     lib/Popen.cpp \
-    lib/Utils.cpp \
-    lib/WaitForProcessPoller.cpp \
     lib/Syscall.cpp \
     lib/TimestampSource.cpp \
+    lib/Utils.cpp \
+    lib/WaitForProcessPoller.cpp \
     linux/CoreOnliner.cpp \
     linux/PerCoreIdentificationThread.cpp \
-    linux/SysfsSummaryInformation.cpp \
-    linux/perf/PerfBuffer.cpp \
     linux/perf/PerfAttrsBuffer.cpp \
+    linux/perf/PerfBuffer.cpp \
     linux/perf/PerfCpuOnlineMonitor.cpp \
-    linux/perf/PerfDriver.cpp \
     linux/perf/PerfDriverConfiguration.cpp \
+    linux/perf/PerfDriver.cpp \
     linux/perf/PerfEventGroup.cpp \
     linux/perf/PerfEventGroupIdentifier.cpp \
     linux/perf/PerfGroups.cpp \
     linux/perf/PerfSource.cpp \
-    linux/perf/PerfSyncThread.cpp \
     linux/perf/PerfSyncThreadBuffer.cpp \
+    linux/perf/PerfSyncThread.cpp \
     linux/proc/ProcessChildren.cpp \
     linux/proc/ProcessPollerBase.cpp \
     linux/proc/ProcLoadAvgFileRecord.cpp \
     linux/proc/ProcPidStatFileRecord.cpp \
     linux/proc/ProcPidStatmFileRecord.cpp \
     linux/proc/ProcStatFileRecord.cpp \
-    LocalCapture.cpp \
-    Logging.cpp \
-    main.cpp \
-    mali_userspace/MaliDevice.cpp \
+    linux/SysfsSummaryInformation.cpp \
     mali_userspace/MaliDeviceApi.cpp \
+    mali_userspace/MaliDevice.cpp \
     mali_userspace/MaliHwCntrDriver.cpp \
     mali_userspace/MaliHwCntrReader.cpp \
     mali_userspace/MaliHwCntrSource.cpp \
     mali_userspace/MaliHwCntrTask.cpp \
     mali_userspace/MaliInstanceLocator.cpp \
-    MaliVideoDriver.cpp \
-    MemInfoDriver.cpp \
-    MidgardDriver.cpp \
-    Monitor.cpp \
-    NetDriver.cpp \
     non_root/GlobalPoller.cpp \
     non_root/GlobalStateChangeHandler.cpp \
     non_root/GlobalStatsTracker.cpp \
@@ -120,25 +139,9 @@ GATORD_CXX_SRC_FILES := \
     non_root/ProcessStateChangeHandler.cpp \
     non_root/ProcessStateTracker.cpp \
     non_root/ProcessStatsTracker.cpp \
-    OlySocket.cpp \
-    OlyUtility.cpp \
-    pmus_xml.cpp \
-    PolledDriver.cpp \
-    PrimarySourceProvider.cpp \
-    Proc.cpp \
-    Sender.cpp \
-    SessionData.cpp \
-    SessionXML.cpp \
-    SimpleDriver.cpp \
-    Source.cpp \
-    StreamlineSetup.cpp \
-    SummaryBuffer.cpp \
-    Tracepoints.cpp \
-    TtraceDriver.cpp \
-    UEvent.cpp \
-    UserSpaceSource.cpp \
     xml/EventsXML.cpp \
     xml/EventsXMLProcessor.cpp \
     xml/MxmlUtils.cpp \
     xml/PmuXML.cpp \
-    xml/PmuXMLParser.cpp
+    xml/PmuXMLParser.cpp \
+    xml/PmuXMLParser.h

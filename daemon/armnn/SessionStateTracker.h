@@ -26,7 +26,9 @@ namespace armnn {
     public:
         SessionStateTracker(IGlobalState & globalState,
                             ICounterConsumer & counterConsumer,
-                            std::unique_ptr<ISessionPacketSender> sendQueue);
+                            std::unique_ptr<ISessionPacketSender> sendQueue,
+                            std::uint32_t sessionID,
+                            std::vector<std::uint8_t> streamMetadata);
 
         // see ICounterDirectoryConsumer
         virtual bool onCounterDirectory(std::map<std::uint16_t, DeviceRecord> devices,
@@ -36,14 +38,22 @@ namespace armnn {
         virtual bool onPeriodicCounterSelection(std::uint32_t period, std::set<std::uint16_t> uids) override;
         // see IPerJobCounterSelectionConsumer
         virtual bool onPerJobCounterSelection(std::uint64_t objectId, std::set<std::uint16_t> uids) override;
-        //see IPeriodicCounterCaptureConsumer
+        // see IPeriodicCounterCaptureConsumer
         virtual bool onPeriodicCounterCapture(std::uint64_t timestamp,
                                               std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
-        //see IPerJobCounterCaptureConsumer
+        // see IPerJobCounterCaptureConsumer
         virtual bool onPerJobCounterCapture(bool isPre,
                                             std::uint64_t timestamp,
                                             std::uint64_t objectRef,
                                             std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
+
+        /**
+         * Consumes a raw packet sent from target
+         *
+         * @returns true if the packet was successfully consumed, false otherwise.
+         **/
+        bool forwardPacket(lib::Span<const std::uint8_t> packet);
+
         /** Start capturing data */
         bool doEnableCapture();
 
@@ -102,6 +112,8 @@ namespace armnn {
         std::set<std::uint16_t> activeEventUIDs;
 
         bool captureIsActive;
+        const std::uint32_t sessionID;
+        std::vector<std::uint8_t> streamMetadata;
     };
 }
 

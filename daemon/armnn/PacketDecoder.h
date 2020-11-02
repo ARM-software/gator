@@ -3,12 +3,12 @@
 #ifndef ARMNN_PACKETDECODER_H_
 #define ARMNN_PACKETDECODER_H_
 
-#include "../Logging.h"
-#include "ByteOrder.h"
-#include "IPacketConsumer.h"
-#include "IPacketDecoder.h"
-#include "PacketUtility.h"
-#include "PacketUtilityModels.h"
+#include "Logging.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/IPacketConsumer.h"
+#include "armnn/IPacketDecoder.h"
+#include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 #include "lib/Optional.h"
 
 namespace armnn {

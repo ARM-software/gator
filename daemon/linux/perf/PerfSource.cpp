@@ -48,15 +48,13 @@ static PerfBuffer::Config createPerfBufferConfig()
 }
 
 PerfSource::PerfSource(PerfDriver & driver,
-                       Child & child,
                        sem_t & senderSem,
                        std::function<void()> profilingStartedCallback,
                        std::set<int> appTids,
                        FtraceDriver & ftraceDriver,
                        bool enableOnCommandExec,
                        ICpuInfo & cpuInfo)
-    : Source(child),
-      mSummary(1024 * 1024, senderSem),
+    : mSummary(1024 * 1024, senderSem),
       mCountersBuf(createPerfBufferConfig()),
       mCountersGroup(driver.getConfig(),
                      mCountersBuf.getDataBufferLength(),
@@ -77,11 +75,10 @@ PerfSource::PerfSource(PerfDriver & driver,
       mProcBuffer(),
       mSenderSem(senderSem),
       mProfilingStartedCallback(std::move(profilingStartedCallback)),
-      mInterruptFd(-1),
       mIsDone(false),
       mFtraceDriver(ftraceDriver),
       mCpuInfo(cpuInfo),
-      mSyncThreads(),
+      mSyncThread(),
       enableOnCommandExec(false)
 {
     const PerfConfig & mConfig = mDriver.getConfig();
@@ -101,9 +98,6 @@ bool PerfSource::prepare()
 {
     const PerfConfig & mConfig = mDriver.getConfig();
 
-    // MonotonicStarted has not yet been assigned!
-    const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
-
     mAttrsBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
     mProcBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
 
@@ -115,20 +109,37 @@ bool PerfSource::prepare()
         return false;
     }
 
+    int pipefd[2];
+    if (lib::pipe_cloexec(pipefd) != 0) {
+        logg.logError("pipe failed");
+        return false;
+    }
+    mInterruptWrite = pipefd[1];
+    mInterruptRead = pipefd[0];
+
+    if (!mMonitor.add(*mInterruptRead)) {
+        logg.logError("Monitor::add failed");
+        return false;
+    }
+
     if (mConfig.is_system_wide && (!mUEvent.init() || !mMonitor.add(mUEvent.getFd()))) {
         logg.logMessage("uevent setup failed");
         return false;
     }
 
-    if (mConfig.can_access_tracepoints && !mDriver.sendTracepointFormats(currTime, *mAttrsBuffer)) {
+    if (mConfig.can_access_tracepoints && !mDriver.sendTracepointFormats(*mAttrsBuffer)) {
         logg.logMessage("could not send tracepoint formats");
         return false;
     }
 
-    if (!mDriver.enable(currTime, mCountersGroup, *mAttrsBuffer)) {
+    if (!mDriver.enable(mCountersGroup, *mAttrsBuffer)) {
         logg.logMessage("perf setup failed, are you running Linux 3.4 or later?");
         return false;
     }
+
+    // must do this after mDriver::enable because of the SPE check
+    mSyncThread =
+        PerfSyncThreadBuffer::create(mDriver.getConfig().has_attr_clockid_support, mCountersGroup.hasSPE(), mSenderSem);
 
     // online them later
     const OnlineEnabledState onlineEnabledState =
@@ -138,7 +149,6 @@ bool PerfSource::prepare()
     for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
         using Result = OnlineResult;
         const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
-            currTime,
             cpu,
             mAppTids,
             onlineEnabledState,
@@ -165,20 +175,25 @@ bool PerfSource::prepare()
         logg.logMessage("PerfGroups::onlineCPU failed on all cores");
     }
 
-    // Send the summary right before the start so that the monotonic delta is close to the start time
-    if (!mDriver.summary(mSummary, []() -> uint64_t { return (gSessionData.mMonotonicStarted = getTime()); })) {
-        logg.logError("PerfDriver::summary failed");
-        handleException();
-    }
-
-    mAttrsBuffer->commit(currTime);
+    mAttrsBuffer->flush();
 
     return true;
 }
 
+lib::Optional<uint64_t> PerfSource::sendSummary()
+{
+    // Send the summary right before the start so that the monotonic delta is close to the start time
+    auto montonicStart = mDriver.summary(mSummary, &getTime);
+    if (!montonicStart) {
+        logg.logError("PerfDriver::summary failed");
+        handleException();
+    }
+
+    return montonicStart;
+}
+
 struct ProcThreadArgs {
     PerfAttrsBuffer * mProcBuffer {nullptr};
-    uint64_t mCurrTime {0};
     std::atomic_bool mIsDone {false};
 };
 
@@ -194,44 +209,32 @@ static void * procFunc(void * arg)
         handleException();
     }
 
-    if (!readProcMaps(args->mCurrTime, *args->mProcBuffer)) {
+    if (!readProcMaps(*args->mProcBuffer)) {
         logg.logError("readProcMaps failed");
         handleException();
     }
 
-    if (!readKallsyms(args->mCurrTime, *args->mProcBuffer, args->mIsDone)) {
+    if (!readKallsyms(*args->mProcBuffer, args->mIsDone)) {
         logg.logError("readKallsyms failed");
         handleException();
     }
-    args->mProcBuffer->commit(args->mCurrTime);
+    args->mProcBuffer->flush();
 
     return nullptr;
 }
 
 static const char CPU_DEVPATH[] = "/devices/system/cpu/cpu";
 
-void PerfSource::run()
+void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSession)
 {
-    int pipefd[2];
     pthread_t procThread;
     ProcThreadArgs procThreadArgs;
-
-    if (lib::pipe_cloexec(pipefd) != 0) {
-        logg.logError("pipe failed");
-        handleException();
-    }
-    mInterruptFd = pipefd[1];
-
-    if (!mMonitor.add(pipefd[0])) {
-        logg.logError("Monitor::add failed");
-        handleException();
-    }
 
     {
         DynBuf printb;
         DynBuf b1;
 
-        const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
+        const uint64_t currTime = getTime() - monotonicStart;
         logg.logMessage("run at current time: %" PRIu64, currTime);
 
         // Start events before reading proc to avoid race conditions
@@ -245,9 +248,9 @@ void PerfSource::run()
         for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
             mDriver.read(*mAttrsBuffer, cpu);
         }
-        mAttrsBuffer->perfCounterFooter(currTime);
+        mAttrsBuffer->perfCounterFooter();
 
-        if (!readProcSysDependencies(currTime, *mAttrsBuffer, &printb, &b1, mFtraceDriver)) {
+        if (!readProcSysDependencies(*mAttrsBuffer, &printb, &b1, mFtraceDriver)) {
             if (mDriver.getConfig().is_system_wide) {
                 logg.logError("readProcSysDependencies failed");
                 handleException();
@@ -256,11 +259,10 @@ void PerfSource::run()
                 logg.logMessage("readProcSysDependencies failed");
             }
         }
-        mAttrsBuffer->commit(currTime);
+        mAttrsBuffer->flush();
 
         // Postpone reading kallsyms as on android adb gets too backed up and data is lost
         procThreadArgs.mProcBuffer = mProcBuffer.get();
-        procThreadArgs.mCurrTime = currTime;
         procThreadArgs.mIsDone = false;
         if (pthread_create(&procThread, nullptr, procFunc, &procThreadArgs) != 0) {
             logg.logError("pthread_create failed");
@@ -273,7 +275,7 @@ void PerfSource::run()
     if (!mUEvent.enabled()) {
         onlineMonitorThread.reset(new PerfCpuOnlineMonitor([&](unsigned cpu, bool online) -> void {
             logg.logMessage("CPU online state changed: %u -> %s", cpu, (online ? "online" : "offline"));
-            const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
+            const uint64_t currTime = getTime() - monotonicStart;
             if (online) {
                 handleCpuOnline(currTime, cpu);
             }
@@ -284,10 +286,9 @@ void PerfSource::run()
     }
 
     // start sync threads
-    mSyncThreads = PerfSyncThreadBuffer::create(gSessionData.mMonotonicStarted,
-                                                this->mDriver.getConfig().has_attr_clockid_support,
-                                                this->mCountersGroup.hasSPE(),
-                                                mSenderSem);
+    if (mSyncThread != nullptr) {
+        mSyncThread->start(monotonicStart);
+    }
 
     // start profiling
     mProfilingStartedCallback();
@@ -296,7 +297,7 @@ void PerfSource::run()
     const uint64_t rate = gSessionData.mLiveRate > 0 && gSessionData.mSampleRate > 0 ? gSessionData.mLiveRate : NO_RATE;
     uint64_t nextTime = 0;
     int timeout = rate != NO_RATE ? 0 : -1;
-    while (gSessionData.mSessionIsActive) {
+    while (true) {
         // +1 for uevents, +1 for pipe
         std::vector<struct epoll_event> events {mCpuInfo.getNumberOfCores() + 2};
         int ready = mMonitor.wait(events.data(), events.size(), timeout);
@@ -304,7 +305,7 @@ void PerfSource::run()
             logg.logError("Monitor::wait failed");
             handleException();
         }
-        const uint64_t currTime = getTime() - gSessionData.mMonotonicStarted;
+        const uint64_t currTime = getTime() - monotonicStart;
 
         for (int i = 0; i < ready; ++i) {
             if (events[i].data.fd == mUEvent.getFd()) {
@@ -314,17 +315,19 @@ void PerfSource::run()
                 }
                 break;
             }
+            else if (events[i].data.fd == *mInterruptRead) {
+                goto exitOuterLoop;
+            }
         }
 
         // send a notification that data is ready
         sem_post(&mSenderSem);
 
         // In one shot mode, stop collection once all the buffers are filled
-        if (gSessionData.mOneShot && gSessionData.mSessionIsActive &&
-            ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) ||
-             (mProcBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
+        if (gSessionData.mOneShot && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) ||
+                                      (mProcBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
             logg.logMessage("One shot (perf)");
-            mChild.endSession();
+            endSession();
         }
 
         if (rate != NO_RATE) {
@@ -332,10 +335,10 @@ void PerfSource::run()
                 nextTime += rate;
             }
             // + NS_PER_MS - 1 to ensure always rounding up
-            timeout =
-                std::max<int>(0, (nextTime + NS_PER_MS - 1 - getTime() + gSessionData.mMonotonicStarted) / NS_PER_MS);
+            timeout = std::max<int>(0, (nextTime + NS_PER_MS - 1 - getTime() + monotonicStart) / NS_PER_MS);
         }
     }
+exitOuterLoop:
 
     if (onlineMonitorThread) {
         onlineMonitorThread->terminate();
@@ -344,21 +347,16 @@ void PerfSource::run()
     procThreadArgs.mIsDone = true;
     pthread_join(procThread, nullptr);
     mCountersGroup.stop();
-    mAttrsBuffer->setDone();
-    mProcBuffer->setDone();
-    mIsDone = true;
 
     // terminate all remaining sync threads
-    for (auto & ptr : mSyncThreads) {
-        ptr->terminate();
+    if (mSyncThread != nullptr) {
+        mSyncThread->terminate();
     }
+
+    mIsDone = true;
 
     // send a notification that data is ready
     sem_post(&mSenderSem);
-
-    mInterruptFd = -1;
-    close(pipefd[0]);
-    close(pipefd[1]);
 }
 
 bool PerfSource::handleUEvent(const uint64_t currTime)
@@ -405,7 +403,6 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
 
     bool ret;
     const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
-        currTime,
         cpu,
         mAppTids,
         OnlineEnabledState::ENABLE_NOW,
@@ -420,7 +417,7 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
             // which is true at the time of writing (just the cpu freq)
             mAttrsBuffer->perfCounterHeader(currTime, 1);
             mDriver.read(*mAttrsBuffer, cpu);
-            mAttrsBuffer->perfCounterFooter(currTime);
+            mAttrsBuffer->perfCounterFooter();
             // fall through
             /* no break */
         case OnlineResult::CPU_OFFLINE:
@@ -431,11 +428,11 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
             break;
     }
 
-    mAttrsBuffer->commit(currTime);
+    mAttrsBuffer->flush();
 
     mCpuInfo.updateIds(true);
-    mDriver.coreName(currTime, mSummary, cpu);
-    mSummary.commit(currTime);
+    mDriver.coreName(mSummary, cpu);
+    mSummary.flush();
     return ret;
 }
 
@@ -448,52 +445,31 @@ bool PerfSource::handleCpuOffline(uint64_t currTime, unsigned cpu)
 
 void PerfSource::interrupt()
 {
-    if (mInterruptFd >= 0) {
-        int8_t c = 0;
-        // Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
-        if (::write(mInterruptFd, &c, sizeof(c)) != sizeof(c)) {
-            logg.logError("write failed");
-            handleException();
-        }
+    int8_t c = 0;
+    // Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
+    if (::write(*mInterruptWrite, &c, sizeof(c)) != sizeof(c)) {
+        logg.logError("write failed");
+        handleException();
     }
 }
 
-bool PerfSource::isDone()
+bool PerfSource::write(ISender & sender)
 {
-    for (const auto & syncThread : mSyncThreads) {
-        if (!syncThread->complete()) {
-            return false;
-        }
-    }
-    return mAttrsBuffer->isDone() && mProcBuffer->isDone() &&
-           mIsDone
-           // This is broken because isDone should only return false if
-           // there is at least one guaranteed sem_post during or after the call.
-           // If perf continues to fill the buffer after mCountersGroup.stop() is called
-           // mCountersBuf.isEmpty() will return false after the last sem_post in PerfSource::run.
-           // The work around is a timed wait in Child::senderThreadEntryPoint
-           && mCountersBuf.isEmpty();
-}
+    // check mIsDone before we write so we guarantee the
+    // buffers won't have anymore added after we return
+    const bool done = mIsDone;
 
-void PerfSource::write(ISender & sender)
-{
-    if (!mSummary.isDone()) {
-        mSummary.write(sender);
-        gSessionData.mSentSummary = true;
-    }
-    if (!mAttrsBuffer->isDone()) {
-        mAttrsBuffer->write(sender);
-    }
-    if (!mProcBuffer->isDone()) {
-        mProcBuffer->write(sender);
-    }
+    mSummary.write(sender);
+    mAttrsBuffer->write(sender);
+    mProcBuffer->write(sender);
     if (!mCountersBuf.send(sender)) {
         logg.logError("PerfBuffer::send failed");
         handleException();
     }
-    for (auto & syncThread : mSyncThreads) {
-        if (!syncThread->complete()) {
-            syncThread->send(sender);
-        }
+    // This is racey, unless we assume no one posts reader sem before profiling started
+    if (mSyncThread != nullptr) {
+        mSyncThread->send(sender);
     }
+
+    return done;
 }

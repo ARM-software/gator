@@ -16,28 +16,27 @@ public:
     void write(ISender & sender);
 
     int bytesAvailable() const;
-    void commit(uint64_t time);
+    void flush();
 
     // Perf Attrs messages
-    void marshalPea(uint64_t currTime, const struct perf_event_attr * pea, int key) override;
-    void marshalKeys(uint64_t currTime, int count, const uint64_t * ids, const int * keys) override;
-    void marshalKeysOld(uint64_t currTime, int keyCount, const int * keys, int bytes, const char * buf) override;
-    void marshalFormat(uint64_t currTime, int length, const char * format) override;
-    void marshalMaps(uint64_t currTime, int pid, int tid, const char * maps) override;
-    void marshalComm(uint64_t currTime, int pid, int tid, const char * image, const char * comm) override;
-    void onlineCPU(uint64_t currTime, int cpu) override;
-    void offlineCPU(uint64_t currTime, int cpu) override;
-    void marshalKallsyms(uint64_t currTime, const char * kallsyms) override;
+    void marshalPea(const struct perf_event_attr * pea, int key) override;
+    void marshalKeys(int count, const uint64_t * ids, const int * keys) override;
+    void marshalKeysOld(int keyCount, const int * keys, int bytes, const char * buf) override;
+    void marshalFormat(int length, const char * format) override;
+    void marshalMaps(int pid, int tid, const char * maps) override;
+    void marshalComm(int pid, int tid, const char * image, const char * comm) override;
+    void onlineCPU(uint64_t time, int cpu) override;
+    void offlineCPU(uint64_t time, int cpu) override;
+    void marshalKallsyms(const char * kallsyms) override;
     void perfCounterHeader(uint64_t time, int numberOfCounters) override;
     void perfCounter(int core, int key, int64_t value) override;
-    void perfCounterFooter(uint64_t currTime) override;
-    void marshalHeaderPage(uint64_t currTime, const char * headerPage) override;
-    void marshalHeaderEvent(uint64_t currTime, const char * headerEvent) override;
-
-    void setDone();
-    bool isDone() const;
+    void perfCounterFooter() override;
+    void marshalHeaderPage(const char * headerPage) override;
+    void marshalHeaderEvent(const char * headerEvent) override;
 
 private:
+    void waitForSpace(int bytes);
+
     Buffer buffer;
     // Intentionally unimplemented
     PerfAttrsBuffer(const PerfAttrsBuffer &) = delete;

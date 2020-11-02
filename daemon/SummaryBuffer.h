@@ -13,23 +13,20 @@ public:
     void write(ISender & sender);
 
     int bytesAvailable() const;
-    virtual void commit(uint64_t time) override;
+    virtual void flush() override;
 
     // Summary messages
-    virtual void summary(uint64_t currTime,
-                         int64_t timestamp,
+    virtual void summary(int64_t timestamp,
                          int64_t uptime,
                          int64_t monotonicDelta,
                          const char * uname,
                          long pageSize,
                          bool nosync,
                          const std::map<std::string, std::string> & additionalAttributes) override;
-    virtual void coreName(uint64_t currTime, int core, int cpuid, const char * name) override;
-
-    void setDone();
-    bool isDone() const;
+    virtual void coreName(int core, int cpuid, const char * name) override;
 
 private:
+    void waitForSpace(int bytes);
     Buffer buffer;
 };
 

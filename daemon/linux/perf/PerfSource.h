@@ -7,24 +7,25 @@
 #include "Source.h"
 #include "SummaryBuffer.h"
 #include "UEvent.h"
+#include "lib/AutoClosingFd.h"
+#include "linux/perf/PerfAttrsBuffer.h"
 #include "linux/perf/PerfBuffer.h"
 #include "linux/perf/PerfGroups.h"
+#include "linux/perf/PerfSyncThreadBuffer.h"
 
+#include <atomic>
 #include <functional>
 #include <semaphore.h>
 #include <set>
 
-class PerfAttrsBuffer;
 class PerfDriver;
 class ISender;
 class FtraceDriver;
 class ICpuInfo;
-class PerfSyncThreadBuffer;
 
-class PerfSource : public Source {
+class PerfSource : public PrimarySource {
 public:
     PerfSource(PerfDriver & driver,
-               Child & child,
                sem_t & senderSem,
                std::function<void()> profilingStartedCallback,
                std::set<int> appTids,
@@ -32,11 +33,11 @@ public:
                bool enableOnCommandExec,
                ICpuInfo & cpuInfo);
 
-    virtual bool prepare() override;
-    virtual void run() override;
+    bool prepare();
+    virtual lib::Optional<uint64_t> sendSummary() override;
+    virtual void run(std::uint64_t, std::function<void()> endSession) override;
     virtual void interrupt() override;
-    virtual bool isDone() override;
-    virtual void write(ISender & sender) override;
+    virtual bool write(ISender & sender) override;
 
 private:
     bool handleUEvent(uint64_t currTime);
@@ -54,11 +55,12 @@ private:
     std::unique_ptr<PerfAttrsBuffer> mProcBuffer;
     sem_t & mSenderSem;
     std::function<void()> mProfilingStartedCallback;
-    int mInterruptFd;
-    bool mIsDone;
+    lib::AutoClosingFd mInterruptRead {};
+    lib::AutoClosingFd mInterruptWrite {};
+    std::atomic_bool mIsDone;
     FtraceDriver & mFtraceDriver;
     ICpuInfo & mCpuInfo;
-    std::vector<std::unique_ptr<PerfSyncThreadBuffer>> mSyncThreads;
+    std::unique_ptr<PerfSyncThreadBuffer> mSyncThread;
     bool enableOnCommandExec;
 
     // Intentionally undefined

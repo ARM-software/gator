@@ -3,11 +3,11 @@
 #ifndef ARMNN_IPACKETCONSUMER_H_
 #define ARMNN_IPACKETCONSUMER_H_
 
-#include "ICounterDirectoryConsumer.h"
-#include "IPerJobCounterCaptureConsumer.h"
-#include "IPerJobCounterSelectionConsumer.h"
-#include "IPeriodicCounterCaptureConsumer.h"
-#include "IPeriodicCounterSelectionConsumer.h"
+#include "armnn/ICounterDirectoryConsumer.h"
+#include "armnn/IPerJobCounterCaptureConsumer.h"
+#include "armnn/IPerJobCounterSelectionConsumer.h"
+#include "armnn/IPeriodicCounterCaptureConsumer.h"
+#include "armnn/IPeriodicCounterSelectionConsumer.h"
 
 namespace armnn {
 
@@ -19,7 +19,6 @@ namespace armnn {
     public:
         ~IPacketConsumer() override = default;
     };
-
 }
 
 #endif /* ARMNN_IARMNNPACKETCONSUMER_H_ */

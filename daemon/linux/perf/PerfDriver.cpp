@@ -650,12 +650,13 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
     }
 }
 
-bool PerfDriver::summary(ISummaryConsumer & consumer, const std::function<uint64_t()> & getAndSetMonotonicStarted)
+lib::Optional<std::uint64_t> PerfDriver::summary(ISummaryConsumer & consumer,
+                                                 const std::function<uint64_t()> & getMonotonicTime)
 {
     struct utsname utsname;
     if (uname(&utsname) != 0) {
         logg.logMessage("uname failed");
-        return false;
+        return {};
     }
 
     char buf[512];
@@ -671,19 +672,18 @@ bool PerfDriver::summary(ISummaryConsumer & consumer, const std::function<uint64
     long pageSize = sysconf(_SC_PAGESIZE);
     if (pageSize < 0) {
         logg.logMessage("sysconf _SC_PAGESIZE failed");
-        return false;
+        return {};
     }
 
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
         logg.logMessage("clock_gettime failed");
-        return false;
+        return {};
     }
 
     const int64_t timestamp = ts.tv_sec * NS_PER_S + ts.tv_nsec;
 
-    const uint64_t monotonicStarted = getAndSetMonotonicStarted();
-    const uint64_t currTime = 0; //getTime() - gSessionData.mMonotonicStarted;
+    const uint64_t monotonicStarted = getMonotonicTime();
 
     std::map<std::string, std::string> additionalAttributes;
 
@@ -694,8 +694,7 @@ bool PerfDriver::summary(ISummaryConsumer & consumer, const std::function<uint64
 
     lnx::addDefaultSysfsSummaryInformation(additionalAttributes);
 
-    consumer.summary(currTime,
-                     timestamp,
+    consumer.summary(timestamp,
                      monotonicStarted,
                      monotonicStarted,
                      buf,
@@ -704,15 +703,15 @@ bool PerfDriver::summary(ISummaryConsumer & consumer, const std::function<uint64
                      additionalAttributes);
 
     for (size_t i = 0; i < mCpuInfo.getCpuIds().size(); ++i) {
-        coreName(currTime, consumer, i);
+        coreName(consumer, i);
     }
 
-    consumer.commit(currTime);
+    consumer.flush();
 
-    return true;
+    return {monotonicStarted};
 }
 
-void PerfDriver::coreName(const uint64_t currTime, ISummaryConsumer & consumer, const int cpu)
+void PerfDriver::coreName(ISummaryConsumer & consumer, const int cpu)
 {
     // Don't send information on a cpu we know nothing about
     const int cpuId = mCpuInfo.getCpuIds()[cpu];
@@ -724,12 +723,12 @@ void PerfDriver::coreName(const uint64_t currTime, ISummaryConsumer & consumer, 
     // that wasn't known at start up
     const GatorCpu * gatorCpu = mPmuXml.findCpuById(cpuId);
     if (gatorCpu != nullptr) {
-        consumer.coreName(currTime, cpu, cpuId, gatorCpu->getCoreName());
+        consumer.coreName(cpu, cpuId, gatorCpu->getCoreName());
     }
     else {
         char buf[32];
         snprintf(buf, sizeof(buf), "Unknown (0x%.3x)", cpuId);
-        consumer.coreName(currTime, cpu, cpuId, buf);
+        consumer.coreName(cpu, cpuId, buf);
     }
 }
 
@@ -808,7 +807,7 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
     return {};
 }
 
-bool PerfDriver::enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const
+bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const
 {
     const uint64_t id = getConfig().can_access_tracepoints
                             ? getTracepointId("Mali: Job slot events", "mali/mali_job_slots_event")
@@ -817,7 +816,7 @@ bool PerfDriver::enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrs
 
     for (const PerfCpu & cluster : mConfig.cpus) {
         PerfEventGroupIdentifier clusterGroupIdentifier(cluster.gator_cpu);
-        group.addGroupLeader(currTime, attrsConsumer, clusterGroupIdentifier);
+        group.addGroupLeader(attrsConsumer, clusterGroupIdentifier);
     }
 
     for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
@@ -833,15 +832,13 @@ bool PerfDriver::enable(const uint64_t currTime, IPerfGroups & group, IPerfAttrs
             sentMaliJobSlotEvents |= isMaliJobSlotEvents;
 
             if (!skip) {
-                if (group.add(currTime,
-                              attrsConsumer,
+                if (group.add(attrsConsumer,
                               counter->getPerfEventGroupIdentifier(),
                               counter->getKey(),
                               counter->getAttr(),
                               counter->usesAux())) {
                     if (counter->hasConfigId2()) {
-                        if (!group.add(currTime,
-                                       attrsConsumer,
+                        if (!group.add(attrsConsumer,
                                        counter->getPerfEventGroupIdentifier(),
                                        counter->getKey() | 0x40000000,
                                        counter->getAttr2(),
@@ -875,17 +872,16 @@ void PerfDriver::read(IPerfAttrsConsumer & attrsConsumer, const int cpu)
     }
 }
 
-bool PerfDriver::sendTracepointFormats(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer)
+bool PerfDriver::sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer)
 {
-    if (!readTracepointFormat(currTime, attrsConsumer, SCHED_SWITCH) ||
-        !readTracepointFormat(currTime, attrsConsumer, CPU_IDLE) ||
-        !readTracepointFormat(currTime, attrsConsumer, CPU_FREQUENCY)) {
+    if (!readTracepointFormat(attrsConsumer, SCHED_SWITCH) || !readTracepointFormat(attrsConsumer, CPU_IDLE) ||
+        !readTracepointFormat(attrsConsumer, CPU_FREQUENCY)) {
         return false;
     }
 
     for (PerfTracepoint * tracepoint = mTracepoints; tracepoint != nullptr; tracepoint = tracepoint->getNext()) {
         if (tracepoint->getCounter()->isEnabled() &&
-            !readTracepointFormat(currTime, attrsConsumer, tracepoint->getTracepoint())) {
+            !readTracepointFormat(attrsConsumer, tracepoint->getTracepoint())) {
             return false;
         }
     }

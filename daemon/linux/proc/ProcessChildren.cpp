@@ -5,6 +5,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <memory>
 
 namespace lnx {
     static void addTidsRecursively(std::set<int> & tids, int tid)
@@ -31,10 +32,10 @@ namespace lnx {
         // We could read /proc/[pid]/stat for every process and create a map in reverse
         // but that would likely be time consuming
         snprintf(filename, sizeof(filename), "/proc/%d/task", tid);
-        DIR * const taskDir = opendir(filename);
+        const std::unique_ptr<DIR, int (*)(DIR *)> taskDir {opendir(filename), &closedir};
         if (taskDir != nullptr) {
             const dirent * taskEntry;
-            while ((taskEntry = readdir(taskDir)) != nullptr) {
+            while ((taskEntry = readdir(taskDir.get())) != nullptr) {
                 // no point recursing if we're relying on the fall back
                 if (std::strcmp(taskEntry->d_name, ".") != 0 && std::strcmp(taskEntry->d_name, "..") != 0) {
                     const int child = atoi(taskEntry->d_name);

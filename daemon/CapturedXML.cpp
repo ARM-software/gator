@@ -85,7 +85,10 @@ static mxml_node_t * getTree(bool includeTime,
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
     if (includeTime) {                    // Send the following only after the capture is complete
         if (time(nullptr) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
-            mxmlElementSetAttrf(captured, "created", "%lu", time(nullptr)); // Valid until the year 2038
+            mxmlElementSetAttrf(captured,
+                                "created",
+                                "%llu",
+                                static_cast<unsigned long long>(time(nullptr))); // Valid until the year 2038
         }
     }
 
@@ -103,7 +106,7 @@ static mxml_node_t * getTree(bool includeTime,
     mxmlElementSetAttrf(target, "gatord_build_id", "%s", STRIFY(GATORD_BUILD_ID));
 
     assert(cpuIds.size() > 0); // gatord should've died earlier if there were no cpus
-    mxmlElementSetAttrf(target, "cpuid", "0x%x", *std::max_element(begin(cpuIds), end(cpuIds)));
+    mxmlElementSetAttrf(target, "cpuid", "0x%x", *std::max_element(std::begin(cpuIds), std::end(cpuIds)));
 
     /* SDDAP-10049: Removed `&& (gSessionData.mSampleRate > 0)` - this allows sample rate: none
      * to work with live mode, at the risk that live display is 'jittery' as data sending is dependent

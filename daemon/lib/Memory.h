@@ -3,12 +3,14 @@
 #ifndef INCLUDE_LIB_MEMORY_H
 #define INCLUDE_LIB_MEMORY_H
 
+#include <cstdlib>
 #include <memory>
 
 namespace lib {
     /**
      * Creates a unique pointer
      *
+     * Can be replaced with std::make_unique in C++14
      * @param args
      * @return
      */
@@ -16,6 +18,19 @@ namespace lib {
     std::unique_ptr<T> make_unique(Args &&... args)
     {
         return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+
+    /**
+     * Creates a unique pointer and deduces its type from the argument
+     *
+     * Can be replaced with std::unique_ptr (CTAD) in C++17
+     * @param ptr
+     * @return
+     */
+    template<typename T>
+    std::unique_ptr<T> unique_ptr(T * ptr)
+    {
+        return std::unique_ptr<T>(ptr);
     }
 
     template<typename T>

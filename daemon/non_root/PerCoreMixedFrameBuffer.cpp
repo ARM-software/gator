@@ -8,8 +8,8 @@
 #include "SessionData.h"
 
 namespace non_root {
-    PerCoreMixedFrameBuffer::PerCoreMixedFrameBuffer(FrameType frameType_, int bufferSize_, sem_t & readerSem_)
-        : buffers(), wrappers(), readerSem(readerSem_), frameType(frameType_), bufferSize(bufferSize_)
+    PerCoreMixedFrameBuffer::PerCoreMixedFrameBuffer(int bufferSize_, sem_t & readerSem_)
+        : buffers(), wrappers(), readerSem(readerSem_), bufferSize(bufferSize_)
     {
     }
 
@@ -33,24 +33,15 @@ namespace non_root {
         }
     }
 
-    bool PerCoreMixedFrameBuffer::allDone() const
+    bool PerCoreMixedFrameBuffer::write(ISender & sender)
     {
-        for (const auto & entry : buffers) {
-            if (entry.second && !entry.second->isDone()) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    void PerCoreMixedFrameBuffer::write(ISender & sender)
-    {
+        bool done = true;
         for (auto & entry : buffers) {
-            if (entry.second && !entry.second->isDone()) {
-                entry.second->write(sender);
+            if (entry.second) {
+                done &= entry.second->write(sender);
             }
         }
+        return done;
     }
 
     MixedFrameBuffer & PerCoreMixedFrameBuffer::operator[](core_type core)
@@ -60,10 +51,10 @@ namespace non_root {
         if (wrapperPtrRef == nullptr) {
             auto & bufferPtrRef = buffers[core];
             if (bufferPtrRef == nullptr) {
-                bufferPtrRef.reset(new Buffer(core, frameType, bufferSize, readerSem));
+                bufferPtrRef.reset(new Buffer(bufferSize, readerSem));
             }
 
-            wrapperPtrRef.reset(new MixedFrameBuffer(*bufferPtrRef));
+            wrapperPtrRef.reset(new MixedFrameBuffer(*bufferPtrRef, {gSessionData.mLiveRate}));
         }
 
         return *wrapperPtrRef;

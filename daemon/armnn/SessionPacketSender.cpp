@@ -32,4 +32,16 @@ namespace armnn {
         bool perjobSuccess = mSender->send(std::move(perJobPacketDisable));
         return periodicSuccess && perjobSuccess;
     }
+
+    bool SessionPacketSender::requestActivateTimelineReporting()
+    {
+        std::vector<std::uint8_t> activateTimelinePacket = mEncoder->encodeActivateTimelineReportingPacket();
+        return mSender->send(std::move(activateTimelinePacket));
+    }
+
+    bool SessionPacketSender::requestDeactivateTimelineReporting()
+    {
+        std::vector<std::uint8_t> deactivateTimelinePacket = mEncoder->encodeDeactivateTimelineReportingPacket();
+        return mSender->send(std::move(deactivateTimelinePacket));
+    }
 }

@@ -3,6 +3,8 @@
 
 #include "non_root/NonRootSource.h"
 
+#include "BlockCounterFrameBuilder.h"
+#include "BlockCounterMessageConsumer.h"
 #include "Child.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
@@ -23,28 +25,23 @@
 
 namespace non_root {
     NonRootSource::NonRootSource(NonRootDriver & driver_,
-                                 Child & child_,
                                  sem_t & senderSem_,
                                  std::function<void()> profilingStartedCallback_,
                                  const ICpuInfo & cpuInfo)
-        : Source(child_),
-          mSwitchBuffers(FrameType::SCHED_TRACE, 1 * 1024 * 1024, senderSem_),
-          mGlobalCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, senderSem_),
-          mProcessCounterBuffer(0, FrameType::BLOCK_COUNTER, 1 * 1024 * 1024, senderSem_),
-          mMiscBuffer(0, FrameType::UNKNOWN, 1 * 1024 * 1024, senderSem_),
+        : mSwitchBuffers(1 * 1024 * 1024, senderSem_),
+          mGlobalCounterBuffer(1 * 1024 * 1024, senderSem_),
+          mProcessCounterBuffer(1 * 1024 * 1024, senderSem_),
+          mMiscBuffer(1 * 1024 * 1024, senderSem_),
           interrupted(false),
           timestampSource(CLOCK_MONOTONIC_RAW),
           driver(driver_),
           profilingStartedCallback(std::move(profilingStartedCallback_)),
-          done(false),
           cpuInfo(cpuInfo)
 
     {
     }
 
-    bool NonRootSource::prepare() { return summary(); }
-
-    void NonRootSource::run()
+    void NonRootSource::run(std::uint64_t /* monotonicStarted */, std::function<void()> endSession)
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-nrsrc"), 0, 0, 0);
 
@@ -55,13 +52,15 @@ namespace non_root {
         const long pageSize = sysconf(_SC_PAGESIZE);
 
         // global stuff
-        IBlockCounterMessageConsumer & globalCounterConsumer = mGlobalCounterBuffer;
+        BlockCounterFrameBuilder globalCounterBuilder {mGlobalCounterBuffer, gSessionData.mLiveRate};
+        BlockCounterMessageConsumer globalCounterConsumer {globalCounterBuilder};
         GlobalStateChangeHandler globalChangeHandler(globalCounterConsumer, enabledCounters);
         GlobalStatsTracker globalStatsTracker(globalChangeHandler);
         GlobalPoller globalPoller(globalStatsTracker, timestampSource);
 
         // process related stuff
-        IBlockCounterMessageConsumer & processCounterConsumer = mProcessCounterBuffer;
+        BlockCounterFrameBuilder processCounterBuilder {mProcessCounterBuffer, gSessionData.mLiveRate};
+        BlockCounterMessageConsumer processCounterConsumer {globalCounterBuilder};
         ProcessStateChangeHandler processChangeHandler(processCounterConsumer,
                                                        mMiscBuffer,
                                                        mSwitchBuffers,
@@ -74,13 +73,12 @@ namespace non_root {
         const useconds_t sleepIntervalUs =
             (gSessionData.mSampleRate < 1000 ? 10000 : 1000); // select 1ms or 10ms depending on normal or low rate
 
-        while (gSessionData.mSessionIsActive) {
+        while (!interrupted) {
             // check buffer not full
-            if (gSessionData.mOneShot && gSessionData.mSessionIsActive &&
-                (mGlobalCounterBuffer.isFull() || mProcessCounterBuffer.isFull() || mMiscBuffer.isFull() ||
-                 mSwitchBuffers.anyFull())) {
+            if (gSessionData.mOneShot && (mGlobalCounterBuffer.isFull() || mProcessCounterBuffer.isFull() ||
+                                          mMiscBuffer.isFull() || mSwitchBuffers.anyFull())) {
                 logg.logMessage("One shot (nrsrc)");
-                mChild.endSession();
+                endSession();
             }
 
             // update global stats
@@ -101,37 +99,23 @@ namespace non_root {
         mProcessCounterBuffer.setDone();
         mMiscBuffer.setDone();
         mSwitchBuffers.setDone();
-        done = true;
     }
 
     void NonRootSource::interrupt() { interrupted.store(true, std::memory_order_seq_cst); }
 
-    bool NonRootSource::isDone()
+    bool NonRootSource::write(ISender & sender)
     {
-        return done && mGlobalCounterBuffer.isDone() && mProcessCounterBuffer.isDone() && mMiscBuffer.isDone() &&
-               mSwitchBuffers.allDone();
+        // bitwise & no short-circuit
+        return mGlobalCounterBuffer.write(sender) & mProcessCounterBuffer.write(sender) & mMiscBuffer.write(sender) &
+               mSwitchBuffers.write(sender);
     }
 
-    void NonRootSource::write(ISender & sender)
-    {
-        if (!mGlobalCounterBuffer.isDone()) {
-            mGlobalCounterBuffer.write(sender);
-        }
-        if (!mProcessCounterBuffer.isDone()) {
-            mProcessCounterBuffer.write(sender);
-        }
-        if (!mMiscBuffer.isDone()) {
-            mMiscBuffer.write(sender);
-        }
-        mSwitchBuffers.write(sender);
-    }
-
-    bool NonRootSource::summary()
+    lib::Optional<std::uint64_t> NonRootSource::sendSummary()
     {
         struct utsname utsname;
         if (uname(&utsname) != 0) {
             logg.logMessage("uname failed");
-            return false;
+            return {};
         }
 
         char buf[512];
@@ -147,26 +131,24 @@ namespace non_root {
         long pageSize = sysconf(_SC_PAGESIZE);
         if (pageSize < 0) {
             logg.logMessage("sysconf _SC_PAGESIZE failed");
-            return false;
+            return {};
         }
 
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
             logg.logMessage("clock_gettime failed");
-            return false;
+            return {};
         }
         const int64_t timestamp = ts.tv_sec * NS_PER_S + ts.tv_nsec;
 
         const uint64_t monotonicStarted = timestampSource.getBaseTimestampNS();
-        gSessionData.mMonotonicStarted = monotonicStarted;
         const uint64_t currTime = 0;
 
-        MixedFrameBuffer miscBuffer(mMiscBuffer);
+        MixedFrameBuffer miscBuffer(mMiscBuffer, {gSessionData.mLiveRate});
 
         // send summary message
         miscBuffer
             .summaryFrameSummaryMessage(currTime, timestamp, monotonicStarted, monotonicStarted, buf, pageSize, true);
-        gSessionData.mSentSummary = true;
 
         for (size_t cpu = 0; cpu < cpuInfo.getNumberOfCores(); ++cpu) {
             const int cpuId = cpuInfo.getCpuIds()[cpu];
@@ -185,7 +167,7 @@ namespace non_root {
             }
         }
 
-        return true;
+        return {monotonicStarted};
     }
 
     unsigned long long NonRootSource::getBootTimeTicksBase()

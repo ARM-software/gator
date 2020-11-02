@@ -24,15 +24,11 @@ namespace {
     class ReadProcSysDependenciesPollerVisiter : private lnx::ProcessPollerBase::IProcessPollerReceiver,
                                                  private lnx::ProcessPollerBase {
     public:
-        ReadProcSysDependenciesPollerVisiter(uint64_t currTime_, IPerfAttrsConsumer & buffer_)
-            : currTime(currTime_), buffer(buffer_)
-        {
-        }
+        ReadProcSysDependenciesPollerVisiter(IPerfAttrsConsumer & buffer_) : buffer(buffer_) {}
 
         void poll() { ProcessPollerBase::poll(true, true, *this); }
 
     private:
-        uint64_t currTime;
         IPerfAttrsConsumer & buffer;
 
         virtual void onThreadDetails(int pid,
@@ -41,22 +37,18 @@ namespace {
                                      const lib::Optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
                                      const lib::Optional<lib::FsEntry> & exe) override
         {
-            buffer.marshalComm(currTime, pid, tid, (exe ? exe->path().c_str() : ""), statRecord.getComm().c_str());
+            buffer.marshalComm(pid, tid, (exe ? exe->path().c_str() : ""), statRecord.getComm().c_str());
         }
     };
 
     class ReadProcMapsPollerVisiter : private lnx::ProcessPollerBase::IProcessPollerReceiver,
                                       private lnx::ProcessPollerBase {
     public:
-        ReadProcMapsPollerVisiter(uint64_t currTime_, IPerfAttrsConsumer & buffer_)
-            : currTime(currTime_), buffer(buffer_)
-        {
-        }
+        ReadProcMapsPollerVisiter(IPerfAttrsConsumer & buffer_) : buffer(buffer_) {}
 
         void poll() { ProcessPollerBase::poll(false, false, *this); }
 
     private:
-        uint64_t currTime;
         IPerfAttrsConsumer & buffer;
 
         virtual void onProcessDirectory(int pid, const lib::FsEntry & path) override
@@ -64,21 +56,20 @@ namespace {
             const lib::FsEntry mapsFile = lib::FsEntry::create(path, "maps");
             const std::string mapsContents = lib::readFileContents(mapsFile);
 
-            buffer.marshalMaps(currTime, pid, pid, mapsContents.c_str());
+            buffer.marshalMaps(pid, pid, mapsContents.c_str());
         }
     };
 }
 
-bool readProcSysDependencies(const uint64_t currTime,
-                             IPerfAttrsConsumer & buffer,
+bool readProcSysDependencies(IPerfAttrsConsumer & buffer,
                              DynBuf * const printb,
                              DynBuf * const b1,
                              FtraceDriver & ftraceDriver)
 {
-    ReadProcSysDependenciesPollerVisiter poller(currTime, buffer);
+    ReadProcSysDependenciesPollerVisiter poller(buffer);
     poller.poll();
 
-    if (!ftraceDriver.readTracepointFormats(currTime, buffer, printb, b1)) {
+    if (!ftraceDriver.readTracepointFormats(buffer, printb, b1)) {
         logg.logMessage("FtraceDriver::readTracepointFormats failed");
         return false;
     }
@@ -86,15 +77,15 @@ bool readProcSysDependencies(const uint64_t currTime,
     return true;
 }
 
-bool readProcMaps(const uint64_t currTime, IPerfAttrsConsumer & buffer)
+bool readProcMaps(IPerfAttrsConsumer & buffer)
 {
-    ReadProcMapsPollerVisiter poller(currTime, buffer);
+    ReadProcMapsPollerVisiter poller(buffer);
     poller.poll();
 
     return true;
 }
 
-bool readKallsyms(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & isDone)
+bool readKallsyms(IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & isDone)
 {
     int fd = ::open("/proc/kallsyms", O_RDONLY | O_CLOEXEC);
 
@@ -136,7 +127,7 @@ bool readKallsyms(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, c
             if (buf[newline] == '\n') {
                 const char was = buf[newline + 1];
                 buf[newline + 1] = '\0';
-                attrsConsumer.marshalKallsyms(currTime, buf);
+                attrsConsumer.marshalKallsyms(buf);
                 buf[0] = was;
                 // Assert the memory regions do not overlap
                 if (pos - newline >= newline + 1) {

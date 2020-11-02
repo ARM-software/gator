@@ -11,6 +11,7 @@
 #include "lib/Utils.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
+#include <atomic>
 #include <csignal>
 #include <dirent.h>
 #include <fcntl.h>
@@ -65,7 +66,7 @@ public:
     FtraceCounter(DriverCounter * next, const char * name, const char * enable);
     ~FtraceCounter() override;
 
-    bool readTracepointFormat(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
+    bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer);
 
     void prepare();
     void stop();
@@ -125,9 +126,9 @@ void FtraceCounter::stop()
     lib::writeIntToFile(buf, mWasEnabled);
 }
 
-bool FtraceCounter::readTracepointFormat(const uint64_t currTime, IPerfAttrsConsumer & attrsConsumer)
+bool FtraceCounter::readTracepointFormat(IPerfAttrsConsumer & attrsConsumer)
 {
-    return ::readTracepointFormat(currTime, attrsConsumer, mEnable);
+    return ::readTracepointFormat(attrsConsumer, mEnable);
 }
 
 static void handlerUsr1(int signum)
@@ -148,7 +149,7 @@ public:
     }
 
     void start();
-    bool interrupt() const;
+    bool interrupt();
     bool join() const;
 
     static FtraceReader * getHead() { return mHead; }
@@ -164,6 +165,7 @@ private:
     const int mTfd;
     const int mPfd0;
     const int mPfd1;
+    std::atomic_bool mSessionIsActive {true};
 
     static void * runStatic(void * arg);
     void run();
@@ -179,8 +181,9 @@ void FtraceReader::start()
     }
 }
 
-bool FtraceReader::interrupt() const
+bool FtraceReader::interrupt()
 {
+    mSessionIsActive = false;
     return pthread_kill(mThread, SIGUSR1) == 0;
 }
 
@@ -228,7 +231,7 @@ void FtraceReader::run()
 
     mBarrier->wait();
 
-    while (gSessionData.mSessionIsActive) {
+    while (mSessionIsActive) {
         const ssize_t bytes = splice(mTfd, nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
         if (bytes == 0) {
             logg.logError("ftrace splice unexpectedly returned 0");
@@ -313,7 +316,6 @@ void FtraceReader::run()
 
 FtraceDriver::FtraceDriver(bool useForTracepoints, size_t numberOfCores)
     : SimpleDriver("Ftrace"),
-      mValues(nullptr),
       mBarrier(),
       mTracingOn(0),
       mSupported(false),
@@ -321,11 +323,6 @@ FtraceDriver::FtraceDriver(bool useForTracepoints, size_t numberOfCores)
       mUseForTracepoints(useForTracepoints),
       mNumberOfCores(numberOfCores)
 {
-}
-
-FtraceDriver::~FtraceDriver()
-{
-    delete[] mValues;
 }
 
 void FtraceDriver::readEvents(mxml_node_t * const xml)
@@ -364,7 +361,6 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     mSupported = true;
 
     mxml_node_t * node = xml;
-    int count = 0;
     while (true) {
         node = mxmlFindElement(node, xml, "event", nullptr, nullptr, MXML_DESCEND);
         if (node == nullptr) {
@@ -405,10 +401,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
 
         logg.logMessage("Using ftrace for %s", counter);
         setCounters(new FtraceCounter(getCounters(), counter, enable));
-        ++count;
     }
-
-    mValues = new int64_t[2 * count];
 }
 
 std::pair<std::vector<int>, bool> FtraceDriver::prepare()
@@ -568,10 +561,7 @@ std::vector<int> FtraceDriver::stop()
     return fds;
 }
 
-bool FtraceDriver::readTracepointFormats(const uint64_t currTime,
-                                         IPerfAttrsConsumer & attrsConsumer,
-                                         DynBuf * const printb,
-                                         DynBuf * const b)
+bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * const printb, DynBuf * const b)
 {
     if (!gSessionData.mFtraceRaw) {
         return true;
@@ -585,7 +575,7 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime,
         logg.logMessage("DynBuf::read failed");
         return false;
     }
-    attrsConsumer.marshalHeaderPage(currTime, b->getBuf());
+    attrsConsumer.marshalHeaderPage(b->getBuf());
 
     if (!printb->printf(EVENTS_PATH "/header_event")) {
         logg.logMessage("DynBuf::printf failed");
@@ -595,15 +585,15 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime,
         logg.logMessage("DynBuf::read failed");
         return false;
     }
-    attrsConsumer.marshalHeaderEvent(currTime, b->getBuf());
+    attrsConsumer.marshalHeaderEvent(b->getBuf());
 
-    DIR * dir = opendir(EVENTS_PATH "/ftrace");
+    std::unique_ptr<DIR, int (*)(DIR *)> dir {opendir(EVENTS_PATH "/ftrace"), &closedir};
     if (dir == nullptr) {
         logg.logError("Unable to open events ftrace folder");
         handleException();
     }
     struct dirent * dirent;
-    while ((dirent = readdir(dir)) != nullptr) {
+    while ((dirent = readdir(dir.get())) != nullptr) {
         if (dirent->d_name[0] == '.' || dirent->d_type != DT_DIR) {
             continue;
         }
@@ -615,16 +605,15 @@ bool FtraceDriver::readTracepointFormats(const uint64_t currTime,
             logg.logMessage("DynBuf::read failed");
             return false;
         }
-        attrsConsumer.marshalFormat(currTime, b->getLength(), b->getBuf());
+        attrsConsumer.marshalFormat(b->getLength(), b->getBuf());
     }
-    closedir(dir);
 
     for (auto * counter = static_cast<FtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FtraceCounter *>(counter->getNext())) {
         if (!counter->isEnabled()) {
             continue;
         }
-        counter->readTracepointFormat(currTime, attrsConsumer);
+        counter->readTracepointFormat(attrsConsumer);
     }
 
     return true;

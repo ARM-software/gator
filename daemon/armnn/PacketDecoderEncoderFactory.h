@@ -3,15 +3,15 @@
 #ifndef ARMNN_PACKETDECODERENCODERFACTORY_H_
 #define ARMNN_PACKETDECODERENCODERFACTORY_H_
 
-#include "../Logging.h"
-#include "DecoderUtility.h"
-#include "IEncoder.h"
-#include "IPacketConsumer.h"
-#include "IPacketDecoder.h"
-#include "PacketDecoder.h"
-#include "PacketEncoder.h"
-#include "PacketUtility.h"
-#include "PacketUtilityModels.h"
+#include "Logging.h"
+#include "armnn/DecoderUtility.h"
+#include "armnn/IEncoder.h"
+#include "armnn/IPacketConsumer.h"
+#include "armnn/IPacketDecoder.h"
+#include "armnn/PacketDecoder.h"
+#include "armnn/PacketEncoder.h"
+#include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 #include "lib/Optional.h"
 
 #include <memory>

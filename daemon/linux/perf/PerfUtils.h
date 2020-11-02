@@ -10,7 +10,7 @@
 #include <string>
 
 namespace perf_utils {
-    static inline std::set<int> readCpuMask(const char * pmncName)
+    inline std::set<int> readCpuMask(const char * pmncName)
     {
         std::string path = lib::Format() << "/sys/bus/event_source/devices/" << pmncName << "/cpumask";
         return lib::readCpuMaskFromFile(path.c_str());

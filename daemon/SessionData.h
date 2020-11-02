@@ -20,7 +20,7 @@
 #include <vector>
 
 //development version for PROTOCOL_VERSION is of format YYYYMMDD
-#define PROTOCOL_VERSION 730
+#define PROTOCOL_VERSION 740
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -74,23 +74,20 @@ public:
     bool mStopOnExit;
 
     bool mWaitingOnCommand;
-    bool mSessionIsActive;
     bool mLocalCapture;
     // halt processing of the driver data until profiling is complete or the buffer is filled
     bool mOneShot;
     bool mIsEBS;
-    bool mSentSummary;
     bool mAllowCommands;
     bool mFtraceRaw;
     bool mSystemWide;
     int mAndroidApiLevel;
 
-    int64_t mMonotonicStarted;
     int mBacktraceDepth;
     // number of MB to use for the entire collection buffer
     int mTotalBufferSize;
     int mSampleRate;
-    int64_t mLiveRate;
+    uint64_t mLiveRate;
     int mDuration;
     int mPageSize;
     int mAnnotateStart;

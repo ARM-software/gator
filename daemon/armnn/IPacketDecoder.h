@@ -3,7 +3,7 @@
 #ifndef ARMNN_IPACKETDECODER_H_
 #define ARMNN_IPACKETDECODER_H_
 
-#include "PacketUtility.h"
+#include "armnn/PacketUtility.h"
 
 namespace armnn {
     //Handles arm-nn packet decoding

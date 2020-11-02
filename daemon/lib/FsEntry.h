@@ -180,7 +180,7 @@ namespace lib {
      * @param   entry   The file entry to read
      * @return  The contents of that file
      */
-    static inline std::string readFileContents(const FsEntry & entry) { return entry.readFileContents(); }
+    inline std::string readFileContents(const FsEntry & entry) { return entry.readFileContents(); }
 
     /**
      * Write the contents of a file
@@ -188,10 +188,7 @@ namespace lib {
      * @param   entry   The file entry to write
      * @return  true if successful
      */
-    static inline bool writeFileContents(const FsEntry & entry, const char * data)
-    {
-        return entry.writeFileContents(data);
-    }
+    inline bool writeFileContents(const FsEntry & entry, const char * data) { return entry.writeFileContents(data); }
 }
 
 #endif /* INCLUDE_LIB_FSENTRY_H */

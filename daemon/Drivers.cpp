@@ -30,7 +30,6 @@ Drivers::Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining)
                                                           std::move(pmuXml),
                                                           mMaliHwCntrs.getSupportedDeviceFamilyName(),
                                                           disableCpuOnlining)},
-      mMaliVideo {},
       mMidgard {},
       mFtraceDriver {!mPrimarySourceProvider->supportsTracepointCapture(),
                      mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
@@ -51,7 +50,6 @@ Drivers::Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining)
         all.push_back(polledDriver.second.get());
         allPolled.push_back(polledDriver.second.get());
     }
-    all.push_back(&mMaliVideo);
     all.push_back(&mMaliHwCntrs);
     all.push_back(&mMidgard);
     all.push_back(&mFtraceDriver);

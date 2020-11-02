@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "ISender.h"
+class ISender;
 
 /**
  * A means of interacting with the state of a buffer and consuming it
@@ -14,8 +14,9 @@ public:
 
     /**
      * Write data to Sender, like socket
+     * @return true if no more data, i.e., EOF
      */
-    virtual void write(ISender & sender) = 0;
+    virtual bool write(ISender & sender) = 0;
 
     /**
      * Checks if the buffer is full which means it can't accept any more data until write is called.
@@ -26,9 +27,4 @@ public:
      * Commits the current data and sets "done"
      */
     virtual void setDone() = 0;
-
-    /**
-     * Checks if has "done" has been set and is empty
-     */
-    virtual bool isDone() const = 0;
 };

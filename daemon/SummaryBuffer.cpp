@@ -9,9 +9,11 @@
 
 #include <cstring>
 
-SummaryBuffer::SummaryBuffer(const int size, sem_t & readerSem)
-    : buffer(0 /* ignored */, FrameType::SUMMARY, size, readerSem)
+SummaryBuffer::SummaryBuffer(const int size, sem_t & readerSem) : buffer(size, readerSem)
 {
+    // fresh buffer will always have room for header
+    // so no need to check space
+    buffer.beginFrame(FrameType::SUMMARY);
 }
 
 void SummaryBuffer::write(ISender & sender)
@@ -24,23 +26,15 @@ int SummaryBuffer::bytesAvailable() const
     return buffer.bytesAvailable();
 }
 
-void SummaryBuffer::commit(const uint64_t time)
+void SummaryBuffer::flush()
 {
-    buffer.commit(time);
+    buffer.endFrame();
+    buffer.flush();
+    buffer.waitForSpace(IRawFrameBuilder::MAX_FRAME_HEADER_SIZE);
+    buffer.beginFrame(FrameType::SUMMARY);
 }
 
-void SummaryBuffer::setDone()
-{
-    buffer.setDone();
-}
-
-bool SummaryBuffer::isDone() const
-{
-    return buffer.isDone();
-}
-
-void SummaryBuffer::summary(const uint64_t currTime,
-                            const int64_t timestamp,
+void SummaryBuffer::summary(const int64_t timestamp,
                             const int64_t uptime,
                             const int64_t monotonicDelta,
                             const char * const uname,
@@ -48,6 +42,8 @@ void SummaryBuffer::summary(const uint64_t currTime,
                             const bool nosync,
                             const std::map<std::string, std::string> & additionalAttributes)
 {
+    // This is only called when buffer is empty so no need to wait for space
+    // we assume the additional attributes won't overflow the buffer??
     buffer.packInt(static_cast<int32_t>(MessageType::SUMMARY));
     buffer.writeString(NEWLINE_CANARY);
     buffer.packInt64(timestamp);
@@ -70,15 +66,21 @@ void SummaryBuffer::summary(const uint64_t currTime,
         }
     }
     buffer.writeString("");
-    buffer.check(currTime);
 }
 
-void SummaryBuffer::coreName(const uint64_t currTime, const int core, const int cpuid, const char * const name)
+void SummaryBuffer::coreName(const int core, const int cpuid, const char * const name)
 {
-    buffer.waitForSpace(3 * buffer_utils::MAXSIZE_PACK32 + 0x100, currTime);
+    waitForSpace(3 * buffer_utils::MAXSIZE_PACK32 + 0x100);
     buffer.packInt(static_cast<int32_t>(MessageType::CORE_NAME));
     buffer.packInt(core);
     buffer.packInt(cpuid);
     buffer.writeString(name);
-    buffer.check(currTime);
+}
+
+void SummaryBuffer::waitForSpace(int bytes)
+{
+    if (bytes < buffer.bytesAvailable()) {
+        flush();
+    }
+    buffer.waitForSpace(bytes);
 }

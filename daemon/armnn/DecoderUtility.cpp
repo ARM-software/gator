@@ -1,7 +1,7 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
-#include "DecoderUtility.h"
+#include "armnn/DecoderUtility.h"
 
-#include "../Logging.h"
+#include "Logging.h"
 
 #include <sstream>
 

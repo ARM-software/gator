@@ -2,6 +2,8 @@
 
 #include "MaliHwCntrTask.h"
 
+#include "IBlockCounterFrameBuilder.h"
+#include "IBufferControl.h"
 #include "Logging.h"
 #include "SessionData.h"
 #include "lib/Syscall.h"
@@ -10,30 +12,24 @@
 #include <utility>
 
 namespace mali_userspace {
-    MaliHwCntrTask::MaliHwCntrTask(std::function<void()> endSession_,
-                                   std::function<bool()> isSessionActive_,
-                                   std::function<std::int64_t()> getMonotonicStarted,
-                                   std::unique_ptr<IBuffer> && buffer_,
+    MaliHwCntrTask::MaliHwCntrTask(std::unique_ptr<IBufferControl> buffer,
+                                   std::unique_ptr<IBlockCounterFrameBuilder> frameBuilder,
+                                   std::int32_t deviceNumber,
                                    IMaliDeviceCounterDumpCallback & callback_,
                                    IMaliHwCntrReader & reader)
-        : mBuffer(std::move(buffer_)),
-          mGetMonotonicStarted(std::move(getMonotonicStarted)),
+        : mBuffer(std::move(buffer)),
+          mFrameBuilder(std::move(frameBuilder)),
           mCallback(callback_),
-          endSession(std::move(endSession_)),
-          isSessionActive(std::move(isSessionActive_)),
-          mReader(reader)
+          mReader(reader),
+          deviceNumber(deviceNumber)
     {
     }
 
-    void MaliHwCntrTask::execute(int sampleRate, bool isOneShot)
+    void MaliHwCntrTask::execute(int sampleRate,
+                                 bool isOneShot,
+                                 std::uint64_t monotonicStarted,
+                                 std::function<void()> endSession)
     {
-        int64_t monotonicStarted = 0;
-        //should the thread be interrupted in this while??
-        while (monotonicStarted <= 0 && isSessionActive()) {
-            usleep(1);
-            monotonicStarted = mGetMonotonicStarted();
-        }
-
         bool terminated = false;
         // set sample interval, if sample rate == 0, then sample at 100Hz as currently the job dumping based sampling does not work... (driver issue?)
         const uint32_t sampleIntervalNs =
@@ -45,23 +41,22 @@ namespace mali_userspace {
         }
         // create the list of enabled counters
         const MaliDeviceCounterList countersList(mReader.getDevice().createCounterList(mCallback));
-        while (isSessionActive() && !terminated) {
+        while (!terminated) {
             SampleBuffer waitStatus = mReader.waitForBuffer(10000);
 
             switch (waitStatus.status) {
                 case WAIT_STATUS_SUCCESS: {
                     if (waitStatus.data) {
                         const uint64_t sampleTime = waitStatus.timestamp - monotonicStarted;
-                        IBlockCounterFrameBuilder & builder = *mBuffer;
-                        if (builder.eventHeader(sampleTime)) {
+                        if (mFrameBuilder->eventHeader(sampleTime) && mFrameBuilder->eventCore(deviceNumber)) {
                             mReader.getDevice().dumpAllCounters(
                                 mReader.getHardwareVersion(),
                                 countersList,
                                 reinterpret_cast<const uint32_t *>(waitStatus.data.get()),
                                 waitStatus.size / sizeof(uint32_t),
-                                builder,
+                                *mFrameBuilder,
                                 mCallback);
-                            builder.check(sampleTime);
+                            mFrameBuilder->check(sampleTime);
                         }
                     }
                     break;
@@ -77,7 +72,7 @@ namespace mali_userspace {
                     break;
                 }
             }
-            if (isOneShot && isSessionActive() && (mBuffer->bytesAvailable() <= 0)) {
+            if (isOneShot && (mBuffer->isFull())) {
                 logg.logMessage("One shot (malihwc)");
                 endSession();
             }
@@ -89,12 +84,5 @@ namespace mali_userspace {
         mBuffer->setDone();
     }
 
-    bool MaliHwCntrTask::isDone() { return mBuffer->isDone(); }
-
-    void MaliHwCntrTask::write(ISender & sender)
-    {
-        if (!mBuffer->isDone()) {
-            mBuffer->write(sender);
-        }
-    }
+    bool MaliHwCntrTask::write(ISender & sender) { return mBuffer->write(sender); }
 }

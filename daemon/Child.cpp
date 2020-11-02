@@ -21,7 +21,7 @@
 #include "SessionData.h"
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
-#include "armnn/Source.h"
+#include "armnn/ArmNNSource.h"
 #include "lib/Assert.h"
 #include "lib/FsUtils.h"
 #include "lib/WaitForProcessPoller.h"
@@ -102,7 +102,6 @@ void Child::signalHandler(int signum)
 Child::Child(Drivers & drivers, OlySocket * sock, Child::Config config)
     : haltPipeline(),
       senderSem(),
-      primarySource(),
       sender(),
       drivers(drivers),
       socket(sock),
@@ -133,8 +132,6 @@ Child::Child(Drivers & drivers, OlySocket * sock, Child::Config config)
     sem_init(&senderSem, 0, 0);
 
     sessionEnded = false;
-
-    gSessionData.mSessionIsActive = true;
 }
 
 Child::~Child()
@@ -223,7 +220,7 @@ void Child::run()
     // Start up and parse session xml
     if (socket != nullptr) {
         // Respond to Streamline requests
-        StreamlineSetup ss(socket, drivers, capturedSpes);
+        StreamlineSetup ss(*socket, drivers, capturedSpes);
     }
     else {
         char * xmlString;
@@ -296,112 +293,99 @@ void Child::run()
 
     lib::Waiter waitTillStart;
 
-    bool shouldContinue = false;
-    if (!sessionEnded) {
-        auto startedCallback = [&]() {
-            waitTillStart.disable();
-            if (command) {
-                command->start();
-            }
-        };
-        auto newPrimarySource = primarySourceProvider.createPrimarySource(*this,
-                                                                          senderSem,
-                                                                          startedCallback,
-                                                                          appPids,
-                                                                          drivers.getFtraceDriver(),
-                                                                          enableOnCommandExec);
-        if (newPrimarySource == nullptr) {
-            logg.logError("Failed to init primary capture source");
-            handleException();
+    auto startedCallback = [&]() {
+        waitTillStart.disable();
+        if (command) {
+            command->start();
         }
+    };
 
-        std::lock_guard<std::mutex> lock {sessionEndedMutex};
-        primarySource = std::move(newPrimarySource);
-        shouldContinue = !sessionEnded;
+    auto newPrimarySource = primarySourceProvider.createPrimarySource(senderSem,
+                                                                      startedCallback,
+                                                                      appPids,
+                                                                      drivers.getFtraceDriver(),
+                                                                      enableOnCommandExec);
+    if (newPrimarySource == nullptr) {
+        logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
+        handleException();
     }
 
-    if (shouldContinue) {
-        // Initialize ftrace source before child as it's slow and depends on nothing else
-        // If initialized later, us gator with ftrace has time sync issues
-        // Must be initialized before senderThread is started as senderThread checks externalSource
-        if (!prepareAndStart(new ExternalSource(*this, senderSem, drivers))) {
-            logg.logError("Unable to prepare external source for capture");
+    auto & primarySource = *newPrimarySource;
+    addSource(std::move(newPrimarySource));
+
+    // Initialize ftrace source before child as it's slow and depends on nothing else
+    // If initialized later, us gator with ftrace has time sync issues
+    // Must be initialized before senderThread is started as senderThread checks externalSource
+    if (!addSource(createExternalSource(senderSem, drivers))) {
+        logg.logError("Unable to prepare external source for capture");
+        handleException();
+    }
+
+    // initialize midgard hardware counters
+    if (drivers.getMaliHwCntrs().countersEnabled()) {
+        if (!addSource(mali_userspace::createMaliHwCntrSource(senderSem, drivers.getMaliHwCntrs()))) {
+            logg.logError("Unable to prepare midgard hardware counters source for capture");
             handleException();
         }
+    }
 
-        // Must be after session XML is parsed
-        if (!primarySource->prepare()) {
-            logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
+    // Sender thread shall be halted until it is signaled for one shot mode
+    sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
+
+    // Create the duration and sender threads
+    lib::Waiter waitTillEnd;
+
+    std::thread durationThread {};
+    if (gSessionData.mDuration > 0) {
+        durationThread = std::thread([&]() { durationThreadEntryPoint(waitTillStart, waitTillEnd); });
+    }
+
+    std::thread watchPidsThread {};
+    if (gSessionData.mStopOnExit && !watchPids.empty()) {
+        watchPidsThread = std::thread([&]() { watchPidsThreadEntryPoint(watchPids, waitTillEnd); });
+    }
+
+    if (shouldStartUserSpaceSource(drivers.getAllPolledConst())) {
+        if (!addSource(createUserSpaceSource(senderSem, drivers.getAllPolled()))) {
+            logg.logError("Unable to prepare userspace source for capture");
             handleException();
         }
-        auto getMonotonicStarted = [&primarySourceProvider]() -> std::int64_t {
-            return primarySourceProvider.getMonotonicStarted();
-        };
-        // initialize midgard hardware counters
-        if (drivers.getMaliHwCntrs().countersEnabled()) {
-            if (!prepareAndStart(new mali_userspace::MaliHwCntrSource(*this,
-                                                                      senderSem,
-                                                                      getMonotonicStarted,
-                                                                      drivers.getMaliHwCntrs()))) {
-                logg.logError("Unable to prepare midgard hardware counters source for capture");
-                handleException();
-            }
-        }
+    }
 
-        // Sender thread shall be halted until it is signaled for one shot mode
-        sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
+    if (!addSource(armnn::createSource(drivers.getArmnnDriver().getCaptureController(), senderSem))) {
+        logg.logError("Unable to prepare ArmNN source for capture");
+        handleException();
+    }
 
-        // Create the duration and sender threads
-        lib::Waiter waitTillEnd;
+    // do this last so that monotonic start is close to start of profiling
+    auto monotonicStart = primarySource.sendSummary();
+    if (!monotonicStart) {
+        logg.logError("Failed to send summary");
+        handleException();
+    }
 
-        std::thread durationThread {};
-        if (gSessionData.mDuration > 0) {
-            durationThread = std::thread([&]() { durationThreadEntryPoint(waitTillStart, waitTillEnd); });
-        }
+    // Start profiling
+    std::vector<std::thread> sourceThreads {};
+    for (auto & source : sources) {
+        sourceThreads.emplace_back(&Source::run, source.get(), *monotonicStart, [this]() { endSession(); });
+    }
 
-        std::thread watchPidsThread {};
-        if (gSessionData.mStopOnExit && !watchPids.empty()) {
-            watchPidsThread = std::thread([&]() { watchPidsThreadEntryPoint(watchPids, waitTillEnd); });
-        }
+    // must start sender thread after we've added all sources
+    senderThreadEntryPoint();
 
-        if (UserSpaceSource::shouldStart(drivers.getAllPolledConst())) {
-            if (!prepareAndStart(new UserSpaceSource(*this, senderSem, getMonotonicStarted, drivers.getAllPolled()))) {
-                logg.logError("Unable to prepare userspace source for capture");
-                handleException();
-            }
-        }
+    // wake all sleepers
+    waitTillEnd.disable();
 
-        if (!prepareAndStart(new armnn::Source(*this,
-                                               drivers.getArmnnDriver().getCaptureController(),
-                                               senderSem,
-                                               getMonotonicStarted))) {
-            logg.logError("Unable to prepare ArmNN source for capture");
-            handleException();
-        }
+    // Wait for the other threads to exit
+    for (auto & thread : sourceThreads) {
+        thread.join();
+    }
 
-        // must start sender thread after we've added all sources
-        std::thread senderThread {[this]() { senderThreadEntryPoint(); }};
-
-        // Start profiling
-        primarySource->run();
-
-        logg.logMessage("Primary source finished running");
-
-        // wake all sleepers
-        waitTillEnd.disable();
-
-        // Wait for the other threads to exit
-        for (auto it = otherSources.rbegin(); it != otherSources.rend(); ++it) {
-            (*it)->join();
-        }
-
-        if (watchPidsThread.joinable()) {
-            watchPidsThread.join();
-        }
-        senderThread.join();
-        if (durationThread.joinable()) {
-            durationThread.join();
-        }
+    if (watchPidsThread.joinable()) {
+        watchPidsThread.join();
+    }
+    if (durationThread.joinable()) {
+        durationThread.join();
     }
 
     stopThread.join();
@@ -421,8 +405,7 @@ void Child::run()
 
     logg.logMessage("Profiling ended.");
 
-    otherSources.clear();
-    primarySource.reset();
+    sources.clear();
     sender.reset();
 
     if (command) {
@@ -432,18 +415,15 @@ void Child::run()
     }
 }
 
-bool Child::prepareAndStart(Source * source)
+bool Child::addSource(std::unique_ptr<Source> source)
 {
-    std::unique_ptr<Source> s(source);
-    if (!source->prepare()) {
+    if (!source) {
         return false;
     }
-    source->start();
     std::lock_guard<std::mutex> lock {sessionEndedMutex};
-    if (sessionEnded) {
-        source->interrupt();
+    if (!sessionEnded) {
+        sources.push_back(std::move(source));
     }
-    otherSources.push_back(std::move(s));
     return true;
 }
 
@@ -472,11 +452,7 @@ void Child::doEndSession()
         command->cancel();
     }
 
-    gSessionData.mSessionIsActive = false;
-    if (primarySource != nullptr) {
-        primarySource->interrupt();
-    }
-    for (auto & source : otherSources) {
+    for (auto & source : sources) {
         source->interrupt();
     }
     sem_post(&haltPipeline);
@@ -531,6 +507,49 @@ void Child::durationThreadEntryPoint(const lib::Waiter & waitTillStart, const li
     logg.logMessage("Exit duration thread");
 }
 
+namespace {
+    class StreamlineCommandHandler : public IStreamlineCommandHandler {
+    public:
+        StreamlineCommandHandler(Sender & sender) : sender(sender) {}
+
+        State handleRequest(char *) override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
+            return State::PROCESS_COMMANDS;
+        }
+        State handleDeliver(char *) override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_DELIVER_XML");
+            return State::PROCESS_COMMANDS;
+        }
+        State handleApcStart() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_APC_START");
+            return State::PROCESS_COMMANDS;
+        }
+        State handleApcStop() override
+        {
+            logg.logMessage("Stop command received.");
+            return State::EXIT_APC_STOP;
+        }
+        State handleDisconnect() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_DISCONNECT");
+            return State::PROCESS_COMMANDS;
+        }
+        State handlePing() override
+        {
+            // Ping is used to make sure gator is alive and requires an ACK as the response
+            logg.logMessage("Ping command received.");
+            sender.writeData(nullptr, 0, ResponseType::ACK);
+            return State::PROCESS_COMMANDS;
+        }
+
+    private:
+        Sender & sender;
+    };
+}
+
 void Child::stopThreadEntryPoint()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-stopper"), 0, 0, 0);
@@ -550,6 +569,8 @@ void Child::stopThreadEntryPoint()
         logg.logError("Monitor::add(socket=%d) failed: %d, (%s)", socket->getFd(), errno, strerror(errno));
         handleException();
     }
+
+    StreamlineCommandHandler commandHandler {*sender};
 
     while (true) {
         struct epoll_event ee;
@@ -572,35 +593,9 @@ void Child::stopThreadEntryPoint()
         assert(ee.data.fd == socket->getFd());
 
         // This thread will stall until the APC_STOP or PING command is received over the socket or the socket is disconnected
-        unsigned char header[5];
-        const int result = socket->receiveNBytes(reinterpret_cast<char *>(&header), sizeof(header));
-        const char type = header[0];
-        const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
-        if (result == -1) {
-            logg.logMessage("Receive failed.");
+        const auto result = streamlineSetupCommandIteration(*socket, commandHandler, [](bool) -> void {});
+        if (result != IStreamlineCommandHandler::State::PROCESS_COMMANDS) {
             break;
-        }
-        else if (result > 0) {
-            if ((type != COMMAND_APC_STOP) && (type != COMMAND_PING)) {
-                logg.logMessage("INVESTIGATE: Received unknown command type %d", type);
-            }
-            else {
-                // verify a length of zero
-                if (length == 0) {
-                    if (type == COMMAND_APC_STOP) {
-                        logg.logMessage("Stop command received.");
-                        break;
-                    }
-                    else {
-                        // Ping is used to make sure gator is alive and requires an ACK as the response
-                        logg.logMessage("Ping command received.");
-                        sender->writeData(nullptr, 0, ResponseType::ACK);
-                    }
-                }
-                else {
-                    logg.logMessage("INVESTIGATE: Received APC_STOP or PING command but with length = %d", length);
-                }
-            }
         }
     }
 
@@ -609,44 +604,26 @@ void Child::stopThreadEntryPoint()
     logg.logMessage("Exit stop thread");
 }
 
+bool Child::sendAllSources()
+{
+    bool done = true;
+    for (auto & source : sources) {
+        // bitwise &, no short circuit
+        done &= source->write(*sender);
+    }
+    return !done;
+}
+
 void Child::senderThreadEntryPoint()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-sender"), 0, 0, 0);
     sem_wait(&haltPipeline);
 
-    while (!std::all_of(otherSources.begin(), otherSources.end(), [](const std::unique_ptr<Source> & s) {
-        return s->isDone();
-    }) || !primarySource->isDone()) {
-
-        // wait on semaphore with timeout so as to avoid hanging forever in case that sem_post is missed
-        timespec timeout;
-        if (clock_gettime(CLOCK_REALTIME, &timeout) != 0) {
-            logg.logError("clock_gettime failed: %d, (%s)", errno, strerror(errno));
-            handleException();
+    do {
+        if (sem_wait(&senderSem) != 0) {
+            logg.logError("wait failed: %d, (%s)", errno, strerror(errno));
         }
-        timeout.tv_sec += 1; // one second in the future
-        if (sem_timedwait(&senderSem, &timeout) != 0) {
-            if (errno == ETIMEDOUT) {
-                logg.logMessage("Timeout waiting for sender thread");
-            }
-            else {
-                logg.logError("wait failed: %d, (%s)", errno, strerror(errno));
-            }
-        }
-
-        for (auto & source : otherSources) {
-            source->write(*sender);
-        }
-        primarySource->write(*sender);
-    }
-
-    // flush one more time to ensure any slop is cleared up
-    {
-        for (auto & source : otherSources) {
-            source->write(*sender);
-        }
-        primarySource->write(*sender);
-    }
+    } while (sendAllSources());
 
     // write end-of-capture sequence
     if (!gSessionData.mLocalCapture) {

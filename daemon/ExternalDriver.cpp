@@ -158,7 +158,7 @@ void ExternalDriver::query() const
         }
         if (pos < size && buf[pos] == '\0') {
             ++pos;
-        };
+        }
         if (name != nullptr) {
             if (readPackedInt(buf, bufSize, &pos, &cores) == 0) {
                 // Cheat so that this can be 'const'

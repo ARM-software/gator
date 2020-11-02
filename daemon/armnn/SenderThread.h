@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "ISender.h"
-#include "SenderQueue.h"
+#include "armnn/ISender.h"
+#include "armnn/SenderQueue.h"
 #include "armnn/SocketIO.h"
 
 #include <thread>

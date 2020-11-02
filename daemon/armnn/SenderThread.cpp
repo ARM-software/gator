@@ -1,9 +1,9 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
-#include "SenderThread.h"
+#include "armnn/SenderThread.h"
 
 #include "Logging.h"
-#include "SocketIO.h"
+#include "armnn/SocketIO.h"
 
 #include <cstring>
 

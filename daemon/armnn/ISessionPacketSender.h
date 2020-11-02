@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "CaptureMode.h"
+#include "armnn/CaptureMode.h"
 
 #include <cstdint>
 #include <set>
@@ -28,5 +28,15 @@ namespace armnn {
          * @return True if request was successful, false if not
          */
         virtual bool requestDisableCounterSelection() = 0;
+
+        /**
+         * Sends a request timeline reporting activation packet to the target
+         **/
+        virtual bool requestActivateTimelineReporting() = 0;
+
+        /**
+         * Sends a request timeline reporting deactivation packet to the target
+         **/
+        virtual bool requestDeactivateTimelineReporting() = 0;
     };
 }

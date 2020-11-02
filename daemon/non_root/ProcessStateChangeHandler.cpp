@@ -5,13 +5,14 @@
 #include "Buffer.h"
 #include "IBlockCounterMessageConsumer.h"
 #include "Logging.h"
+#include "SessionData.h"
 
 namespace non_root {
     ProcessStateChangeHandler::ProcessStateChangeHandler(IBlockCounterMessageConsumer & counterBuffer_,
                                                          Buffer & miscBuffer_,
                                                          PerCoreMixedFrameBuffer & switchBuffers_,
                                                          const std::map<NonRootCounter, int> & enabledCounters_)
-        : miscBuffer(miscBuffer_),
+        : miscBuffer(miscBuffer_, {gSessionData.mLiveRate}),
           cookies(),
           counterBuffer(counterBuffer_),
           switchBuffers(switchBuffers_),

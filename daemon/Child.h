@@ -52,8 +52,7 @@ private:
 
     sem_t haltPipeline;
     sem_t senderSem;
-    std::unique_ptr<Source> primarySource;
-    std::vector<std::unique_ptr<Source>> otherSources {};
+    std::vector<std::unique_ptr<Source>> sources {};
     std::unique_ptr<Sender> sender;
     Drivers & drivers;
     OlySocket * socket;
@@ -74,15 +73,21 @@ private:
     Child & operator=(Child &&) = delete;
 
     /**
-     * Prepares and if that was successful, starts and add to other sources
-     * return true if prepare did
+     * Adds to sources if non empty
+     * return true if not empty
      */
-    bool prepareAndStart(Source * source);
+    bool addSource(std::unique_ptr<Source> source);
 
     void cleanupException();
     void durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd);
     void stopThreadEntryPoint();
     void senderThreadEntryPoint();
+    /**
+     * Writes data to the sender.
+     *
+     * @return true if there will be more to send again on at least one source, false otherwise (EOF)
+     */
+    bool sendAllSources();
     void watchPidsThreadEntryPoint(std::set<int> &, const lib::Waiter & waiter);
     void doEndSession();
 };

@@ -4,33 +4,36 @@
 #define MALI_USERSPACE_MALIHWCNTRTASK_H_
 
 #include "Child.h"
-#include "IBuffer.h"
 #include "IMaliHwCntrReader.h"
 #include "MaliDevice.h"
 
 #include <functional>
 
+class IBufferControl;
+class IBlockCounterFrameBuilder;
+class ISender;
+
 namespace mali_userspace {
 
     class MaliHwCntrTask {
     public:
-        MaliHwCntrTask(std::function<void()> endSession,
-                       std::function<bool()> isSessionActive,
-                       std::function<std::int64_t()> getMonotonicStarted,
-                       std::unique_ptr<IBuffer> && buffer,
+        /**
+         * @param frameBuilder will not outlive buffer
+         */
+        MaliHwCntrTask(std::unique_ptr<IBufferControl> buffer,
+                       std::unique_ptr<IBlockCounterFrameBuilder> frameBuilder,
+                       std::int32_t deviceNumber,
                        IMaliDeviceCounterDumpCallback & callback,
                        IMaliHwCntrReader & reader);
-        void execute(int sampleRate, bool isOneShot);
-        bool isDone();
-        void write(ISender & sender);
+        void execute(int sampleRate, bool isOneShot, std::uint64_t monotonicStart, std::function<void()> endSession);
+        bool write(ISender & sender);
 
     private:
-        std::unique_ptr<IBuffer> mBuffer;
-        std::function<std::int64_t()> mGetMonotonicStarted;
+        std::unique_ptr<IBufferControl> mBuffer;
+        std::unique_ptr<IBlockCounterFrameBuilder> mFrameBuilder;
         IMaliDeviceCounterDumpCallback & mCallback;
-        std::function<void()> endSession;
-        std::function<bool()> isSessionActive;
         IMaliHwCntrReader & mReader;
+        std::int32_t deviceNumber;
 
         // Intentionally unimplemented
         MaliHwCntrTask(const MaliHwCntrTask &) = delete;

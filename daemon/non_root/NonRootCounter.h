@@ -46,7 +46,7 @@ namespace non_root {
         PROCESS_DELTA_GUEST_TIME
     };
 
-    static constexpr typename std::underlying_type<NonRootCounter>::type NonRootCounterValue(NonRootCounter nrc)
+    constexpr typename std::underlying_type<NonRootCounter>::type NonRootCounterValue(NonRootCounter nrc)
     {
         return static_cast<typename std::underlying_type<NonRootCounter>::type>(nrc);
     }

@@ -1,5 +1,5 @@
 /* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
-#include "ThreadManagementServer.h"
+#include "armnn/ThreadManagementServer.h"
 
 #include "Logging.h"
 
@@ -14,26 +14,30 @@ namespace armnn {
           mDone {false},
           mAcceptor {std::move(acceptor)},
           mReaperThread {&ThreadManagementServer::reaperLoop, this},
-          mAcceptorThread {&ThreadManagementServer::acceptLoop, this}
+          mAcceptorThread {&ThreadManagementServer::acceptLoop, this},
+          mIsRunning {true}
     {
     }
 
-    ThreadManagementServer::~ThreadManagementServer()
+    void ThreadManagementServer::stop()
     {
-        // Interrup the acceptor incase it is blocking
-        mAcceptor->interrupt();
-        mAcceptorThread.join();
+        if (mIsRunning) {
+            // Interrupt the acceptor incase it is blocking
+            mAcceptor->interrupt();
+            mAcceptorThread.join();
 
-        // Ensure that stopCapture has been called
-        assert(!mEnabled);
+            // Ensure that stopCapture has been called
+            assert(!mEnabled);
 
-        // Shut down the threads
-        std::unique_lock<std::mutex> lock {mMutex};
-        closeThreads();
-        mDone = true;
-        lock.unlock();
-        mSessionDiedCV.notify_all();
-        mReaperThread.join();
+            // Shut down the threads
+            std::unique_lock<std::mutex> lock {mMutex};
+            closeThreads();
+            mDone = true;
+            lock.unlock();
+            mSessionDiedCV.notify_all();
+            mReaperThread.join();
+            mIsRunning = false;
+        }
     }
 
     void ThreadManagementServer::startCapture()
@@ -80,6 +84,9 @@ namespace armnn {
                 std::lock_guard<std::mutex> lock {mMutex};
                 if (mEnabled) {
                     threadSession->enableCapture();
+                }
+                else {
+                    threadSession->disableCapture();
                 }
 
                 // Create the ThreadData and add it to the vector

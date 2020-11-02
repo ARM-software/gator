@@ -28,46 +28,67 @@
 #define MALI_IO(a, b) _IO(a, b)
 
 namespace mali_userspace {
-    /**
-     * Send a logSetup message detailing the detected Mali device
-     *
-     * @param maliDevicePath
-     * @param productId
-     * @param major
-     * @param minor
-     * @param frequency
-     * @param l2Slices
-     * @param shaderCores
-     */
-    static void logDetectedMaliDevice(const char * maliDevicePath,
-                                      uint32_t productId,
-                                      uint32_t major,
-                                      uint32_t minor,
-                                      uint32_t frequency,
-                                      uint32_t l2Slices,
-                                      uint32_t shaderCores)
-    {
-        const char * const productName = findMaliProductNameFromId(productId);
+    namespace {
+        static uint32_t calcShaderCoreMaskBlockCount(uint64_t core_mask) { return (64 - __builtin_clzll(core_mask)); }
 
-        lib::Format formatter;
+        static uint32_t calcNumShaders(uint64_t core_mask) { return __builtin_popcountll(core_mask); }
 
-        formatter << "Mali GPU counters\nSuccessfully probed Mali device " << maliDevicePath;
+        /**
+         * Send a logSetup message detailing the detected Mali device
+         *
+         * @param maliDevicePath
+         * @param productId
+         * @param major
+         * @param minor
+         * @param frequency
+         * @param l2Slices
+         * @param shaderCores
+         */
+        static void logDetectedMaliDevice(const char * maliDevicePath,
+                                          uint32_t productId,
+                                          uint32_t major,
+                                          uint32_t minor,
+                                          uint32_t frequency,
+                                          uint32_t l2Slices,
+                                          uint64_t shaderCoreMask)
+        {
+            const char * const productName = findMaliProductNameFromId(productId);
 
-        if (productName != nullptr) {
-            formatter << " as Mali-" << productName << " (0x" << std::hex << productId << std::dec << " r" << major
-                      << "p" << minor << ")";
-            if (frequency > 0) {
-                formatter << " clocked at " << frequency << "MHz";
+            const auto shaderCores = calcNumShaders(shaderCoreMask);
+            const auto maxBit = calcShaderCoreMaskBlockCount(shaderCoreMask);
+
+            runtime_assert(maxBit >= shaderCores, "Unexpected mask vs count");
+
+            lib::Format formatter;
+
+            formatter << "Mali GPU counters\nSuccessfully probed Mali device " << maliDevicePath;
+
+            if (productName != nullptr) {
+                formatter << " as Mali-" << productName << " (0x" << std::hex << productId << std::dec << " r" << major
+                          << "p" << minor << ")";
+                if (frequency > 0) {
+                    formatter << " clocked at " << frequency << "MHz";
+                }
+                formatter << ", " << l2Slices << " L2 Slices, " << shaderCores << " Shader Cores";
             }
-            formatter << ", " << l2Slices << " L2 Slices, " << shaderCores << " Shader Cores.";
-        }
-        else {
-            formatter << " but it is not recognized (id: 0x" << std::hex << productId << std::dec << " r" << major
-                      << "p" << minor << ", " << l2Slices << " L2 slices, " << shaderCores
-                      << " Shader Cores). Please try updating your version of gatord.";
-        }
+            else {
+                formatter << " but it is not recognized (id: 0x" << std::hex << productId << std::dec << " r" << major
+                          << "p" << minor << ", " << l2Slices << " L2 slices, " << shaderCores << " Shader Cores";
+            }
 
-        logg.logSetup("%s", std::string(formatter).c_str());
+            if (shaderCoreMask != ((1ull << shaderCores) - 1)) {
+                formatter << " (sparse layout, mask is 0x" << std::hex << shaderCoreMask << std::dec << ")";
+            }
+
+            if (productName != nullptr) {
+                formatter << ".";
+            }
+            else {
+                formatter << "). Please try updating your version of gatord.";
+            }
+
+            logg.logSetup("%s", std::string(formatter).c_str());
+        }
     }
 
     /**
@@ -97,7 +118,7 @@ namespace mali_userspace {
         public:
             MaliDeviceApi(const char * maliDevicePath, lib::AutoClosingFd devFd, const kbase_uk_gpuprops & props)
                 : devFd(std::move(devFd)),
-                  numberOfShaderCores(calcNumShaders(props)),
+                  shaderCoreAvailabilityMask(calcShaderCoreMask(props)),
                   numberOfL2Slices(props.props.l2_props.num_l2_slices),
                   gpuId(props.props.core_props.product_id),
                   hwVersion((uint32_t(props.props.core_props.major_revision) << 16) |
@@ -109,7 +130,7 @@ namespace mali_userspace {
                                       props.props.core_props.minor_revision,
                                       props.props.core_props.gpu_speed_mhz,
                                       props.props.l2_props.num_l2_slices,
-                                      numberOfShaderCores);
+                                      shaderCoreAvailabilityMask);
             }
 
             virtual lib::AutoClosingFd createHwCntReaderFd(size_t bufferCount,
@@ -152,7 +173,17 @@ namespace mali_userspace {
                 return setup_args.fd;
             }
 
-            virtual uint32_t getNumberOfShaderCores() const override { return numberOfShaderCores; }
+            virtual uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
+
+            virtual uint32_t getMaxShaderCoreBlockIndex() const override
+            {
+                return calcShaderCoreMaskBlockCount(shaderCoreAvailabilityMask);
+            }
+
+            virtual uint32_t getNumberOfUsableShaderCores() const override
+            {
+                return calcNumShaders(shaderCoreAvailabilityMask);
+            }
 
             virtual uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
 
@@ -161,17 +192,17 @@ namespace mali_userspace {
             virtual uint32_t getHwVersion() const override { return hwVersion; }
 
         private:
-            static uint32_t calcNumShaders(const kbase_uk_gpuprops & props)
+            static uint64_t calcShaderCoreMask(const kbase_uk_gpuprops & props)
             {
                 uint64_t core_mask = 0;
                 for (uint32_t i = 0; i < props.props.coherency_info.num_core_groups; i++) {
                     core_mask |= props.props.coherency_info.group[i].core_mask;
                 }
-                return __builtin_popcountll(core_mask);
+                return core_mask;
             }
 
             lib::AutoClosingFd devFd;
-            const uint32_t numberOfShaderCores;
+            const uint64_t shaderCoreAvailabilityMask;
             const uint32_t numberOfL2Slices;
             const uint32_t gpuId;
             const uint32_t hwVersion;
@@ -395,7 +426,7 @@ namespace mali_userspace {
         public:
             MaliDeviceApi(const char * maliDevicePath, lib::AutoClosingFd devFd, const gpu_propeties & props)
                 : devFd(std::move(devFd)),
-                  numberOfShaderCores(calcNumShaders(props)),
+                  shaderCoreAvailabilityMask(calcShaderCoreMask(props)),
                   numberOfL2Slices(props.num_l2_slices),
                   gpuId(props.product_id),
                   hwVersion((uint32_t(props.major_revision) << 16) | props.minor_revision)
@@ -406,7 +437,7 @@ namespace mali_userspace {
                                       props.minor_revision,
                                       0,
                                       props.num_l2_slices,
-                                      numberOfShaderCores);
+                                      shaderCoreAvailabilityMask);
             }
 
             virtual lib::AutoClosingFd createHwCntReaderFd(size_t bufferCount,
@@ -434,7 +465,18 @@ namespace mali_userspace {
                 }
                 return hwcntReaderFd;
             }
-            virtual uint32_t getNumberOfShaderCores() const override { return numberOfShaderCores; }
+
+            virtual uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
+
+            virtual uint32_t getMaxShaderCoreBlockIndex() const override
+            {
+                return calcShaderCoreMaskBlockCount(shaderCoreAvailabilityMask);
+            }
+
+            virtual uint32_t getNumberOfUsableShaderCores() const override
+            {
+                return calcNumShaders(shaderCoreAvailabilityMask);
+            }
 
             virtual uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
 
@@ -443,17 +485,17 @@ namespace mali_userspace {
             virtual uint32_t getHwVersion() const override { return hwVersion; }
 
         private:
-            static uint32_t calcNumShaders(const gpu_propeties & props)
+            static uint64_t calcShaderCoreMask(const gpu_propeties & props)
             {
                 uint64_t core_mask = 0;
                 for (uint32_t i = 0; i < props.num_core_groups; i++) {
                     core_mask |= props.core_mask[i];
                 }
-                return __builtin_popcountll(core_mask);
+                return core_mask;
             }
 
             lib::AutoClosingFd devFd;
-            const uint32_t numberOfShaderCores;
+            const uint64_t shaderCoreAvailabilityMask;
             const uint32_t numberOfL2Slices;
             const uint32_t gpuId;
             const uint32_t hwVersion;

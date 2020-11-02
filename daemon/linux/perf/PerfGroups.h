@@ -38,31 +38,27 @@ public:
                int64_t schedSwitchId,
                unsigned int maxFiles);
 
-    virtual bool add(uint64_t timestamp,
-                     IPerfAttrsConsumer & attrsConsumer,
+    virtual bool add(IPerfAttrsConsumer & attrsConsumer,
                      const PerfEventGroupIdentifier & groupIdentifier,
                      int key,
                      const Attr & attr,
                      bool hasAuxData = false) override;
 
-    virtual void addGroupLeader(const uint64_t timestamp,
-                                IPerfAttrsConsumer & attrsConsumer,
+    virtual void addGroupLeader(IPerfAttrsConsumer & attrsConsumer,
                                 const PerfEventGroupIdentifier & groupIdentifier) override
     {
-        getGroup(timestamp, attrsConsumer, groupIdentifier);
+        getGroup(attrsConsumer, groupIdentifier);
     }
 
     /**
      *
-     * @param currTime
      * @param cpu
      * @param appPids ignored if system wide
      * @param enableNow
      * @return
      * @note Not safe to call concurrently.
      */
-    std::pair<OnlineResult, std::string> onlineCPU(uint64_t timestamp,
-                                                   int cpu,
+    std::pair<OnlineResult, std::string> onlineCPU(int cpu,
                                                    const std::set<int> & appPids,
                                                    OnlineEnabledState enabledState,
                                                    IPerfAttrsConsumer & attrsConsumer,
@@ -77,9 +73,7 @@ public:
 
 private:
     /// Get the group and create the group leader if needed
-    PerfEventGroup & getGroup(uint64_t timestamp,
-                              IPerfAttrsConsumer & attrsConsumer,
-                              const PerfEventGroupIdentifier & groupIdentifier);
+    PerfEventGroup & getGroup(IPerfAttrsConsumer & attrsConsumer, const PerfEventGroupIdentifier & groupIdentifier);
 
     PerfEventGroupSharedConfig sharedConfig;
     std::map<PerfEventGroupIdentifier, std::unique_ptr<PerfEventGroup>> perfEventGroupMap;

@@ -88,6 +88,11 @@ static bool beginsWith(const char * string, const char * prefix)
     return strncmp(string, prefix, strlen(prefix)) == 0;
 }
 
+static bool isValidCpuId(int cpuId)
+{
+    return ((cpuId != PerfDriverConfiguration::UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0));
+}
+
 void logCpuNotFound()
 {
 #if defined(__arm__) || defined(__aarch64__)
@@ -247,6 +252,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     std::set<const GatorCpu *> cpusDetectedViaSysFs;
     std::set<const GatorCpu *> cpusDetectedViaCpuid;
     bool haveFoundKnownCpuWithSpe = false;
+
     // Add supported PMUs
     FsEntry dir = FsEntry::create(PERF_DEVICES);
     if (dir.exists()) {
@@ -261,6 +267,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 int type;
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
+                    logg.logMessage("    ... using pmu type %d for %s cores", type, gatorCpu->getCoreName());
                     configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
                     cpusDetectedViaSysFs.insert(gatorCpu);
                     if (gatorCpu->getSpeName() != nullptr) {
@@ -275,11 +282,64 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 int type;
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
+                    logg.logMessage("    ... is uncore pmu %s", uncorePmu->getCoreName());
                     configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
                     continue;
                 }
             }
 
+            // handle generic pmu.
+
+            // The generic pmu may be named "armv8_pmuv3", or where there are multiple of them, numbered like
+            // "armv8_pmuv3_0", "armv8_pmuv3_1" etc.
+            // This is found, for example, on the Juno board when booted from EFI without dtb.
+            // In either case, attempt to read the "type" from the PMU and match it to a cluster
+            // this is done by using the 'cpus' mask file and checking that all the matched CPUs have
+            // the same CPUID.
+            if (beginsWith(name, "armv8_pmuv3")) {
+                int type;
+                const std::string typePath(lib::Format() << PERF_DEVICES << "/" << name << "/type");
+                const std::string maskPath(lib::Format() << PERF_DEVICES << "/" << name << "/cpus");
+                if (lib::readIntFromFile(typePath.c_str(), type) == 0) {
+                    const std::set<int> cpuNumbers = lib::readCpuMaskFromFile(maskPath.c_str());
+                    if (!cpuNumbers.empty()) {
+                        int cpuIdForType = 0;
+                        for (int cpuNumber : cpuNumbers) {
+                            // track generic pmu's type to the cpuId associated with it.
+                            // if multiple different cpuIds are associated, then use -1 as cannot map to a unique pmu.
+                            const int cpuIdForCpu = cpuIds[cpuNumber];
+                            logg.logMessage("    ... cpu %d, with cpuid 0x%05x", cpuNumber, cpuIdForCpu);
+                            if (!isValidCpuId(cpuIdForCpu)) {
+                                // skip it as we don't know what it is. fair to assume
+                                // homogeneous clusters.
+                                continue;
+                            }
+                            if (cpuIdForType == 0) {
+                                cpuIdForType = cpuIdForCpu;
+                            }
+                            else if (cpuIdForType != cpuIdForCpu) {
+                                cpuIdForType = -1;
+                            }
+                        }
+                        if (isValidCpuId(cpuIdForType)) {
+                            const GatorCpu * gatorCpu = pmuXml.findCpuById(cpuIdForType);
+                            if (gatorCpu != nullptr) {
+                                logg.logMessage("    ... using generic pmu type %d for %s cores",
+                                                type,
+                                                gatorCpu->getCoreName());
+                                configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
+                                cpusDetectedViaSysFs.insert(gatorCpu);
+                                if (gatorCpu->getSpeName() != nullptr) {
+                                    haveFoundKnownCpuWithSpe = true;
+                                }
+                            }
+                        }
+                    }
+                    continue;
+                }
+            }
+
+            // detect spe pmu
             if (beginsWith(name, "arm_spe_")) {
                 int type;
                 const std::string typePath(lib::Format() << PERF_DEVICES << "/" << name << "/type");
@@ -287,6 +347,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 if (lib::readIntFromFile(typePath.c_str(), type) == 0) {
                     const std::set<int> cpuNumbers = lib::readCpuMaskFromFile(maskPath.c_str());
                     for (int cpuNumber : cpuNumbers) {
+                        logg.logMessage("    ... using SPE pmu type %d for cpu %d", type, cpuNumber);
                         configuration->cpuNumberToSpeType[cpuNumber] = type;
                     }
                     continue;
@@ -304,7 +365,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         const GatorCpu * gatorCpu = pmuXml.findCpuById(cpuId);
         if (gatorCpu == nullptr) {
             // track the unknown cpuid (filter out some junk values)
-            if ((cpuId != UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0)) {
+            if (isValidCpuId(cpuId)) {
                 unrecognisedCpuIds.insert(cpuId);
             }
         }

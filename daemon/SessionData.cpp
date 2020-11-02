@@ -48,16 +48,13 @@ SessionData::SessionData()
       mPids(),
       mStopOnExit(),
       mWaitingOnCommand(),
-      mSessionIsActive(),
       mLocalCapture(),
       mOneShot(),
       mIsEBS(),
-      mSentSummary(),
       mAllowCommands(),
       mFtraceRaw(),
       mSystemWide(),
       mAndroidApiLevel(),
-      mMonotonicStarted(),
       mBacktraceDepth(),
       mTotalBufferSize(),
       mSampleRate(),
@@ -76,10 +73,8 @@ void SessionData::initialize()
 {
     mSharedData = shared_memory::make_unique<SharedData>();
     mWaitingOnCommand = false;
-    mSessionIsActive = false;
     mLocalCapture = false;
     mOneShot = false;
-    mSentSummary = false;
     mAllowCommands = false;
     mFtraceRaw = false;
     mSystemWide = false;
@@ -95,7 +90,6 @@ void SessionData::initialize()
     mSampleRate = 0;
     mLiveRate = 0;
     mDuration = 0;
-    mMonotonicStarted = -1;
     mBacktraceDepth = 0;
     mTotalBufferSize = 0;
     long l = sysconf(_SC_PAGE_SIZE);
@@ -157,14 +151,18 @@ void SessionData::parseSessionXML(char * xmlString)
         handleException();
     }
 
-    // Convert milli- to nanoseconds
-    mLiveRate = session.parameters.live_rate * 1000000LL;
-    if (mLiveRate > 0 && mLocalCapture) {
-        logg.logMessage("Local capture is not compatable with live, disabling live");
-        mLiveRate = 0;
+    mLiveRate = 0;
+    if (session.parameters.live_rate > 0) {
+        if (mLocalCapture) {
+            logg.logMessage("Local capture is not compatable with live, disabling live");
+        }
+        else {
+            // Convert milli- to nanoseconds
+            mLiveRate = session.parameters.live_rate * 1000000ULL;
+        }
     }
     if ((!mSystemWide) && (mWaitForProcessCommand == nullptr) && mCaptureCommand.empty() && mPids.empty()) {
-        logg.logError("No command specified in Capture & Analysis Options.");
+        logg.logError("No command specified in Capture and Analysis Options.");
         handleException();
     }
 

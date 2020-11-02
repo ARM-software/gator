@@ -21,23 +21,13 @@ namespace armnn {
         SessionPacketSender(SessionPacketSender && that) = default;
         SessionPacketSender & operator=(SessionPacketSender && that) = default;
 
-        /**
-         * Send a counter selection packet to ArmNN to request the activation of counters
-         *
-         * @param mode
-         * @param period
-         * @param eventUids The UIDs of events, which could be empty if nothing was selected in this session
-         * @return True if request was successful, false if not
-         */
+        // ISessionPacketSender:
         bool requestActivateCounterSelection(CaptureMode mode,
                                              std::uint32_t period,
                                              const std::set<std::uint16_t> & eventUids) override;
-        /**
-         * Send a counter selection packet, disabling all counters
-         *
-         * @return True if request was successful, false if not
-         */
         bool requestDisableCounterSelection() override;
+        bool requestActivateTimelineReporting() override;
+        bool requestDeactivateTimelineReporting() override;
 
     private:
         std::unique_ptr<IEncoder> mEncoder;

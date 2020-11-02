@@ -1,45 +1,16 @@
 /* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
-#ifndef USERSPACESOURCE_H
-#define USERSPACESOURCE_H
+#pragma once
 
-#include "Buffer.h"
-#include "Source.h"
 #include "lib/Span.h"
 
-#include <functional>
+#include <memory>
 #include <semaphore.h>
 
-// Forward decl for allPolledDrivers
 class PolledDriver;
-class PrimarySourceProvider;
+class Source;
 
-// User space counters
-class UserSpaceSource : public Source {
-public:
-    UserSpaceSource(Child & child,
-                    sem_t & senderSem,
-                    std::function<std::int64_t()> mGetMonotonicStarted,
-                    lib::Span<PolledDriver * const> drivers);
+/// User space counters
+std::unique_ptr<Source> createUserSpaceSource(sem_t & senderSem, lib::Span<PolledDriver * const> drivers);
 
-    virtual bool prepare() override;
-    virtual void run() override;
-    virtual void interrupt() override;
-    virtual bool isDone() override;
-    virtual void write(ISender & sender) override;
-
-    static bool shouldStart(lib::Span<const PolledDriver * const>);
-
-private:
-    Buffer mBuffer;
-    std::function<std::int64_t()> mGetMonotonicStarted;
-    lib::Span<PolledDriver * const> mDrivers;
-
-    // Intentionally unimplemented
-    UserSpaceSource(const UserSpaceSource &) = delete;
-    UserSpaceSource & operator=(const UserSpaceSource &) = delete;
-    UserSpaceSource(UserSpaceSource &&) = delete;
-    UserSpaceSource & operator=(UserSpaceSource &&) = delete;
-};
-
-#endif // USERSPACESOURCE_H
+bool shouldStartUserSpaceSource(lib::Span<const PolledDriver * const>);

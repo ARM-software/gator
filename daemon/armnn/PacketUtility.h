@@ -3,7 +3,7 @@
 #ifndef ARMNN_PACKETUTILITY_H_
 #define ARMNN_PACKETUTILITY_H_
 
-#include "ByteOrder.h"
+#include "armnn/ByteOrder.h"
 
 #include <cstdint>
 
@@ -35,8 +35,10 @@ namespace armnn {
 
     enum class PacketType : std::uint32_t {
         // transmitted by peer
-        ConnectionAckPkt = makePacketType(0, 1),       //packet family=0; packet id=1
-        CounterDirectoryReqPkt = makePacketType(0, 3), //packet family=0; packet id=3
+        ConnectionAckPkt = makePacketType(0, 1),               //packet family=0; packet id=1
+        CounterDirectoryReqPkt = makePacketType(0, 3),         //packet family=0; packet id=3
+        ActivateTimelineReportingPkt = makePacketType(0, 6),   //packet family=0; packet id=6
+        DeactivateTimelineReportingPkt = makePacketType(0, 7), //packet family=0; packet id=7
 
         // transmitted by target only
         StreamMetadataPkt = makePacketType(0, 0),           //packet family=0; packet id=0
@@ -53,7 +55,7 @@ namespace armnn {
     };
 
     //Keeping it at min, can add new return status if needed
-    enum class DecodingStatus { Ok, Failed };
+    enum class DecodingStatus { Ok, NeedsForwarding, Failed };
     /**
      * Get bits from a given number, between msb and lsb , ([msb, lsb])
      */

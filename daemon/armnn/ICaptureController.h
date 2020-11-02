@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "ICounterConsumer.h"
+#include "armnn/ICounterConsumer.h"
 
 #include <functional>
 
@@ -15,7 +15,10 @@ namespace armnn {
         /**
          * Should be run once per capture.
          */
-        virtual void run(ICounterConsumer & counterConsumer) = 0;
+        virtual void run(ICounterConsumer & counterConsumer,
+                         bool isOneShot,
+                         std::function<void()> endSession,
+                         std::function<unsigned int()> getBufferBytesAvailable) = 0;
 
         /**
          * Stop the current run

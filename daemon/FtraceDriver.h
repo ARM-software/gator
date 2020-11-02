@@ -30,19 +30,17 @@ private:
 class FtraceDriver : public SimpleDriver {
 public:
     FtraceDriver(bool useForTracepoint, size_t numberOfCores);
-    ~FtraceDriver() override;
 
     void readEvents(mxml_node_t * xml) override;
 
     std::pair<std::vector<int>, bool> prepare();
     void start();
     std::vector<int> stop();
-    bool readTracepointFormats(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, DynBuf * printb, DynBuf * b);
+    bool readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * printb, DynBuf * b);
 
     bool isSupported() const { return mSupported; }
 
 private:
-    int64_t * mValues;
     Barrier mBarrier;
     int mTracingOn;
     bool mSupported, mMonotonicRawSupport, mUseForTracepoints;

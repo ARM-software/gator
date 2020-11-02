@@ -1,41 +1,33 @@
 /* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
 
-#ifndef SOURCE_H
-#define SOURCE_H
+#pragma once
 
-#include <pthread.h>
+#include "lib/Optional.h"
 
-class Child;
+#include <cstdint>
+#include <functional>
+
 class ISender;
 
 class Source {
 public:
-    Source(Child & child);
     virtual ~Source() = default;
 
-    virtual bool prepare() = 0;
-    void start();
-    virtual void run() = 0;
+    virtual void run(std::uint64_t monotonicStart, std::function<void()> endSession) = 0;
     virtual void interrupt() = 0;
-    void join() const;
 
-    virtual bool isDone() = 0;
-    virtual void write(ISender & sender) = 0;
-
-protected:
-    // active child object
-    Child & mChild;
-
-private:
-    static void * runStatic(void * arg);
-
-    pthread_t mThreadID;
-
-    // Intentionally undefined
-    Source(const Source &) = delete;
-    Source & operator=(const Source &) = delete;
-    Source(Source &&) = delete;
-    Source & operator=(Source &&) = delete;
+    /**
+     * @return true if done, nothing more to write
+     */
+    virtual bool write(ISender & sender) = 0;
 };
 
-#endif // SOURCE_H
+class PrimarySource : public Source {
+public:
+    /**
+     * Send the summary message
+     *
+     * @return monotonic start or empty on failure
+     */
+    virtual lib::Optional<std::uint64_t> sendSummary() = 0;
+};

@@ -3,20 +3,22 @@
 #ifndef INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 
+#include "CommitTimeChecker.h"
 #include "Protocol.h"
 
 #include <cstdint>
 #include <string>
 
-class Buffer;
+class IRawFrameBuilder;
 class Sender;
 
 namespace non_root {
+
     class MixedFrameBuffer {
     public:
         class Frame {
         public:
-            Frame(MixedFrameBuffer & parent, std::uint64_t currentTime, FrameType frameType, std::int32_t core);
+            Frame(IRawFrameBuilder & parent, FrameType frameType);
             ~Frame();
 
             void packInt(std::int32_t);
@@ -26,10 +28,8 @@ namespace non_root {
             bool isValid() const;
 
         private:
-            MixedFrameBuffer & parent;
-            std::uint64_t currentTime;
+            IRawFrameBuilder & parent;
             int bytesAvailable;
-            int frameStart;
             bool valid;
 
             bool checkSize(int size);
@@ -38,7 +38,7 @@ namespace non_root {
         using size_type = unsigned long;
         using size_diff_type = long;
 
-        MixedFrameBuffer(Buffer & buffer);
+        MixedFrameBuffer(IRawFrameBuilder & buffer, CommitTimeChecker flushIsNeeded);
 
         bool activityFrameLinkMessage(std::uint64_t currentTime,
                                       std::int32_t cookie,
@@ -76,9 +76,10 @@ namespace non_root {
                                        std::uint64_t value);
 
     private:
-        friend class Frame;
+        void flushIfNeeded(std::uint64_t currentTime);
 
-        Buffer & buffer;
+        IRawFrameBuilder & buffer;
+        CommitTimeChecker flushIsNeeded;
 
         // Intentionally unimplemented
         MixedFrameBuffer(const MixedFrameBuffer &) = delete;
@@ -86,7 +87,6 @@ namespace non_root {
         MixedFrameBuffer(MixedFrameBuffer &&) = delete;
         MixedFrameBuffer & operator=(MixedFrameBuffer &&) = delete;
     };
-
 }
 
 #endif /* INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H */

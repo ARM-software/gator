@@ -71,6 +71,11 @@ private:
 bool operator==(const GatorCpu & a, const GatorCpu & b);
 bool operator<(const GatorCpu & a, const GatorCpu & b);
 
+inline bool operator!=(const GatorCpu & a, const GatorCpu & b)
+{
+    return !(a == b);
+}
+
 class UncorePmu {
 public:
     UncorePmu(std::string coreName, std::string id, std::string counterSet, int pmncCounters, bool hasCyclesCounter);

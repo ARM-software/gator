@@ -17,12 +17,11 @@ namespace non_root {
     public:
         using core_type = unsigned long;
 
-        PerCoreMixedFrameBuffer(FrameType frameType, int bufferSize, sem_t & readerSem);
+        PerCoreMixedFrameBuffer(int bufferSize, sem_t & readerSem);
 
         bool anyFull() const;
         void setDone();
-        bool allDone() const;
-        void write(ISender & sender);
+        bool write(ISender & sender);
 
         MixedFrameBuffer & operator[](core_type core);
 
@@ -30,7 +29,6 @@ namespace non_root {
         std::map<core_type, std::unique_ptr<Buffer>> buffers;
         std::map<core_type, std::unique_ptr<MixedFrameBuffer>> wrappers;
         sem_t & readerSem;
-        FrameType frameType;
         int bufferSize;
     };
 }

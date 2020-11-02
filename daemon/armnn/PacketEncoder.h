@@ -2,10 +2,10 @@
 
 #ifndef ARMNN_PACKETENCODER_H_
 #define ARMNN_PACKETENCODER_H_
-#include "ByteOrder.h"
-#include "IEncoder.h"
-#include "PacketUtility.h"
-#include "PacketUtilityModels.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/IEncoder.h"
+#include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 
 #include <map>
 #include <set>
@@ -16,6 +16,7 @@ namespace armnn {
     public:
         PacketEncoder(ByteOrder byteOrder);
 
+        // IEncoder:
         std::vector<std::uint8_t> encodePeriodicCounterSelectionRequest(
             std::uint32_t period,
             const std::set<std::uint16_t> & eventUids) override;
@@ -24,6 +25,9 @@ namespace armnn {
             const std::set<std::uint16_t> & eventUids) override;
         std::vector<std::uint8_t> encodeConnectionAcknowledge() override;
         std::vector<std::uint8_t> encodeCounterDirectoryRequest() override;
+        std::vector<std::uint8_t> encodeActivateTimelineReportingPacket() override;
+        std::vector<std::uint8_t> encodeDeactivateTimelineReportingPacket() override;
+
         /**
          * Currently support 1.x.x version of packet decoders only.
          */

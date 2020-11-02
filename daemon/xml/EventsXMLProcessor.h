@@ -3,8 +3,8 @@
 #ifndef EVENTS_XML_PROCESSOR_H
 #define EVENTS_XML_PROCESSOR_H
 
-#include "../lib/Optional.h"
 #include "Events.h"
+#include "lib/Optional.h"
 #include "lib/Span.h"
 #include "xml/MxmlUtils.h"
 

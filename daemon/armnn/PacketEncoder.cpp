@@ -1,10 +1,10 @@
 /* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 
-#include "PacketEncoder.h"
+#include "armnn/PacketEncoder.h"
 
-#include "../Logging.h"
-#include "ByteOrder.h"
-#include "PacketUtility.h"
+#include "Logging.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/PacketUtility.h"
 #include "lib/EnumUtils.h"
 
 #include <algorithm>
@@ -94,6 +94,22 @@ namespace armnn {
     {
         std::vector<std::uint8_t> payload;
         const auto packetIdentifier = static_cast<uint32_t>(PacketType::CounterDirectoryReqPkt);
+        appendHeader(packetIdentifier, 0, payload);
+        return payload;
+    }
+
+    std::vector<std::uint8_t> PacketEncoder::encodeActivateTimelineReportingPacket()
+    {
+        std::vector<std::uint8_t> payload;
+        const auto packetIdentifier = static_cast<uint32_t>(PacketType::ActivateTimelineReportingPkt);
+        appendHeader(packetIdentifier, 0, payload);
+        return payload;
+    }
+
+    std::vector<std::uint8_t> PacketEncoder::encodeDeactivateTimelineReportingPacket()
+    {
+        std::vector<std::uint8_t> payload;
+        const auto packetIdentifier = static_cast<uint32_t>(PacketType::DeactivateTimelineReportingPkt);
         appendHeader(packetIdentifier, 0, payload);
         return payload;
     }

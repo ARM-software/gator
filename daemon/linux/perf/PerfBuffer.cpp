@@ -169,26 +169,6 @@ void PerfBuffer::discard(int cpu)
     }
 }
 
-bool PerfBuffer::isEmpty()
-{
-    for (auto cpuAndBuf : mBuffers) {
-        // Take a snapshot of the positions
-        auto * pemp = static_cast<struct perf_event_mmap_page *>(cpuAndBuf.second.data_buffer);
-        const uint64_t dataTail = readOnceAtomicRelaxed(pemp->data_tail);
-        const uint64_t dataHead = readOnceAtomicRelaxed(pemp->data_head);
-
-        if (dataHead != dataTail) {
-            return false;
-        }
-        if (cpuAndBuf.second.aux_buffer != nullptr &&
-            readOnceAtomicRelaxed(pemp->aux_tail) != readOnceAtomicRelaxed(pemp->aux_head)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 bool PerfBuffer::isFull()
 {
     for (auto cpuAndBuf : mBuffers) {
@@ -225,7 +205,7 @@ public:
             const int count =
                 reinterpret_cast<const struct perf_event_header *>(b + (tail & bufferMask))->size / sizeof(uint64_t);
             // Can this whole message be written as Streamline assumes events are not split between frames
-            if (sizeof(mBuf) <= mWritePos + count * buffer_utils::MAXSIZE_PACK64) {
+            if (int(sizeof(mBuf)) <= mWritePos + count * buffer_utils::MAXSIZE_PACK64) {
                 send();
                 cpuHeader(cpu);
             }

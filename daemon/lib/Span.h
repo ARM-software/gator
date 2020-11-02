@@ -17,6 +17,12 @@ namespace lib {
     struct Span {
         using value_type = typename std::remove_cv<T>::type;
         using size_type = L;
+        using difference_type = typename std::make_signed<L>::type;
+
+        using reference = T &;
+        using const_reference = const T &;
+        using iterator = T *;
+        using const_iterator = const T *;
 
         T * data;
         L length;
@@ -29,7 +35,10 @@ namespace lib {
             return data[pos];
         }
 
-        bool operator==(const Span<T, L> & other) const { return std::equal(data, data + length, other.data); }
+        bool operator==(const Span<T, L> & other) const
+        {
+            return std::equal(begin(), end(), other.begin(), other.end());
+        }
 
         Span() = default;
 
@@ -69,18 +78,48 @@ namespace lib {
             assert(offset + count <= length);
             return {data + offset, count};
         }
+
+        iterator begin() { return data; }
+
+        const_iterator begin() const { return data; }
+
+        const_iterator cbegin() const { return data; }
+
+        iterator end() { return data + length; }
+
+        const_iterator end() const { return data + length; }
+
+        const_iterator cend() const { return data + length; }
     };
 
-    template<typename T, typename L>
-    T * begin(Span<T, L> span)
+    /// Creates a Span object, deducing the value_type from the type of the argument
+    template<typename C>
+    auto makeSpan(C & container)
+        -> Span<typename std::remove_pointer<decltype(container.data())>::type, decltype(container.size())>
     {
-        return span.data;
+        return {container.data(), container.size()};
     }
 
-    template<typename T, typename L>
-    T * end(Span<T, L> span)
+    /// Creates a Span object, deducing the value_type from the type of the argument
+    template<typename T, typename L = std::size_t, L Size>
+    Span<T, L> makeSpan(T (&array)[Size])
     {
-        return span.data + span.length;
+        return Span<T, L> {array, Size};
+    }
+
+    /// Creates a Span object, deducing the value_type from the type of the argument
+    template<typename C>
+    auto makeConstSpan(C & container)
+        -> Span<const typename std::remove_pointer<decltype(container.data())>::type, decltype(container.size())>
+    {
+        return {container.data(), container.size()};
+    }
+
+    /// Creates a Span object, deducing the value_type from the type of the argument
+    template<typename T, typename L = std::size_t, L Size>
+    Span<const T, L> makeConstSpan(T (&array)[Size])
+    {
+        return Span<const T, L> {array, Size};
     }
 }
 

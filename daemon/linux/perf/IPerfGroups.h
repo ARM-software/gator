@@ -26,15 +26,13 @@ public:
         bool context_switch = false;
     };
 
-    virtual bool add(uint64_t timestamp,
-                     IPerfAttrsConsumer & attrsConsumer,
+    virtual bool add(IPerfAttrsConsumer & attrsConsumer,
                      const PerfEventGroupIdentifier & groupIdentifier,
                      int key,
                      const Attr & attr,
                      bool hasAuxData = false) = 0;
 
-    virtual void addGroupLeader(uint64_t timestamp,
-                                IPerfAttrsConsumer & attrsConsumer,
+    virtual void addGroupLeader(IPerfAttrsConsumer & attrsConsumer,
                                 const PerfEventGroupIdentifier & groupIdentifier) = 0;
 
     virtual ~IPerfGroups() = default;

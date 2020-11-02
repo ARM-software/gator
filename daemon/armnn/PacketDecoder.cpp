@@ -1,9 +1,9 @@
 /* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
-#include "PacketDecoder.h"
+#include "armnn/PacketDecoder.h"
 
-#include "CounterDirectoryDecoder.h"
-#include "DecoderUtility.h"
-#include "PacketUtility.h"
+#include "armnn/CounterDirectoryDecoder.h"
+#include "armnn/DecoderUtility.h"
+#include "armnn/PacketUtility.h"
 #include "lib/EnumUtils.h"
 
 #include <string>
@@ -73,11 +73,11 @@ namespace armnn {
                 }
 
             } break;
-            case lib::toEnumValue(PacketType::TimelineMessageDirectoryPkt):
-            case lib::toEnumValue(PacketType::TimelineMessagePkt): //
+            // The timeline packets are decoded host side, so just forward on
+            case lib::toEnumValue(PacketType::TimelineMessageDirectoryPkt): //
+            case lib::toEnumValue(PacketType::TimelineMessagePkt):          //
             {
-                // Ignored: Not yet implemented
-                break;
+                return DecodingStatus::NeedsForwarding;
             }
             case lib::toEnumValue(PacketType::StreamMetadataPkt): //
             {
@@ -126,6 +126,8 @@ namespace armnn {
                     validPacket = true;
                     break;
                 }
+                case lib::toEnumValue(PacketType::ActivateTimelineReportingPkt):
+                case lib::toEnumValue(PacketType::DeactivateTimelineReportingPkt):
                 case lib::toEnumValue(PacketType::ConnectionAckPkt):
                 case lib::toEnumValue(PacketType::CounterDirectoryReqPkt): {
                     // not transmitted by target

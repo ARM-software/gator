@@ -7,11 +7,10 @@
 #include "CCNDriver.h"
 #include "ExternalDriver.h"
 #include "FtraceDriver.h"
-#include "MaliVideoDriver.h"
 #include "MidgardDriver.h"
 #include "PrimarySourceProvider.h"
 #include "TtraceDriver.h"
-#include "armnn/Driver.h"
+#include "armnn/ArmNNDriver.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfDriver.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
@@ -25,8 +24,6 @@ public:
     armnn::Driver & getArmnnDriver() { return mArmnnDriver; }
 
     MidgardDriver & getMidgard() { return mMidgard; }
-
-    MaliVideoDriver & getMaliVideo() { return mMaliVideo; }
 
     CCNDriver & getCcnDriver() { return mCcnDriver; }
 
@@ -55,7 +52,6 @@ public:
 private:
     mali_userspace::MaliHwCntrDriver mMaliHwCntrs;
     std::unique_ptr<PrimarySourceProvider> mPrimarySourceProvider;
-    MaliVideoDriver mMaliVideo;
     MidgardDriver mMidgard;
     FtraceDriver mFtraceDriver;
     AtraceDriver mAtraceDriver;

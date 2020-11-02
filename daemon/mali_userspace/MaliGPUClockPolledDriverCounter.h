@@ -3,6 +3,10 @@
 #ifndef MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVERCOUNTER_H_
 #define MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVERCOUNTER_H_
 
+#include "DriverCounter.h"
+
+#include <cstdint>
+
 namespace mali_userspace {
     class MaliGPUClockPolledDriverCounter : public DriverCounter {
     public:

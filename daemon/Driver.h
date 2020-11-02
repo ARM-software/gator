@@ -14,7 +14,7 @@ struct SpeConfiguration;
 
 class Driver {
 public:
-    // @param name held by reference, not copied
+    /// @param name held by reference, not copied
     Driver(const char * name) : name(name) {}
     virtual ~Driver() = default;
 

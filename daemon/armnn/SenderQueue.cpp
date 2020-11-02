@@ -1,6 +1,6 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
-#include "SenderQueue.h"
+#include "armnn/SenderQueue.h"
 
 #include "Logging.h"
 

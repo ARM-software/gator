@@ -42,7 +42,7 @@ public:
 
     /**
      * commits the currently built up frame if needed
-     * @return true if the current frame was committed
+     * @return true if the current frame was committed (which resets core/tid/timestamp)
      */
     // TODO: rename to commitIfNeeded
     virtual bool check(uint64_t time) = 0;

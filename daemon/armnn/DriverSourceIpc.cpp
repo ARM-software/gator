@@ -1,6 +1,8 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
 #include "armnn/DriverSourceIpc.h"
+#include "BufferUtils.h"
+#include "IRawFrameBuilder.h"
 
 #include "Logging.h"
 
@@ -9,6 +11,7 @@
 #include <fcntl.h>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace armnn {
 
@@ -92,6 +95,7 @@ namespace armnn {
     static const uint8_t CHILD_DEATH_MSG = 12;
     static const uint8_t INTERRUPT_MSG = 13;
     static const uint8_t COUNTERS_MSG = 14;
+    static const uint8_t PACKET_MSG = 15;
 
     ChildToParentController::ChildToParentController() : mChildToParent {createPipe()} {}
 
@@ -155,7 +159,18 @@ namespace armnn {
         }
     }
 
-    ParentToChildCounterConsumer::ParentToChildCounterConsumer() : mToChild {createPipe()} {}
+    ParentToChildCounterConsumer::ParentToChildCounterConsumer()
+        : mToChild {createPipe()}, mOneShotModeEnabledAndEnded {false}
+    {
+    }
+
+    template<typename T>
+    static lib::Span<uint8_t> asBytes(T & original)
+    {
+        static_assert(std::is_trivially_copyable<T>::value, "must be a trivially copyable type");
+        void * ptr = static_cast<void *>(&original);
+        return lib::Span<uint8_t>(static_cast<uint8_t *>(ptr), sizeof(T));
+    }
 
     struct CounterMsg {
         std::uint64_t timestamp;
@@ -170,7 +185,9 @@ namespace armnn {
         return mToChild.writeAll(msgtype);
     }
 
-    bool ParentToChildCounterConsumer::readMessage(ICounterConsumer & destination)
+    bool ParentToChildCounterConsumer::readMessage(ICounterConsumer & destination,
+                                                   bool isOneShot,
+                                                   std::function<unsigned int()> getBufferBytesAvailable)
     {
         uint8_t msgtype[1] {0};
         bool result = mToChild.readAll(msgtype);
@@ -180,25 +197,24 @@ namespace armnn {
                     return false;
                 case COUNTERS_MSG:
                     return readCounterStruct(destination);
+                case PACKET_MSG:
+                    return readPacket(destination, isOneShot, getBufferBytesAvailable);
             }
         }
         else {
             logg.logError("Failed to read message from gator-main");
         }
-
         return false;
     }
 
     bool ParentToChildCounterConsumer::readCounterStruct(ICounterConsumer & destination)
     {
         CounterMsg msg {};
-        uint8_t buf[sizeof(msg)];
-        bool readResult = mToChild.readAll(buf);
+        bool readResult = mToChild.readAll(asBytes(msg));
         if (readResult) {
-            memcpy(&msg, &buf, sizeof(msg));
-            destination.consumerCounterValue(msg.timestamp,
-                                             ApcCounterKeyAndCoreNumber {msg.counterKey, msg.core},
-                                             msg.counterValue);
+            destination.consumeCounterValue(msg.timestamp,
+                                            ApcCounterKeyAndCoreNumber {msg.counterKey, msg.core},
+                                            msg.counterValue);
             return true;
         }
         else {
@@ -207,9 +223,9 @@ namespace armnn {
         return readResult;
     }
 
-    bool ParentToChildCounterConsumer::consumerCounterValue(std::uint64_t timestamp,
-                                                            ApcCounterKeyAndCoreNumber keyAndCore,
-                                                            std::uint32_t counterValue)
+    bool ParentToChildCounterConsumer::consumeCounterValue(std::uint64_t timestamp,
+                                                           ApcCounterKeyAndCoreNumber keyAndCore,
+                                                           std::uint32_t counterValue)
     {
         CounterMsg msg {};
         msg.timestamp = timestamp;
@@ -217,10 +233,56 @@ namespace armnn {
         msg.core = keyAndCore.core;
         msg.counterValue = counterValue;
 
-        uint8_t buf[1 + sizeof(msg)] {0};
-        buf[0] = COUNTERS_MSG;
-        memcpy(buf + 1, &msg, sizeof(msg));
-        return mToChild.writeAll(buf);
+        uint8_t msgtype[1] = {COUNTERS_MSG};
+        if (!mToChild.writeAll(msgtype)) {
+            return false;
+        }
+        return mToChild.writeAll(asBytes(msg));
+    }
+
+    struct TimelineHeader {
+        std::uint32_t sessionId;
+        std::size_t dataLength;
+    } __attribute__((packed));
+
+    bool ParentToChildCounterConsumer::readPacket(ICounterConsumer & destination,
+                                                  bool isOneShot,
+                                                  std::function<unsigned int()> getBufferBytesAvailable)
+    {
+        TimelineHeader header {};
+        if (!mToChild.readAll(asBytes(header))) {
+            return false;
+        }
+        std::vector<uint8_t> data(header.dataLength, 0);
+        if (!mToChild.readAll(data)) {
+            return false;
+        }
+
+        if (isOneShot && (getBufferBytesAvailable() < IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + data.size())) {
+            mOneShotModeEnabledAndEnded = true;
+            return false;
+        }
+
+        destination.consumePacket(header.sessionId, data);
+        return true;
+    }
+
+    static bool writePacket(Pipe & pipe, std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
+    {
+        TimelineHeader header {sessionId, data.size()};
+        std::uint8_t mtype[1] {PACKET_MSG};
+        if (!pipe.writeAll(mtype)) {
+            return false;
+        }
+        if (!pipe.writeAll(asBytes(header))) {
+            return false;
+        }
+        return pipe.writeAll(data);
+    }
+
+    bool ParentToChildCounterConsumer::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
+    {
+        return writePacket(mToChild, sessionId, data);
     }
 
     DriverSourceIpc::DriverSourceIpc(ICaptureStartStopHandler & startStopHandler)
@@ -230,11 +292,12 @@ namespace armnn {
 
     void DriverSourceIpc::prepareForFork()
     {
-        {
-            std::lock_guard<std::mutex> guard(mParentMutex);
-            mCountersChannel.set(ParentToChildCounterConsumer {});
-        }
+        std::lock_guard<std::mutex> guard(mParentMutex);
+        mCountersChannel.set(ParentToChildCounterConsumer {});
+    }
 
+    void DriverSourceIpc::afterFork()
+    {
         mControlThread = std::thread {[&]() -> void {
             while (mControlChannel.consumeControlMsg(mArmnnController)) {
             }
@@ -253,26 +316,43 @@ namespace armnn {
         mCountersChannel.clear();
     }
 
-    bool DriverSourceIpc::consumerCounterValue(std::uint64_t timestamp,
-                                               ApcCounterKeyAndCoreNumber keyAndCore,
-                                               std::uint32_t counterValue)
+    bool DriverSourceIpc::consumeCounterValue(std::uint64_t timestamp,
+                                              ApcCounterKeyAndCoreNumber keyAndCore,
+                                              std::uint32_t counterValue)
     {
         std::lock_guard<std::mutex> guard(mParentMutex);
         if (mCountersChannel.valid()) {
-            return mCountersChannel.get().consumerCounterValue(timestamp, keyAndCore, counterValue);
+            return mCountersChannel.get().consumeCounterValue(timestamp, keyAndCore, counterValue);
         }
         else {
             return true;
         }
     }
 
-    void DriverSourceIpc::run(ICounterConsumer & counterConsumer)
+    bool DriverSourceIpc::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
+    {
+        std::lock_guard<std::mutex> guard(mParentMutex);
+        if (mCountersChannel.valid()) {
+            return mCountersChannel.get().consumePacket(sessionId, data);
+        }
+        return true;
+    }
+
+    void DriverSourceIpc::run(ICounterConsumer & counterConsumer,
+                              bool isOneShot,
+                              std::function<void()> endSession,
+                              std::function<unsigned int()> getBufferBytesAvailable)
     {
         mControlChannel.startCapture();
 
-        while (mCountersChannel.get().readMessage(counterConsumer)) {
+        while (mCountersChannel.get().readMessage(counterConsumer, isOneShot, getBufferBytesAvailable)) {
         }
         mControlChannel.stopCapture();
+
+        if (mCountersChannel.get().getOneShotModeEnabledAndEnded()) {
+            logg.logError("One shot (Arm NN)");
+            endSession();
+        }
     }
 
     void DriverSourceIpc::interrupt()

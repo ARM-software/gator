@@ -43,5 +43,19 @@ namespace armnn {
          * Note: For version 1.0.0 , the data length is 0
          */
         virtual std::vector<std::uint8_t> encodeCounterDirectoryRequest() = 0;
+
+        /**
+         * @returns a packet to be sent by the peer to the target that requests for the timeline
+         *          reporting to be activated
+         * Note: For version 1.0.0, the data length of this packet is always 0
+         **/
+        virtual std::vector<std::uint8_t> encodeActivateTimelineReportingPacket() = 0;
+
+        /**
+         * @returns a packet to be sent by the peer to the target that requests for the timeline
+         *          reporting to be deactivated
+         * Note: For version 1.0.0, the data length of this packet is always 0
+         **/
+        virtual std::vector<std::uint8_t> encodeDeactivateTimelineReportingPacket() = 0;
     };
 }

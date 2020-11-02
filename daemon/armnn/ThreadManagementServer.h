@@ -1,9 +1,9 @@
 /* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 #pragma once
 
-#include "IAcceptor.h"
-#include "ISession.h"
-#include "IStartStopHandler.h"
+#include "armnn/IAcceptor.h"
+#include "armnn/ISession.h"
+#include "armnn/IStartStopHandler.h"
 
 #include <condition_variable>
 #include <memory>
@@ -17,7 +17,8 @@ namespace armnn {
     class ThreadManagementServer : public ICaptureStartStopHandler {
     public:
         ThreadManagementServer(std::unique_ptr<IAcceptor> acceptor);
-        ~ThreadManagementServer() override;
+        void stop();
+        ~ThreadManagementServer() override { stop(); };
 
         /**
          * Enables the capture on all capture sessions
@@ -44,6 +45,7 @@ namespace armnn {
         std::unique_ptr<IAcceptor> mAcceptor;
         std::thread mReaperThread;
         std::thread mAcceptorThread;
+        bool mIsRunning;
 
         void reaperLoop();
         void acceptLoop();

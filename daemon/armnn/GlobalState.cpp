@@ -1,9 +1,9 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
-#include "GlobalState.h"
+#include "armnn/GlobalState.h"
 
-#include "../Logging.h"
-#include "../lib/EnumUtils.h"
+#include "Logging.h"
+#include "lib/EnumUtils.h"
 
 #include <cassert>
 #include <cctype>

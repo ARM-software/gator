@@ -20,19 +20,17 @@ namespace non_root {
     /**
      * Non-root Capture driver
      */
-    class NonRootSource : public Source {
+    class NonRootSource : public PrimarySource {
     public:
         NonRootSource(NonRootDriver & driver,
-                      Child & child,
                       sem_t & senderSem,
                       std::function<void()> profilingStartedCallback,
                       const ICpuInfo & cpuInfo);
 
-        virtual bool prepare() override;
-        virtual void run() override;
+        virtual lib::Optional<std::uint64_t> sendSummary() override;
+        virtual void run(std::uint64_t, std::function<void()> endSession) override;
         virtual void interrupt() override;
-        virtual bool isDone() override;
-        virtual void write(ISender & sender) override;
+        virtual bool write(ISender & sender) override;
 
     private:
         PerCoreMixedFrameBuffer mSwitchBuffers;
@@ -43,10 +41,8 @@ namespace non_root {
         lib::TimestampSource timestampSource;
         NonRootDriver & driver;
         std::function<void()> profilingStartedCallback;
-        bool done;
         const ICpuInfo & cpuInfo;
 
-        bool summary();
         unsigned long long getBootTimeTicksBase();
     };
 }

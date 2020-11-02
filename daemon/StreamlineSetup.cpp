@@ -27,94 +27,46 @@ static const char VALUE_COUNTERS[] = "counters";
 static const char VALUE_CAPTURED[] = "captured";
 static const char VALUE_DEFAULTS[] = "defaults";
 
-StreamlineSetup::StreamlineSetup(OlySocket * s, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes)
+StreamlineSetup::StreamlineSetup(OlySocket & s, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes)
     : mSocket(s), mDrivers(drivers), mCapturedSpes(capturedSpes)
 {
-    bool ready = false;
+    const auto result =
+        streamlineSetupCommandLoop(s, *this, [](bool recvd) -> void { gSessionData.mWaitingOnCommand = !recvd; });
 
-    // Receive commands from Streamline (master)
-    while (!ready) {
-        // receive command over socket
-        gSessionData.mWaitingOnCommand = true;
-        int type;
-        auto data = readCommand(&type);
-
-        // parse and handle data
-        switch (type) {
-            case COMMAND_REQUEST_XML:
-                handleRequest(data.data());
-                break;
-            case COMMAND_DELIVER_XML:
-                handleDeliver(data.data());
-                break;
-            case COMMAND_APC_START:
-                logg.logMessage("Received apc start request");
-                ready = true;
-                break;
-            case COMMAND_APC_STOP:
-                logg.logMessage("Received apc stop request before apc start request");
-                exit(0);
-                break;
-            case COMMAND_DISCONNECT:
-                logg.logMessage("Received disconnect command");
-                exit(0);
-                break;
-            case COMMAND_PING:
-                logg.logMessage("Received ping command");
-                sendData(nullptr, 0, ResponseType::ACK);
-                break;
-            default:
-                logg.logError("Target error: Unknown command type, %d", type);
-                handleException();
-        }
+    if (result == State::EXIT_ERROR) {
+        handleException();
+    }
+    else if (result != State::EXIT_APC_START) {
+        exit(0);
     }
 }
 
-std::vector<char> StreamlineSetup::readCommand(int * command)
+IStreamlineCommandHandler::State StreamlineSetup::handleApcStart()
 {
-    unsigned char header[5];
-    int response;
-
-    // receive type and length
-    response = mSocket->receiveNBytes(reinterpret_cast<char *>(&header), sizeof(header));
-
-    // After receiving a single byte, we are no longer waiting on a command
-    gSessionData.mWaitingOnCommand = false;
-
-    if (response < 0) {
-        logg.logError("Target error: Unexpected socket disconnect");
-        handleException();
-    }
-
-    const char type = header[0];
-    const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
-
-    // add artificial limit
-    if ((length < 0) || length > 1024 * 1024) {
-        logg.logError("Target error: Invalid length received, %d", length);
-        handleException();
-    }
-
-    // allocate memory to contain the xml file, size of zero returns a zero size object
-    std::vector<char> data(length + 1);
-
-    // receive data
-    response = mSocket->receiveNBytes(data.data(), length);
-    if (response < 0) {
-        logg.logError("Target error: Unexpected socket disconnect");
-        handleException();
-    }
-
-    // null terminate the data for string parsing
-    if (length > 0) {
-        data[length] = 0;
-    }
-
-    *command = type;
-    return data;
+    logg.logMessage("Received apc start request");
+    return State::EXIT_APC_START;
 }
 
-void StreamlineSetup::handleRequest(char * xml)
+IStreamlineCommandHandler::State StreamlineSetup::handleApcStop()
+{
+    logg.logMessage("Received apc stop request before apc start request");
+    return State::EXIT_APC_STOP;
+}
+
+IStreamlineCommandHandler::State StreamlineSetup::handleDisconnect()
+{
+    logg.logMessage("Received disconnect command");
+    return State::EXIT_DISCONNECT;
+}
+
+IStreamlineCommandHandler::State StreamlineSetup::handlePing()
+{
+    logg.logMessage("Received ping command");
+    sendData(nullptr, 0, ResponseType::ACK);
+    return State::PROCESS_COMMANDS;
+}
+
+IStreamlineCommandHandler::State StreamlineSetup::handleRequest(char * xml)
 {
     const char * attr = nullptr;
 
@@ -161,9 +113,11 @@ void StreamlineSetup::handleRequest(char * xml)
     }
 
     mxmlDelete(tree);
+
+    return State::PROCESS_COMMANDS;
 }
 
-void StreamlineSetup::handleDeliver(char * xml)
+IStreamlineCommandHandler::State StreamlineSetup::handleDeliver(char * xml)
 {
     mxml_node_t * tree;
 
@@ -188,6 +142,8 @@ void StreamlineSetup::handleDeliver(char * xml)
     }
 
     mxmlDelete(tree);
+
+    return State::PROCESS_COMMANDS;
 }
 
 void StreamlineSetup::sendData(const char * data, uint32_t length, ResponseType type)
@@ -195,8 +151,8 @@ void StreamlineSetup::sendData(const char * data, uint32_t length, ResponseType 
     char header[5];
     header[0] = static_cast<char>(type);
     buffer_utils::writeLEInt(header + 1, length);
-    mSocket->send(header, sizeof(header));
-    mSocket->send(data, length);
+    mSocket.send(header, sizeof(header));
+    mSocket.send(data, length);
 }
 
 void StreamlineSetup::sendDefaults()

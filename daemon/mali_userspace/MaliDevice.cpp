@@ -357,13 +357,17 @@ namespace mali_userspace {
     MaliDevice::MaliDevice(const MaliProductVersion & productVersion,
                            std::unique_ptr<IMaliDeviceApi> deviceApi,
                            std::string clockPath)
-        : mProductVersion(productVersion), deviceApi(std::move(deviceApi)), clockPath(std::move(clockPath))
+        : mProductVersion(productVersion),
+          deviceApi(std::move(deviceApi)),
+          clockPath(std::move(clockPath)),
+          shaderCoreAvailabilityMask(this->deviceApi->getShaderCoreAvailabilityMask()),
+          shaderCoreMaxCount(this->deviceApi->getMaxShaderCoreBlockIndex())
     {
     }
 
     uint32_t MaliDevice::getGpuId() const { return mProductVersion.mGpuIdValue; }
 
-    uint32_t MaliDevice::getShaderBlockCount() const { return std::max(1U, deviceApi->getNumberOfShaderCores()); }
+    uint32_t MaliDevice::getShaderBlockCount() const { return std::max(1U, shaderCoreMaxCount); }
 
     uint32_t MaliDevice::getL2MmuBlockCount() const { return std::max(1U, deviceApi->getNumberOfL2Slices()); }
 
@@ -492,28 +496,31 @@ namespace mali_userspace {
 
                 const uint32_t mask = buffer[maskBufferIndex];
 
-                if ((mask & (1 << counterAddress.groupIndex)) != 0U) {
-                    const uint32_t counterIndex =
-                        (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
-                    const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
+                if (((mask & (1 << counterAddress.groupIndex)) == 0U) ||
+                    (isShaderCore && !(shaderCoreAvailabilityMask & (1ull << blockIndex)))) {
+                    continue;
+                }
 
-                    if (bufferIndex >= bufferLength) {
-                        continue;
+                const uint32_t counterIndex =
+                    (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
+                const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
+
+                if (bufferIndex >= bufferLength) {
+                    continue;
+                }
+
+                const uint32_t delta = buffer[bufferIndex];
+
+                if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
+                    if (isShaderCore) {
+                        shaderCoreCounters[counterIndex] += delta;
                     }
-
-                    const uint32_t delta = buffer[bufferIndex];
-
-                    if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
-                        if (isShaderCore) {
-                            shaderCoreCounters[counterIndex] += delta;
-                        }
-                        else {
-                            callback.nextCounterValue(nameBlockIndex,
-                                                      counterIndex,
-                                                      delta,
-                                                      mProductVersion.mGpuIdValue,
-                                                      bufferData);
-                        }
+                    else {
+                        callback.nextCounterValue(nameBlockIndex,
+                                                  counterIndex,
+                                                  delta,
+                                                  mProductVersion.mGpuIdValue,
+                                                  bufferData);
                     }
                 }
             }
@@ -565,31 +572,34 @@ namespace mali_userspace {
 
                 const uint32_t mask = buffer[maskBufferIndex];
 
-                if ((mask & (1 << counterAddress.groupIndex)) != 0U) {
-                    const uint32_t counterIndex =
-                        (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
-                    const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
+                if (((mask & (1 << counterAddress.groupIndex)) == 0U) ||
+                    (isShaderCore && !(shaderCoreAvailabilityMask & (1ull << blockIndex)))) {
+                    continue;
+                }
 
-                    if (bufferIndex >= bufferLength) {
-                        continue;
+                const uint32_t counterIndex =
+                    (counterAddress.groupIndex * NUM_COUNTERS_PER_ENABLE_GROUP) + counterAddress.wordIndex;
+                const size_t bufferIndex = (blockNumber * NUM_COUNTERS_PER_BLOCK) + counterIndex;
+
+                if (bufferIndex >= bufferLength) {
+                    continue;
+                }
+
+                const uint32_t delta = buffer[bufferIndex];
+
+                if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
+                    if (isShaderCore) {
+                        shaderCoreCounters[counterIndex] += delta;
                     }
-
-                    const uint32_t delta = buffer[bufferIndex];
-
-                    if (counterIndex != BLOCK_ENABLE_BITS_COUNTER_INDEX) {
-                        if (isShaderCore) {
-                            shaderCoreCounters[counterIndex] += delta;
-                        }
-                        else if (isMMUL2) {
-                            mmuL2Counters[counterIndex] += delta;
-                        }
-                        else {
-                            callback.nextCounterValue(nameBlockIndex,
-                                                      counterIndex,
-                                                      delta,
-                                                      mProductVersion.mGpuIdValue,
-                                                      bufferData);
-                        }
+                    else if (isMMUL2) {
+                        mmuL2Counters[counterIndex] += delta;
+                    }
+                    else {
+                        callback.nextCounterValue(nameBlockIndex,
+                                                  counterIndex,
+                                                  delta,
+                                                  mProductVersion.mGpuIdValue,
+                                                  bufferData);
                     }
                 }
             }

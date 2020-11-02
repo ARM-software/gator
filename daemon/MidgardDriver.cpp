@@ -58,9 +58,6 @@ struct CounterData {
             int mIndex;
         };
         struct {
-            // WINDUMP
-        };
-        struct {
             // ACTIVITY
             int mCores;
         };

@@ -42,8 +42,7 @@ namespace {
         return fd;
     }
 
-    bool readAndSend(const uint64_t currTime,
-                     IPerfAttrsConsumer & attrsConsumer,
+    bool readAndSend(IPerfAttrsConsumer & attrsConsumer,
                      const struct perf_event_attr & attr,
                      const int fd,
                      const int keyCount,
@@ -63,7 +62,7 @@ namespace {
                 continue;
             }
 
-            attrsConsumer.marshalKeysOld(currTime, keyCount, keys, bytes, buf);
+            attrsConsumer.marshalKeysOld(keyCount, keys, bytes, buf);
             return true;
         }
 
@@ -126,7 +125,6 @@ bool PerfEventGroup::hasLeader() const
 }
 
 bool PerfEventGroup::addEvent(const bool leader,
-                              const uint64_t timestamp,
                               IPerfAttrsConsumer & attrsConsumer,
                               const int key,
                               const IPerfGroups::Attr & attr,
@@ -201,19 +199,19 @@ bool PerfEventGroup::addEvent(const bool leader,
     event.attr.aux_watermark = hasAuxData ? sharedConfig.auxBufferLength / 2 : 0;
     event.key = key;
 
-    attrsConsumer.marshalPea(timestamp, &event.attr, key);
+    attrsConsumer.marshalPea(&event.attr, key);
 
     return true;
 }
 
-bool PerfEventGroup::createGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer)
+bool PerfEventGroup::createGroupLeader(IPerfAttrsConsumer & attrsConsumer)
 {
     switch (groupIdentifier.getType()) {
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU:
-            return createCpuGroupLeader(timestamp, attrsConsumer);
+            return createCpuGroupLeader(attrsConsumer);
 
         case PerfEventGroupIdentifier::Type::UNCORE_PMU:
-            return createUncoreGroupLeader(timestamp, attrsConsumer);
+            return createUncoreGroupLeader(attrsConsumer);
 
         case PerfEventGroupIdentifier::Type::SPECIFIC_CPU:
         case PerfEventGroupIdentifier::Type::GLOBAL:
@@ -224,7 +222,7 @@ bool PerfEventGroup::createGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & 
     }
 }
 
-bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer)
+bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
 {
     const bool enableCallChain = (sharedConfig.backtraceDepth > 0);
 
@@ -289,7 +287,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
     }
 
     // Group leader
-    if (!addEvent(true, timestamp, attrsConsumer, sharedConfig.schedSwitchKey, attr, false)) {
+    if (!addEvent(true, attrsConsumer, sharedConfig.schedSwitchKey, attr, false)) {
         return false;
     }
 
@@ -302,7 +300,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
         pcAttr.sampleType =
             PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
         pcAttr.periodOrFreq = NANO_SECONDS_IN_ONE_SECOND / sharedConfig.sampleRate;
-        if (!addEvent(false, timestamp, attrsConsumer, nextDummyKey(), pcAttr, false)) {
+        if (!addEvent(false, attrsConsumer, nextDummyKey(), pcAttr, false)) {
             return false;
         }
     }
@@ -315,7 +313,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
         taskClockAttr.config = PERF_COUNT_SW_TASK_CLOCK;
         taskClockAttr.periodOrFreq = 100000UL; // equivalent to 100us
         taskClockAttr.sampleType = PERF_SAMPLE_TID;
-        if (!addEvent(false, timestamp, attrsConsumer, nextDummyKey(), taskClockAttr, false)) {
+        if (!addEvent(false, attrsConsumer, nextDummyKey(), taskClockAttr, false)) {
             return false;
         }
     }
@@ -323,7 +321,7 @@ bool PerfEventGroup::createCpuGroupLeader(const uint64_t timestamp, IPerfAttrsCo
     return true;
 }
 
-bool PerfEventGroup::createUncoreGroupLeader(const uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer)
+bool PerfEventGroup::createUncoreGroupLeader(IPerfAttrsConsumer & attrsConsumer)
 {
     IPerfGroups::Attr attr {};
     attr.type = PERF_TYPE_SOFTWARE;
@@ -333,7 +331,7 @@ bool PerfEventGroup::createUncoreGroupLeader(const uint64_t timestamp, IPerfAttr
     attr.periodOrFreq =
         (sharedConfig.sampleRate > 0 ? NANO_SECONDS_IN_ONE_SECOND / sharedConfig.sampleRate : NANO_SECONDS_IN_100_MS);
 
-    return addEvent(true, timestamp, attrsConsumer, nextDummyKey(), attr, false);
+    return addEvent(true, attrsConsumer, nextDummyKey(), attr, false);
 }
 
 static const char * selectTypeLabel(const char * groupLabel, std::uint32_t type)
@@ -356,8 +354,7 @@ static const char * selectTypeLabel(const char * groupLabel, std::uint32_t type)
     }
 }
 
-std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestamp,
-                                                               int cpu,
+std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                                                                std::set<int> & tids,
                                                                OnlineEnabledState enabledState,
                                                                IPerfAttrsConsumer & attrsConsumer,
@@ -637,7 +634,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestam
             logg.logMessage("no events came online");
         }
 
-        attrsConsumer.marshalKeys(timestamp, ids.size(), ids.data(), coreKeys.data());
+        attrsConsumer.marshalKeys(ids.size(), ids.data(), coreKeys.data());
     }
     else {
         std::vector<int> keysInGroup;
@@ -651,7 +648,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestam
             if (event.attr.pinned && !isLeader) {
                 for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
                     const auto & fd = tidToFdPair.second;
-                    if (!readAndSend(timestamp, attrsConsumer, event.attr, *fd, 1, &event.key)) {
+                    if (!readAndSend(attrsConsumer, event.attr, *fd, 1, &event.key)) {
                         return std::make_pair(OnlineResult::OTHER_FAILURE, "read failed");
                     }
                 }
@@ -669,7 +666,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(uint64_t timestam
             const auto & tidToFdMap = eventIndexToTidToFdMap.at(0);
             for (const auto & tidToFdPair : tidToFdMap) {
                 const auto & fd = tidToFdPair.second;
-                if (!readAndSend(timestamp, attrsConsumer, event.attr, *fd, keysInGroup.size(), keysInGroup.data())) {
+                if (!readAndSend(attrsConsumer, event.attr, *fd, keysInGroup.size(), keysInGroup.data())) {
                     return std::make_pair(OnlineResult::OTHER_FAILURE, "read failed");
                 }
             }

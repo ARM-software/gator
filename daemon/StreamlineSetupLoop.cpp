@@ -1,0 +1,132 @@
+/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+
+#include "StreamlineSetupLoop.h"
+
+#include "Logging.h"
+
+#include <vector>
+
+namespace {
+    // Commands from Streamline
+    enum {
+        COMMAND_ERROR = -1,
+        COMMAND_REQUEST_XML = 0,
+        COMMAND_DELIVER_XML = 1,
+        COMMAND_APC_START = 2,
+        COMMAND_APC_STOP = 3,
+        COMMAND_DISCONNECT = 4,
+        COMMAND_PING = 5
+    };
+
+    struct ReadResult {
+        int commandType;
+        std::vector<char> data;
+    };
+
+    ReadResult readCommand(OlySocket & socket, const std::function<void(bool)> & receivedOneByteCallback)
+    {
+        ReadResult result {COMMAND_ERROR, {}};
+
+        unsigned char header[5];
+        int response;
+
+        // receive type and length
+        response = socket.receiveNBytes(reinterpret_cast<char *>(&header), sizeof(header));
+
+        // After receiving a single byte, we are no longer waiting on a command
+        receivedOneByteCallback(true);
+
+        if (response < 0) {
+            logg.logError("Target error: Unexpected socket disconnect");
+            return result;
+        }
+
+        const char type = header[0];
+        const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
+
+        // add artificial limit
+        if ((length < 0) || length > 1024 * 1024) {
+            logg.logError("Target error: Invalid length received, %d", length);
+            return result;
+        }
+
+        // alocate data for receive
+        result.data.resize(length + 1, 0);
+
+        // receive data
+        response = socket.receiveNBytes(result.data.data(), length);
+        if (response < 0) {
+            logg.logError("Target error: Unexpected socket disconnect");
+            return result;
+        }
+
+        // null terminate the data for string parsing
+        if (length > 0) {
+            result.data[length] = 0;
+        }
+
+        // set type to non-error value
+        result.commandType = type;
+
+        return result;
+    }
+}
+
+IStreamlineCommandHandler::State streamlineSetupCommandLoop(OlySocket & socket,
+                                                            IStreamlineCommandHandler & handler,
+                                                            const std::function<void(bool)> & receivedOneByteCallback)
+{
+    // Receive commands from Streamline (master)
+    IStreamlineCommandHandler::State currentState = IStreamlineCommandHandler::State::PROCESS_COMMANDS;
+    while (currentState == IStreamlineCommandHandler::State::PROCESS_COMMANDS) {
+        currentState = streamlineSetupCommandIteration(socket, handler, receivedOneByteCallback);
+    }
+    return currentState;
+}
+
+IStreamlineCommandHandler::State streamlineSetupCommandIteration(
+    OlySocket & socket,
+    IStreamlineCommandHandler & handler,
+    const std::function<void(bool)> & receivedOneByteCallback)
+{
+    // waiting for some byte
+    receivedOneByteCallback(false);
+
+    // receive command over socket
+    auto readResult = readCommand(socket, receivedOneByteCallback);
+
+    // parse and handle data
+    switch (readResult.commandType) {
+        case COMMAND_ERROR:
+            return IStreamlineCommandHandler::State::EXIT_ERROR;
+        case COMMAND_REQUEST_XML:
+            return handler.handleRequest(readResult.data.data());
+        case COMMAND_DELIVER_XML:
+            return handler.handleDeliver(readResult.data.data());
+        case COMMAND_APC_START:
+            if (!readResult.data.empty()) {
+                logg.logMessage("INVESTIGATE: Received APC_START command but with length = %zu",
+                                readResult.data.size());
+            }
+            return handler.handleApcStart();
+        case COMMAND_APC_STOP:
+            if (!readResult.data.empty()) {
+                logg.logMessage("INVESTIGATE: Received APC_STOP command but with length = %zu", readResult.data.size());
+            }
+            return handler.handleApcStop();
+        case COMMAND_DISCONNECT:
+            if (!readResult.data.empty()) {
+                logg.logMessage("INVESTIGATE: Received DISCONNECT command but with length = %zu",
+                                readResult.data.size());
+            }
+            return handler.handleDisconnect();
+        case COMMAND_PING:
+            if (!readResult.data.empty()) {
+                logg.logMessage("INVESTIGATE: Received PING command but with length = %zu", readResult.data.size());
+            }
+            return handler.handlePing();
+        default:
+            logg.logError("Target error: Unknown command type, %d", readResult.commandType);
+            return IStreamlineCommandHandler::State::EXIT_ERROR;
+    }
+}

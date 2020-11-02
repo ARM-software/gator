@@ -3,6 +3,8 @@
 #ifndef INCLUDE_LIB_FILE_DESCRIPTOR_H
 #define INCLUDE_LIB_FILE_DESCRIPTOR_H
 
+#include <cstddef>
+
 namespace lib {
     int pipe_cloexec(int pipefd[2]);
     bool setNonblock(int fd);

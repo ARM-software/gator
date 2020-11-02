@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "../lib/Optional.h"
-#include "CaptureMode.h"
-#include "ICounterDirectoryConsumer.h"
+#include "armnn/CaptureMode.h"
+#include "armnn/ICounterDirectoryConsumer.h"
+#include "lib/Optional.h"
 
 #include <memory>
 #include <string>
@@ -20,13 +20,13 @@ namespace armnn {
         std::string name;
     };
 
-    static inline bool operator==(const EventId & lhs, const EventId & rhs)
+    inline bool operator==(const EventId & lhs, const EventId & rhs)
     {
         return std::tie(lhs.category, lhs.device, lhs.counterSet, lhs.name) ==
                std::tie(rhs.category, rhs.device, rhs.counterSet, rhs.name);
     }
 
-    static inline bool operator<(const EventId & lhs, const EventId & rhs)
+    inline bool operator<(const EventId & lhs, const EventId & rhs)
     {
         if (lhs.category < rhs.category) {
             return true;
@@ -61,7 +61,7 @@ namespace armnn {
         std::string units;
     };
 
-    static inline bool operator==(const EventProperties & lhs, const EventProperties & rhs)
+    inline bool operator==(const EventProperties & lhs, const EventProperties & rhs)
     {
         return std::tie(lhs.counterSetCount,
                         lhs.clazz,

@@ -14,7 +14,7 @@ class Child;
 class Driver;
 class PolledDriver;
 class FtraceDriver;
-class Source;
+class PrimarySource;
 struct PmuXML;
 class ICpuInfo;
 
@@ -43,9 +43,6 @@ public:
     /** Return the backtrace_processing mode for captured.xml attribute */
     virtual const char * getBacktraceProcessingMode() const = 0;
 
-    /** Return the monotonic timestamp the source started */
-    virtual std::int64_t getMonotonicStarted() const = 0;
-
     /** Return true if the primary source is responsible for capturing tracepoints */
     virtual bool supportsTracepointCapture() const = 0;
 
@@ -65,12 +62,11 @@ public:
     virtual Driver & getPrimaryDriver() = 0;
 
     /** Create the primary Source instance */
-    virtual std::unique_ptr<Source> createPrimarySource(Child & child,
-                                                        sem_t & senderSem,
-                                                        std::function<void()> profilingStartedCallback,
-                                                        const std::set<int> & appTids,
-                                                        FtraceDriver & ftraceDriver,
-                                                        bool enableOnCommandExec) = 0;
+    virtual std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
+                                                               std::function<void()> profilingStartedCallback,
+                                                               const std::set<int> & appTids,
+                                                               FtraceDriver & ftraceDriver,
+                                                               bool enableOnCommandExec) = 0;
 
     virtual const ICpuInfo & getCpuInfo() const = 0;
     virtual ICpuInfo & getCpuInfo() = 0;

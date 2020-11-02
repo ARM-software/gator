@@ -11,35 +11,22 @@
 #include <cstring>
 
 #define mask (mSize - 1)
-#define FRAME_HEADER_SIZE 3
-#define INVALID_LAST_EVENT_TIME (~0ull)
+#define FRAME_HEADER_SIZE 1 // single byte of FrameType
 
 // Fraction of size that should be kept free
 // if less than that is free we should send
 constexpr int FRACTION_TO_KEEP_FREE = 4;
 
-Buffer::Buffer(const int32_t core,
-               const FrameType frameType,
-               const int size,
-               sem_t & readerSem,
-               uint64_t commitRate,
-               bool includeResponseType)
+Buffer::Buffer(const int size, sem_t & readerSem, bool includeResponseType)
     : mBuf(new char[size]),
       mReaderSem(readerSem),
-      mCommitRate(commitRate),
-      mCommitTime(commitRate),
       mWriterSem(),
       mSize(size),
       mReadPos(0),
       mWritePos(0),
       mCommitPos(0),
       mIsDone(false),
-      mIncludeResponseType(includeResponseType),
-      mCore(core),
-      mFrameType(frameType),
-      mLastEventTime(INVALID_LAST_EVENT_TIME),
-      mLastEventCore(core),
-      mLastEventTid(0)
+      mIncludeResponseType(includeResponseType)
 {
     if ((mSize & mask) != 0) {
         delete[] mBuf;
@@ -50,10 +37,6 @@ Buffer::Buffer(const int32_t core,
     runtime_assert(mSize > 8192, "Buffer::mSize is too small");
 
     sem_init(&mWriterSem, 0, 0);
-
-    if (mFrameType != FrameType::UNKNOWN) {
-        frame();
-    }
 }
 
 Buffer::~Buffer()
@@ -62,15 +45,17 @@ Buffer::~Buffer()
     sem_destroy(&mWriterSem);
 }
 
-void Buffer::write(ISender & sender)
+bool Buffer::write(ISender & sender)
 {
+    bool isDone = mIsDone.load(std::memory_order_acquire);
     // acquire the data written to the buffer
     const int commitPos = mCommitPos.load(std::memory_order_acquire);
     // only we, the consumer, write this so relaxed load is fine
     const int readPos = mReadPos.load(std::memory_order_relaxed);
 
     if (commitPos == readPos) {
-        return; // nothing to do
+        // nothing to do
+        return isDone;
     }
 
     // determine the size of two halves
@@ -95,6 +80,8 @@ void Buffer::write(ISender & sender)
 
     // send a notification that space is available
     sem_post(&mWriterSem);
+
+    return isDone;
 }
 
 int Buffer::bytesAvailable() const
@@ -116,26 +103,16 @@ int Buffer::bytesAvailable() const
     return remaining;
 }
 
-void Buffer::waitForSpace(int bytes, uint64_t time)
+void Buffer::waitForSpace(int bytes)
 {
-    while (!checkSpace(bytes)) {
-        // do all this in the slow path where we have to wait
-        if (bytes > mSize) {
-            logg.logError("Buffer not big enough, %d but need %d", mSize, bytes);
-            handleException();
-        }
-        if (bytes >= mSize / FRACTION_TO_KEEP_FREE) {
-            // this means the sender will have not been notified
-            // so we must do it ourselves
-            commit(time);
-        }
+    if (bytes > mSize) {
+        logg.logError("Buffer not big enough, %d but need %d", mSize, bytes);
+        handleException();
+    }
+
+    while (bytesAvailable() < bytes) {
         sem_wait(&mWriterSem);
     }
-}
-
-bool Buffer::checkSpace(const int bytes) const
-{
-    return bytesAvailable() >= bytes;
 }
 
 int Buffer::contiguousSpaceAvailable() const
@@ -150,59 +127,22 @@ int Buffer::contiguousSpaceAvailable() const
     }
 }
 
-bool Buffer::commit(const uint64_t time, const bool force)
+void Buffer::flush()
 {
-    // post-populate the length, which does not include the response type length nor the length itself, i.e. only the length of the payload
-    const int typeLength = mIncludeResponseType ? 1 : 0;
-    // only we, the producer, write to mCommitPos so only relaxed load needed
-    const int commitPos = mCommitPos.load(std::memory_order_relaxed);
-    int length = mWritePos - commitPos;
-    if (length < 0) {
-        length += mSize;
+    if (mCommitPos.load(std::memory_order_relaxed) != mReadPos.load(std::memory_order_acquire)) {
+        // send a notification that data is ready
+        sem_post(&mReaderSem);
     }
-    length = length - typeLength - sizeof(int32_t);
-    if (!force && !mIsDone && length <= FRAME_HEADER_SIZE) {
-        // Nothing to write, only the frame header is present
-        return false;
-    }
-    for (size_t byte = 0; byte < sizeof(int32_t); byte++) {
-        mBuf[(commitPos + typeLength + byte) & mask] = (length >> byte * 8) & 0xFF;
-    }
-
-    logg.logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i",
-                    mReadPos.load(std::memory_order_relaxed),
-                    mWritePos,
-                    commitPos);
-    // release the commited data for the consumer to acquire
-    mCommitPos.store(mWritePos, std::memory_order_release);
-
-    if (mCommitRate > 0) {
-        while (time > mCommitTime) {
-            mCommitTime += mCommitRate;
-        }
-    }
-
-    if ((!mIsDone) && (mFrameType != FrameType::UNKNOWN)) {
-        frame();
-    }
-
-    // send a notification that data is ready
-    sem_post(&mReaderSem);
-    return true;
 }
 
-bool Buffer::check(const uint64_t time)
+bool Buffer::needsFlush()
 {
     // only we, the producer, write to mCommitPos so only relaxed load needed
     int filled = mWritePos - mCommitPos.load(std::memory_order_relaxed);
     if (filled < 0) {
         filled += mSize;
     }
-    if (filled >= ((mSize * (FRACTION_TO_KEEP_FREE - 1)) / FRACTION_TO_KEEP_FREE) ||
-        (mCommitRate > 0 && time >= mCommitTime)) {
-        return commit(time);
-    }
-    return false;
+    return filled >= ((mSize * (FRACTION_TO_KEEP_FREE - 1)) / FRACTION_TO_KEEP_FREE);
 }
 
 int Buffer::packInt(int32_t x)
@@ -215,9 +155,9 @@ int Buffer::packInt64(int64_t x)
     return buffer_utils::packInt64(mBuf, mWritePos, x, mSize - 1);
 }
 
-void Buffer::writeBytes(const void * const data, size_t count)
+void Buffer::writeBytes(const void * const data, std::size_t count)
 {
-    size_t i = 0;
+    std::size_t i = 0;
 
     for (; i < count; ++i) {
         mBuf[(mWritePos + i) & mask] = static_cast<const char *>(data)[i];
@@ -233,172 +173,56 @@ void Buffer::writeString(const char * const str)
     writeBytes(str, len);
 }
 
-void Buffer::frame()
+void Buffer::beginFrame(FrameType frameType)
 {
-    runtime_assert(mFrameType != FrameType::UNKNOWN, "mFrameType == FrameType::UNKNOWN");
+    if (mIncludeResponseType) {
+        packInt(static_cast<int32_t>(ResponseType::APC_DATA));
+    }
 
-    beginFrameOrMessage(mFrameType, mCore, true);
+    // Reserve space for the length
+    mWritePos = (mWritePos + sizeof(int32_t)) & mask;
+
+    packInt(static_cast<int32_t>(frameType));
 }
 
-int Buffer::beginFrameOrMessage(FrameType frameType, int32_t core)
+void Buffer::abortFrame()
 {
-    runtime_assert((mFrameType == frameType) || (mFrameType == FrameType::UNKNOWN), "invalid frameType");
-    runtime_assert((mCore == core) || (mFrameType == FrameType::UNKNOWN), "invalid core");
-
-    return beginFrameOrMessage(frameType, core, false);
+    mWritePos = mCommitPos;
 }
 
-bool Buffer::frameTypeSendsCpu(FrameType frameType)
+void Buffer::endFrame()
 {
-    return ((frameType == FrameType::BLOCK_COUNTER) || (frameType == FrameType::PERF_ATTRS) ||
-            (frameType == FrameType::PERF_DATA) || (frameType == FrameType::PERF_SYNC) ||
-            (frameType == FrameType::NAME) || (frameType == FrameType::SCHED_TRACE));
-}
-
-int Buffer::beginFrameOrMessage(FrameType frameType, int32_t core, bool force)
-{
-    force |= (mFrameType == FrameType::UNKNOWN);
-
-    if (force) {
-        if (mIncludeResponseType) {
-            packInt(static_cast<int32_t>(ResponseType::APC_DATA));
-        }
-
-        const int result = mWritePos;
-
-        // Reserve space for the length
-        mWritePos += sizeof(int32_t);
-
-        packInt(static_cast<int32_t>(frameType));
-        if (frameTypeSendsCpu(frameType)) {
-            packInt(core);
-            mLastEventTime = INVALID_LAST_EVENT_TIME;
-            mLastEventCore = core;
-            mLastEventTid = 0;
-        }
-
-        return result;
+    // post-populate the length, which does not include the response type length nor the length itself, i.e. only the length of the payload
+    const int typeLength = mIncludeResponseType ? 1 : 0;
+    // only we, the producer, write to mCommitPos so only relaxed load needed
+    const int commitPos = mCommitPos.load(std::memory_order_relaxed);
+    int length = mWritePos - commitPos;
+    if (length < 0) {
+        length += mSize;
     }
-    else {
-        return mWritePos;
+    length = length - typeLength - sizeof(int32_t);
+    if (length <= FRAME_HEADER_SIZE) {
+        // Nothing to write, only the frame header is present
+        abortFrame();
+        return;
     }
-}
-
-void Buffer::endFrame(uint64_t currTime, bool abort, int writePos)
-{
-    if (abort) {
-        mWritePos = writePos;
-    }
-    else if (mFrameType == FrameType::UNKNOWN) {
-        commit(currTime);
-    }
-    else {
-        check(currTime);
-    }
-}
-
-bool Buffer::eventHeader(const uint64_t curr_time)
-{
-    if (checkSpace(buffer_utils::MAXSIZE_PACK32 + buffer_utils::MAXSIZE_PACK64)) {
-        // key of zero indicates a timestamp
-        packInt(0);
-        packInt64(curr_time);
-
-        mLastEventTime = curr_time;
-        mLastEventTid = 0; // this is also reset in CommonProtocolV22 when timestamp changes
-
-        return true;
+    for (size_t byte = 0; byte < sizeof(int32_t); byte++) {
+        mBuf[(commitPos + typeLength + byte) & mask] = (length >> byte * 8) & 0xFF;
     }
 
-    return false;
-}
-
-bool Buffer::eventCore(const int core)
-{
-    if (checkSpace(2 * buffer_utils::MAXSIZE_PACK32)) {
-        // key of 2 indicates a core
-        packInt(2);
-        packInt(core);
-
-        mLastEventCore = core;
-
-        return true;
-    }
-
-    return false;
-}
-
-bool Buffer::eventTid(const int tid)
-{
-    if (checkSpace(2 * buffer_utils::MAXSIZE_PACK32)) {
-        // key of 1 indicates a tid
-        packInt(1);
-        packInt(tid);
-
-        mLastEventTid = tid;
-
-        return true;
-    }
-
-    return false;
-}
-
-bool Buffer::event64(const int key, const int64_t value)
-{
-    if (checkSpace(buffer_utils::MAXSIZE_PACK64 + buffer_utils::MAXSIZE_PACK32)) {
-        packInt(key);
-        packInt64(value);
-
-        return true;
-    }
-
-    return false;
-}
-
-bool Buffer::threadCounterMessage(uint64_t curr_time, int core, int tid, int key, int64_t value)
-{
-    if ((mLastEventTime != curr_time) || (mLastEventTime == INVALID_LAST_EVENT_TIME)) {
-        if (!eventHeader(curr_time)) {
-            return false;
-        }
-    }
-
-    if (mLastEventCore != core) {
-        if (!eventCore(core)) {
-            return false;
-        }
-    }
-
-    if (mLastEventTid != tid) {
-        if (!eventTid(tid)) {
-            return false;
-        }
-    }
-
-    if (!event64(key, value)) {
-        return false;
-    }
-
-    check(curr_time);
-
-    return true;
+    logg.logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i",
+                    mReadPos.load(std::memory_order_relaxed),
+                    mWritePos,
+                    commitPos);
+    // release the commited data for the consumer to acquire
+    mCommitPos.store(mWritePos, std::memory_order_release);
 }
 
 void Buffer::setDone()
 {
-    mIsDone = true;
-    commit(0);
-}
-
-// This looks to be racey, see SDDAP-9064
-bool Buffer::isDone() const
-{
-    if (!mIsDone) {
-        return false;
-    }
-    const int commitPos = mCommitPos.load(std::memory_order_relaxed);
-    if (commitPos != mWritePos) {
-        return false;
-    }
-    return commitPos == mReadPos.load(std::memory_order_relaxed);
+    mIsDone.store(true, std::memory_order_release);
+    // notify sender we're done (EOF).
+    // need to do this even if no new data
+    // as sender waits for new data *and* EOF
+    sem_post(&mReaderSem);
 }

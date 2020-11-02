@@ -1,6 +1,6 @@
 /*  Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
-#include "PacketUtility.h"
+#include "armnn/PacketUtility.h"
 
 #include <cstdint>
 namespace armnn {

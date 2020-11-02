@@ -5,7 +5,7 @@
 
 // all values *must* be in range 0 ... 127 so as to fit in exactly one byte of packedInt
 enum class FrameType : char {
-    UNKNOWN = 0,
+    // UNKNOWN = 0, // not used anymore
     SUMMARY = 1,
     NAME = 3,
     COUNTER = 4,
@@ -18,6 +18,8 @@ enum class FrameType : char {
     ACTIVITY_TRACE = 13,
     PERF_AUX = 14,
     PERF_SYNC = 15,
+    // METADATA = 16,
+    // ARMNN = 17, not released
 };
 
 // PERF_ATTR messages

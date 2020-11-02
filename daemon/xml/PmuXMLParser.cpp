@@ -290,7 +290,7 @@ PmuXML readPmuXml(const char * const path)
             logg.logError("Unable to open additional pmus XML %s", path);
             handleException();
         }
-        if (parseXml(xml.get(), pmuXml)) {
+        if (!parseXml(xml.get(), pmuXml)) {
             handleException();
         }
     }

@@ -1,8 +1,8 @@
 /* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 #pragma once
 
-#include "../Events.h"
-#include "IGlobalState.h"
+#include "Events.h"
+#include "armnn/IGlobalState.h"
 #include "lib/SharedMemory.h"
 #include "lib/StaticVector.h"
 

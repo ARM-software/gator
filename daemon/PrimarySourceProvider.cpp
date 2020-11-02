@@ -150,8 +150,6 @@ namespace {
 
         virtual const char * getBacktraceProcessingMode() const override { return "perf"; }
 
-        virtual std::int64_t getMonotonicStarted() const override { return gSessionData.mMonotonicStarted; }
-
         virtual bool supportsTracepointCapture() const override { return true; }
 
         virtual bool supportsMultiEbs() const override { return true; }
@@ -171,21 +169,23 @@ namespace {
 
         virtual ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
-        virtual std::unique_ptr<Source> createPrimarySource(Child & child,
-                                                            sem_t & senderSem,
-                                                            std::function<void()> profilingStartedCallback,
-                                                            const std::set<int> & appTids,
-                                                            FtraceDriver & ftraceDriver,
-                                                            bool enableOnCommandExec) override
+        virtual std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
+                                                                   std::function<void()> profilingStartedCallback,
+                                                                   const std::set<int> & appTids,
+                                                                   FtraceDriver & ftraceDriver,
+                                                                   bool enableOnCommandExec) override
         {
-            return std::unique_ptr<Source>(new PerfSource(driver,
-                                                          child,
-                                                          senderSem,
-                                                          profilingStartedCallback,
-                                                          appTids,
-                                                          ftraceDriver,
-                                                          enableOnCommandExec,
-                                                          cpuInfo));
+            auto source = std::unique_ptr<PerfSource>(new PerfSource(driver,
+                                                                     senderSem,
+                                                                     profilingStartedCallback,
+                                                                     appTids,
+                                                                     ftraceDriver,
+                                                                     enableOnCommandExec,
+                                                                     cpuInfo));
+            if (!source->prepare()) {
+                return {};
+            }
+            return source;
         }
 
     private:
@@ -265,11 +265,6 @@ namespace {
 
         virtual const char * getBacktraceProcessingMode() const override { return "none"; }
 
-        /**
-         * @returns the monotonic clock time at which this capture was started, or -1 if not started yet
-         **/
-        virtual std::int64_t getMonotonicStarted() const override { return gSessionData.mMonotonicStarted; }
-
         virtual bool supportsTracepointCapture() const override { return true; }
 
         virtual bool supportsMultiEbs() const override { return false; }
@@ -287,15 +282,14 @@ namespace {
 
         virtual ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
-        virtual std::unique_ptr<Source> createPrimarySource(Child & child,
-                                                            sem_t & senderSem,
-                                                            std::function<void()> profilingStartedCallback,
-                                                            const std::set<int> & /*appTids*/,
-                                                            FtraceDriver & /*ftraceDriver*/,
-                                                            bool /*enableOnCommandExec*/) override
+        virtual std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
+                                                                   std::function<void()> profilingStartedCallback,
+                                                                   const std::set<int> & /*appTids*/,
+                                                                   FtraceDriver & /*ftraceDriver*/,
+                                                                   bool /*enableOnCommandExec*/) override
         {
-            return std::unique_ptr<Source>(
-                new non_root::NonRootSource(driver, child, senderSem, profilingStartedCallback, cpuInfo));
+            return std::unique_ptr<PrimarySource>(
+                new non_root::NonRootSource(driver, senderSem, profilingStartedCallback, cpuInfo));
         }
 
     private:

@@ -4,9 +4,8 @@ The source code for `gatord`, `gator.py` and related tools.
 
 ## License
 
-* `daemon`, `python`, `notify` and `setup` are
-   provided under GPL-2.0-only. See [daemon/COPYING], [python/COPYING],
-   [notify/COPYING] and [setup/COPYING] respectively.
+* `daemon`, `python`, and `notify` are provided under GPL-2.0-only. See
+   [daemon/COPYING], [python/COPYING], and [notify/COPYING] respectively.
 * `annotate` is provided under the BSD-3-Clause license. See [annotate/LICENSE].
 
 This project contains code from other projects listed below. The original license
@@ -301,4 +300,3 @@ kernel image or adding the driver as an image to Streamline.
 [musl]: http://www.musl-libc.org/download.html
 [notify/COPYING]: notify/COPYING
 [python/COPYING]: python/COPYING
-[setup/COPYING]: setup/COPYING

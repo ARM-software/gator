@@ -75,15 +75,13 @@ public:
     bool requiresLeader() const;
     bool hasLeader() const;
     bool addEvent(bool leader,
-                  uint64_t timestamp,
                   IPerfAttrsConsumer & attrsConsumer,
                   int key,
                   const IPerfGroups::Attr & attr,
                   bool hasAuxData);
-    bool createGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
+    bool createGroupLeader(IPerfAttrsConsumer & attrsConsumer);
 
-    std::pair<OnlineResult, std::string> onlineCPU(uint64_t timestamp,
-                                                   int cpu,
+    std::pair<OnlineResult, std::string> onlineCPU(int cpu,
                                                    std::set<int> & tids,
                                                    OnlineEnabledState enabledState,
                                                    IPerfAttrsConsumer & attrsConsumer,
@@ -105,8 +103,8 @@ private:
     PerfEventGroup(PerfEventGroup &&) = delete;
     PerfEventGroup & operator=(PerfEventGroup &&) = delete;
 
-    bool createCpuGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
-    bool createUncoreGroupLeader(uint64_t timestamp, IPerfAttrsConsumer & attrsConsumer);
+    bool createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer);
+    bool createUncoreGroupLeader(IPerfAttrsConsumer & attrsConsumer);
 
     bool enable(const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap);
     bool checkEnabled(const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap);

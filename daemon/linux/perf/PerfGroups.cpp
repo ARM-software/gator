@@ -83,8 +83,7 @@ PerfGroups::PerfGroups(const PerfConfig & perfConfig,
 {
 }
 
-PerfEventGroup & PerfGroups::getGroup(const uint64_t timestamp,
-                                      IPerfAttrsConsumer & attrsConsumer,
+PerfEventGroup & PerfGroups::getGroup(IPerfAttrsConsumer & attrsConsumer,
                                       const PerfEventGroupIdentifier & groupIdentifier)
 {
     // find the actual group object
@@ -96,7 +95,7 @@ PerfEventGroup & PerfGroups::getGroup(const uint64_t timestamp,
     // Does a group exist for this already?
     if (eventGroup.requiresLeader() && !eventGroup.hasLeader()) {
         logg.logMessage("    Adding group leader");
-        if (!eventGroup.createGroupLeader(timestamp, attrsConsumer)) {
+        if (!eventGroup.createGroupLeader(attrsConsumer)) {
             logg.logMessage("    Group leader not created");
         }
         else {
@@ -106,19 +105,17 @@ PerfEventGroup & PerfGroups::getGroup(const uint64_t timestamp,
     return eventGroup;
 }
 
-bool PerfGroups::add(const uint64_t timestamp,
-                     IPerfAttrsConsumer & attrsConsumer,
+bool PerfGroups::add(IPerfAttrsConsumer & attrsConsumer,
                      const PerfEventGroupIdentifier & groupIdentifier,
                      const int key,
                      const IPerfGroups::Attr & attr,
                      bool hasAuxData)
 {
 
-    PerfEventGroup & eventGroup = getGroup(timestamp, attrsConsumer, groupIdentifier);
-    logg.logMessage("Adding event: timestamp=%" PRIu64 ", group='%s', key=%i, type=%" PRIu32 ", config=%" PRIu64
-                    ", config1=%" PRIu64 ", config2=%" PRIu64 ", period=%" PRIu64 ", sampleType=0x%" PRIx64
+    PerfEventGroup & eventGroup = getGroup(attrsConsumer, groupIdentifier);
+    logg.logMessage("Adding event: group='%s', key=%i, type=%" PRIu32 ", config=%" PRIu64 ", config1=%" PRIu64
+                    ", config2=%" PRIu64 ", period=%" PRIu64 ", sampleType=0x%" PRIx64
                     ", mmap=%d, comm=%d, freq=%d, task=%d, context_switch=%d, hasAuxData=%d",
-                    timestamp,
                     std::string(groupIdentifier).c_str(),
                     key,
                     attr.type,
@@ -156,11 +153,10 @@ bool PerfGroups::add(const uint64_t timestamp,
 
     logg.logMessage("    Adding event");
 
-    return eventGroup.addEvent(false, timestamp, attrsConsumer, key, newAttr, hasAuxData);
+    return eventGroup.addEvent(false, attrsConsumer, key, newAttr, hasAuxData);
 }
 
-std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(uint64_t timestamp,
-                                                           int cpu,
+std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(int cpu,
                                                            const std::set<int> & appPids,
                                                            OnlineEnabledState enabledState,
                                                            IPerfAttrsConsumer & attrsConsumer,
@@ -202,8 +198,7 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(uint64_t timestamp,
     }
 
     for (auto & pair : perfEventGroupMap) {
-        const auto result =
-            pair.second->onlineCPU(timestamp, cpu, tids, enabledState, attrsConsumer, addToMonitor, addToBuffer);
+        const auto result = pair.second->onlineCPU(cpu, tids, enabledState, attrsConsumer, addToMonitor, addToBuffer);
         if (result.first != OnlineResult::SUCCESS) {
             return result;
         }

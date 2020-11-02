@@ -22,12 +22,12 @@ struct SpeConfiguration {
     int min_latency = 0;
 };
 
-static inline bool operator==(const SpeConfiguration & lhs, const SpeConfiguration & rhs)
+inline bool operator==(const SpeConfiguration & lhs, const SpeConfiguration & rhs)
 {
     return lhs.id == rhs.id;
 }
 
-static inline bool operator<(const SpeConfiguration & lhs, const SpeConfiguration & rhs)
+inline bool operator<(const SpeConfiguration & lhs, const SpeConfiguration & rhs)
 {
     return lhs.id < rhs.id;
 }
@@ -51,12 +51,12 @@ struct CounterConfiguration {
     int cores = 0;
 };
 
-static inline bool operator==(const CounterConfiguration & lhs, const CounterConfiguration & rhs)
+inline bool operator==(const CounterConfiguration & lhs, const CounterConfiguration & rhs)
 {
     return lhs.counterName == rhs.counterName;
 }
 
-static inline bool operator<(const CounterConfiguration & lhs, const CounterConfiguration & rhs)
+inline bool operator<(const CounterConfiguration & lhs, const CounterConfiguration & rhs)
 {
     return lhs.counterName < rhs.counterName;
 }

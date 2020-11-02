@@ -9,7 +9,7 @@
 #include "armnn/Session.h"
 
 #include "Logging.h"
-#include "PacketDecoderEncoderFactory.h"
+#include "armnn/PacketDecoderEncoderFactory.h"
 #include "armnn/SenderThread.h"
 #include "armnn/SessionPacketSender.h"
 #include "armnn/SocketIO.h"
@@ -17,12 +17,15 @@
 #include <cinttypes>
 #include <cstring>
 
-static const uint32_t MAGIC = 0x45495434;
+static constexpr uint32_t MAGIC = 0x45495434;
+static constexpr std::size_t HEADER_SIZE = 8;
+static constexpr std::size_t MAGIC_SIZE = 4;
 
 namespace armnn {
     std::unique_ptr<Session> Session::create(std::unique_ptr<SocketIO> connection,
                                              IGlobalState & globalState,
-                                             ICounterConsumer & counterConsumer)
+                                             ICounterConsumer & counterConsumer,
+                                             const std::uint32_t sessionID)
     {
         logg.logMessage("Creating new ArmNN session");
 
@@ -32,8 +35,9 @@ namespace armnn {
         }
 
         // Decode the metadata packet and create the decoder
+        const auto packetBodyAfterMagic = lib::makeConstSpan(headerPacket.packet).subspan(HEADER_SIZE + MAGIC_SIZE);
         lib::Optional<StreamMetadataContent> streamMetadata =
-            getStreamMetadata(headerPacket.streamMetadataPacketBodyAfterMagic, headerPacket.byteOrder);
+            getStreamMetadata(packetBodyAfterMagic, headerPacket.byteOrder);
         if (!streamMetadata) {
             logg.logError("Unable to decode the session metadata. Dropping Session.");
             return nullptr;
@@ -55,8 +59,12 @@ namespace armnn {
         std::unique_ptr<ISessionPacketSender> sps {new SessionPacketSender {std::move(sender), std::move(encoder)}};
 
         // Create the SST and decoder.
-        std::unique_ptr<SessionStateTracker> sst {
-            new SessionStateTracker {globalState, counterConsumer, std::move(sps)}};
+        std::unique_ptr<SessionStateTracker> sst {new SessionStateTracker {globalState,
+                                                                           counterConsumer,
+                                                                           std::move(sps),
+                                                                           sessionID,
+                                                                           std::move(headerPacket.packet)}};
+
         std::unique_ptr<IPacketDecoder> decoder =
             armnn::createDecoder(streamMetadata.get().pktVersionTables, headerPacket.byteOrder, *sst);
         if (!decoder) {
@@ -71,21 +79,19 @@ namespace armnn {
     {
         // Read meta data and do first time set up.
         if (connection.isOpen()) {
-            std::uint8_t header[8];
-            std::uint8_t magic[4];
+            std::vector<std::uint8_t> packet(HEADER_SIZE + MAGIC_SIZE);
 
-            if (!connection.readExact(header)) {
+            if (!connection.readExact(packet)) {
                 // Can't read the header.
                 logg.logError("Unable to read the ArmNN metadata packet header");
                 return false;
             }
 
             // Get the byte order
-            connection.readExact(magic);
-            if (byte_order::get_32<std::uint8_t>(ByteOrder::BIG, magic, 0) == MAGIC) {
+            if (byte_order::get_32<std::uint8_t>(ByteOrder::BIG, packet, HEADER_SIZE) == MAGIC) {
                 headerPacket.byteOrder = ByteOrder::BIG;
             }
-            else if (byte_order::get_32<std::uint8_t>(ByteOrder::LITTLE, magic, 0) == MAGIC) {
+            else if (byte_order::get_32<std::uint8_t>(ByteOrder::LITTLE, packet, HEADER_SIZE) == MAGIC) {
                 headerPacket.byteOrder = ByteOrder::LITTLE;
             }
             else {
@@ -95,25 +101,29 @@ namespace armnn {
             }
 
             const std::uint32_t streamMetadataIdentifier =
-                byte_order::get_32<std::uint8_t>(headerPacket.byteOrder, header, 0);
+                byte_order::get_32<std::uint8_t>(headerPacket.byteOrder, packet, 0);
             if (streamMetadataIdentifier != 0) {
                 logg.logError("Invalid ArmNN stream_metadata_identifier (%" PRIu32 ")", streamMetadataIdentifier);
+                return false;
             }
 
-            const std::uint32_t length = byte_order::get_32<std::uint8_t>(headerPacket.byteOrder, header, 4);
-            if (length < sizeof(magic)) {
+            const std::uint32_t length = byte_order::get_32<std::uint8_t>(headerPacket.byteOrder, packet, 4);
+            if (length < MAGIC_SIZE) {
                 logg.logError("Invalid ArmNN metadata packet length (%" PRIu32 ")", length);
+                return false;
             }
 
-            std::uint32_t remainingLength = length - sizeof(magic);
-            std::vector<std::uint8_t> data(remainingLength);
-            if (!connection.readExact(data)) {
+            std::uint32_t remainingLength = length - MAGIC_SIZE;
+            std::vector<std::uint8_t> restOfPacketBody(remainingLength);
+            if (!connection.readExact(restOfPacketBody)) {
                 // Can't read the payload
                 logg.logError("Unable to read the ArmNN metadata packet payload");
                 return false;
             }
 
-            headerPacket.streamMetadataPacketBodyAfterMagic = data;
+            // Construct the body of the packet
+            packet.insert(packet.end(), restOfPacketBody.begin(), restOfPacketBody.end());
+            headerPacket.packet = std::move(packet);
 
             return true;
         }
@@ -154,18 +164,23 @@ namespace armnn {
 
     bool Session::receiveNextPacket()
     {
-        std::uint8_t header[8];
-        if (!mConnection->readExact(header)) {
+        std::vector<std::uint8_t> packet(HEADER_SIZE);
+        if (!mConnection->readExact(packet)) {
             return false;
         }
-        const std::uint32_t type = byte_order::get_32<std::uint8_t>(mEndianness, header, 0);
-        const std::uint32_t length = byte_order::get_32<std::uint8_t>(mEndianness, header, 4);
-        std::vector<std::uint8_t> data(length);
+        const std::uint32_t type = byte_order::get_32<std::uint8_t>(mEndianness, packet, 0);
+        const std::uint32_t length = byte_order::get_32<std::uint8_t>(mEndianness, packet, 4);
+        packet.resize(HEADER_SIZE + length);
+        const auto data = lib::makeSpan(packet).subspan(HEADER_SIZE);
         if (!mConnection->readExact(data)) {
             return false;
         }
 
         auto status = mDecoder->decodePacket(type, data);
+        if (status == DecodingStatus::NeedsForwarding) {
+            return mSessionStateTracker->forwardPacket(packet);
+        }
+
         return status == DecodingStatus::Ok;
     }
 }

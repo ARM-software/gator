@@ -47,8 +47,12 @@ namespace mali_userspace {
                                                        std::uint32_t mmuL2Bitmask,
                                                        bool & failedDueToBufferCount) = 0;
 
+        /** @return The shader core sparse allocation mask */
+        virtual std::uint64_t getShaderCoreAvailabilityMask() const = 0;
+        /** @return The shader core sparse allocation mask */
+        virtual std::uint32_t getMaxShaderCoreBlockIndex() const = 0;
         /** @return The number of shader cores on the device */
-        virtual std::uint32_t getNumberOfShaderCores() const = 0;
+        virtual std::uint32_t getNumberOfUsableShaderCores() const = 0;
         /** @return The number of L2 cache slices */
         virtual std::uint32_t getNumberOfL2Slices() const = 0;
         /** @return The GPUID of the device */

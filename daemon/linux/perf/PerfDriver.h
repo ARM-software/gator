@@ -50,13 +50,14 @@ public:
 
     void readEvents(mxml_node_t * xml) override;
     int writeCounters(mxml_node_t * root) const override;
-    bool summary(ISummaryConsumer & consumer, const std::function<uint64_t()> & getAndSetMonotonicStarted);
-    void coreName(uint64_t currTime, ISummaryConsumer & consumer, int cpu);
+    lib::Optional<std::uint64_t> summary(ISummaryConsumer & consumer,
+                                         const std::function<uint64_t()> & getMonotonicTime);
+    void coreName(ISummaryConsumer & consumer, int cpu);
     void setupCounter(Counter & counter) override;
     lib::Optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
-    bool enable(uint64_t currTime, IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
+    bool enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
     void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
-    bool sendTracepointFormats(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer);
+    bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);
 
 private:
     void addCpuCounters(const PerfCpu & cpu);

@@ -3,7 +3,7 @@
 #ifndef ARMNN_PACKETDECODERENCODERFACTORY_CPP_
 #define ARMNN_PACKETDECODERENCODERFACTORY_CPP_
 
-#include "PacketDecoderEncoderFactory.h"
+#include "armnn/PacketDecoderEncoderFactory.h"
 
 namespace armnn {
     /**

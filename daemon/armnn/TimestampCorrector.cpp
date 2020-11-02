@@ -2,29 +2,54 @@
 
 #include "armnn/TimestampCorrector.h"
 
+#include "armnn/IFrameBuilderFactory.h"
+
 #include <utility>
 
 namespace armnn {
-    TimestampCorrector::TimestampCorrector(IBlockCounterMessageConsumer & buffer,
-                                           std::function<std::int64_t()> getMonotonicStarted)
-        : mBuffer {buffer}, mGetMonotonicStarted {std::move(getMonotonicStarted)}
+    TimestampCorrector::TimestampCorrector(IFrameBuilderFactory & frameBuilderFactory, std::uint64_t monotonicStarted)
+        : mFrameBuilderFactory {frameBuilderFactory}, monotonicStarted {monotonicStarted}
     {
     }
 
-    bool TimestampCorrector::consumerCounterValue(std::uint64_t timestamp,
-                                                  ApcCounterKeyAndCoreNumber keyAndCore,
-                                                  std::uint32_t counterValue)
+    bool TimestampCorrector::consumeCounterValue(std::uint64_t timestamp,
+                                                 ApcCounterKeyAndCoreNumber keyAndCore,
+                                                 std::uint32_t counterValue)
     {
-        std::int64_t monotonicStartTime = mGetMonotonicStarted();
-        std::int64_t relativeOffset = static_cast<std::int64_t>(timestamp) - monotonicStartTime;
-
         // Only pass on the counter value if it is from after monotonic start
-        if ((monotonicStartTime != -1) && (relativeOffset >= 0)) {
-            return mBuffer.counterMessage(relativeOffset, keyAndCore.core, keyAndCore.key, counterValue);
+        if (timestamp >= monotonicStarted) {
+            if (!counterConsumer) {
+                // begin a new block counter frame
+                counterConsumer = mFrameBuilderFactory.createBlockCounterFrame();
+            }
+            return counterConsumer->counterMessage(timestamp - monotonicStarted,
+                                                   keyAndCore.core,
+                                                   keyAndCore.key,
+                                                   counterValue);
         }
         else {
             // The value was successfully consumed but has been dropped because the timestamp was too early
             return true;
         }
+    }
+    bool TimestampCorrector::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
+    {
+        // finish any in progess frame before starting a new one
+        counterConsumer.reset();
+
+        // real FDs are small positive numbers and used by ExternalSource
+        // -1 has special meaning that an fd is closed
+        // so use anything below that.
+        const int fd = -2 - sessionId;
+
+        if (fdsStarted.count(fd) == 0) {
+            const std::uint8_t ESTATE_ARMNN[] {'A', 'R', 'M', 'N', 'N', '_', 'V', '1', '\n'};
+            mFrameBuilderFactory.createExternalFrame(fd, ESTATE_ARMNN);
+            fdsStarted.insert(fd);
+        }
+
+        mFrameBuilderFactory.createExternalFrame(fd, data);
+
+        return true;
     }
 }

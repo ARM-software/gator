@@ -3,6 +3,10 @@
 #ifndef MALI_USERSPACE_MALIHWCNTR_H_
 #define MALI_USERSPACE_MALIHWCNTR_H_
 
+#include "DriverCounter.h"
+
+#include <cstdint>
+
 namespace mali_userspace {
     class MaliHwCntr : public DriverCounter {
     public:

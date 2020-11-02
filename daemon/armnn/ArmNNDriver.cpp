@@ -1,19 +1,28 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
-#include "Driver.h"
+#include "armnn/ArmNNDriver.h"
 
-#include "../xml/EventsXMLProcessor.h"
+#include "Logging.h"
 #include "SessionData.h"
+#include "xml/EventsXMLProcessor.h"
 
 namespace armnn {
     Driver::Driver()
         : ::Driver {"ArmNN Driver"},
+          mSessionCount {0},
           mGlobalState {&getEventKey},
           mAcceptingSocket {SocketIO::udsServerListen("\0gatord_namespace", false)},
           mDriverSourceIpc {
               mSessionManager}, // This constructor doesn't access mSessionManager so it's okay to not be initialised at this point
           mSessionManager {std::unique_ptr<IAcceptor> {new SocketAcceptor {mAcceptingSocket, createSession}}}
     {
+#if defined(__SANITIZE_THREAD__) || defined(__SANITIZE_ADDRESS__)
+        // mSessionManager starts threads that cause undefined behaviour and leaks when we fork
+        // but as these threads will be in a steady state (unless we get a connection exactly when we fork),
+        // there shouldn't be any threading issues, just a small memory leak.
+        mSessionManager.stop();
+        logg.logError("Arm NN connection listening disabled due to address or thread sanitizer being enabled.");
+#endif
     }
 
     // Returns true if this driver can manage the counter

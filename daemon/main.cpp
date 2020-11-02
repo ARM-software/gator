@@ -13,6 +13,7 @@
 #include "OlyUtility.h"
 #include "Sender.h"
 #include "SessionData.h"
+#include "StreamlineSetupLoop.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Memory.h"
 #include "lib/Utils.h"
@@ -255,6 +256,72 @@ private:
 static UdpListener udpListener;
 static AnnotateListener annotateListener;
 
+namespace {
+    class StreamlineCommandHandler : public IStreamlineCommandHandler {
+    public:
+        StreamlineCommandHandler() {}
+
+        State handleRequest(char *) override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
+            return State::PROCESS_COMMANDS;
+        }
+        State handleDeliver(char *) override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_DELIVER_XML");
+            return State::PROCESS_COMMANDS;
+        }
+        State handleApcStart() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_APC_START");
+            return State::EXIT_APC_START;
+        }
+        State handleApcStop() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_APC_STOP");
+            return State::EXIT_APC_STOP;
+        }
+        State handleDisconnect() override { return State::EXIT_DISCONNECT; }
+        State handlePing() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_PING");
+            return State::PROCESS_COMMANDS;
+        }
+    };
+
+    /**
+     * Handles an incoming connection when there is already a session active.
+     *
+     * The user may only send the COMMAND_DISCONNECT. All other commands are considered errors.
+     *
+     * This is used to allow the ADB device scanner to continue to function even during a
+     * capture without flooding the console with "Session already active" messages.
+     *
+     * @param fd The newly accepted connection's file handle
+     */
+    void handleSecondaryConnection(int fd)
+    {
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-2ndconn"), 0, 0, 0);
+
+        OlySocket client {fd};
+        Sender sender(&client);
+
+        // Wait to receive a single command
+        StreamlineCommandHandler commandHandler;
+        const auto result = streamlineSetupCommandIteration(client, commandHandler, [](bool) -> void {});
+        if (result != IStreamlineCommandHandler::State::EXIT_DISCONNECT) {
+            // the expectation is that the user sends COMMAND_DISCONNECT, so anything else is an error
+            logg.logError("Session already in progress");
+            sender.writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
+        }
+
+        // Ensure all data is flushed the host receive the data (not closing socket too quick)
+        sleep(1);
+        client.shutdownConnection();
+        client.closeSocket();
+    }
+}
+
 static StateAndPid handleClient(StateAndPid currentStateAndChildPid,
                                 Drivers & drivers,
                                 OlyServerSocket & sock,
@@ -262,15 +329,9 @@ static StateAndPid handleClient(StateAndPid currentStateAndChildPid,
 {
     if (currentStateAndChildPid.state != State::IDLE) {
         // A temporary socket connection to host, to transfer error message
-        OlySocket client(sock.acceptConnection());
-        logg.logError("Session already in progress");
-        Sender sender(&client);
-        sender.writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
+        std::thread handler {handleSecondaryConnection, sock.acceptConnection()};
+        handler.detach();
 
-        // Ensure all data is flushed the host receive the data (not closing socket too quick)
-        sleep(1);
-        client.shutdownConnection();
-        client.closeSocket();
         return currentStateAndChildPid;
     }
 

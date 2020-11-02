@@ -56,7 +56,9 @@ namespace armnn {
 
     SessionStateTracker::SessionStateTracker(IGlobalState & globalState,
                                              ICounterConsumer & counterConsumer,
-                                             std::unique_ptr<ISessionPacketSender> sendQueue)
+                                             std::unique_ptr<ISessionPacketSender> sendQueue,
+                                             std::uint32_t sessionID,
+                                             std::vector<std::uint8_t> streamMetadata)
         : globalState(globalState),
           counterConsumer(counterConsumer),
           sendQueue(std::move(sendQueue)),
@@ -67,7 +69,9 @@ namespace armnn {
           globalIdToCategoryAndEvent(),
           requestedEventUIDs(),
           activeEventUIDs(),
-          captureIsActive(false)
+          captureIsActive(false),
+          sessionID {sessionID},
+          streamMetadata {streamMetadata}
     {
     }
 
@@ -179,7 +183,7 @@ namespace armnn {
         for (const auto & uidAndValue : counterIndexValues) {
             auto match = requestedEventUIDs.find(uidAndValue.first);
             if (match != requestedEventUIDs.end()) {
-                if (!counterConsumer.consumerCounterValue(timestamp, match->second, uidAndValue.second)) {
+                if (!counterConsumer.consumeCounterValue(timestamp, match->second, uidAndValue.second)) {
                     return false;
                 }
             }
@@ -195,6 +199,11 @@ namespace armnn {
         // ignore the job information for now
 
         return onPeriodicCounterCapture(timestamp, counterIndexValues);
+    }
+
+    bool SessionStateTracker::forwardPacket(lib::Span<const std::uint8_t> packet)
+    {
+        return counterConsumer.consumePacket(sessionID, packet);
     }
 
     EventUIDKeyAndCoreMap SessionStateTracker::formRequestedUIDs(
@@ -230,8 +239,16 @@ namespace armnn {
 
         captureIsActive = true;
 
+        if (!counterConsumer.consumePacket(sessionID, streamMetadata)) {
+            logg.logError("Failed to send Arm NN stream metadata");
+            return false;
+        }
+
+        // Activate the timeline reporting
+        bool requestedTimeline = sendQueue->requestActivateTimelineReporting();
         // Send request to ArmNN to update active events
-        return sendCounterSelection();
+        bool counterSelectionSent = sendCounterSelection();
+        return requestedTimeline && counterSelectionSent;
     }
 
     bool SessionStateTracker::sendCounterSelection()
@@ -258,8 +275,9 @@ namespace armnn {
 
         requestedEventUIDs.clear();
 
-        // Send request to ArmNN to update active events
-        return sendQueue->requestDisableCounterSelection();
+        bool requestedTimelineDeactivate = sendQueue->requestDeactivateTimelineReporting();
+        bool disablePacketSent = sendQueue->requestDisableCounterSelection();
+        return requestedTimelineDeactivate && disablePacketSent;
     }
 
     void SessionStateTracker::updateGlobalWithAvailableEvents(

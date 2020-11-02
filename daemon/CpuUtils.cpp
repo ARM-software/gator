@@ -73,7 +73,7 @@ namespace cpu_utils {
     static const char CPU_PART[] = "CPU part";
     static const char PROCESSOR[] = "processor";
 
-    static inline constexpr unsigned makeCpuId(std::uint64_t midr)
+    static constexpr unsigned makeCpuId(std::uint64_t midr)
     {
         return ((midr & 0xff000000) >> 12) | ((midr & 0xfff0) >> 4);
     }

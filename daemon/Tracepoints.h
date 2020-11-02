@@ -17,7 +17,7 @@ class DynBuf;
  */
 std::string getTracepointPath(const char * name, const char * file);
 
-bool readTracepointFormat(uint64_t currTime, IPerfAttrsConsumer & attrsConsumer, const char * name);
+bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer, const char * name);
 
 constexpr int64_t UNKNOWN_TRACEPOINT_ID = -1;
 int64_t getTracepointId(const char * name);

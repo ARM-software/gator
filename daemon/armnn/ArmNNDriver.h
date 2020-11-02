@@ -1,14 +1,14 @@
 /* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
 #pragma once
 
-#include "../Driver.h"
-#include "DriverSourceIpc.h"
-#include "GlobalState.h"
-#include "Session.h"
-#include "SessionStateTracker.h"
-#include "SocketAcceptor.h"
-#include "SocketIO.h"
-#include "ThreadManagementServer.h"
+#include "Driver.h"
+#include "armnn/DriverSourceIpc.h"
+#include "armnn/GlobalState.h"
+#include "armnn/Session.h"
+#include "armnn/SessionStateTracker.h"
+#include "armnn/SocketAcceptor.h"
+#include "armnn/SocketIO.h"
+#include "armnn/ThreadManagementServer.h"
 
 #include <memory>
 
@@ -35,18 +35,24 @@ namespace armnn {
         // Called before the gator-child process is forked
         void preChildFork() override { mDriverSourceIpc.prepareForFork(); }
 
+        // Called in the parent immediately after the gator-child process is forked
+        void postChildForkInParent() override { mDriverSourceIpc.afterFork(); }
+
         // Called in the parent after the gator-child process exits
         void postChildExitInParent() override { mDriverSourceIpc.onChildDeath(); }
 
         ICaptureController & getCaptureController() { return mDriverSourceIpc; }
 
     private:
+        std::uint32_t mSessionCount;
         GlobalState mGlobalState;
         SocketIO mAcceptingSocket;
         DriverSourceIpc mDriverSourceIpc;
 
         SessionSupplier createSession = [&](std::unique_ptr<SocketIO> connection) {
-            return Session::create(std::move(connection), mGlobalState, mDriverSourceIpc);
+            const std::uint32_t uniqueSessionID = mSessionCount++;
+
+            return Session::create(std::move(connection), mGlobalState, mDriverSourceIpc, uniqueSessionID);
         };
         ThreadManagementServer mSessionManager;
     };
