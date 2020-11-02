@@ -111,7 +111,7 @@
                                                         * 'indirect'    - Matches only indirect branches.
                                                                           Equivalent to 'sub-class="0x02" sub-class-mask="0xfe"'
                                                     Valid enum values when 'class' is 'other':
-                                                        * 'conditional' - Matches only conditional branches.
+                                                        * 'conditional' - Matches only conditional operations.
                                                                           Equivalent to 'sub-class="0x01" sub-class-mask="0x01"'
                                                     Valid enum values when 'class' is 'load-store':
                                                         * 'load'            - Matches only loads/swaps, not stores.
@@ -182,5 +182,30 @@
            name="Remote access"
            description="Load/store operation caused an access to another socket in a multi-socket system. This includes each data memory access that accesses another socket in a multi-socket system, including those that do not return data.">
         <valid-op-type class="load-store" />
+    </event>
+</spe>
+
+<spe name="Armv8.3 Statistical Profiling Extension" id="armv8.3_spe" extends="armv8.2_spe">
+    <!-- Define event packet event types [5.3.7 Events packet] -->
+    <event bit="11" ratio-label="Optimal Alignment" set-label="Poorly Aligned" clear-label="Optimally Aligned" show-by-default="set"
+           name="Optimal Alignment"
+           description="When set, indicates a load/store operation that, due to the alignment of the address and size of data being accessed, incurred additional latency">
+        <valid-op-type class="load-store" />
+    </event>
+</spe>
+
+<spe name="Armv8.3 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.3_spe_sve" extends="armv8.3_spe">
+    <!-- Define event packet event types [5.3.7 Events packet] -->
+    <event bit="17" ratio-label="SVE Partial Predicate" set-label="Partial Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
+           name="SVE Partial Predicate"
+           description="When set, indicates that the SVE predicate has at least one element that is inactive">
+        <valid-op-type class="load-store" sub-class="0x08" sub-class-mask="0x0a" />
+        <valid-op-type class="other" sub-class="0x08" sub-class-mask="0x89" />
+    </event>
+    <event bit="18" ratio-label="SVE Empty Predicate" set-label="Empty Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
+           name="SVE Empty Predicate"
+           description="When set, indicates that the SVE predicate has all elements inactive">
+        <valid-op-type class="load-store" sub-class="0x08" sub-class-mask="0x0a" />
+        <valid-op-type class="other" sub-class="0x08" sub-class-mask="0x89" />
     </event>
 </spe>

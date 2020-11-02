@@ -83,9 +83,14 @@
     <pmu id="ARMv8_Cortex_A65AE" cpuid="0x41d43" core_name="Cortex-A65AE" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A65AE" id="ARMv8_Cortex_A65" cpuid="0x41d06" core_name="Cortex-A65" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Cortex_A76AE" cpuid="0x41d0e" core_name="Cortex-A76AE" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
+    <pmu counter_set="ARMv8_Cortex_A78" id="ARMv8_Cortex_A78AE" cpuid="0x41d42" core_name="Cortex-A78AE" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu"/>
+
+    <pmu counter_set="ARMv8_Cortex_A78" id="ARMv8_Cortex_A78C" cpuid="0x41d4b" core_name="Cortex-A78C" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu"/>
 
     <pmu id="ARMv8_Neoverse_E1" cpuid="0x41d4a" core_name="Neoverse-E1" dt_name="arm,neoverse-e1" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu"/>
+    <pmu id="ARMv8_Neoverse_N2" cpuid="0x41d49" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu"/>
+    <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu"/>
 
     <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu"/>
 

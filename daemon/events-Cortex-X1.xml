@@ -44,8 +44,8 @@
     <event event="0x36" title="Last Level Cache" name="Access (due to read)" description="As &apos;Last Level Cache: Access&apos;, but counts only memory read accesses."/>
     <event event="0x37" title="Last Level Cache" name="Miss (due to read)" description="As &apos;Last Level Cache: Miss&apos;, but counts only memory read operations."/>
     <event event="0x39" title="L1 Data Cache" name="Miss (due to long-latency read)" description="The counter counts each memory read access counted by &apos;L1 Data Cache: Access&apos; that incurs additional latency because it returns data from outside the Level 1 data or unified cache of this processing element. The event indicates to software that the access missed in the Level 1 data or unified cache and might have a significant performance impact compared to the latency of an access that hits in the Level 1 data or unified cache."/>
-    <event event="0x3a" title="µOps" name="Executed" description="The counter counts each operation counted by &apos;µOps: Speculated&apos; that would be executed in a Simple sequential execution of the program."/>
-    <event event="0x3b" title="µOps" name="Speculated" description="The counter counts the number of operations executed by the PE, including those that are executed speculatively and would not be executed in a Simple sequential execution of the program."/>
+    <event event="0x3a" title="Operations" name="Executed" description="The counter counts each operation counted by &apos;Operations: Speculated&apos; that would be executed in a Simple sequential execution of the program."/>
+    <event event="0x3b" title="Operations" name="Speculated" description="The counter counts the number of operations executed by the PE, including those that are executed speculatively and would not be executed in a Simple sequential execution of the program."/>
     <event event="0x3c" title="Stalls" name="All" description="The counter counts every attributable cycle on which no attributable instruction or operation was sent for execution on this processing element."/>
     <event event="0x3d" title="Stalls (Slots)" name="Frontend" description="Counts each Slot counted by &apos;Stalls: All&apos; where no attributable instruction or operation was sent for execution because the backend is unable to accept it"/>
     <event event="0x3e" title="Stalls (Slots)" name="Backend" description="Counts each Slot counted by &apos;Stalls: All&apos; where no attributable instruction or operation was sent for execution because there was no attributable instruction or operation available to issue from the PE from the frontend for the Slot"/>
@@ -120,7 +120,7 @@
     <event event="0x4009" title="L2 Data Cache" name="Miss (due to long-latency read)" description="The counter counts each memory read access counted by &apos;L2 Data Cache: Access&apos; that incurs additional latency because it returns data from outside the Level 2 data or unified cache of this PE. The event indicates to software that the access missed in the Level 2 data or unified cache and might have a significant performance impact compared to the latency of an access that hits in the Level 2 data or unified cache."/>
     <event event="0x400b" title="L3 Data Cache" name="Miss (due to long-latency read)" description="The counter counts each memory read access counted by &apos;L3 Data Cache: Access&apos; that incurs additional latency because it returns data from outside the Level 3 data or unified cache of this PE. The event indicates to software that the access missed in the Level 3 data or unified cache and might have a significant performance impact compared to the latency of an access that hits in the Level 3 data or unified cache."/>
 </category>
-<spe name="Arm Cortex-X1 Statistical Profiling Extension" id="arm_cortex_x1_spe_pmu" extends="armv8.2_spe">
+<spe name="Arm Cortex-X1 Statistical Profiling Extension" id="arm_cortex_x1_spe_pmu" extends="armv8.3_spe">
     <!-- Define data source packet source types [5.3.5 Data Source packet] -->
     <data-source index="0x0" name="Level 1 data cache" />
     <data-source index="0x8" name="Level 2 cache" />
@@ -132,11 +132,6 @@
     <data-source index="0xe" name="DRAM" />
 
     <!-- Define event packet event types [5.3.7 Events packet] -->
-    <event bit="11" ratio-label="Cache Line Split" set-label="Misaligned" clear-label="Aligned" show-by-default="set"
-           name="Data Alignment"
-           description="Cache line split events, where a misaligned operation spans across cache lines">
-        <valid-op-type class="load-store" />
-    </event>
     <event bit="12" ratio-label="Late prefetch" set-label="Late" clear-label="Not Late" show-by-default="set"
            name="Late prefetch"
            description="Late prefetch event">

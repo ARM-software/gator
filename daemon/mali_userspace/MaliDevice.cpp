@@ -65,7 +65,8 @@ namespace mali_userspace {
             PRODUCT_ID_TNAXa = 0x9001,
             PRODUCT_ID_TNAXb = 0x9003,
             PRODUCT_ID_TOTX = 0x9004,
-            PRODUCT_ID_TBOX = 0x9002
+            PRODUCT_ID_TBOX = 0x9002,
+            PRODUCT_ID_TBOXAE = 0x9005,
         };
 
         /* supported product versions */
@@ -180,6 +181,15 @@ namespace mali_userspace {
                                                        MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
                                                                             PRODUCT_ID_TBOX,
                                                                             "G78",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tBOx,
+                                                                            false),
+                                                       // Detect Mali-G78E as a specific product, but alias
+                                                       // to the same underlying counter definitions as
+                                                       // Mali-G78, as they are the same in both cases ...
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TBOXAE,
+                                                                            "G78AE",
                                                                             "Valhall",
                                                                             hardware_counters_mali_tBOx,
                                                                             false)};
