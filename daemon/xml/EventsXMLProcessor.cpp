@@ -28,6 +28,7 @@ namespace events_xml {
         const char ATTR_NAME[] = "name";
         const char ATTR_TITLE[] = "title";
         const char ATTR_UNITS[] = "units";
+        const char ATTR_EVENT[] = "event";
 
         const char CLUSTER_VAR[] = "${cluster}";
 
@@ -456,8 +457,8 @@ namespace events_xml {
         for (auto event : category.events) {
             mxml_node_t * eventNode {mxmlNewElement(categoryNode.get(), TAG_EVENT)};
 
-            if (event.eventNumber) {
-                mxmlElementSetAttrf(eventNode, TAG_EVENT, "0x%x", event.eventNumber.get());
+            if (event.eventNumber.isValid()) {
+                mxmlElementSetAttrf(eventNode, ATTR_EVENT, "0x%" PRIxEventCode, event.eventNumber.asU64());
             }
             if (event.counter) {
                 mxmlElementSetAttr(eventNode, ATTR_COUNTER, event.counter.get().c_str());

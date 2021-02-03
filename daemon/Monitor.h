@@ -13,10 +13,13 @@ public:
     void close();
     bool init();
     bool add(int fd);
+    bool remove(int fd);
     int wait(struct epoll_event * events, int maxevents, int timeout) const;
+    int size() const { return mSize; }
 
 private:
     int mFd;
+    int mSize;
 
     // Intentionally unimplemented
     Monitor(const Monitor &) = delete;

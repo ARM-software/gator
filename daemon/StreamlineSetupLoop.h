@@ -15,6 +15,9 @@ public:
     enum class State {
         /** The loop should continue to process commands */
         PROCESS_COMMANDS,
+        /** The loop should continue to process command to get current config,
+         *  used only in main for secondary connections*/
+        PROCESS_COMMANDS_CONFIG,
         /** The loop should terminate in a disconnect state */
         EXIT_DISCONNECT,
         /** The loop should terminate in a no-capture state */
@@ -22,7 +25,9 @@ public:
         /** The loop should terminate in a start-capture state */
         EXIT_APC_START,
         /** The loop terminated due to read failure */
-        EXIT_ERROR
+        EXIT_ERROR,
+        /** The loop terminated on a request to exit*/
+        EXIT_OK
     };
 
     virtual ~IStreamlineCommandHandler() = default;
@@ -33,6 +38,16 @@ public:
     virtual State handleApcStop() = 0;
     virtual State handleDisconnect() = 0;
     virtual State handlePing() = 0;
+    virtual State handleExit() = 0;
+
+    /**
+     * Will send the configuration of gatord back to host as an XML string.
+     * (Not to be confused with configuration.xml)
+     * This will contain the following information about the current session:
+     * pid, uid, is system-wide, is waiting on a command, the capture working
+     * directory, the wait for process command, and the pids to capture.
+     */
+    virtual State handleRequestCurrentConfig() = 0;
 };
 
 /**

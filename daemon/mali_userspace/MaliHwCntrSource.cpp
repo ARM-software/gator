@@ -66,7 +66,8 @@ namespace mali_userspace {
                                                                             std::move(frameBuilder),
                                                                             deviceNumber,
                                                                             *this,
-                                                                            readerRef));
+                                                                            readerRef,
+                                                                            device.getConstantValues()));
                     tasks.push_back(std::move(task));
                 }
             }

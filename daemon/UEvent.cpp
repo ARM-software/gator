@@ -5,6 +5,7 @@
 #include "Logging.h"
 #include "OlySocket.h"
 
+#include <cerrno>
 #include <cstring>
 #include <linux/netlink.h>
 #include <sys/socket.h>
@@ -30,7 +31,7 @@ bool UEvent::init()
 {
     mFd = socket_cloexec(PF_NETLINK, SOCK_RAW, NETLINK_KOBJECT_UEVENT);
     if (mFd < 0) {
-        logg.logMessage("socket failed");
+        logg.logMessage("Socket failed for uevents (%d - %s)", errno, strerror(errno));
         return false;
     }
 
@@ -40,7 +41,7 @@ bool UEvent::init()
     sockaddr.nl_groups = 1; // bitmask: (1 << 0) == kernel events, (1 << 1) == udev events
     sockaddr.nl_pid = 0;
     if (bind(mFd, reinterpret_cast<struct sockaddr *>(&sockaddr), sizeof(sockaddr)) != 0) {
-        logg.logMessage("bind failed");
+        logg.logMessage("Bind failed for uevents (%d - %s)", errno, strerror(errno));
         return false;
     }
 

@@ -75,14 +75,14 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
         }
         counter.cores = cores;
     }
-    int event;
+    long long event;
     if (eventStr != nullptr) {
-        if (!stringToInt(&event, eventStr, 16)) {
+        if (!stringToLongLong(&event, eventStr, 16)) {
             logg.logError("Configuration XML event must be an integer");
             return PARSER_ERROR;
         }
         else {
-            counter.event = event;
+            counter.event = EventCode(event);
         }
     }
     counterConfigurations.push_back(counter);

@@ -38,6 +38,7 @@ namespace lib {
 
     int poll(struct pollfd * __fds, nfds_t __nfds, int __timeout);
     int access(const char * filename, int how);
+    void exit(int status);
 }
 
 #endif // INCLUDE_LIB_SYSCALL_H

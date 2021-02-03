@@ -113,6 +113,8 @@
                                                     Valid enum values when 'class' is 'other':
                                                         * 'conditional' - Matches only conditional operations.
                                                                           Equivalent to 'sub-class="0x01" sub-class-mask="0x01"'
+                                                        * 'sve'         - Matches only SVE instructions.
+                                                                          Equivalent to 'sub-class="0x08" sub-class-mask="0x89"'
                                                     Valid enum values when 'class' is 'load-store':
                                                         * 'load'            - Matches only loads/swaps, not stores.
                                                                               Equivalent to 'sub-class="0x00" sub-class-mask="0x01"'
@@ -124,6 +126,12 @@
                                                                               Equivalent to 'sub-class="0x04" sub-class-mask="0xfe"'
                                                         * 'extended'        - Matches only extended loads/stores.
                                                                               Equivalent to 'sub-class="0x02" sub-class-mask="0xe2"'
+                                                        * 'sve'             - Matches only SVE loads/stores.
+                                                                              Equivalent to 'sub-class="0x08" sub-class-mask="0x0a"'
+                                                        * 'xformed-sysreg'  - Matches only ARMv8.4-NV transformed System register access.
+                                                                              Equivalent to 'sub-class="0x30" sub-class-mask="0xfe"'
+                                                        * 'unspecified'     - Matches only load/stores targeting unspecified registers.
+                                                                              Equivalent to 'sub-class="0x10" sub-class-mask="0xfe"'
                     sub-class-mask: integer:        (Optional) If set, then 'sub-class' must be an integer. If this attribute is not present but sub-class is an integer then it will be as if
                                                     this attribute were set to '0xff'.
                                                     When combined with sub-class creates a bitmask and test that is used to compare against the 'subclass' field of the Operation Type packet.
@@ -199,13 +207,13 @@
     <event bit="17" ratio-label="SVE Partial Predicate" set-label="Partial Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
            name="SVE Partial Predicate"
            description="When set, indicates that the SVE predicate has at least one element that is inactive">
-        <valid-op-type class="load-store" sub-class="0x08" sub-class-mask="0x0a" />
-        <valid-op-type class="other" sub-class="0x08" sub-class-mask="0x89" />
+        <valid-op-type class="load-store" sub-class="sve" />
+        <valid-op-type class="other" sub-class="sve" />
     </event>
     <event bit="18" ratio-label="SVE Empty Predicate" set-label="Empty Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
            name="SVE Empty Predicate"
            description="When set, indicates that the SVE predicate has all elements inactive">
-        <valid-op-type class="load-store" sub-class="0x08" sub-class-mask="0x0a" />
-        <valid-op-type class="other" sub-class="0x08" sub-class-mask="0x89" />
+        <valid-op-type class="load-store" sub-class="sve" />
+        <valid-op-type class="other" sub-class="sve" />
     </event>
 </spe>

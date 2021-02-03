@@ -99,6 +99,7 @@ int DynBuf::readlink(const char * const path)
     return 0;
 }
 
+// NOLINTNEXTLINE(cert-dcl50-cpp)
 bool DynBuf::printf(const char * format, ...)
 {
     va_list ap;
@@ -112,6 +113,7 @@ bool DynBuf::printf(const char * format, ...)
     return result;
 }
 
+// NOLINTNEXTLINE(cert-dcl50-cpp)
 bool DynBuf::append(const char * format, ...)
 {
     va_list ap;

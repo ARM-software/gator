@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <semaphore.h>
 
-class Buffer : public IBufferControl, public IRawFrameBuilder {
+class Buffer : public IBufferControl, public IRawFrameBuilderWithDirectAccess {
 public:
     Buffer(int size, sem_t & readerSem, bool includeResponseType);
 #ifdef BUFFER_USE_SESSION_DATA
@@ -32,7 +32,10 @@ public:
 
     // Prefer a new member to using these functions if possible
     char * getWritePos() { return mBuf + mWritePos; }
-    void advanceWrite(int bytes) { mWritePos = (mWritePos + bytes) & /*mask*/ (mSize - 1); }
+
+    int getWriteIndex() const override;
+    void advanceWrite(int bytes) override;
+    void writeDirect(int index, const void * data, std::size_t count) override;
 
     int packInt(int32_t x) override;
     int packInt64(int64_t x) override;

@@ -5,6 +5,7 @@
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "Drivers.h"
+#include "ExitStatus.h"
 #include "GatorCLIParser.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
@@ -17,6 +18,8 @@
 #include "lib/FileDescriptor.h"
 #include "lib/Memory.h"
 #include "lib/Utils.h"
+#include "xml/CurrentConfigXML.h"
+#include "linux/perf/PerfUtils.h"
 #include "xml/EventsXML.h"
 #include "xml/PmuXMLParser.h"
 
@@ -97,6 +100,11 @@ static StateAndPid handleSigchld(StateAndPid currentStateAndChildPid, Drivers & 
     if (WIFEXITED(status)) {
         exitStatus = WEXITSTATUS(status);
         logg.logMessage("Child process %d terminated normally with status %d", pid, exitStatus);
+        if (exitStatus == OK_TO_EXIT_GATOR_EXIT_CODE) {
+            logg.logMessage("Received EXIT_OK command. exiting gatord");
+            cleanUp();
+            exit(0);
+        }
     }
     else {
         assert(WIFSIGNALED(status));
@@ -287,6 +295,16 @@ namespace {
             logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_PING");
             return State::PROCESS_COMMANDS;
         }
+        State handleExit() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_EXIT_OK");
+            return State::EXIT_OK;
+        }
+        State handleRequestCurrentConfig() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_CURRENT_CONFIG");
+            return State::PROCESS_COMMANDS_CONFIG;
+        }
     };
 
     /**
@@ -309,7 +327,19 @@ namespace {
         // Wait to receive a single command
         StreamlineCommandHandler commandHandler;
         const auto result = streamlineSetupCommandIteration(client, commandHandler, [](bool) -> void {});
-        if (result != IStreamlineCommandHandler::State::EXIT_DISCONNECT) {
+
+        if (result == IStreamlineCommandHandler::State::PROCESS_COMMANDS_CONFIG) {
+            auto currentConfigXML =
+                current_config_xml::generateCurrentConfigXML(getpid(), // since its main get the pid, instead of ppid
+                                                             getuid(),
+                                                             gSessionData.mSystemWide,
+                                                             gSessionData.mWaitingOnCommand,
+                                                             gSessionData.mWaitForProcessCommand,
+                                                             gSessionData.mCaptureWorkingDir,
+                                                             gSessionData.mPids);
+            sender.writeData(currentConfigXML.data(), currentConfigXML.size(), ResponseType::CURRENT_CONFIG, true);
+        }
+        else if (result != IStreamlineCommandHandler::State::EXIT_DISCONNECT) {
             // the expectation is that the user sends COMMAND_DISCONNECT, so anything else is an error
             logg.logError("Session already in progress");
             sender.writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
@@ -464,27 +494,6 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mPerfMmapSizeInPages = result.mPerfMmapSizeInPages;
     gSessionData.mSpeSampleRate = result.mSpeSampleRate;
 
-    // use value from perf_event_mlock_kb
-    if ((gSessionData.mPerfMmapSizeInPages <= 0) && (geteuid() != 0) && (gSessionData.mPageSize >= 1024)) {
-        std::int64_t perfEventMlockKb = 0;
-        if (lib::readInt64FromFile("/proc/sys/kernel/perf_event_mlock_kb", perfEventMlockKb) == 0) {
-            if (perfEventMlockKb > 0) {
-                const std::uint64_t perfEventMlockPages = (perfEventMlockKb / (gSessionData.mPageSize / 1024));
-                gSessionData.mPerfMmapSizeInPages = int(std::min<std::uint64_t>(perfEventMlockPages - 1, INT_MAX));
-                logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
-                                gSessionData.mPerfMmapSizeInPages,
-                                gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ULL);
-            }
-        }
-        else {
-            // the default seen on most setups is 516kb, if user cannot read the file it is probably
-            // because they are on Android in locked down setup so use default value of 128 pages
-            gSessionData.mPerfMmapSizeInPages = 128;
-            logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
-                            gSessionData.mPerfMmapSizeInPages,
-                            gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ULL);
-        }
-    }
     //These values are set from command line and are alos part of session.xml
     //and hence cannot be modified during parse session
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) != 0) {
@@ -504,6 +513,32 @@ void updateSessionData(const ParserResult & result)
     }
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) != 0) {
         gSessionData.mFtraceRaw = result.mFtraceRaw;
+    }
+}
+
+void updatePerfMmapSize()
+{
+    // use value from perf_event_mlock_kb
+    if ((gSessionData.mPerfMmapSizeInPages <= 0) && (geteuid() != 0) && (gSessionData.mPageSize >= 1024)) {
+
+        // the default seen on most setups is 516kb, if user cannot read the file it is probably
+        // because they are on Android in locked down setup so use default value of 128 pages
+        gSessionData.mPerfMmapSizeInPages = 128;
+
+        const lib::Optional<std::int64_t> perfEventMlockKb = perf_utils::readPerfEventMlockKb();
+
+        if (perfEventMlockKb.valid() && perfEventMlockKb.get() > 0) {
+            const int perfMmapSizeInPages = lib::calculatePerfMmapSizeInPages(std::uint64_t(perfEventMlockKb.get()),
+                                                                              std::uint64_t(gSessionData.mPageSize));
+
+            if (perfMmapSizeInPages > 0) {
+                gSessionData.mPerfMmapSizeInPages = perfMmapSizeInPages;
+            }
+        }
+
+        logg.logMessage("Default perf mmap size set to %d pages (%llukb)",
+                        gSessionData.mPerfMmapSizeInPages,
+                        gSessionData.mPerfMmapSizeInPages * gSessionData.mPageSize / 1024ULL);
     }
 }
 
@@ -586,13 +621,14 @@ int main(int argc, char ** argv)
     if (result.mode == ParserResult::ExecutionMode::EXIT) {
         handleException();
     }
+
     updateSessionData(result);
 
-    PmuXML pmuXml = readPmuXml(result.pmuPath);
     // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
+    Drivers drivers {result.mSystemWide, readPmuXml(result.pmuPath), result.mDisableCpuOnlining, TraceFsConstants::detect()};
 
-    Drivers drivers {result.mSystemWide, std::move(pmuXml), result.mDisableCpuOnlining};
+    updatePerfMmapSize();
 
     if (result.mode == ParserResult::ExecutionMode::PRINT) {
         if (result.printables.count(ParserResult::Printable::EVENTS_XML) == 1) {
@@ -673,6 +709,17 @@ int main(int argc, char ** argv)
             }
         }
     }
+
+    // This line has to be printed because Streamline needs to detect when
+    // gator is ready to listen and accept socket connections via adb forwarding.  Without this
+    // print out there is a chance that Streamline establishes a connection to the adb forwarder,
+    // but the forwarder cannot establish a connection to a gator, because gator is not up and listening
+    // for sockets yet.  If the adb forwarder cannot establish a connection to gator, what streamline
+    // experiences is a successful socket connection, but when it attempts to read from the socket
+    // it reads an empty line when attempting to read the gator protocol header, and terminates the
+    // connection.
+    std::cout << "Gator ready" << std::endl;
+    std::cout.flush();
 
     // Forever loop, can be exited via a signal or exception
     while (1) {

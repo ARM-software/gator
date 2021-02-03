@@ -14,6 +14,7 @@ enum class ResponseType : char {
     APC_DATA = 3,
     ACK = 4,
     NAK = 5,
+    CURRENT_CONFIG = 6,
     ERROR = '\xFF'
 };
 

@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
 
 class OlySocket;
 class Drivers;
@@ -36,9 +37,12 @@ private:
     State handleApcStop() override;
     State handleDisconnect() override;
     State handlePing() override;
+    State handleExit() override;
+    State handleRequestCurrentConfig() override;
 
     void sendData(const char * data, uint32_t length, ResponseType type);
     void sendString(const char * string, ResponseType type) { sendData(string, strlen(string), type); }
+    void sendString(std::string & string, ResponseType type) { sendData(string.c_str(), string.size(), type); }
     void sendDefaults();
     void writeConfiguration(char * xml);
 };

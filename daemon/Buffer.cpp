@@ -100,7 +100,7 @@ int Buffer::bytesAvailable() const
     // this is full.
     remaining -= 200;
 
-    return remaining;
+    return std::max(remaining, 0);
 }
 
 void Buffer::waitForSpace(int bytes)
@@ -225,4 +225,21 @@ void Buffer::setDone()
     // need to do this even if no new data
     // as sender waits for new data *and* EOF
     sem_post(&mReaderSem);
+}
+
+int Buffer::getWriteIndex() const
+{
+    return mWritePos;
+}
+
+void Buffer::advanceWrite(int bytes)
+{
+    mWritePos = (mWritePos + bytes) & /*mask*/ (mSize - 1);
+}
+
+void Buffer::writeDirect(int index, const void * data, std::size_t count)
+{
+    for (std::size_t i = 0; i < count; ++i) {
+        mBuf[(index + i) & mask] = static_cast<const char *>(data)[i];
+    }
 }

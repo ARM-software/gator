@@ -8,12 +8,15 @@
 #include "CounterXML.h"
 #include "Driver.h"
 #include "Drivers.h"
+#include "ExitStatus.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
 #include "Sender.h"
 #include "SessionData.h"
+#include "lib/Syscall.h"
+#include "xml/CurrentConfigXML.h"
 #include "xml/EventsXML.h"
 
 static const char TAG_SESSION[] = "session";
@@ -35,6 +38,10 @@ StreamlineSetup::StreamlineSetup(OlySocket & s, Drivers & drivers, lib::Span<con
 
     if (result == State::EXIT_ERROR) {
         handleException();
+    }
+    else if (result == State::EXIT_OK) {
+        //exit child and set status for gator main to exit
+        exit(OK_TO_EXIT_GATOR_EXIT_CODE);
     }
     else if (result != State::EXIT_APC_START) {
         exit(0);
@@ -64,6 +71,12 @@ IStreamlineCommandHandler::State StreamlineSetup::handlePing()
     logg.logMessage("Received ping command");
     sendData(nullptr, 0, ResponseType::ACK);
     return State::PROCESS_COMMANDS;
+}
+
+IStreamlineCommandHandler::State StreamlineSetup::handleExit()
+{
+    logg.logMessage("Received exit command");
+    return State::EXIT_OK;
 }
 
 IStreamlineCommandHandler::State StreamlineSetup::handleRequest(char * xml)
@@ -143,6 +156,20 @@ IStreamlineCommandHandler::State StreamlineSetup::handleDeliver(char * xml)
 
     mxmlDelete(tree);
 
+    return State::PROCESS_COMMANDS;
+}
+
+IStreamlineCommandHandler::State StreamlineSetup::handleRequestCurrentConfig()
+{
+    // Use ppid because StreamlineSetup is part of gator-child, need gator-main pid
+    auto currentConfigXML = current_config_xml::generateCurrentConfigXML(getppid(),
+                                                                         getuid(),
+                                                                         gSessionData.mSystemWide,
+                                                                         gSessionData.mWaitingOnCommand,
+                                                                         gSessionData.mWaitForProcessCommand,
+                                                                         gSessionData.mCaptureWorkingDir,
+                                                                         gSessionData.mPids);
+    sendString(currentConfigXML, ResponseType::CURRENT_CONFIG);
     return State::PROCESS_COMMANDS;
 }
 

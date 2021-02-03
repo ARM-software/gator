@@ -191,131 +191,100 @@ bool PerfBuffer::isFull()
     return false;
 }
 
-class PerfDataFrame {
-public:
-    PerfDataFrame(ISender & sender) : mSender(sender), mWritePos(-1), mCpuSizePos(-1) {}
-
-    void add(const int cpu, uint64_t head, uint64_t tail, const char * b, std::size_t length)
-    {
-        cpuHeader(cpu);
-
-        const std::size_t bufferMask = length - 1;
-
-        while (head > tail) {
-            const int count =
-                reinterpret_cast<const struct perf_event_header *>(b + (tail & bufferMask))->size / sizeof(uint64_t);
-            // Can this whole message be written as Streamline assumes events are not split between frames
-            if (int(sizeof(mBuf)) <= mWritePos + count * buffer_utils::MAXSIZE_PACK64) {
-                send();
-                cpuHeader(cpu);
-            }
-            for (int i = 0; i < count; ++i) {
-                // Must account for message size
-                buffer_utils::packInt64(mBuf, mWritePos, *reinterpret_cast<const uint64_t *>(b + (tail & bufferMask)));
-                tail += sizeof(uint64_t);
-            }
-        }
-    }
-
-    void send()
-    {
-        if (mWritePos > 0) {
-            writeCpuSize();
-            mSender.writeData(mBuf, mWritePos, ResponseType::APC_DATA);
-            mWritePos = -1;
-            mCpuSizePos = -1;
-        }
-    }
-
-private:
-    void frameHeader()
-    {
-        if (mWritePos < 0) {
-            mWritePos = 0;
-            mCpuSizePos = -1;
-            buffer_utils::packInt(mBuf, mWritePos, static_cast<uint32_t>(FrameType::PERF_DATA));
-        }
-    }
-
-    void writeCpuSize()
-    {
-        if (mCpuSizePos >= 0) {
-            buffer_utils::writeLEInt(mBuf + mCpuSizePos, mWritePos - mCpuSizePos - sizeof(uint32_t));
-        }
-    }
-
-    void cpuHeader(const int cpu)
-    {
-        if (sizeof(mBuf) <= mWritePos + buffer_utils::MAXSIZE_PACK32 + sizeof(uint32_t)) {
-            send();
-        }
-        frameHeader();
-        writeCpuSize();
-        buffer_utils::packInt(mBuf, mWritePos, cpu);
-        mCpuSizePos = mWritePos;
-        // Reserve space for cpu size
-        mWritePos += sizeof(uint32_t);
-    }
-
-    // Pick a big size but something smaller than the chunkSize in Sender::writeData which is 100k
-    char mBuf[1 << 16];
-    ISender & mSender;
-    int mWritePos;
-    int mCpuSizePos;
-
-    // Intentionally unimplemented
-    PerfDataFrame(const PerfDataFrame &) = delete;
-    PerfDataFrame & operator=(const PerfDataFrame &) = delete;
-    PerfDataFrame(PerfDataFrame &&) = delete;
-    PerfDataFrame & operator=(PerfDataFrame &&) = delete;
-};
-
-static void sendAuxFrame(ISender & sender,
+static void sendAuxFrame(IPerfBufferConsumer & bufferConsumer,
                          int cpu,
-                         uint64_t tail,
-                         uint64_t head,
+                         uint64_t headerTail,
+                         uint64_t headerHead,
                          const char * buffer,
                          std::size_t length)
 {
     const std::size_t bufferMask = length - 1;
-    constexpr std::size_t maxHeaderSize = buffer_utils::MAXSIZE_PACK32    // frame type
-                                          + buffer_utils::MAXSIZE_PACK32  // cpu
-                                          + buffer_utils::MAXSIZE_PACK64  // tail
-                                          + buffer_utils::MAXSIZE_PACK32; // size
 
-    while (tail < head) {
-        // frame size must fit in int
-        const uint64_t thisHead = std::min(tail + ISender::MAX_RESPONSE_LENGTH - maxHeaderSize, head);
-        const int size = thisHead - tail;
+    // will be 'length' at most otherwise somehow wrapped many times
+    const std::size_t totalDataSize = std::min<uint64_t>(headerHead - headerTail, length);
+    const std::uint64_t head = headerHead;
+    // will either be the same as 'tail' or will be > if somehow wrapped multiple times
+    const std::uint64_t tail = (headerHead - totalDataSize);
 
-        const std::size_t tailMasked = tail & bufferMask;
-        const std::size_t headMasked = thisHead & bufferMask;
+    const std::size_t tailMasked = (tail & bufferMask);
+    const std::size_t headMasked = (head & bufferMask);
 
-        const bool haveWrapped = headMasked < tailMasked;
+    const bool haveWrapped = headMasked < tailMasked;
 
-        const int firstSize = haveWrapped ? length - tailMasked : size;
-        const int secondSize = haveWrapped ? headMasked : 0;
+    const std::size_t firstSize = (haveWrapped ? (length - tailMasked) : totalDataSize);
+    const std::size_t secondSize = (haveWrapped ? headMasked : 0);
 
-        char header[maxHeaderSize];
-        int pos = 0;
-        buffer_utils::packInt(header, pos, static_cast<uint32_t>(FrameType::PERF_AUX));
-        buffer_utils::packInt(header, pos, cpu);
-        buffer_utils::packInt64(header, pos, tail);
-        buffer_utils::packInt(header, pos, size);
+    const IPerfBufferConsumer::AuxRecordChunk chunks[2] = {{buffer + tailMasked, firstSize}, {buffer, secondSize}};
 
-        constexpr std::size_t numberOfParts = 3;
-        const lib::Span<const char, int> parts[numberOfParts] = {{header, pos},
-                                                                 {buffer + tailMasked, firstSize},
-                                                                 {buffer, secondSize}};
-        sender.writeDataParts({parts, numberOfParts}, ResponseType::APC_DATA);
-        tail = thisHead;
+    bufferConsumer.consumePerfAuxRecord(cpu, tail, chunks);
+}
+
+template<typename T>
+static inline const T * ringBufferPtr(const char * base, std::size_t positionMasked)
+{
+    return reinterpret_cast<const T *>(base + positionMasked);
+}
+
+template<typename T>
+static inline const T * ringBufferPtr(const char * base, std::uint64_t position, std::size_t sizeMask)
+{
+    return ringBufferPtr<T>(base, (position & sizeMask));
+}
+
+static void sendDataFrame(IPerfBufferConsumer & bufferConsumer,
+                          int cpu,
+                          uint64_t head,
+                          uint64_t tail,
+                          const char * b,
+                          std::size_t length)
+{
+    static constexpr std::size_t CHUNK_BUFFER_SIZE = 256; // arbitrary, roughly 4k size stack allocation on 64-bit
+    static constexpr std::size_t CHUNK_WORD_SIZE = sizeof(IPerfBufferConsumer::data_word_t);
+
+    const std::size_t bufferMask = length - 1;
+
+    std::size_t numChunksInBuffer = 0;
+    IPerfBufferConsumer::DataRecordChunkTuple chunkBuffer[CHUNK_BUFFER_SIZE];
+
+    while (head > tail) {
+        // write the chunks we have so far, so we can reuse the buffer
+        if (numChunksInBuffer == CHUNK_BUFFER_SIZE) {
+            bufferConsumer.consumePerfDataRecord(cpu, {chunkBuffer, numChunksInBuffer});
+            numChunksInBuffer = 0;
+        }
+
+        // create the next chunk
+        const auto * recordHeader = ringBufferPtr<perf_event_header>(b, tail, bufferMask);
+        const auto recordSize = (recordHeader->size + CHUNK_WORD_SIZE - 1) & ~(CHUNK_WORD_SIZE - 1);
+        const auto recordEnd = tail + recordSize;
+        const std::size_t baseMasked = (tail & bufferMask);
+        const std::size_t endMasked = (recordEnd & bufferMask);
+
+        const bool haveWrapped = endMasked < baseMasked;
+
+        const std::size_t firstSize = (haveWrapped ? (length - baseMasked) : recordSize);
+        const std::size_t secondSize = (haveWrapped ? endMasked : 0);
+
+        // set chunk
+        chunkBuffer[numChunksInBuffer].firstChunk.chunkPointer =
+            ringBufferPtr<IPerfBufferConsumer::data_word_t>(b, baseMasked);
+        chunkBuffer[numChunksInBuffer].firstChunk.wordCount = firstSize / CHUNK_WORD_SIZE;
+        chunkBuffer[numChunksInBuffer].optionalSecondChunk.chunkPointer =
+            ringBufferPtr<IPerfBufferConsumer::data_word_t>(b, 0);
+        chunkBuffer[numChunksInBuffer].optionalSecondChunk.wordCount = secondSize / CHUNK_WORD_SIZE;
+
+        numChunksInBuffer += 1;
+        tail = recordEnd;
+    }
+
+    // write the remaining chunks
+    if (numChunksInBuffer > 0) {
+        bufferConsumer.consumePerfDataRecord(cpu, {chunkBuffer, numChunksInBuffer});
     }
 }
 
-bool PerfBuffer::send(ISender & sender)
+bool PerfBuffer::send(IPerfBufferConsumer & bufferConsumer)
 {
-    PerfDataFrame frame(sender);
-
     const std::size_t dataBufferLength = getDataBufferLength();
     const std::size_t auxBufferLength = getAuxBufferLength();
 
@@ -345,7 +314,7 @@ bool PerfBuffer::send(ISender & sender)
             if (auxHead > auxTail) {
                 const char * const b = static_cast<char *>(auxBuf);
 
-                sendAuxFrame(sender, cpu, auxTail, auxHead, b, auxBufferLength);
+                sendAuxFrame(bufferConsumer, cpu, auxTail, auxHead, b, auxBufferLength);
 
                 // Update tail with the aux read and synchronize with the buffer writer
                 __atomic_store_n(&pemp->aux_tail, auxHead, __ATOMIC_RELEASE);
@@ -365,7 +334,7 @@ bool PerfBuffer::send(ISender & sender)
         if (dataHead > dataTail) {
             const char * const b = static_cast<char *>(dataBuf) + mConfig.pageSize;
 
-            frame.add(cpu, dataHead, dataTail, b, dataBufferLength);
+            sendDataFrame(bufferConsumer, cpu, dataHead, dataTail, b, dataBufferLength);
 
             // Update tail with the data read and synchronize with the buffer writer
             __atomic_store_n(&pemp->data_tail, dataHead, __ATOMIC_RELEASE);
@@ -384,7 +353,6 @@ bool PerfBuffer::send(ISender & sender)
             ++cpuAndBufIt;
         }
     }
-    frame.send();
 
     return true;
 }

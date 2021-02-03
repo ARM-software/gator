@@ -272,7 +272,7 @@ namespace armnn {
 
         // Failure
         else {
-            return bytesSent;
+            return -1;
         }
     }
 

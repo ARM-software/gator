@@ -3,6 +3,8 @@
 #ifndef CONFIGURATION_H_
 #define CONFIGURATION_H_
 
+#include "EventCode.h"
+
 #include <set>
 #include <string>
 #include <vector>
@@ -46,7 +48,7 @@ namespace std {
 
 struct CounterConfiguration {
     std::string counterName {};
-    int event = -1;
+    EventCode event {};
     int count = 0;
     int cores = 0;
 };

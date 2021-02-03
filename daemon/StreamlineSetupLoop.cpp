@@ -15,7 +15,11 @@ namespace {
         COMMAND_APC_START = 2,
         COMMAND_APC_STOP = 3,
         COMMAND_DISCONNECT = 4,
-        COMMAND_PING = 5
+        COMMAND_PING = 5,
+        COMMAND_EXIT = 6,
+        // A request to get gatord configuration (in XML format)
+        // Not to be confused with configuration.xml
+        COMMAND_REQUEST_CURRENT_CONFIG = 7
     };
 
     struct ReadResult {
@@ -41,8 +45,8 @@ namespace {
             return result;
         }
 
-        const char type = header[0];
-        const int length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
+        const auto type = header[0];
+        const auto length = (header[1] << 0) | (header[2] << 8) | (header[3] << 16) | (header[4] << 24);
 
         // add artificial limit
         if ((length < 0) || length > 1024 * 1024) {
@@ -50,7 +54,7 @@ namespace {
             return result;
         }
 
-        // alocate data for receive
+        // allocate data for receive
         result.data.resize(length + 1, 0);
 
         // receive data
@@ -125,6 +129,15 @@ IStreamlineCommandHandler::State streamlineSetupCommandIteration(
                 logg.logMessage("INVESTIGATE: Received PING command but with length = %zu", readResult.data.size());
             }
             return handler.handlePing();
+        case COMMAND_EXIT:
+            //No logging on length needed as there will be no additional data
+            return handler.handleExit();
+        case COMMAND_REQUEST_CURRENT_CONFIG:
+            if (!readResult.data.empty()) {
+                logg.logMessage("INVESTIGATE: Received REQUEST_CONFIG command but with length = %zu",
+                                readResult.data.size());
+            }
+            return handler.handleRequestCurrentConfig();
         default:
             logg.logError("Target error: Unknown command type, %d", readResult.commandType);
             return IStreamlineCommandHandler::State::EXIT_ERROR;

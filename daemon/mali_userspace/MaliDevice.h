@@ -3,6 +3,7 @@
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 
+#include "Constant.h"
 #include "IBlockCounterFrameBuilder.h"
 #include "lib/AutoClosingFd.h"
 #include "mali_userspace/MaliDeviceApi.h"
@@ -10,7 +11,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 
 namespace mali_userspace {
@@ -222,6 +225,10 @@ namespace mali_userspace {
                                                std::uint32_t tilerBitmask,
                                                std::uint32_t mmuL2Bitmask,
                                                bool & failedDueToBufferCount) const;
+
+        static void insertConstants(std::set<Constant> & dest);
+
+        std::map<CounterKey, int64_t> getConstantValues() const;
 
     private:
         /** Init a block in the enable list */

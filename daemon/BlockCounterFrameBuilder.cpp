@@ -8,9 +8,7 @@
 
 BlockCounterFrameBuilder::~BlockCounterFrameBuilder()
 {
-    if (isFrameStarted) {
-        rawBuilder.endFrame();
-    }
+    endFrame();
 }
 
 bool BlockCounterFrameBuilder::eventHeader(uint64_t time)
@@ -83,15 +81,16 @@ bool BlockCounterFrameBuilder::event64(int key, int64_t value)
 bool BlockCounterFrameBuilder::check(const uint64_t time)
 {
     if ((*flushIsNeeded)(time, rawBuilder.needsFlush())) {
-        bool shouldEndFrame = isFrameStarted;
-        if (shouldEndFrame) {
-            rawBuilder.endFrame();
-            isFrameStarted = false;
-        }
-        rawBuilder.flush();
-        return shouldEndFrame;
+        return flush();
     }
     return false;
+}
+
+bool BlockCounterFrameBuilder::flush()
+{
+    const bool shouldEndFrame = endFrame();
+    rawBuilder.flush();
+    return shouldEndFrame;
 }
 
 bool BlockCounterFrameBuilder::checkSpace(const int bytes)
@@ -113,4 +112,14 @@ bool BlockCounterFrameBuilder::ensureFrameStarted()
     rawBuilder.packInt(0); // core
     isFrameStarted = true;
     return true;
+}
+
+bool BlockCounterFrameBuilder::endFrame()
+{
+    const bool shouldEndFrame = isFrameStarted;
+    if (shouldEndFrame) {
+        rawBuilder.endFrame();
+        isFrameStarted = false;
+    }
+    return shouldEndFrame;
 }

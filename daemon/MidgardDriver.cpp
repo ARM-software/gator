@@ -67,7 +67,7 @@ struct CounterData {
 class MidgardCounter : public DriverCounter {
 public:
     MidgardCounter(DriverCounter * next, const char * name, CounterData * const counterData)
-        : DriverCounter(next, name), mCounterData(*counterData), mEvent(-1)
+        : DriverCounter(next, name), mCounterData(*counterData), mEvent()
     {
     }
 
@@ -79,12 +79,12 @@ public:
     // ACTIVITY
     int getCores() const { return mCounterData.mCores; }
 
-    void setEvent(const int event) { mEvent = event; }
-    int getEvent() const { return mEvent; }
+    void setEvent(EventCode event) { mEvent = event; }
+    EventCode getEvent() const { return mEvent; }
 
 private:
     const CounterData mCounterData;
-    int mEvent;
+    EventCode mEvent;
 
     // Intentionally undefined
     MidgardCounter(const MidgardCounter &) = delete;
@@ -305,11 +305,12 @@ bool MidgardDriver::start(const int uds)
         foundWindumpCounter = true;
 
         // MALI_GLES_WINDUMP
+        const int wdEventCode = counter->getEvent().asI32();
         GLESWindump m;
         m.mDeclId = 1;
-        m.mSkipframes = counter->getEvent() & 0xff;
-        m.mMinWidth = (counter->getEvent() & 0xfff00000) >> 20;
-        m.mMinHeight = (counter->getEvent() & 0xfff00) >> 8;
+        m.mSkipframes = (wdEventCode & 0xff);
+        m.mMinWidth = (wdEventCode & 0xfff00000) >> 20;
+        m.mMinHeight = (wdEventCode & 0xfff00) >> 8;
         memcpy(buf + bufPos, &m, sizeof(m));
         bufPos += sizeof(m);
     }
@@ -352,10 +353,8 @@ void MidgardDriver::setupCounter(Counter & counter)
         return;
     }
     midgardCounter->setEnabled(true);
+    midgardCounter->setEvent(counter.getEventCode());
     counter.setKey(midgardCounter->getKey());
-    if (counter.getEvent() != -1) {
-        midgardCounter->setEvent(counter.getEvent());
-    }
     if (midgardCounter->getType() == CounterData::ACTIVITY && midgardCounter->getCores() > 0) {
         counter.setCores(midgardCounter->getCores());
     }

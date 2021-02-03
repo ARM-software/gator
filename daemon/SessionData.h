@@ -5,6 +5,7 @@
 
 #include "Config.h"
 #include "Configuration.h"
+#include "Constant.h"
 #include "Counter.h"
 #include "GatorCLIFlags.h"
 #include "lib/SharedMemory.h"
@@ -20,7 +21,7 @@
 #include <vector>
 
 //development version for PROTOCOL_VERSION is of format YYYYMMDD
-#define PROTOCOL_VERSION 740
+#define PROTOCOL_VERSION 750
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 
@@ -98,6 +99,8 @@ public:
     // PMU Counters
     Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 
+    std::set<Constant> mConstants;
+
 private:
     // Intentionally unimplemented
     SessionData(const SessionData &) = delete;
@@ -110,7 +113,7 @@ extern SessionData gSessionData;
 extern const char * const gSrcMd5;
 
 uint64_t getTime();
-int getEventKey();
+
 void logCpuNotFound();
 
 #endif // SESSION_DATA_H

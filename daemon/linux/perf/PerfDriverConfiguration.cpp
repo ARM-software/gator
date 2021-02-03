@@ -3,6 +3,7 @@
 #include "linux/perf/PerfDriverConfiguration.h"
 
 #include "Logging.h"
+#include "PerfUtils.h"
 #include "SessionData.h"
 #include "k/perf_event.h"
 #include "lib/FileDescriptor.h"
@@ -23,11 +24,14 @@
 constexpr int PerfDriverConfiguration::UNKNOWN_CPUID;
 constexpr char PerfDriverConfiguration::ARMV82_SPE[];
 
+static const std::string debugPerfEventMlockKbPropString = "debug.perf_event_mlock_kb";
+static const std::string securityPerfHardenPropString = "security.perf_harden";
+
 using lib::FsEntry;
 
 static bool getPerfHarden()
 {
-    const char * const command[] = {"getprop", "security.perf_harden", nullptr};
+    const char * const command[] = {"getprop", securityPerfHardenPropString.c_str(), nullptr};
     const lib::PopenResult getprop = lib::popen(command);
     if (getprop.pid < 0) {
         logg.logMessage("lib::popen(%s %s) failed: %s. Probably not android",
@@ -43,17 +47,21 @@ static bool getPerfHarden()
     return value == '1';
 }
 
-static void setPerfHarden(bool on)
+static void setProp(const std::string & prop, const std::string & value)
 {
-    const char * const command[] = {"setprop", "security.perf_harden", on ? "1" : "0", nullptr};
+    const char * const command[] = {"setprop", prop.c_str(), value.c_str(), nullptr};
 
-    const lib::PopenResult setprop = lib::popen(command);
-    if (setprop.pid < 0) {
-        logg.logError("lib::popen(%s %s %s) failed: %s", command[0], command[1], command[2], strerror(-setprop.pid));
+    const lib::PopenResult setPropResult = lib::popen(command);
+    if (setPropResult.pid < 0) {
+        logg.logError("lib::popen(%s %s %s) failed: %s",
+                      command[0],
+                      command[1],
+                      command[2],
+                      strerror(-setPropResult.pid));
         return;
     }
 
-    const int status = lib::pclose(setprop);
+    const int status = lib::pclose(setPropResult);
     if (!WIFEXITED(status)) {
         logg.logError("'%s %s %s' exited abnormally", command[0], command[1], command[2]);
         return;
@@ -62,6 +70,50 @@ static void setPerfHarden(bool on)
     const int exitCode = WEXITSTATUS(status);
     if (exitCode != 0) {
         logg.logError("'%s %s %s' failed: %d", command[0], command[1], command[2], exitCode);
+    }
+}
+
+static void setPerfHarden(bool on)
+{
+    setProp(securityPerfHardenPropString, on ? "1" : "0");
+}
+
+static bool setPerfEventMlockKb(int newValue)
+{
+    lib::Optional<std::int64_t> fileValue = perf_utils::readPerfEventMlockKb();
+
+    if (fileValue.valid() && fileValue.get() == newValue) {
+        return true;
+    }
+
+    logg.logWarning("setting property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
+    setProp(debugPerfEventMlockKbPropString, std::to_string(newValue));
+
+    // Trigger debug property update
+    setPerfHarden(false);
+
+    // Give time for the debug property update to finish
+    sleep(1);
+
+    fileValue = perf_utils::readPerfEventMlockKb();
+    const bool result = fileValue.valid() ? fileValue.get() == newValue : false;
+
+    if (!result) {
+        logg.logWarning("failed to set property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
+    }
+
+    return result;
+}
+
+static void setSuitablePerfEventMlockKbValue(int numCpus)
+{
+    // This function needs further consideration because "largeBufferSize" might be less than the default
+    const int largeBufferSize = (1 + numCpus * 64) * (gSessionData.mPageSize / 1024);
+
+    if (!setPerfEventMlockKb(largeBufferSize)) {
+        const int smallerBufferSize = 129 * (gSessionData.mPageSize / 1024);
+
+        setPerfEventMlockKb(smallerBufferSize);
     }
 }
 
@@ -74,7 +126,7 @@ static bool disablePerfHarden()
         return true;
     }
 
-    logg.logWarning("disabling property security.perf_harden");
+    logg.logWarning("disabling property %s", securityPerfHardenPropString.c_str());
 
     setPerfHarden(false);
 
@@ -103,6 +155,7 @@ void logCpuNotFound()
 }
 
 std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool systemWide,
+                                                                         const char * tracefsEventsPath,
                                                                          lib::Span<const int> cpuIds,
                                                                          const PmuXML & pmuXml)
 {
@@ -130,10 +183,14 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     const bool isRoot = (lib::geteuid() == 0);
 
     if (!isRoot && !disablePerfHarden()) {
-        logg.logSetup("Failed to disable property security.perf_harden\n" //
-                      "Try 'adb shell setprop security.perf_harden 0'");
-        logg.logError("Failed to disable property security.perf_harden\n" //
-                      "Try 'setprop security.perf_harden 0' as the shell or root user.");
+        logg.logSetup("Failed to disable property %s\n" //
+                      "Try 'adb shell setprop %s 0'",
+                      securityPerfHardenPropString.c_str(),
+                      securityPerfHardenPropString.c_str());
+        logg.logError("Failed to disable property %s\n" //
+                      "Try 'setprop %s 0' as the shell or root user.",
+                      securityPerfHardenPropString.c_str(),
+                      securityPerfHardenPropString.c_str());
         return nullptr;
     }
 
@@ -185,7 +242,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         return nullptr;
     }
 
-    const bool can_access_tracepoints = (lib::access(EVENTS_PATH, R_OK) == 0);
+    const bool can_access_tracepoints = (lib::access(tracefsEventsPath, R_OK) == 0);
     const bool can_access_raw_tracepoints = can_access_tracepoints && (isRoot || perf_event_paranoid == -1);
     if (can_access_tracepoints) {
         logg.logMessage("Have access to tracepoints");
@@ -208,22 +265,24 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         }
         else {
             if (isRoot) {
-                logg.logSetup(EVENTS_PATH
-                              " does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?");
-                logg.logError(EVENTS_PATH " is not available.\n"
-                                          "Try:\n"
-                                          " - mount -t debugfs none /sys/kernel/debug");
+                logg.logSetup("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
+                              tracefsEventsPath);
+                logg.logError("%s is not available.\n"
+                              "Try:\n"
+                              " - mount -t debugfs none /sys/kernel/debug",
+                              tracefsEventsPath);
             }
             else {
-                logg.logSetup(EVENTS_PATH
-                              " does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?");
-                logg.logError(EVENTS_PATH " is not available.\n"
-                                          "Try:\n"
-                                          " * --system-wide=no,\n"
-                                          " * run gatord as root,\n"
-                                          " * or (as root):\n"
-                                          "    - mount -o remount,mode=755 /sys/kernel/debug\n"
-                                          "    - mount -o remount,mode=755 /sys/kernel/debug/tracing");
+                logg.logSetup("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
+                              tracefsEventsPath);
+                logg.logError("%s is not available.\n"
+                              "Try:\n"
+                              " * --system-wide=no,\n"
+                              " * run gatord as root,\n"
+                              " * or (as root):\n"
+                              "    - mount -o remount,mode=755 /sys/kernel/debug\n"
+                              "    - mount -o remount,mode=755 /sys/kernel/debug/tracing",
+                              tracefsEventsPath);
             }
         }
         return nullptr;
@@ -439,6 +498,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
             "The system may not support perf hardware counters. Check CONFIG_HW_PERF_EVENTS is set and that the PMU is "
             "configured in the target device tree.");
     }
+
+    setSuitablePerfEventMlockKbValue(cpuIds.size());
 
     return configuration;
 }

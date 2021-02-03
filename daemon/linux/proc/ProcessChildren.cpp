@@ -38,7 +38,7 @@ namespace lnx {
             while ((taskEntry = readdir(taskDir.get())) != nullptr) {
                 // no point recursing if we're relying on the fall back
                 if (std::strcmp(taskEntry->d_name, ".") != 0 && std::strcmp(taskEntry->d_name, "..") != 0) {
-                    const int child = atoi(taskEntry->d_name);
+                    const auto child = std::strtol(taskEntry->d_name, nullptr, 10);
                     if (child > 0) {
                         tids.insert(child);
                     }

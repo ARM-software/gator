@@ -260,7 +260,7 @@ class GatorProfiler:
 
     def run(self, script_or_code):
         """Equivalent to `runctx(script_or_code, __main__.__dict__, __main__.__dict__)`"""
-        self.runctx(script_or_code, __main__.__dict__, __main__.__dict__)
+        self.runctx(script_or_code, dict, dict)
 
     def runctx(self, script_or_code, globals = {}, locals = {}):
         """

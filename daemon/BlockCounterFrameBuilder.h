@@ -38,11 +38,14 @@ public:
 
     virtual bool check(const uint64_t time) override;
 
+    virtual bool flush() override;
+
 private:
     IRawFrameBuilder & rawBuilder;
     std::shared_ptr<CommitTimeChecker> flushIsNeeded;
     bool isFrameStarted = false;
 
     bool ensureFrameStarted();
+    bool endFrame();
     bool checkSpace(const int bytes);
 };

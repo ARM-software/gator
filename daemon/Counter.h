@@ -3,6 +3,8 @@
 #ifndef COUNTER_H
 #define COUNTER_H
 
+#include "EventCode.h"
+
 #include <cstring>
 #include <new>
 
@@ -13,7 +15,7 @@ public:
     static const size_t MAX_STRING_LEN = 80;
     static const size_t MAX_DESCRIPTION_LEN = 400;
 
-    Counter() : mType(), mEnabled(false), mEvent(-1), mCount(0), mCores(-1), mKey(0), mDriver(nullptr)
+    Counter() : mType(), mEnabled(false), mEvent(), mCount(0), mCores(-1), mKey(0), mDriver(nullptr)
     {
         mType[0] = '\0';
     }
@@ -30,7 +32,7 @@ public:
         mType[sizeof(mType) - 1] = '\0';
     }
     void setEnabled(const bool enabled) { mEnabled = enabled; }
-    void setEvent(const int event) { mEvent = event; }
+    void setEventCode(const EventCode event) { mEvent = event; }
     void setCount(const int count) { mCount = count; }
     void setCores(const int cores) { mCores = cores; }
     void setKey(const int key) { mKey = key; }
@@ -38,7 +40,7 @@ public:
 
     const char * getType() const { return mType; }
     bool isEnabled() const { return mEnabled; }
-    int getEvent() const { return mEvent; }
+    EventCode getEventCode() const { return mEvent; }
     int getCount() const { return mCount; }
     int getCores() const { return mCores; }
     int getKey() const { return mKey; }
@@ -53,7 +55,7 @@ private:
 
     char mType[MAX_STRING_LEN];
     bool mEnabled;
-    int mEvent;
+    EventCode mEvent;
     int mCount;
     int mCores;
     int mKey;

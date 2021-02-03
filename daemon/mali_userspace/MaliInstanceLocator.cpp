@@ -44,6 +44,7 @@ namespace mali_userspace {
             if (childStats.type() == lib::FsEntry::Type::DIR) {
                 // check name is 'mali#'
                 unsigned int id = 0;
+                // NOLINTNEXTLINE(cert-err34-c)
                 if (dirIsCalledMisc && sscanf(childEntry->name().c_str(), "mali%u", &id) == 1) {
                     // don't repeat your self
                     if (gpuClockPaths.count(id) > 0) {

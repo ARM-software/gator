@@ -60,7 +60,7 @@ namespace non_root {
 
         // process related stuff
         BlockCounterFrameBuilder processCounterBuilder {mProcessCounterBuffer, gSessionData.mLiveRate};
-        BlockCounterMessageConsumer processCounterConsumer {globalCounterBuilder};
+        BlockCounterMessageConsumer processCounterConsumer {processCounterBuilder};
         ProcessStateChangeHandler processChangeHandler(processCounterConsumer,
                                                        mMiscBuffer,
                                                        mSwitchBuffers,
@@ -94,6 +94,9 @@ namespace non_root {
 
             usleep(sleepUs);
         }
+
+        processCounterBuilder.flush();
+        globalCounterBuilder.flush();
 
         mGlobalCounterBuffer.setDone();
         mProcessCounterBuffer.setDone();

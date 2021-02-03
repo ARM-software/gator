@@ -4,6 +4,7 @@
 #define FTRACEDRIVER_H
 
 #include "SimpleDriver.h"
+#include "Tracepoints.h"
 
 #include <pthread.h>
 #include <utility>
@@ -29,7 +30,7 @@ private:
 
 class FtraceDriver : public SimpleDriver {
 public:
-    FtraceDriver(bool useForTracepoint, size_t numberOfCores);
+    FtraceDriver(const TraceFsConstants & traceFsConstants, bool useForTracepoint, size_t numberOfCores);
 
     void readEvents(mxml_node_t * xml) override;
 
@@ -41,6 +42,7 @@ public:
     bool isSupported() const { return mSupported; }
 
 private:
+    const TraceFsConstants & traceFsConstants;
     Barrier mBarrier;
     int mTracingOn;
     bool mSupported, mMonotonicRawSupport, mUseForTracepoints;

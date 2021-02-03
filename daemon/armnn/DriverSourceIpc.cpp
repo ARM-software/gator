@@ -1,9 +1,9 @@
 /* Copyright (C) 2020 by Arm Limited. All rights reserved. */
 
 #include "armnn/DriverSourceIpc.h"
+
 #include "BufferUtils.h"
 #include "IRawFrameBuilder.h"
-
 #include "Logging.h"
 
 #include <cstdio>
@@ -258,7 +258,8 @@ namespace armnn {
             return false;
         }
 
-        if (isOneShot && (getBufferBytesAvailable() < IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + data.size())) {
+        if (isOneShot && (getBufferBytesAvailable() <
+                          IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + data.size())) {
             mOneShotModeEnabledAndEnded = true;
             return false;
         }

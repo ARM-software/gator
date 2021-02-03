@@ -3,6 +3,7 @@
 #include "CapturedXML.h"
 
 #include "CapturedSpe.h"
+#include "Constant.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -67,6 +68,19 @@ static const char * detectOs()
     return "linux";
 }
 #endif
+
+static std::string modeAsString(const ConstantMode mode)
+{
+    switch (mode) {
+        case ConstantMode::SystemWide:
+            return "system-wide";
+        case ConstantMode::PerCore:
+            return "per-core";
+        default:
+            logg.logError("Unexpected ConstantMode %d", static_cast<int>(mode));
+            handleException();
+    }
+}
 
 /** Generate the xml tree for capture.xml */
 static mxml_node_t * getTree(bool includeTime,
@@ -152,8 +166,8 @@ static mxml_node_t * getTree(bool includeTime,
             mxml_node_t * const node = mxmlNewElement(counters, "counter");
             mxmlElementSetAttrf(node, "key", "0x%x", counter.getKey());
             mxmlElementSetAttr(node, "type", counter.getType());
-            if (counter.getEvent() != -1) {
-                mxmlElementSetAttrf(node, "event", "0x%x", counter.getEvent());
+            if (counter.getEventCode().isValid()) {
+                mxmlElementSetAttrf(node, "event", "0x%" PRIxEventCode, counter.getEventCode().asU64());
             }
             if (counter.getCount() > 0) {
                 mxmlElementSetAttrf(node, "count", "%d", counter.getCount());
@@ -162,6 +176,23 @@ static mxml_node_t * getTree(bool includeTime,
                 mxmlElementSetAttrf(node, "cores", "%d", counter.getCores());
             }
         }
+    }
+
+    for (const auto & constant : gSessionData.mConstants) {
+
+        const std::string mode = modeAsString(constant.getMode());
+
+        if (counters == nullptr) {
+            counters = mxmlNewElement(captured, "counters");
+        }
+        mxml_node_t * const node = mxmlNewElement(counters, "counter");
+
+        mxmlElementSetAttrf(node, "key", "0x%x", constant.getKey());
+        mxmlElementSetAttr(node, "counter", constant.getCounterString().c_str());
+        mxmlElementSetAttr(node, "title", constant.getTitle().c_str());
+        mxmlElementSetAttr(node, "name", constant.getName().c_str());
+        mxmlElementSetAttr(node, "class", "constant");
+        mxmlElementSetAttr(node, "mode", mode.c_str());
     }
 
     for (const auto & spe : spes) {

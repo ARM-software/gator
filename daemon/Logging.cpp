@@ -84,6 +84,7 @@ static void format(char * const buf,
     vsnprintf(buf + len, bufSize - 1 - len, fmt, args); //  subtract 1 for \0
 }
 
+// NOLINTNEXTLINE(cert-dcl50-cpp)
 void Logging::_logError(const char * function, const char * file, int line, const char * fmt, ...)
 {
     va_list args;
@@ -97,6 +98,7 @@ void Logging::_logError(const char * function, const char * file, int line, cons
     fprintf(stderr, "%s\n", mErrBuf);
 }
 
+// NOLINTNEXTLINE(cert-dcl50-cpp)
 void Logging::_logSetup(const char * function, const char * file, int line, const char * fmt, ...)
 {
     char logBuf[4096]; // Arbitrarily large buffer to hold a string
@@ -116,6 +118,7 @@ void Logging::_logSetup(const char * function, const char * file, int line, cons
     }
 }
 
+// NOLINTNEXTLINE(cert-dcl50-cpp)
 void Logging::_logMessage(const char * function, const char * file, int line, const char * fmt, ...)
 {
     if (mDebug) {
@@ -132,6 +135,7 @@ void Logging::_logMessage(const char * function, const char * file, int line, co
     }
 }
 
+// NOLINTNEXTLINE(cert-dcl50-cpp)
 void Logging::_logWarning(const char * function, const char * file, int line, const char * fmt, ...)
 {
     char logBuf[4096]; // Arbitrarily large buffer to hold a string

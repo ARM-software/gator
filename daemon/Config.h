@@ -10,10 +10,6 @@
 
 #define MAX_PERFORMANCE_COUNTERS 100
 
-// If debugfs is not mounted at /sys/kernel/debug, update TRACING_PATH
-#define TRACING_PATH "/sys/kernel/debug/tracing"
-#define EVENTS_PATH TRACING_PATH "/events"
-
 // feature control options
 #ifndef CONFIG_PREFER_SYSTEM_WIDE_MODE
 #define CONFIG_PREFER_SYSTEM_WIDE_MODE 1
@@ -29,6 +25,10 @@
 
 #ifndef GATORD_BUILD_ID
 #define GATORD_BUILD_ID "oss"
+#endif
+
+#ifndef GATOR_SELF_PROFILE
+#define GATOR_SELF_PROFILE 0
 #endif
 
 // assume /proc/sys/kernel/perf_event_paranoid == 2 if it cannot be read

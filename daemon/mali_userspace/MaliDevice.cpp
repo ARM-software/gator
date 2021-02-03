@@ -2,6 +2,7 @@
 
 #include "mali_userspace/MaliDevice.h"
 
+#include "GetEventKey.h"
 #include "Logging.h"
 #include "lib/Assert.h"
 #include "mali_userspace/MaliHwCntrNames.h"
@@ -12,6 +13,23 @@
 #include <cstring>
 
 namespace mali_userspace {
+
+    static const Constant maliBusWidthBits = Constant(getEventKey(),
+                                                      "ARM_Mali-CONST_BUS_WIDTH_BITS",
+                                                      "Mali Constants",
+                                                      "Bus Width Bits",
+                                                      ConstantMode::PerCore);
+    static const Constant maliCacheSliceCount = Constant(getEventKey(),
+                                                         "ARM_Mali-CONST_L2_SLICE_COUNT",
+                                                         "Mali Constants",
+                                                         "L2 Slice Count",
+                                                         ConstantMode::PerCore);
+    static const Constant maliShaderCoreCount = Constant(getEventKey(),
+                                                         "ARM_Mali-CONST_SHADER_CORE_COUNT",
+                                                         "Mali Constants",
+                                                         "Shader Core Count",
+                                                         ConstantMode::PerCore);
+
     enum class MaliCounterBlockName : uint32_t {
         JM = 0,
         TILER = 1,
@@ -635,4 +653,18 @@ namespace mali_userspace {
             }
         }
     }
+
+    void MaliDevice::insertConstants(std::set<Constant> & dest)
+    {
+        dest.insert(maliBusWidthBits);
+        dest.insert(maliCacheSliceCount);
+        dest.insert(maliShaderCoreCount);
+    };
+
+    std::map<CounterKey, int64_t> MaliDevice::getConstantValues() const
+    {
+        return {{maliBusWidthBits.getKey(), deviceApi->getExternalBusWidth()},
+                {maliCacheSliceCount.getKey(), deviceApi->getNumberOfL2Slices()},
+                {maliShaderCoreCount.getKey(), deviceApi->getNumberOfUsableShaderCores()}};
+    };
 }

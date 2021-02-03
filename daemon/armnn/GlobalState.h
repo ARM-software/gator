@@ -46,7 +46,7 @@ namespace armnn {
         /// @param eventNumber should be empty if not a programmable counter
         /// @return key assigned for counter
         ///
-        int enableCounter(const std::string & counterName, lib::Optional<int> eventNumber);
+        int enableCounter(const std::string & counterName, EventCode eventNumber);
 
         void disableAllCounters();
 
@@ -74,7 +74,7 @@ namespace armnn {
         struct CounterNameKeyAndEventNumber {
             const std::string & counterName;
             int key;
-            lib::Optional<int> eventNumber;
+            EventCode eventNumber;
         };
 
         static std::string eventIdToString(const EventId & id);

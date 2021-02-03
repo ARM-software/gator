@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "EventCode.h"
 #include "lib/Optional.h"
 
 #include <string>
@@ -11,7 +12,7 @@ struct Event {
     enum Class { DELTA, INCIDENT, ABSOLUTE, ACTIVITY };
 
     // at least one of eventNumber or counter should be present
-    lib::Optional<int> eventNumber;
+    EventCode eventNumber;
     lib::Optional<std::string> counter;
     Class clazz;
     double multiplier;

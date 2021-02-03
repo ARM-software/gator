@@ -31,6 +31,7 @@ GATORD_CXX_SRC_FILES := \
     Command.cpp \
     ConfigurationXML.cpp \
     ConfigurationXMLParser.cpp \
+    Constant.cpp \
     CounterXML.cpp \
     CpuUtils.cpp \
     CpuUtils_Topology.cpp \
@@ -44,6 +45,7 @@ GATORD_CXX_SRC_FILES := \
     FSDriver.cpp \
     FtraceDriver.cpp \
     GatorCLIParser.cpp \
+    GetEventKey.cpp \
     HwmonDriver.cpp \
     BlockCounterFrameBuilder.cpp \
     BlockCounterMessageConsumer.cpp \
@@ -114,6 +116,7 @@ GATORD_CXX_SRC_FILES := \
     linux/perf/PerfSource.cpp \
     linux/perf/PerfSyncThreadBuffer.cpp \
     linux/perf/PerfSyncThread.cpp \
+    linux/perf/PerfToMemoryBuffer.cpp \
     linux/proc/ProcessChildren.cpp \
     linux/proc/ProcessPollerBase.cpp \
     linux/proc/ProcLoadAvgFileRecord.cpp \
@@ -139,6 +142,7 @@ GATORD_CXX_SRC_FILES := \
     non_root/ProcessStateChangeHandler.cpp \
     non_root/ProcessStateTracker.cpp \
     non_root/ProcessStatsTracker.cpp \
+    xml/CurrentConfigXML.cpp \
     xml/EventsXML.cpp \
     xml/EventsXMLProcessor.cpp \
     xml/MxmlUtils.cpp \

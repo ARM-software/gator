@@ -39,23 +39,27 @@ namespace lib {
 
         Optional & operator=(const Optional<value_type> & t)
         {
-            if (t) {
-                set(t.get());
-            }
-            else {
-                clear();
+            if (&t != this) {
+                if (t) {
+                    set(t.get());
+                }
+                else {
+                    clear();
+                }
             }
             return *this;
         }
 
         Optional & operator=(Optional<value_type> && t) noexcept
         {
-            if (t) {
-                set(std::move(t.get()));
-                t.clear();
-            }
-            else {
-                clear();
+            if (&t != this) {
+                if (t) {
+                    set(std::move(t.get()));
+                    t.clear();
+                }
+                else {
+                    clear();
+                }
             }
             return *this;
         }

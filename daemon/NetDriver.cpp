@@ -86,8 +86,12 @@ bool NetDriver::doRead()
 
         uint64_t receiveBytes;
         uint64_t transmitBytes;
-        const int count =
-            sscanf(colon + 1, " %" SCNu64 " %*u %*u %*u %*u %*u %*u %*u %" SCNu64, &receiveBytes, &transmitBytes);
+
+        // NOLINTNEXTLINE(cert-err34-c)
+        const int count = sscanf(colon + 1, //
+                                 " %" SCNu64 " %*u %*u %*u %*u %*u %*u %*u %" SCNu64,
+                                 &receiveBytes,
+                                 &transmitBytes);
         if (count != 2) {
             return false;
         }

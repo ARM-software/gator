@@ -17,6 +17,7 @@ class FtraceDriver;
 class PrimarySource;
 struct PmuXML;
 class ICpuInfo;
+struct TraceFsConstants;
 
 /**
  * Interface for different primary source types.
@@ -31,6 +32,7 @@ public:
      * Static initialization / detection
      */
     static std::unique_ptr<PrimarySourceProvider> detect(bool systemWide,
+                                                         const TraceFsConstants & traceFsConstants,
                                                          PmuXML && pmuXml,
                                                          const char * maliFamilyName,
                                                          bool disableCpuOnlining);

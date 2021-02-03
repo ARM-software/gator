@@ -4,12 +4,12 @@
 #define PERF_BUFFER
 
 #include "Config.h"
+#include "lib/Span.h"
+#include "linux/perf/IPerfBufferConsumer.h"
 
 #include <map>
 #include <set>
 #include <vector>
-
-class ISender;
 
 class PerfBuffer {
 public:
@@ -28,7 +28,7 @@ public:
     bool useFd(int fd, int cpu, bool collectAuxTrace = false);
     void discard(int cpu);
     bool isFull();
-    bool send(ISender & sender);
+    bool send(IPerfBufferConsumer & bufferConsumer);
 
     std::size_t getDataBufferLength() const;
     std::size_t getAuxBufferLength() const;

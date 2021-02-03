@@ -40,13 +40,13 @@ static void appendError(std::ostream & error, const std::string & possibleError)
 namespace configuration_xml {
 
     static bool addCounter(const char * counterName,
-                           int event,
+                           const EventCode & event,
                            int count,
                            int cores,
                            int mIndex,
                            bool printWarningIfUnclaimed,
                            lib::Span<Driver * const> drivers,
-                           const std::map<std::string, int> & counterToEventMap);
+                           const std::map<std::string, EventCode> & counterToEventMap);
 
     Contents getConfigurationXML(lib::Span<const GatorCpu> clusters)
     {
@@ -130,7 +130,7 @@ namespace configuration_xml {
         for (auto & mCounter : gSessionData.mCounters) {
             mCounter.setEnabled(false);
         }
-        const std::map<std::string, int> counterToEventMap =
+        const std::map<std::string, EventCode> counterToEventMap =
             events_xml::getCounterToEventMap(drivers.getAllConst(),
                                              drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         //Add counter
@@ -219,22 +219,23 @@ namespace configuration_xml {
     }
 
     static bool addCounter(const char * counterName,
-                           int event,
+                           const EventCode & event,
                            int count,
                            int cores,
                            int mIndex,
                            bool printWarningIfUnclaimed,
                            lib::Span<Driver * const> drivers,
-                           const std::map<std::string, int> & counterToEventMap)
+                           const std::map<std::string, EventCode> & counterToEventMap)
     {
 
-        const auto end = counterToEventMap.end();
-        const auto it =
-            std::find_if(counterToEventMap.begin(), end, [&counterName](const std::pair<std::string, int> & pair) {
-                return strcasecmp(pair.first.c_str(), counterName) == 0;
-            });
-        const bool hasEventsXmlCounter = (it != end);
-        const int counterEvent = (hasEventsXmlCounter ? it->second : -1);
+        const auto eventsXmlCounterEnd = counterToEventMap.end();
+        const auto eventsXmlCounterIterator =
+            std::find_if(counterToEventMap.begin(),
+                         eventsXmlCounterEnd,
+                         [&counterName](const std::pair<std::string, EventCode> & pair) {
+                             return strcasecmp(pair.first.c_str(), counterName) == 0;
+                         });
+
         // read attributes
         Counter & counter = gSessionData.mCounters[mIndex];
         counter.clear();
@@ -245,13 +246,15 @@ namespace configuration_xml {
         // overriding anything from user map. This is necessary for cycle counters for example where
         // they have a name "XXX_ccnt" but also often an event code. If not the event code -1 is used
         // which is incorrect.
-        if (hasEventsXmlCounter) {
-            counter.setEvent(counterEvent);
+        if (eventsXmlCounterIterator != eventsXmlCounterEnd) {
+            if (eventsXmlCounterIterator->second.isValid()) {
+                counter.setEventCode(eventsXmlCounterIterator->second);
+            }
         }
         // the counter is not in events.xml. This usually means it is a PMU slot counter
         // the user specified the event code, use that
-        else if (event > -1) {
-            counter.setEvent(event);
+        else if (event.isValid()) {
+            counter.setEventCode(event);
         }
         // the counter is not in events.xml. This usually means it is a PMU slot counter, but since
         // the user has not specified an event code, this is probably incorrect.
@@ -273,9 +276,10 @@ namespace configuration_xml {
         for (Driver * driver : drivers) {
             if (driver->claimCounter(counter)) {
                 if ((counter.getDriver() != nullptr) && (counter.getDriver() != driver)) {
-                    logg.logError("More than one driver has claimed %s:%i (%s vs %s)",
+                    const auto & optionalEventCode = counter.getEventCode();
+                    logg.logError("More than one driver has claimed %s:0x%" PRIxEventCode " (%s vs %s)",
                                   counter.getType(),
-                                  counter.getEvent(),
+                                  (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0),
                                   counter.getDriver()->getName(),
                                   driver->getName());
                     handleException();
@@ -286,7 +290,11 @@ namespace configuration_xml {
         // If no driver is associated with the counter, disable it
         if (counter.getDriver() == nullptr) {
             if (printWarningIfUnclaimed) {
-                logg.logWarning("No driver has claimed %s:%i", counter.getType(), counter.getEvent());
+                const auto & optionalEventCode = counter.getEventCode();
+
+                logg.logWarning("No driver has claimed %s:0x%" PRIxEventCode,
+                                counter.getType(),
+                                (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
             }
             counter.setEnabled(false);
         }

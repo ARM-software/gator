@@ -2,6 +2,7 @@
 
 #include "armnn/ArmNNDriver.h"
 
+#include "GetEventKey.h"
 #include "Logging.h"
 #include "SessionData.h"
 #include "xml/EventsXMLProcessor.h"
@@ -37,10 +38,8 @@ namespace armnn {
     // Enables and prepares the counter for capture
     void Driver::setupCounter(Counter & counter)
     {
-        lib::Optional<int> optionalEventNo =
-            counter.getEvent() != -1 ? lib::Optional<int>(counter.getEvent()) : lib::Optional<int>();
+        const int key = mGlobalState.enableCounter(counter.getType(), counter.getEventCode());
 
-        int key = mGlobalState.enableCounter(std::string(counter.getType()), optionalEventNo);
         counter.setKey(key);
     }
 

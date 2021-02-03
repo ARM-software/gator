@@ -65,7 +65,8 @@ SessionData::SessionData()
       parameterSetFlag(),
       mPerfMmapSizeInPages(),
       mSpeSampleRate(-1),
-      mCounters()
+      mCounters(),
+      mConstants()
 {
 }
 
@@ -182,17 +183,4 @@ uint64_t getTime()
         handleException();
     }
     return (NS_PER_S * ts.tv_sec + ts.tv_nsec);
-}
-
-int getEventKey()
-{
-    // key 0 is reserved as a timestamp
-    // key 1 is reserved as the marker for thread specific counters
-    // key 2 is reserved as the marker for core
-    // Odd keys are assigned by the driver, even keys by the daemon
-    static int key = 4;
-
-    const int ret = key;
-    key += 2;
-    return ret;
 }

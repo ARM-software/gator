@@ -2,7 +2,7 @@
 
 #include "DriverCounter.h"
 
-#include "SessionData.h"
+#include "GetEventKey.h"
 
 DriverCounter::DriverCounter(DriverCounter * const next, const char * const name)
     : mNext(next), mName(name), mKey(getEventKey()), mEnabled(false)

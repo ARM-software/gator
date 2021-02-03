@@ -187,11 +187,10 @@ class Device:
         if DEBUG_GATORD:
             stde = sys.stderr
             process = sp.Popen(commands, universal_newlines=True,
-                               stdin=stde, stdout=stde, encoding="utf-8")
+                               stdin=stde, stdout=stde)
         else:
             devn = sp.DEVNULL
-            process = sp.Popen(commands, stdin=devn, stdout=devn, stderr=devn,
-                               encoding="utf-8")
+            process = sp.Popen(commands, stdin=devn, stdout=devn, stderr=devn)
 
         return process
 
@@ -208,8 +207,7 @@ class Device:
         commands.extend(args)
 
         # Note do not use shell=True; arguments are not safely escaped
-        ret = sp.run(commands, stdout=sp.DEVNULL, stderr=sp.DEVNULL,
-                     encoding="utf-8")
+        ret = sp.run(commands, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
     def adb(self, *args, **kwargs):
         """
@@ -244,7 +242,7 @@ class Device:
                 commands = " ".join(quotedCommands)
 
         rep = sp.run(commands, check=True, shell=shell, stdout=sp.PIPE,
-                     stderr=sp.PIPE, universal_newlines=text, encoding="utf-8")
+                    stderr=sp.PIPE, universal_newlines=text)
 
         return rep.stdout
 
@@ -665,6 +663,8 @@ def run_gatord_headless(device, package, outputName, timeout):
         "--wait-process", package, "--stop-on-exit", "yes",
         "--max-duration", "%u" % timeout, "--output", apcName)
 
+    print("    Capture complete, downloading from target")
+
     with tempfile.NamedTemporaryFile() as fileHandle:
         # Fetch the results by streaming a tar file; we can't "adb pull"
         # directly for new Android applications due to SELinux policy
@@ -783,6 +783,12 @@ def is_a_directory(device, path_to_test):
     is_directory = device.adb("shell", "if [ -d %s ] ; then echo d ; fi" % path_to_test)
     return len(is_directory) > 0
 
+def has_adb():
+    """
+    Check that the user has adb on PATH
+    """
+    return shutil.which("adb") is not None
+
 def main():
     """
     Script main function.
@@ -826,6 +832,11 @@ def main():
                 os.remove(args.headless)
             else:
                 shutil.rmtree(args.headless)
+
+    # Now check that adb is present
+    if not has_adb():
+        print("ERROR: adb not found. Make sure adb is installed and on your PATH")
+        return 1
 
     # Select a specific target device, or fail if we cannot
     deviceName = get_device_name(args.device, not args.headless)

@@ -16,12 +16,14 @@ namespace mali_userspace {
                                    std::unique_ptr<IBlockCounterFrameBuilder> frameBuilder,
                                    std::int32_t deviceNumber,
                                    IMaliDeviceCounterDumpCallback & callback_,
-                                   IMaliHwCntrReader & reader)
+                                   IMaliHwCntrReader & reader,
+                                   const std::map<CounterKey, int64_t> & constantValues)
         : mBuffer(std::move(buffer)),
           mFrameBuilder(std::move(frameBuilder)),
           mCallback(callback_),
           mReader(reader),
-          deviceNumber(deviceNumber)
+          deviceNumber(deviceNumber),
+          mConstantValues(constantValues)
     {
     }
 
@@ -35,10 +37,21 @@ namespace mali_userspace {
         const uint32_t sampleIntervalNs =
             (sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000U / sampleRate) : 1U) : 10000000U);
 
+        if (mConstantValues.size() > 0) {
+            bool wroteConstants = writeConstants();
+            if (!wroteConstants) {
+                logg.logError("Failed to send constants for device %d", deviceNumber);
+                mFrameBuilder->flush();
+                mBuffer->setDone();
+                return;
+            }
+        }
+
         if (!mReader.startPeriodicSampling(sampleIntervalNs)) {
             logg.logError("Could not enable periodic sampling");
             terminated = true;
         }
+
         // create the list of enabled counters
         const MaliDeviceCounterList countersList(mReader.getDevice().createCounterList(mCallback));
         while (!terminated) {
@@ -81,8 +94,28 @@ namespace mali_userspace {
         if (!mReader.startPeriodicSampling(0)) {
             logg.logError("Could not disable periodic sampling");
         }
+
+        mFrameBuilder->flush();
         mBuffer->setDone();
     }
 
     bool MaliHwCntrTask::write(ISender & sender) { return mBuffer->write(sender); }
+
+    bool MaliHwCntrTask::writeConstants()
+    {
+        constexpr uint64_t constantsTimestamp = 0;
+        if (mFrameBuilder->eventHeader(constantsTimestamp) && mFrameBuilder->eventCore(deviceNumber)) {
+            for (const auto & pair : mConstantValues) {
+                const auto & keyOfConstant = pair.first;
+                const int64_t value = pair.second;
+
+                if (!mFrameBuilder->event64(keyOfConstant, value)) {
+                    return false;
+                }
+            }
+            mFrameBuilder->flush();
+            return true;
+        }
+        return false;
+    }
 }

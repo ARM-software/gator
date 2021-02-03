@@ -24,6 +24,7 @@ class IPerfAttrsConsumer;
 class PerfTracepoint;
 class UncorePmu;
 class ICpuInfo;
+struct TraceFsConstants;
 
 static const char * MALI_MMU_IN_USE = "Mali: MMU address space in use";
 static const char * MALI_PM_STATUS = "Mali: PM Status";
@@ -43,7 +44,8 @@ public:
     PerfDriver(PerfDriverConfiguration && configuration,
                PmuXML && pmuXml,
                const char * maliFamilyName,
-               const ICpuInfo & cpuInfo);
+               const ICpuInfo & cpuInfo,
+               const TraceFsConstants & traceFsConstants);
     ~PerfDriver() override;
 
     const PerfConfig & getConfig() const { return mConfig.config; }
@@ -59,9 +61,10 @@ public:
     void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
     bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);
 
+    const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
+
 private:
-    void addCpuCounters(const PerfCpu & cpu);
-    void addUncoreCounters(const PerfUncore & uncore);
+    const TraceFsConstants & traceFsConstants;
     PerfTracepoint * mTracepoints;
     PerfDriverConfiguration mConfig;
     PmuXML mPmuXml;
@@ -73,6 +76,8 @@ private:
     PerfDriver(PerfDriver &&) = delete;
     PerfDriver & operator=(PerfDriver &&) = delete;
 
+    void addCpuCounters(const PerfCpu & cpu);
+    void addUncoreCounters(const PerfUncore & uncore);
     void addMidgardHwTracepoints(const char * maliFamilyName);
 };
 

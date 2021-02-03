@@ -194,13 +194,14 @@ namespace mali_userspace {
         static constexpr std::size_t BASE_MAX_COHERENT_GROUPS = 16;
 
         /** GPU properties decoded from data blob */
-        struct gpu_propeties {
+        struct gpu_properties {
             uint32_t product_id;
             uint32_t minor_revision;
             uint32_t major_revision;
             uint32_t num_core_groups;
             uint32_t num_l2_slices;
             uint32_t core_mask[BASE_MAX_COHERENT_GROUPS];
+            uint32_t bus_width;
         };
 
         /** Identify the size of a gpuprop value */
@@ -211,6 +212,7 @@ namespace mali_userspace {
             PRODUCT_ID = 1,
             MINOR_REVISION = 3,
             MAJOR_REVISION = 4,
+            RAW_L2_FEATURES = 29,
             COHERENCY_NUM_CORE_GROUPS = 62,
             COHERENCY_GROUP_0 = 64,
             COHERENCY_GROUP_1 = 65,

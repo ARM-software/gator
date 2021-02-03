@@ -46,4 +46,7 @@ public:
      */
     // TODO: rename to commitIfNeeded
     virtual bool check(uint64_t time) = 0;
+
+    /** force commit/flush if there is any data. used at end of capture */
+    virtual bool flush() = 0;
 };

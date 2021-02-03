@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <limits>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -177,5 +178,34 @@ namespace lib {
         }
 
         return result;
+    }
+
+    uint64_t roundDownToPowerOfTwo(uint64_t in)
+    {
+        if (in == 0) {
+            return 0;
+        }
+
+        in |= (in >> 1);
+        in |= (in >> 2);
+        in |= (in >> 4);
+        in |= (in >> 8);
+        in |= (in >> 16);
+        in |= (in >> 32);
+
+        return in - (in >> 1);
+    }
+
+    int calculatePerfMmapSizeInPages(const std::uint64_t perfEventMlockKb, const std::uint64_t pageSizeBytes)
+    {
+        constexpr std::uint64_t maxPerfEventMlockKb = std::numeric_limits<std::uint64_t>::max() / 1024ULL;
+
+        if (perfEventMlockKb <= maxPerfEventMlockKb && pageSizeBytes > 0 &&
+            perfEventMlockKb * 1024ULL > pageSizeBytes) {
+            const std::uint64_t bufferSize = roundDownToPowerOfTwo(perfEventMlockKb * 1024ULL - pageSizeBytes);
+            const std::uint64_t bufferPages = bufferSize / pageSizeBytes;
+            return int(std::min<std::uint64_t>(bufferPages, std::numeric_limits<int>::max()));
+        }
+        return 0;
     }
 }

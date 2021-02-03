@@ -4,13 +4,14 @@
 #define NATIVE_GATOR_DAEMON_MIDGARDHWCOUNTERDRIVER_H_
 
 #include "PolledDriver.h"
+#include "SessionData.h"
 #include "SimpleDriver.h"
 #include "lib/Optional.h"
 #include "mali_userspace/MaliHwCntrReader.h"
 
 #include <map>
 #include <memory>
-#include <vector>
+#include <set>
 namespace mali_userspace {
     /**
      * Implements a counter driver for all Mali Midgard devices with r8p0 or later driver installed.
@@ -34,6 +35,7 @@ namespace mali_userspace {
 
         inline const std::map<unsigned, std::unique_ptr<MaliDevice>> & getDevices() const { return mDevices; }
 
+        void insertConstants(std::set<Constant> & dest) override;
         int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const;
 
         const char * getSupportedDeviceFamilyName() const;

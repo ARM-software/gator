@@ -1,9 +1,11 @@
 /* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+#define BUFFER_USE_SESSION_DATA
 
 #include "linux/perf/PerfSource.h"
 
 #include "Child.h"
 #include "DynBuf.h"
+#include "FtraceDriver.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -55,6 +57,8 @@ PerfSource::PerfSource(PerfDriver & driver,
                        bool enableOnCommandExec,
                        ICpuInfo & cpuInfo)
     : mSummary(1024 * 1024, senderSem),
+      mMemoryBuffer(16 * 1024 * 1024, senderSem),
+      mPerfToMemoryBuffer(mMemoryBuffer, gSessionData.mOneShot),
       mCountersBuf(createPerfBufferConfig()),
       mCountersGroup(driver.getConfig(),
                      mCountersBuf.getDataBufferLength(),
@@ -66,7 +70,7 @@ PerfSource::PerfSource(PerfDriver & driver,
                      !gSessionData.mIsEBS,
                      cpuInfo.getClusters(),
                      cpuInfo.getClusterIds(),
-                     getTracepointId(SCHED_SWITCH)),
+                     getTracepointId(driver.getTraceFsConstants(), SCHED_SWITCH)),
       mMonitor(),
       mUEvent(),
       mAppTids(std::move(appTids)),
@@ -88,10 +92,23 @@ PerfSource::PerfSource(PerfDriver & driver,
         mAppTids.insert(getpid());
     }
 
+    // allow self profiling
+#if (defined(GATOR_SELF_PROFILE) && (GATOR_SELF_PROFILE != 0))
+    const bool profileGator = true;
+#else
+    const bool profileGator = (mAppTids.erase(0) != 0); // user can set --pid 0 to dynamically enable this feature
+#endif
+    if (profileGator) {
+        // track child and parent process
+        mAppTids.insert(getpid());
+        mAppTids.insert(getppid());
+    }
+
     // was !enableOnCommandExec but this causes us to miss the exec comm record associated with the
     // enable on exec doesn't work for cpu-wide events.
+    // additionally, when profiling gator, must be turned off
     this->enableOnCommandExec = (enableOnCommandExec && !mConfig.is_system_wide && mConfig.has_attr_clockid_support &&
-                                 mConfig.has_attr_comm_exec);
+                                 mConfig.has_attr_comm_exec && !profileGator);
 }
 
 bool PerfSource::prepare()
@@ -122,7 +139,8 @@ bool PerfSource::prepare()
         return false;
     }
 
-    if (mConfig.is_system_wide && (!mUEvent.init() || !mMonitor.add(mUEvent.getFd()))) {
+    // always try uevents, event as non-root, but continue if not supported
+    if (mUEvent.init() && !mMonitor.add(mUEvent.getFd())) {
         logg.logMessage("uevent setup failed");
         return false;
     }
@@ -227,6 +245,8 @@ static const char CPU_DEVPATH[] = "/devices/system/cpu/cpu";
 
 void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSession)
 {
+    prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-perf"), 0, 0, 0);
+
     pthread_t procThread;
     ProcThreadArgs procThreadArgs;
 
@@ -293,52 +313,89 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
     // start profiling
     mProfilingStartedCallback();
 
-    const uint64_t NO_RATE = ~0ULL;
-    const uint64_t rate = gSessionData.mLiveRate > 0 && gSessionData.mSampleRate > 0 ? gSessionData.mLiveRate : NO_RATE;
-    uint64_t nextTime = 0;
-    int timeout = rate != NO_RATE ? 0 : -1;
-    while (true) {
-        // +1 for uevents, +1 for pipe
-        std::vector<struct epoll_event> events {mCpuInfo.getNumberOfCores() + 2};
-        int ready = mMonitor.wait(events.data(), events.size(), timeout);
+    static constexpr uint64_t NO_RATE = ~0ULL;
+    const bool isLive = (gSessionData.mLiveRate > 0 && gSessionData.mSampleRate > 0);
+    const uint64_t rate = (isLive ? gSessionData.mLiveRate : NO_RATE);
+    int timeout = (rate != NO_RATE ? 0 : -1);
+    bool complete = false;
+    std::vector<struct epoll_event> events;
+    while (!complete) {
+        // allocate enough space for all the FDs in the monitor
+        events.resize(std::min(2, mMonitor.size()));
+
+        // wait for some events
+        const int ready = mMonitor.wait(events.data(), events.size(), timeout);
         if (ready < 0) {
             logg.logError("Monitor::wait failed");
             handleException();
         }
-        const uint64_t currTime = getTime() - monotonicStart;
 
+        const uint64_t currTimeMonotonicDelta = (getTime() - monotonicStart);
+
+        // validate the events
+        bool hasCoreData = false;
         for (int i = 0; i < ready; ++i) {
             if (events[i].data.fd == mUEvent.getFd()) {
-                if (!handleUEvent(currTime)) {
+                if (!handleUEvent(currTimeMonotonicDelta)) {
                     logg.logError("PerfSource::handleUEvent failed");
                     handleException();
                 }
-                break;
             }
             else if (events[i].data.fd == *mInterruptRead) {
-                goto exitOuterLoop;
+                complete = true;
+                break;
+            }
+            else {
+                // at least one core has overflowed its watermark
+                hasCoreData |= ((events[i].events & EPOLLIN) == EPOLLIN);
+
+                // remove error or expired items
+                if (((events[i].events & EPOLLHUP) == EPOLLHUP) || ((events[i].events & EPOLLERR) == EPOLLERR)) {
+                    mMonitor.remove(events[i].data.fd);
+                }
             }
         }
+
+        const bool liveTimedOut = (isLive && !hasCoreData);
 
         // send a notification that data is ready
-        sem_post(&mSenderSem);
+        // in live mode, we flush the perf ring buffer periodically so that the UI can
+        // show data in a timely manner.
+        // when complete, perform one final flush, regardless of whether or not the
+        // watermark is met
+        // otherwise just flush when a buffer watermark notification happens
+        if (liveTimedOut || complete || hasCoreData) {
+            if (!mCountersBuf.send(mPerfToMemoryBuffer)) {
+                logg.logError("PerfBuffer::send failed");
+                handleException();
+            }
+
+            if (isLive) {
+                mMemoryBuffer.flush();
+            }
+        }
 
         // In one shot mode, stop collection once all the buffers are filled
-        if (gSessionData.mOneShot && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) ||
-                                      (mProcBuffer->bytesAvailable() <= 0) || mCountersBuf.isFull())) {
-            logg.logMessage("One shot (perf)");
-            endSession();
-        }
-
-        if (rate != NO_RATE) {
-            while (currTime > nextTime) {
-                nextTime += rate;
+        if (!complete) {
+            if (gSessionData.mOneShot && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) ||
+                                          (mProcBuffer->bytesAvailable() <= 0) || mPerfToMemoryBuffer.isFull())) {
+                logg.logMessage("One shot (perf)");
+                endSession();
             }
-            // + NS_PER_MS - 1 to ensure always rounding up
-            timeout = std::max<int>(0, (nextTime + NS_PER_MS - 1 - getTime() + monotonicStart) / NS_PER_MS);
+
+            if (rate != NO_RATE) {
+                const auto nowMonotonicDelta = (getTime() - monotonicStart);
+                const auto nextExpectedMonotonicDelta = ((currTimeMonotonicDelta + rate - 1) / rate) * rate;
+                const auto nowMonotonicDeltaRoundedToRate = ((nowMonotonicDelta + rate - 1) / rate) * rate;
+                const auto nextMonotonicDelta =
+                    (nextExpectedMonotonicDelta > nowMonotonicDelta ? nextExpectedMonotonicDelta
+                                                                    : nowMonotonicDeltaRoundedToRate);
+
+                // + NS_PER_MS - 1 to ensure always rounding up
+                timeout = std::max<int>(0, ((nextMonotonicDelta + NS_PER_MS - 1) - nowMonotonicDelta) / NS_PER_MS);
+            }
         }
     }
-exitOuterLoop:
 
     if (onlineMonitorThread) {
         onlineMonitorThread->terminate();
@@ -346,12 +403,24 @@ exitOuterLoop:
 
     procThreadArgs.mIsDone = true;
     pthread_join(procThread, nullptr);
+
+    // stop all the perf events
     mCountersGroup.stop();
+
+    // send any final remaining data now that the events are stopped
+    if (!mCountersBuf.send(mPerfToMemoryBuffer)) {
+        logg.logError("PerfBuffer::send failed");
+        handleException();
+    }
 
     // terminate all remaining sync threads
     if (mSyncThread != nullptr) {
         mSyncThread->terminate();
     }
+
+    // close off the buffer
+    mMemoryBuffer.flush();
+    mPerfToMemoryBuffer.setDone();
 
     mIsDone = true;
 
@@ -462,10 +531,8 @@ bool PerfSource::write(ISender & sender)
     mSummary.write(sender);
     mAttrsBuffer->write(sender);
     mProcBuffer->write(sender);
-    if (!mCountersBuf.send(sender)) {
-        logg.logError("PerfBuffer::send failed");
-        handleException();
-    }
+    mPerfToMemoryBuffer.write(sender);
+
     // This is racey, unless we assume no one posts reader sem before profiling started
     if (mSyncThread != nullptr) {
         mSyncThread->send(sender);

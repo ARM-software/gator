@@ -4,10 +4,12 @@
 #define DRIVER_H
 
 #include "CapturedSpe.h"
+#include "Constant.h"
 #include "lib/Optional.h"
 #include "mxml/mxml.h"
 
 #include <cstdint>
+#include <set>
 
 class Counter;
 struct SpeConfiguration;
@@ -26,6 +28,10 @@ public:
 
     // Enables and prepares the counter for capture
     virtual void setupCounter(Counter & counter) = 0;
+
+    // Allow the driver the opportunity to insert a set of
+    // constants that it is capable of sending to Streamline
+    virtual void insertConstants(std::set<Constant> &) {}
 
     // Claims and prepares the SPE for capture
     virtual lib::Optional<CapturedSpe> setupSpe(int /* sampleRate */, const SpeConfiguration & /* configuration */)

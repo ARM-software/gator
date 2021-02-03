@@ -59,17 +59,17 @@ static int readPackedInt(const char * const buf, const size_t bufSize, size_t * 
 class ExternalCounter : public DriverCounter {
 public:
     ExternalCounter(DriverCounter * next, const char * name, int cores)
-        : DriverCounter(next, name), mCores(cores), mEvent(-1)
+        : DriverCounter(next, name), mCores(cores), mEvent()
     {
     }
 
     int getCores() const { return mCores; }
-    void setEvent(const int event) { mEvent = event; }
-    int getEvent() const { return mEvent; }
+    void setEvent(EventCode event) { mEvent = event; }
+    EventCode getEvent() const { return mEvent; }
 
 private:
     const int mCores;
-    int mEvent;
+    EventCode mEvent;
 
     // Intentionally undefined
     ExternalCounter(const ExternalCounter &) = delete;
@@ -202,7 +202,7 @@ void ExternalDriver::start()
         }
         memcpy(buf + pos, counter->getName(), nameLen + 1);
         pos += nameLen + 1;
-        buffer_utils::packInt(buf, pos, counter->getEvent());
+        buffer_utils::packInt(buf, pos, (counter->getEvent().isValid() ? counter->getEvent().asI32() : -1));
         buffer_utils::packInt(buf, pos, counter->getKey());
     }
     buffer_utils::writeLEInt(buf + 1, pos);
@@ -258,10 +258,8 @@ void ExternalDriver::setupCounter(Counter & counter)
         return;
     }
     externalCounter->setEnabled(true);
+    externalCounter->setEvent(counter.getEventCode());
     counter.setKey(externalCounter->getKey());
-    if (counter.getEvent() != -1) {
-        externalCounter->setEvent(counter.getEvent());
-    }
     if (externalCounter->getCores() > 0) {
         counter.setCores(externalCounter->getCores());
     }

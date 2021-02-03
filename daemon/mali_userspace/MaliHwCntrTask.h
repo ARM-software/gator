@@ -24,7 +24,8 @@ namespace mali_userspace {
                        std::unique_ptr<IBlockCounterFrameBuilder> frameBuilder,
                        std::int32_t deviceNumber,
                        IMaliDeviceCounterDumpCallback & callback,
-                       IMaliHwCntrReader & reader);
+                       IMaliHwCntrReader & reader,
+                       const std::map<CounterKey, int64_t> & constants);
         void execute(int sampleRate, bool isOneShot, std::uint64_t monotonicStart, std::function<void()> endSession);
         bool write(ISender & sender);
 
@@ -34,12 +35,15 @@ namespace mali_userspace {
         IMaliDeviceCounterDumpCallback & mCallback;
         IMaliHwCntrReader & mReader;
         std::int32_t deviceNumber;
+        const std::map<CounterKey, int64_t> mConstantValues;
 
         // Intentionally unimplemented
         MaliHwCntrTask(const MaliHwCntrTask &) = delete;
         MaliHwCntrTask & operator=(const MaliHwCntrTask &) = delete;
         MaliHwCntrTask(MaliHwCntrTask &&) = delete;
         MaliHwCntrTask & operator=(MaliHwCntrTask &&) = delete;
+
+        bool writeConstants();
     };
 }
 

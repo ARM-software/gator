@@ -7,6 +7,7 @@
 #include "Buffer.h"
 #include "BufferUtils.h"
 #include "Child.h"
+#include "CommitTimeChecker.h"
 #include "Drivers.h"
 #include "Logging.h"
 #include "Monitor.h"
@@ -32,11 +33,15 @@ static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
 static const char FTRACE_V2[] = "FTRACE 2\n";
 
+static constexpr int BUFFER_SIZE = 1 * 1024 * 1024;
+
 class ExternalSource : public Source {
 public:
-    ExternalSource(sem_t & senderSem, Drivers & mDrivers)
+    ExternalSource(sem_t & senderSem, Drivers & mDrivers, std::function<uint64_t()> getMonotonicTime)
         : mBufferSem(),
-          mBuffer(128 * 1024, senderSem),
+          mGetMonotonicTime(std::move(getMonotonicTime)),
+          mCommitChecker(gSessionData.mLiveRate),
+          mBuffer(BUFFER_SIZE, senderSem),
           mMonitor(),
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
           mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
@@ -156,7 +161,7 @@ public:
         return true;
     }
 
-    void run(std::uint64_t /* monotonicStart */, std::function<void()> endSession) override
+    void run(std::uint64_t monotonicStart, std::function<void()> endSession) override
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-external"), 0, 0, 0);
 
@@ -235,7 +240,7 @@ public:
                      * starve out the gator data.
                      */
                     while (mSessionIsActive) {
-                        if (!transfer(fd, endSession)) {
+                        if (!transfer(monotonicStart, fd, endSession)) {
                             break;
                         }
                     }
@@ -247,17 +252,18 @@ public:
             const auto ftraceFds = mDrivers.getFtraceDriver().stop();
             // Read any slop
             for (int fd : ftraceFds) {
-                transfer(fd, endSession);
+                transfer(monotonicStart, fd, endSession);
                 close(fd);
             }
             mDrivers.getTtraceDriver().stop();
             mDrivers.getAtraceDriver().stop();
         }
 
+        mBuffer.flush();
         mBuffer.setDone();
     }
 
-    bool transfer(const int fd, const std::function<void()> & endSession)
+    bool transfer(const std::uint64_t monotonicStart, const int fd, const std::function<void()> & endSession)
     {
         // Wait until there is enough room for a header and two ints
         waitFor(IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + 2 * buffer_utils::MAXSIZE_PACK32, endSession);
@@ -278,14 +284,14 @@ public:
             mBuffer.packInt(fd);
             mBuffer.endFrame();
             // Always force-flush the buffer as this frame don't work like others
-            mBuffer.flush();
+            checkFlush(monotonicStart, true);
             close(fd);
             return false;
         }
 
         mBuffer.advanceWrite(bytes);
         mBuffer.endFrame();
-        mBuffer.flush();
+        checkFlush(monotonicStart, isBufferOverFull(mBuffer.contiguousSpaceAvailable()));
 
         // Short reads also mean nothing is left to read
         return bytes >= contiguous;
@@ -312,6 +318,8 @@ public:
 
 private:
     sem_t mBufferSem;
+    std::function<uint64_t()> mGetMonotonicTime;
+    CommitTimeChecker mCommitChecker;
     Buffer mBuffer;
     Monitor mMonitor;
     OlyServerSocket mMidgardStartupUds;
@@ -325,11 +333,26 @@ private:
     int mMidgardUds;
     Drivers & mDrivers;
     std::atomic_bool mSessionIsActive {true};
+
+    void checkFlush(std::uint64_t monotonicStart, bool force)
+    {
+        const auto delta = mGetMonotonicTime() - monotonicStart;
+
+        if (mCommitChecker(delta, force)) {
+            mBuffer.flush();
+        }
+    }
+
+    static bool isBufferOverFull(int sizeAvailable)
+    {
+        // if less than a quarter left
+        return (sizeAvailable < (BUFFER_SIZE / 4));
+    }
 };
 
 std::unique_ptr<Source> createExternalSource(sem_t & senderSem, Drivers & drivers)
 {
-    auto source = lib::make_unique<ExternalSource>(senderSem, drivers);
+    auto source = lib::make_unique<ExternalSource>(senderSem, drivers, &getTime);
     if (!source->prepare()) {
         return {};
     }

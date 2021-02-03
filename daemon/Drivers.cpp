@@ -7,12 +7,16 @@
 #include "xml/EventsXML.h"
 
 static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool systemWide,
+                                                                          const TraceFsConstants & traceFsConstants,
                                                                           PmuXML && pmuXml,
                                                                           const char * maliFamilyName,
                                                                           bool disableCpuOnlining)
 {
-    std::unique_ptr<PrimarySourceProvider> primarySourceProvider =
-        PrimarySourceProvider::detect(systemWide, std::move(pmuXml), maliFamilyName, disableCpuOnlining);
+    std::unique_ptr<PrimarySourceProvider> primarySourceProvider = PrimarySourceProvider::detect(systemWide,
+                                                                                                 traceFsConstants,
+                                                                                                 std::move(pmuXml),
+                                                                                                 maliFamilyName,
+                                                                                                 disableCpuOnlining);
     if (!primarySourceProvider) {
         logg.logError(
             "Unable to initialize primary capture source:\n"
@@ -24,14 +28,16 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
     return primarySourceProvider;
 }
 
-Drivers::Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining)
+Drivers::Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining, const TraceFsConstants & traceFsConstants)
     : mMaliHwCntrs {},
       mPrimarySourceProvider {createPrimarySourceProvider(systemWide,
+                                                          traceFsConstants,
                                                           std::move(pmuXml),
                                                           mMaliHwCntrs.getSupportedDeviceFamilyName(),
                                                           disableCpuOnlining)},
       mMidgard {},
-      mFtraceDriver {!mPrimarySourceProvider->supportsTracepointCapture(),
+      mFtraceDriver {traceFsConstants,
+                     !mPrimarySourceProvider->supportsTracepointCapture(),
                      mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
       mAtraceDriver {mFtraceDriver},
       mTtraceDriver {mFtraceDriver},

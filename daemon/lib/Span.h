@@ -24,8 +24,8 @@ namespace lib {
         using iterator = T *;
         using const_iterator = const T *;
 
-        T * data;
-        L length;
+        T * data = nullptr;
+        L length = 0;
 
         L size() const { return length; }
 

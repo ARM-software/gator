@@ -117,6 +117,8 @@ namespace mali_userspace {
         counter.setKey(malihwcCounter->getKey());
     }
 
+    void MaliHwCntrDriver::insertConstants(std::set<Constant> & dest) { MaliDevice::insertConstants(dest); }
+
     int MaliHwCntrDriver::getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const
     {
         if (counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK) {

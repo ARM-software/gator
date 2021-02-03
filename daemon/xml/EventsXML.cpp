@@ -88,10 +88,10 @@ namespace events_xml {
         return {mxmlSaveAllocString(xml.get(), mxmlWhitespaceCB), &free};
     }
 
-    std::map<std::string, int> getCounterToEventMap(lib::Span<const Driver * const> drivers,
-                                                    lib::Span<const GatorCpu> clusters)
+    std::map<std::string, EventCode> getCounterToEventMap(lib::Span<const Driver * const> drivers,
+                                                          lib::Span<const GatorCpu> clusters)
     {
-        std::map<std::string, int> counterToEventMap {};
+        std::map<std::string, EventCode> counterToEventMap {};
 
         auto xml = events_xml::getDynamicTree(drivers, clusters);
 
@@ -109,11 +109,11 @@ namespace events_xml {
             }
 
             if (event != nullptr) {
-                const int eventNo = (int) strtol(event, nullptr, 0);
-                counterToEventMap[counter] = eventNo;
+                const auto eventNo = strtoull(event, nullptr, 0);
+                counterToEventMap[counter] = EventCode(eventNo);
             }
             else {
-                counterToEventMap[counter] = -1;
+                counterToEventMap[counter] = EventCode();
             }
         }
         return counterToEventMap;

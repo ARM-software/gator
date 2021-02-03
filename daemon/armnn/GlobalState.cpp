@@ -23,7 +23,9 @@ namespace armnn {
 
     GlobalState::CategoryId GlobalState::CategoryId::fromEventId(const EventId & eventId)
     {
-        return {.category = eventId.category, .device = eventId.device, .counterSet = eventId.counterSet};
+        return GlobalState::CategoryId {.category = eventId.category,
+                                        .device = eventId.device,
+                                        .counterSet = eventId.counterSet};
     }
 
     bool GlobalState::CategoryId::operator<(const CategoryId & that) const
@@ -62,12 +64,12 @@ namespace armnn {
             const auto & eventNumber = counterNameKeyAndEventNumber.eventNumber;
             const int key = counterNameKeyAndEventNumber.key;
 
-            if (eventNumber) {
+            if (eventNumber.isValid()) {
                 const auto eventByNumberIter = programmableCountersToCategory.find(counterName);
                 if (eventByNumberIter != programmableCountersToCategory.end()) {
                     const auto & categoryId = eventByNumberIter->second;
                     const auto & category = categories.at(categoryId);
-                    const auto iter = category.eventsByNumber.find(*eventNumber);
+                    const auto iter = category.eventsByNumber.find(eventNumber.asI32());
                     if (iter != category.eventsByNumber.end()) {
                         const auto & eventName = iter->second;
                         // check it wasn't removed due to conflicting properties
@@ -76,7 +78,9 @@ namespace armnn {
                         }
                     }
                     else {
-                        logg.logError("Unknown event number %d for counter: %s", *eventNumber, counterName.c_str());
+                        logg.logError("Unknown event number 0x%" PRIxEventCode " for counter: %s",
+                                      eventNumber.asU64(),
+                                      counterName.c_str());
                     }
                 }
                 else {
@@ -109,7 +113,7 @@ namespace armnn {
                                      ICounterDirectoryConsumer::Interpolation interpolation)
     {
         switch (clazz) {
-            case ICounterDirectoryConsumer::Class::DELTA:
+            case ICounterDirectoryConsumer::Class::DELTA: {
                 switch (interpolation) {
                     case ICounterDirectoryConsumer::Interpolation::LINEAR:
                         return Event::Class::DELTA;
@@ -117,17 +121,19 @@ namespace armnn {
                         return Event::Class::INCIDENT;
                 }
                 break;
-            case ICounterDirectoryConsumer::Class::ABSOLUTE:
+            }
+            case ICounterDirectoryConsumer::Class::ABSOLUTE: {
                 switch (interpolation) {
+                    // we don't currently support linear interpolation
+                    // for absolute, steps will have to do.
                     case ICounterDirectoryConsumer::Interpolation::LINEAR:
-                        // we don't currently support linear interpolation
-                        // for absolute, steps will have to do.
-                        return Event::Class::ABSOLUTE;
                     case ICounterDirectoryConsumer::Interpolation::STEP:
                         return Event::Class::ABSOLUTE;
                 }
                 break;
+            }
         }
+
         assert(false && "unknown Class/Interpolation");
         return Event::Class::DELTA; // just to keep the compiler happy
     }
@@ -172,7 +178,7 @@ namespace armnn {
 
     EventId GlobalState::makeEventId(const CategoryId & id, const std::string & eventName)
     {
-        return {.category = id.category, .device = id.device, .counterSet = id.counterSet, .name = eventName};
+        return EventId {.category = id.category, .device = id.device, .counterSet = id.counterSet, .name = eventName};
     }
 
     /// @return empty if the event doesn't have a counter name (because it's part of a counter set)
@@ -315,9 +321,9 @@ namespace armnn {
                 continue; // removed because of conflict
             }
 
-            auto eventNumberOrEmpty = lib::Optional<int> {};
+            EventCode eventNumberOrEmpty;
             if (catId.counterSet) {
-                eventNumberOrEmpty = eventNumberByName.at(eventName);
+                eventNumberOrEmpty = EventCode(eventNumberByName.at(eventName));
             }
             xmlEvents.push_back({.eventNumber = eventNumberOrEmpty,
                                  .counter = makeCounterNameIfFixed(catId, eventName),
@@ -388,7 +394,7 @@ namespace armnn {
         return fixedCountersToEvent.count(counterName) != 0 || programmableCountersToCategory.count(counterName) != 0;
     }
 
-    int GlobalState::enableCounter(const std::string & counterName, lib::Optional<int> eventNumber)
+    int GlobalState::enableCounter(const std::string & counterName, EventCode eventNumber)
     {
         if (enabledIdKeyAndEventNumbers->full()) {
             logg.logError("Could not enable %s, limit of ArmNN counters reached", counterName.c_str());
@@ -405,9 +411,8 @@ namespace armnn {
 
         const int key = getKey(counterName);
 
-        enabledIdKeyAndEventNumbers->push_back(CounterNameKeyAndEventNumber {.counterName = counterNameRef,
-                                                                             .key = key,
-                                                                             .eventNumber = std::move(eventNumber)});
+        enabledIdKeyAndEventNumbers->push_back(
+            CounterNameKeyAndEventNumber {.counterName = counterNameRef, .key = key, .eventNumber = eventNumber});
 
         return key;
     }

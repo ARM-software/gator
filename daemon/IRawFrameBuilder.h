@@ -94,3 +94,13 @@ public:
      */
     virtual void waitForSpace(int bytes) = 0;
 };
+
+class IRawFrameBuilderWithDirectAccess : public IRawFrameBuilder {
+public:
+    /** @return The raw write index */
+    virtual int getWriteIndex() const = 0;
+    /** @return Skip the write index forward by 'bytes' */
+    virtual void advanceWrite(int bytes) = 0;
+    /** Write directly into the buffer */
+    virtual void writeDirect(int index, const void * data, std::size_t count) = 0;
+};

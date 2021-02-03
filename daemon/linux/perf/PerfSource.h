@@ -3,6 +3,7 @@
 #ifndef PERFSOURCE_H
 #define PERFSOURCE_H
 
+#include "Buffer.h"
 #include "Monitor.h"
 #include "Source.h"
 #include "SummaryBuffer.h"
@@ -12,6 +13,7 @@
 #include "linux/perf/PerfBuffer.h"
 #include "linux/perf/PerfGroups.h"
 #include "linux/perf/PerfSyncThreadBuffer.h"
+#include "linux/perf/PerfToMemoryBuffer.h"
 
 #include <atomic>
 #include <functional>
@@ -45,6 +47,8 @@ private:
     bool handleCpuOffline(uint64_t currTime, unsigned cpu);
 
     SummaryBuffer mSummary;
+    Buffer mMemoryBuffer;
+    PerfToMemoryBuffer mPerfToMemoryBuffer;
     PerfBuffer mCountersBuf;
     PerfGroups mCountersGroup;
     Monitor mMonitor;

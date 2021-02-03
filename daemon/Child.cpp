@@ -8,6 +8,7 @@
 #include "CounterXML.h"
 #include "Driver.h"
 #include "Drivers.h"
+#include "ExitStatus.h"
 #include "ExternalSource.h"
 #include "ICpuInfo.h"
 #include "LocalCapture.h"
@@ -43,13 +44,6 @@ std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
 
 extern void cleanUp();
 
-constexpr int exceptionExitCode = 1;
-constexpr int secondExceptionExitCode = 2;
-// constexpr int secondSignalExitCode = 3; no longer used
-// constexpr int alarmExitCode = 4; no longer used
-constexpr int noSingletonExitCode = 5;
-constexpr int signalFailedExitCode = 6;
-
 void handleException()
 {
     Child * const singleton = Child::getSingleton();
@@ -69,7 +63,7 @@ void handleException()
 
     // don't call exit handlers / global destructors
     // because other threads may be still running
-    _exit(exceptionExitCode);
+    _exit(EXCEPTION_EXIT_CODE);
 }
 
 std::unique_ptr<Child> Child::createLocal(Drivers & drivers, const Child::Config & config)
@@ -93,7 +87,7 @@ void Child::signalHandler(int signum)
     if (singleton == nullptr) {
         // this should not be possible because we set the singleton before
         // installing the handlers
-        exit(noSingletonExitCode);
+        exit(NO_SINGLETON_EXIT_CODE);
     }
 
     singleton->endSession(signum);
@@ -188,9 +182,11 @@ void Child::run()
 
     checkError(configuration_xml::setCounters(counterConfigs, !countersAreDefaults, drivers));
 
-    // Initialize all drivers
+    // Initialize all drivers and register their constants with the global constant list
     for (Driver * driver : drivers.getAll()) {
         driver->resetCounters();
+
+        driver->insertConstants(gSessionData.mConstants);
     }
 
     // Set up counters using the associated driver's setup function
@@ -435,7 +431,7 @@ void Child::endSession(int signum)
         if (signum != 0) {
             // we're in a signal handler so it's not safe to log
             // and if this has failed something has gone really wrong
-            _exit(signalFailedExitCode);
+            _exit(SIGNAL_FAILED_EXIT_CODE);
         }
         logg.logError("write failed (%d) %s", errno, strerror(errno));
         handleException();
@@ -465,7 +461,7 @@ void Child::cleanupException()
         logg.logMessage("Received multiple exceptions, terminating the child");
 
         // Something is really wrong, exit immediately
-        _exit(secondExceptionExitCode);
+        _exit(SECOND_EXCEPTION_EXIT_CODE);
     }
 
     if (command) {
@@ -542,6 +538,16 @@ namespace {
             // Ping is used to make sure gator is alive and requires an ACK as the response
             logg.logMessage("Ping command received.");
             sender.writeData(nullptr, 0, ResponseType::ACK);
+            return State::PROCESS_COMMANDS;
+        }
+        State handleExit() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_EXIT");
+            return State::EXIT_OK;
+        }
+        State handleRequestCurrentConfig() override
+        {
+            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_CURRENT_CONFIG");
             return State::PROCESS_COMMANDS;
         }
 

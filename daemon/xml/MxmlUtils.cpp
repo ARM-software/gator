@@ -62,3 +62,26 @@ const char * mxmlWhitespaceCB(mxml_node_t * node, int loc)
 
     return nullptr;
 }
+
+std::string mxmlSaveAsStdString(mxml_node_t * node, mxml_save_cb_t whiteSpaceCB)
+{
+    std::string result;
+    result.resize(8192);
+
+    // Try writing to string data
+    int length = mxmlSaveString(node, &result.front(), result.size(), whiteSpaceCB);
+
+    if (length < static_cast<int>(result.size()) - 1) {
+        // The node fits inside the buffer, shrink and return
+        result.resize(length);
+        return result;
+    }
+
+    // Node is too large so change the string size and return that.
+    result.resize(length + 1);
+    mxmlSaveString(node, &result.front(), result.size(), whiteSpaceCB);
+    // mxmlSaveString will replace the last character will null terminator,
+    // so we need to resize again
+    result.resize(length);
+    return result;
+}

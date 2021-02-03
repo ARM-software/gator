@@ -25,6 +25,9 @@ namespace lib {
     int writeReadInt64InFile(const char * path, int64_t & value);
 
     std::set<int> readCpuMaskFromFile(const char * path);
+
+    uint64_t roundDownToPowerOfTwo(uint64_t in);
+    int calculatePerfMmapSizeInPages(const std::uint64_t perfEventMlockKb, const std::uint64_t pageSizeBytes);
 }
 
 #endif // INCLUDE_LIB_UTILS_H

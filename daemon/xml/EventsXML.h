@@ -3,6 +3,7 @@
 #ifndef EVENTS_XML_H
 #define EVENTS_XML_H
 
+#include "EventCode.h"
 #include "lib/Span.h"
 #include "mxml/mxml.h"
 
@@ -21,8 +22,8 @@ namespace events_xml {
     std::unique_ptr<char, void (*)(void *)> getDynamicXML(lib::Span<const Driver * const> drivers,
                                                           lib::Span<const GatorCpu> clusters);
 
-    std::map<std::string, int> getCounterToEventMap(lib::Span<const Driver * const> drivers,
-                                                    lib::Span<const GatorCpu> clusters);
+    std::map<std::string, EventCode> getCounterToEventMap(lib::Span<const Driver * const> drivers,
+                                                          lib::Span<const GatorCpu> clusters);
 
     void write(const char * path, lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters);
 };

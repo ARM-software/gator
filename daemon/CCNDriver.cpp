@@ -393,8 +393,11 @@ std::string CCNDriver::validateCounters()
             continue;
         }
 
-        if (strncmp(counter.getType(), ARM_CCN_5XX_CNT, sizeof(ARM_CCN_5XX_CNT) - 1) == 0) {
-            const int node = counter.getEvent() & mask;
+        const auto isCnnCounter = (strncmp(counter.getType(), ARM_CCN_5XX_CNT, sizeof(ARM_CCN_5XX_CNT) - 1) == 0);
+        const auto & eventCode = counter.getEventCode();
+
+        if (isCnnCounter && eventCode.isValid()) {
+            const int node = eventCode.asI32() & mask;
 
             for (auto & count : counts) {
                 if (count[0] == 0) {

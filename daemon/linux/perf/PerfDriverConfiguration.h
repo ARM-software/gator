@@ -34,6 +34,7 @@ struct PerfDriverConfiguration {
     PerfConfig config {false, false, false, false, false, false, false, false, false, false, false, false, false};
 
     static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide,
+                                                           const char * tracefsEventsPath,
                                                            lib::Span<const int> cpuIds,
                                                            const PmuXML & pmuXml);
 

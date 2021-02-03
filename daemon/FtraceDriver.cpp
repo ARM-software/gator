@@ -63,7 +63,10 @@ void Barrier::wait()
 
 class FtraceCounter : public DriverCounter {
 public:
-    FtraceCounter(DriverCounter * next, const char * name, const char * enable);
+    FtraceCounter(DriverCounter * next,
+                  const TraceFsConstants & traceFsConstants,
+                  const char * name,
+                  const char * enable);
     ~FtraceCounter() override;
 
     bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer);
@@ -72,6 +75,7 @@ public:
     void stop();
 
 private:
+    const TraceFsConstants & traceFsConstants;
     char * const mEnable;
     int mWasEnabled;
 
@@ -82,8 +86,14 @@ private:
     FtraceCounter & operator=(FtraceCounter &&) = delete;
 };
 
-FtraceCounter::FtraceCounter(DriverCounter * next, const char * name, const char * enable)
-    : DriverCounter(next, name), mEnable(enable == nullptr ? nullptr : strdup(enable)), mWasEnabled(0)
+FtraceCounter::FtraceCounter(DriverCounter * next,
+                             const TraceFsConstants & traceFsConstants,
+                             const char * name,
+                             const char * enable)
+    : DriverCounter(next, name),
+      traceFsConstants(traceFsConstants),
+      mEnable(enable == nullptr ? nullptr : strdup(enable)),
+      mWasEnabled(0)
 {
 }
 
@@ -108,7 +118,7 @@ void FtraceCounter::prepare()
     }
 
     char buf[1 << 10];
-    snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", mEnable);
+    snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, mEnable);
     if ((lib::readIntFromFile(buf, mWasEnabled) != 0) || (lib::writeIntToFile(buf, 1) != 0)) {
         logg.logError("Unable to read or write to %s", buf);
         handleException();
@@ -122,13 +132,13 @@ void FtraceCounter::stop()
     }
 
     char buf[1 << 10];
-    snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", mEnable);
+    snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, mEnable);
     lib::writeIntToFile(buf, mWasEnabled);
 }
 
 bool FtraceCounter::readTracepointFormat(IPerfAttrsConsumer & attrsConsumer)
 {
-    return ::readTracepointFormat(attrsConsumer, mEnable);
+    return ::readTracepointFormat(attrsConsumer, traceFsConstants.path__events, mEnable);
 }
 
 static void handlerUsr1(int signum)
@@ -314,8 +324,9 @@ void FtraceReader::run()
     // Intentionally don't close mPfd0 as it is used after this thread is exited to read the slop
 }
 
-FtraceDriver::FtraceDriver(bool useForTracepoints, size_t numberOfCores)
+FtraceDriver::FtraceDriver(const TraceFsConstants & traceFsConstants, bool useForTracepoints, size_t numberOfCores)
     : SimpleDriver("Ftrace"),
+      traceFsConstants(traceFsConstants),
       mBarrier(),
       mTracingOn(0),
       mSupported(false),
@@ -346,7 +357,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     mMonotonicRawSupport = kernelVersion >= KERNEL_VERSION(4, 2, 0);
 
     // Is debugfs or tracefs available?
-    if (access(TRACING_PATH, R_OK) != 0) {
+    if (access(traceFsConstants.path, R_OK) != 0) {
         mSupported = false;
         logg.logSetup("Ftrace is disabled\nUnable to locate the tracing directory");
         return;
@@ -392,7 +403,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         }
         if (enable != nullptr) {
             char buf[1 << 10];
-            snprintf(buf, sizeof(buf), EVENTS_PATH "/%s/enable", enable);
+            snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, enable);
             if (access(buf, W_OK) != 0) {
                 logg.logSetup("%s is disabled\n%s was not found", counter, buf);
                 continue;
@@ -400,7 +411,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         }
 
         logg.logMessage("Using ftrace for %s", counter);
-        setCounters(new FtraceCounter(getCounters(), counter, enable));
+        setCounters(new FtraceCounter(getCounters(), traceFsConstants, counter, enable));
     }
 }
 
@@ -408,7 +419,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
 {
     if (gSessionData.mFtraceRaw) {
         // Don't want the performace impact of sending all formats so gator only sends it for the enabled counters. This means other counters need to be disabled
-        if (lib::writeCStringToFile(TRACING_PATH "/events/enable", "0") != 0) {
+        if (lib::writeCStringToFile(traceFsConstants.path__events__enable, "0") != 0) {
             logg.logError("Unable to turn off all events");
             handleException();
         }
@@ -422,12 +433,12 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         counter->prepare();
     }
 
-    if (lib::readIntFromFile(TRACING_PATH "/tracing_on", mTracingOn) != 0) {
+    if (lib::readIntFromFile(traceFsConstants.path__tracing_on, mTracingOn) != 0) {
         logg.logError("Unable to read if ftrace is enabled");
         handleException();
     }
 
-    if (lib::writeCStringToFile(TRACING_PATH "/tracing_on", "0") != 0) {
+    if (lib::writeCStringToFile(traceFsConstants.path__tracing_on, "0") != 0) {
         logg.logError("Unable to turn ftrace off before truncating the buffer");
         handleException();
     }
@@ -435,7 +446,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     {
         int fd;
         // The below call can be slow on loaded high-core count systems.
-        fd = open(TRACING_PATH "/trace", O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
+        fd = open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
         if (fd < 0) {
             logg.logError("Unable truncate ftrace buffer: %s", strerror(errno));
             handleException();
@@ -443,7 +454,6 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         close(fd);
     }
 
-    const char * const trace_clock_path = TRACING_PATH "/trace_clock";
     const char * const clock = mMonotonicRawSupport ? "mono_raw" : "perf";
     const char * const clock_selected = mMonotonicRawSupport ? "[mono_raw]" : "[perf]";
     const size_t max_trace_clock_file_length = 200;
@@ -455,13 +465,13 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     // core count systems. The idea is that hopefully only on the first
     // capture, the trace clock needs to be changed. On subsequent captures,
     // the right clock is already being used.
-    int fd = open(trace_clock_path, O_RDONLY | O_CLOEXEC);
+    int fd = open(traceFsConstants.path__trace_clock, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
-        logg.logError("Couldn't open %s", trace_clock_path);
+        logg.logError("Couldn't open %s", traceFsConstants.path__trace_clock);
         handleException();
     }
     if ((trace_clock_file_length = ::read(fd, trace_clock_file_content, max_trace_clock_file_length - 1)) < 0) {
-        logg.logError("Couldn't read from %s", trace_clock_path);
+        logg.logError("Couldn't read from %s", traceFsConstants.path__trace_clock);
         close(fd);
         handleException();
     }
@@ -474,7 +484,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
 
     // Writing to trace_clock can be very slow on loaded high core count
     // systems.
-    if (must_switch_clock && lib::writeCStringToFile(TRACING_PATH "/trace_clock", clock) != 0) {
+    if (must_switch_clock && lib::writeCStringToFile(traceFsConstants.path__trace_clock, clock) != 0) {
         logg.logError("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later",
                       clock,
                       mMonotonicRawSupport ? "4.2" : "3.10");
@@ -482,7 +492,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     }
 
     if (!gSessionData.mFtraceRaw) {
-        const int fd = open(TRACING_PATH "/trace_pipe", O_RDONLY | O_CLOEXEC);
+        const int fd = open(traceFsConstants.path__trace_pipe, O_RDONLY | O_CLOEXEC);
         if (fd < 0) {
             logg.logError("Unable to open trace_pipe");
             handleException();
@@ -515,7 +525,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         }
 
         char buf[64];
-        snprintf(buf, sizeof(buf), TRACING_PATH "/per_cpu/cpu%zu/trace_pipe_raw", cpu);
+        snprintf(buf, sizeof(buf), "%s/per_cpu/cpu%zu/trace_pipe_raw", traceFsConstants.path, cpu);
         const int tfd = open(buf, O_RDONLY | O_CLOEXEC);
         (new FtraceReader(&mBarrier, cpu, tfd, pfd[0], pfd[1]))->start();
         result.first.push_back(pfd[0]);
@@ -526,7 +536,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
 
 void FtraceDriver::start()
 {
-    if (lib::writeCStringToFile(TRACING_PATH "/tracing_on", "1") != 0) {
+    if (lib::writeCStringToFile(traceFsConstants.path__tracing_on, "1") != 0) {
         logg.logError("Unable to turn ftrace on");
         handleException();
     }
@@ -538,7 +548,7 @@ void FtraceDriver::start()
 
 std::vector<int> FtraceDriver::stop()
 {
-    lib::writeIntToFile(TRACING_PATH "/tracing_on", mTracingOn);
+    lib::writeIntToFile(traceFsConstants.path__tracing_on, mTracingOn);
 
     for (auto * counter = static_cast<FtraceCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FtraceCounter *>(counter->getNext())) {
@@ -567,7 +577,7 @@ bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, Dyn
         return true;
     }
 
-    if (!printb->printf(EVENTS_PATH "/header_page")) {
+    if (!printb->printf("%s/header_page", traceFsConstants.path__events)) {
         logg.logMessage("DynBuf::printf failed");
         return false;
     }
@@ -577,7 +587,7 @@ bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, Dyn
     }
     attrsConsumer.marshalHeaderPage(b->getBuf());
 
-    if (!printb->printf(EVENTS_PATH "/header_event")) {
+    if (!printb->printf("%s/header_event", traceFsConstants.path__events)) {
         logg.logMessage("DynBuf::printf failed");
         return false;
     }
@@ -587,7 +597,7 @@ bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, Dyn
     }
     attrsConsumer.marshalHeaderEvent(b->getBuf());
 
-    std::unique_ptr<DIR, int (*)(DIR *)> dir {opendir(EVENTS_PATH "/ftrace"), &closedir};
+    std::unique_ptr<DIR, int (*)(DIR *)> dir {opendir(traceFsConstants.path__events__ftrace), &closedir};
     if (dir == nullptr) {
         logg.logError("Unable to open events ftrace folder");
         handleException();
@@ -597,7 +607,7 @@ bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, Dyn
         if (dirent->d_name[0] == '.' || dirent->d_type != DT_DIR) {
             continue;
         }
-        if (!printb->printf(EVENTS_PATH "/ftrace/%s/format", dirent->d_name)) {
+        if (!printb->printf("%s/%s/format", traceFsConstants.path__events__ftrace, dirent->d_name)) {
             logg.logMessage("DynBuf::printf failed");
             return false;
         }

@@ -59,6 +59,8 @@ namespace mali_userspace {
         virtual std::uint32_t getGpuId() const = 0;
         /** @return The hardware version of the device */
         virtual std::uint32_t getHwVersion() const = 0;
+        /** @return The cache's external data bus size */
+        virtual std::uint32_t getExternalBusWidth() const = 0;
     };
 }
 

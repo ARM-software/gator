@@ -3,6 +3,7 @@
 #include "Syscall.h"
 
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -48,4 +49,6 @@ namespace lib {
     int poll(struct pollfd * fds, nfds_t nfds, int timeout) { return ::poll(fds, nfds, timeout); }
 
     int access(const char * filename, int how) { return ::access(filename, how); }
+
+    void exit(int status) { ::exit(status); }
 }

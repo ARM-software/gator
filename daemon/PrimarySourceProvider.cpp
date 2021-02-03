@@ -123,6 +123,7 @@ namespace {
          * @return
          */
         static std::unique_ptr<PrimarySourceProvider> tryCreate(bool systemWide,
+                                                                const TraceFsConstants & traceFsConstants,
                                                                 PmuXML & pmuXml,
                                                                 const char * maliFamilyName,
                                                                 Ids & ids,
@@ -130,7 +131,7 @@ namespace {
                                                                 bool disableCpuOnlining)
         {
             std::unique_ptr<PerfDriverConfiguration> configuration =
-                PerfDriverConfiguration::detect(systemWide, ids.getCpuIds(), pmuXml);
+                PerfDriverConfiguration::detect(systemWide, traceFsConstants.path__events, ids.getCpuIds(), pmuXml);
             if (configuration != nullptr) {
                 std::vector<GatorCpu> clusters;
                 for (const auto & perfCpu : configuration->cpus) {
@@ -140,7 +141,8 @@ namespace {
                 return std::unique_ptr<PrimarySourceProvider> {new PerfPrimarySource(std::move(*configuration),
                                                                                      std::move(pmuXml),
                                                                                      maliFamilyName,
-                                                                                     std::move(cpuInfo))};
+                                                                                     std::move(cpuInfo),
+                                                                                     traceFsConstants)};
             }
 
             return nullptr;
@@ -198,10 +200,11 @@ namespace {
         PerfPrimarySource(PerfDriverConfiguration && configuration,
                           PmuXML && pmuXml,
                           const char * maliFamilyName,
-                          CpuInfo && cpuInfo)
+                          CpuInfo && cpuInfo,
+                          const TraceFsConstants & traceFsConstants)
             : PrimarySourceProvider(createPolledDrivers()),
               cpuInfo(std::move(cpuInfo)),
-              driver(std::move(configuration), std::move(pmuXml), maliFamilyName, this->cpuInfo)
+              driver(std::move(configuration), std::move(pmuXml), maliFamilyName, this->cpuInfo, traceFsConstants)
         {
         }
 
@@ -330,6 +333,7 @@ const std::vector<PolledDriver *> & PrimarySourceProvider::getAdditionalPolledDr
 }
 
 std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool systemWide,
+                                                                     const TraceFsConstants & traceFsConstants,
                                                                      PmuXML && pmuXml,
                                                                      const char * maliFamilyName,
                                                                      bool disableCpuOnlining)
@@ -355,7 +359,13 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
         logg.logMessage("Trying perf API as non-root...");
     }
 
-    result = PerfPrimarySource::tryCreate(systemWide, pmuXml, maliFamilyName, ids, modelNameToUse, disableCpuOnlining);
+    result = PerfPrimarySource::tryCreate(systemWide,
+                                          traceFsConstants,
+                                          pmuXml,
+                                          maliFamilyName,
+                                          ids,
+                                          modelNameToUse,
+                                          disableCpuOnlining);
     if (result != nullptr) {
         logg.logMessage("...Success");
         logg.logSetup("Profiling Source\nUsing perf API for primary data source");

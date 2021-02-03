@@ -71,7 +71,7 @@ public:
 
     int64_t parameterSetFlag;
 
-    std::map<std::string, int> events;
+    std::map<std::string, EventCode> events;
 
     ExecutionMode mode;
     std::set<Printable> printables;

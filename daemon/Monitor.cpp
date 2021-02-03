@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-Monitor::Monitor() : mFd(-1)
+Monitor::Monitor() : mFd(-1), mSize(0)
 {
 }
 
@@ -45,24 +45,45 @@ bool Monitor::init()
     if ((fdf == -1) || (fcntl(mFd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
         logg.logMessage("fcntl failed");
         ::close(mFd);
-        return -1;
+        return false;
     }
 #endif
 
+    mSize = 0;
+
+    return true;
+}
+
+static bool addOrRemove(int mFd, int fd, bool add)
+{
+    const int op = (add ? EPOLL_CTL_ADD : EPOLL_CTL_DEL);
+
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    if (epoll_ctl(mFd, op, fd, &event) != 0) {
+        logg.logMessage("epoll_ctl failed");
+        return false;
+    }
     return true;
 }
 
 bool Monitor::add(int fd)
 {
-    struct epoll_event event;
-    memset(&event, 0, sizeof(event));
-    event.data.fd = fd;
-    event.events = EPOLLIN | EPOLLERR | EPOLLHUP;
-    if (epoll_ctl(mFd, EPOLL_CTL_ADD, fd, &event) != 0) {
-        logg.logMessage("epoll_ctl failed");
+    if (!addOrRemove(mFd, fd, true)) {
         return false;
     }
+    mSize += 1;
+    return true;
+}
 
+bool Monitor::remove(int fd)
+{
+    if (!addOrRemove(mFd, fd, false)) {
+        return false;
+    }
+    mSize -= 1;
     return true;
 }
 

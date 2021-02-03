@@ -201,11 +201,13 @@ inline static T & neverNull(T * t)
     return *t;
 }
 
-static long long getTracepointId(const char * const counter, const char * const name)
+static long long _getTracepointId(const TraceFsConstants & traceFsConstants, const char * counter, const char * name)
 {
-    long long result = getTracepointId(name);
+    long long result = getTracepointId(traceFsConstants, name);
     if (result <= 0) {
-        logg.logSetup("%s is disabled\n%s was not found", counter, getTracepointPath(name, "id").c_str());
+        logg.logSetup("%s is disabled\n%s was not found",
+                      counter,
+                      getTracepointPath(traceFsConstants, name, "id").c_str());
     }
     return result;
 }
@@ -213,8 +215,14 @@ static long long getTracepointId(const char * const counter, const char * const 
 PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
                        PmuXML && pmuXml,
                        const char * maliFamilyName,
-                       const ICpuInfo & cpuInfo)
-    : SimpleDriver("Perf"), mTracepoints(nullptr), mConfig(std::move(configuration)), mPmuXml(pmuXml), mCpuInfo(cpuInfo)
+                       const ICpuInfo & cpuInfo,
+                       const TraceFsConstants & traceFsConstants)
+    : SimpleDriver("Perf"),
+      traceFsConstants(traceFsConstants),
+      mTracepoints(nullptr),
+      mConfig(std::move(configuration)),
+      mPmuXml(pmuXml),
+      mCpuInfo(cpuInfo)
 {
     // add CPU PMUs
     for (const auto & perfCpu : mConfig.cpus) {
@@ -248,7 +256,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
     char buf[40];
 
     if (getConfig().can_access_tracepoints) {
-        id = getTracepointId("Interrupts: SoftIRQ", "irq/softirq_exit");
+        id = _getTracepointId(traceFsConstants, "Interrupts: SoftIRQ", "irq/softirq_exit");
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_softirq", perfCpu.gator_cpu.getId());
@@ -262,7 +270,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
             }
         }
 
-        id = getTracepointId("Interrupts: IRQ", "irq/irq_handler_exit");
+        id = _getTracepointId(traceFsConstants, "Interrupts: IRQ", "irq/irq_handler_exit");
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_irq", perfCpu.gator_cpu.getId());
@@ -276,7 +284,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
             }
         }
 
-        id = getTracepointId("Scheduler: Switch", SCHED_SWITCH);
+        id = _getTracepointId(traceFsConstants, "Scheduler: Switch", SCHED_SWITCH);
         if (id >= 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_switch", perfCpu.gator_cpu.getId());
@@ -290,7 +298,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
             }
         }
 
-        id = getTracepointId("Clock: Frequency", CPU_FREQUENCY);
+        id = _getTracepointId(traceFsConstants, "Clock: Frequency", CPU_FREQUENCY);
         if (id >= 0 && access("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq", R_OK) == 0) {
             for (const auto & perfCpu : mConfig.cpus) {
                 snprintf(buf, sizeof(buf), "%s_freq", perfCpu.gator_cpu.getId());
@@ -531,7 +539,7 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
 
         const char * arg = mxmlElementGetAttr(node, "arg");
 
-        long long id = getTracepointId(counter, tracepoint);
+        long long id = _getTracepointId(traceFsConstants, counter, tracepoint);
         if (id >= 0) {
             logg.logMessage("Using perf for %s", counter);
             setCounters(new PerfCounter(getCounters(),
@@ -598,7 +606,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
                                                                      "PM_L2_0",
                                                                      "PM_L2_1"};
 
-        id = getTracepointId("Mali: PM Status", "mali/mali_pm_status");
+        id = _getTracepointId(traceFsConstants, "Mali: PM Status", "mali/mali_pm_status");
         if (id >= 0) {
             for (const auto * i : MALI_MIDGARD_PM_STATUS_EVENTS) {
                 snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, i);
@@ -608,9 +616,9 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         }
     }
 
-    id = getTracepointId(MALI_MMU_IN_USE, MALI_TRC_PNT_PATH[MALI_MMU_IN_USE]);
+    id = _getTracepointId(traceFsConstants, MALI_MMU_IN_USE, MALI_TRC_PNT_PATH[MALI_MMU_IN_USE]);
     if (id >= 0) {
-        const int id2 = getTracepointId(MALI_PM_STATUS, MALI_TRC_PNT_PATH[MALI_PM_STATUS]);
+        const int id2 = _getTracepointId(traceFsConstants, MALI_PM_STATUS, MALI_TRC_PNT_PATH[MALI_PM_STATUS]);
         for (const auto * i : MALI_MIDGARD_AS_IN_USE_RELEASED) {
             snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, i);
             addCounterWithConfigId2(buf, id, id2);
@@ -619,7 +627,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         }
     }
 
-    id = getTracepointId(MALI_MMU_PAGE_FAULT, MALI_TRC_PNT_PATH[MALI_MMU_PAGE_FAULT]);
+    id = _getTracepointId(traceFsConstants, MALI_MMU_PAGE_FAULT, MALI_TRC_PNT_PATH[MALI_MMU_PAGE_FAULT]);
     if (id >= 0) {
         for (const auto * i : MALI_MIDGARD_PAGE_FAULT_INSERT_PAGES) {
             snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, i);
@@ -628,7 +636,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         }
     }
 
-    id = getTracepointId(MALI_MMU_TOTAL_ALLOC, MALI_TRC_PNT_PATH[MALI_MMU_TOTAL_ALLOC]);
+    id = _getTracepointId(traceFsConstants, MALI_MMU_TOTAL_ALLOC, MALI_TRC_PNT_PATH[MALI_MMU_TOTAL_ALLOC]);
     if (id >= 0) {
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_%s", maliFamilyName, MALI_MIDGARD_TOTAL_ALLOC_PAGES);
         addCounter(buf, id);
@@ -636,7 +644,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
     }
 
     // for activity counters
-    id = getTracepointId(MALI_JOB_SLOT, MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
+    id = _getTracepointId(traceFsConstants, MALI_JOB_SLOT, MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
     if (id >= 0) {
         snprintf(buf, sizeof(buf), "ARM_Mali-%s_fragment", maliFamilyName);
         addCounter(buf, id);
@@ -740,11 +748,15 @@ void PerfDriver::setupCounter(Counter & counter)
         return;
     }
 
-    logg.logMessage("Configuring perf counter %s with event (%d)", perfCounter->getName(), counter.getEvent());
+    const auto & optionalEventCode = counter.getEventCode();
+
+    logg.logMessage("Configuring perf counter %s with event (0x%" PRIxEventCode ")",
+                    perfCounter->getName(),
+                    (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
 
     // Don't use the config from counters XML if it's not set, ex: software counters
-    if (counter.getEvent() != -1) {
-        perfCounter->setConfig(counter.getEvent());
+    if (optionalEventCode.isValid()) {
+        perfCounter->setConfig(optionalEventCode.asU64());
     }
     if (counter.getCount() > 0) {
         // EBS
@@ -810,7 +822,7 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
 bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const
 {
     const uint64_t id = getConfig().can_access_tracepoints
-                            ? getTracepointId("Mali: Job slot events", "mali/mali_job_slots_event")
+                            ? _getTracepointId(traceFsConstants, "Mali: Job slot events", "mali/mali_job_slots_event")
                             : 0 /* never used */;
     bool sentMaliJobSlotEvents = false;
 
@@ -874,14 +886,15 @@ void PerfDriver::read(IPerfAttrsConsumer & attrsConsumer, const int cpu)
 
 bool PerfDriver::sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer)
 {
-    if (!readTracepointFormat(attrsConsumer, SCHED_SWITCH) || !readTracepointFormat(attrsConsumer, CPU_IDLE) ||
-        !readTracepointFormat(attrsConsumer, CPU_FREQUENCY)) {
+    if (!readTracepointFormat(attrsConsumer, traceFsConstants, SCHED_SWITCH) ||
+        !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_IDLE) ||
+        !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_FREQUENCY)) {
         return false;
     }
 
     for (PerfTracepoint * tracepoint = mTracepoints; tracepoint != nullptr; tracepoint = tracepoint->getNext()) {
         if (tracepoint->getCounter()->isEnabled() &&
-            !readTracepointFormat(attrsConsumer, tracepoint->getTracepoint())) {
+            !readTracepointFormat(attrsConsumer, traceFsConstants, tracepoint->getTracepoint())) {
             return false;
         }
     }

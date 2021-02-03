@@ -386,10 +386,10 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
         case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
             groupLabel = uncorePmu->getCoreName();
             const std::set<int> cpuMask = perf_utils::readCpuMask(uncorePmu->getId());
-            if ((!cpuMask.empty()) && (cpuMask.count(cpu) == 0)) {
-                return std::make_pair(OnlineResult::SUCCESS, "");
-            }
-            else if (cpuMask.empty() && (cpu != 0)) {
+            const bool currentCpuNotInMask = ((!cpuMask.empty()) && (cpuMask.count(cpu) == 0));
+            const bool maskIsEmptyAndCpuNotDefault = (cpuMask.empty() && (cpu != 0));
+            if (currentCpuNotInMask || maskIsEmptyAndCpuNotDefault) {
+                // SKIP this core without marking an error
                 return std::make_pair(OnlineResult::SUCCESS, "");
             }
             break;

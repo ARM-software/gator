@@ -83,6 +83,7 @@ void DiskIODriver::doRead()
         int nameEnd = -1;
         uint64_t readBytes = -1;
         uint64_t writeBytes = -1;
+        // NOLINTNEXTLINE(cert-err34-c)
         const int count = sscanf(line,
                                  "%*d %*d %n%*s%n %*u %*u %" SCNu64 " %*u %*u %*u %" SCNu64,
                                  &nameStart,

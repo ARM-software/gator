@@ -19,7 +19,7 @@
 
 class Drivers {
 public:
-    Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining);
+    Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining, const TraceFsConstants & traceFsConstants);
 
     armnn::Driver & getArmnnDriver() { return mArmnnDriver; }
 

@@ -114,19 +114,22 @@ SampleRate getSampleRate(const std::string & value)
 void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
 {
     std::string counterType;
-    std::string subStr = counters.substr(startpos, pos);
-    int event = -1;
+    std::string subStr = counters.substr(startpos, pos - startpos);
+    EventCode event;
     size_t eventpos = 0;
 
     //TODO : support for A53:Cycles:1:2:8:0x1
     if ((eventpos = subStr.find(':')) != std::string::npos) {
-        if (!stringToInt(&event, subStr.substr(eventpos + 1, subStr.size()).c_str(), 10)) {     //check for decimal
-            if (!stringToInt(&event, subStr.substr(eventpos + 1, subStr.size()).c_str(), 16)) { //check for hex
+        auto eventStr = subStr.substr(eventpos + 1, subStr.size());
+        long long eventCode;
+        if (!stringToLongLong(&eventCode, eventStr.c_str(), 10)) {     //check for decimal
+            if (!stringToLongLong(&eventCode, eventStr.c_str(), 16)) { //check for hex
                 logg.logError("event must be an integer");
                 result.mode = ExecutionMode::EXIT;
                 return;
             }
         }
+        event = EventCode(eventCode);
     }
     if (eventpos == std::string::npos) {
         counterType = subStr;
@@ -331,8 +334,6 @@ void GatorCLIParser::parseCLIArguments(int argc,
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
         SampleRate sampleRate;
         std::string value;
-        int startpos = -1;
-        size_t counterSplitPos = 0;
         switch (c) {
             case 'N':
                 if (!stringToInt(&result.mAndroidApiLevel, optarg, 10)) {
@@ -459,6 +460,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.mStopGator = optionInt == 1;
                 break;
             case 'C': //counter
+            {
+                int startpos = -1;
+                size_t counterSplitPos = 0;
                 if (perfCounterCount > maxPerformanceCounter) {
                     continue;
                 }
@@ -471,6 +475,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 //adding last counter in list
                 addCounter(startpos + 1, value.length(), value);
                 break;
+            }
             case 'X': // spe
             {
                 parseAndUpdateSpe();

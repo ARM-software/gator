@@ -10,6 +10,7 @@
 #include "mali_userspace/MaliDeviceApi_DdkDefines.h"
 
 #include <cerrno>
+#include <cmath>
 #include <cstring>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -50,6 +51,7 @@ namespace mali_userspace {
                                           uint32_t minor,
                                           uint32_t frequency,
                                           uint32_t l2Slices,
+                                          uint32_t busWidth,
                                           uint64_t shaderCoreMask)
         {
             const char * const productName = findMaliProductNameFromId(productId);
@@ -69,12 +71,15 @@ namespace mali_userspace {
                 if (frequency > 0) {
                     formatter << " clocked at " << frequency << "MHz";
                 }
-                formatter << ", " << l2Slices << " L2 Slices, " << shaderCores << " Shader Cores";
             }
             else {
                 formatter << " but it is not recognized (id: 0x" << std::hex << productId << std::dec << " r" << major
-                          << "p" << minor << ", " << l2Slices << " L2 slices, " << shaderCores << " Shader Cores";
+                          << "p" << minor;
             }
+
+            formatter << ", " << l2Slices << " L2 Slices, ";
+            formatter << busWidth << "-bit Bus, ";
+            formatter << shaderCores << " Shader Cores";
 
             if (shaderCoreMask != ((1ull << shaderCores) - 1)) {
                 formatter << " (sparse layout, mask is 0x" << std::hex << shaderCoreMask << std::dec << ")";
@@ -88,6 +93,17 @@ namespace mali_userspace {
             }
 
             logg.logSetup("%s", std::string(formatter).c_str());
+        }
+
+        static uint32_t extractBusWidth(uint32_t raw_l2_features)
+        {
+            uint32_t log2_bus_width = raw_l2_features >> 24;
+
+            // If the log2 is >31 then the exp2 of it will not fit in our 32-bit result
+            runtime_assert(log2_bus_width <= 31, "Unexpectedly large bus width value");
+
+            // The value is log2 of the real value, so use a bitshift to invert that
+            return (1u << log2_bus_width);
         }
     }
 
@@ -122,7 +138,8 @@ namespace mali_userspace {
                   numberOfL2Slices(props.props.l2_props.num_l2_slices),
                   gpuId(props.props.core_props.product_id),
                   hwVersion((uint32_t(props.props.core_props.major_revision) << 16) |
-                            props.props.core_props.minor_revision)
+                            props.props.core_props.minor_revision),
+                  busWidth(extractBusWidth(props.props.raw_props.l2_features))
             {
                 logDetectedMaliDevice(maliDevicePath,
                                       props.props.core_props.product_id,
@@ -130,6 +147,7 @@ namespace mali_userspace {
                                       props.props.core_props.minor_revision,
                                       props.props.core_props.gpu_speed_mhz,
                                       props.props.l2_props.num_l2_slices,
+                                      busWidth,
                                       shaderCoreAvailabilityMask);
             }
 
@@ -191,6 +209,8 @@ namespace mali_userspace {
 
             virtual uint32_t getHwVersion() const override { return hwVersion; }
 
+            virtual uint32_t getExternalBusWidth() const override { return busWidth; }
+
         private:
             static uint64_t calcShaderCoreMask(const kbase_uk_gpuprops & props)
             {
@@ -206,6 +226,7 @@ namespace mali_userspace {
             const uint32_t numberOfL2Slices;
             const uint32_t gpuId;
             const uint32_t hwVersion;
+            const uint32_t busWidth;
         };
 
         std::unique_ptr<IMaliDeviceApi> probe(const char * maliDevicePath, lib::AutoClosingFd devFd)
@@ -336,15 +357,15 @@ namespace mali_userspace {
          * @param size
          * @return The useful decoded fields
          */
-        static gpu_propeties decodeProperties(uint8_t * buffer, int size)
+        static gpu_properties decodeProperties(uint8_t * buffer, int size)
         {
-            gpu_propeties result {};
+            gpu_properties result {};
 
             for (int pos = 0; pos < size;) {
                 const uint32_t token = readU32(buffer, pos, size);
                 const auto key = KBaseGpuPropKey(token >> 2);
-                const auto value_type = KBaseGpuPropValueSize(token & 3);
-                const uint64_t value = readValue(value_type, buffer, pos, size);
+                const auto value_size = KBaseGpuPropValueSize(token & 3);
+                const uint64_t value = readValue(value_size, buffer, pos, size);
 
                 switch (key) {
                     case KBaseGpuPropKey::PRODUCT_ID:
@@ -355,6 +376,10 @@ namespace mali_userspace {
                         break;
                     case KBaseGpuPropKey::MAJOR_REVISION:
                         result.major_revision = value;
+                        break;
+                    case KBaseGpuPropKey::RAW_L2_FEATURES:
+                        runtime_assert(value_size == KBaseGpuPropValueSize::U32, "Unexpected L2 features size");
+                        result.bus_width = extractBusWidth(value);
                         break;
                     case KBaseGpuPropKey::COHERENCY_NUM_CORE_GROUPS:
                         runtime_assert(value <= BASE_MAX_COHERENT_GROUPS, "Too many core groups");
@@ -424,12 +449,13 @@ namespace mali_userspace {
          */
         class MaliDeviceApi final : public IMaliDeviceApi {
         public:
-            MaliDeviceApi(const char * maliDevicePath, lib::AutoClosingFd devFd, const gpu_propeties & props)
+            MaliDeviceApi(const char * maliDevicePath, lib::AutoClosingFd devFd, const gpu_properties & props)
                 : devFd(std::move(devFd)),
                   shaderCoreAvailabilityMask(calcShaderCoreMask(props)),
                   numberOfL2Slices(props.num_l2_slices),
                   gpuId(props.product_id),
-                  hwVersion((uint32_t(props.major_revision) << 16) | props.minor_revision)
+                  hwVersion((uint32_t(props.major_revision) << 16) | props.minor_revision),
+                  busWidth(props.bus_width)
             {
                 logDetectedMaliDevice(maliDevicePath,
                                       props.product_id,
@@ -437,6 +463,7 @@ namespace mali_userspace {
                                       props.minor_revision,
                                       0,
                                       props.num_l2_slices,
+                                      busWidth,
                                       shaderCoreAvailabilityMask);
             }
 
@@ -484,8 +511,10 @@ namespace mali_userspace {
 
             virtual uint32_t getHwVersion() const override { return hwVersion; }
 
+            virtual uint32_t getExternalBusWidth() const override { return busWidth; }
+
         private:
-            static uint64_t calcShaderCoreMask(const gpu_propeties & props)
+            static uint64_t calcShaderCoreMask(const gpu_properties & props)
             {
                 uint64_t core_mask = 0;
                 for (uint32_t i = 0; i < props.num_core_groups; i++) {
@@ -499,6 +528,7 @@ namespace mali_userspace {
             const uint32_t numberOfL2Slices;
             const uint32_t gpuId;
             const uint32_t hwVersion;
+            const uint32_t busWidth;
         };
 
         std::unique_ptr<IMaliDeviceApi> probe(const char * maliDevicePath, lib::AutoClosingFd devFd)
@@ -514,7 +544,7 @@ namespace mali_userspace {
                     logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl");
                     return {};
                 }
-                else if (version_check.major < 11) {
+                else if ((version_check.major != 1) && (version_check.major != 11)) {
                     logg.logMessage("MaliDeviceApi: Unsupported ABI version %u.%u",
                                     version_check.major,
                                     version_check.minor);
@@ -559,7 +589,7 @@ namespace mali_userspace {
 
                 // decode the properties data
                 {
-                    const gpu_propeties properties = decodeProperties(buffer.get(), size);
+                    const gpu_properties properties = decodeProperties(buffer.get(), size);
                     return std::unique_ptr<IMaliDeviceApi> {
                         new MaliDeviceApi(maliDevicePath, std::move(devFd), properties)};
                 }
