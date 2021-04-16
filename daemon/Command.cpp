@@ -1,7 +1,8 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "Command.h"
 
+#include "ExitStatus.h"
 #include "Logging.h"
 #include "SessionData.h"
 #include "lib/FileDescriptor.h"
@@ -42,7 +43,7 @@ static bool getUid(const char * const name, const char * const tmpDir, uid_t * c
 
     if (pid == 0) {
         execlp("sh", "sh", "-c", cmd, nullptr);
-        exit(-1);
+        exit(COMMAND_FAILED_EXIT_CODE);
     }
 
     while ((waitpid(pid, nullptr, 0) < 0) && (errno == EINTR)) {
@@ -289,7 +290,7 @@ Command Command::run(const std::function<void()> & terminationCallback)
             (void) bytes;
         }
 
-        exit(-1);
+        exit(COMMAND_FAILED_EXIT_CODE);
     }
     else {
         // parent

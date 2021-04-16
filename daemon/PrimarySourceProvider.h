@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
@@ -35,7 +35,8 @@ public:
                                                          const TraceFsConstants & traceFsConstants,
                                                          PmuXML && pmuXml,
                                                          const char * maliFamilyName,
-                                                         bool disableCpuOnlining);
+                                                         bool disableCpuOnlining,
+                                                         bool disableKernelAnnotations);
 
     virtual ~PrimarySourceProvider();
 

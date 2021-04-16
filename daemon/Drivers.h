@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVERS_H
 #define DRIVERS_H
@@ -19,7 +19,11 @@
 
 class Drivers {
 public:
-    Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining, const TraceFsConstants & traceFsConstants);
+    Drivers(bool systemWide,
+            PmuXML && pmuXml,
+            bool disableCpuOnlining,
+            bool disableKernelAnnotations,
+            const TraceFsConstants & traceFsConstants);
 
     armnn::Driver & getArmnnDriver() { return mArmnnDriver; }
 

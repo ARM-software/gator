@@ -480,12 +480,12 @@ def get_package_name(device, pkgName, interactive):
     print(template % message)
 
     if len(goodPkg) < 1:
-        print("\nERROR: Package not selected; none available")
+        print("\nERROR: No debuggable packages found")
         return None
 
     pkgIndex = select_from_menu("debuggable packages", goodPkg)
     if pkgIndex is None:
-        print("\nERROR: Package not selected; multiple available")
+        print("\nNo package selected, exiting ...")
         return None
 
     return goodPkg[pkgIndex]

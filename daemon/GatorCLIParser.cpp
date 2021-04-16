@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "GatorCLIParser.h"
 
@@ -8,39 +8,40 @@
 #include <algorithm>
 #include <sstream>
 
-static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:o:p:r:s:t:u:vw:x:A:C:E:F:N:O:P:Q:R:S:VX:Z:";
+static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:VX:Z:";
 
 static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                                 // OF NEW ITEMS.
-    {"allow-command", /*********/ no_argument, /***/ nullptr, 'a'}, //
-    {"config-xml", /************/ required_argument, nullptr, 'c'}, //
-    {"debug", /*****************/ no_argument, /***/ nullptr, 'd'}, //
-    {"events-xml", /************/ required_argument, nullptr, 'e'}, //
-    {"use-efficient-ftrace", /**/ required_argument, nullptr, 'f'}, //
-    {"help", /******************/ no_argument, /***/ nullptr, 'h'}, //
-    {"pid", /*******************/ required_argument, nullptr, 'i'}, //
-    {"output", /****************/ required_argument, nullptr, 'o'}, //
-    {"port", /******************/ required_argument, nullptr, 'p'}, //
-    {"sample-rate", /***********/ required_argument, nullptr, 'r'}, //
-    {"session-xml", /***********/ required_argument, nullptr, 's'}, //
-    {"max-duration", /**********/ required_argument, nullptr, 't'}, //
-    {"call-stack-unwinding", /**/ required_argument, nullptr, 'u'}, //
-    {"version", /***************/ required_argument, nullptr, 'v'}, //
-    {"app-cwd", /***************/ required_argument, nullptr, 'w'}, //
-    {"stop-on-exit", /**********/ required_argument, nullptr, 'x'}, //
-    {"app", /*******************/ required_argument, nullptr, 'A'}, //
-    {"counters", /**************/ required_argument, nullptr, 'C'}, //
-    {"append-events-xml", /*****/ required_argument, nullptr, 'E'}, //
-    {"spe-sample-rate", /*******/ required_argument, nullptr, 'F'}, //
-    /******************************************************** 'N' ***/
-    {"disable-cpu-onlining", /**/ required_argument, nullptr, 'O'}, //
-    {"pmus-xml", /**************/ required_argument, nullptr, 'P'}, //
-    {"wait-process", /**********/ required_argument, nullptr, 'Q'}, //
-    {"print", /*****************/ required_argument, nullptr, 'R'}, //
-    {"system-wide", /***********/ required_argument, nullptr, 'S'}, //
-    {"version", /***************/ no_argument, /***/ nullptr, 'V'}, //
-    {"spe", /*******************/ required_argument, nullptr, 'X'}, //
-    {"mmap-pages", /************/ required_argument, nullptr, 'Z'}, //
+    {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
+    {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
+    {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
+    {"events-xml", /*************/ required_argument, nullptr, 'e'}, //
+    {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'}, //
+    {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
+    {"pid", /********************/ required_argument, nullptr, 'i'}, //
+    {"output", /*****************/ required_argument, nullptr, 'o'}, //
+    {"port", /*******************/ required_argument, nullptr, 'p'}, //
+    {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
+    {"session-xml", /************/ required_argument, nullptr, 's'}, //
+    {"max-duration", /***********/ required_argument, nullptr, 't'}, //
+    {"call-stack-unwinding", /***/ required_argument, nullptr, 'u'}, //
+    {"version", /****************/ required_argument, nullptr, 'v'}, //
+    {"app-cwd", /****************/ required_argument, nullptr, 'w'}, //
+    {"stop-on-exit", /***********/ required_argument, nullptr, 'x'}, //
+    {"app", /********************/ required_argument, nullptr, 'A'}, //
+    {"counters", /***************/ required_argument, nullptr, 'C'}, //
+    {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
+    {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
+    {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
+    /********************************************************* 'N' ***/
+    {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
+    {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
+    {"wait-process", /***********/ required_argument, nullptr, 'Q'}, //
+    {"print", /******************/ required_argument, nullptr, 'R'}, //
+    {"system-wide", /************/ required_argument, nullptr, 'S'}, //
+    {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
+    {"spe", /********************/ required_argument, nullptr, 'X'}, //
+    {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
     {nullptr, 0, nullptr, 0}};
 
 static const char PRINTABLE_SEPARATOR = ',';
@@ -80,6 +81,7 @@ ParserResult::ParserResult()
       mSystemWide(true),
       mAllowCommands(false),
       mDisableCpuOnlining(false),
+      mDisableKernelAnnotations(false),
       pmuPath(nullptr),
       port(DEFAULT_PORT),
       parameterSetFlag(0),
@@ -476,6 +478,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 addCounter(startpos + 1, value.length(), value);
                 break;
             }
+            case 'D': // disable kernel annotations
+                result.mDisableKernelAnnotations = true;
+                break;
             case 'X': // spe
             {
                 parseAndUpdateSpe();
@@ -514,6 +519,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        this file. In local capture mode the\n"
                     "                                        list of counters will be read from this\n"
                     "                                        file.\n"
+                    "  -D|--disable-kernel-annotations       Disable collection of kernel annotations\n"
                     "  -e|--events-xml <events_xml>          Specify path and filename of the events\n"
                     "                                        XML to use\n"
                     "  -E|--append-events-xml <events_xml>   Specify path and filename of events XML\n"

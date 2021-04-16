@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRNAMES_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRNAMES_H_
@@ -1482,7 +1482,7 @@ namespace mali_userspace {
         "T83x_FRAG_PRIMITIVES",
         "T83x_FRAG_PRIMITIVES_DROPPED",
         "T83x_FRAG_CYCLES_DESC",
-        "T832x_FRAG_CYCLES_ZS_REORDER_ACTIVE",
+        "T83x_FRAG_CYCLES_ZS_REORDER_ACTIVE",
         "T83x_FRAG_CYCLES_VERT",
         "T83x_FRAG_CYCLES_TRISETUP",
         "T83x_FRAG_CYCLES_FPKQ_ACTIVE",

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIPARSER_H_
 #define GATORCLIPARSER_H_
@@ -65,6 +65,7 @@ public:
     bool mSystemWide;
     bool mAllowCommands;
     bool mDisableCpuOnlining;
+    bool mDisableKernelAnnotations;
 
     const char * pmuPath;
     int port;

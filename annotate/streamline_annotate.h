@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2016, Arm Limited
+ * Copyright (c) 2014-2021 Arm Limited
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,9 +36,12 @@
 /*
  *  ANNOTATE_DEFINE                              Deprecated and no longer used
  *  ANNOTATE_SETUP                               Execute at the start of the program before other ANNOTATE macros are called
- *  ANNOTATE_DELTA_COUNTER                       Define a delta counter for use
- *  ANNOTATE_ABSOLUTE_COUNTER                    Define an absolute counter for use
+ *  ANNOTATE_DELTA_COUNTER                       Define a delta counter
+ *  ANNOTATE_ABSOLUTE_COUNTER                    Define an absolute counter
  *  ANNOTATE_COUNTER_VALUE                       Emit a counter value
+ *  ANNOTATE_DELTA_COUNTER_SCALE                 Define a delta counter with scaling
+ *  ANNOTATE_ABSOLUTE_COUNTER_SCALE              Define an absolute counter with scaling
+ *  ANNOTATE_COUNTER_VALUE_SCALE                 Emit a counter value with scaling
  *  CAM_TRACK                                    Create a new custom activity map track
  *  CAM_JOB                                      Add a new job to a CAM track, use gator_get_time() to obtain the time in nanoseconds
  *  CAM_VIEW_NAME                                Name the custom activity map view
@@ -148,14 +151,64 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name);
 #define ANNOTATE_CHANNEL_END(channel) gator_annotate_str(channel, NULL)
 #define ANNOTATE_NAME_CHANNEL(channel, group, str) gator_annotate_name_channel(channel, group, str)
 #define ANNOTATE_NAME_GROUP(group, str) gator_annotate_name_group(group, str)
+
 #define ANNOTATE_VISUAL(data, length, str) gator_annotate_visual(data, length, str)
+
 #define ANNOTATE_MARKER() gator_annotate_marker(NULL)
 #define ANNOTATE_MARKER_STR(str) gator_annotate_marker(str)
 #define ANNOTATE_MARKER_COLOR(color) gator_annotate_marker_color(color, NULL)
 #define ANNOTATE_MARKER_COLOR_STR(color, str) gator_annotate_marker_color(color, str)
+
 #define ANNOTATE_DELTA_COUNTER(id, title, name) gator_annotate_counter(id, title, name, 0, ANNOTATE_DELTA, ANNOTATE_ACCUMULATE, NULL, 1, ANNOTATE_STACKED, ANNOTATE_FILL, 0, 0, 0, 0, NULL, NULL, 0, ANNOTATE_COLOR_CYCLE, NULL)
 #define ANNOTATE_ABSOLUTE_COUNTER(id, title, name) gator_annotate_counter(id, title, name, 0, ANNOTATE_ABSOLUTE, ANNOTATE_MAXIMUM, NULL, 1, ANNOTATE_STACKED, ANNOTATE_FILL, 0, 0, 0, 0, NULL, NULL, 0, ANNOTATE_COLOR_CYCLE, NULL)
 #define ANNOTATE_COUNTER_VALUE(id, value) gator_annotate_counter_value(0, id, value)
+
+#define ANNOTATE_DELTA_COUNTER_SCALE(id, title, name, modifier)                                                        \
+    gator_annotate_counter(id,                                                                                         \
+                           title,                                                                                      \
+                           name,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_DELTA,                                                                             \
+                           ANNOTATE_ACCUMULATE,                                                                        \
+                           NULL,                                                                                       \
+                           modifier,                                                                                   \
+                           ANNOTATE_STACKED,                                                                           \
+                           ANNOTATE_FILL,                                                                              \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           NULL,                                                                                       \
+                           NULL,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_COLOR_CYCLE,                                                                       \
+                           NULL)
+#define ANNOTATE_ABSOLUTE_COUNTER_SCALE(id, title, name, modifier)                                                     \
+    gator_annotate_counter(id,                                                                                         \
+                           title,                                                                                      \
+                           name,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_ABSOLUTE,                                                                          \
+                           ANNOTATE_MAXIMUM,                                                                           \
+                           NULL,                                                                                       \
+                           modifier,                                                                                   \
+                           ANNOTATE_STACKED,                                                                           \
+                           ANNOTATE_FILL,                                                                              \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           NULL,                                                                                       \
+                           NULL,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_COLOR_CYCLE,                                                                       \
+                           NULL)
+#define ANNOTATE_COUNTER_VALUE_SCALE(id, value, modifier)                                                              \
+    do {                                                                                                               \
+        uint32_t __scaledvalue = (uint32_t)((value) * (modifier) + 0.5f);                                              \
+        gator_annotate_counter_value(0, id, __scaledvalue);                                                            \
+    } while (0)
+
 #define CAM_TRACK(view_uid, track_uid, parent_track, name) gator_cam_track(view_uid, track_uid, parent_track, name)
 #define CAM_JOB(view_uid, job_uid, name, track, start_time, duration, color) gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 0, 0)
 #define CAM_JOB_DEP(view_uid, job_uid, name, track, start_time, duration, color, dependency) { \

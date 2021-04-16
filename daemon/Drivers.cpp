@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "Drivers.h"
 
@@ -10,13 +10,16 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
                                                                           const TraceFsConstants & traceFsConstants,
                                                                           PmuXML && pmuXml,
                                                                           const char * maliFamilyName,
-                                                                          bool disableCpuOnlining)
+                                                                          bool disableCpuOnlining,
+                                                                          bool disableKernelAnnotations)
 {
-    std::unique_ptr<PrimarySourceProvider> primarySourceProvider = PrimarySourceProvider::detect(systemWide,
-                                                                                                 traceFsConstants,
-                                                                                                 std::move(pmuXml),
-                                                                                                 maliFamilyName,
-                                                                                                 disableCpuOnlining);
+    std::unique_ptr<PrimarySourceProvider> primarySourceProvider =
+        PrimarySourceProvider::detect(systemWide,
+                                      traceFsConstants,
+                                      std::move(pmuXml),
+                                      maliFamilyName,
+                                      disableCpuOnlining,
+                                      disableKernelAnnotations);
     if (!primarySourceProvider) {
         logg.logError(
             "Unable to initialize primary capture source:\n"
@@ -28,13 +31,18 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
     return primarySourceProvider;
 }
 
-Drivers::Drivers(bool systemWide, PmuXML && pmuXml, bool disableCpuOnlining, const TraceFsConstants & traceFsConstants)
+Drivers::Drivers(bool systemWide,
+                 PmuXML && pmuXml,
+                 bool disableCpuOnlining,
+                 bool disableKernelAnnotations,
+                 const TraceFsConstants & traceFsConstants)
     : mMaliHwCntrs {},
       mPrimarySourceProvider {createPrimarySourceProvider(systemWide,
                                                           traceFsConstants,
                                                           std::move(pmuXml),
                                                           mMaliHwCntrs.getSupportedDeviceFamilyName(),
-                                                          disableCpuOnlining)},
+                                                          disableCpuOnlining,
+                                                          disableKernelAnnotations)},
       mMidgard {},
       mFtraceDriver {traceFsConstants,
                      !mPrimarySourceProvider->supportsTracepointCapture(),

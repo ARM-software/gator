@@ -1,10 +1,11 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriver.h"
 
 #include "Config.h"
 #include "ConfigurationXML.h"
 #include "Counter.h"
+#include "GetEventKey.h"
 #include "ICpuInfo.h"
 #include "ISummaryConsumer.h"
 #include "Logging.h"
@@ -212,17 +213,30 @@ static long long _getTracepointId(const TraceFsConstants & traceFsConstants, con
     return result;
 }
 
+static std::int64_t _getTracepointId(const TraceFsConstants & traceFsConstants, const char * name)
+{
+    auto result = getTracepointId(traceFsConstants, name);
+    if (result <= 0) {
+        logg.logSetup("%s is disabled\n%s was not found",
+                      name,
+                      getTracepointPath(traceFsConstants, name, "id").c_str());
+    }
+    return result;
+}
+
 PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
                        PmuXML && pmuXml,
                        const char * maliFamilyName,
                        const ICpuInfo & cpuInfo,
-                       const TraceFsConstants & traceFsConstants)
+                       const TraceFsConstants & traceFsConstants,
+                       bool disableKernelAnnotations)
     : SimpleDriver("Perf"),
       traceFsConstants(traceFsConstants),
       mTracepoints(nullptr),
       mConfig(std::move(configuration)),
       mPmuXml(pmuXml),
-      mCpuInfo(cpuInfo)
+      mCpuInfo(cpuInfo),
+      mDisableKernelAnnotations(disableKernelAnnotations)
 {
     // add CPU PMUs
     for (const auto & perfCpu : mConfig.cpus) {
@@ -762,6 +776,9 @@ void PerfDriver::setupCounter(Counter & counter)
         // EBS
         perfCounter->setCount(counter.getCount());
     }
+    else {
+        perfCounter->setCount(0);
+    }
     perfCounter->setEnabled(true);
     counter.setKey(perfCounter->getKey());
 }
@@ -830,6 +847,28 @@ bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer)
         PerfEventGroupIdentifier clusterGroupIdentifier(cluster.gator_cpu);
         group.addGroupLeader(attrsConsumer, clusterGroupIdentifier);
     }
+    if (!mDisableKernelAnnotations) {
+        std::int64_t id;
+        // enable GATOR TRACEPOINTS
+        id = _getTracepointId(traceFsConstants, "gator counter", GATOR_COUNTER);
+        if (id >= 0) {
+            if (!enableGatorTracePoint(group, attrsConsumer, id)) {
+                return false;
+            }
+        }
+        id = _getTracepointId(traceFsConstants, "gator bookmark", GATOR_BOOKMARK);
+        if (id >= 0) {
+            if (!enableGatorTracePoint(group, attrsConsumer, id)) {
+                return false;
+            }
+        }
+        id = _getTracepointId(traceFsConstants, "gator text", GATOR_TEXT);
+        if (id >= 0) {
+            if (!enableGatorTracePoint(group, attrsConsumer, id)) {
+                return false;
+            }
+        }
+    }
 
     for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<PerfCounter *>(counter->getNext())) {
@@ -871,6 +910,17 @@ bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer)
     return true;
 }
 
+bool PerfDriver::enableGatorTracePoint(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer, long long id) const
+{
+    IPerfGroups::Attr attr;
+    attr.type = PERF_TYPE_TRACEPOINT;
+    attr.config = id;
+    attr.periodOrFreq = 1;
+    attr.sampleType = PERF_SAMPLE_RAW;
+    const auto key = getEventKey();
+    return group.add(attrsConsumer, PerfEventGroupIdentifier(), key, attr, false);
+}
+
 void PerfDriver::read(IPerfAttrsConsumer & attrsConsumer, const int cpu)
 {
     const GatorCpu * const cluster = mCpuInfo.getCluster(cpu);
@@ -884,12 +934,31 @@ void PerfDriver::read(IPerfAttrsConsumer & attrsConsumer, const int cpu)
     }
 }
 
+static bool readKernelAnnotateTrcPntFrmt(IPerfAttrsConsumer & attrsConsumer,
+                                         const TraceFsConstants & traceFsConstants,
+                                         const char * name)
+{
+    auto id = _getTracepointId(traceFsConstants, name);
+    if ((id >= 0) && (!readTracepointFormat(attrsConsumer, traceFsConstants, name))) {
+        return false;
+    }
+    return true;
+}
+
 bool PerfDriver::sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer)
 {
     if (!readTracepointFormat(attrsConsumer, traceFsConstants, SCHED_SWITCH) ||
         !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_IDLE) ||
         !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_FREQUENCY)) {
         return false;
+    }
+
+    if (!mDisableKernelAnnotations) {
+        if (!readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_BOOKMARK) ||
+            !readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_TEXT) ||
+            !readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_COUNTER)) {
+            return false;
+        }
     }
 
     for (PerfTracepoint * tracepoint = mTracepoints; tracepoint != nullptr; tracepoint = tracepoint->getNext()) {

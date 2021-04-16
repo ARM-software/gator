@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
@@ -21,7 +21,7 @@
 #include <vector>
 
 //development version for PROTOCOL_VERSION is of format YYYYMMDD
-#define PROTOCOL_VERSION 750
+#define PROTOCOL_VERSION 760
 // Differentiates development versions (timestamp) from release versions
 #define PROTOCOL_DEV 10000000
 

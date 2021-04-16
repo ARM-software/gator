@@ -1,8 +1,9 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_H
 #define PERFDRIVER_H
 
+#include "IPerfGroups.h"
 #include "SimpleDriver.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfDriverConfiguration.h"
@@ -16,6 +17,10 @@
 static constexpr const char * SCHED_SWITCH = "sched/sched_switch";
 static constexpr const char * CPU_IDLE = "power/cpu_idle";
 static constexpr const char * CPU_FREQUENCY = "power/cpu_frequency";
+
+static constexpr const char * GATOR_BOOKMARK = "gator/gator_bookmark";
+static constexpr const char * GATOR_COUNTER = "gator/gator_counter";
+static constexpr const char * GATOR_TEXT = "gator/gator_text";
 
 class ISummaryConsumer;
 class GatorCpu;
@@ -45,7 +50,8 @@ public:
                PmuXML && pmuXml,
                const char * maliFamilyName,
                const ICpuInfo & cpuInfo,
-               const TraceFsConstants & traceFsConstants);
+               const TraceFsConstants & traceFsConstants,
+               bool disableKernelAnnotations = false);
     ~PerfDriver() override;
 
     const PerfConfig & getConfig() const { return mConfig.config; }
@@ -69,6 +75,7 @@ private:
     PerfDriverConfiguration mConfig;
     PmuXML mPmuXml;
     const ICpuInfo & mCpuInfo;
+    bool mDisableKernelAnnotations;
 
     // Intentionally undefined
     PerfDriver(const PerfDriver &) = delete;
@@ -79,6 +86,7 @@ private:
     void addCpuCounters(const PerfCpu & cpu);
     void addUncoreCounters(const PerfUncore & uncore);
     void addMidgardHwTracepoints(const char * maliFamilyName);
+    bool enableGatorTracePoint(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer, long long id) const;
 };
 
 #endif // PERFDRIVER_H

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "AnnotateListener.h"
 #include "Child.h"
@@ -182,8 +182,16 @@ public:
         memset(&mDstAns, 0, sizeof(mDstAns));
         memcpy(mDstAns.rviHeader, "STR_ANS ", sizeof(mDstAns.rviHeader));
         if (gethostname(mDstAns.dhcpName, sizeof(mDstAns.dhcpName) - 1) != 0) {
-            logg.logError("gethostname failed");
-            handleException();
+            if (errno == ENAMETOOLONG) {
+                logg.logMessage("Hostname too long, using a default hostname");
+            }
+            else {
+                // Should be unreachable
+                logg.logError("gethostname failed: (%d) %s", errno, strerror(errno));
+                handleException();
+            }
+
+            strncpy(mDstAns.dhcpName, "Unknown hostname", sizeof(mDstAns.dhcpName));
         }
         // Subvert the defaultGateway field for the port number
         if (port != DEFAULT_PORT) {
@@ -626,7 +634,11 @@ int main(int argc, char ** argv)
 
     // detect the primary source
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
-    Drivers drivers {result.mSystemWide, readPmuXml(result.pmuPath), result.mDisableCpuOnlining, TraceFsConstants::detect()};
+    Drivers drivers {result.mSystemWide,
+                     readPmuXml(result.pmuPath),
+                     result.mDisableCpuOnlining,
+                     result.mDisableKernelAnnotations,
+                     TraceFsConstants::detect()};
 
     updatePerfMmapSize();
 

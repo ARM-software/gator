@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroup.h"
 
@@ -199,6 +199,18 @@ bool PerfEventGroup::addEvent(const bool leader,
     event.attr.aux_watermark = hasAuxData ? sharedConfig.auxBufferLength / 2 : 0;
     event.key = key;
 
+    // [SDDAP-10625] - trace context switch information for SPE attributes.
+    // it is required (particularly in system-wide mode) to be able to see
+    // the boundarys of SPE data, as it is not guaranteed to get PERF_RECORD_ITRACE_START
+    // between two processes if they are sampled by the same SPE attribute.
+    if (groupIdentifier.getType() == PerfEventGroupIdentifier::Type::SPE) {
+        if (!sharedConfig.perfConfig.has_attr_context_switch) {
+            assert(false && "SPE requires context switch information");
+            return false;
+        }
+        event.attr.context_switch = true;
+    }
+
     attrsConsumer.marshalPea(&event.attr, key);
 
     return true;
@@ -373,7 +385,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
     const char * groupLabel = "?";
 
     // validate cpu
-    lib::Optional<uint32_t> replaceType;
+    uint32_t replaceType = 0;
     switch (groupIdentifier.getType()) {
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
             groupLabel = cluster->getCoreName();
@@ -401,7 +413,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
             if (type == cpuNumberToType->end()) {
                 return std::make_pair(OnlineResult::SUCCESS, "");
             }
-            replaceType.set(type->second);
+            replaceType = type->second;
             break;
         }
 
@@ -444,8 +456,8 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
         // Note we are modifying the attr after we have marshalled it
         // but we are assuming enable_on_exec will be ignored by Streamline
         event.attr.enable_on_exec = (event.attr.pinned && enableOnExec) ? 1 : 0;
-        if (replaceType) {
-            event.attr.type = replaceType.get();
+        if (replaceType > 0) {
+            event.attr.type = replaceType;
         }
 
         logg.logMessage(

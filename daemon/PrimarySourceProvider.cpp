@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "PrimarySourceProvider.h"
 
@@ -128,7 +128,8 @@ namespace {
                                                                 const char * maliFamilyName,
                                                                 Ids & ids,
                                                                 const char * modelName,
-                                                                bool disableCpuOnlining)
+                                                                bool disableCpuOnlining,
+                                                                bool disableKernelAnnotations)
         {
             std::unique_ptr<PerfDriverConfiguration> configuration =
                 PerfDriverConfiguration::detect(systemWide, traceFsConstants.path__events, ids.getCpuIds(), pmuXml);
@@ -142,7 +143,8 @@ namespace {
                                                                                      std::move(pmuXml),
                                                                                      maliFamilyName,
                                                                                      std::move(cpuInfo),
-                                                                                     traceFsConstants)};
+                                                                                     traceFsConstants,
+                                                                                     disableKernelAnnotations)};
             }
 
             return nullptr;
@@ -201,10 +203,16 @@ namespace {
                           PmuXML && pmuXml,
                           const char * maliFamilyName,
                           CpuInfo && cpuInfo,
-                          const TraceFsConstants & traceFsConstants)
+                          const TraceFsConstants & traceFsConstants,
+                          bool disableKernelAnnotations)
             : PrimarySourceProvider(createPolledDrivers()),
               cpuInfo(std::move(cpuInfo)),
-              driver(std::move(configuration), std::move(pmuXml), maliFamilyName, this->cpuInfo, traceFsConstants)
+              driver(std::move(configuration),
+                     std::move(pmuXml),
+                     maliFamilyName,
+                     this->cpuInfo,
+                     traceFsConstants,
+                     disableKernelAnnotations)
         {
         }
 
@@ -336,7 +344,8 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
                                                                      const TraceFsConstants & traceFsConstants,
                                                                      PmuXML && pmuXml,
                                                                      const char * maliFamilyName,
-                                                                     bool disableCpuOnlining)
+                                                                     bool disableCpuOnlining,
+                                                                     bool disableKernelAnnotations)
 {
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
@@ -365,7 +374,8 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
                                           maliFamilyName,
                                           ids,
                                           modelNameToUse,
-                                          disableCpuOnlining);
+                                          disableCpuOnlining,
+                                          disableKernelAnnotations);
     if (result != nullptr) {
         logg.logMessage("...Success");
         logg.logSetup("Profiling Source\nUsing perf API for primary data source");
