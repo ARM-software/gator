@@ -26,8 +26,6 @@ ifeq ($(shell expr `$(CXX) -dumpversion | cut -f1 -d.` \>= 5),1)
 	CXXFLAGS += -fno-sized-deallocation
 endif
 
-# -s strips the binary of debug info
-LDFLAGS     += -s
 LDLIBS      += -lrt -lm -pthread
 TARGET      := $(OBJ_DIR)gatord
 ESCAPE_EXE  := $(OBJ_DIR)escape/escape
