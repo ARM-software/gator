@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "Proc.h"
 
@@ -31,11 +31,11 @@ namespace {
     private:
         IPerfAttrsConsumer & buffer;
 
-        virtual void onThreadDetails(int pid,
-                                     int tid,
-                                     const lnx::ProcPidStatFileRecord & statRecord,
-                                     const lib::Optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
-                                     const lib::Optional<lib::FsEntry> & exe) override
+        void onThreadDetails(int pid,
+                             int tid,
+                             const lnx::ProcPidStatFileRecord & statRecord,
+                             const lib::Optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
+                             const lib::Optional<lib::FsEntry> & exe) override
         {
             buffer.marshalComm(pid, tid, (exe ? exe->path().c_str() : ""), statRecord.getComm().c_str());
         }
@@ -51,7 +51,7 @@ namespace {
     private:
         IPerfAttrsConsumer & buffer;
 
-        virtual void onProcessDirectory(int pid, const lib::FsEntry & path) override
+        void onProcessDirectory(int pid, const lib::FsEntry & path) override
         {
             const lib::FsEntry mapsFile = lib::FsEntry::create(path, "maps");
             const std::string mapsContents = lib::readFileContents(mapsFile);

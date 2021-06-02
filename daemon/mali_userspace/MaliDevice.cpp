@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliDevice.h"
 
@@ -237,8 +237,6 @@ namespace mali_userspace {
          * Map from the index'th block of a particular type to the actual block number within the list of data blocks.
          * For GPU's with legacy counter data layout
          *
-         * @param nameBlock
-         * @param index
          * @return The actual physical block number
          */
         inline uint32_t mapV4BlockIndexToBlockNumber(MaliCounterBlockName nameBlock, uint32_t index)
@@ -275,10 +273,6 @@ namespace mali_userspace {
          * Map from the index'th block of a particular type to the actual block number within the list of data blocks.
          * For GPU's with modern counter data layout
          *
-         * @param nameBlock
-         * @param numL2MmuBlocks
-         * @param numShaderBlocks
-         * @param index
          * @return The actual physical block number
          */
         inline uint32_t mapV56BlockIndexToBlockNumber(MaliCounterBlockName nameBlock,

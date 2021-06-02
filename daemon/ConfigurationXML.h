@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATION_XML_H
 #define CONFIGURATION_XML_H
@@ -21,24 +21,14 @@ namespace configuration_xml {
     void getPath(char * path, size_t n);
     void remove();
     /**
-     *
-     * @param configs
-     * @param config
      * @return An error or empty
      */
     std::string addCounterToSet(std::set<CounterConfiguration> & configs, CounterConfiguration && config);
     /**
-     *
-     * @param configs
-     * @param config
      * @return An error or empty
      */
     std::string addSpeToSet(std::set<SpeConfiguration> & configs, SpeConfiguration && config);
     /**
-     *
-     * @param counterConfigurations
-     * @param printWarningIfUnclaimed
-     * @param drivers
      * @return An error or empty
      */
     std::string setCounters(const std::set<CounterConfiguration> & counterConfigurations,

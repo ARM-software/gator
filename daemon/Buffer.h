@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef BUFFER_H
 #define BUFFER_H
@@ -27,6 +27,7 @@ public:
     int bytesAvailable() const override;
     bool isFull() const override { return bytesAvailable() <= 0; }
     int contiguousSpaceAvailable() const;
+    int size() const { return mSize; }
 
     void setDone() override;
 
@@ -50,6 +51,7 @@ public:
     void flush() override;
 
     void waitForSpace(int bytes) override;
+    bool supportsWriteOfSize(int bytes) const override;
 
 private:
     char * const mBuf;

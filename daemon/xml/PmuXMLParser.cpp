@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXMLParser.h"
 
@@ -28,37 +28,71 @@ static const char ATTR_CORE_NAME[] = "core_name";
 static const char ATTR_DT_NAME[] = "dt_name";
 static const char ATTR_SPE_NAME[] = "spe";
 static const char ATTR_PMNC_COUNTERS[] = "pmnc_counters";
-static const char AATR_PROFILE[] = "profile";
+static const char ATTR_PROFILE[] = "profile";
 static const char ATTR_HAS_CYCLES_COUNTER[] = "has_cycles_counter";
-static const char UNCORE_PMNC_NAME_WILDCARD[] = "%d";
+static const char ATTR_DEVICE_INSTANCE[] = "device_instance";
+static const char UNCORE_PMNC_NAME_WILDCARD_D[] = "%d";
+static const char UNCORE_PMNC_NAME_WILDCARD_S[] = "%s";
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
 
-static bool matchPMUName(const char * const pmu_name, const char * const test_name)
+static bool matchPMUName(const char * const pmu_name, const char * const test_name, size_t & wc_from, size_t & wc_len)
 {
-    const char * const percent = strstr(pmu_name, UNCORE_PMNC_NAME_WILDCARD);
+    const char * const percentD = strstr(pmu_name, UNCORE_PMNC_NAME_WILDCARD_D);
 
-    if (percent == nullptr) {
-        return strcasecmp(pmu_name, test_name) == 0;
-    }
-
-    // match prefix up to but not including wildcard
-    const int offset = (percent != nullptr ? percent - pmu_name : 0);
-    if (strncasecmp(pmu_name, test_name, offset) != 0) {
-        return false;
-    }
-
-    // find first character after wildcard in test_name
-    int test_offset;
-    for (test_offset = offset; test_name[test_offset] != 0; ++test_offset) {
-        const char c = test_name[test_offset];
-        if ((c < '0') || (c > '9')) {
-            break;
+    // did we match the numeric marker?
+    if (percentD != nullptr) {
+        // match prefix up to but not including wildcard
+        const size_t offset = percentD - pmu_name;
+        if (strncasecmp(pmu_name, test_name, offset) != 0) {
+            return false;
         }
+
+        // find first character after wildcard in test_name
+        size_t test_offset;
+        for (test_offset = offset; test_name[test_offset] != 0; ++test_offset) {
+            const char c = test_name[test_offset];
+            if ((c < '0') || (c > '9')) {
+                break;
+            }
+        }
+
+        // compare suffix
+        if (strcasecmp(pmu_name + offset + sizeof(UNCORE_PMNC_NAME_WILDCARD_D) - 1, test_name + test_offset) != 0) {
+            return false;
+        }
+
+        // store the start and length of the matched pattern
+        wc_from = offset;
+        wc_len = test_offset - offset;
+        return true;
     }
 
-    // compare suffix
-    return strcasecmp(pmu_name + offset + sizeof(UNCORE_PMNC_NAME_WILDCARD) - 1, test_name + test_offset) == 0;
+    const char * const percentS = strstr(pmu_name, UNCORE_PMNC_NAME_WILDCARD_S);
+
+    // did we match the string suffix marker?
+    if (percentS != nullptr) {
+        // match prefix up to but not including wildcard
+        const size_t offset = percentS - pmu_name;
+        if (strncasecmp(pmu_name, test_name, offset) != 0) {
+            return false;
+        }
+
+        // the wildcard must be at the end of the pmu_name
+        if (strcasecmp(percentS, UNCORE_PMNC_NAME_WILDCARD_S) != 0) {
+            return false;
+        }
+
+        // store the start and length of the matched pattern
+        wc_from = offset;
+        wc_len = strlen(test_name) - offset;
+        return true;
+    }
+
+    // ok, no pattern matched
+    wc_from = 0;
+    wc_len = 0;
+    return strcasecmp(pmu_name, test_name) == 0;
 }
 
 static bool parseCpuId(std::set<int> & cpuIds,
@@ -123,7 +157,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         const char * const dtName = mxmlElementGetAttr(node, ATTR_DT_NAME);
         const char * const speName = mxmlElementGetAttr(node, ATTR_SPE_NAME);
         const char * const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS);
-        const char * const profileStr = mxmlElementGetAttr(node, AATR_PROFILE);
+        const char * const profileStr = mxmlElementGetAttr(node, ATTR_PROFILE);
 
         // read cpuid(s)
         std::set<int> cpuIds;
@@ -207,7 +241,8 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         }
 
         // check if the path contains a wildcard
-        if (strstr(id, UNCORE_PMNC_NAME_WILDCARD) == nullptr) {
+        if ((strstr(id, UNCORE_PMNC_NAME_WILDCARD_D) == nullptr) &&
+            (strstr(id, UNCORE_PMNC_NAME_WILDCARD_S) == nullptr)) {
             // no - just add one item
             logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
                             TAG_UNCORE_PMU,
@@ -222,7 +257,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                             ATTR_PMNC_COUNTERS,
                             pmncCounters);
 
-            pmuXml.uncores.emplace_back(coreName, id, counterSet, pmncCounters, hasCyclesCounter);
+            pmuXml.uncores.emplace_back(coreName, id, counterSet, "", pmncCounters, hasCyclesCounter);
         }
         else {
             // yes - add actual matching items from filesystem
@@ -230,9 +265,13 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
             lib::FsEntryDirectoryIterator it = lib::FsEntry::create(PERF_DEVICES).children();
             lib::Optional<lib::FsEntry> child;
             while ((child = it.next()).valid()) {
-                if (matchPMUName(id, child->name().c_str())) {
+                size_t wc_start = 0;
+                size_t wc_len = 0;
+                if (matchPMUName(id, child->name().c_str(), wc_start, wc_len)) {
+                    std::string patternPart = child->name().substr(wc_start, wc_len);
+
                     // matched dirent
-                    logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
+                    logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" %s=\"%s\" />",
                                     TAG_UNCORE_PMU,
                                     ATTR_CORE_NAME,
                                     coreName,
@@ -243,8 +282,15 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                                     ATTR_HAS_CYCLES_COUNTER,
                                     hasCyclesCounter ? "true" : "false",
                                     ATTR_PMNC_COUNTERS,
-                                    pmncCounters);
-                    pmuXml.uncores.emplace_back(coreName, child->name(), counterSet, pmncCounters, hasCyclesCounter);
+                                    pmncCounters,
+                                    ATTR_DEVICE_INSTANCE,
+                                    patternPart.c_str());
+                    pmuXml.uncores.emplace_back(coreName,
+                                                child->name(),
+                                                counterSet,
+                                                std::move(patternPart),
+                                                pmncCounters,
+                                                hasCyclesCounter);
                     matched = true;
                 }
                 else {

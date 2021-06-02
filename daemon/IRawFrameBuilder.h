@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -93,13 +93,20 @@ public:
      * Waits for some space to become available.
      */
     virtual void waitForSpace(int bytes) = 0;
+
+    /** Checks if it is possible to write a block of the given size to this buffer
+     *
+     * @param bytes Number of bytes to check
+     * @return True if it is possible, or false if would always fail
+     */
+    virtual bool supportsWriteOfSize(int bytes) const = 0;
 };
 
 class IRawFrameBuilderWithDirectAccess : public IRawFrameBuilder {
 public:
     /** @return The raw write index */
     virtual int getWriteIndex() const = 0;
-    /** @return Skip the write index forward by 'bytes' */
+    /** Skip the write index forward by 'bytes' */
     virtual void advanceWrite(int bytes) = 0;
     /** Write directly into the buffer */
     virtual void writeDirect(int index, const void * data, std::size_t count) = 0;

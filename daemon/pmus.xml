@@ -147,6 +147,7 @@
     <uncore_pmu id="arm_cmn" counter_set="CMN_600" core_name="CMN-600" pmnc_counters="8"/>
     <uncore_pmu id="l2c_310" core_name="L2C-310" pmnc_counters="2" has_cycles_counter="no"/>
     <uncore_pmu id="arm_dsu_%d" core_name="DSU" pmnc_counters="6" />
+    <uncore_pmu id="smmuv3_pmcg_%s" core_name="System MMU v3" counter_set="SMMUv3" pmnc_counters="64" has_cycles_counter="no" />
 
     <!-- Ampere -->
     <uncore_pmu id="l3c%d" core_name="L3C" pmnc_counters="4" has_cycles_counter="yes"/>

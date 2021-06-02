@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef TRACEPOINTS_H
 #define TRACEPOINTS_H
@@ -37,7 +37,6 @@ struct TraceFsConstants {
 };
 
 /**
- *
  * @param name tracepoint name
  * @param file name of file within tracepoint directory
  * @return the path of the file for this tracepoint

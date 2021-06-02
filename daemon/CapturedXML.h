@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef __CAPTURED_XML_H__
 #define __CAPTURED_XML_H__
@@ -13,11 +13,7 @@ struct CapturedSpe;
 
 namespace captured_xml {
     /**
-     *
-     * @param includeTime
-     * @param primarySourceProvider
      * @param maliGpuIds map from device number to gpu id
-     * @return
      */
     std::unique_ptr<char, void (*)(void *)> getXML(bool includeTime,
                                                    lib::Span<const CapturedSpe> spes,

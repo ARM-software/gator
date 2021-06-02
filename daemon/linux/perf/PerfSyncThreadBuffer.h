@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERFSYNCTHREADBUFFER_H
 #define INCLUDE_LINUX_PERF_PERFSYNCTHREADBUFFER_H
@@ -49,7 +49,6 @@ public:
 
     /**
      * Write buffer to sender
-     * @param sender
      */
     void send(ISender & sender);
 

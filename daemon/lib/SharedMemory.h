@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_SHARED_MEMORY_H
 #define INCLUDE_SHARED_MEMORY_H
@@ -18,9 +18,6 @@ namespace shared_memory {
 
     /**
      * Allocates an array of n T in shared memory
-     *
-     * @param n
-     * @return
      */
     template<typename T>
     T * allocate(std::size_t n)
@@ -35,9 +32,6 @@ namespace shared_memory {
 
     /**
      * Deallocates an array of n T in shared memory
-     *
-     * @param n
-     * @return
      */
     template<typename T>
     void deallocate(T * p, std::size_t n)
@@ -47,9 +41,6 @@ namespace shared_memory {
 
     /**
      * Creates a unique pointer in shared memory
-     *
-     * @param args
-     * @return
      */
     template<typename T, typename... Args, typename = typename std::enable_if<!std::is_array<T>::value>::type>
     unique_ptr<T> make_unique(Args &&... args)
@@ -74,8 +65,6 @@ namespace shared_memory {
 
     /**
      * Creates a unique pointer for an array in shared memory
-     *
-     * @return
      */
     template<typename T, typename = typename std::enable_if<std::is_array<T>::value>::type>
     unique_ptr<T> make_unique(std::size_t size)

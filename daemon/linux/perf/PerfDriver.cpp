@@ -104,12 +104,6 @@ public:
 
     using DriverCounter::read;
 
-    /**
-     *
-     * @param
-     * @param cpu
-     * @param cluster maybe null if unknown
-     */
     virtual void read(IPerfAttrsConsumer & /*unused*/, const int /* cpu */, const GatorCpu * /* cluster */) {}
 
     inline const PerfEventGroupIdentifier & getPerfEventGroupIdentifier() const { return eventGroupIdentifier; }
@@ -259,8 +253,11 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
 
     // add uncore PMUs
     for (const auto & perfUncore : mConfig.uncores) {
-        logg.logMessage("Adding uncore counters for %s with type %i",
+        logg.logMessage("Adding uncore counters for %s %s with type %i",
                         perfUncore.uncore_pmu.getCoreName(),
+                        perfUncore.uncore_pmu.getDeviceInstance() != nullptr
+                            ? perfUncore.uncore_pmu.getDeviceInstance() //
+                            : "",
                         perfUncore.pmu_type);
         addUncoreCounters(perfUncore);
     }
@@ -499,17 +496,17 @@ void PerfDriver::addUncoreCounters(const PerfUncore & perfUncore)
     const int type = perfUncore.pmu_type;
 
     if (pmu.getHasCyclesCounter()) {
-        const int len = snprintf(nullptr, 0, "%s_ccnt", pmu.getCounterSet()) + 1;
+        const int len = snprintf(nullptr, 0, "%s_ccnt", pmu.getId()) + 1;
         const std::unique_ptr<char[]> name {new char[len]};
-        snprintf(name.get(), len, "%s_ccnt", pmu.getCounterSet());
+        snprintf(name.get(), len, "%s_ccnt", pmu.getId());
         setCounters(
             new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu), name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }
 
     for (int j = 0; j < pmu.getPmncCounters(); ++j) {
-        const int len = snprintf(nullptr, 0, "%s_cnt%d", pmu.getCounterSet(), j) + 1;
+        const int len = snprintf(nullptr, 0, "%s_cnt%d", pmu.getId(), j) + 1;
         const std::unique_ptr<char[]> name {new char[len]};
-        snprintf(name.get(), len, "%s_cnt%d", pmu.getCounterSet(), j);
+        snprintf(name.get(), len, "%s_cnt%d", pmu.getId(), j);
         setCounters(
             new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu), name.get(), type, -1, PERF_SAMPLE_READ, 0));
     }

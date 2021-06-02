@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRREADER_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRREADER_H_
@@ -19,10 +19,10 @@ namespace mali_userspace {
     class MaliHwCntrReader : public IMaliHwCntrReader {
     public:
         ~MaliHwCntrReader() override = default;
-        virtual const MaliDevice & getDevice() const override;
-        virtual HardwareVersion getHardwareVersion() const override;
-        virtual SampleBuffer waitForBuffer(int timeout) override;
-        virtual bool startPeriodicSampling(uint32_t interval) override;
+        const MaliDevice & getDevice() const override;
+        HardwareVersion getHardwareVersion() const override;
+        SampleBuffer waitForBuffer(int timeout) override;
+        bool startPeriodicSampling(uint32_t interval) override;
 
         /**
          * Get the size of hardware counters sample buffer.
@@ -49,9 +49,8 @@ namespace mali_userspace {
          * Functions triggers the hwcnt reader to dump counters before and after a job. Dumping will continue
          * until this function is called again with the appropriate event disabled.
          *
-         * @param   preJob      When true, enables dumping before a job, when false disables dumping before a job
-         * @param   postJob     When true, enables dumping after a job, when false disables dumping after a job
-         *
+         * @param preJob When true, enables dumping before a job, when false disables dumping before a job
+         * @param postJob When true, enables dumping after a job, when false disables dumping after a job
          * @retval  true    Success
          * @retval  false   Failure
          */
@@ -64,7 +63,6 @@ namespace mali_userspace {
         /**
          * Create a new instance of the MaliHwCntrReader object associated with the device object
          *
-         * @param device
          * @return The new reader, or nullptr if not able to initialize
          */
         static std::unique_ptr<MaliHwCntrReader> createReader(const MaliDevice & device);
@@ -101,12 +99,6 @@ namespace mali_userspace {
 
         /**
          * Create a Mali HW Cntr reader by probing multiple times the mmu block
-         *
-         * @param device
-         * @param jmBitmask
-         * @param shaderBitmask
-         * @param tilerBitmask
-         * @param mmuL2Bitmask
          */
         static std::unique_ptr<MaliHwCntrReader> create(const MaliDevice & device,
                                                         CounterBitmask jmBitmask,
@@ -118,8 +110,7 @@ namespace mali_userspace {
          *
          * Function releases buffer obtained with @ref waitForBuffer.
          *
-         * @param metadata  The buffer metadata of the buffer to release
-         *
+         * @param metadata The buffer metadata of the buffer to release
          * @retval  true    Success
          * @retval  false   Failure
          */

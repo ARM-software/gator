@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_ARMNN_COUNTER_DIRECTORY_STATE_UTILS_H
 #define INCLUDE_ARMNN_COUNTER_DIRECTORY_STATE_UTILS_H
@@ -26,7 +26,6 @@ namespace armnn {
      * The string returned is always the same for a given pair of {tolower(record.name), record.cores}, but will be
      * unique for different values of that pair.
      *
-     * @param record
      * @return An ID string
      */
     std::string makeGloballyUniqueId(const ICounterDirectoryConsumer::DeviceRecord & record);
@@ -37,7 +36,6 @@ namespace armnn {
      * The string returned is always the same for a given pair of {tolower(record.name), record.count}, but will be
      * unique for different values of that pair.
      *
-     * @param record
      * @return An ID string
      */
     std::string makeGloballyUniqueId(const ICounterDirectoryConsumer::CounterSetRecord & record);
@@ -52,10 +50,6 @@ namespace armnn {
      * Note that the event's device/counter set are used, not the category's since the category only exists to group/name
      * events visually.
      *
-     * @param deviceMap
-     * @param counterSetMap
-     * @param category
-     * @param record
      * @return The ID string
      */
     std::string makeGloballyEventCategoryUniqueId(
@@ -71,10 +65,6 @@ namespace armnn {
      * {tolower(category.name), tolower(event.name), makeGloballyUniqueId(event.device), makeGloballyUniqueId(event.counter_set)},
      * but will be unique for different values of that tuple.
      *
-     * @param deviceMap
-     * @param counterSetMap
-     * @param category
-     * @param record
      * @return The ID string
      */
     std::string makeGloballyUniqueId(

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXML.h"
 
@@ -132,7 +132,8 @@ namespace configuration_xml {
         }
         const std::map<std::string, EventCode> counterToEventMap =
             events_xml::getCounterToEventMap(drivers.getAllConst(),
-                                             drivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+                                             drivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
+                                             drivers.getPrimarySourceProvider().getDetectedUncorePmus());
         //Add counter
         int index = 0;
         for (const CounterConfiguration & cc : counterConfigurations) {

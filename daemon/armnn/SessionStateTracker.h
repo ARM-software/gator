@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_ARMNN_SESSION_STATE_TRACKER_H
 #define INCLUDE_ARMNN_SESSION_STATE_TRACKER_H
@@ -31,21 +31,21 @@ namespace armnn {
                             std::vector<std::uint8_t> streamMetadata);
 
         // see ICounterDirectoryConsumer
-        virtual bool onCounterDirectory(std::map<std::uint16_t, DeviceRecord> devices,
-                                        std::map<std::uint16_t, CounterSetRecord> counterSets,
-                                        std::vector<CategoryRecord> categories) override;
+        bool onCounterDirectory(std::map<std::uint16_t, DeviceRecord> devices,
+                                std::map<std::uint16_t, CounterSetRecord> counterSets,
+                                std::vector<CategoryRecord> categories) override;
         // see IPeriodicCounterSelectionConsumer
-        virtual bool onPeriodicCounterSelection(std::uint32_t period, std::set<std::uint16_t> uids) override;
+        bool onPeriodicCounterSelection(std::uint32_t period, std::set<std::uint16_t> uids) override;
         // see IPerJobCounterSelectionConsumer
-        virtual bool onPerJobCounterSelection(std::uint64_t objectId, std::set<std::uint16_t> uids) override;
+        bool onPerJobCounterSelection(std::uint64_t objectId, std::set<std::uint16_t> uids) override;
         // see IPeriodicCounterCaptureConsumer
-        virtual bool onPeriodicCounterCapture(std::uint64_t timestamp,
-                                              std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
+        bool onPeriodicCounterCapture(std::uint64_t timestamp,
+                                      std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
         // see IPerJobCounterCaptureConsumer
-        virtual bool onPerJobCounterCapture(bool isPre,
-                                            std::uint64_t timestamp,
-                                            std::uint64_t objectRef,
-                                            std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
+        bool onPerJobCounterCapture(bool isPre,
+                                    std::uint64_t timestamp,
+                                    std::uint64_t objectRef,
+                                    std::map<std::uint16_t, std::uint32_t> counterIndexValues) override;
 
         /**
          * Consumes a raw packet sent from target

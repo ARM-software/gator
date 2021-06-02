@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef __ISENDER_H__
 #define __ISENDER_H__
@@ -21,10 +21,7 @@ enum class ResponseType : char {
 class ISender {
 public:
     /**
-     *
      * @param dataParts must be a complete response unless type is RAW
-     * @param type
-     * @param ignoreLockErrors
      */
     virtual void writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts,
                                 ResponseType type,

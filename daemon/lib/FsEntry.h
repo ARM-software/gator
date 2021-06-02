@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FSENTRY_H
 #define INCLUDE_LIB_FSENTRY_H
@@ -14,7 +14,6 @@ namespace lib {
     class FsEntryDirectoryIterator;
 
     /**
-     * @class   FsEntry
      * @brief   Represents a file system entry
      */
     class FsEntry {
@@ -48,16 +47,14 @@ namespace lib {
 
         /**
          * Factory method
-         *
-         * @param   path    The path the entry should point to. If the path is not rooted, will use CWD.
+         * @param path The path the entry should point to. If the path is not rooted, will use CWD.
          */
         inline static FsEntry create(const std::string & path) { return FsEntry(path); }
 
         /**
          * Factory method, for sub path
-         *
-         * @param   parent  The parent path
-         * @param   path    The sub path string (any leading '/' is ignored)
+         * @param parent The parent path
+         * @param path The sub path string (any leading '/' is ignored)
          */
         inline static FsEntry create(const FsEntry & parent, const std::string & path) { return FsEntry(parent, path); }
 
@@ -86,7 +83,6 @@ namespace lib {
 
         /**
          * Check if file can be accessed for a certain kind of operation. If all arguments are false, just checks for existances
-         *
          * @param read True to check if readable
          * @param write True to check if writable
          * @param exec True to check if executable
@@ -99,23 +95,18 @@ namespace lib {
 
         /**
          * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
-         *
-         * @param   entry   The file entry to read
          * @return  The contents of that file
          */
         std::string readFileContents() const;
 
         /**
          * Read the contents of a file and return it as a std::string. Only the first line is read and returned without any '\n'
-         *
-         * @param   entry   The file entry to read
          * @return  The contents of that file
          */
         std::string readFileContentsSingleLine() const;
 
         /**
          * Write the contents of a file
-         *
          * @return  true if successful
          */
         bool writeFileContents(const char * data) const;
@@ -128,29 +119,26 @@ namespace lib {
 
         /**
          * Constructor
-         *
-         * @param   path    The path the entry should point to. If the path is not rooted, will use CWD.
+         * @param path The path the entry should point to. If the path is not rooted, will use CWD.
          */
         FsEntry(std::string path);
 
         /**
          * Constructor, for sub path
-         *
-         * @param   parent  The parent path
-         * @param   path    The sub path string (any leading '/' is ignored)
+         * @param parent The parent path
+         * @param n The sub path string (any leading '/' is ignored)
          */
         FsEntry(const FsEntry & parent, const std::string & n);
     };
 
     /**
-     * @class   FsEntryDirectoryIterator
      * @brief   Allows enumeration of children of a directory.
      */
     class FsEntryDirectoryIterator {
     public:
         /**
          * Constructor
-         * @param   parent  The directory to iterate the children of
+         * @param parent The directory to iterate the children of
          */
         FsEntryDirectoryIterator(const FsEntry & parent);
 
@@ -164,7 +152,6 @@ namespace lib {
 
         /**
          * Get the next child entry. Users should repeatedly call this function to enumerate children until it returns nothing.
-         *
          * @return The next child, or nothing in the case the list is complete
          */
         Optional<FsEntry> next();
@@ -176,16 +163,14 @@ namespace lib {
 
     /**
      * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
-     *
-     * @param   entry   The file entry to read
+     * @param entry The file entry to read
      * @return  The contents of that file
      */
     inline std::string readFileContents(const FsEntry & entry) { return entry.readFileContents(); }
 
     /**
      * Write the contents of a file
-     *
-     * @param   entry   The file entry to write
+     * @param entry The file entry to write
      * @return  true if successful
      */
     inline bool writeFileContents(const FsEntry & entry, const char * data) { return entry.writeFileContents(data); }

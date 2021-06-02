@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef I_CPU_INFO_H
 #define I_CPU_INFO_H
@@ -16,8 +16,6 @@ public:
     virtual lib::Span<const int> getClusterIds() const = 0;
 
     /**
-     *
-     * @param cpu
      * @return null if unknown
      */
     const GatorCpu * getCluster(size_t cpu) const

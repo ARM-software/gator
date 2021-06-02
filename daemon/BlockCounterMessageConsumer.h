@@ -1,10 +1,11 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "IBlockCounterMessageConsumer.h"
 
 #include <memory>
+#include <utility>
 
 class IBlockCounterFrameBuilder;
 
@@ -13,11 +14,10 @@ public:
     /**
      * Possibly-owning constructor
      */
-    BlockCounterMessageConsumer(std::shared_ptr<IBlockCounterFrameBuilder> builder) : mBuilder(builder) {}
+    BlockCounterMessageConsumer(std::shared_ptr<IBlockCounterFrameBuilder> builder) : mBuilder(std::move(builder)) {}
 
     /**
      * Non-owning constructor
-     *
      * @param builder must outlive this
      */
     BlockCounterMessageConsumer(IBlockCounterFrameBuilder & builder)
@@ -27,7 +27,7 @@ public:
     {
     }
 
-    virtual bool threadCounterMessage(uint64_t curr_time, int core, int tid, int key, int64_t value) override;
+    bool threadCounterMessage(uint64_t curr_time, int core, int tid, int key, int64_t value) override;
 
 private:
     static const uint64_t INVALID_LAST_EVENT_TIME = UINT64_MAX;

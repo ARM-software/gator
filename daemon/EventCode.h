@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -15,7 +15,7 @@ public:
     constexpr explicit EventCode(long long value) noexcept : value(value) {}
     constexpr explicit EventCode(unsigned long long value) noexcept : value(value) {}
 
-    constexpr EventCode(const EventCode & that) noexcept : value(that.value) {}
+    constexpr EventCode(const EventCode & that) noexcept = default;
     EventCode & operator=(const EventCode & that) noexcept
     {
         if (this != &that) {

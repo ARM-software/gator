@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -23,7 +23,7 @@ namespace armnn {
 
         /**
          * Adds a packet to the sender queue
-         * @param data: the packet to send
+         * @param data the packet to send
          * @return whether the add was successful or not.
          **/
         bool add(std::vector<std::uint8_t> && data);
@@ -36,9 +36,7 @@ namespace armnn {
         /**
          * Send the item to the socket (Not thread safe)
          * NOTE: use add method instead.
-         * @param type: type of the data being sent
-         * @param data: data to be sent
-         * @param endianness: the endianness of the target
+         * @param data data to be sent
          **/
         void sendItem(std::vector<std::uint8_t> && data);
 

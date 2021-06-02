@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,9 +34,6 @@ namespace armnn {
     /**
      * Initialize a socket, make it cloexec
      *
-     * @param domain
-     * @param type
-     * @param protocol
      * @return the socket AutoClosingFd
      */
     static AutoClosingFd socket_cloexec(int domain, int type, int protocol)
@@ -47,10 +44,6 @@ namespace armnn {
     /**
      * Initialize a sockaddr_un
      *
-     * @param uds_address
-     * @param address
-     * @param length
-     * @param use_struct_size
      * @return The length to pass to bind/connect
      */
     static socklen_t init_sockaddr_un(sockaddr_un & udsAddress,
@@ -68,7 +61,6 @@ namespace armnn {
     /**
      * Set a file descriptor as non-blocking
      *
-     * @param fd
      * @return True on success, false on failure
      */
     static bool setNonBlocking(int fd)
@@ -95,7 +87,6 @@ namespace armnn {
      * when we attempt to write to a closed file descriptor.
      * Should call this function if a SIGPIPE would terminate the application prematurely.
      *
-     * @param fd
      * @return True if success, false on failure
      */
     static bool setNoSigPipe(int fd)

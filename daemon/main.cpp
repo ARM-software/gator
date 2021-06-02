@@ -18,8 +18,8 @@
 #include "lib/FileDescriptor.h"
 #include "lib/Memory.h"
 #include "lib/Utils.h"
-#include "xml/CurrentConfigXML.h"
 #include "linux/perf/PerfUtils.h"
+#include "xml/CurrentConfigXML.h"
 #include "xml/EventsXML.h"
 #include "xml/PmuXMLParser.h"
 
@@ -57,7 +57,7 @@ namespace {
     enum class State {
         IDLE,
         CAPTURING,
-        EXITING, //< CAPTURING but we have received a request to exit
+        EXITING, /// CAPTURING but we have received a request to exit
     };
     struct StateAndPid {
         State state;
@@ -275,7 +275,7 @@ static AnnotateListener annotateListener;
 namespace {
     class StreamlineCommandHandler : public IStreamlineCommandHandler {
     public:
-        StreamlineCommandHandler() {}
+        StreamlineCommandHandler() = default;
 
         State handleRequest(char *) override
         {
@@ -322,7 +322,6 @@ namespace {
      *
      * This is used to allow the ADB device scanner to continue to function even during a
      * capture without flooding the console with "Session already active" messages.
-     *
      * @param fd The newly accepted connection's file handle
      */
     void handleSecondaryConnection(int fd)
@@ -452,9 +451,9 @@ void setDefaults()
 {
     //default system wide.
     gSessionData.mSystemWide = false;
-    //buffer_mode is streaming
+    // buffer_mode is normal
     gSessionData.mOneShot = false;
-    gSessionData.mTotalBufferSize = 1;
+    gSessionData.mTotalBufferSize = 4;
     gSessionData.mPerfMmapSizeInPages = -1;
     //callStack unwinding default is yes
     gSessionData.mBacktraceDepth = 128;
@@ -598,30 +597,25 @@ int main(int argc, char ** argv)
     //setting default values of gSessionData
     setDefaults();
     char versionString[256];
-    if (PROTOCOL_VERSION < PROTOCOL_DEV) {
-        const int majorVersion = PROTOCOL_VERSION / 100;
-        const int minorVersion = (PROTOCOL_VERSION / 10) % 10;
-        const int revisionVersion = PROTOCOL_VERSION % 10;
-        if (revisionVersion == 0) {
-            snprintf(versionString,
-                     sizeof(versionString),
-                     "Streamline gatord version %d (Streamline v%d.%d)",
-                     PROTOCOL_VERSION,
-                     majorVersion,
-                     minorVersion);
-        }
-        else {
-            snprintf(versionString,
-                     sizeof(versionString),
-                     "Streamline gatord version %d (Streamline v%d.%d.%d)",
-                     PROTOCOL_VERSION,
-                     majorVersion,
-                     minorVersion,
-                     revisionVersion);
-        }
-    }
-    else {
-        snprintf(versionString, sizeof(versionString), "Streamline gatord development version %d", PROTOCOL_VERSION);
+    {
+        const int baseProtocolVersion =
+            (PROTOCOL_VERSION >= 0 ? PROTOCOL_VERSION : -(PROTOCOL_VERSION % PROTOCOL_VERSION_DEV_MULTIPLIER));
+        const int protocolDevTag = (PROTOCOL_VERSION >= 0 ? 0 : -(PROTOCOL_VERSION / PROTOCOL_VERSION_DEV_MULTIPLIER));
+        const int majorVersion = baseProtocolVersion / 100;
+        const int minorVersion = (baseProtocolVersion / 10) % 10;
+        const int revisionVersion = baseProtocolVersion % 10;
+        const char * formatString =
+            (PROTOCOL_VERSION >= 0 ? (revisionVersion == 0 ? "Streamline gatord version %d (Streamline v%d.%d)"
+                                                           : "Streamline gatord version %d (Streamline v%d.%d.%d)")
+                                   : "Streamline gatord development version %d (Streamline v%d.%d.%d), tag %d");
+        snprintf(versionString,
+                 sizeof(versionString),
+                 formatString,
+                 PROTOCOL_VERSION,
+                 majorVersion,
+                 minorVersion,
+                 revisionVersion,
+                 protocolDevTag);
     }
     // Parse the command line parameters
     parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5);
@@ -645,7 +639,8 @@ int main(int argc, char ** argv)
     if (result.mode == ParserResult::ExecutionMode::PRINT) {
         if (result.printables.count(ParserResult::Printable::EVENTS_XML) == 1) {
             std::cout << events_xml::getDynamicXML(drivers.getAllConst(),
-                                                   drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+                                                   drivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
+                                                   drivers.getPrimarySourceProvider().getDetectedUncorePmus())
                              .get();
         }
         if (result.printables.count(ParserResult::Printable::COUNTERS_XML) == 1) {

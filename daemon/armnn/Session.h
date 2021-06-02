@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -40,15 +40,14 @@ namespace armnn {
 
         /**
          * Initialises the connection.
-         * @param connection: connection to be initialised
-         * @param headerPacket: out parameter for a HeaderPacket
+         * @param connection connection to be initialised
+         * @param headerPacket out parameter for a HeaderPacket
          * @return true if connection has been initialised, false if not
          **/
         static bool initialiseConnection(SocketIO & connection, HeaderPacket & headerPacket);
 
         /**
-         * @param socket will need to be initialised prior
-         * @param byteOrder
+         * @param connection will need to be initialised prior
          * @param decoder will outlive sst
          * @param sst will outlive socket
          */

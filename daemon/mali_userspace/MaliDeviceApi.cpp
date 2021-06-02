@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliDeviceApi.h"
 
@@ -36,14 +36,6 @@ namespace mali_userspace {
 
         /**
          * Send a logSetup message detailing the detected Mali device
-         *
-         * @param maliDevicePath
-         * @param productId
-         * @param major
-         * @param minor
-         * @param frequency
-         * @param l2Slices
-         * @param shaderCores
          */
         static void logDetectedMaliDevice(const char * maliDevicePath,
                                           uint32_t productId,
@@ -151,12 +143,12 @@ namespace mali_userspace {
                                       shaderCoreAvailabilityMask);
             }
 
-            virtual lib::AutoClosingFd createHwCntReaderFd(size_t bufferCount,
-                                                           uint32_t jmBitmask,
-                                                           uint32_t shaderBitmask,
-                                                           uint32_t tilerBitmask,
-                                                           uint32_t mmuL2Bitmask,
-                                                           bool & failedDueToBufferCount) override
+            lib::AutoClosingFd createHwCntReaderFd(size_t bufferCount,
+                                                   uint32_t jmBitmask,
+                                                   uint32_t shaderBitmask,
+                                                   uint32_t tilerBitmask,
+                                                   uint32_t mmuL2Bitmask,
+                                                   bool & failedDueToBufferCount) override
             {
                 logg.logMessage("MaliDeviceApi: create (%zu, 0x%x, 0x%x, 0x%x, 0x%x)",
                                 bufferCount,
@@ -191,25 +183,25 @@ namespace mali_userspace {
                 return setup_args.fd;
             }
 
-            virtual uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
+            uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
 
-            virtual uint32_t getMaxShaderCoreBlockIndex() const override
+            uint32_t getMaxShaderCoreBlockIndex() const override
             {
                 return calcShaderCoreMaskBlockCount(shaderCoreAvailabilityMask);
             }
 
-            virtual uint32_t getNumberOfUsableShaderCores() const override
+            uint32_t getNumberOfUsableShaderCores() const override
             {
                 return calcNumShaders(shaderCoreAvailabilityMask);
             }
 
-            virtual uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
+            uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
 
-            virtual uint32_t getGpuId() const override { return gpuId; }
+            uint32_t getGpuId() const override { return gpuId; }
 
-            virtual uint32_t getHwVersion() const override { return hwVersion; }
+            uint32_t getHwVersion() const override { return hwVersion; }
 
-            virtual uint32_t getExternalBusWidth() const override { return busWidth; }
+            uint32_t getExternalBusWidth() const override { return busWidth; }
 
         private:
             static uint64_t calcShaderCoreMask(const kbase_uk_gpuprops & props)
@@ -353,8 +345,6 @@ namespace mali_userspace {
 
         /**
          * Decode the blob data that is returned from the gpu properties ioctl
-         * @param buffer
-         * @param size
          * @return The useful decoded fields
          */
         static gpu_properties decodeProperties(uint8_t * buffer, int size)
@@ -467,12 +457,12 @@ namespace mali_userspace {
                                       shaderCoreAvailabilityMask);
             }
 
-            virtual lib::AutoClosingFd createHwCntReaderFd(size_t bufferCount,
-                                                           uint32_t jmBitmask,
-                                                           uint32_t shaderBitmask,
-                                                           uint32_t tilerBitmask,
-                                                           uint32_t mmuL2Bitmask,
-                                                           bool & failedDueToBufferCount) override
+            lib::AutoClosingFd createHwCntReaderFd(size_t bufferCount,
+                                                   uint32_t jmBitmask,
+                                                   uint32_t shaderBitmask,
+                                                   uint32_t tilerBitmask,
+                                                   uint32_t mmuL2Bitmask,
+                                                   bool & failedDueToBufferCount) override
             {
                 struct kbase_ioctl_hwcnt_reader_setup setup_args {
                 };
@@ -493,25 +483,25 @@ namespace mali_userspace {
                 return hwcntReaderFd;
             }
 
-            virtual uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
+            uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
 
-            virtual uint32_t getMaxShaderCoreBlockIndex() const override
+            uint32_t getMaxShaderCoreBlockIndex() const override
             {
                 return calcShaderCoreMaskBlockCount(shaderCoreAvailabilityMask);
             }
 
-            virtual uint32_t getNumberOfUsableShaderCores() const override
+            uint32_t getNumberOfUsableShaderCores() const override
             {
                 return calcNumShaders(shaderCoreAvailabilityMask);
             }
 
-            virtual uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
+            uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
 
-            virtual uint32_t getGpuId() const override { return gpuId; }
+            uint32_t getGpuId() const override { return gpuId; }
 
-            virtual uint32_t getHwVersion() const override { return hwVersion; }
+            uint32_t getHwVersion() const override { return hwVersion; }
 
-            virtual uint32_t getExternalBusWidth() const override { return busWidth; }
+            uint32_t getExternalBusWidth() const override { return busWidth; }
 
         private:
             static uint64_t calcShaderCoreMask(const gpu_properties & props)

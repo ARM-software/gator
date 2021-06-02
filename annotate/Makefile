@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2020 by Arm Limited. All rights reserved.
+# Copyright (C) 2016-2021 by Arm Limited. All rights reserved.
 
 CFLAGS += -fPIC
 
@@ -14,7 +14,7 @@ all: libstreamline_annotate.a libstreamline_annotate.so
 %.o: %.c
 	$(COMPILE.c) -o $@ $<
 
-streamline_annotate.o: streamline_annotate.c streamline_annotate.h
+streamline_annotate.o: streamline_annotate.c streamline_annotate.h streamline_annotate_logging.h
 
 libstreamline_annotate.a: streamline_annotate.o
 	rm -f $@

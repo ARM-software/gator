@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_ISTREAM_H
 #define INCLUDE_LIB_ISTREAM_H
@@ -9,7 +9,6 @@
 namespace lib {
     /**
      * Extracts comma separated numbers from a stream.
-     * @param stream
      * @return vector of the numbers in the order they were in the stream
      */
     template<typename IntType>

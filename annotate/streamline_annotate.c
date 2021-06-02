@@ -1,6 +1,5 @@
 /**
- * Copyright (c) 2014-2016, Arm Limited
- * All rights reserved.
+ * Copyright (C) 2014-2021 by Arm Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +34,8 @@
 #endif
 
 #include "streamline_annotate.h"
+
+#include "streamline_annotate_logging.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -175,23 +176,6 @@ static int gator_socket_cloexec(int domain, int type, int protocol) {
     }
     return sock;
 #endif
-}
-
-#define gator_log(msg) \
-    __gator_log(__func__, __FILE__, __LINE__, msg)
-
-static void __gator_log(const char *const func, const char *const file, const int line, const char *const msg)
-{
-    fprintf(stderr, "%s(%s:%i): %s\n", func, file, line, msg);
-}
-
-#define gator_log_errnum(msg, errnum) \
-    __gator_log_errnum(__func__, __FILE__, __LINE__, msg, errnum)
-
-static void __gator_log_errnum(const char *const func, const char *const file, const int line, const char *const msg,
-                   const int errnum)
-{
-    fprintf(stderr, "%s(%s:%i): %s: %s\n", func, file, line, msg, strerror(errnum));
 }
 
 static void gator_destructor(void *value)
@@ -435,22 +419,37 @@ static bool gator_send(struct gator_thread *const thread, const uint32_t write_p
     if (write_pos > thread->read_pos) {
         write = write_pos - thread->read_pos;
         bytes = send(thread->fd, thread->buf + thread->read_pos, write, MSG_NOSIGNAL);
-        if (bytes <= 0)
+        if (bytes == 0) {
+            //not an error reattempt.
+            return true;
+        }
+        if (bytes < 0) {
             return false;
+        }
         thread->read_pos = gator_buf_pos(thread->read_pos + bytes);
     } else {
         write = THREAD_BUFFER_SIZE - thread->read_pos;
         bytes = send(thread->fd, thread->buf + thread->read_pos, write, MSG_NOSIGNAL);
-        if (bytes <= 0)
+        if (bytes == 0) {
+            //not an error reattempt.
+            return true;
+        }
+        if (bytes < 0) {
             return false;
+        }
         thread->read_pos = gator_buf_pos(thread->read_pos + bytes);
 
         if (write == (size_t)bytes) {
             /* Don't write more on a short write to be fair to other threads */
             write = write_pos;
             bytes = send(thread->fd, thread->buf, write, MSG_NOSIGNAL);
-            if (bytes <= 0)
+            if (bytes == 0) {
+                //not an error reattempt.
+                return true;
+            }
+            if (bytes < 0) {
                 return false;
+            }
             thread->read_pos = gator_buf_pos(thread->read_pos + bytes);
         }
     }
@@ -459,12 +458,16 @@ static bool gator_send(struct gator_thread *const thread, const uint32_t write_p
         __sync_synchronize();
         /* Don't write more on a short write to be fair to other threads */
         bytes = send(thread->fd, thread->oob_data, thread->oob_length, MSG_NOSIGNAL);
-        if (bytes <= 0)
+        if (bytes == 0) {
+            //not an error reattempt.
+            return true;
+        }
+        if (bytes < 0) {
             return false;
+        }
         thread->oob_data += bytes;
         thread->oob_length -= bytes;
     }
-
     return true;
 }
 
@@ -472,7 +475,6 @@ static void* gator_func(void *arg)
 {
     bool print = true;
     uint64_t last = 0;
-
     prctl(PR_SET_NAME, (unsigned long)&"gator-annotate", 0, 0, 0);
 
     if (arg != NULL) {
@@ -491,9 +493,12 @@ static void* gator_func(void *arg)
             } else {
                 gator_stop_capturing();
                 if (print) {
-                    fprintf(stderr,
-                        "Warning %s(%s:%i): Not connected to gatord, the application will run normally but Streamline will not collect annotations. To collect annotations, please verify you are running gatord 5.%i or later and that SELinux is disabled.\n",
-                        __func__, __FILE__, __LINE__, gator_minimum_version);
+                    LOG(LOG_ERROR,
+                        "Warning : Not connected to gatord, "                                             //
+                        "the application will run normally but Streamline will not collect annotations. " //
+                        "To collect annotations, please verify you are running gatord 5.%i or later and that SELinux " //
+                        "is disabled.\n", //
+                        gator_minimum_version);
                     print = false;
                 }
                 sleep(1);
@@ -545,8 +550,19 @@ static void* gator_func(void *arg)
                 } else {
                     const uint32_t write_pos = thread->write_pos;
                     if (write_pos != thread->read_pos || thread->oob_length > 0) {
-                        if (!gator_send(thread, write_pos))
+                        if (!gator_send(thread, write_pos)) {
+                            LOG(LOG_ERROR,
+                                "Failed to send bytes, "                                                    //
+                                "gator_thread = (exited:%s, fd:%d, oob_length:%ld, read_pos:%d,  tid:%d), " //
+                                "write_pos = %u",                                                           //
+                                thread->exited ? "true" : "false",
+                                thread->fd,
+                                thread->oob_length,
+                                thread->read_pos,
+                                thread->tid,
+                                write_pos);
                             gator_stop_capturing();
+                        }
                         else
                             sem_post(&thread->sem);
                     }
@@ -570,7 +586,6 @@ static void* gator_func(void *arg)
         for (; sync_count > 0; --sync_count)
             sem_post(&gator_state.sync_waiter_sem);
     }
-
     return NULL;
 }
 
@@ -584,45 +599,45 @@ void gator_annotate_setup(void)
 
         int err = sem_init(&gator_state.sender_sem, 0, 0);
         if (err != 0) {
-            gator_log_errnum("sem_init failed", err);
+            LOG(LOG_ERROR, "sem_init failed, with error %s", strerror(err));
             return;
         }
 
         err = sem_init(&gator_state.sync_sem, 0, 0);
         if (err != 0) {
-            gator_log_errnum("sem_init failed", err);
+            LOG(LOG_ERROR, "sem_init failed, with error %s", strerror(err));
             return;
         }
 
         err = sem_init(&gator_state.sync_waiter_sem, 0, 0);
         if (err != 0) {
-            gator_log_errnum("sem_init failed", err);
+            LOG(LOG_ERROR, "sem_init failed, with error %s", strerror(err));
             return;
         }
 
         err = pthread_key_create(&gator_state.key, gator_destructor);
         if (err != 0) {
-            gator_log_errnum("pthread_key_create failed", err);
+            LOG(LOG_ERROR, "pthread_key_create failed, with error %s", strerror(err));
             return;
         }
 
 #if !defined(__ANDROID_API__) || __ANDROID_API__ >= 21
         err = pthread_atfork(NULL, NULL, gator_annotate_fork_child);
         if (err != 0) {
-            gator_log_errnum("pthread_atfork failed", err);
+            LOG(LOG_ERROR, "pthread_atfork failed, with error %s", strerror(err));
             return;
         }
 #endif
 
         if (atexit(gator_annotate_flush) != 0) {
-            gator_log("atexit failed");
+            LOG(LOG_ERROR, "atexit failed");
             return;
         }
 
         pthread_t thread;
         err = pthread_create(&thread, NULL, gator_func, NULL);
         if (err != 0) {
-            gator_log_errnum("pthread_create failed", err);
+            LOG(LOG_ERROR, "pthread_create failed, with error %s", strerror(err));
             return;
         }
     }
@@ -639,7 +654,7 @@ static struct gator_thread *gator_get_thread(void)
         pthread_t thread;
         int err = pthread_create(&thread, NULL, gator_func, (void *)1);
         if (err != 0) {
-            gator_log_errnum("pthread_create failed", err);
+            LOG(LOG_ERROR, "pthread_create failed, with error %s", strerror(err));
             return NULL;
         }
     }
@@ -654,7 +669,7 @@ static struct gator_thread *gator_get_thread(void)
 
     thread = (struct gator_thread *)malloc(sizeof(*thread));
     if (thread == NULL) {
-        gator_log_errnum("malloc failed", errno);
+        LOG(LOG_ERROR, "malloc failed, with error %s", strerror(errno));
         return NULL;
     }
 
@@ -668,13 +683,13 @@ static struct gator_thread *gator_get_thread(void)
 
     err = sem_init(&thread->sem, 0, 0);
     if (err != 0) {
-        gator_log_errnum("sem_init failed", err);
+        LOG(LOG_ERROR, "sem_init failed, with error %s", strerror(err));
         goto fail_free_thread;
     }
 
     err = pthread_setspecific(gator_state.key, thread);
     if (err != 0) {
-        gator_log_errnum("pthread_setspecific failed", err);
+        LOG(LOG_ERROR, "pthread_setspecific failed, with error %s", strerror(err));
         goto fail_sem_destroy;
     }
 
@@ -714,13 +729,13 @@ static uint32_t gator_buf_used(const struct gator_thread *const thread)
     return (thread->write_pos - thread->read_pos) & THREAD_BUFFER_MASK;
 }
 
-#define gator_buf_wait_bytes(thread, bytes) \
-    const uint32_t __bytes = (bytes); \
-    if (__bytes > THREAD_BUFFER_SIZE/2) { \
-        /* Large annotations won't fit in the buffer */ \
-        gator_log("message is too large"); \
-        return; \
-    } \
+#define gator_buf_wait_bytes(thread, bytes)                                                                            \
+    const uint32_t __bytes = (bytes);                                                                                  \
+    if (__bytes > THREAD_BUFFER_SIZE / 2) {                                                                            \
+        /* Large annotations won't fit in the buffer */                                                                \
+        LOG(LOG_ERROR, "message is too large");                                                                        \
+        return;                                                                                                        \
+    }                                                                                                                  \
     __gator_buf_wait_bytes((thread), __bytes);
 
 static void __gator_buf_wait_bytes(struct gator_thread *const thread, const uint32_t bytes)
@@ -754,6 +769,7 @@ static void gator_msg_end(struct gator_thread *const thread, const uint32_t writ
 
 void gator_annotate_str(const uint32_t channel, const char *const str)
 {
+
     struct gator_thread *const thread = gator_get_thread();
     if (thread == NULL)
         return;
@@ -776,8 +792,9 @@ void gator_annotate_str(const uint32_t channel, const char *const str)
 void gator_annotate_color(const uint32_t channel, const uint32_t color, const char *const str)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     const int str_size = (str == NULL) ? 0 : strlen(str);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + MAXSIZE_PACK_INT + SIZE_COLOR + str_size);
@@ -798,8 +815,9 @@ void gator_annotate_color(const uint32_t channel, const uint32_t color, const ch
 void gator_annotate_name_channel(const uint32_t channel, const uint32_t group, const char *const str)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     const int str_size = (str == NULL) ? 0 : strlen(str);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + 2*MAXSIZE_PACK_INT + str_size);
@@ -820,8 +838,9 @@ void gator_annotate_name_channel(const uint32_t channel, const uint32_t group, c
 void gator_annotate_name_group(const uint32_t group, const char *const str)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     const int str_size = (str == NULL) ? 0 : strlen(str);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + MAXSIZE_PACK_INT + str_size);
@@ -841,8 +860,9 @@ void gator_annotate_name_group(const uint32_t group, const char *const str)
 void gator_annotate_visual(const void *const data, const uint32_t data_length, const char *const str)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     const int str_size = (str == NULL) ? 0 : strlen(str);
     /* Don't include data_length because it doesn't end up in the buffer */
@@ -874,9 +894,9 @@ void gator_annotate_visual(const void *const data, const uint32_t data_length, c
 void gator_annotate_marker(const char *const str)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
-
+    }
     const int str_size = (str == NULL) ? 0 : strlen(str);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + str_size);
 
@@ -894,9 +914,9 @@ void gator_annotate_marker(const char *const str)
 void gator_annotate_marker_color(const uint32_t color, const char *const str)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
-
+    }
     const int str_size = (str == NULL) ? 0 : strlen(str);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + SIZE_COLOR + str_size);
 
@@ -973,7 +993,7 @@ void gator_annotate_counter(const uint32_t id, const char *const title, const ch
 {
     struct gator_counter *const counter = (struct gator_counter *)malloc(sizeof(*counter));
     if (counter == NULL) {
-        gator_log_errnum("malloc failed", errno);
+        LOG(LOG_ERROR, "malloc failed, with error %s", strerror(errno));
         return;
     }
 
@@ -998,12 +1018,12 @@ void gator_annotate_counter(const uint32_t id, const char *const title, const ch
     } else {
         counter->activities = (const char **)malloc(activity_count*sizeof(activities[0]));
         if (counter->activities == NULL) {
-            gator_log_errnum("malloc failed", errno);
+            LOG(LOG_ERROR, "malloc failed, with error %s", strerror(errno));
             goto free_counter;
         }
         counter->activity_colors = (uint32_t *)malloc(activity_count*sizeof(activity_colors[0]));
         if (counter->activity_colors == NULL) {
-            gator_log_errnum("malloc failed", errno);
+            LOG(LOG_ERROR, "malloc failed, with error %s", strerror(errno));
             goto free_activities;
         }
         size_t i;
@@ -1022,8 +1042,9 @@ void gator_annotate_counter(const uint32_t id, const char *const title, const ch
 
     {
         struct gator_thread *const thread = gator_get_thread();
-        if (thread == NULL)
+        if (thread == NULL) {
             return;
+        }
 
         gator_annotate_write_counter(thread, counter);
     }
@@ -1040,8 +1061,9 @@ free_counter:
 void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const uint32_t value)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + 3*MAXSIZE_PACK_INT);
 
@@ -1061,8 +1083,9 @@ void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const 
 void gator_annotate_activity_switch(const uint32_t core, const uint32_t id, const uint32_t activity, const uint32_t tid)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + MAXSIZE_PACK_LONG + 4*MAXSIZE_PACK_INT);
 
@@ -1104,7 +1127,7 @@ void gator_cam_track(const uint32_t view_uid, const uint32_t track_uid, const ui
 {
     struct gator_cam_track *const cam_track = (struct gator_cam_track *)malloc(sizeof(*cam_track));
     if (cam_track == NULL) {
-        gator_log_errnum("malloc failed", errno);
+        LOG(LOG_ERROR, "malloc failed, with error %s", strerror(errno));
         return;
     }
 
@@ -1119,8 +1142,9 @@ void gator_cam_track(const uint32_t view_uid, const uint32_t track_uid, const ui
     while (!__sync_bool_compare_and_swap(&gator_state.cam_tracks, cam_track->next, cam_track));
 
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     gator_annotate_write_cam_track(thread, cam_track);
 }
@@ -1130,8 +1154,9 @@ void gator_cam_job(const uint32_t view_uid, const uint32_t job_uid, const char *
            const uint32_t primary_dependency, const size_t dependency_count, const uint32_t *const dependencies)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     const int name_size = (name == NULL) ? 0 : strlen(name);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + 5*MAXSIZE_PACK_INT + 2*MAXSIZE_PACK_LONG + SIZE_COLOR +
@@ -1162,8 +1187,9 @@ void gator_cam_job_start(const uint32_t view_uid, const uint32_t job_uid, const 
                          const uint64_t time, const uint32_t color)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     const int name_size = (name == NULL) ? 0 : strlen(name);
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + 3*MAXSIZE_PACK_INT + MAXSIZE_PACK_LONG + SIZE_COLOR + name_size);
@@ -1188,8 +1214,9 @@ void gator_cam_job_set_dependencies(const uint32_t view_uid, const uint32_t job_
                                     const uint32_t *const dependencies)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + 4*MAXSIZE_PACK_INT + MAXSIZE_PACK_LONG +
                          dependency_count*MAXSIZE_PACK_INT);
@@ -1214,8 +1241,9 @@ void gator_cam_job_set_dependencies(const uint32_t view_uid, const uint32_t job_
 void gator_cam_job_stop(const uint32_t view_uid, const uint32_t job_uid, const uint64_t time)
 {
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     gator_buf_wait_bytes(thread, 1 + sizeof(uint32_t) + 2*MAXSIZE_PACK_INT + MAXSIZE_PACK_LONG);
 
@@ -1264,8 +1292,9 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name)
     while (!__sync_bool_compare_and_swap(&gator_state.cam_names, cam_name->next, cam_name));
 
     struct gator_thread *const thread = gator_get_thread();
-    if (thread == NULL)
+    if (thread == NULL) {
         return;
+    }
 
     gator_annotate_write_cam_name(thread, cam_name);
 }

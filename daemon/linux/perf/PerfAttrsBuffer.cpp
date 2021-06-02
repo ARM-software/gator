@@ -1,10 +1,11 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
 #include "PerfAttrsBuffer.h"
 
 #include "BufferUtils.h"
+#include "Logging.h"
 #include "SessionData.h"
 #include "k/perf_event.h"
 
@@ -90,7 +91,15 @@ void PerfAttrsBuffer::marshalFormat(const int length, const char * const format)
 void PerfAttrsBuffer::marshalMaps(const int pid, const int tid, const char * const maps)
 {
     const int mapsLen = strlen(maps) + 1;
-    waitForSpace(3 * buffer_utils::MAXSIZE_PACK32 + mapsLen);
+    const int requiredLen = 3 * buffer_utils::MAXSIZE_PACK32 + mapsLen;
+
+    // ignore map files that are *really* large
+    if (!buffer.supportsWriteOfSize(requiredLen)) {
+        logg.logWarning("proc maps file too large for buffer (%d > %d bytes), ignoring", requiredLen, buffer.size());
+        return;
+    }
+
+    waitForSpace(requiredLen);
     buffer.packInt(static_cast<int32_t>(CodeType::MAPS));
     buffer.packInt(pid);
     buffer.packInt(tid);
@@ -128,7 +137,15 @@ void PerfAttrsBuffer::offlineCPU(const uint64_t time, const int cpu)
 void PerfAttrsBuffer::marshalKallsyms(const char * const kallsyms)
 {
     const int kallsymsLen = strlen(kallsyms) + 1;
-    waitForSpace(3 * buffer_utils::MAXSIZE_PACK32 + kallsymsLen);
+    const int requiredLen = 3 * buffer_utils::MAXSIZE_PACK32 + kallsymsLen;
+
+    // ignore kallsyms files that are *really* large
+    if (!buffer.supportsWriteOfSize(requiredLen)) {
+        logg.logWarning("kallsyms file too large for buffer (%d > %d bytes), ignoring", requiredLen, buffer.size());
+        return;
+    }
+
+    waitForSpace(requiredLen);
     buffer.packInt(static_cast<int32_t>(CodeType::KALLSYMS));
     buffer.writeBytes(kallsyms, kallsymsLen);
 }

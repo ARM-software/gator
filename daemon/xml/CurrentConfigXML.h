@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include <set>
@@ -13,11 +13,7 @@ namespace current_config_xml {
      * so it can determine whether gatord should be killed.
      *
      * @param gatorMainPid the pid of gator-main not child
-     * @param uid
-     * @param isSystemWide
-     * @param isWaitingOnCommand
      * @param waitForProcessCommand is the command used with -Q
-     * @param captureWorkingDir
      * @param pidsToCapture what PIDs have been specified to profile
      * @returns XML string
      */

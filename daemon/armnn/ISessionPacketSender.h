@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -14,8 +14,6 @@ namespace armnn {
         /**
          * Send a counter selection packet to ArmNN to request the activation of counters
          *
-         * @param mode
-         * @param period
          * @param eventUids The UIDs of events, which could be empty if nothing was selected in this session
          * @return True if request was successful, false if not
          */

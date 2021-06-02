@@ -102,11 +102,11 @@
  *                   int color,
  *                   const char * label).
  *
- * @param tid - the thread id where the event is generated
- * @param color - the color to be used for the bookmark.
+ * @param tid the thread id where the event is generated
+ * @param color the color to be used for the bookmark.
  *                Choose a color constant or use color encoding
  *                as defined above.
- * @param label - name of the bookmark to be added
+ * @param label name of the bookmark to be added
  */
 TRACE_EVENT(gator_bookmark,
             TP_PROTO(int tid, int color, const char * label),
@@ -123,12 +123,12 @@ TRACE_EVENT(gator_bookmark,
  *                   const char * channel,
  *                   const char * label).
  *
- * @param tid - the thread id where the event is generated
- * @param color - the color to be used for the annotation.
+ * @param tid the thread id where the event is generated
+ * @param color the color to be used for the annotation.
  *                Choose a color constant or use color encoding
  *                as defined above.
- * @param channel - the channel id
- * @param label - name of the annotation
+ * @param channel the channel id
+ * @param label name of the annotation
  */
 TRACE_EVENT(gator_text,
             TP_PROTO(int tid, int color, const char * channel, const char * label),
@@ -152,12 +152,12 @@ TRACE_EVENT(gator_text,
  *                   bool isdelta,
  *                   unsigned long long value).
  *
- * @param tid - the thread id where the event is generated
- * @param title - the title of the counter
- * @param name - the name of the counter
- * @param units - unit for the counter
- * @param isDelta - if the counter is a delta or absolute
- * @param value - the value of the counter
+ * @param tid the thread id where the event is generated
+ * @param title the title of the counter
+ * @param name the name of the counter
+ * @param units unit for the counter
+ * @param isDelta if the counter is a delta or absolute
+ * @param value the value of the counter
  */
 TRACE_EVENT(gator_counter,
             TP_PROTO(int tid,

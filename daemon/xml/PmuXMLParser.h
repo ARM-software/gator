@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PMUXML_PARSER_H
 #define PMUXML_PARSER_H
@@ -14,8 +14,8 @@ PmuXML readPmuXml(const char * path);
 
 /**
  * Parse pmus.xml
- * @param xml    [IN]  The XML as a string
- * @param result [OUT] The object to modify with the parse results
+ * @param xml [IN]  The XML as a string
+ * @param pmuXml [OUT] The object to modify with the parse results
  * @return The parse result (true if parsed successfully, false if not)
  */
 bool parseXml(const char * xml, PmuXML & pmuXml);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Driver.h"
@@ -18,16 +18,16 @@ namespace armnn {
         Driver();
 
         // Returns true if this driver can manage the counter
-        virtual bool claimCounter(Counter & counter) const override;
+        bool claimCounter(Counter & counter) const override;
 
         // Clears and disables all counters/SPE
-        virtual void resetCounters() override;
+        void resetCounters() override;
 
         // Enables and prepares the counter for capture
-        virtual void setupCounter(Counter & counter) override;
+        void setupCounter(Counter & counter) override;
 
         // Emits available counters
-        virtual int writeCounters(mxml_node_t * root) const override;
+        int writeCounters(mxml_node_t * root) const override;
 
         // Emits possible dynamically generated events/counters
         void writeEvents(mxml_node_t * const /*unused*/) const override;

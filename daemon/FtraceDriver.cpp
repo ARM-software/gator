@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "FtraceDriver.h"
 
@@ -11,6 +11,8 @@
 #include "lib/Utils.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
+#include <thread>
+#include <chrono>
 #include <atomic>
 #include <csignal>
 #include <dirent.h>
@@ -167,6 +169,7 @@ public:
     int getPfd0() const { return mPfd0; }
 
 private:
+    static constexpr auto FTRACE_TIMEOUT = std::chrono::seconds {2};
     static FtraceReader * mHead;
     FtraceReader * const mNext;
     Barrier * const mBarrier;
@@ -181,6 +184,7 @@ private:
     void run();
 };
 
+constexpr decltype(FtraceReader::FTRACE_TIMEOUT) FtraceReader::FTRACE_TIMEOUT;
 FtraceReader * FtraceReader::mHead;
 
 void FtraceReader::start()
@@ -268,6 +272,19 @@ void FtraceReader::run()
         handleException();
     }
 
+    // Starting timer to interrupt thread if it's hanging
+    std::shared_ptr<std::atomic<bool>> isStuck = std::make_shared<std::atomic<bool>>(true);
+    std::thread timeoutThread([&, isStuck]() {
+        std::this_thread::sleep_for(FtraceReader::FTRACE_TIMEOUT);
+        if (*isStuck) {
+            logg.logMessage("ftrace reader is hanging. Interrupting reader thread");
+            close(mTfd);
+            close(mPfd1);
+            pthread_kill(mThread, SIGKILL);
+        }
+    });
+    timeoutThread.detach();
+
     for (;;) {
         ssize_t bytes;
 
@@ -318,6 +335,9 @@ void FtraceReader::run()
             }
         }
     }
+
+    // Disabling the timeout thread
+    *isStuck = false;
 
     close(mTfd);
     close(mPfd1);

@@ -181,8 +181,6 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
 }
 
 /**
- *
- * @param value
  * @return 1 for a true-like string, 0 for a false-like string and -1 otherwise
  */
 static int parseBoolean(const char * value)

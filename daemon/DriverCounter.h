@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 #define NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
@@ -10,8 +10,6 @@
 class DriverCounter {
 public:
     /**
-     *
-     * @param next
      * @param name will be copied
      */
     DriverCounter(DriverCounter * next, const char * name);

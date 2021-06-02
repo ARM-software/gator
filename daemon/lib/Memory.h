@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_MEMORY_H
 #define INCLUDE_LIB_MEMORY_H
@@ -11,8 +11,6 @@ namespace lib {
      * Creates a unique pointer
      *
      * Can be replaced with std::make_unique in C++14
-     * @param args
-     * @return
      */
     template<typename T, typename... Args>
     std::unique_ptr<T> make_unique(Args &&... args)
@@ -24,8 +22,6 @@ namespace lib {
      * Creates a unique pointer and deduces its type from the argument
      *
      * Can be replaced with std::unique_ptr (CTAD) in C++17
-     * @param ptr
-     * @return
      */
     template<typename T>
     std::unique_ptr<T> unique_ptr(T * ptr)
@@ -38,9 +34,6 @@ namespace lib {
 
     /**
      * Creates a unique pointer that uses free to delete
-     *
-     * @param ptr
-     * @return
      */
     template<typename T>
     unique_ptr_void_deleter<T> unique_ptr_with_free(T * ptr)

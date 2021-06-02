@@ -8,6 +8,7 @@
 #include "Constant.h"
 #include "Counter.h"
 #include "GatorCLIFlags.h"
+#include "ProtocolVersion.h"
 #include "lib/SharedMemory.h"
 #include "mxml/mxml.h"
 
@@ -19,11 +20,6 @@
 #include <set>
 #include <string>
 #include <vector>
-
-//development version for PROTOCOL_VERSION is of format YYYYMMDD
-#define PROTOCOL_VERSION 760
-// Differentiates development versions (timestamp) from release versions
-#define PROTOCOL_DEV 10000000
 
 #define NS_PER_S 1000000000LL
 #define NS_PER_MS 1000000LL

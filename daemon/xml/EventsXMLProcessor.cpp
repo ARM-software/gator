@@ -1,11 +1,13 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXMLProcessor.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/Optional.h"
 #include "xml/PmuXML.h"
 
+#include <cstring>
 #include <map>
 #include <string>
 #include <utility>
@@ -22,6 +24,7 @@ namespace events_xml {
         const char ATTR_COUNT[] = "count";
         const char ATTR_COUNTER[] = "counter";
         const char ATTR_COUNTER_SET[] = "counter_set";
+        const char ATTR_DEVICE_INSTANCE[] = "device_instance";
         const char ATTR_DESCRIPTION[] = "description";
         const char ATTR_ID[] = "id";
         const char ATTR_MULTIPLIER[] = "multiplier";
@@ -41,15 +44,25 @@ namespace events_xml {
             [](const char * /*unused*/, const char * /*unused*/, const char * /*unused*/, std::string &
                /*unused*/) -> bool { return false; };
 
-        template<typename T>
+        struct CounterSetCoreNameAndInstance {
+            std::string counter_set;
+            std::string core_name;
+            std::string instance;
+        };
+
+        template<typename T, typename U>
         static void addAllIdToCounterSetMappings(
             lib::Span<const T> pmus,
-            std::map<std::string, std::pair<std::string, std::string>> & idToCounterSetAndName)
+            std::map<std::string, CounterSetCoreNameAndInstance> & idToCounterSetAndName,
+            U instanceFn)
         {
             for (const T & pmu : pmus) {
-                idToCounterSetAndName.emplace(
-                    pmu.getId(),
-                    std::pair<std::string, std::string> {pmu.getCounterSet(), pmu.getCoreName()});
+                const char * instance = instanceFn(pmu);
+                idToCounterSetAndName.emplace(pmu.getId(),
+                                              CounterSetCoreNameAndInstance {pmu.getCounterSet(),
+                                                                             pmu.getCoreName(),
+                                                                             (instance != nullptr ? instance //
+                                                                                                  : "")});
             }
         }
 
@@ -93,13 +106,10 @@ namespace events_xml {
             }
         }
 
-        template<typename T>
-        static void addAdditionalPmusCounterSets(mxml_node_t * xml, lib::Span<const T> clusters)
+        static void addAdditionalPmusCounterSets(
+            mxml_node_t * xml,
+            const std::map<std::string, CounterSetCoreNameAndInstance> & idToCounterSetAndName)
         {
-            // build mapping from cluster id -> counter_set
-            std::map<std::string, std::pair<std::string, std::string>> idToCounterSetAndName;
-            addAllIdToCounterSetMappings(clusters, idToCounterSetAndName);
-
             // find all counter_set elements by name
             std::map<std::string, mxml_node_t *> counterSetNodes;
             for (mxml_node_t * node = mxmlFindElement(xml, xml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
@@ -125,9 +135,10 @@ namespace events_xml {
             // resolve counter set copies for PMUs
             for (const auto & pair : idToCounterSetAndName) {
                 const std::string & id = pair.first;
-                const std::pair<std::string, std::string> & counterSetAndCoreName = pair.second;
-                const std::string & counterSet = counterSetAndCoreName.first;
-                const std::string & coreName = counterSetAndCoreName.second;
+                const CounterSetCoreNameAndInstance & counterSetAndCoreName = pair.second;
+                const std::string & counterSet = counterSetAndCoreName.counter_set;
+                const std::string & coreName = counterSetAndCoreName.core_name;
+                const std::string & instance = counterSetAndCoreName.instance;
 
                 // check for counter set and category
                 const std::string counterSetName = counterSet + "_cnt";
@@ -159,10 +170,10 @@ namespace events_xml {
                 mxml_node_t * newCategoryNode = mxmlNewElement(mxmlGetParent(categoryNode), TAG_CATEGORY);
                 copyMxmlElementAttrs(newCategoryNode,
                                      categoryNode,
-                                     [&coreName](const char * /*elementName*/,
-                                                 const char * attrName,
-                                                 const char * attrValue,
-                                                 std::string & result) -> bool {
+                                     [&coreName, &instance](const char * /*elementName*/,
+                                                            const char * attrName,
+                                                            const char * attrValue,
+                                                            std::string & result) -> bool {
                                          if (attrValue == nullptr) {
                                              return false;
                                          }
@@ -173,6 +184,12 @@ namespace events_xml {
 
                                          // use the PMU's core name instead of the original one
                                          result = coreName;
+
+                                         // append the instance id
+                                         if (!instance.empty()) {
+                                             result.append(" (").append(instance).append(")");
+                                         }
+
                                          return true;
                                      });
                 copyMxmlChildElements(newCategoryNode,
@@ -203,7 +220,21 @@ namespace events_xml {
                                       });
 
                 mxmlElementSetAttr(newCategoryNode, ATTR_COUNTER_SET, newCounterSetName.c_str());
+
+                if (!instance.empty()) {
+                    mxmlElementSetAttr(newCategoryNode, ATTR_DEVICE_INSTANCE, instance.c_str());
+                }
             }
+        }
+
+        template<typename T, typename U>
+        static void addAdditionalPmusCounterSets(mxml_node_t * xml, lib::Span<const T> clusters, U instanceFn)
+        {
+            // build mapping from cluster id -> counter_set
+            std::map<std::string, CounterSetCoreNameAndInstance> idToCounterSetAndName;
+            addAllIdToCounterSetMappings(clusters, idToCounterSetAndName, instanceFn);
+
+            addAdditionalPmusCounterSets(xml, idToCounterSetAndName);
         }
     }
 
@@ -405,9 +436,19 @@ namespace events_xml {
                mergeCategories(mainEventsNode, appendEventsNode) && mergeSpes(mainEventsNode, appendEventsNode);
     }
 
-    void processClusters(mxml_node_t * xml, lib::Span<const GatorCpu> clusters)
+    void processClusters(mxml_node_t * xml, lib::Span<const GatorCpu> clusters, lib::Span<const UncorePmu> uncores)
     {
-        addAdditionalPmusCounterSets(xml, clusters);
+        addAdditionalPmusCounterSets(xml, clusters, [](const GatorCpu & /*cpu*/) { return nullptr; });
+        addAdditionalPmusCounterSets(xml, uncores, [](const UncorePmu & pmu) { return pmu.getDeviceInstance(); });
+
+        for (const auto & uncore : uncores) {
+            if ((uncore.getDeviceInstance() != nullptr) && (strcmp(uncore.getId(), uncore.getCounterSet()) == 0)) {
+                logg.logError("Invalid Uncore PMU %s (%s) is reported as instanced",
+                              uncore.getId(),
+                              uncore.getCoreName());
+                handleException();
+            }
+        }
 
         // Resolve ${cluster}
         for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND),

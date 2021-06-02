@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "Child.h"
 
@@ -237,7 +237,8 @@ void Child::run()
         // Write events XML
         events_xml::write(gSessionData.mAPCDir,
                           drivers.getAllConst(),
-                          primarySourceProvider.getCpuInfo().getClusters());
+                          primarySourceProvider.getCpuInfo().getClusters(),
+                          primarySourceProvider.getDetectedUncorePmus());
     }
 
     std::set<int> appPids;

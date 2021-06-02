@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -76,7 +76,7 @@ namespace armnn {
 
         bool readMessage(ICounterConsumer & destination,
                          bool isOneShot,
-                         std::function<unsigned int()> getBufferBytesAvailable);
+                         const std::function<unsigned int()> & getBufferBytesAvailable);
         bool interruptReader();
         bool consumeCounterValue(std::uint64_t timestamp,
                                  ApcCounterKeyAndCoreNumber keyAndCore,
@@ -95,7 +95,7 @@ namespace armnn {
         bool readCounterStruct(ICounterConsumer & destination);
         bool readPacket(ICounterConsumer & destination,
                         bool isOneShot,
-                        std::function<unsigned int()> getBufferBytesAvailable);
+                        const std::function<unsigned int()> & getBufferBytesAvailable);
     };
 
     /**
@@ -140,30 +140,30 @@ namespace armnn {
          * Used to transmit counter data from gator-main to gator-child (and
          * thereby to Streamline)
          */
-        virtual bool consumeCounterValue(std::uint64_t timestamp,
-                                         ApcCounterKeyAndCoreNumber keyAndCore,
-                                         std::uint32_t counterValue) override;
+        bool consumeCounterValue(std::uint64_t timestamp,
+                                 ApcCounterKeyAndCoreNumber keyAndCore,
+                                 std::uint32_t counterValue) override;
 
         /**
          * @return whether the data was successfully consumed
          */
-        virtual bool consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data) override;
+        bool consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data) override;
 
         // ICaptureController -------------------------------------------------
 
         /**
          * Should be run within gator-child when a capture is initiated.
          */
-        virtual void run(ICounterConsumer & counterConsumer,
-                         bool isOneShot,
-                         std::function<void()> endSession,
-                         std::function<unsigned int()> getBufferBytesAvailable) override;
+        void run(ICounterConsumer & counterConsumer,
+                 bool isOneShot,
+                 std::function<void()> endSession,
+                 std::function<unsigned int()> getBufferBytesAvailable) override;
 
         /**
          * To be called by gator-child when a running capture should be
          * stopped
          */
-        virtual void interrupt() override;
+        void interrupt() override;
 
     private:
         ChildToParentController mControlChannel {};

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PMUXML_H
 #define PMUXML_H
@@ -78,7 +78,12 @@ inline bool operator!=(const GatorCpu & a, const GatorCpu & b)
 
 class UncorePmu {
 public:
-    UncorePmu(std::string coreName, std::string id, std::string counterSet, int pmncCounters, bool hasCyclesCounter);
+    UncorePmu(std::string coreName,
+              std::string id,
+              std::string counterSet,
+              std::string deviceInstance,
+              int pmncCounters,
+              bool hasCyclesCounter);
 
     UncorePmu(const UncorePmu &) = default;
     UncorePmu & operator=(const UncorePmu &) = default;
@@ -91,6 +96,9 @@ public:
 
     const char * getCounterSet() const { return mCounterSet.c_str(); }
 
+    /** Returns null if the uncore is not instanced */
+    const char * getDeviceInstance() const { return (mDeviceInstance.empty() ? nullptr : mDeviceInstance.c_str()); }
+
     int getPmncCounters() const { return mPmncCounters; }
 
     bool getHasCyclesCounter() const { return mHasCyclesCounter; }
@@ -99,6 +107,7 @@ private:
     std::string mCoreName;
     std::string mId;
     std::string mCounterSet;
+    std::string mDeviceInstance;
     int mPmncCounters;
     bool mHasCyclesCounter;
 };

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERFSOURCE_H
 #define PERFSOURCE_H
@@ -36,10 +36,10 @@ public:
                ICpuInfo & cpuInfo);
 
     bool prepare();
-    virtual lib::Optional<uint64_t> sendSummary() override;
-    virtual void run(std::uint64_t, std::function<void()> endSession) override;
-    virtual void interrupt() override;
-    virtual bool write(ISender & sender) override;
+    lib::Optional<uint64_t> sendSummary() override;
+    void run(std::uint64_t, std::function<void()> endSession) override;
+    void interrupt() override;
+    bool write(ISender & sender) override;
 
 private:
     bool handleUEvent(uint64_t currTime);

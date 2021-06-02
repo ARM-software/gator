@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -25,7 +25,7 @@ namespace armnn {
 
         /**
          * Adds a packet to the sender queue
-         * @param data: the packet to send
+         * @param data the packet to send
          * @return whether the add was successful or not.
          **/
         bool send(std::vector<std::uint8_t> && data) override;

@@ -383,12 +383,15 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
     const std::map<int, int> * cpuNumberToType = groupIdentifier.getSpeTypeMap();
 
     const char * groupLabel = "?";
+    const char * deviceInstance = nullptr;
+    bool perCpu = false;
 
     // validate cpu
     uint32_t replaceType = 0;
     switch (groupIdentifier.getType()) {
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
             groupLabel = cluster->getCoreName();
+            perCpu = true;
             if (!(*cluster == cpuCluster)) {
                 return std::make_pair(OnlineResult::SUCCESS, "");
             }
@@ -397,6 +400,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
         case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
             groupLabel = uncorePmu->getCoreName();
+            deviceInstance = uncorePmu->getDeviceInstance();
             const std::set<int> cpuMask = perf_utils::readCpuMask(uncorePmu->getId());
             const bool currentCpuNotInMask = ((!cpuMask.empty()) && (cpuMask.count(cpu) == 0));
             const bool maskIsEmptyAndCpuNotDefault = (cpuMask.empty() && (cpu != 0));
@@ -409,6 +413,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
         case PerfEventGroupIdentifier::Type::SPE: {
             groupLabel = "SPE";
+            perCpu = true;
             const auto & type = cpuNumberToType->find(cpu);
             if (type == cpuNumberToType->end()) {
                 return std::make_pair(OnlineResult::SUCCESS, "");
@@ -419,6 +424,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
         case PerfEventGroupIdentifier::Type::SPECIFIC_CPU: {
             groupLabel = cpuCluster.getCoreName();
+            perCpu = true;
             if (cpu != groupIdentifier.getCpuNumber()) {
                 return std::make_pair(OnlineResult::SUCCESS, "");
                 ;
@@ -499,8 +505,11 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                                          PERF_FLAG_FD_OUTPUT);
             }
 
+            // take a copy of errno so that logging calls etc don't overwrite it
+            auto peo_errno = errno;
+
             // retry with just exclude_kernel set
-            if ((!fd) && (errno == EACCES)) {
+            if ((!fd) && (peo_errno == EACCES)) {
                 logg.logMessage("Failed when exclude_kernel == 0, retrying with exclude_kernel = 1");
 
                 // set
@@ -518,7 +527,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                                          PERF_FLAG_FD_OUTPUT);
 
                 // retry with exclude_kernel and all set
-                if ((!fd) && (errno == EACCES)) {
+                if ((!fd) && (peo_errno == EACCES)) {
                     logg.logMessage("Failed when exclude_kernel == 1, exclude_hv == 0, exclude_idle == 0, retrying "
                                     "with all exclusions enabled");
 
@@ -535,35 +544,45 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                                              // This is "(broken since Linux 2.6.35)" so can possibly be removed
                                              // we use PERF_EVENT_IOC_SET_OUTPUT anyway
                                              PERF_FLAG_FD_OUTPUT);
+
+                    // take a new copy of the errno if it failed
+                    peo_errno = errno;
                 }
             }
 
             logg.logMessage("perf_event_open: tid: %i, leader = %i -> fd = %i", tid, groupLeaderFd, *fd);
 
             if (!fd) {
-                logg.logMessage("failed (%d) %s", errno, strerror(errno));
+                logg.logMessage("failed (%d) %s", peo_errno, strerror(peo_errno));
 
-                if (errno == ENODEV) {
+                if (peo_errno == ENODEV) {
                     // The core is offline
                     return std::make_pair(OnlineResult::CPU_OFFLINE,
                                           "The event involves a feature not supported by the current CPU.");
                 }
-                else if (errno == ESRCH) {
+                else if (peo_errno == ESRCH) {
                     // thread exited before we had chance to open event
                     tidsIterator = tids.erase(tidsIterator);
                     continue;
                 }
-                else if ((errno == ENOENT) && (!event.attr.pinned)) {
+                else if ((peo_errno == ENOENT) && (!event.attr.pinned)) {
                     // This event doesn't apply to this CPU but should apply to a different one, e.g. bigLittle
                     goto skipOtherTids;
                 }
                 std::ostringstream stringStream;
 
-                stringStream << "perf_event_open failed to online counter for " << typeLabel << ":" << event.attr.config
-                             << " on CPU " << cpu << " due to errno = " << errno << "(" << strerror(errno) << ").";
+                stringStream << "perf_event_open failed to online counter for " << typeLabel;
+                if (deviceInstance != nullptr) {
+                    stringStream << " (" << deviceInstance << ")";
+                }
+                stringStream << " with config=0x" << std::hex << event.attr.config << std::dec;
+                if (perCpu) {
+                    stringStream << " on CPU " << cpu;
+                }
+                stringStream << ". Failure given was errno=" << peo_errno << " (" << strerror(peo_errno) << ").";
 
                 if (sharedConfig.perfConfig.is_system_wide) {
-                    if (errno == EINVAL) {
+                    if (peo_errno == EINVAL) {
                         switch (event.attr.type) {
                             case PERF_TYPE_BREAKPOINT:
                             case PERF_TYPE_SOFTWARE:
@@ -574,7 +593,8 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                             case PERF_TYPE_RAW:
                             default:
                                 stringStream
-                                    << "\nAnother process may be using the PMU counter. Try removing some events.";
+                                    << "\n\nAnother process may be using the PMU counter, or the combination requested "
+                                       "may not be supported by the hardware. Try removing some events.";
                                 break;
                         }
                     }

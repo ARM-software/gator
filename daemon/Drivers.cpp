@@ -74,7 +74,8 @@ Drivers::Drivers(bool systemWide,
     all.push_back(&mCcnDriver);
     all.push_back(&mArmnnDriver);
 
-    auto staticEventsXml = events_xml::getStaticTree(mPrimarySourceProvider->getCpuInfo().getClusters());
+    auto staticEventsXml = events_xml::getStaticTree(mPrimarySourceProvider->getCpuInfo().getClusters(),
+                                                     mPrimarySourceProvider->getDetectedUncorePmus());
     for (Driver * driver : all) {
         driver->readEvents(staticEventsXml.get());
     }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2011-2021 by Arm Limited. All rights reserved. */
 
 #include "StreamlineSetup.h"
 
@@ -90,7 +90,8 @@ IStreamlineCommandHandler::State StreamlineSetup::handleRequest(char * xml)
     }
     if ((attr != nullptr) && strcmp(attr, VALUE_EVENTS) == 0) {
         const auto xml = events_xml::getDynamicXML(mDrivers.getAllConst(),
-                                                   mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
+                                                   mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
+                                                   mDrivers.getPrimarySourceProvider().getDetectedUncorePmus());
         sendString(xml.get(), ResponseType::XML);
         logg.logMessage("Sent events xml response");
     }

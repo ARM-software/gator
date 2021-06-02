@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 #include "armnn/DecoderUtility.h"
 
 #include "Logging.h"
@@ -64,11 +64,9 @@ namespace armnn {
     }
 
     /**
-     * @param startPosition - start position of the counteruid index, when byte array is read as 16 bits.
+     * @param startPosition start position of the counteruid index, when byte array is read as 16 bits.
      * Returns true if was able to decode the uids, if there are any malformed packets decoding
      * is not started and returns false
-     *
-     *
      */
     bool addCounterIds(int startPosition, const ByteOrder byteOrder, Bytes bytes, std::set<std::uint16_t> & counterIds)
     {
@@ -238,7 +236,7 @@ namespace armnn {
     }
 
     /**
-     *@param- startPosition - startPosition after reading bytes array as a 32bit data.
+     *@param startPosition startPosition after reading bytes array as a 32bit data.
      *Returns true if was able to decode the  counterIndexValues, if there are any malformed packets decoding
      * is not started and returns false
      */

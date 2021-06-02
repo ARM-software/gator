@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXML.h"
 
@@ -82,11 +82,13 @@ const GatorCpu * PmuXML::findCpuById(const int cpuid) const
 UncorePmu::UncorePmu(std::string coreName,
                      std::string id,
                      std::string counterSet,
+                     std::string deviceInstance,
                      int pmncCounters,
                      bool hasCyclesCounter)
     : mCoreName(std::move(coreName)),
       mId(std::move(id)),
       mCounterSet(std::move(counterSet)),
+      mDeviceInstance(std::move(deviceInstance)),
       mPmncCounters(pmncCounters),
       mHasCyclesCounter(hasCyclesCounter)
 {

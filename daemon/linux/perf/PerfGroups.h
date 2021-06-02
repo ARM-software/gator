@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_GROUPS_H
 #define PERF_GROUPS_H
@@ -38,24 +38,19 @@ public:
                int64_t schedSwitchId,
                unsigned int maxFiles);
 
-    virtual bool add(IPerfAttrsConsumer & attrsConsumer,
-                     const PerfEventGroupIdentifier & groupIdentifier,
-                     int key,
-                     const Attr & attr,
-                     bool hasAuxData = false) override;
+    bool add(IPerfAttrsConsumer & attrsConsumer,
+             const PerfEventGroupIdentifier & groupIdentifier,
+             int key,
+             const Attr & attr,
+             bool hasAuxData = false) override;
 
-    virtual void addGroupLeader(IPerfAttrsConsumer & attrsConsumer,
-                                const PerfEventGroupIdentifier & groupIdentifier) override
+    void addGroupLeader(IPerfAttrsConsumer & attrsConsumer, const PerfEventGroupIdentifier & groupIdentifier) override
     {
         getGroup(attrsConsumer, groupIdentifier);
     }
 
     /**
-     *
-     * @param cpu
      * @param appPids ignored if system wide
-     * @param enableNow
-     * @return
      * @note Not safe to call concurrently.
      */
     std::pair<OnlineResult, std::string> onlineCPU(int cpu,

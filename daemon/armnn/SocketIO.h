@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,17 +26,15 @@ namespace armnn {
     public:
         /**
          * Construct a SocketIO object for a unix-domain socket
-         *
          * @param address The socket identifier string
-         * @param use_struct_size Uses sizeof(sockaddr_un) instead of length for socket identifier size
+         * @param useStructSize Uses sizeof(sockaddr_un) instead of length for socket identifier size
          */
         static SocketIO udsClientConnect(lib::Span<const char> address, bool useStructSize);
 
         /**
          * Construct a SocketIO object for a unix-domain socket
-         *
          * @param address The socket identifier string
-         * @param use_struct_size Uses sizeof(sockaddr_un) instead of length for socket identifier size
+         * @param useStructSize Uses sizeof(sockaddr_un) instead of length for socket identifier size
          */
         static SocketIO udsServerListen(lib::Span<const char> address, bool useStructSize);
 
@@ -57,7 +55,6 @@ namespace armnn {
 
         /**
          * Accept a new connection for a server socket
-         *
          * @param timeout Value in milliseconds to wait for connection, negative value means infinite wait
          * @return The socket, or empty if timed out
          */
@@ -89,7 +86,6 @@ namespace armnn {
 
         /**
          * Query size of socket send/receive buffer
-         *
          * @param recv True for receive, false for send
          * @return The size
          */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_BUFFER
 #define PERF_BUFFER
@@ -56,8 +56,6 @@ private:
 
 /**
  * Validates that config has allowable values and throws exception if not.
- *
- * @param config
  */
 void validate(const PerfBuffer::Config & config);
 

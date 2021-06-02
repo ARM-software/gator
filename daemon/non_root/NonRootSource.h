@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTSOURCE_H
 #define INCLUDE_NON_ROOT_NONROOTSOURCE_H
@@ -27,10 +27,10 @@ namespace non_root {
                       std::function<void()> profilingStartedCallback,
                       const ICpuInfo & cpuInfo);
 
-        virtual lib::Optional<std::uint64_t> sendSummary() override;
-        virtual void run(std::uint64_t, std::function<void()> endSession) override;
-        virtual void interrupt() override;
-        virtual bool write(ISender & sender) override;
+        lib::Optional<std::uint64_t> sendSummary() override;
+        void run(std::uint64_t, std::function<void()> endSession) override;
+        void interrupt() override;
+        bool write(ISender & sender) override;
 
     private:
         PerCoreMixedFrameBuffer mSwitchBuffers;

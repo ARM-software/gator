@@ -67,19 +67,19 @@ namespace {
             updateClusterIds();
         }
 
-        virtual lib::Span<const int> getCpuIds() const override { return ids.getCpuIds(); }
+        lib::Span<const int> getCpuIds() const override { return ids.getCpuIds(); }
 
-        virtual lib::Span<const GatorCpu> getClusters() const override { return clusters; }
+        lib::Span<const GatorCpu> getClusters() const override { return clusters; }
 
-        virtual lib::Span<const int> getClusterIds() const override { return ids.getClusterIds(); }
+        lib::Span<const int> getClusterIds() const override { return ids.getClusterIds(); }
 
-        virtual void updateIds(bool ignoreOffline) override
+        void updateIds(bool ignoreOffline) override
         {
             cpu_utils::readCpuInfo(disableCpuOnlining || ignoreOffline, ids.getCpuIds());
             updateClusterIds();
         }
 
-        virtual const char * getModelName() const override { return modelName.c_str(); }
+        const char * getModelName() const override { return modelName.c_str(); }
 
         void updateClusterIds()
         {
@@ -117,10 +117,7 @@ namespace {
     class PerfPrimarySource : public PrimarySourceProvider {
     public:
         /**
-         *
-         * @param systemWide
          * @param pmuXml consumes this on success
-         * @return
          */
         static std::unique_ptr<PrimarySourceProvider> tryCreate(bool systemWide,
                                                                 const TraceFsConstants & traceFsConstants,
@@ -134,15 +131,24 @@ namespace {
             std::unique_ptr<PerfDriverConfiguration> configuration =
                 PerfDriverConfiguration::detect(systemWide, traceFsConstants.path__events, ids.getCpuIds(), pmuXml);
             if (configuration != nullptr) {
+                // build the cpuinfo
                 std::vector<GatorCpu> clusters;
                 for (const auto & perfCpu : configuration->cpus) {
                     clusters.push_back(perfCpu.gator_cpu);
                 }
                 CpuInfo cpuInfo {std::move(ids), std::move(clusters), modelName, disableCpuOnlining};
+
+                // build the uncorepmus list
+                std::vector<UncorePmu> uncorePmus;
+                for (const auto & uncore : configuration->uncores) {
+                    uncorePmus.push_back(uncore.uncore_pmu);
+                }
+
                 return std::unique_ptr<PrimarySourceProvider> {new PerfPrimarySource(std::move(*configuration),
                                                                                      std::move(pmuXml),
                                                                                      maliFamilyName,
                                                                                      std::move(cpuInfo),
+                                                                                     std::move(uncorePmus),
                                                                                      traceFsConstants,
                                                                                      disableKernelAnnotations)};
             }
@@ -150,34 +156,36 @@ namespace {
             return nullptr;
         }
 
-        virtual const char * getCaptureXmlTypeValue() const override { return "Perf"; }
+        const char * getCaptureXmlTypeValue() const override { return "Perf"; }
 
-        virtual const char * getBacktraceProcessingMode() const override { return "perf"; }
+        const char * getBacktraceProcessingMode() const override { return "perf"; }
 
-        virtual bool supportsTracepointCapture() const override { return true; }
+        bool supportsTracepointCapture() const override { return true; }
 
-        virtual bool supportsMultiEbs() const override { return true; }
+        bool supportsMultiEbs() const override { return true; }
 
-        virtual const char * getPrepareFailedMessage() const override
+        const char * getPrepareFailedMessage() const override
         {
             return "Unable to communicate with the perf API, please ensure that CONFIG_TRACING and "
                    "CONFIG_CONTEXT_SWITCH_TRACER are enabled. Please refer to streamline/gator/README.md for more "
                    "information.";
         }
 
-        virtual const Driver & getPrimaryDriver() const override { return driver; }
+        const Driver & getPrimaryDriver() const override { return driver; }
 
-        virtual Driver & getPrimaryDriver() override { return driver; }
+        Driver & getPrimaryDriver() override { return driver; }
 
-        virtual const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
+        const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
 
-        virtual ICpuInfo & getCpuInfo() override { return cpuInfo; }
+        ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
-        virtual std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
-                                                                   std::function<void()> profilingStartedCallback,
-                                                                   const std::set<int> & appTids,
-                                                                   FtraceDriver & ftraceDriver,
-                                                                   bool enableOnCommandExec) override
+        lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return uncorePmus; }
+
+        std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
+                                                           std::function<void()> profilingStartedCallback,
+                                                           const std::set<int> & appTids,
+                                                           FtraceDriver & ftraceDriver,
+                                                           bool enableOnCommandExec) override
         {
             auto source = std::unique_ptr<PerfSource>(new PerfSource(driver,
                                                                      senderSem,
@@ -203,6 +211,7 @@ namespace {
                           PmuXML && pmuXml,
                           const char * maliFamilyName,
                           CpuInfo && cpuInfo,
+                          std::vector<UncorePmu> uncorePmus,
                           const TraceFsConstants & traceFsConstants,
                           bool disableKernelAnnotations)
             : PrimarySourceProvider(createPolledDrivers()),
@@ -212,12 +221,14 @@ namespace {
                      maliFamilyName,
                      this->cpuInfo,
                      traceFsConstants,
-                     disableKernelAnnotations)
+                     disableKernelAnnotations),
+              uncorePmus(std::move(uncorePmus))
         {
         }
 
         CpuInfo cpuInfo;
         PerfDriver driver;
+        std::vector<UncorePmu> uncorePmus;
     };
 #endif /* CONFIG_SUPPORT_PERF */
 
@@ -268,36 +279,35 @@ namespace {
                                          {std::move(ids), std::move(clusters), modelName, disableCpuOnlining}));
         }
 
-        virtual const char * getCaptureXmlTypeValue() const override
+        const char * getCaptureXmlTypeValue() const override
         {
             // Sends data in gator format
             return "Gator";
         }
 
-        virtual const char * getBacktraceProcessingMode() const override { return "none"; }
+        const char * getBacktraceProcessingMode() const override { return "none"; }
 
-        virtual bool supportsTracepointCapture() const override { return true; }
+        bool supportsTracepointCapture() const override { return true; }
 
-        virtual bool supportsMultiEbs() const override { return false; }
+        bool supportsMultiEbs() const override { return false; }
 
-        virtual const char * getPrepareFailedMessage() const override
-        {
-            return "Could not initialize /proc data capture";
-        }
+        const char * getPrepareFailedMessage() const override { return "Could not initialize /proc data capture"; }
 
-        virtual const Driver & getPrimaryDriver() const override { return driver; }
+        const Driver & getPrimaryDriver() const override { return driver; }
 
-        virtual Driver & getPrimaryDriver() override { return driver; }
+        Driver & getPrimaryDriver() override { return driver; }
 
-        virtual const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
+        const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
 
-        virtual ICpuInfo & getCpuInfo() override { return cpuInfo; }
+        ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
-        virtual std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
-                                                                   std::function<void()> profilingStartedCallback,
-                                                                   const std::set<int> & /*appTids*/,
-                                                                   FtraceDriver & /*ftraceDriver*/,
-                                                                   bool /*enableOnCommandExec*/) override
+        lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return {}; }
+
+        std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
+                                                           std::function<void()> profilingStartedCallback,
+                                                           const std::set<int> & /*appTids*/,
+                                                           FtraceDriver & /*ftraceDriver*/,
+                                                           bool /*enableOnCommandExec*/) override
         {
             return std::unique_ptr<PrimarySource>(
                 new non_root::NonRootSource(driver, senderSem, profilingStartedCallback, cpuInfo));
@@ -350,8 +360,9 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
     const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, ids.getCpuIds());
-    const char * modelNameToUse =
-        !modelName.empty() ? modelName.c_str() : !hardwareName.empty() ? hardwareName.c_str() : CORE_NAME_UNKNOWN;
+    const char * modelNameToUse = !modelName.empty()      ? modelName.c_str()
+                                  : !hardwareName.empty() ? hardwareName.c_str()
+                                                          : CORE_NAME_UNKNOWN;
     std::unique_ptr<PrimarySourceProvider> result;
 
     // Verify root permissions

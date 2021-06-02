@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXML.h"
 
@@ -13,7 +13,8 @@
 
 namespace events_xml {
 
-    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getStaticTree(lib::Span<const GatorCpu> clusters)
+    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getStaticTree(lib::Span<const GatorCpu> clusters,
+                                                                        lib::Span<const UncorePmu> uncores)
     {
 #include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
         mxml_unique_ptr mainXml = makeMxmlUniquePtr(nullptr);
@@ -57,14 +58,15 @@ namespace events_xml {
         }
 
         // inject additional counter sets
-        processClusters(mainXml.get(), clusters);
+        processClusters(mainXml.get(), clusters, uncores);
         return mainXml;
     }
 
     static std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getDynamicTree(lib::Span<const Driver * const> drivers,
-                                                                                lib::Span<const GatorCpu> clusters)
+                                                                                lib::Span<const GatorCpu> clusters,
+                                                                                lib::Span<const UncorePmu> uncores)
     {
-        auto xml = getStaticTree(clusters);
+        auto xml = getStaticTree(clusters, uncores);
         // Add dynamic events from the drivers
         mxml_node_t * events = getEventsElement(xml.get());
         if (events == nullptr) {
@@ -82,18 +84,20 @@ namespace events_xml {
     }
 
     std::unique_ptr<char, void (*)(void *)> getDynamicXML(lib::Span<const Driver * const> drivers,
-                                                          lib::Span<const GatorCpu> clusters)
+                                                          lib::Span<const GatorCpu> clusters,
+                                                          lib::Span<const UncorePmu> uncores)
     {
-        const auto xml = getDynamicTree(drivers, clusters);
+        const auto xml = getDynamicTree(drivers, clusters, uncores);
         return {mxmlSaveAllocString(xml.get(), mxmlWhitespaceCB), &free};
     }
 
     std::map<std::string, EventCode> getCounterToEventMap(lib::Span<const Driver * const> drivers,
-                                                          lib::Span<const GatorCpu> clusters)
+                                                          lib::Span<const GatorCpu> clusters,
+                                                          lib::Span<const UncorePmu> uncores)
     {
         std::map<std::string, EventCode> counterToEventMap {};
 
-        auto xml = events_xml::getDynamicTree(drivers, clusters);
+        auto xml = events_xml::getDynamicTree(drivers, clusters, uncores);
 
         // build map of counter->event
         mxml_node_t * node = xml.get();
@@ -119,14 +123,17 @@ namespace events_xml {
         return counterToEventMap;
     }
 
-    void write(const char * path, lib::Span<const Driver * const> drivers, lib::Span<const GatorCpu> clusters)
+    void write(const char * path,
+               lib::Span<const Driver * const> drivers,
+               lib::Span<const GatorCpu> clusters,
+               lib::Span<const UncorePmu> uncores)
     {
         char file[PATH_MAX];
 
         // Set full path
         snprintf(file, PATH_MAX, "%s/events.xml", path);
 
-        if (writeToDisk(file, getDynamicXML(drivers, clusters).get()) < 0) {
+        if (writeToDisk(file, getDynamicXML(drivers, clusters, uncores).get()) < 0) {
             logg.logError("Error writing %s\nPlease verify the path.", file);
             handleException();
         }

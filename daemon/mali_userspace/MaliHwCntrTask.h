@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIHWCNTRTASK_H_
 #define MALI_USERSPACE_MALIHWCNTRTASK_H_
@@ -26,7 +26,10 @@ namespace mali_userspace {
                        IMaliDeviceCounterDumpCallback & callback,
                        IMaliHwCntrReader & reader,
                        const std::map<CounterKey, int64_t> & constants);
-        void execute(int sampleRate, bool isOneShot, std::uint64_t monotonicStart, std::function<void()> endSession);
+        void execute(int sampleRate,
+                     bool isOneShot,
+                     std::uint64_t monotonicStart,
+                     const std::function<void()> & endSession);
         bool write(ISender & sender);
 
     private:

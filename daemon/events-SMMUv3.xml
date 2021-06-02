@@ -1,0 +1,12 @@
+<!-- Copyright (c) 2021, Arm Limited -->
+<counter_set name="SMMUv3_cnt" count="8"/>
+<category name="System MMU v3" counter_set="SMMUv3_cnt" per_cpu="no">
+    <event event="0x00" title="SMMUv3 (Clock)" name="Cycles" description="Cycle counter" display="hertz" units="Hz" />
+    <event event="0x01" title="SMMUv3 (Transactions/Requests)" name="All" description="For a component processing client device transactions, this event counts once for each transaction. For a component performing translation services, this event counts once for each translation request received from another component. This event includes transactions or translation requests that lead to TLB or cache misses." />
+    <event event="0x02" title="SMMUv3 (Transactions/Requests)" name="TLB Misses" description="This event is counted once when translation for an incoming transaction or translation request cannot be satisfied from internal TLB caching, and depends on a translation table access procedure or translation request to a different component." />
+    <event event="0x03" title="SMMUv3 (Transactions/Requests)" name="Config Cache Misses" description="This event is counted once when translation for an incoming transaction or translation request cannot be satisfied from internal configuration caching, and depends on a configuration table access procedure or request to a different component that that provides configuration structure access services." />
+    <event event="0x04" title="SMMUv3 (External Accesses)" name="Translation Table Walk" description="External transactions performed by a translation table walker, including accesses performed speculatively." />
+    <event event="0x05" title="SMMUv3 (External Accesses)" name="Configuration Struction" description="External transactions performed by a configuration table walker, including accesses performed speculatively." />
+    <event event="0x06" title="SMMUv3 (PCIe ATS)" name="Translation Requests Received" description="Counts the number received, independent of success/failure of response." />
+    <event event="0x07" title="SMMUv3 (PCIe ATS)" name="Translated Transactions passed through SMMU" description="Counts ATS Translated transactions that were received by the component. This event includes both ATS Translated transactions subject to further Stage 2 translation because EATS=0b10, whether TLB/cache misses occurred or not, and those that bypass translation." />
+</category>

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTDRIVER_H
 #define INCLUDE_NON_ROOT_NONROOTDRIVER_H
@@ -18,8 +18,8 @@ namespace non_root {
     public:
         NonRootDriver(PmuXML && pmuXml, lib::Span<const GatorCpu> clusters);
 
-        virtual void readEvents(mxml_node_t * const /*unused*/) override;
-        virtual void writeEvents(mxml_node_t * const /*unused*/) const override;
+        void readEvents(mxml_node_t * const /*unused*/) override;
+        void writeEvents(mxml_node_t * const /*unused*/) const override;
 
         std::map<NonRootCounter, int> getEnabledCounters() const;
 

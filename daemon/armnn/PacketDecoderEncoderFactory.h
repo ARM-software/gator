@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef ARMNN_PACKETDECODERENCODERFACTORY_H_
 #define ARMNN_PACKETDECODERENCODERFACTORY_H_
@@ -29,7 +29,6 @@ namespace armnn {
 
     /**
      * Create decoders based on PacketVersionTable
-     *
      */
     std::unique_ptr<IPacketDecoder> createDecoder(const std::vector<PacketVersionTable> & pktVersionTable,
                                                   ByteOrder order,

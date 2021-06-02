@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/DriverSourceIpc.h"
 
@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace armnn {
@@ -187,7 +188,7 @@ namespace armnn {
 
     bool ParentToChildCounterConsumer::readMessage(ICounterConsumer & destination,
                                                    bool isOneShot,
-                                                   std::function<unsigned int()> getBufferBytesAvailable)
+                                                   const std::function<unsigned int()> & getBufferBytesAvailable)
     {
         uint8_t msgtype[1] {0};
         bool result = mToChild.readAll(msgtype);
@@ -247,7 +248,7 @@ namespace armnn {
 
     bool ParentToChildCounterConsumer::readPacket(ICounterConsumer & destination,
                                                   bool isOneShot,
-                                                  std::function<unsigned int()> getBufferBytesAvailable)
+                                                  const std::function<unsigned int()> & getBufferBytesAvailable)
     {
         TimelineHeader header {};
         if (!mToChild.readAll(asBytes(header))) {

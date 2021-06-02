@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_POPEN_H
 #define INCLUDE_LIB_POPEN_H
@@ -36,7 +36,6 @@ namespace lib {
     /**
      * Waits for a command to exit
      *
-     * @param command
      * @return the exit status from waitpid (positive)
      * or negative errno (result.pid) if result is invalid
      * or INT_MIN if child has already been waited

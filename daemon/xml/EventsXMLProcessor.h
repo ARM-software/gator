@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef EVENTS_XML_PROCESSOR_H
 #define EVENTS_XML_PROCESSOR_H
@@ -6,12 +6,14 @@
 #include "Events.h"
 #include "lib/Optional.h"
 #include "lib/Span.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
 #include "xml/MxmlUtils.h"
 
 #include <memory>
 #include <tuple>
 
 class GatorCpu;
+class UncorePmu;
 
 namespace events_xml {
     /**
@@ -25,15 +27,11 @@ namespace events_xml {
 
     /**
      * Inject dynamic counter sets based on detected clusters
-     *
-     * @param xml
-     * @param clusters
      */
-    void processClusters(mxml_node_t * xml, lib::Span<const GatorCpu> clusters);
+    void processClusters(mxml_node_t * xml, lib::Span<const GatorCpu> clusters, lib::Span<const UncorePmu> uncores);
 
     /**
      * Get the events element
-     * @param xml
      * @return The element
      */
     mxml_node_t * getEventsElement(mxml_node_t * xml);

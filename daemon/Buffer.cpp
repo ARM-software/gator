@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "Buffer.h"
 
@@ -105,7 +105,7 @@ int Buffer::bytesAvailable() const
 
 void Buffer::waitForSpace(int bytes)
 {
-    if (bytes > mSize) {
+    if (!supportsWriteOfSize(bytes)) {
         logg.logError("Buffer not big enough, %d but need %d", mSize, bytes);
         handleException();
     }
@@ -113,6 +113,11 @@ void Buffer::waitForSpace(int bytes)
     while (bytesAvailable() < bytes) {
         sem_wait(&mWriterSem);
     }
+}
+
+bool Buffer::supportsWriteOfSize(int bytes) const
+{
+    return (bytes <= mSize);
 }
 
 int Buffer::contiguousSpaceAvailable() const

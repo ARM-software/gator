@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_IMALIHWCNTRREADER_H_
 #define MALI_USERSPACE_IMALIHWCNTRREADER_H_
@@ -73,11 +73,10 @@ namespace mali_userspace {
          * In the case of timeout, the sample buffer will have its data pointer set to nullptr.
          * In this case remaining members of sample buffer structure shall be considered invalid.
          *
-         * @param   timeout Number of milliseconds function shall wait for sample buffer.
+         * @param timeout Number of milliseconds function shall wait for sample buffer.
          *                  Specifying negative value means infinite wait. If zero function
          *                  will return immediately.
          * @return SampleBuffer which is a struct with informations about the buffer as well as the wait status
-         *
          * WAIT_STATUS_ERROR       The wait failed due to error
          * WAIT_STATUS_SUCCES      The wait succeeded and buffer contains data (but may not be valid if timeout == 0)
          * WAIT_STATUS_TERMINATED  The wait ended as the connection was terminated
@@ -92,12 +91,11 @@ namespace mali_userspace {
          * completed. Periodic dumping will continue until this function is called again
          * with interval set to zero or until hwcnt reader is terminated.
          *
-         * @param   interval    Interval at which hardware counters shall be sampled (in nanoseconds).
+         * @param interval Interval at which hardware counters shall be sampled (in nanoseconds).
          *                      If zero, periodic sampling will be stopped.
          *
          * @retval  true    Success
          * @retval  false   Failure
-         *
          * @note In the case value of @p interval is lower then sampling resolution supported
          *       by hwcnt reader, the sampling interval will be set to the value of sampling resolution.
          *       User shall make no assumptions about the actual interval between samples and shall

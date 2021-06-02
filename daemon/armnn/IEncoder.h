@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -12,8 +12,8 @@ namespace armnn {
         virtual ~IEncoder() = default;
 
         /**
-         * @param - period  - representing the rate at which periodic sampling is performed in microsecond
-         * @param - eventUids, list of event uids
+         * @param period representing the rate at which periodic sampling is performed in microsecond
+         * @param eventUids list of event uids
          * if eventUids is empty and disable collection packet bytes are generated
          * @return - return header for the request
          */
@@ -22,8 +22,8 @@ namespace armnn {
             const std::set<std::uint16_t> & eventUids) = 0;
 
         /**
-         * @param - objectId - representing the ID of the object that the job is associated with.
-         * @param - eventUids, list of event uids
+         * @param objectId representing the ID of the object that the job is associated with.
+         * @param eventUids list of event uids
          * if eventUids is empty and disable collection packet bytes are generated
          * @return - return header for the request
          */

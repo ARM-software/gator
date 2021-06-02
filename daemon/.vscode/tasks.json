@@ -1,0 +1,15 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build gatord using Make",
+            "type": "shell",
+            "command": "make -j4 OBJ_DIR=target/makefile-build/",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}

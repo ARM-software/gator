@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_WAITER_H
 #define INCLUDE_LIB_WAITER_H
@@ -21,7 +21,6 @@ namespace lib {
         /**
          * Waits until a specific time or this is disabled
          *
-         * @param timeout_time
          * @return true if waited till the specific time, false if disabled
          */
         template<class Clock, class Duration>
@@ -34,7 +33,6 @@ namespace lib {
         /**
          * Waits for a specific time or until this is disabled
          *
-         * @param timeout_duration
          * @return true if waited for the specific time, false if disabled
          */
         template<class Rep, class Period>

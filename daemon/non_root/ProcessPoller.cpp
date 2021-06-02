@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessPoller.h"
 
@@ -12,11 +12,11 @@ namespace non_root {
             {
             }
 
-            virtual void onThreadDetails(int pid,
-                                         int tid,
-                                         const lnx::ProcPidStatFileRecord & statRecord,
-                                         const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                         const lib::Optional<lib::FsEntry> & exe) override
+            void onThreadDetails(int pid,
+                                 int tid,
+                                 const lnx::ProcPidStatFileRecord & statRecord,
+                                 const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                                 const lib::Optional<lib::FsEntry> & exe) override
             {
                 activeScan.addProcess(pid, tid, statRecord, statmRecord, exe);
             }

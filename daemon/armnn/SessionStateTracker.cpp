@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/SessionStateTracker.h"
 
@@ -71,7 +71,7 @@ namespace armnn {
           activeEventUIDs(),
           captureIsActive(false),
           sessionID {sessionID},
-          streamMetadata {streamMetadata}
+          streamMetadata {std::move(streamMetadata)}
     {
     }
 

@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2011-2021 by Arm Limited. All rights reserved. -->
 
 <counter_set count="2" name="ARMv7_Cortex_A5_cnt"/>
 <category counter_set="ARMv7_Cortex_A5_cnt" name="Cortex-A5" per_cpu="yes" supports_event_based_sampling="yes">
@@ -19,7 +19,7 @@
     <event event="0x0d" title="Instructions (Executed)" name="Branch (Immediate)" description="The counter counts all immediate branch instructions that are architecturally executed." units="instructions"/>
     <event event="0x0e" title="Instructions (Executed)" name="Branch (Return)" description="The counter counts all procedure return instructions that are architecturally executed." units="instructions"/>
     <event event="0x0f" title="Instructions (Executed)" name="Unaligned Load/Store" description="The counter counts each memory-reading instruction or memory-writing instruction that accesses an unaligned address." units="instructions"/>
-    <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, the branch prediction resources and that relates to instructions that the branch prediction resources are capable of predicting."/>
+    <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, a change in control flow that the branch prediction resources are capable of predicting."/>
     <event event="0x12" title="Branch Predictor" name="Possible Predictions" description="The counter counts every branch or other change in the program flow that the branch prediction resources are capable of predicting."/>
     <event event="0x13" title="Memory" name="Access" description="The counter counts memory-read or memory-write operations that the processor made. The counter increments whether the access results in an access to a Level 1 data or unified cache, a Level 2 data or unified cache, or neither of these."/>
     <event event="0x14" title="L1 Instruction Cache" name="Access" description="The counter counts instruction memory accesses that access at least the Level 1 instruction or unified cache. Each access to other Level 1 instruction memory structures, such as refill buffers, is also counted."/>

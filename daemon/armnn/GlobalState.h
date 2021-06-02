@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Events.h"
@@ -28,13 +28,13 @@ namespace armnn {
         // multithread safe
 
         /** @return A map from global event id to APC counter key */
-        virtual EventKeyMap getRequestedCounters() const override;
+        EventKeyMap getRequestedCounters() const override;
         /** @return The requested capture mode */
-        virtual CaptureMode getCaptureMode() const override;
+        CaptureMode getCaptureMode() const override;
         /** @return The requested sample period in microseconds */
-        virtual std::uint32_t getSamplePeriod() const override;
+        std::uint32_t getSamplePeriod() const override;
 
-        virtual void addEvents(std::vector<std::tuple<EventId, EventProperties>> /*unused*/) override;
+        void addEvents(std::vector<std::tuple<EventId, EventProperties>> /*unused*/) override;
 
         // not multithread safe (but it doesn't matter because they're all called by
         // the main thread of gator child before capture sessions are started)

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef CPU_UTILS_H
 #define CPU_UTILS_H
@@ -11,8 +11,6 @@ namespace cpu_utils {
     unsigned int getMaxCoreNum();
 
     /**
-     *
-     * @param cpuIds
      * @return hardware name if found or empty
      */
     std::string readCpuInfo(bool ignoreOffline, lib::Span<int> cpuIds);

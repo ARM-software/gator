@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICEAPI_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICEAPI_H_
@@ -21,7 +21,6 @@ namespace mali_userspace {
          * For a given device driver path, probe the device and return an appropriate implementation
          * of the interface, or return nullptr if the device path is invalid / not supported
          *
-         * @param devMaliPath
          * @return The object implementing this interface that is appropriate for the device, or nullptr
          */
         static std::unique_ptr<IMaliDeviceApi> probe(const char * devMaliPath);
@@ -31,11 +30,6 @@ namespace mali_userspace {
         /**
          * Create an HWCNT reader handle (which is a file-descriptor, for use by MaliHwCntrReader)
          *
-         * @param bufferCount
-         * @param jmBitmask
-         * @param shaderBitmask
-         * @param tilerBitmask
-         * @param mmuL2Bitmask
          * @param failedDueToBufferCount [OUT] indicates the the creation likely failed due to buffer
          *          count being invalid
          * @return The handle, or invalid handle if failed

@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "MaliHwCntrTask.h"
 
@@ -30,7 +30,7 @@ namespace mali_userspace {
     void MaliHwCntrTask::execute(int sampleRate,
                                  bool isOneShot,
                                  std::uint64_t monotonicStarted,
-                                 std::function<void()> endSession)
+                                 const std::function<void()> & endSession)
     {
         bool terminated = false;
         // set sample interval, if sample rate == 0, then sample at 100Hz as currently the job dumping based sampling does not work... (driver issue?)

@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
@@ -30,11 +30,6 @@ namespace mali_userspace {
 
         /**
          * Receive the next counter value
-         *
-         * @param nameBlockIndex
-         * @param counterIndex
-         * @param delta
-         * @param gpuId
          */
         virtual void nextCounterValue(uint32_t nameBlockIndex,
                                       uint32_t counterIndex,
@@ -45,9 +40,6 @@ namespace mali_userspace {
         /**
          * Used to check if the user selected the counter in the config dialog when building the fast lookup list
          *
-         * @param nameBlockIndex
-         * @param counterIndex
-         * @param gpuId
          * @return True if the user selected the counter, false otherwise
          */
         virtual bool isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const = 0;
@@ -69,10 +61,6 @@ namespace mali_userspace {
 
         /**
              * Constructor
-             *
-             * @param numBlocks
-             * @param numGroups
-             * @param numWords
              */
         MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords);
         MaliDeviceCounterList(MaliDeviceCounterList &&) noexcept;
@@ -99,11 +87,6 @@ namespace mali_userspace {
 
         /**
              * Mark counter at particular address as enabled
-             *
-             * @param nameBlockIndex
-             * @param repeatCount
-             * @param groupIndex
-             * @param wordIndex
              */
         void enable(MaliCounterBlockName nameBlock, uint32_t repeatCount, uint32_t groupIndex, uint32_t wordIndex);
 
@@ -130,7 +113,6 @@ namespace mali_userspace {
         /**
          * Factory method, returns a pointer to a heap allocated object which the caller must take ownership of.
          *
-         * @param deviceApi
          * @param clockPath (Which may be empty meaning no clock)
          * @return The MaliDevice object, or nullptr on failure
          */
@@ -177,8 +159,6 @@ namespace mali_userspace {
         /**
          * Get the name of the counter for the given block and index
          *
-         * @param nameBlockIndex
-         * @param counterIndex
          * @return The name of the counter, or nullptr if invalid combination of indexes
          */
         const char * getCounterName(uint32_t nameBlockIndex, uint32_t counterIndex) const;
@@ -186,19 +166,12 @@ namespace mali_userspace {
         /**
          * Create the active counter list
          *
-         * @param callback
          * @return The list of active counters
          */
         MaliDeviceCounterList createCounterList(IMaliDeviceCounterDumpCallback & callback) const;
 
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
-         *
-         * @param hardwareVersion
-         * @param counterList
-         * @param buffer
-         * @param bufferLength
-         * @param callback
          */
         void dumpAllCounters(uint32_t hardwareVersion,
                              const MaliDeviceCounterList & counterList,
@@ -210,11 +183,6 @@ namespace mali_userspace {
         /**
          * Create an HWCNT reader handle (which is a file-descriptor, for use by MaliHwCntrReader)
          *
-         * @param bufferCount
-         * @param jmBitmask
-         * @param shaderBitmask
-         * @param tilerBitmask
-         * @param mmuL2Bitmask
          * @param failedDueToBufferCount [OUT] indicates the the creation likely failed due to buffer
          *          count being invalid
          * @return The handle, or invalid handle if failed
@@ -264,11 +232,6 @@ namespace mali_userspace {
 
         /**
          * Dump all the counter data on V4 layout
-         *
-         * @param counterList
-         * @param buffer
-         * @param bufferLength
-         * @param callback
          */
         void dumpAllCounters_V4(const MaliDeviceCounterList & counterList,
                                 const uint32_t * buffer,
@@ -278,11 +241,6 @@ namespace mali_userspace {
 
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
-         *
-         * @param counterList
-         * @param buffer
-         * @param bufferLength
-         * @param callback
          */
         void dumpAllCounters_V56(const MaliDeviceCounterList & counterList,
                                  const uint32_t * buffer,
@@ -294,7 +252,6 @@ namespace mali_userspace {
     /**
      * Map a product id to a product name string
      *
-     * @param productId
      * @return The product name string, or null if not recognized
      */
     const char * findMaliProductNameFromId(uint32_t productId);

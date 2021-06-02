@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVERCOUNTER_H_
 #define MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVERCOUNTER_H_
@@ -14,9 +14,9 @@ namespace mali_userspace {
             : DriverCounter(next, name), mValue(value)
         {
         }
-        ~MaliGPUClockPolledDriverCounter() = default;
+        ~MaliGPUClockPolledDriverCounter() override = default;
 
-        int64_t read() { return mValue; }
+        int64_t read() override { return mValue; }
 
     private:
         uint64_t & mValue;

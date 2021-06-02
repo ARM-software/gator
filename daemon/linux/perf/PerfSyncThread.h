@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERFSYNCTHREAD_H
 #define INCLUDE_LINUX_PERF_PERFSYNCTHREAD_H
@@ -23,10 +23,8 @@ public:
 
     /**
      * Constructor
-     *
      * @param enableSyncThreadMode True to enable 'gatord-sync' thread mode
      * @param readTimer True to read the arch timer, false otherwise
-     * @param monotonicRawBase The base CLOCK_MONOTONIC_RAW considered zero
      * @param consumerFunction The data consumer function
      */
     PerfSyncThread(bool enableSyncThreadMode, bool readTimer, ConsumerFunction consumerFunction);

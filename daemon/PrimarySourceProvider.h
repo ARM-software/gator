@@ -3,6 +3,9 @@
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
 
+#include "lib/Span.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
+
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -15,8 +18,9 @@ class Driver;
 class PolledDriver;
 class FtraceDriver;
 class PrimarySource;
-struct PmuXML;
 class ICpuInfo;
+class UncorePmu;
+struct PmuXML;
 struct TraceFsConstants;
 
 /**
@@ -73,6 +77,8 @@ public:
 
     virtual const ICpuInfo & getCpuInfo() const = 0;
     virtual ICpuInfo & getCpuInfo() = 0;
+
+    virtual lib::Span<const UncorePmu> getDetectedUncorePmus() const = 0;
 
 protected:
     PrimarySourceProvider(std::vector<PolledDriver *> polledDrivers);

@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2019-2020 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2019-2021 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Neoverse_N1_cnt"/>
 <category counter_set="ARMv8_Neoverse_N1_cnt" name="Neoverse-N1" per_cpu="yes" supports_event_based_sampling="yes">
@@ -13,7 +13,7 @@
     <event event="0x09" title="Exceptions" name="Taken" description="The counter increments for each exception taken." units="exceptions"/>
     <event event="0x0a" title="Instructions (Executed)" name="Exception Returns" description="The counter increments for each executed exception return instruction." units="instructions"/>
     <event event="0x0b" title="Instructions (Executed)" name="Write to CONTEXTIDR" description="The counter increments for every write to the CONTEXTIDR." units="instructions"/>
-    <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, the branch prediction resources and that relates to instructions that the branch prediction resources are capable of predicting."/>
+    <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, a change in control flow that the branch prediction resources are capable of predicting."/>
     <event event="0x12" title="Branch Predictor" name="Possible Predictions" description="The counter counts every branch or other change in the program flow that the branch prediction resources are capable of predicting."/>
     <event event="0x13" title="Memory" name="Access" description="The counter counts memory read operations and memory write operations that the PE made. The counter increments whether the access results in an access to a Level 1 data or unified cache, a Level 2 data or unified cache, or neither of these."/>
     <event event="0x14" title="L1 Instruction Cache" name="Access" description="The counter counts attributable instruction memory accesses that access at least the Level 1 instruction or unified cache. Each access to other Level 1 instruction memory structures, such as refill buffers, is also counted."/>
