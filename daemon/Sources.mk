@@ -147,5 +147,4 @@ GATORD_CXX_SRC_FILES := \
     xml/EventsXMLProcessor.cpp \
     xml/MxmlUtils.cpp \
     xml/PmuXML.cpp \
-    xml/PmuXMLParser.cpp \
-    xml/PmuXMLParser.h
+    xml/PmuXMLParser.cpp
