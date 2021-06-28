@@ -6,7 +6,7 @@ The source code for `gatord`, `gator.py` and related tools.
 
 * `daemon`, `python`, and `notify` are provided under GPL-2.0-only. See
    [daemon/COPYING], [python/COPYING], and [notify/COPYING] respectively.
-* `annotate` is provided under the BSD-3-Clause license. See [annotate/LICENSE].
+* `annotate`, and `gator_me.py` is provided under the BSD-3-Clause license. See [annotate/LICENSE].
 
 This project contains code from other projects listed below. The original license
 text is included in those source files.
