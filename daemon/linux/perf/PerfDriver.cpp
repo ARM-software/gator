@@ -63,7 +63,7 @@
 #define SET_SPE_CFG(cfg, value) SPE_##cfg##_CFG |= static_cast<uint64_t>(value) << SPE_##cfg##_LO
 
 static constexpr uint64_t armv7AndLaterClockCyclesEvent = 0x11;
-static constexpr uint64_t armv7PmuDriverCycleCounterPsuedoEvent = 0xFF;
+static constexpr uint64_t armv7PmuDriverCycleCounterPseudoEvent = 0xFF;
 
 class PerfCounter : public DriverCounter {
 public:
@@ -102,6 +102,12 @@ public:
         attr.sampleType = sampleType;
     }
 
+    // Intentionally undefined
+    PerfCounter(const PerfCounter &) = delete;
+    PerfCounter & operator=(const PerfCounter &) = delete;
+    PerfCounter(PerfCounter &&) = delete;
+    PerfCounter & operator=(PerfCounter &&) = delete;
+
     using DriverCounter::read;
 
     virtual void read(IPerfAttrsConsumer & /*unused*/, const int /* cpu */, const GatorCpu * /* cluster */) {}
@@ -129,7 +135,7 @@ public:
         // that is different from the clock cycles event number.
         // https://github.com/torvalds/linux/blob/0adb32858b0bddf4ada5f364a84ed60b196dbcda/arch/arm/kernel/perf_event_v7.c#L1042
         if (mFixUpClockCyclesEvent && config == armv7AndLaterClockCyclesEvent) {
-            attr.config = armv7PmuDriverCycleCounterPsuedoEvent;
+            attr.config = armv7PmuDriverCycleCounterPseudoEvent;
         }
         else {
             attr.config = config;
@@ -148,12 +154,6 @@ private:
     const uint64_t mConfigId2;
     bool mFixUpClockCyclesEvent;
     bool mUsesAux;
-
-    // Intentionally undefined
-    PerfCounter(const PerfCounter &) = delete;
-    PerfCounter & operator=(const PerfCounter &) = delete;
-    PerfCounter(PerfCounter &&) = delete;
-    PerfCounter & operator=(PerfCounter &&) = delete;
 };
 
 class CPUFreqDriver : public PerfCounter {
@@ -162,6 +162,12 @@ public:
         : PerfCounter(next, PerfEventGroupIdentifier(cluster), name, PERF_TYPE_TRACEPOINT, id, PERF_SAMPLE_RAW, 1)
     {
     }
+
+    // Intentionally undefined
+    CPUFreqDriver(const CPUFreqDriver &) = delete;
+    CPUFreqDriver & operator=(const CPUFreqDriver &) = delete;
+    CPUFreqDriver(CPUFreqDriver &&) = delete;
+    CPUFreqDriver & operator=(CPUFreqDriver &&) = delete;
 
     void read(IPerfAttrsConsumer & attrsConsumer, const int cpu, const GatorCpu * cluster) override
     {
@@ -178,13 +184,6 @@ public:
         }
         attrsConsumer.perfCounter(cpu, getKey(), 1000 * freq);
     }
-
-private:
-    // Intentionally undefined
-    CPUFreqDriver(const CPUFreqDriver &) = delete;
-    CPUFreqDriver & operator=(const CPUFreqDriver &) = delete;
-    CPUFreqDriver(CPUFreqDriver &&) = delete;
-    CPUFreqDriver & operator=(CPUFreqDriver &&) = delete;
 };
 
 template<typename T>
@@ -428,6 +427,12 @@ public:
     {
     }
 
+    // Intentionally undefined
+    PerfTracepoint(const PerfTracepoint &) = delete;
+    PerfTracepoint & operator=(const PerfTracepoint &) = delete;
+    PerfTracepoint(PerfTracepoint &&) = delete;
+    PerfTracepoint & operator=(PerfTracepoint &&) = delete;
+
     PerfTracepoint * getNext() const { return mNext; }
     const DriverCounter * getCounter() const { return mCounter; }
     const char * getTracepoint() const { return mTracepoint.c_str(); }
@@ -436,12 +441,6 @@ private:
     PerfTracepoint * const mNext;
     const DriverCounter * const mCounter;
     const std::string mTracepoint;
-
-    // Intentionally undefined
-    PerfTracepoint(const PerfTracepoint &) = delete;
-    PerfTracepoint & operator=(const PerfTracepoint &) = delete;
-    PerfTracepoint(PerfTracepoint &&) = delete;
-    PerfTracepoint & operator=(PerfTracepoint &&) = delete;
 };
 
 PerfDriver::~PerfDriver()
@@ -772,9 +771,6 @@ void PerfDriver::setupCounter(Counter & counter)
     if (counter.getCount() > 0) {
         // EBS
         perfCounter->setCount(counter.getCount());
-    }
-    else {
-        perfCounter->setCount(0);
     }
     perfCounter->setEnabled(true);
     counter.setKey(perfCounter->getKey());

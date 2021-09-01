@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef EXTERNALDRIVER_H
 #define EXTERNALDRIVER_H
@@ -8,6 +8,12 @@
 class ExternalDriver : public SimpleDriver {
 public:
     ExternalDriver();
+
+    // Intentionally unimplemented
+    ExternalDriver(const ExternalDriver &) = delete;
+    ExternalDriver & operator=(const ExternalDriver &) = delete;
+    ExternalDriver(ExternalDriver &&) = delete;
+    ExternalDriver & operator=(ExternalDriver &&) = delete;
 
     bool claimCounter(Counter & counter) const override;
     void resetCounters() override;
@@ -26,12 +32,6 @@ private:
     mutable int mUds;
     mutable bool mQueried;
     bool mStarted;
-
-    // Intentionally unimplemented
-    ExternalDriver(const ExternalDriver &) = delete;
-    ExternalDriver & operator=(const ExternalDriver &) = delete;
-    ExternalDriver(ExternalDriver &&) = delete;
-    ExternalDriver & operator=(ExternalDriver &&) = delete;
 };
 
 #endif // EXTERNALDRIVER_H

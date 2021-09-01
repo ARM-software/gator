@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/TimestampCorrector.h"
 
@@ -27,10 +27,8 @@ namespace armnn {
                                                    keyAndCore.key,
                                                    counterValue);
         }
-        else {
-            // The value was successfully consumed but has been dropped because the timestamp was too early
-            return true;
-        }
+        // The value was successfully consumed but has been dropped because the timestamp was too early
+        return true;
     }
     bool TimestampCorrector::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
     {

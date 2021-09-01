@@ -25,6 +25,12 @@ public:
     PerfBuffer(Config config);
     ~PerfBuffer();
 
+    // Intentionally undefined
+    PerfBuffer(const PerfBuffer &) = delete;
+    PerfBuffer & operator=(const PerfBuffer &) = delete;
+    PerfBuffer(PerfBuffer &&) = delete;
+    PerfBuffer & operator=(PerfBuffer &&) = delete;
+
     bool useFd(int fd, int cpu, bool collectAuxTrace = false);
     void discard(int cpu);
     bool isFull();
@@ -43,15 +49,9 @@ private:
         int aux_fd;
     };
 
-    std::map<int, Buffer> mBuffers;
+    std::map<int, Buffer> mBuffers {};
     // After the buffer is flushed it should be unmapped
-    std::set<int> mDiscard;
-
-    // Intentionally undefined
-    PerfBuffer(const PerfBuffer &) = delete;
-    PerfBuffer & operator=(const PerfBuffer &) = delete;
-    PerfBuffer(PerfBuffer &&) = delete;
-    PerfBuffer & operator=(PerfBuffer &&) = delete;
+    std::set<int> mDiscard {};
 };
 
 /**

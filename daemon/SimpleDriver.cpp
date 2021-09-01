@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "SimpleDriver.h"
 
@@ -69,18 +69,16 @@ DriverCounter * SimpleDriver::findCounter(Counter & counter) const
             counter.setType(driverCounter->getName());
             break;
         }
-        else {
-            //to get the slot name when only part of the counter name is given
-            //for eg: ARMv8_Cortex_A53 --> should be read as ARMv8_Cortex_A53_cnt0
-            std::string driverCounterName = driverCounter->getName();
-            std::string counterType = counter.getType();
-            counterType = counterType + "_cnt";
-            driverCounterName = driverCounterName.substr(0, counterType.length());
-            if (strcasecmp(driverCounterName.c_str(), counterType.c_str()) == 0) {
-                dcounter = driverCounter;
-                counter.setType(driverCounter->getName());
-                break;
-            }
+        //to get the slot name when only part of the counter name is given
+        //for eg: ARMv8_Cortex_A53 --> should be read as ARMv8_Cortex_A53_cnt0
+        std::string driverCounterName = driverCounter->getName();
+        std::string counterType = counter.getType();
+        counterType = counterType + "_cnt";
+        driverCounterName = driverCounterName.substr(0, counterType.length());
+        if (strcasecmp(driverCounterName.c_str(), counterType.c_str()) == 0) {
+            dcounter = driverCounter;
+            counter.setType(driverCounter->getName());
+            break;
         }
     }
     return dcounter;

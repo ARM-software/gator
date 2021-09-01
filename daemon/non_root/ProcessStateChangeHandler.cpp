@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStateChangeHandler.h"
 
@@ -13,11 +13,9 @@ namespace non_root {
                                                          PerCoreMixedFrameBuffer & switchBuffers_,
                                                          const std::map<NonRootCounter, int> & enabledCounters_)
         : miscBuffer(miscBuffer_, {gSessionData.mLiveRate}),
-          cookies(),
           counterBuffer(counterBuffer_),
           switchBuffers(switchBuffers_),
-          enabledCounters(enabledCounters_),
-          cookieCounter(3)
+          enabledCounters(enabledCounters_)
     {
     }
 
@@ -110,24 +108,20 @@ namespace non_root {
         if (pid == 0) {
             return COOKIE_KERNEL;
         }
-        else if ((pid != tid) || (exe.empty() && comm.empty())) {
+        if ((pid != tid) || (exe.empty() && comm.empty())) {
             return COOKIE_UNKNOWN;
         }
-        else {
-            const std::string & nameToUse =
-                (!exe.empty() ? exe : comm); // assumes comm is the name of the exe, but the exe was deleted
-            const auto it = cookies.find(nameToUse);
+        const std::string & nameToUse =
+            (!exe.empty() ? exe : comm); // assumes comm is the name of the exe, but the exe was deleted
+        const auto it = cookies.find(nameToUse);
 
-            if (it != cookies.end()) {
-                return it->second;
-            }
-            else {
-                const int newCookie = cookieCounter++;
-                cookies[nameToUse] = newCookie;
-                miscBuffer.nameFrameCookieNameMessage(timestampNS, core, newCookie, nameToUse);
-                return newCookie;
-            }
+        if (it != cookies.end()) {
+            return it->second;
         }
+        const int newCookie = cookieCounter++;
+        cookies[nameToUse] = newCookie;
+        miscBuffer.nameFrameCookieNameMessage(timestampNS, core, newCookie, nameToUse);
+        return newCookie;
     }
 
     void ProcessStateChangeHandler::idle(unsigned long long timestampNS, unsigned long core)

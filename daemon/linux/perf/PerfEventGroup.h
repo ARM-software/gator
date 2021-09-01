@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
@@ -37,6 +37,7 @@ struct PerfEventGroupSharedConfig {
                                       int backtraceDepth,
                                       int sampleRate,
                                       bool enablePeriodicSampling,
+                                      bool excludeKernelEvents,
                                       lib::Span<const GatorCpu> clusters,
                                       lib::Span<const int> clusterIds,
                                       int64_t schedSwitchId)
@@ -49,6 +50,7 @@ struct PerfEventGroupSharedConfig {
           backtraceDepth(backtraceDepth),
           sampleRate(sampleRate),
           enablePeriodicSampling(enablePeriodicSampling),
+          excludeKernelEvents(excludeKernelEvents),
           clusters(clusters),
           clusterIds(clusterIds)
     {
@@ -64,6 +66,7 @@ struct PerfEventGroupSharedConfig {
     int backtraceDepth;
     int sampleRate;
     bool enablePeriodicSampling;
+    bool excludeKernelEvents;
     lib::Span<const GatorCpu> clusters;
     lib::Span<const int> clusterIds;
 };
@@ -71,6 +74,11 @@ struct PerfEventGroupSharedConfig {
 class PerfEventGroup {
 public:
     PerfEventGroup(const PerfEventGroupIdentifier & groupIdentifier, PerfEventGroupSharedConfig & sharedConfig);
+
+    PerfEventGroup(const PerfEventGroup &) = delete;
+    PerfEventGroup & operator=(const PerfEventGroup &) = delete;
+    PerfEventGroup(PerfEventGroup &&) = delete;
+    PerfEventGroup & operator=(PerfEventGroup &&) = delete;
 
     bool requiresLeader() const;
     bool hasLeader() const;
@@ -98,11 +106,6 @@ private:
         int key;
     };
 
-    PerfEventGroup(const PerfEventGroup &) = delete;
-    PerfEventGroup & operator=(const PerfEventGroup &) = delete;
-    PerfEventGroup(PerfEventGroup &&) = delete;
-    PerfEventGroup & operator=(PerfEventGroup &&) = delete;
-
     bool createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer);
     bool createUncoreGroupLeader(IPerfAttrsConsumer & attrsConsumer);
 
@@ -115,10 +118,10 @@ private:
     PerfEventGroupSharedConfig & sharedConfig;
 
     // list of events associated with the group, where the first must be the group leader
-    std::vector<PerfEvent> events;
+    std::vector<PerfEvent> events {};
 
     // map from cpu -> (map from mEvents index -> (map from tid -> file descriptor))
-    std::map<int, std::map<int, std::map<int, lib::AutoClosingFd>>> cpuToEventIndexToTidToFdMap;
+    std::map<int, std::map<int, std::map<int, lib::AutoClosingFd>>> cpuToEventIndexToTidToFdMap {};
 };
 
 #endif /* INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H */

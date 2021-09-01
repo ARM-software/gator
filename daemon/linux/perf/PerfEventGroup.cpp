@@ -76,30 +76,30 @@ namespace {
                                  const char * indentation,
                                  const char * separator)
     {
-        return (lib::Format() << indentation << "type: " << attr.type << " ("
-                              << (typeLabel != nullptr ? typeLabel : "<unk>") << ")" << separator << indentation
-                              << "config: " << attr.config << separator << indentation << "config1: " << attr.config1
-                              << separator << indentation << "config2: " << attr.config2 << separator << indentation
-                              << "sample: " << attr.sample_period << separator << std::hex << indentation
-                              << "sample_type: 0x" << attr.sample_type << separator << indentation << "read_format: 0x"
-                              << attr.read_format << separator << std::dec << indentation
-                              << "pinned: " << (attr.pinned ? "true" : "false") << separator << indentation
-                              << "mmap: " << (attr.mmap ? "true" : "false") << separator << indentation
-                              << "comm: " << (attr.comm ? "true" : "false") << separator << indentation
-                              << "freq: " << (attr.freq ? "true" : "false") << separator << indentation
-                              << "task: " << (attr.task ? "true" : "false") << separator << indentation
-                              << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false") << separator
-                              << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")
-                              << separator << indentation << "inherit: " << (attr.inherit ? "true" : "false")
-                              << separator << indentation
-                              << "sample_id_all: " << (attr.sample_id_all ? "true" : "false") << separator
+        return (lib::Format() << indentation << "type: " << attr.type << " (" << (typeLabel != nullptr ? typeLabel : "<unk>") << ")" << separator //
+                              << indentation << "config: " << attr.config << separator //
+                              << indentation << "config1: " << attr.config1 << separator //
+                              << indentation << "config2: " << attr.config2 << separator //
+                              << indentation << "sample: " << attr.sample_period << separator << std::hex //
+                              << indentation << "sample_type: 0x" << attr.sample_type << separator //
+                              << indentation << "read_format: 0x" << attr.read_format << separator << std::dec //
+                              << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator //
+                              << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator //
+                              << indentation << "comm: " << (attr.comm ? "true" : "false") << separator //
+                              << indentation << "freq: " << (attr.freq ? "true" : "false") << separator //
+                              << indentation << "task: " << (attr.task ? "true" : "false") << separator //
+                              << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false") << separator //
+                              << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false") << separator //
+                              << indentation << "inherit: " << (attr.inherit ? "true" : "false") << separator //
+                              << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false") << separator //
+                              << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator << std::dec //
                               << indentation << "aux_watermark: " << attr.aux_watermark << separator);
     }
 }
 
 PerfEventGroup::PerfEventGroup(const PerfEventGroupIdentifier & groupIdentifier,
                                PerfEventGroupSharedConfig & sharedConfig)
-    : groupIdentifier(groupIdentifier), sharedConfig(sharedConfig), events(), cpuToEventIndexToTidToFdMap()
+    : groupIdentifier(groupIdentifier), sharedConfig(sharedConfig)
 {
 }
 
@@ -160,6 +160,23 @@ bool PerfEventGroup::addEvent(const bool leader,
         // must sample PERIOD is used if 'freq' to read the actual period value
         | (attr.freq ? PERF_SAMPLE_PERIOD : 0);
 
+#if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
+    // collect the user mode registers if sampling the callchain
+    if (event.attr.sample_type & PERF_SAMPLE_CALLCHAIN) {
+        event.attr.sample_type |= PERF_SAMPLE_REGS_USER;
+        if (sharedConfig.perfConfig.has_64bit_register_set) {
+            // https://elixir.bootlin.com/linux/latest/source/arch/arm64/include/uapi/asm/perf_regs.h
+            // bits 0-32 are set (PC = 2^32)
+            event.attr.sample_regs_user = 0x1ffffffffull;
+        }
+        else {
+            // https://elixir.bootlin.com/linux/latest/source/arch/arm/include/uapi/asm/perf_regs.h
+            // bits 0-15 are set
+            event.attr.sample_regs_user = 0xffffull;
+        }
+    }
+#endif
+
     // when running in application mode, inherit must always be set, in system wide mode, inherit must always be clear
     event.attr.inherit = (sharedConfig.perfConfig.is_system_wide ? 0 : 1); // make sure all new children are counted too
     event.attr.inherit_stat = event.attr.inherit;
@@ -193,9 +210,9 @@ bool PerfEventGroup::addEvent(const bool leader,
     /* sample_id_all should always be set (or should always match pinned); it is required for any non-grouped event, for grouped events it is ignored for anything but the leader */
     event.attr.sample_id_all = 1;
     event.attr.context_switch = attr.context_switch;
-    event.attr.exclude_kernel = (sharedConfig.perfConfig.exclude_kernel ? 1 : 0);
-    event.attr.exclude_hv = (sharedConfig.perfConfig.exclude_kernel ? 1 : 0);
-    event.attr.exclude_idle = (sharedConfig.perfConfig.exclude_kernel ? 1 : 0);
+    event.attr.exclude_kernel = (sharedConfig.excludeKernelEvents ? 1 : 0);
+    event.attr.exclude_hv = (sharedConfig.excludeKernelEvents ? 1 : 0);
+    event.attr.exclude_idle = (sharedConfig.excludeKernelEvents ? 1 : 0);
     event.attr.aux_watermark = hasAuxData ? sharedConfig.auxBufferLength / 2 : 0;
     event.key = key;
 
@@ -280,7 +297,7 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
                     PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
             }
         }
-        else if (!sharedConfig.perfConfig.exclude_kernel) {
+        else if (!sharedConfig.excludeKernelEvents) {
             // use context switches as leader. this should give us 'switch-out' events
             attr.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
             attr.periodOrFreq = 1;
@@ -480,6 +497,20 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
             eventIndex,
             perfAttrToString(event.attr, typeLabel, "    ", "\n").c_str());
 
+        auto open_perf_event =
+            [&event, cpu](const int tid, const int groupLeaderFd, bool excl_kernel, bool excl_hv, bool excl_idle) {
+                event.attr.exclude_kernel = excl_kernel;
+                event.attr.exclude_hv = excl_hv;
+                event.attr.exclude_idle = excl_idle;
+                return sys_perf_event_open(&event.attr,
+                                           tid,
+                                           cpu,
+                                           groupLeaderFd,
+                                           // This is "(broken since Linux 2.6.35)" so can possibly be removed
+                                           // we use PERF_EVENT_IOC_SET_OUTPUT anyway
+                                           PERF_FLAG_FD_OUTPUT);
+            };
+
         for (auto tidsIterator = tids.begin(); tidsIterator != tids.end();) {
             const int tid = *tidsIterator;
 
@@ -488,65 +519,39 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
             lib::AutoClosingFd fd;
 
-            // try with exclude_kernel clear
-            {
-                // clear
-                event.attr.exclude_kernel = 0;
-                event.attr.exclude_hv = 0;
-                event.attr.exclude_idle = 0;
+            int peo_errno = 0;
 
-                // open event
-                fd = sys_perf_event_open(&event.attr,
-                                         tid,
-                                         cpu,
-                                         groupLeaderFd,
-                                         // This is "(broken since Linux 2.6.35)" so can possibly be removed
-                                         // we use PERF_EVENT_IOC_SET_OUTPUT anyway
-                                         PERF_FLAG_FD_OUTPUT);
+            if (sharedConfig.excludeKernelEvents) {
+                fd = open_perf_event(tid, groupLeaderFd, true, true, false);
+
+                peo_errno = errno;
             }
-
-            // take a copy of errno so that logging calls etc don't overwrite it
-            auto peo_errno = errno;
-
-            // retry with just exclude_kernel set
-            if ((!fd) && (peo_errno == EACCES)) {
-                logg.logMessage("Failed when exclude_kernel == 0, retrying with exclude_kernel = 1");
-
-                // set
-                event.attr.exclude_kernel = 1;
-                event.attr.exclude_hv = 0;
-                event.attr.exclude_idle = 0;
-
+            else {
+                // try with exclude_kernel clear
                 // open event
-                fd = sys_perf_event_open(&event.attr,
-                                         tid,
-                                         cpu,
-                                         groupLeaderFd,
-                                         // This is "(broken since Linux 2.6.35)" so can possibly be removed
-                                         // we use PERF_EVENT_IOC_SET_OUTPUT anyway
-                                         PERF_FLAG_FD_OUTPUT);
+                fd = open_perf_event(tid, groupLeaderFd, false, false, false);
 
-                // retry with exclude_kernel and all set
+                // take a copy of errno so that logging calls etc don't overwrite it
+                peo_errno = errno;
+
+                // retry with just exclude_kernel set
                 if ((!fd) && (peo_errno == EACCES)) {
-                    logg.logMessage("Failed when exclude_kernel == 1, exclude_hv == 0, exclude_idle == 0, retrying "
-                                    "with all exclusions enabled");
-
-                    // set
-                    event.attr.exclude_kernel = 1;
-                    event.attr.exclude_hv = 1;
-                    event.attr.exclude_idle = 1;
+                    logg.logMessage("Failed when exclude_kernel == 0, retrying with exclude_kernel = 1");
 
                     // open event
-                    fd = sys_perf_event_open(&event.attr,
-                                             tid,
-                                             cpu,
-                                             groupLeaderFd,
-                                             // This is "(broken since Linux 2.6.35)" so can possibly be removed
-                                             // we use PERF_EVENT_IOC_SET_OUTPUT anyway
-                                             PERF_FLAG_FD_OUTPUT);
+                    fd = open_perf_event(tid, groupLeaderFd, true, false, false);
 
-                    // take a new copy of the errno if it failed
-                    peo_errno = errno;
+                    // retry with exclude_kernel and all set
+                    if ((!fd) && (peo_errno == EACCES)) {
+                        logg.logMessage("Failed when exclude_kernel == 1, exclude_hv == 0, exclude_idle == 0, retrying "
+                                        "with all exclusions enabled");
+
+                        // open event
+                        fd = open_perf_event(tid, groupLeaderFd, true, true, true);
+
+                        // take a new copy of the errno if it failed
+                        peo_errno = errno;
+                    }
                 }
             }
 
@@ -560,12 +565,12 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                     return std::make_pair(OnlineResult::CPU_OFFLINE,
                                           "The event involves a feature not supported by the current CPU.");
                 }
-                else if (peo_errno == ESRCH) {
+                if (peo_errno == ESRCH) {
                     // thread exited before we had chance to open event
                     tidsIterator = tids.erase(tidsIterator);
                     continue;
                 }
-                else if ((peo_errno == ENOENT) && (!event.attr.pinned)) {
+                if ((peo_errno == ENOENT) && (!event.attr.pinned)) {
                     // This event doesn't apply to this CPU but should apply to a different one, e.g. bigLittle
                     goto skipOtherTids;
                 }
@@ -600,18 +605,14 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                     }
                     return std::make_pair(OnlineResult::FAILURE, stringStream.str());
                 }
-                else {
-                    logg.logWarning("%s", stringStream.str().c_str());
-                }
+                logg.logWarning("%s", stringStream.str().c_str());
             }
             else if (!addToBuffer(*fd, cpu, event.attr.aux_watermark != 0)) {
                 std::string message("PerfBuffer::useFd failed");
                 if (sharedConfig.perfConfig.is_system_wide) {
                     return std::make_pair(OnlineResult::FAILURE, message.c_str());
                 }
-                else {
-                    logg.logMessage("PerfBuffer::useFd failed");
-                }
+                logg.logMessage("PerfBuffer::useFd failed");
             }
             else if (!addToMonitor(*fd)) {
                 std::string message("Monitor::add failed");
@@ -784,7 +785,7 @@ bool PerfEventGroup::checkEnabled(const std::map<int, std::map<int, lib::AutoClo
                                   strerror(errno));
                     return false;
                 }
-                else if (readResult == 0) {
+                if (readResult == 0) {
                     ++readResultCount;
 
                     logg.logWarning("Unable to enable a perf group, pinned group marked as in disabled due to conflict "

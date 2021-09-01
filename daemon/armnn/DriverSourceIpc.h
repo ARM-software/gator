@@ -26,11 +26,7 @@ namespace armnn {
         {
         }
 
-        Pipe()
-            : mReadFd {},
-              mWriteFd {} {
-
-              };
+        Pipe() = default;
 
         /// return false on failure, in which case this Pipe will be in an indeterminate state
         bool writeAll(Bytes buf);
@@ -87,7 +83,7 @@ namespace armnn {
          * @returns whether one shot mode is enabled,
          *          and if the available size of the buffer is not large enough for the next packet
          */
-        bool getOneShotModeEnabledAndEnded() { return mOneShotModeEnabledAndEnded; }
+        bool getOneShotModeEnabledAndEnded() const { return mOneShotModeEnabledAndEnded; }
 
     private:
         Pipe mToChild {};

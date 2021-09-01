@@ -1,6 +1,4 @@
-/**
- * Copyright (c) 2014-2021 Arm Limited
- * All rights reserved.
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -67,22 +65,22 @@
  */
 
 /* ESC character, hex RGB (little endian) */
-#define ANNOTATE_RED    0x0000ff1b
-#define ANNOTATE_BLUE   0xff00001b
-#define ANNOTATE_GREEN  0x00ff001b
+#define ANNOTATE_RED 0x0000ff1b
+#define ANNOTATE_BLUE 0xff00001b
+#define ANNOTATE_GREEN 0x00ff001b
 #define ANNOTATE_PURPLE 0xff00ff1b
 #define ANNOTATE_YELLOW 0x00ffff1b
-#define ANNOTATE_CYAN   0xffff001b
-#define ANNOTATE_WHITE  0xffffff1b
+#define ANNOTATE_CYAN 0xffff001b
+#define ANNOTATE_WHITE 0xffffff1b
 #define ANNOTATE_LTGRAY 0xbbbbbb1b
 #define ANNOTATE_DKGRAY 0x5555551b
-#define ANNOTATE_BLACK  0x0000001b
+#define ANNOTATE_BLACK 0x0000001b
 
 #define ANNOTATE_COLOR_CYCLE 0x00000000
-#define ANNOTATE_COLOR_T1    0x00000001
-#define ANNOTATE_COLOR_T2    0x00000002
-#define ANNOTATE_COLOR_T3    0x00000003
-#define ANNOTATE_COLOR_T4    0x00000004
+#define ANNOTATE_COLOR_T1 0x00000001
+#define ANNOTATE_COLOR_T2 0x00000002
+#define ANNOTATE_COLOR_T3 0x00000003
+#define ANNOTATE_COLOR_T4 0x00000004
 
 #include <stddef.h>
 #include <stdint.h>
@@ -91,53 +89,77 @@
 extern "C" {
 #endif
 
-enum gator_annotate_counter_class {
-  ANNOTATE_DELTA = 1,
-  ANNOTATE_ABSOLUTE,
-  ANNOTATE_ACTIVITY,
-  ANNOTATE_INCIDENT
-};
+enum gator_annotate_counter_class { ANNOTATE_DELTA = 1, ANNOTATE_ABSOLUTE, ANNOTATE_ACTIVITY, ANNOTATE_INCIDENT };
 
 enum gator_annotate_display {
-  ANNOTATE_AVERAGE = 1,
-  ANNOTATE_ACCUMULATE,
-  ANNOTATE_HERTZ,
-  ANNOTATE_MAXIMUM,
-  ANNOTATE_MINIMUM
+    ANNOTATE_AVERAGE = 1,
+    ANNOTATE_ACCUMULATE,
+    ANNOTATE_HERTZ,
+    ANNOTATE_MAXIMUM,
+    ANNOTATE_MINIMUM
 };
 
-enum gator_annotate_series_composition {
-  ANNOTATE_STACKED = 1,
-  ANNOTATE_OVERLAY,
-  ANNOTATE_LOG10
-};
+enum gator_annotate_series_composition { ANNOTATE_STACKED = 1, ANNOTATE_OVERLAY, ANNOTATE_LOG10 };
 
-enum gator_annotate_rendering_type {
-  ANNOTATE_FILL = 1,
-  ANNOTATE_LINE,
-  ANNOTATE_BAR
-};
+enum gator_annotate_rendering_type { ANNOTATE_FILL = 1, ANNOTATE_LINE, ANNOTATE_BAR };
 
 void gator_annotate_setup(void);
 uint64_t gator_get_time(void);
 void gator_annotate_fork_child(void);
 void gator_annotate_flush(void);
-void gator_annotate_str(const uint32_t channel, const char *const str);
-void gator_annotate_color(const uint32_t channel, const uint32_t color, const char *const str);
-void gator_annotate_name_channel(const uint32_t channel, const uint32_t group, const char *const str);
-void gator_annotate_name_group(const uint32_t group, const char *const str);
-void gator_annotate_visual(const void *const data, const uint32_t length, const char *const str);
-void gator_annotate_marker(const char *const str);
-void gator_annotate_marker_color(const uint32_t color, const char *const str);
-void gator_annotate_counter(const uint32_t id, const char *const title, const char *const name, const int per_cpu, const enum gator_annotate_counter_class counter_class, const enum gator_annotate_display display, const char *const units, const uint32_t modifier, const enum gator_annotate_series_composition series_composition, const enum gator_annotate_rendering_type rendering_type, const int average_selection, const int average_cores, const int percentage, const size_t activity_count, const char *const *const activities, const uint32_t *const activity_colors, const uint32_t cores, const uint32_t color, const char *const description);
-void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const uint32_t value);
-void gator_annotate_activity_switch(const uint32_t core, const uint32_t id, const uint32_t activity, const uint32_t tid);
-void gator_cam_track(const uint32_t view_uid, const uint32_t track_uid, const uint32_t parent_track, const char *const name);
-void gator_cam_job(const uint32_t view_uid, const uint32_t job_uid, const char *const name, const uint32_t track, const uint64_t start_time, const uint64_t duration, const uint32_t color, const uint32_t primary_dependency, const size_t dependency_count, const uint32_t *const dependencies);
-void gator_cam_job_start(const uint32_t view_uid, const uint32_t job_uid, const char *const name, const uint32_t track, const uint64_t time, const uint32_t color);
-void gator_cam_job_set_dependencies(const uint32_t view_uid, const uint32_t job_uid, const uint64_t time, const uint32_t primary_dependency, const size_t dependency_count, const uint32_t *const dependencies);
-void gator_cam_job_stop(const uint32_t view_uid, const uint32_t job_uid, const uint64_t time);
-void gator_cam_view_name(const uint32_t view_uid, const char *const name);
+void gator_annotate_str(uint32_t channel, const char * str);
+void gator_annotate_color(uint32_t channel, uint32_t color, const char * str);
+void gator_annotate_name_channel(uint32_t channel, uint32_t group, const char * str);
+void gator_annotate_name_group(uint32_t group, const char * str);
+void gator_annotate_visual(const void * data, uint32_t length, const char * str);
+void gator_annotate_marker(const char * str);
+void gator_annotate_marker_color(uint32_t color, const char * str);
+void gator_annotate_counter(uint32_t id,
+                            const char * title,
+                            const char * name,
+                            int per_cpu,
+                            enum gator_annotate_counter_class counter_class,
+                            enum gator_annotate_display display,
+                            const char * units,
+                            uint32_t modifier,
+                            enum gator_annotate_series_composition series_composition,
+                            enum gator_annotate_rendering_type rendering_type,
+                            int average_selection,
+                            int average_cores,
+                            int percentage,
+                            size_t activity_count,
+                            const char * const * activities,
+                            const uint32_t * activity_colors,
+                            uint32_t cores,
+                            uint32_t color,
+                            const char * description);
+void gator_annotate_counter_value(uint32_t core, uint32_t id, uint32_t value);
+void gator_annotate_activity_switch(uint32_t core, uint32_t id, uint32_t activity, uint32_t tid);
+void gator_cam_track(uint32_t view_uid, uint32_t track_uid, uint32_t parent_track, const char * name);
+void gator_cam_job(uint32_t view_uid,
+                   uint32_t job_uid,
+                   const char * name,
+                   uint32_t track,
+                   uint64_t start_time,
+                   uint64_t duration,
+                   uint32_t color,
+                   uint32_t primary_dependency,
+                   size_t dependency_count,
+                   const uint32_t * dependencies);
+void gator_cam_job_start(uint32_t view_uid,
+                         uint32_t job_uid,
+                         const char * name,
+                         uint32_t track,
+                         uint64_t time,
+                         uint32_t color);
+void gator_cam_job_set_dependencies(uint32_t view_uid,
+                                    uint32_t job_uid,
+                                    uint64_t time,
+                                    uint32_t primary_dependency,
+                                    size_t dependency_count,
+                                    const uint32_t * dependencies);
+void gator_cam_job_stop(uint32_t view_uid, uint32_t job_uid, uint64_t time);
+void gator_cam_view_name(uint32_t view_uid, const char * name);
 
 #define ANNOTATE_DEFINE extern int gator_annotate_unused
 
@@ -159,8 +181,46 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name);
 #define ANNOTATE_MARKER_COLOR(color) gator_annotate_marker_color(color, NULL)
 #define ANNOTATE_MARKER_COLOR_STR(color, str) gator_annotate_marker_color(color, str)
 
-#define ANNOTATE_DELTA_COUNTER(id, title, name) gator_annotate_counter(id, title, name, 0, ANNOTATE_DELTA, ANNOTATE_ACCUMULATE, NULL, 1, ANNOTATE_STACKED, ANNOTATE_FILL, 0, 0, 0, 0, NULL, NULL, 0, ANNOTATE_COLOR_CYCLE, NULL)
-#define ANNOTATE_ABSOLUTE_COUNTER(id, title, name) gator_annotate_counter(id, title, name, 0, ANNOTATE_ABSOLUTE, ANNOTATE_MAXIMUM, NULL, 1, ANNOTATE_STACKED, ANNOTATE_FILL, 0, 0, 0, 0, NULL, NULL, 0, ANNOTATE_COLOR_CYCLE, NULL)
+#define ANNOTATE_DELTA_COUNTER(id, title, name)                                                                        \
+    gator_annotate_counter(id,                                                                                         \
+                           title,                                                                                      \
+                           name,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_DELTA,                                                                             \
+                           ANNOTATE_ACCUMULATE,                                                                        \
+                           NULL,                                                                                       \
+                           1,                                                                                          \
+                           ANNOTATE_STACKED,                                                                           \
+                           ANNOTATE_FILL,                                                                              \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           NULL,                                                                                       \
+                           NULL,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_COLOR_CYCLE,                                                                       \
+                           NULL)
+#define ANNOTATE_ABSOLUTE_COUNTER(id, title, name)                                                                     \
+    gator_annotate_counter(id,                                                                                         \
+                           title,                                                                                      \
+                           name,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_ABSOLUTE,                                                                          \
+                           ANNOTATE_MAXIMUM,                                                                           \
+                           NULL,                                                                                       \
+                           1,                                                                                          \
+                           ANNOTATE_STACKED,                                                                           \
+                           ANNOTATE_FILL,                                                                              \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           0,                                                                                          \
+                           NULL,                                                                                       \
+                           NULL,                                                                                       \
+                           0,                                                                                          \
+                           ANNOTATE_COLOR_CYCLE,                                                                       \
+                           NULL)
 #define ANNOTATE_COUNTER_VALUE(id, value) gator_annotate_counter_value(0, id, value)
 
 #define ANNOTATE_DELTA_COUNTER_SCALE(id, title, name, modifier)                                                        \
@@ -205,23 +265,29 @@ void gator_cam_view_name(const uint32_t view_uid, const char *const name);
                            NULL)
 #define ANNOTATE_COUNTER_VALUE_SCALE(id, value, modifier)                                                              \
     do {                                                                                                               \
-        uint32_t __scaledvalue = (uint32_t)((value) * (modifier) + 0.5f);                                              \
+        uint32_t __scaledvalue = (uint32_t) ((value) * (modifier) + 0.5f);                                             \
         gator_annotate_counter_value(0, id, __scaledvalue);                                                            \
     } while (0)
 
 #define CAM_TRACK(view_uid, track_uid, parent_track, name) gator_cam_track(view_uid, track_uid, parent_track, name)
-#define CAM_JOB(view_uid, job_uid, name, track, start_time, duration, color) gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 0, 0)
-#define CAM_JOB_DEP(view_uid, job_uid, name, track, start_time, duration, color, dependency) { \
-    uint32_t __dependency = dependency; \
-    gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 1, &__dependency); \
-}
-#define CAM_JOB_DEPS(view_uid, job_uid, name, track, start_time, duration, color, dependency_count, dependencies) gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, dependency_count, dependencies)
-#define CAM_JOB_START(view_uid, job_uid, name, track, time, color) gator_cam_job_start(view_uid, job_uid, name, track, time, color)
-#define CAM_JOB_SET_DEP(view_uid, job_uid, time, dependency) { \
-    uint32_t __dependency = dependency; \
-    gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, 1, &__dependency); \
-}
-#define CAM_JOB_SET_DEPS(view_uid, job_uid, time, dependency_count, dependencies) gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, dependency_count, dependencies)
+#define CAM_JOB(view_uid, job_uid, name, track, start_time, duration, color)                                           \
+    gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 0, 0)
+#define CAM_JOB_DEP(view_uid, job_uid, name, track, start_time, duration, color, dependency)                           \
+    {                                                                                                                  \
+        uint32_t __dependency = dependency;                                                                            \
+        gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, 1, &__dependency);              \
+    }
+#define CAM_JOB_DEPS(view_uid, job_uid, name, track, start_time, duration, color, dependency_count, dependencies)      \
+    gator_cam_job(view_uid, job_uid, name, track, start_time, duration, color, -1, dependency_count, dependencies)
+#define CAM_JOB_START(view_uid, job_uid, name, track, time, color)                                                     \
+    gator_cam_job_start(view_uid, job_uid, name, track, time, color)
+#define CAM_JOB_SET_DEP(view_uid, job_uid, time, dependency)                                                           \
+    {                                                                                                                  \
+        uint32_t __dependency = dependency;                                                                            \
+        gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, 1, &__dependency);                                 \
+    }
+#define CAM_JOB_SET_DEPS(view_uid, job_uid, time, dependency_count, dependencies)                                      \
+    gator_cam_job_set_dependencies(view_uid, job_uid, time, -1, dependency_count, dependencies)
 #define CAM_JOB_STOP(view_uid, job_uid, time) gator_cam_job_stop(view_uid, job_uid, time)
 #define CAM_VIEW_NAME(view_uid, name) gator_cam_view_name(view_uid, name)
 

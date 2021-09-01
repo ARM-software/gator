@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2018-2020 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2018-2021 by Arm Limited. All rights reserved. -->
 
 <!-- Generic Armv8.2 SPE properties
 
@@ -15,7 +15,7 @@
 
  -->
 <spe name="Armv8.2 Statistical Profiling Extension" id="armv8.2_spe">
-    <!--    Defines address packet index types [5.3.1 Address packet]
+    <!--    Defines address packet index types [D10.2.1 Address packet]
 
             Format:
 
@@ -38,7 +38,7 @@
     <address index="0x02" name="L/S Virtual Address" description="The virtual address of the data access for load, store and atomic instructions." type="virtual" />
     <address index="0x03" name="L/S Physical Address" description="The physical address of the data access for load, store and atomic instructions." type="physical" />
 
-    <!--    Define counter packet index types [5.3.4 Counter packet]
+    <!--    Define counter packet index types [D10.2.3 Counter packet]
 
             Format:
 
@@ -57,7 +57,7 @@
     <counter index="1" type="latency" unit="cycles" name="Issue latency" description="Cycle count from the operation being dispatched for issue to the operation being issued for execution. This counts any delay in waiting the operation being ready to issue. Included for all operations." />
     <counter index="2" type="latency" unit="cycles" name="Translation latency" description="Cycle count from a virtual address being passed to the MMU for translation to the result of the translation being available. Included for all load, store and atomic operations." />
 
-    <!--    Define data source packet source types [5.3.5 Data Source packet]
+    <!--    Define data source packet source types [D10.2.4 Data Source packet]
 
             Format:
 
@@ -70,7 +70,7 @@
 
     <!-- none are defined in architectural specification -->
 
-    <!--    Define event packet event types [5.3.7 Events packet]
+    <!--    Define event packet event types [D10.2.6 Events packet]
 
             Format:
                     <event bit="..." name="..." description="..." filter-bit="..." condition-bit="..."
@@ -194,7 +194,7 @@
 </spe>
 
 <spe name="Armv8.3 Statistical Profiling Extension" id="armv8.3_spe" extends="armv8.2_spe">
-    <!-- Define event packet event types [5.3.7 Events packet] -->
+    <!-- Define event packet event types [D10.2.6 Events packet] -->
     <event bit="11" ratio-label="Optimal Alignment" set-label="Poorly Aligned" clear-label="Optimally Aligned" show-by-default="set"
            name="Optimal Alignment"
            description="When set, indicates a load/store operation that, due to the alignment of the address and size of data being accessed, incurred additional latency">
@@ -203,7 +203,28 @@
 </spe>
 
 <spe name="Armv8.3 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.3_spe_sve" extends="armv8.3_spe">
-    <!-- Define event packet event types [5.3.7 Events packet] -->
+    <!-- Define event packet event types [D10.2.6 Events packet] -->
+    <event bit="17" ratio-label="SVE Partial Predicate" set-label="Partial Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
+           name="SVE Partial Predicate"
+           description="When set, indicates that the SVE predicate has at least one element that is inactive">
+        <valid-op-type class="load-store" sub-class="sve" />
+        <valid-op-type class="other" sub-class="sve" />
+    </event>
+    <event bit="18" ratio-label="SVE Empty Predicate" set-label="Empty Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
+           name="SVE Empty Predicate"
+           description="When set, indicates that the SVE predicate has all elements inactive">
+        <valid-op-type class="load-store" sub-class="sve" />
+        <valid-op-type class="other" sub-class="sve" />
+    </event>
+</spe>
+
+<spe name="Armv8.7 Statistical Profiling Extension" id="armv8.7_spe" extends="armv8.3_spe">
+    <!--    Defines address packet index types [D10.2.1 Address packet] -->
+    <address index="0x04" name="Last Branch Target Address" description="The target virtual address of the most recently taken branch operation in program order before the sampled operation." type="instruction" />
+</spe>
+
+<spe name="Armv8.7 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.7_spe_sve" extends="armv8.7_spe">
+    <!-- Define event packet event types [D10.2.6 Events packet] -->
     <event bit="17" ratio-label="SVE Partial Predicate" set-label="Partial Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
            name="SVE Partial Predicate"
            description="When set, indicates that the SVE predicate has at least one element that is inactive">

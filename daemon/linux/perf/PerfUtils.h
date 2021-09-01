@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_UTILS_H
 #define PERF_UTILS_H
@@ -24,9 +24,7 @@ namespace perf_utils {
         if (lib::readInt64FromFile("/proc/sys/kernel/perf_event_mlock_kb", perfEventMlockKb) == 0) {
             return lib::Optional<std::int64_t>(perfEventMlockKb);
         }
-        else {
-            return lib::Optional<std::int64_t>();
-        }
+        return lib::Optional<std::int64_t>();
     }
 }
 

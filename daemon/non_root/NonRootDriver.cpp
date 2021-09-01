@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "non_root/NonRootDriver.h"
 
@@ -60,6 +60,11 @@ namespace non_root {
             {
             }
 
+            NonRootDriverCounter(const NonRootDriverCounter &) = delete;
+            NonRootDriverCounter & operator=(const NonRootDriverCounter &) = delete;
+            NonRootDriverCounter(NonRootDriverCounter &&) = delete;
+            NonRootDriverCounter & operator=(NonRootDriverCounter &&) = delete;
+
             NonRootCounter getType() const { return mType; }
 
             const char * getLabel() const { return mLabel; }
@@ -94,11 +99,6 @@ namespace non_root {
             double mMultiplier;
             bool mPerCPU;
             bool mProc;
-
-            NonRootDriverCounter(const NonRootDriverCounter &) = delete;
-            NonRootDriverCounter & operator=(const NonRootDriverCounter &) = delete;
-            NonRootDriverCounter(NonRootDriverCounter &&) = delete;
-            NonRootDriverCounter & operator=(NonRootDriverCounter &&) = delete;
         };
     }
 

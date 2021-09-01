@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef UEVENT_H
 #define UEVENT_H
@@ -15,6 +15,12 @@ public:
     UEvent();
     ~UEvent();
 
+    // Intentionally undefined
+    UEvent(const UEvent &) = delete;
+    UEvent & operator=(const UEvent &) = delete;
+    UEvent(UEvent &&) = delete;
+    UEvent & operator=(UEvent &&) = delete;
+
     bool init();
     bool read(UEventResult * result);
 
@@ -24,12 +30,6 @@ public:
 
 private:
     int mFd;
-
-    // Intentionally undefined
-    UEvent(const UEvent &) = delete;
-    UEvent & operator=(const UEvent &) = delete;
-    UEvent(UEvent &&) = delete;
-    UEvent & operator=(UEvent &&) = delete;
 };
 
 #endif // UEVENT_H

@@ -25,6 +25,11 @@ public:
             bool disableKernelAnnotations,
             const TraceFsConstants & traceFsConstants);
 
+    Drivers(const Drivers &) = delete;
+    Drivers & operator=(const Drivers &) = delete;
+    Drivers(Drivers &&) = delete;
+    Drivers & operator=(Drivers &&) = delete;
+
     armnn::Driver & getArmnnDriver() { return mArmnnDriver; }
 
     MidgardDriver & getMidgard() { return mMidgard; }
@@ -54,22 +59,17 @@ public:
     lib::Span<const PolledDriver * const> getAllPolledConst() const { return allPolled; }
 
 private:
-    mali_userspace::MaliHwCntrDriver mMaliHwCntrs;
+    mali_userspace::MaliHwCntrDriver mMaliHwCntrs {};
     std::unique_ptr<PrimarySourceProvider> mPrimarySourceProvider;
-    MidgardDriver mMidgard;
+    MidgardDriver mMidgard {};
+    ExternalDriver mExternalDriver {};
+    CCNDriver mCcnDriver {};
+    armnn::Driver mArmnnDriver {};
     FtraceDriver mFtraceDriver;
     AtraceDriver mAtraceDriver;
     TtraceDriver mTtraceDriver;
-    ExternalDriver mExternalDriver;
-    CCNDriver mCcnDriver;
-    armnn::Driver mArmnnDriver;
-    std::vector<Driver *> all;
-    std::vector<PolledDriver *> allPolled;
-
-    Drivers(const Drivers &) = delete;
-    Drivers & operator=(const Drivers &) = delete;
-    Drivers(Drivers &&) = delete;
-    Drivers & operator=(Drivers &&) = delete;
+    std::vector<Driver *> all {};
+    std::vector<PolledDriver *> allPolled {};
 };
 
 #endif // DRIVERS_H

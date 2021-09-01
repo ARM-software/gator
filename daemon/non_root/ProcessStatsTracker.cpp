@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStatsTracker.h"
 
@@ -9,25 +9,7 @@
 
 namespace non_root {
     ProcessStatsTracker::ProcessStatsTracker(int pid_, int tid_, unsigned long pageSize_)
-        : comm(),
-          exe_path(),
-          stat_minflt(),
-          stat_majflt(),
-          stat_utime(),
-          stat_stime(),
-          stat_guest_time(),
-          stat_vsize(),
-          stat_rss(),
-          stat_rsslim(),
-          statm_shared(),
-          statm_text(),
-          statm_data(),
-          stat_processor(),
-          stat_num_threads(),
-          pageSize(pageSize_),
-          pid(pid_),
-          tid(tid_),
-          newProcess(true)
+        : pageSize(pageSize_), pid(pid_), tid(tid_)
 
     {
     }

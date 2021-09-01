@@ -158,7 +158,12 @@ namespace {
 
         const char * getCaptureXmlTypeValue() const override { return "Perf"; }
 
+// if using register unwinding, backtrace mode is set to 'gator' to allow handling of 'lr' epilog/prolog correctly
+#if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
+        const char * getBacktraceProcessingMode() const override { return "gator"; }
+#else
         const char * getBacktraceProcessingMode() const override { return "perf"; }
+#endif
 
         bool supportsTracepointCapture() const override { return true; }
 
@@ -392,9 +397,8 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
         logg.logSetup("Profiling Source\nUsing perf API for primary data source");
         return result;
     }
-    else {
-        logg.logError("...Perf API is not available.");
-    }
+    logg.logError("...Perf API is not available.");
+
 #endif /* CONFIG_SUPPORT_PERF */
 
     // fall back to proc mode
@@ -414,9 +418,8 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
             "Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
         return result;
     }
-    else {
-        logg.logMessage("...Unable to set /proc counters");
-    }
+    logg.logMessage("...Unable to set /proc counters");
+
 #endif /* CONFIG_SUPPORT_PROC_POLLING */
 
     return result;

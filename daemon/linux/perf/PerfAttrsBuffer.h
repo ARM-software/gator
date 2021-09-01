@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_ATTRS_BUFFER_H
 #define PERF_ATTRS_BUFFER_H
@@ -12,6 +12,12 @@ class PerfAttrsBuffer : public IPerfAttrsConsumer {
 public:
     PerfAttrsBuffer(int size, sem_t & readerSem);
     ~PerfAttrsBuffer() override = default;
+
+    // Intentionally unimplemented
+    PerfAttrsBuffer(const PerfAttrsBuffer &) = delete;
+    PerfAttrsBuffer & operator=(const PerfAttrsBuffer &) = delete;
+    PerfAttrsBuffer(PerfAttrsBuffer &&) = delete;
+    PerfAttrsBuffer & operator=(PerfAttrsBuffer &&) = delete;
 
     void write(ISender & sender);
 
@@ -38,11 +44,6 @@ private:
     void waitForSpace(int bytes);
 
     Buffer buffer;
-    // Intentionally unimplemented
-    PerfAttrsBuffer(const PerfAttrsBuffer &) = delete;
-    PerfAttrsBuffer & operator=(const PerfAttrsBuffer &) = delete;
-    PerfAttrsBuffer(PerfAttrsBuffer &&) = delete;
-    PerfAttrsBuffer & operator=(PerfAttrsBuffer &&) = delete;
 };
 
 #endif // PERF_ATTRS_BUFFER_H

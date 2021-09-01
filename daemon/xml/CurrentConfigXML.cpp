@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "CurrentConfigXML.h"
 
@@ -59,7 +59,7 @@ namespace current_config_xml {
         if (!pidsToCapture.empty()) {
             pidsToCapNode.reset(mxmlNewElement(currentConfigNode.get(), TAG_PIDS_TO_CAPTURE));
             for (int pid : pidsToCapture) {
-                auto pidToCap = mxmlNewElement(pidsToCapNode.get(), PID);
+                auto * pidToCap = mxmlNewElement(pidsToCapNode.get(), PID);
                 mxmlElementSetAttrf(pidToCap, ATTR_VALUE, "%i", pid);
             }
         }

@@ -19,9 +19,7 @@ namespace armnn {
             if (bytes[i] == 0) {
                 break;
             }
-            else {
-                convert << ((char) bytes[i]);
-            }
+            convert << ((char) bytes[i]);
         }
         out = convert.str();
         return true;
@@ -189,9 +187,7 @@ namespace armnn {
                 logg.logError("Disable periodic counter selection consumer, failed");
                 return false;
             }
-            else {
-                return true;
-            }
+            return true;
         }
         if (bytes.length < UINT32_SIZE) { //not even the size of period at the offset
             logg.logError("Insufficient number of bytes received for decoding Periodic counter selection packet");
@@ -216,9 +212,7 @@ namespace armnn {
                 logg.logError("Disable per job counter selection consumer, failed");
                 return false;
             }
-            else {
-                return true;
-            }
+            return true;
         }
         if ((bytes.length < sizeof(std::uint64_t))) {
             logg.logMessage("Insufficient number of bytes passed for decoding Per job counter selection packet");

@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #include "lib/FsEntry.h"
 
@@ -165,6 +165,20 @@ namespace lib {
         const int mode = F_OK | (read ? R_OK : 0) | (write ? W_OK : 0) | (exec ? X_OK : 0);
 
         return access(path_.c_str(), mode) == 0;
+    }
+
+    bool FsEntry::hasChildWithNamePrefix(const char * prefix) const
+    {
+        const auto prefix_length = std::strlen(prefix);
+
+        auto it = children();
+        for (auto child = it.next(); child; child = it.next()) {
+            if (std::strncmp(child->name().c_str(), prefix, prefix_length) == 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     std::string FsEntry::readFileContents() const

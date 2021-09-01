@@ -54,6 +54,12 @@ public:
                bool disableKernelAnnotations = false);
     ~PerfDriver() override;
 
+    // Intentionally undefined
+    PerfDriver(const PerfDriver &) = delete;
+    PerfDriver & operator=(const PerfDriver &) = delete;
+    PerfDriver(PerfDriver &&) = delete;
+    PerfDriver & operator=(PerfDriver &&) = delete;
+
     const PerfConfig & getConfig() const { return mConfig.config; }
 
     void readEvents(mxml_node_t * xml) override;
@@ -76,12 +82,6 @@ private:
     PmuXML mPmuXml;
     const ICpuInfo & mCpuInfo;
     bool mDisableKernelAnnotations;
-
-    // Intentionally undefined
-    PerfDriver(const PerfDriver &) = delete;
-    PerfDriver & operator=(const PerfDriver &) = delete;
-    PerfDriver(PerfDriver &&) = delete;
-    PerfDriver & operator=(PerfDriver &&) = delete;
 
     void addCpuCounters(const PerfCpu & cpu);
     void addUncoreCounters(const PerfUncore & uncore);

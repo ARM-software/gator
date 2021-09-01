@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "OlySocket.h"
 
@@ -41,9 +41,8 @@ int socket_cloexec(int domain, int type, int protocol)
     if (sock >= 0) {
         return sock;
     }
-    else {
-        logg.logMessage("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
-    }
+    logg.logMessage("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
+
 #endif
 
     /* Try create socket */

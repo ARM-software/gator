@@ -127,9 +127,7 @@ int Buffer::contiguousSpaceAvailable() const
     if (remaining < contiguous) {
         return remaining;
     }
-    else {
-        return contiguous;
-    }
+    return contiguous;
 }
 
 void Buffer::flush()

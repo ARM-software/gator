@@ -275,8 +275,6 @@ static AnnotateListener annotateListener;
 namespace {
     class StreamlineCommandHandler : public IStreamlineCommandHandler {
     public:
-        StreamlineCommandHandler() = default;
-
         State handleRequest(char *) override
         {
             logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
@@ -491,6 +489,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mEventsXMLPath = result.mEventsXMLPath;
     gSessionData.mSessionXMLPath = result.mSessionXMLPath;
     gSessionData.mSystemWide = result.mSystemWide;
+    gSessionData.mExcludeKernelEvents = result.mExcludeKernelEvents;
     gSessionData.mWaitForProcessCommand = result.mWaitForCommand;
     gSessionData.mPids = result.mPids;
 

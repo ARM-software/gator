@@ -20,6 +20,13 @@ public:
     // include SessionData.h first to get access to this constructor
     Buffer(const int size, sem_t & readerSem) : Buffer(size, readerSem, !gSessionData.mLocalCapture) {}
 #endif
+
+    // Intentionally unimplemented
+    Buffer(const Buffer &) = delete;
+    Buffer & operator=(const Buffer &) = delete;
+    Buffer(Buffer &&) = delete;
+    Buffer & operator=(Buffer &&) = delete;
+
     ~Buffer() override;
 
     bool write(ISender & sender) override;
@@ -63,12 +70,6 @@ private:
     std::atomic_int mCommitPos;
     std::atomic_bool mIsDone;
     const bool mIncludeResponseType;
-
-    // Intentionally unimplemented
-    Buffer(const Buffer &) = delete;
-    Buffer & operator=(const Buffer &) = delete;
-    Buffer(Buffer &&) = delete;
-    Buffer & operator=(Buffer &&) = delete;
 };
 
 #endif // BUFFER_H

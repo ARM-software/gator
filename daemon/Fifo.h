@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef __FIFO_H__
 #define __FIFO_H__
@@ -18,6 +18,13 @@ class Fifo {
 public:
     Fifo(int singleBufferSize, int totalBufferSize, sem_t * readerSem);
     ~Fifo();
+
+    // Intentionally unimplemented
+    Fifo(const Fifo &) = delete;
+    Fifo & operator=(const Fifo &) = delete;
+    Fifo(Fifo &&) = delete;
+    Fifo & operator=(Fifo &&) = delete;
+
     int numBytesFilled() const;
     bool isEmpty() const;
     bool isFull() const;
@@ -33,12 +40,6 @@ private:
     sem_t * mReaderSem;
     char * mBuffer;
     bool mEnd;
-
-    // Intentionally unimplemented
-    Fifo(const Fifo &) = delete;
-    Fifo & operator=(const Fifo &) = delete;
-    Fifo(Fifo &&) = delete;
-    Fifo & operator=(Fifo &&) = delete;
 };
 
 #endif //__FIFO_H__

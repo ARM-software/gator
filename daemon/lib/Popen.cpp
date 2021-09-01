@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "lib/Popen.h"
 
@@ -26,7 +26,7 @@ namespace lib {
         if (pid < 0) {
             return {-errno, -1, -1, -1};
         }
-        else if (pid == 0) {
+        if (pid == 0) {
             // child
             close(execerr[0]);
             close(in[1]);

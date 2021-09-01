@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MXML_UTILS_H
 #define MXML_UTILS_H
@@ -51,8 +51,8 @@ struct MxmlFindElementIterator {
 
     value_type & operator*() { return node; }
 
-    bool operator==(const MxmlFindElementIterator & that) { return node == that.node; }
-    bool operator!=(const MxmlFindElementIterator & that) { return node != that.node; }
+    bool operator==(const MxmlFindElementIterator & that) const { return node == that.node; }
+    bool operator!=(const MxmlFindElementIterator & that) const { return node != that.node; }
 
     mxml_node_t * node;
     mxml_node_t * top;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
@@ -64,18 +64,16 @@ public:
         if (cluster != nullptr) {
             return Type::PER_CLUSTER_CPU;
         }
-        else if (pmu != nullptr) {
+        if (pmu != nullptr) {
             return Type::UNCORE_PMU;
         }
-        else if (cpuNumberToType != nullptr) {
+        if (cpuNumberToType != nullptr) {
             return Type::SPE;
         }
-        else if (cpuNumber >= 0) {
+        if (cpuNumber >= 0) {
             return Type::SPECIFIC_CPU;
         }
-        else {
-            return Type::GLOBAL;
-        }
+        return Type::GLOBAL;
     }
 
 private:

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfBuffer.h"
 
@@ -67,7 +67,7 @@ std::size_t PerfBuffer::getAuxBufferLength() const
     return mConfig.auxBufferSize;
 }
 
-PerfBuffer::PerfBuffer(PerfBuffer::Config config) : mConfig(config), mBuffers(), mDiscard()
+PerfBuffer::PerfBuffer(PerfBuffer::Config config) : mConfig(config)
 {
     validate(mConfig);
 }

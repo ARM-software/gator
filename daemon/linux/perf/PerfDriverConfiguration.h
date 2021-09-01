@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_CONFIGURATION_H
 #define PERFDRIVER_CONFIGURATION_H
@@ -31,7 +31,7 @@ struct PerfDriverConfiguration {
     std::vector<PerfCpu> cpus {};
     std::vector<PerfUncore> uncores {};
     std::map<int, int> cpuNumberToSpeType {};
-    PerfConfig config {false, false, false, false, false, false, false, false, false, false, false, false, false};
+    PerfConfig config {};
 
     static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide,
                                                            const char * tracefsEventsPath,

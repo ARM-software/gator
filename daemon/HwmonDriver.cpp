@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "HwmonDriver.h"
 
@@ -36,6 +36,12 @@ public:
     HwmonCounter(DriverCounter * next, char * name, const sensors_chip_name * chip, const sensors_feature * feature);
     ~HwmonCounter() override;
 
+    // Intentionally unimplemented
+    HwmonCounter(const HwmonCounter &) = delete;
+    HwmonCounter & operator=(const HwmonCounter &) = delete;
+    HwmonCounter(HwmonCounter &&) = delete;
+    HwmonCounter & operator=(HwmonCounter &&) = delete;
+
     const char * getLabel() const { return mLabel; }
     const char * getTitle() const { return mTitle; }
     bool isDuplicate() const { return mDuplicate; }
@@ -59,12 +65,6 @@ private:
     double mPreviousValue;
     double mMultiplier;
     bool mMonotonic, mDuplicate;
-
-    // Intentionally unimplemented
-    HwmonCounter(const HwmonCounter &) = delete;
-    HwmonCounter & operator=(const HwmonCounter &) = delete;
-    HwmonCounter(HwmonCounter &&) = delete;
-    HwmonCounter & operator=(HwmonCounter &&) = delete;
 };
 
 HwmonCounter::HwmonCounter(DriverCounter * next,

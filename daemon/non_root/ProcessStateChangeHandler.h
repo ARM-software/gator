@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATECHANGEHANDLER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATECHANGEHANDLER_H
@@ -54,12 +54,12 @@ namespace non_root {
         static constexpr const cookie_type COOKIE_KERNEL = 0;
         static constexpr const cookie_type COOKIE_UNKNOWN = ~cookie_type(0);
 
+        std::map<std::string, cookie_type> cookies {};
         MixedFrameBuffer miscBuffer;
-        std::map<std::string, cookie_type> cookies;
         IBlockCounterMessageConsumer & counterBuffer;
         PerCoreMixedFrameBuffer & switchBuffers;
         const std::map<NonRootCounter, int> & enabledCounters;
-        int cookieCounter;
+        int cookieCounter {3}; // starts from 3 because 0-2 are used by the block counter frame
 
         cookie_type getCookie(unsigned long long timestampNS,
                               unsigned long core,

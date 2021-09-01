@@ -50,6 +50,12 @@ typedef struct _mxml_fdbuf_s        /**** File descriptor buffer ****/
         buffer[8192];       /* Character buffer */
 } _mxml_fdbuf_t;
 
+typedef struct _mxml_stringbuf_state
+{
+  char * next_put;
+  char * limit;
+  unsigned int char_count;
+} _mxml_stringbuf_state_t;
 
 /*
  * Local functions...
@@ -353,7 +359,7 @@ mxmlSaveString(mxml_node_t    *node,    /* I - Node to write */
                mxml_save_cb_t cb)   /* I - Whitespace callback or @code MXML_NO_CALLBACK@ */
 {
   int   col;                /* Final column */
-  char  *ptr[2];            /* Pointers for putc_cb */
+  _mxml_stringbuf_state_t buf_state;
   _mxml_global_t *global = _mxml_global();
                     /* Global data */
 
@@ -362,29 +368,30 @@ mxmlSaveString(mxml_node_t    *node,    /* I - Node to write */
   * Write the node...
   */
 
-  ptr[0] = buffer;
-  ptr[1] = buffer + bufsize;
+  buf_state.next_put = buffer;
+  buf_state.limit = buffer + bufsize;
+  buf_state.char_count = 0;
 
-  if ((col = mxml_write_node(node, ptr, cb, 0, mxml_string_putc, global)) < 0)
+  if ((col = mxml_write_node(node, &buf_state, cb, 0, mxml_string_putc, global)) < 0)
     return (-1);
 
   if (col > 0)
-    mxml_string_putc('\n', ptr);
+    mxml_string_putc('\n', &buf_state);
 
  /*
   * Nul-terminate the buffer...
   */
 
-  if (ptr[0] >= ptr[1])
+  if (buf_state.next_put >= buf_state.limit)
     buffer[bufsize - 1] = '\0';
   else
-    ptr[0][0] = '\0';
+    *buf_state.next_put = '\0';
 
  /*
   * Return the number of characters...
   */
 
-  return ((int)(ptr[0] - buffer));
+  return buf_state.char_count;
 }
 
 
@@ -2650,15 +2657,13 @@ static int              /* O - 0 on success, -1 on failure */
 mxml_string_putc(int  ch,       /* I - Character to write */
                  void *p)       /* I - Pointer to string pointers */
 {
-  char  **pp;               /* Pointer to string pointers */
+  _mxml_stringbuf_state_t *state = p;
 
+  if (state->next_put < state->limit)
+      *(state->next_put++) = ch;
 
-  pp = (char **)p;
-
-  if (pp[0] < pp[1])
-    pp[0][0] = ch;
-
-  pp[0] ++;
+  if (state->char_count+1 > state->char_count)
+    state->char_count++;
 
   return (0);
 }

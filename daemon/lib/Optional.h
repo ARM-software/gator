@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_OPTIONAL_H
 #define INCLUDE_LIB_OPTIONAL_H
@@ -130,9 +130,7 @@ namespace lib {
             if (hasValue && that.hasValue) {
                 return wrapper.data == that.wrapper.data;
             }
-            else {
-                return hasValue == that.hasValue;
-            }
+            return hasValue == that.hasValue;
         }
 
         bool operator<(const Optional<value_type> & that) const
@@ -140,12 +138,10 @@ namespace lib {
             if (hasValue && that.hasValue) {
                 return wrapper.data < that.wrapper.data;
             }
-            else if (!hasValue && !that.hasValue) {
+            if (!hasValue && !that.hasValue) {
                 return false;
             }
-            else {
-                return !hasValue;
-            }
+            return !hasValue;
         }
 
         bool operator!=(const Optional<value_type> & that) const { return !(*this == that); }

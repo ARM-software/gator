@@ -94,6 +94,13 @@ namespace lib {
         bool exists() const { return canAccess(false, false, false); }
 
         /**
+         * Checks if the path has any children whose name is prefixed with @a prefix.
+         * @param prefix Prefix to match
+         * @return True if any results
+         */
+        bool hasChildWithNamePrefix(const char * prefix) const;
+
+        /**
          * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
          * @return  The contents of that file
          */

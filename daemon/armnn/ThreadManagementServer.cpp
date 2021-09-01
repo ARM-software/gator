@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 #include "armnn/ThreadManagementServer.h"
 
 #include "Logging.h"
@@ -7,15 +7,9 @@
 
 namespace armnn {
     ThreadManagementServer::ThreadManagementServer(std::unique_ptr<IAcceptor> acceptor)
-        : mMutex {},
-          mSessionDiedCV {},
-          mThreads {},
-          mEnabled {false},
-          mDone {false},
-          mAcceptor {std::move(acceptor)},
+        : mAcceptor {std::move(acceptor)},
           mReaperThread {&ThreadManagementServer::reaperLoop, this},
-          mAcceptorThread {&ThreadManagementServer::acceptLoop, this},
-          mIsRunning {true}
+          mAcceptorThread {&ThreadManagementServer::acceptLoop, this}
     {
     }
 

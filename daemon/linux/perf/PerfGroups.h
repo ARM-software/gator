@@ -23,6 +23,7 @@ public:
                int backtraceDepth,
                int sampleRate,
                bool enablePeriodicSampling,
+               bool excludeKernelEvents,
                lib::Span<const GatorCpu> clusters,
                lib::Span<const int> clusterIds,
                int64_t schedSwitchId);
@@ -33,10 +34,17 @@ public:
                int backtraceDepth,
                int sampleRate,
                bool enablePeriodicSampling,
+               bool excludeKernelEvents,
                lib::Span<const GatorCpu> clusters,
                lib::Span<const int> clusterIds,
                int64_t schedSwitchId,
                unsigned int maxFiles);
+
+    // Intentionally undefined
+    PerfGroups(const PerfGroups &) = delete;
+    PerfGroups & operator=(const PerfGroups &) = delete;
+    PerfGroups(PerfGroups &&) = delete;
+    PerfGroups & operator=(PerfGroups &&) = delete;
 
     bool add(IPerfAttrsConsumer & attrsConsumer,
              const PerfEventGroupIdentifier & groupIdentifier,
@@ -67,21 +75,14 @@ public:
     bool hasSPE() const;
 
 private:
+    PerfEventGroupSharedConfig sharedConfig;
+    std::map<PerfEventGroupIdentifier, std::unique_ptr<PerfEventGroup>> perfEventGroupMap {};
+    std::map<int, unsigned int> eventsOpenedPerCpu {};
+    unsigned int maxFiles;
+    unsigned int numberOfEventsAdded {0};
+
     /// Get the group and create the group leader if needed
     PerfEventGroup & getGroup(IPerfAttrsConsumer & attrsConsumer, const PerfEventGroupIdentifier & groupIdentifier);
-
-    PerfEventGroupSharedConfig sharedConfig;
-    std::map<PerfEventGroupIdentifier, std::unique_ptr<PerfEventGroup>> perfEventGroupMap;
-
-    std::map<int, unsigned int> eventsOpenedPerCpu;
-    unsigned int maxFiles;
-    unsigned int numberOfEventsAdded;
-
-    // Intentionally undefined
-    PerfGroups(const PerfGroups &) = delete;
-    PerfGroups & operator=(const PerfGroups &) = delete;
-    PerfGroups(PerfGroups &&) = delete;
-    PerfGroups & operator=(PerfGroups &&) = delete;
 };
 
 #endif // PERF_GROUPS_H

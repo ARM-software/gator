@@ -1,14 +1,10 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/SenderQueue.h"
 
 #include "Logging.h"
 
 namespace armnn {
-    SenderQueue::SenderQueue(SocketIO & connection)
-        : mConnection {connection}, mQueueMutex {}, mConditionVar {}, mSendFinished {false}, mQueue {}
-    {
-    }
 
     bool SenderQueue::add(std::vector<std::uint8_t> && data)
     {

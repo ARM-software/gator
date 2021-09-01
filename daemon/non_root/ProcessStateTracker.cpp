@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStateTracker.h"
 
@@ -22,7 +22,7 @@ namespace non_root {
     }
 
     ProcessStateTracker::ActiveScan::ActiveScan(ProcessStateTracker & parent_, unsigned long long timestampNS_)
-        : accumulatedTimePerCore(), parent(parent_), timestampNS(timestampNS_)
+        : parent(parent_), timestampNS(timestampNS_)
     {
     }
 
@@ -162,13 +162,7 @@ namespace non_root {
                                              unsigned long long bootTimeBaseNS_,
                                              unsigned long clktck_,
                                              unsigned long pageSize_)
-        : handler(handler_),
-          lastTimestampNS(0),
-          bootTimeBaseNS(bootTimeBaseNS_),
-          clktck(clktck_),
-          pageSize(pageSize_),
-          trackedProcesses(),
-          firstIteration(true)
+        : handler(handler_), bootTimeBaseNS(bootTimeBaseNS_), clktck(clktck_), pageSize(pageSize_)
     {
     }
 

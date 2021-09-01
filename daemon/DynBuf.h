@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef DYNBUF_H
 #define DYNBUF_H
@@ -10,6 +10,12 @@ class DynBuf {
 public:
     DynBuf() : capacity(0), length(0), buf(nullptr) {}
     ~DynBuf() { reset(); }
+
+    // Intentionally undefined
+    DynBuf(const DynBuf &) = delete;
+    DynBuf & operator=(const DynBuf &) = delete;
+    DynBuf(DynBuf &&) = delete;
+    DynBuf & operator=(DynBuf &&) = delete;
 
     inline void reset()
     {
@@ -39,12 +45,6 @@ private:
     size_t capacity;
     size_t length;
     char * buf;
-
-    // Intentionally undefined
-    DynBuf(const DynBuf &) = delete;
-    DynBuf & operator=(const DynBuf &) = delete;
-    DynBuf(DynBuf &&) = delete;
-    DynBuf & operator=(DynBuf &&) = delete;
 };
 
 #endif // DYNBUF_H

@@ -6,7 +6,7 @@ The source code for `gatord`, `gator.py` and related tools.
 
 * `daemon`, `python`, and `notify` are provided under GPL-2.0-only. See
    [daemon/COPYING], [python/COPYING], and [notify/COPYING] respectively.
-* `annotate`, and `gator_me.py` is provided under the BSD-3-Clause license. See [annotate/LICENSE].
+* `annotate`, and `gator_me.py` are provided under the BSD-3-Clause license. See [annotate/LICENSE].
 
 This project contains code from other projects listed below. The original license
 text is included in those source files.
@@ -64,11 +64,6 @@ configuration settings within menuconfig may differ)
 - CPU Power Management
   - CPU Frequency scaling
     - [*] CPU Frequency scaling (enables CONFIG_CPU_FREQ)
-- Device Drivers
-  - Graphics support
-    - Arm GPU Configuration
-      - Mali Midgard series support
-        - [*] Streamline Debug support (enables CONFIG_MALI_GATOR_SUPPORT needed as part of Mali Midgard support)
 - Kernel hacking
   - [*] Compile the kernel with debug info (optional, enables CONFIG_DEBUG_INFO)
   - [*] Tracers
@@ -86,7 +81,6 @@ The configuration options:
 - CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS (kernel versions 3.0 and greater)
 - CONFIG_DEBUG_INFO (optional, used for analyzing the kernel)
 - CONFIG_CPU_FREQ (optional, provides frequency setting of the CPU)
-- CONFIG_MALI_GATOR_SUPPORT (needed as part of Mali Midgard support)
 
 These may be verified on a running system using `/proc/config.gz`
 (if this file exists) by running `zcat /proc/config.gz | grep <option>`.

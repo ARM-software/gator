@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "MidgardDriver.h"
 
@@ -67,9 +67,15 @@ struct CounterData {
 class MidgardCounter : public DriverCounter {
 public:
     MidgardCounter(DriverCounter * next, const char * name, CounterData * const counterData)
-        : DriverCounter(next, name), mCounterData(*counterData), mEvent()
+        : DriverCounter(next, name), mCounterData(*counterData)
     {
     }
+
+    // Intentionally undefined
+    MidgardCounter(const MidgardCounter &) = delete;
+    MidgardCounter & operator=(const MidgardCounter &) = delete;
+    MidgardCounter(MidgardCounter &&) = delete;
+    MidgardCounter & operator=(MidgardCounter &&) = delete;
 
     int getType() const { return mCounterData.mType; }
 
@@ -84,13 +90,7 @@ public:
 
 private:
     const CounterData mCounterData;
-    EventCode mEvent;
-
-    // Intentionally undefined
-    MidgardCounter(const MidgardCounter &) = delete;
-    MidgardCounter & operator=(const MidgardCounter &) = delete;
-    MidgardCounter(MidgardCounter &&) = delete;
-    MidgardCounter & operator=(MidgardCounter &&) = delete;
+    EventCode mEvent {};
 };
 
 MidgardDriver::MidgardDriver() : SimpleDriver("MidgardDriver"), mQueried(false)

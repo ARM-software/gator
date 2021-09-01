@@ -16,16 +16,16 @@ namespace mali_userspace {
         }
         ~MaliGPUClockPolledDriverCounter() override = default;
 
-        int64_t read() override { return mValue; }
-
-    private:
-        uint64_t & mValue;
-
         // Intentionally unimplemented
         MaliGPUClockPolledDriverCounter(const MaliGPUClockPolledDriverCounter &) = delete;
         MaliGPUClockPolledDriverCounter & operator=(const MaliGPUClockPolledDriverCounter &) = delete;
         MaliGPUClockPolledDriverCounter(MaliGPUClockPolledDriverCounter &&) = delete;
         MaliGPUClockPolledDriverCounter & operator=(MaliGPUClockPolledDriverCounter &&) = delete;
+
+        int64_t read() override { return mValue; }
+
+    private:
+        uint64_t & mValue;
     };
 
 }

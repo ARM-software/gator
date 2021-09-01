@@ -62,16 +62,8 @@ namespace armnn {
         : globalState(globalState),
           counterConsumer(counterConsumer),
           sendQueue(std::move(sendQueue)),
-          mutex(),
-          availableCounterDirectoryDevices(),
-          availableCounterDirectoryCounterSets(),
-          availableCounterDirectoryCategories(),
-          globalIdToCategoryAndEvent(),
-          requestedEventUIDs(),
-          activeEventUIDs(),
-          captureIsActive(false),
-          sessionID {sessionID},
-          streamMetadata {std::move(streamMetadata)}
+          streamMetadata {std::move(streamMetadata)},
+          sessionID {sessionID}
     {
     }
 
@@ -147,9 +139,7 @@ namespace armnn {
             // Send request to ArmNN to update active events
             return sendCounterSelection();
         }
-        else {
-            return true;
-        }
+        return true;
     }
 
     bool SessionStateTracker::onPeriodicCounterSelection(std::uint32_t /*period*/, std::set<std::uint16_t> uids)

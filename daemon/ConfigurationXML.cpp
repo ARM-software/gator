@@ -64,10 +64,8 @@ namespace configuration_xml {
                             parser.getCounterConfiguration(),
                             parser.getSpeConfiguration()};
                 }
-                else {
-                    // invalid so delete it
-                    remove();
-                }
+                // invalid so delete it
+                remove();
             }
         }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_SIMPLEDRIVER_H_
 #define NATIVE_GATOR_DAEMON_SIMPLEDRIVER_H_
@@ -9,6 +9,12 @@
 class SimpleDriver : public Driver {
 public:
     ~SimpleDriver() override;
+
+    // Intentionally unimplemented
+    SimpleDriver(const SimpleDriver &) = delete;
+    SimpleDriver & operator=(const SimpleDriver &) = delete;
+    SimpleDriver(SimpleDriver &&) = delete;
+    SimpleDriver & operator=(SimpleDriver &&) = delete;
 
     bool claimCounter(Counter & counter) const override;
     bool countersEnabled() const;
@@ -27,12 +33,6 @@ protected:
 
 private:
     DriverCounter * mCounters;
-
-    // Intentionally unimplemented
-    SimpleDriver(const SimpleDriver &) = delete;
-    SimpleDriver & operator=(const SimpleDriver &) = delete;
-    SimpleDriver(SimpleDriver &&) = delete;
-    SimpleDriver & operator=(SimpleDriver &&) = delete;
 };
 
 #endif /* NATIVE_GATOR_DAEMON_SIMPLEDRIVER_H_ */

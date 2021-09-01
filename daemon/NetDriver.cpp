@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
@@ -15,17 +15,17 @@ class NetCounter : public DriverCounter {
 public:
     NetCounter(DriverCounter * next, const char * name, uint64_t * value);
 
-    int64_t read() override;
-
-private:
-    uint64_t * const mValue;
-    uint64_t mPrev;
-
     // Intentionally unimplemented
     NetCounter(const NetCounter &) = delete;
     NetCounter & operator=(const NetCounter &) = delete;
     NetCounter(NetCounter &&) = delete;
     NetCounter & operator=(NetCounter &&) = delete;
+
+    int64_t read() override;
+
+private:
+    uint64_t * const mValue;
+    uint64_t mPrev;
 };
 
 NetCounter::NetCounter(DriverCounter * next, const char * const name, uint64_t * const value)
@@ -38,10 +38,6 @@ int64_t NetCounter::read()
     int64_t result = *mValue - mPrev;
     mPrev = *mValue;
     return result;
-}
-
-NetDriver::NetDriver() : PolledDriver("Net"), mBuf(), mReceiveBytes(0), mTransmitBytes(0)
-{
 }
 
 void NetDriver::readEvents(mxml_node_t * const /*unused*/)

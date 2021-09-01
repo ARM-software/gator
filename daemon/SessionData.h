@@ -30,79 +30,74 @@ extern const size_t MALI_GRAPHICS_SIZE;
 
 class SharedData {
 public:
-    SharedData();
-
-    size_t mMaliUtgardCountersSize;
-    char mMaliUtgardCounters[1 << 12];
-    size_t mMaliMidgardCountersSize;
-    char mMaliMidgardCounters[1 << 13];
-
-private:
+    SharedData() = default;
     // Intentionally unimplemented
     SharedData(const SharedData &) = delete;
     SharedData & operator=(const SharedData &) = delete;
     SharedData(SharedData &&) = delete;
     SharedData & operator=(SharedData &&) = delete;
+
+    size_t mMaliUtgardCountersSize {0};
+    char mMaliUtgardCounters[1 << 12];
+    size_t mMaliMidgardCountersSize {0};
+    char mMaliMidgardCounters[1 << 13];
 };
 
 class SessionData {
 public:
     static const size_t MAX_STRING_LEN = 80;
 
-    SessionData();
-
-    void initialize();
-    void parseSessionXML(char * xmlString);
-
-    shared_memory::unique_ptr<SharedData> mSharedData;
-
-    std::list<std::string> mImages;
-    const char * mConfigurationXMLPath;
-    const char * mSessionXMLPath;
-    const char * mEventsXMLPath;
-    const char * mEventsXMLAppend;
-    const char * mTargetPath;
-    const char * mAPCDir;
-    const char * mCaptureWorkingDir;
-    std::vector<std::string> mCaptureCommand;
-    const char * mCaptureUser;
-    const char * mWaitForProcessCommand;
-    std::set<int> mPids;
-    bool mStopOnExit;
-
-    bool mWaitingOnCommand;
-    bool mLocalCapture;
-    // halt processing of the driver data until profiling is complete or the buffer is filled
-    bool mOneShot;
-    bool mIsEBS;
-    bool mAllowCommands;
-    bool mFtraceRaw;
-    bool mSystemWide;
-    int mAndroidApiLevel;
-
-    int mBacktraceDepth;
-    // number of MB to use for the entire collection buffer
-    int mTotalBufferSize;
-    int mSampleRate;
-    uint64_t mLiveRate;
-    int mDuration;
-    int mPageSize;
-    int mAnnotateStart;
-    int64_t parameterSetFlag;
-    int mPerfMmapSizeInPages;
-    int mSpeSampleRate;
-
-    // PMU Counters
-    Counter mCounters[MAX_PERFORMANCE_COUNTERS];
-
-    std::set<Constant> mConstants;
-
-private:
+    SessionData() = default;
     // Intentionally unimplemented
     SessionData(const SessionData &) = delete;
     SessionData & operator=(const SessionData &) = delete;
     SessionData(SessionData &&) = delete;
     SessionData & operator=(SessionData &&) = delete;
+
+    void initialize();
+    void parseSessionXML(char * xmlString);
+
+    shared_memory::unique_ptr<SharedData> mSharedData {};
+
+    std::list<std::string> mImages {};
+    std::vector<std::string> mCaptureCommand {};
+    std::set<int> mPids {};
+    std::set<Constant> mConstants {};
+
+    const char * mConfigurationXMLPath {nullptr};
+    const char * mSessionXMLPath {nullptr};
+    const char * mEventsXMLPath {nullptr};
+    const char * mEventsXMLAppend {nullptr};
+    const char * mTargetPath {nullptr};
+    const char * mAPCDir {nullptr};
+    const char * mCaptureWorkingDir {nullptr};
+    const char * mCaptureUser {nullptr};
+    const char * mWaitForProcessCommand {nullptr};
+    uint64_t mLiveRate {0};
+    uint64_t parameterSetFlag {0};
+    int mAndroidApiLevel {0};
+    int mBacktraceDepth {0};
+    // number of MB to use for the entire collection buffer
+    int mTotalBufferSize {0};
+    int mSampleRate {0};
+    int mDuration {0};
+    int mPageSize {0};
+    int mAnnotateStart {0};
+    int mPerfMmapSizeInPages {0};
+    int mSpeSampleRate {-1};
+    bool mStopOnExit {false};
+    bool mWaitingOnCommand {false};
+    bool mLocalCapture {false};
+    // halt processing of the driver data until profiling is complete or the buffer is filled
+    bool mOneShot {false};
+    bool mIsEBS {false};
+    bool mAllowCommands {false};
+    bool mFtraceRaw {false};
+    bool mSystemWide {false};
+    bool mExcludeKernelEvents {false};
+
+    // PMU Counters
+    Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 };
 
 extern SessionData gSessionData;

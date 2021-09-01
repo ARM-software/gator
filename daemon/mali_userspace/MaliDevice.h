@@ -64,6 +64,8 @@ namespace mali_userspace {
              */
         MaliDeviceCounterList(uint32_t numBlocks, uint32_t numGroups, uint32_t numWords);
         MaliDeviceCounterList(MaliDeviceCounterList &&) noexcept;
+        MaliDeviceCounterList(const MaliDeviceCounterList &) = delete;
+        MaliDeviceCounterList & operator=(const MaliDeviceCounterList &) = delete;
         ~MaliDeviceCounterList();
 
         /** @return The number of enabled counters in the list */
@@ -89,9 +91,6 @@ namespace mali_userspace {
              * Mark counter at particular address as enabled
              */
         void enable(MaliCounterBlockName nameBlock, uint32_t repeatCount, uint32_t groupIndex, uint32_t wordIndex);
-
-        MaliDeviceCounterList(const MaliDeviceCounterList &) = delete;
-        MaliDeviceCounterList & operator=(const MaliDeviceCounterList &) = delete;
     };
 
     /**
@@ -117,6 +116,11 @@ namespace mali_userspace {
          * @return The MaliDevice object, or nullptr on failure
          */
         static std::unique_ptr<MaliDevice> create(std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath);
+
+        MaliDevice(const MaliDevice &) = delete;
+        MaliDevice & operator=(const MaliDevice &) = delete;
+        MaliDevice(MaliDevice &&) = delete;
+        MaliDevice & operator=(MaliDevice &&) = delete;
 
         /**
          * @return The path to the clock file
@@ -224,11 +228,6 @@ namespace mali_userspace {
         MaliDevice(const MaliProductVersion & productVersion,
                    std::unique_ptr<IMaliDeviceApi> deviceApi,
                    std::string clockPath);
-
-        MaliDevice(const MaliDevice &) = delete;
-        MaliDevice & operator=(const MaliDevice &) = delete;
-        MaliDevice(MaliDevice &&) = delete;
-        MaliDevice & operator=(MaliDevice &&) = delete;
 
         /**
          * Dump all the counter data on V4 layout

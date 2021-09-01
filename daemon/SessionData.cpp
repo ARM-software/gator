@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "SessionData.h"
 
@@ -27,49 +27,6 @@ const size_t MALI_GRAPHICS_SIZE = sizeof(MALI_GRAPHICS);
 
 SessionData gSessionData;
 
-SharedData::SharedData()
-    : mMaliUtgardCountersSize(0), mMaliUtgardCounters(), mMaliMidgardCountersSize(0), mMaliMidgardCounters()
-{
-}
-
-SessionData::SessionData()
-    : mSharedData(),
-      mImages(),
-      mConfigurationXMLPath(),
-      mSessionXMLPath(),
-      mEventsXMLPath(),
-      mEventsXMLAppend(),
-      mTargetPath(),
-      mAPCDir(),
-      mCaptureWorkingDir(),
-      mCaptureCommand(),
-      mCaptureUser(),
-      mWaitForProcessCommand(),
-      mPids(),
-      mStopOnExit(),
-      mWaitingOnCommand(),
-      mLocalCapture(),
-      mOneShot(),
-      mIsEBS(),
-      mAllowCommands(),
-      mFtraceRaw(),
-      mSystemWide(),
-      mAndroidApiLevel(),
-      mBacktraceDepth(),
-      mTotalBufferSize(),
-      mSampleRate(),
-      mLiveRate(),
-      mDuration(),
-      mPageSize(),
-      mAnnotateStart(),
-      parameterSetFlag(),
-      mPerfMmapSizeInPages(),
-      mSpeSampleRate(-1),
-      mCounters(),
-      mConstants()
-{
-}
-
 void SessionData::initialize()
 {
     mSharedData = shared_memory::make_unique<SharedData>();
@@ -79,6 +36,7 @@ void SessionData::initialize()
     mAllowCommands = false;
     mFtraceRaw = false;
     mSystemWide = false;
+    mExcludeKernelEvents = false;
     mImages.clear();
     mConfigurationXMLPath = nullptr;
     mSessionXMLPath = nullptr;

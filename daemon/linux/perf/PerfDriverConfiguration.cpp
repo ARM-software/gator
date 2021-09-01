@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
@@ -52,6 +52,15 @@ static void setProp(const std::string & prop, const std::string & value)
     const char * const command[] = {"setprop", prop.c_str(), value.c_str(), nullptr};
 
     const lib::PopenResult setPropResult = lib::popen(command);
+    //setprop not found, probably not Android.
+    if (setPropResult.pid == -ENOENT) {
+        logg.logMessage("lib::popen(%s %s %s) failed: %s",
+                        command[0],
+                        command[1],
+                        command[2],
+                        strerror(-setPropResult.pid));
+        return;
+    }
     if (setPropResult.pid < 0) {
         logg.logError("lib::popen(%s %s %s) failed: %s",
                       command[0],
@@ -86,7 +95,7 @@ static bool setPerfEventMlockKb(int newValue)
         return true;
     }
 
-    logg.logWarning("setting property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
+    logg.logMessage("setting property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
     setProp(debugPerfEventMlockKbPropString, std::to_string(newValue));
 
     // Trigger debug property update
@@ -99,7 +108,7 @@ static bool setPerfEventMlockKb(int newValue)
     const bool result = fileValue.valid() ? fileValue.get() == newValue : false;
 
     if (!result) {
-        logg.logWarning("failed to set property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
+        logg.logMessage("failed to set property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
     }
 
     return result;
@@ -170,8 +179,14 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     // Check the kernel version
     const int kernelVersion = lib::parseLinuxVersion(utsname);
 
-    const bool hasArmv7PmuDriver = beginsWith(utsname.machine, "arm") && !beginsWith(utsname.machine, "arm64") &&
-                                   !beginsWith(utsname.machine, "armv6");
+    const bool hasArmv7PmuDriver = beginsWith(utsname.machine, "armv7")
+        || FsEntry::create("/sys/bus/event_source/devices").hasChildWithNamePrefix("armv7");
+
+#if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
+    const bool has_64bit_register_set = beginsWith(utsname.machine, "aarch64") || beginsWith(utsname.machine, "arm64"); // use the machine name as allowed to run 32-bit gator on aarch64 machine
+#else
+    const bool has_64bit_register_set = (sizeof(void*) == 8);
+#endif
 
     if (kernelVersion < KERNEL_VERSION(3, 4, 0)) {
         const char error[] = "Unsupported kernel version\nPlease upgrade to 3.4 or later";
@@ -203,14 +218,12 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
             logg.logError(error);
             return nullptr;
         }
-        else {
 #if defined(CONFIG_ASSUME_PERF_HIGH_PARANOIA) && CONFIG_ASSUME_PERF_HIGH_PARANOIA
-            perf_event_paranoid = 2;
+        perf_event_paranoid = 2;
 #else
-            perf_event_paranoid = 1;
+        perf_event_paranoid = 1;
 #endif
-            logg.logSetup("perf_event_paranoid not accessible\nAssuming high paranoia (%d).", perf_event_paranoid);
-        }
+        logg.logSetup("perf_event_paranoid not accessible\nAssuming high paranoia (%d).", perf_event_paranoid);
     }
     else {
         logg.logMessage("perf_event_paranoid: %d", perf_event_paranoid);
@@ -306,6 +319,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     configuration->config.can_access_tracepoints = can_access_raw_tracepoints;
 
     configuration->config.has_armv7_pmu_driver = hasArmv7PmuDriver;
+
+    configuration->config.has_64bit_register_set = has_64bit_register_set;
 
     // detect the PMUs
     std::set<const GatorCpu *> cpusDetectedViaSysFs;

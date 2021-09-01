@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
@@ -37,6 +37,11 @@ namespace non_root {
         public:
             ~ActiveScan();
 
+            ActiveScan(const ActiveScan &) = delete;
+            ActiveScan & operator=(const ActiveScan &) = delete;
+            ActiveScan(ActiveScan &&) = delete;
+            ActiveScan & operator=(ActiveScan &&) = delete;
+
             /**
              * Accept one /proc/[PID]/stat or /proc/[PID]/task/[TID]/stat record and an optional /proc/[PID]/statm or /proc/[PID]/task/[TID]/statm
              */
@@ -51,16 +56,11 @@ namespace non_root {
             friend class ProcessStateTracker;
 
             // sum up all time per core spent in system and user for all processes
-            std::map<unsigned long, unsigned long long> accumulatedTimePerCore;
+            std::map<unsigned long, unsigned long long> accumulatedTimePerCore {};
             ProcessStateTracker & parent;
             unsigned long long timestampNS;
 
             ActiveScan(ProcessStateTracker & parent, unsigned long long timestampNS);
-
-            ActiveScan(const ActiveScan &) = delete;
-            ActiveScan & operator=(const ActiveScan &) = delete;
-            ActiveScan(ActiveScan &&) = delete;
-            ActiveScan & operator=(ActiveScan &&) = delete;
         };
 
         /** Constructor */
@@ -88,6 +88,8 @@ namespace non_root {
             ProcessInfo(int pid, int tid, unsigned long pageSize, unsigned long long timestampNS);
             ProcessInfo(ProcessInfo &&) noexcept;
             ProcessInfo & operator=(ProcessInfo &&) noexcept;
+            ProcessInfo(const ProcessInfo &) = delete;
+            ProcessInfo & operator=(const ProcessInfo &) = delete;
 
             bool isEmpty() const { return (state == State::EMPTY); }
 
@@ -135,9 +137,6 @@ namespace non_root {
             unsigned long long startTimeNS;
             int parentPid;
             State state;
-
-            ProcessInfo(const ProcessInfo &) = delete;
-            ProcessInfo & operator=(const ProcessInfo &) = delete;
         };
 
         /** Can call endScan */
@@ -147,7 +146,7 @@ namespace non_root {
         ProcessStateChangeHandler & handler;
 
         /** Last value of timestampNS on previous run */
-        unsigned long long lastTimestampNS;
+        unsigned long long lastTimestampNS {0};
 
         /** Base value for boot time based clk ticks to transform to monotonic time */
         unsigned long long bootTimeBaseNS;
@@ -159,10 +158,10 @@ namespace non_root {
         unsigned long pageSize;
 
         /** Tracked processes map: TID->ProcessInfo */
-        std::map<int, ProcessInfo> trackedProcesses;
+        std::map<int, ProcessInfo> trackedProcesses {};
 
         /** True only on the first time the scan runs */
-        bool firstIteration;
+        bool firstIteration {false};
 
         /**
          * Accept one /proc/[PID]/stat or /proc/[PID]/task/[TID]/stat record and optinally one /proc/[PID]/statm or /proc/[PID]/task/[TID]/statm record

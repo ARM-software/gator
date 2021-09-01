@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "DynBuf.h"
 
@@ -88,7 +88,7 @@ int DynBuf::readlink(const char * const path)
         if (bytes < 0) {
             return -errno;
         }
-        else if (static_cast<size_t>(bytes) < capacity) {
+        if (static_cast<size_t>(bytes) < capacity) {
             break;
         }
     }

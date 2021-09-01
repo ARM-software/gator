@@ -119,10 +119,8 @@ static bool parseCpuId(std::set<int> & cpuIds,
         cpuIds.insert(cpuid);
         return true;
     }
-    else {
-        logg.logError("The %s for '%s' in pmu XML is not valid", locationStr, pmuId);
-        return false;
-    }
+    logg.logError("The %s for '%s' in pmu XML is not valid", locationStr, pmuId);
+    return false;
 }
 
 bool parseXml(const char * const xml, PmuXML & pmuXml)

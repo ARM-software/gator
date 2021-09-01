@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2015-2021 by Arm Limited. All rights reserved. */
 
 #ifndef ATRACEDRIVER_H
 #define ATRACEDRIVER_H
@@ -11,6 +11,12 @@ class FtraceDriver;
 class AtraceDriver : public SimpleDriver {
 public:
     AtraceDriver(const FtraceDriver & ftraceDriver);
+
+    // Intentionally unimplemented
+    AtraceDriver(const AtraceDriver &) = delete;
+    AtraceDriver & operator=(const AtraceDriver &) = delete;
+    AtraceDriver(AtraceDriver &&) = delete;
+    AtraceDriver & operator=(AtraceDriver &&) = delete;
 
     void readEvents(mxml_node_t * xml) override;
 
@@ -25,12 +31,6 @@ private:
     bool mSupported;
     char mNotifyPath[256];
     const FtraceDriver & mFtraceDriver;
-
-    // Intentionally unimplemented
-    AtraceDriver(const AtraceDriver &) = delete;
-    AtraceDriver & operator=(const AtraceDriver &) = delete;
-    AtraceDriver(AtraceDriver &&) = delete;
-    AtraceDriver & operator=(AtraceDriver &&) = delete;
 };
 
 #endif // ATRACEDRIVER_H

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "AtraceDriver.h"
 
@@ -12,16 +12,16 @@ class AtraceCounter : public DriverCounter {
 public:
     AtraceCounter(DriverCounter * next, const char * name, int flag);
 
-    int getFlag() const { return mFlag; }
-
-private:
-    const int mFlag;
-
     // Intentionally unimplemented
     AtraceCounter(const AtraceCounter &) = delete;
     AtraceCounter & operator=(const AtraceCounter &) = delete;
     AtraceCounter(AtraceCounter &&) = delete;
     AtraceCounter & operator=(AtraceCounter &&) = delete;
+
+    int getFlag() const { return mFlag; }
+
+private:
+    const int mFlag;
 };
 
 AtraceCounter::AtraceCounter(DriverCounter * next, const char * name, int flag) : DriverCounter(next, name), mFlag(flag)

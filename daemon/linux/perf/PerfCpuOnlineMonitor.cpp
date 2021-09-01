@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfCpuOnlineMonitor.h"
 
@@ -10,9 +10,8 @@
 #include <utility>
 
 PerfCpuOnlineMonitor::PerfCpuOnlineMonitor(NotificationCallback callback)
-    : thread(), onlineCores(), callback(std::move(callback)), terminated(false)
+    : callback(std::move(callback)), thread(launch, this)
 {
-    thread = std::thread(launch, this);
 }
 
 PerfCpuOnlineMonitor::~PerfCpuOnlineMonitor()

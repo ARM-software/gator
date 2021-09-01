@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcStatFileRecord.h"
 
@@ -51,9 +51,7 @@ namespace lnx {
             if (string[from] == '\0') {
                 return from;
             }
-            else {
-                return from + 1;
-            }
+            return from + 1;
         }
 
         /**
@@ -153,9 +151,7 @@ namespace lnx {
 
                 return skipLine(string, pos_out);
             }
-            else {
-                result.clear();
-            }
+            result.clear();
 
             return skipLine(string, pos_in);
         }
@@ -320,11 +316,6 @@ namespace lnx {
                 }
             }
         }
-    }
-
-    ProcStatFileRecord::ProcStatFileRecord()
-        : cpus(), page(), swap(), intr(), soft_irq(), ctxt(), btime(), processes(), procs_running(), procs_blocked()
-    {
     }
 
     ProcStatFileRecord::ProcStatFileRecord(std::vector<CpuTime> && cpus_,

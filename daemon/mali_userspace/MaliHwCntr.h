@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIHWCNTR_H_
 #define MALI_USERSPACE_MALIHWCNTR_H_
@@ -19,6 +19,12 @@ namespace mali_userspace {
         {
         }
 
+        // Intentionally undefined
+        MaliHwCntr(const MaliHwCntr &) = delete;
+        MaliHwCntr & operator=(const MaliHwCntr &) = delete;
+        MaliHwCntr(MaliHwCntr &&) = delete;
+        MaliHwCntr & operator=(MaliHwCntr &&) = delete;
+
         inline int32_t getNameBlockIndex() const { return mNameBlockIndex; }
 
         inline int32_t getCounterIndex() const { return mCounterIndex; }
@@ -29,12 +35,6 @@ namespace mali_userspace {
         int32_t mNameBlockIndex;
         int32_t mCounterIndex;
         uint32_t mGpuId;
-
-        // Intentionally undefined
-        MaliHwCntr(const MaliHwCntr &) = delete;
-        MaliHwCntr & operator=(const MaliHwCntr &) = delete;
-        MaliHwCntr(MaliHwCntr &&) = delete;
-        MaliHwCntr & operator=(MaliHwCntr &&) = delete;
     };
 }
 

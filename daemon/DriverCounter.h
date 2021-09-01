@@ -15,6 +15,12 @@ public:
     DriverCounter(DriverCounter * next, const char * name);
     virtual ~DriverCounter() = default;
 
+    // Intentionally unimplemented
+    DriverCounter(const DriverCounter &) = delete;
+    DriverCounter & operator=(const DriverCounter &) = delete;
+    DriverCounter(DriverCounter &&) = delete;
+    DriverCounter & operator=(DriverCounter &&) = delete;
+
     DriverCounter * getNext() const { return mNext; }
     const char * getName() const { return mName.c_str(); }
     int getKey() const { return mKey; }
@@ -27,12 +33,6 @@ private:
     const std::string mName;
     const int mKey;
     bool mEnabled;
-
-    // Intentionally unimplemented
-    DriverCounter(const DriverCounter &) = delete;
-    DriverCounter & operator=(const DriverCounter &) = delete;
-    DriverCounter(DriverCounter &&) = delete;
-    DriverCounter & operator=(DriverCounter &&) = delete;
 };
 
 #endif /* NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_ */

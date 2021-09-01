@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/PerCoreIdentificationThread.h"
 
@@ -28,13 +28,8 @@
 PerCoreIdentificationThread::PerCoreIdentificationThread(bool ignoreOffline,
                                                          unsigned cpu,
                                                          ConsumerFunction consumerFunction)
-    : thread(),
-      consumerFunction(std::move(consumerFunction)),
-      terminatedFlag(false),
-      cpu(cpu),
-      ignoreOffline(ignoreOffline)
+    : consumerFunction(std::move(consumerFunction)), cpu(cpu), ignoreOffline(ignoreOffline), thread(launch, this)
 {
-    thread = std::thread(launch, this);
 }
 
 PerCoreIdentificationThread::~PerCoreIdentificationThread()

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
@@ -15,17 +15,17 @@ class DiskIOCounter : public DriverCounter {
 public:
     DiskIOCounter(DriverCounter * next, const char * name, uint64_t * value);
 
-    int64_t read() override;
-
-private:
-    uint64_t * const mValue;
-    uint64_t mPrev;
-
     // Intentionally unimplemented
     DiskIOCounter(const DiskIOCounter &) = delete;
     DiskIOCounter & operator=(const DiskIOCounter &) = delete;
     DiskIOCounter(DiskIOCounter &&) = delete;
     DiskIOCounter & operator=(DiskIOCounter &&) = delete;
+
+    int64_t read() override;
+
+private:
+    uint64_t * const mValue;
+    uint64_t mPrev;
 };
 
 DiskIOCounter::DiskIOCounter(DriverCounter * next, const char * const name, uint64_t * const value)
@@ -39,10 +39,6 @@ int64_t DiskIOCounter::read()
     mPrev = *mValue;
     // Kernel assumes a sector is 512 bytes
     return result << 9;
-}
-
-DiskIODriver::DiskIODriver() : PolledDriver("DiskIO"), mBuf(), mReadBytes(0), mWriteBytes(0)
-{
 }
 
 void DiskIODriver::readEvents(mxml_node_t * const /*unused*/)

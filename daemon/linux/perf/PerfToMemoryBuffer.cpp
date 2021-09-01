@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfToMemoryBuffer.h"
 
@@ -61,7 +61,7 @@ void PerfToMemoryBuffer::consumePerfAuxRecord(int cpu,
         return;
     }
 
-    for (auto & recordChunk : recordChunks) {
+    for (const auto & recordChunk : recordChunks) {
         for (std::size_t offset = 0; offset < recordChunk.byteCount;) {
             if (!waitFor(MAX_HEADER_SIZE)) {
                 return;
@@ -105,7 +105,7 @@ void PerfToMemoryBuffer::consumePerfDataRecord(int cpu, lib::Span<const DataReco
     bool inFrame = false;
     int lengthWriteIndex = 0;
     std::uint32_t totalWrittenSinceFrameEnd = 0;
-    for (auto & recordChunk : recordChunks) {
+    for (const auto & recordChunk : recordChunks) {
         const std::size_t totalWordCount =
             recordChunk.firstChunk.wordCount +
             (recordChunk.optionalSecondChunk.chunkPointer != nullptr ? recordChunk.optionalSecondChunk.wordCount : 0);
@@ -118,12 +118,10 @@ void PerfToMemoryBuffer::consumePerfDataRecord(int cpu, lib::Span<const DataReco
                 totalWrittenSinceFrameEnd += appendData(recordChunk);
                 continue;
             }
-            else {
-                // no, just end the current frame
-                endDataFrame(lengthWriteIndex, totalWrittenSinceFrameEnd);
-                inFrame = false;
-                totalWrittenSinceFrameEnd = 0;
-            }
+            // no, just end the current frame
+            endDataFrame(lengthWriteIndex, totalWrittenSinceFrameEnd);
+            inFrame = false;
+            totalWrittenSinceFrameEnd = 0;
         }
 
         const std::size_t totalRequiredBytes = MAX_HEADER_SIZE + requiredBytesForRecord;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
@@ -46,9 +46,9 @@ public:
                                                            ...);
 
 private:
-    DynBuf mSetup;
-    pthread_mutex_t mLoggingMutex;
-    bool mDebug;
+    DynBuf mSetup {};
+    pthread_mutex_t mLoggingMutex {};
+    bool mDebug {true};
     char mErrBuf[16384]; // Arbitrarily large buffer to hold a string
 };
 

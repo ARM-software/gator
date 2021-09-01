@@ -69,10 +69,8 @@ namespace armnn {
                 std::unique_ptr<IPacketDecoder> decoder(new PacketDecoder(order, consumer));
                 return decoder;
             }
-            else {
-                logg.logError("Cannot create decoder, as invalid versions in packet version table");
-                return std::unique_ptr<IPacketDecoder> {};
-            }
+            logg.logError("Cannot create decoder, as invalid versions in packet version table");
+            return std::unique_ptr<IPacketDecoder> {};
         }
         logg.logError("Cannot create decoder, as packet version table was empty");
         return std::unique_ptr<IPacketDecoder> {};
@@ -88,10 +86,8 @@ namespace armnn {
                 std::unique_ptr<IEncoder> encoder(new PacketEncoder(order));
                 return encoder;
             }
-            else {
-                logg.logError("Cannot create encoder, as invalid versions in packet version table");
-                return std::unique_ptr<IEncoder> {};
-            }
+            logg.logError("Cannot create encoder, as invalid versions in packet version table");
+            return std::unique_ptr<IEncoder> {};
         }
         logg.logError("Cannot create encoder, as packet version table was empty");
         return std::unique_ptr<IEncoder> {};

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #define __STDC_FORMAT_MACROS
 #define BUFFER_USE_SESSION_DATA
@@ -35,10 +35,7 @@
 namespace mali_userspace {
     class MaliHwCntrSource : public Source, public virtual IMaliDeviceCounterDumpCallback {
     public:
-        MaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver) : mDriver(driver), mReaders(), tasks()
-        {
-            createTasks(senderSem);
-        }
+        MaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver) : mDriver(driver) { createTasks(senderSem); }
 
         void createTasks(sem_t & mSenderSem)
         {
@@ -128,8 +125,8 @@ namespace mali_userspace {
 
     private:
         MaliHwCntrDriver & mDriver;
-        std::map<unsigned, std::unique_ptr<MaliHwCntrReader>> mReaders;
-        std::vector<std::unique_ptr<MaliHwCntrTask>> tasks;
+        std::map<unsigned, std::unique_ptr<MaliHwCntrReader>> mReaders {};
+        std::vector<std::unique_ptr<MaliHwCntrTask>> tasks {};
     };
 
     std::unique_ptr<Source> createMaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver)

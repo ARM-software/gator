@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 #define BUFFER_USE_SESSION_DATA
 
 #include "linux/perf/PerfSource.h"
@@ -68,22 +68,17 @@ PerfSource::PerfSource(PerfDriver & driver,
                      gSessionData.mBacktraceDepth,
                      gSessionData.mSampleRate,
                      !gSessionData.mIsEBS,
+                     driver.getConfig().exclude_kernel || gSessionData.mExcludeKernelEvents,
                      cpuInfo.getClusters(),
                      cpuInfo.getClusterIds(),
                      getTracepointId(driver.getTraceFsConstants(), SCHED_SWITCH)),
-      mMonitor(),
-      mUEvent(),
+
       mAppTids(std::move(appTids)),
       mDriver(driver),
-      mAttrsBuffer(),
-      mProcBuffer(),
       mSenderSem(senderSem),
       mProfilingStartedCallback(std::move(profilingStartedCallback)),
-      mIsDone(false),
       mFtraceDriver(ftraceDriver),
-      mCpuInfo(cpuInfo),
-      mSyncThread(),
-      enableOnCommandExec(false)
+      mCpuInfo(cpuInfo)
 {
     const PerfConfig & mConfig = mDriver.getConfig();
 
@@ -458,7 +453,7 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
         if (strcmp(result.mAction, "online") == 0) {
             return handleCpuOnline(currTime, cpu);
         }
-        else if (strcmp(result.mAction, "offline") == 0) {
+        if (strcmp(result.mAction, "offline") == 0) {
             return handleCpuOffline(currTime, cpu);
         }
     }

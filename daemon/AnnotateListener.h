@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #ifndef ANNOTATELISTENER_H
 #define ANNOTATELISTENER_H
@@ -10,6 +10,12 @@ class AnnotateListener {
 public:
     AnnotateListener();
     ~AnnotateListener();
+
+    // Intentionally unimplemented
+    AnnotateListener(const AnnotateListener &) = delete;
+    AnnotateListener & operator=(const AnnotateListener &) = delete;
+    AnnotateListener(AnnotateListener &&) = delete;
+    AnnotateListener & operator=(AnnotateListener &&) = delete;
 
     void setup();
 #ifdef TCP_ANNOTATIONS
@@ -30,12 +36,6 @@ private:
     OlyServerSocket * mSock;
 #endif
     OlyServerSocket * mUds;
-
-    // Intentionally unimplemented
-    AnnotateListener(const AnnotateListener &) = delete;
-    AnnotateListener & operator=(const AnnotateListener &) = delete;
-    AnnotateListener(AnnotateListener &&) = delete;
-    AnnotateListener & operator=(AnnotateListener &&) = delete;
 };
 
 #endif // ANNOTATELISTENER_H

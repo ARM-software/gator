@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliHwCntrReader.h"
 
@@ -81,7 +81,7 @@ namespace mali_userspace {
 
         : device(device),
           hwcntReaderFd(std::move(hwcntReaderFd)),
-          selfPipe(),
+
           sampleMemory(std::move(sampleMemory)),
           bufferCount(bufferCount),
           sampleBufferSize(sampleBufferSize),
@@ -141,12 +141,12 @@ namespace mali_userspace {
             temp.status = WAIT_STATUS_ERROR;
             return temp;
         }
-        else if (ready == 0) {
+        if (ready == 0) {
             // clear buffer
             temp.status = WAIT_STATUS_SUCCESS;
             return temp;
         }
-        else if (fds[POLL_DESCRIPTOR_SIGNAL].revents != 0) {
+        if (fds[POLL_DESCRIPTOR_SIGNAL].revents != 0) {
             // read the data from the pipe if necessary
             if ((fds[POLL_DESCRIPTOR_SIGNAL].revents & POLLIN) == POLLIN) {
                 // read the data
@@ -162,7 +162,7 @@ namespace mali_userspace {
             temp.status = WAIT_STATUS_TERMINATED;
             return temp;
         }
-        else if ((fds[POLL_DESCRIPTOR_HWCNT_READER].revents & POLLIN) == POLLIN) {
+        if ((fds[POLL_DESCRIPTOR_HWCNT_READER].revents & POLLIN) == POLLIN) {
             // get the buffer
             kbase_hwcnt_reader_metadata metadata;
             if (lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_GET_BUFFER, reinterpret_cast<unsigned long>(&metadata)) !=
@@ -184,18 +184,16 @@ namespace mali_userspace {
             temp.status = WAIT_STATUS_SUCCESS;
             return temp;
         }
-        else if ((fds[POLL_DESCRIPTOR_HWCNT_READER].revents & POLLHUP) == POLLHUP) {
+        if ((fds[POLL_DESCRIPTOR_HWCNT_READER].revents & POLLHUP) == POLLHUP) {
             // terminated
             temp.status = WAIT_STATUS_TERMINATED;
             return temp;
         }
-        else {
-            // error occurred
-            logg.logError("MaliHwCntrReader::waitForBuffer - unexpected event 0x%x",
-                          fds[POLL_DESCRIPTOR_HWCNT_READER].revents);
-            temp.status = WAIT_STATUS_ERROR;
-            return temp;
-        }
+        // error occurred
+        logg.logError("MaliHwCntrReader::waitForBuffer - unexpected event 0x%x",
+                      fds[POLL_DESCRIPTOR_HWCNT_READER].revents);
+        temp.status = WAIT_STATUS_ERROR;
+        return temp;
     }
 
     void MaliHwCntrReader::interrupt()
@@ -246,9 +244,7 @@ namespace mali_userspace {
                     if (failedDueToBlockCount) {
                         continue;
                     }
-                    else {
-                        return {};
-                    }
+                    return {};
                 }
             }
 
@@ -263,7 +259,7 @@ namespace mali_userspace {
                         strerror(errno));
                     return {};
                 }
-                else if (api_version != HWCNT_READER_API) {
+                if (api_version != HWCNT_READER_API) {
                     logg.logError("MaliHwCntrReader: Invalid API version (%lu)",
                                   static_cast<unsigned long>(api_version));
                     return {};

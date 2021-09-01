@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "SessionXML.h"
 
@@ -11,23 +11,26 @@
 #include <cstdlib>
 #include <cstring>
 
-static const char TAG_SESSION[] = "session";
-static const char TAG_IMAGE[] = "image";
+namespace {
+    constexpr const char * TAG_SESSION = "session";
+    constexpr const char * TAG_IMAGE = "image";
 
-static const char ATTR_VERSION[] = "version";
-static const char ATTR_CALL_STACK_UNWINDING[] = "call_stack_unwinding";
-static const char ATTR_BUFFER_MODE[] = "buffer_mode";
-static const char ATTR_SAMPLE_RATE[] = "sample_rate";
-static const char ATTR_DURATION[] = "duration";
-static const char USE_EFFICIENT_FTRACE[] = "use_efficient_ftrace";
-static const char ATTR_PATH[] = "path";
-static const char ATTR_LIVE_RATE[] = "live_rate";
-static const char ATTR_CAPTURE_WORKING_DIR[] = "capture_working_dir";
-static const char ATTR_CAPTURE_COMMAND[] = "capture_command";
-static const char ATTR_STOP_GATOR[] = "stop_gator";
-static const char ATTR_CAPTURE_USER[] = "capture_user";
+    constexpr const char * ATTR_VERSION = "version";
+    constexpr const char * ATTR_CALL_STACK_UNWINDING = "call_stack_unwinding";
+    constexpr const char * ATTR_BUFFER_MODE = "buffer_mode";
+    constexpr const char * ATTR_SAMPLE_RATE = "sample_rate";
+    constexpr const char * ATTR_DURATION = "duration";
+    constexpr const char * USE_EFFICIENT_FTRACE = "use_efficient_ftrace";
+    constexpr const char * ATTR_PATH = "path";
+    constexpr const char * ATTR_LIVE_RATE = "live_rate";
+    constexpr const char * ATTR_CAPTURE_WORKING_DIR = "capture_working_dir";
+    constexpr const char * ATTR_CAPTURE_COMMAND = "capture_command";
+    constexpr const char * ATTR_STOP_GATOR = "stop_gator";
+    constexpr const char * ATTR_CAPTURE_USER = "capture_user";
+    constexpr const char * ATTR_EXCLUDE_KERNEL_EVENTS = "exclude_kernel_events";
+}
 
-SessionXML::SessionXML(const char * str) : parameters(), mSessionXML(str)
+SessionXML::SessionXML(const char * str) : mSessionXML(str)
 {
     logg.logMessage("%s", mSessionXML);
 }
@@ -125,6 +128,10 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
             handleException();
         }
     }
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_EXCLUDE_KERNEL) == 0) {
+        gSessionData.mExcludeKernelEvents = stringToBool(mxmlElementGetAttr(node, ATTR_EXCLUDE_KERNEL_EVENTS), false);
+    }
+
     // parse subtags
     node = mxmlGetFirstChild(node);
     while (node != nullptr) {

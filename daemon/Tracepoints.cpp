@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "Tracepoints.h"
 
@@ -48,24 +48,24 @@ int64_t getTracepointId(const char * tracefsEventsPath, const char * const name)
 }
 
 namespace {
-    static const std::array<TraceFsConstants, 2> TRACEFS_CONFIGURATIONS {{// The usual configuration on most systems
-                                                                          {"/sys/kernel/debug/tracing",
-                                                                           "/sys/kernel/debug/tracing/events",
-                                                                           "/sys/kernel/debug/tracing/events/enable",
-                                                                           "/sys/kernel/debug/tracing/events/ftrace",
-                                                                           "/sys/kernel/debug/tracing/trace",
-                                                                           "/sys/kernel/debug/tracing/trace_clock",
-                                                                           "/sys/kernel/debug/tracing/trace_pipe",
-                                                                           "/sys/kernel/debug/tracing/tracing_on"},
-                                                                          // Android R (no debugfs)
-                                                                          {"/sys/kernel/tracing",
-                                                                           "/sys/kernel/tracing/events",
-                                                                           "/sys/kernel/tracing/events/enable",
-                                                                           "/sys/kernel/tracing/events/ftrace",
-                                                                           "/sys/kernel/tracing/trace",
-                                                                           "/sys/kernel/tracing/trace_clock",
-                                                                           "/sys/kernel/tracing/trace_pipe",
-                                                                           "/sys/kernel/tracing/tracing_on"}}};
+    const std::array<TraceFsConstants, 2> TRACEFS_CONFIGURATIONS {{// The usual configuration on most systems
+                                                                   {"/sys/kernel/debug/tracing",
+                                                                    "/sys/kernel/debug/tracing/events",
+                                                                    "/sys/kernel/debug/tracing/events/enable",
+                                                                    "/sys/kernel/debug/tracing/events/ftrace",
+                                                                    "/sys/kernel/debug/tracing/trace",
+                                                                    "/sys/kernel/debug/tracing/trace_clock",
+                                                                    "/sys/kernel/debug/tracing/trace_pipe",
+                                                                    "/sys/kernel/debug/tracing/tracing_on"},
+                                                                   // Android R (no debugfs)
+                                                                   {"/sys/kernel/tracing",
+                                                                    "/sys/kernel/tracing/events",
+                                                                    "/sys/kernel/tracing/events/enable",
+                                                                    "/sys/kernel/tracing/events/ftrace",
+                                                                    "/sys/kernel/tracing/trace",
+                                                                    "/sys/kernel/tracing/trace_clock",
+                                                                    "/sys/kernel/tracing/trace_pipe",
+                                                                    "/sys/kernel/tracing/tracing_on"}}};
 
     class TraceFsConstantsWrapper {
     public:
@@ -113,7 +113,7 @@ namespace {
     };
 
     /** Parse /proc/mounts, looking for tracefs mount point */
-    static const TraceFsConstants * findTraceFsMount()
+    const TraceFsConstants * findTraceFsMount()
     {
         static std::unique_ptr<TraceFsConstantsWrapper> pointer;
 
@@ -164,7 +164,7 @@ namespace {
 const TraceFsConstants & TraceFsConstants::detect()
 {
     // try to read from /proc/mounts first
-    const auto mountPoint = findTraceFsMount();
+    const auto * const mountPoint = findTraceFsMount();
     if (mountPoint != nullptr) {
         return *mountPoint;
     }

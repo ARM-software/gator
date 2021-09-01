@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATSTRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATSTRACKER_H
@@ -56,25 +56,25 @@ namespace non_root {
         void updateExe(const lib::FsEntry & exe);
 
     private:
-        AbsoluteCounter<std::string> comm;
-        AbsoluteCounter<std::string> exe_path;
-        DeltaCounter<unsigned long> stat_minflt;
-        DeltaCounter<unsigned long> stat_majflt;
-        DeltaCounter<unsigned long> stat_utime;
-        DeltaCounter<unsigned long> stat_stime;
-        DeltaCounter<unsigned long> stat_guest_time;
-        AbsoluteCounter<unsigned long> stat_vsize;
-        AbsoluteCounter<unsigned long> stat_rss;
-        AbsoluteCounter<unsigned long> stat_rsslim;
-        AbsoluteCounter<unsigned long> statm_shared;
-        AbsoluteCounter<unsigned long> statm_text;
-        AbsoluteCounter<unsigned long> statm_data;
-        AbsoluteCounter<unsigned long> stat_processor;
-        AbsoluteCounter<long> stat_num_threads;
+        AbsoluteCounter<std::string> comm {};
+        AbsoluteCounter<std::string> exe_path {};
+        DeltaCounter<unsigned long> stat_minflt {};
+        DeltaCounter<unsigned long> stat_majflt {};
+        DeltaCounter<unsigned long> stat_utime {};
+        DeltaCounter<unsigned long> stat_stime {};
+        DeltaCounter<unsigned long> stat_guest_time {};
+        AbsoluteCounter<unsigned long> stat_vsize {};
+        AbsoluteCounter<unsigned long> stat_rss {};
+        AbsoluteCounter<unsigned long> stat_rsslim {};
+        AbsoluteCounter<unsigned long> statm_shared {};
+        AbsoluteCounter<unsigned long> statm_text {};
+        AbsoluteCounter<unsigned long> statm_data {};
+        AbsoluteCounter<unsigned long> stat_processor {};
+        AbsoluteCounter<long> stat_num_threads {};
         unsigned long pageSize;
         int pid;
         int tid;
-        bool newProcess;
+        bool newProcess {true};
 
         template<typename T>
         void writeCounter(unsigned long long timestampNS,

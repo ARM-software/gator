@@ -28,11 +28,9 @@ namespace armnn {
                 if (errno == EINTR) {
                     continue;
                 }
-                else {
-                    return false;
-                }
+                return false;
             }
-            else if (wrote > 0) {
+            if (wrote > 0) {
                 bytesWritten += wrote;
             }
             else {
@@ -54,16 +52,12 @@ namespace armnn {
                 if (errno == EINTR) {
                     continue;
                 }
-                else {
-                    return false;
-                }
-            }
-            else if (result == 0) {
                 return false;
             }
-            else {
-                accumulatedBytes += result;
+            if (result == 0) {
+                return false;
             }
+            accumulatedBytes += result;
         }
 
         return true;
@@ -218,9 +212,8 @@ namespace armnn {
                                             msg.counterValue);
             return true;
         }
-        else {
-            logg.logError("Failed to read counters from gator-main");
-        }
+        logg.logError("Failed to read counters from gator-main");
+
         return readResult;
     }
 
@@ -287,8 +280,7 @@ namespace armnn {
         return writePacket(mToChild, sessionId, data);
     }
 
-    DriverSourceIpc::DriverSourceIpc(ICaptureStartStopHandler & startStopHandler)
-        : mControlChannel {}, mCountersChannel {}, mArmnnController {startStopHandler}
+    DriverSourceIpc::DriverSourceIpc(ICaptureStartStopHandler & startStopHandler) : mArmnnController {startStopHandler}
     {
     }
 
@@ -326,9 +318,7 @@ namespace armnn {
         if (mCountersChannel.valid()) {
             return mCountersChannel.get().consumeCounterValue(timestamp, keyAndCore, counterValue);
         }
-        else {
-            return true;
-        }
+        return true;
     }
 
     bool DriverSourceIpc::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)

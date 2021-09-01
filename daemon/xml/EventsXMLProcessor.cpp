@@ -106,7 +106,7 @@ namespace events_xml {
             }
         }
 
-        static void addAdditionalPmusCounterSets(
+        void addAdditionalPmusCounterSets(
             mxml_node_t * xml,
             const std::map<std::string, CounterSetCoreNameAndInstance> & idToCounterSetAndName)
         {
@@ -254,7 +254,7 @@ namespace events_xml {
 
         auto view = MxmlChildElementsWithNameView {appendParent, TAG_SPE};
         for (auto nodeIt = view.begin(); nodeIt != view.end();) {
-            const auto node = *nodeIt;
+            auto * const node = *nodeIt;
             // get next before invalidating current iterator by moving node to main
             ++nodeIt;
 
@@ -299,7 +299,7 @@ namespace events_xml {
 
         auto view = MxmlChildElementsWithNameView {appendParent, TAG_COUNTER_SET};
         for (auto nodeIt = view.begin(); nodeIt != view.end();) {
-            const auto node = *nodeIt;
+            auto * const node = *nodeIt;
             // get next before invalidating current iterator by moving node to main
             ++nodeIt;
 
@@ -343,7 +343,7 @@ namespace events_xml {
 
         auto view = MxmlChildElementsWithNameView {appendParent, TAG_EVENT};
         for (auto nodeIt = view.begin(); nodeIt != view.end();) {
-            const auto node = *nodeIt;
+            auto * const node = *nodeIt;
             // get next before invalidating current iterator by moving node to main
             ++nodeIt;
 

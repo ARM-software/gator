@@ -46,9 +46,9 @@ private:
 
     void rename(std::uint64_t currentTime) const;
 
-    std::thread thread;
+    std::thread thread {};
     ConsumerFunction consumerFunction;
-    std::atomic_bool terminateFlag;
+    std::atomic_bool terminateFlag {false};
     bool readTimer;
     bool enableSyncThreadMode;
 };

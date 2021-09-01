@@ -85,6 +85,10 @@ namespace mali_userspace {
             PRODUCT_ID_TOTX = 0x9004,
             PRODUCT_ID_TBOX = 0x9002,
             PRODUCT_ID_TBOXAE = 0x9005,
+            PRODUCT_ID_TODX = 0xa002,
+            PRODUCT_ID_TVIX = 0xa007,
+            PRODUCT_ID_TGRX = 0xa003,
+            PRODUCT_ID_TVAX = 0xa004
         };
 
         /* supported product versions */
@@ -210,6 +214,30 @@ namespace mali_userspace {
                                                                             "G78AE",
                                                                             "Valhall",
                                                                             hardware_counters_mali_tBOx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TODX,
+                                                                            "G710",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tODx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TVIX,
+                                                                            "G610",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tVIx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TGRX,
+                                                                            "G510",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tGRx,
+                                                                            false),
+                                                       MALI_PRODUCT_VERSION(PRODUCT_ID_MASK_NEW,
+                                                                            PRODUCT_ID_TVAX,
+                                                                            "G310",
+                                                                            "Valhall",
+                                                                            hardware_counters_mali_tVAx,
                                                                             false)};
 
         enum { NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS) };
@@ -250,12 +278,12 @@ namespace mali_userspace {
              *  3. SC 3
              *  4. TILER
              *  5. MMU/L2
-             *  6. JOB MANAGER
+             *  7. JOB MANAGER
              */
             switch (nameBlock) {
                 case MaliCounterBlockName::JM:
                     runtime_assert(index == 0, "Unexpected block index");
-                    return 6;
+                    return 7;
                 case MaliCounterBlockName::TILER:
                     runtime_assert(index == 0, "Unexpected block index");
                     return 4;

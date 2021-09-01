@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroupIdentifier.h"
 
@@ -45,7 +45,7 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
         const int minThat = *std::min_element(that.cluster->getCpuIds().begin(), that.cluster->getCpuIds().end());
         return minThis < minThat;
     }
-    else if (that.cluster != nullptr) {
+    if (that.cluster != nullptr) {
         return false;
     }
 
@@ -53,7 +53,7 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
     if (pmu != nullptr) {
         return (that.pmu != nullptr ? (strcmp(pmu->getId(), that.pmu->getId()) < 0) : true);
     }
-    else if (that.pmu != nullptr) {
+    if (that.pmu != nullptr) {
         return false;
     }
 
@@ -61,14 +61,14 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
     if (cpuNumber >= 0) {
         return (that.cpuNumber >= 0 ? (cpuNumber < that.cpuNumber) : true);
     }
-    else if (that.cpuNumber >= 0) {
+    if (that.cpuNumber >= 0) {
         return false;
     }
 
     if (cpuNumberToType != nullptr) {
         return (that.cpuNumberToType != nullptr ? (cpuNumberToType < that.cpuNumberToType) : true);
     }
-    else if (that.cpuNumberToType != nullptr) {
+    if (that.cpuNumberToType != nullptr) {
         return false;
     }
 
@@ -81,16 +81,14 @@ PerfEventGroupIdentifier::operator std::string() const
     if (cluster != nullptr) {
         return cluster->getId();
     }
-    else if (pmu != nullptr) {
+    if (pmu != nullptr) {
         return pmu->getId();
     }
-    else if (cpuNumberToType != nullptr) {
+    if (cpuNumberToType != nullptr) {
         return "SPE";
     }
-    else if (cpuNumber >= 0) {
+    if (cpuNumber >= 0) {
         return lib::Format() << "Software Events on CPU #" << cpuNumber;
     }
-    else {
-        return "Global Software Events";
-    }
+    return "Global Software Events";
 }

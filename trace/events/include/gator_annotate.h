@@ -184,7 +184,7 @@ TRACE_EVENT(gator_counter,
 #endif /* _TRACE_GATOR_H */
 
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_PATH ../include
 // clang-format off
 #define TRACE_INCLUDE_FILE gator_annotate
 // clang-format on

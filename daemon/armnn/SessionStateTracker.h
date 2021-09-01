@@ -94,26 +94,30 @@ namespace armnn {
         // The sender for commands to target
         std::unique_ptr<ISessionPacketSender> sendQueue;
 
+        // the raw metadata blob
+        std::vector<std::uint8_t> streamMetadata;
+
         // mutex to protect access/modification of maps
-        std::mutex mutex;
+        std::mutex mutex {};
 
         // stores the currently available items from the counter directory
-        std::map<std::uint16_t, DeviceRecord> availableCounterDirectoryDevices;
-        std::map<std::uint16_t, CounterSetRecord> availableCounterDirectoryCounterSets;
-        std::vector<CategoryRecord> availableCounterDirectoryCategories;
+        std::map<std::uint16_t, DeviceRecord> availableCounterDirectoryDevices {};
+        std::map<std::uint16_t, CounterSetRecord> availableCounterDirectoryCounterSets {};
+        std::vector<CategoryRecord> availableCounterDirectoryCategories {};
 
         // stores EventId structs -> (Category, Event UID) lookups
-        std::map<armnn::EventId, CategoryIndexEventUID> globalIdToCategoryAndEvent;
+        std::map<armnn::EventId, CategoryIndexEventUID> globalIdToCategoryAndEvent {};
 
         // requested event UIDs and the APC key + core they map to
-        std::map<std::uint16_t, ApcCounterKeyAndCoreNumber> requestedEventUIDs;
+        std::map<std::uint16_t, ApcCounterKeyAndCoreNumber> requestedEventUIDs {};
 
         // active event UIDs
-        std::set<std::uint16_t> activeEventUIDs;
+        std::set<std::uint16_t> activeEventUIDs {};
 
-        bool captureIsActive;
+        // the current session
         const std::uint32_t sessionID;
-        std::vector<std::uint8_t> streamMetadata;
+
+        bool captureIsActive {false};
     };
 }
 

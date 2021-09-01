@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PROC_PROCSTATFILERECORD_H
 #define INCLUDE_LINUX_PROC_PROCSTATFILERECORD_H
@@ -89,7 +89,7 @@ namespace lnx {
         /**
          * Create an empty record with all fields null/zero/empty
          */
-        ProcStatFileRecord();
+        ProcStatFileRecord() = default;
 
         /**
          * Construct a record populated with the specified values
@@ -131,16 +131,16 @@ namespace lnx {
         const lib::Optional<PagingCounts> & getSwap() const { return swap; }
 
     private:
-        std::vector<CpuTime> cpus;
-        lib::Optional<PagingCounts> page;
-        lib::Optional<PagingCounts> swap;
-        lib::Optional<unsigned long> intr;
-        lib::Optional<unsigned long> soft_irq;
-        lib::Optional<unsigned long> ctxt;
-        lib::Optional<unsigned long> btime;
-        lib::Optional<unsigned long> processes;
-        lib::Optional<unsigned long> procs_running;
-        lib::Optional<unsigned long> procs_blocked;
+        std::vector<CpuTime> cpus {};
+        lib::Optional<PagingCounts> page {};
+        lib::Optional<PagingCounts> swap {};
+        lib::Optional<unsigned long> intr {};
+        lib::Optional<unsigned long> soft_irq {};
+        lib::Optional<unsigned long> ctxt {};
+        lib::Optional<unsigned long> btime {};
+        lib::Optional<unsigned long> processes {};
+        lib::Optional<unsigned long> procs_running {};
+        lib::Optional<unsigned long> procs_blocked {};
     };
 }
 

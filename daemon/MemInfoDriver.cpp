@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "MemInfoDriver.h"
 
@@ -11,16 +11,16 @@ class MemInfoCounter : public DriverCounter {
 public:
     MemInfoCounter(DriverCounter * next, const char * name, int64_t * value);
 
-    int64_t read() override;
-
-private:
-    int64_t * const mValue;
-
     // Intentionally unimplemented
     MemInfoCounter(const MemInfoCounter &) = delete;
     MemInfoCounter & operator=(const MemInfoCounter &) = delete;
     MemInfoCounter(MemInfoCounter &&) = delete;
     MemInfoCounter & operator=(MemInfoCounter &&) = delete;
+
+    int64_t read() override;
+
+private:
+    int64_t * const mValue;
 };
 
 MemInfoCounter::MemInfoCounter(DriverCounter * next, const char * const name, int64_t * const value)
@@ -31,11 +31,6 @@ MemInfoCounter::MemInfoCounter(DriverCounter * next, const char * const name, in
 int64_t MemInfoCounter::read()
 {
     return *mValue;
-}
-
-MemInfoDriver::MemInfoDriver()
-    : PolledDriver("MemInfo"), mBuf(), mMemUsed(0), mMemFree(0), mBuffers(0), mCached(0), mSlab(0)
-{
 }
 
 void MemInfoDriver::readEvents(mxml_node_t * const /*unused*/)

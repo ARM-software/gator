@@ -11,9 +11,8 @@
 #include "lib/Utils.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
-#include <thread>
-#include <chrono>
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <dirent.h>
 #include <fcntl.h>
@@ -23,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 
 Barrier::Barrier() : mMutex(), mCond(), mCount(0)
@@ -71,6 +71,12 @@ public:
                   const char * enable);
     ~FtraceCounter() override;
 
+    // Intentionally unimplemented
+    FtraceCounter(const FtraceCounter &) = delete;
+    FtraceCounter & operator=(const FtraceCounter &) = delete;
+    FtraceCounter(FtraceCounter &&) = delete;
+    FtraceCounter & operator=(FtraceCounter &&) = delete;
+
     bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer);
 
     void prepare();
@@ -80,12 +86,6 @@ private:
     const TraceFsConstants & traceFsConstants;
     char * const mEnable;
     int mWasEnabled;
-
-    // Intentionally unimplemented
-    FtraceCounter(const FtraceCounter &) = delete;
-    FtraceCounter & operator=(const FtraceCounter &) = delete;
-    FtraceCounter(FtraceCounter &&) = delete;
-    FtraceCounter & operator=(FtraceCounter &&) = delete;
 };
 
 FtraceCounter::FtraceCounter(DriverCounter * next,
@@ -292,14 +292,12 @@ void FtraceReader::run()
         if (bytes <= 0) {
             break;
         }
-        else {
-            // Can there be a short splice read?
-            if (bytes != pageSize) {
-                logg.logError("splice short read");
-                handleException();
-            }
-            // Will be read by gatord-external
+        // Can there be a short splice read?
+        if (bytes != pageSize) {
+            logg.logError("splice short read");
+            handleException();
         }
+        // Will be read by gatord-external
     }
 
     {
@@ -466,7 +464,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     {
         int fd;
         // The below call can be slow on loaded high-core count systems.
-        fd = open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
+        fd = open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC);
         if (fd < 0) {
             logg.logError("Unable truncate ftrace buffer: %s", strerror(errno));
             handleException();

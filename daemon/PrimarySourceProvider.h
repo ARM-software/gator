@@ -42,6 +42,11 @@ public:
                                                          bool disableCpuOnlining,
                                                          bool disableKernelAnnotations);
 
+    PrimarySourceProvider(const PrimarySourceProvider &) = delete;
+    PrimarySourceProvider & operator=(const PrimarySourceProvider &) = delete;
+    PrimarySourceProvider(PrimarySourceProvider &&) = delete;
+    PrimarySourceProvider & operator=(PrimarySourceProvider &&) = delete;
+
     virtual ~PrimarySourceProvider();
 
     /** Return the attribute value for captured.xml type attribute */
@@ -85,11 +90,6 @@ protected:
 
 private:
     std::vector<PolledDriver *> polledDrivers;
-
-    PrimarySourceProvider(const PrimarySourceProvider &) = delete;
-    PrimarySourceProvider & operator=(const PrimarySourceProvider &) = delete;
-    PrimarySourceProvider(PrimarySourceProvider &&) = delete;
-    PrimarySourceProvider & operator=(PrimarySourceProvider &&) = delete;
 };
 
 #endif /* INCLUDE_PRIMARYSOURCEPROVIDER_H */

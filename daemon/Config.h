@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -38,6 +38,14 @@
 
 #if !CONFIG_SUPPORT_PERF && !CONFIG_SUPPORT_PROC_POLLING
 #error "at least one of CONFIG_SUPPORT_PERF and CONFIG_SUPPORT_PROC_POLLING must be set"
+#endif
+
+#ifndef CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
+#if defined(__arm__) || defined(__aarch64__)
+#define CONFIG_PERF_SUPPORT_REGISTER_UNWINDING  1
+#else
+#define CONFIG_PERF_SUPPORT_REGISTER_UNWINDING  0
+#endif
 #endif
 
 #endif // CONFIG_H

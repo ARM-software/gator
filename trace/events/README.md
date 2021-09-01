@@ -12,16 +12,24 @@ Contributions are accepted under the same license as the associated subproject w
 
 ## Purpose
 
-This feature is to support kernel annotations in Streamline. Kernel annotations are provided by  kernel tracepoints, which you can define as `gator_bookmark`, `gator_text`, or `gator_counter'.
+This feature is to support kernel annotations in Streamline. Kernel annotations are provided by  kernel tracepoints, which you can define as `gator_bookmark`, `gator_text`, or `gator_counter`.
 
 ## Creating kernel tracepoints
 
 Follow these steps to create and define different types of kernel tracepoints:
 
-1. Define CREATE_TRACE_POINTS and include the header file `gator_annotate.h` as part of the kernel module, where the
-   tracepoints will be added. You should end up with something like:
-      #define CREATE_TRACE_POINTS
-      #include "gator_annotate.h"
+1. Define CREATE_TRACE_POINTS and include the header file `gator_annotate.h` as part of the kernel module.
+   In these examples, `gator_annotate.h` is found in the folder `include`, so we must define `#define TRACE_INCLUDE PATH ../include`.
+   Depending on the layout of your project, you may need to specify an alternate value, or leave TRACE_INCLUDE_PATH unset.
+   In order to add tracepoints, please add the following in the c file:
+       #define CREATE_TRACE_POINTS
+       #include "gator_annotate.h"
+   NOTE: make sure that CREATE_TRACE_POINTS is defined only in one file which includes the header in a given module.
+         To use gator annotations in the same module but in a different file, include the header file `gator_annotate.h` only.
+   We have included two examples, `example_standalone/gator_annotate_standalone` and `example_shared/gator_annotate_sample`,
+   In `gator_annotate_standalone`, annotations are added from the same module.
+   In `gator_annotate_sample`, annotations are added from a different module and `EXPORT_TRACEPOINT_SYMBOL_GPL` is used from 
+   `module_shared_annotate/gator_annotate` which `gator_annotate_sample` depends on.
 
 2. Call the following functions, depending on the tracepoint that you want to create:
 
@@ -52,15 +60,27 @@ Alternatively, you can call the following convenience macros instead of calling 
    - GATOR_TEXT_STOP(tid, channel) - stops the most recent text annotation of the specified tid and channel by using the tracepoint function to send an empty text annotation (for example "trace_gator_text(tid, color, channel, "");").
    - GATOR_DELTA_COUNTER_VALUE(title, name, units, value) - sends a delta counter value
    - GATOR_ABSOLUTE_COUNTER_VALUE(title, name, units, value) - sends an absolute counter value
-Refer to `gator_annotate.h` for more information.
+Refer to `include/gator_annotate.h` for more information.
 
 ## Building the example
 
-Additionally, `gator_annotate.c` is an example implementation of a test module which showcases the different uses for each type of annotation. The steps to building this are:
-1. Use the `Makefile` to build `gator_annotate.ko`
-2. Compile and install the kernel module using `make clean install`, then reboot.
+1. example_standalone
+   a) Use `Makefile` from the `events/` folder. This has a make target `install_standalone` which will install the module for you.
+   b) Alternatively use the Makefile inside `events/example_standalone`.
+2. example_shared
+   a) Use `Makefile` from the `events/` folder. This has a make target `install_shared` which will install the module for you.
+   b) Alternatively use the Makefile inside `events/example_shared`.
+Compile and install the kernel module, then reboot.
 
-Optionally you can use `sudo insmod gator_annotate.ko`.
+Optionally you can use `sudo insmod <modulename>.ko`.
+1. example_standalone
+   Build module using `make all`.
+   `sudo insmod gator_annotate_standalone.ko`
+2. example_shared
+   Build module using `make all` from `example_shared` folder.
+   `sudo insmod ../module_shared_annotate/gator_annotate.ko;insmod gator_annotate_sample.ko;` from `example_shared` folder
+   and for removing module
+   `sudo rmmod gator_annotate_sample;rmmod gator_annotate;`
 
 Please refer to the Streamline user guide for more details.
 

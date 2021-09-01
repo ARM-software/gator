@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "OlyUtility.h"
 
@@ -42,13 +42,11 @@ bool stringToBool(const char * string, bool defValue)
         strcmp(value, "on") == 0) {
         return true;
     }
-    else if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 ||
-             strcmp(value, "off") == 0) {
+    if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 ||
+        strcmp(value, "off") == 0) {
         return false;
     }
-    else {
-        return defValue;
-    }
+    return defValue;
 }
 
 void stringToLower(char * string)
@@ -282,7 +280,5 @@ char * getPathPart(char * path, char pathSeparator)
 
         return path;
     }
-    else {
-        return nullptr;
-    }
+    return nullptr;
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NETDRIVER_H
 #define NETDRIVER_H
@@ -11,7 +11,13 @@ private:
     using super = PolledDriver;
 
 public:
-    NetDriver();
+    NetDriver() : PolledDriver("Net") {}
+
+    // Intentionally unimplemented
+    NetDriver(const NetDriver &) = delete;
+    NetDriver & operator=(const NetDriver &) = delete;
+    NetDriver(NetDriver &&) = delete;
+    NetDriver & operator=(NetDriver &&) = delete;
 
     void readEvents(mxml_node_t * root) override;
     void start() override;
@@ -20,15 +26,9 @@ public:
 private:
     bool doRead();
 
-    DynBuf mBuf;
-    uint64_t mReceiveBytes;
-    uint64_t mTransmitBytes;
-
-    // Intentionally unimplemented
-    NetDriver(const NetDriver &) = delete;
-    NetDriver & operator=(const NetDriver &) = delete;
-    NetDriver(NetDriver &&) = delete;
-    NetDriver & operator=(NetDriver &&) = delete;
+    DynBuf mBuf {};
+    uint64_t mReceiveBytes {0};
+    uint64_t mTransmitBytes {0};
 };
 
 #endif // NETDRIVER_H

@@ -11,8 +11,7 @@
 namespace armnn {
     class SenderQueue {
     public:
-        SenderQueue(SocketIO & connection);
-        SenderQueue() = delete;
+        SenderQueue(SocketIO & connection) : mConnection {connection} {}
 
         // No copying
         SenderQueue(const SenderQueue &) = delete;
@@ -42,10 +41,10 @@ namespace armnn {
 
     private:
         SocketIO & mConnection;
-        std::mutex mQueueMutex;
-        std::condition_variable mConditionVar;
-        bool mSendFinished;
-        std::queue<std::vector<std::uint8_t>> mQueue;
+        std::queue<std::vector<std::uint8_t>> mQueue {};
+        std::mutex mQueueMutex {};
+        std::condition_variable mConditionVar {};
+        bool mSendFinished {false};
 
         void unableToSendItem();
     };

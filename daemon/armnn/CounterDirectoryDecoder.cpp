@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/CounterDirectoryDecoder.h"
 
@@ -45,7 +45,7 @@ namespace armnn {
                 logg.logError("Failed to decode packet, invalid string length %u at 0x%x", length, offset);
                 return false;
             }
-            else if (length == 0) {
+            if (length == 0) {
                 str.clear();
             }
             else if (bytes[offset + sizeof(std::uint32_t) + length - 1] == '\0') {
@@ -248,7 +248,7 @@ namespace armnn {
             if (event_count == 0) {
                 return true;
             }
-            else if ((event_pointer_table_offset + (event_count * sizeof(std::uint32_t))) > category.length) {
+            if ((event_pointer_table_offset + (event_count * sizeof(std::uint32_t))) > category.length) {
                 logg.logError(
                     "Failed to decode packet, could not decode event_record_table in category record at offset 0x%x",
                     offset);

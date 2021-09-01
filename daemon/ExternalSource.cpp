@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
@@ -38,11 +38,10 @@ static constexpr int BUFFER_SIZE = 1 * 1024 * 1024;
 class ExternalSource : public Source {
 public:
     ExternalSource(sem_t & senderSem, Drivers & mDrivers, std::function<uint64_t()> getMonotonicTime)
-        : mBufferSem(),
-          mGetMonotonicTime(std::move(getMonotonicTime)),
+        : mGetMonotonicTime(std::move(getMonotonicTime)),
           mCommitChecker(gSessionData.mLiveRate),
           mBuffer(BUFFER_SIZE, senderSem),
-          mMonitor(),
+
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
           mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
 #ifdef TCP_ANNOTATIONS
@@ -317,11 +316,11 @@ public:
     }
 
 private:
-    sem_t mBufferSem;
+    sem_t mBufferSem {};
     std::function<uint64_t()> mGetMonotonicTime;
     CommitTimeChecker mCommitChecker;
     Buffer mBuffer;
-    Monitor mMonitor;
+    Monitor mMonitor {};
     OlyServerSocket mMidgardStartupUds;
     OlyServerSocket mUtgardStartupUds;
 #ifdef TCP_ANNOTATIONS

@@ -40,43 +40,42 @@ public:
         DEFAULT_CONFIGURATION_XML,
     };
 
-    ParserResult();
+    std::vector<SpeConfiguration> mSpeConfigs {};
+    std::vector<std::string> mCaptureCommand {};
+    std::set<int> mPids {};
+    std::map<std::string, EventCode> events {};
+    std::set<Printable> printables {};
 
-    std::vector<SpeConfiguration> mSpeConfigs;
-    const char * mCaptureWorkingDir;
-    std::vector<std::string> mCaptureCommand;
-    std::set<int> mPids;
-    const char * mSessionXMLPath;
-    const char * mTargetPath;
-    const char * mConfigurationXMLPath;
-    const char * mEventsXMLPath;
-    const char * mEventsXMLAppend;
-    const char * mWaitForCommand;
+    std::uint64_t parameterSetFlag {0};
 
-    int mBacktraceDepth;
-    int mSampleRate;
-    int mDuration;
-    int mAndroidApiLevel;
-    int mPerfMmapSizeInPages;
-    int mSpeSampleRate;
+    ExecutionMode mode {ExecutionMode::DAEMON};
 
-    bool mFtraceRaw;
-    bool mStopGator;
-    bool mSystemWide;
-    bool mAllowCommands;
-    bool mDisableCpuOnlining;
-    bool mDisableKernelAnnotations;
+    const char * mCaptureWorkingDir {nullptr};
+    const char * mSessionXMLPath {nullptr};
+    const char * mTargetPath {nullptr};
+    const char * mConfigurationXMLPath {nullptr};
+    const char * mEventsXMLPath {nullptr};
+    const char * mEventsXMLAppend {nullptr};
+    const char * mWaitForCommand {nullptr};
+    const char * pmuPath {nullptr};
 
-    const char * pmuPath;
-    int port;
+    int mBacktraceDepth {0};
+    int mSampleRate {0};
+    int mDuration {0};
+    int mAndroidApiLevel {0};
+    int mPerfMmapSizeInPages {-1};
+    int mSpeSampleRate {-1};
+    int port {DEFAULT_PORT};
 
-    int64_t parameterSetFlag;
+    bool mFtraceRaw {false};
+    bool mStopGator {false};
+    bool mSystemWide {true};
+    bool mAllowCommands {false};
+    bool mDisableCpuOnlining {false};
+    bool mDisableKernelAnnotations {false};
+    bool mExcludeKernelEvents {false};
 
-    std::map<std::string, EventCode> events;
-
-    ExecutionMode mode;
-    std::set<Printable> printables;
-
+    ParserResult() = default;
     ParserResult(const ParserResult &) = delete;
     ParserResult & operator=(const ParserResult &) = delete;
     ParserResult(ParserResult &&) = delete;
@@ -88,19 +87,20 @@ public:
  */
 class GatorCLIParser {
 public:
-    GatorCLIParser();
+    ParserResult result {};
+
+    static bool hasDebugFlag(int argc, const char * const argv[]);
 
     void parseCLIArguments(int argc,
                            char * argv[],
                            const char * version_string,
                            int maxPerformanceCounter,
                            const char * gSrcMd5);
-    static bool hasDebugFlag(int argc, const char * const argv[]);
     struct cmdline_t getGatorSetting();
-    ParserResult result;
 
 private:
-    int perfCounterCount;
+    int perfCounterCount {0};
+
     void addCounter(int startpos, int pos, std::string & counters);
     int findAndUpdateCmndLineCmnd(int argc, char ** argv);
     void parseAndUpdateSpe();

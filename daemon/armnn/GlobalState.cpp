@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/GlobalState.h"
 
@@ -255,24 +255,22 @@ namespace armnn {
                 .insert({categoryId, {.events = {}, .counterSetCount = counterSetCount, .eventsByNumber = {}}})
                 .first->second;
         }
-        else {
-            auto & category = categoryIter->second;
-            if (category.counterSetCount != counterSetCount) {
-                std::uint16_t min = std::min(category.counterSetCount, counterSetCount);
-                logg.logError("Mismatching counterSetCount %d vs %d, using %d",
-                              category.counterSetCount,
-                              counterSetCount,
-                              min);
-                for (int i = min; i < category.counterSetCount; ++i) {
-                    const auto counterName = makeCounterSetCounterName(categoryId, i);
-                    // deliberately not removing the permanent counter name reference
-                    // because then it wouldn't be permanent
-                    programmableCountersToCategory.erase(counterName);
-                }
-                category.counterSetCount = min;
+        auto & category = categoryIter->second;
+        if (category.counterSetCount != counterSetCount) {
+            std::uint16_t min = std::min(category.counterSetCount, counterSetCount);
+            logg.logError("Mismatching counterSetCount %d vs %d, using %d",
+                          category.counterSetCount,
+                          counterSetCount,
+                          min);
+            for (int i = min; i < category.counterSetCount; ++i) {
+                const auto counterName = makeCounterSetCounterName(categoryId, i);
+                // deliberately not removing the permanent counter name reference
+                // because then it wouldn't be permanent
+                programmableCountersToCategory.erase(counterName);
             }
-            return category;
+            category.counterSetCount = min;
         }
+        return category;
     }
 
     /** counter_set is expected to have already been added */

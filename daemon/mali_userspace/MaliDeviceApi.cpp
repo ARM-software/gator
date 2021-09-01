@@ -30,21 +30,21 @@
 
 namespace mali_userspace {
     namespace {
-        static uint32_t calcShaderCoreMaskBlockCount(uint64_t core_mask) { return (64 - __builtin_clzll(core_mask)); }
+        uint32_t calcShaderCoreMaskBlockCount(uint64_t core_mask) { return (64 - __builtin_clzll(core_mask)); }
 
-        static uint32_t calcNumShaders(uint64_t core_mask) { return __builtin_popcountll(core_mask); }
+        uint32_t calcNumShaders(uint64_t core_mask) { return __builtin_popcountll(core_mask); }
 
         /**
          * Send a logSetup message detailing the detected Mali device
          */
-        static void logDetectedMaliDevice(const char * maliDevicePath,
-                                          uint32_t productId,
-                                          uint32_t major,
-                                          uint32_t minor,
-                                          uint32_t frequency,
-                                          uint32_t l2Slices,
-                                          uint32_t busWidth,
-                                          uint64_t shaderCoreMask)
+        void logDetectedMaliDevice(const char * maliDevicePath,
+                                   uint32_t productId,
+                                   uint32_t major,
+                                   uint32_t minor,
+                                   uint32_t frequency,
+                                   uint32_t l2Slices,
+                                   uint32_t busWidth,
+                                   uint64_t shaderCoreMask)
         {
             const char * const productName = findMaliProductNameFromId(productId);
 
@@ -87,7 +87,7 @@ namespace mali_userspace {
             logg.logSetup("%s", std::string(formatter).c_str());
         }
 
-        static uint32_t extractBusWidth(uint32_t raw_l2_features)
+        uint32_t extractBusWidth(uint32_t raw_l2_features)
         {
             uint32_t log2_bus_width = raw_l2_features >> 24;
 
@@ -233,7 +233,7 @@ namespace mali_userspace {
                     logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl - may be r21p0 or later...");
                     return {};
                 }
-                else if (version_check.major < 10) {
+                if (version_check.major < 10) {
                     logg.logMessage("MaliDeviceApi: Unsupported ABI version %u.%u",
                                     version_check.major,
                                     version_check.minor);
@@ -278,7 +278,8 @@ namespace mali_userspace {
             /* Related to mali0 ioctl interface */
             KBASE_IOCTL_TYPE = 0x80,
             BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED = 0x2,
-            KBASE_IOCTL_VERSION_CHECK = MALI_IOWR(KBASE_IOCTL_TYPE, 0, struct kbase_ioctl_version_check),
+            KBASE_IOCTL_VERSION_CHECK_JM = MALI_IOWR(KBASE_IOCTL_TYPE, 0, struct kbase_ioctl_version_check),
+            KBASE_IOCTL_VERSION_CHECK_CSF = MALI_IOWR(KBASE_IOCTL_TYPE, 52, struct kbase_ioctl_version_check),
             KBASE_IOCTL_SET_FLAGS = MALI_IOW(KBASE_IOCTL_TYPE, 1, struct kbase_ioctl_set_flags),
             KBASE_IOCTL_GET_GPUPROPS = MALI_IOW(KBASE_IOCTL_TYPE, 3, struct kbase_ioctl_get_gpuprops),
             KBASE_IOCTL_HWCNT_READER_SETUP = MALI_IOW(KBASE_IOCTL_TYPE, 8, struct kbase_ioctl_hwcnt_reader_setup),
@@ -529,12 +530,19 @@ namespace mali_userspace {
                 version_check.major = 0;
                 version_check.minor = 0;
 
-                if (lib::ioctl(*devFd, KBASE_IOCTL_VERSION_CHECK, reinterpret_cast<unsigned long>(&version_check)) !=
+                if (lib::ioctl(*devFd, KBASE_IOCTL_VERSION_CHECK_JM, reinterpret_cast<unsigned long>(&version_check)) !=
                     0) {
-                    logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl");
-                    return {};
+                    logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl for JM based ddk. Trying with CSF "
+                                    "ioctl version");
+                    if (lib::ioctl(*devFd,
+                                   KBASE_IOCTL_VERSION_CHECK_CSF,
+                                   reinterpret_cast<unsigned long>(&version_check)) != 0) {
+                        logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl for CSF based ddk");
+                        return {};
+                    }
                 }
-                else if ((version_check.major != 1) && (version_check.major != 11)) {
+
+                if ((version_check.major != 1) && (version_check.major != 11)) {
                     logg.logMessage("MaliDeviceApi: Unsupported ABI version %u.%u",
                                     version_check.major,
                                     version_check.minor);

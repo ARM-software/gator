@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2020 by Arm Limited. All rights reserved.
+# Copyright (C) 2016-2021 by Arm Limited. All rights reserved.
 
 GATORD_C_SRC_FILES := \
     libsensors/access.c \

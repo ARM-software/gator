@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PERCOREMIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_PERCOREMIXEDFRAMEBUFFER_H
@@ -26,8 +26,8 @@ namespace non_root {
         MixedFrameBuffer & operator[](core_type core);
 
     private:
-        std::map<core_type, std::unique_ptr<Buffer>> buffers;
-        std::map<core_type, std::unique_ptr<MixedFrameBuffer>> wrappers;
+        std::map<core_type, std::unique_ptr<Buffer>> buffers {};
+        std::map<core_type, std::unique_ptr<MixedFrameBuffer>> wrappers {};
         sem_t & readerSem;
         int bufferSize;
     };

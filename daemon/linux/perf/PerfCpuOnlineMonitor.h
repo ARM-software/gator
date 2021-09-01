@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_CPU_ONLINE_MONITOR_H
 #define INCLUDE_LINUX_PERF_PERF_CPU_ONLINE_MONITOR_H
@@ -39,10 +39,10 @@ private:
     void run() noexcept;
     void process(bool first, unsigned cpu, bool online);
 
-    std::thread thread;
-    std::set<unsigned> onlineCores;
+    std::set<unsigned> onlineCores {};
     NotificationCallback callback;
-    std::atomic<bool> terminated;
+    std::atomic<bool> terminated {false};
+    std::thread thread;
 };
 
 #endif /* INCLUDE_LINUX_PERF_PERF_CPU_ONLINE_MONITOR_H */

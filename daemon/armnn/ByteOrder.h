@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_ARMNN_BYTE_ORDER_H
 #define INCLUDE_ARMNN_BYTE_ORDER_H
@@ -41,10 +41,8 @@ namespace armnn {
                 return (std::uint16_t(data[offset + 0]) & 0xff) //
                        | ((std::uint16_t(data[offset + 1]) & 0xff) << 8);
             }
-            else {
-                return (std::uint16_t(data[offset + 1]) & 0xff) //
-                       | ((std::uint16_t(data[offset + 0]) & 0xff) << 8);
-            }
+            return (std::uint16_t(data[offset + 1]) & 0xff) //
+                   | ((std::uint16_t(data[offset + 0]) & 0xff) << 8);
         }
 
         /** Read an unaligned 32-bit value from some byte array. */
@@ -59,12 +57,10 @@ namespace armnn {
                        | ((std::uint32_t(data[offset + 2]) & 0xff) << 16) //
                        | ((std::uint32_t(data[offset + 3]) & 0xff) << 24);
             }
-            else {
-                return (std::uint32_t(data[offset + 3]) & 0xff)           //
-                       | ((std::uint32_t(data[offset + 2]) & 0xff) << 8)  //
-                       | ((std::uint32_t(data[offset + 1]) & 0xff) << 16) //
-                       | ((std::uint32_t(data[offset + 0]) & 0xff) << 24);
-            }
+            return (std::uint32_t(data[offset + 3]) & 0xff)           //
+                   | ((std::uint32_t(data[offset + 2]) & 0xff) << 8)  //
+                   | ((std::uint32_t(data[offset + 1]) & 0xff) << 16) //
+                   | ((std::uint32_t(data[offset + 0]) & 0xff) << 24);
         }
 
         /** Read an unaligned 64-bit value from some byte array. */
@@ -83,16 +79,14 @@ namespace armnn {
                        | ((std::uint64_t(data[offset + 6]) & 0xff) << 48) //
                        | ((std::uint64_t(data[offset + 7]) & 0xff) << 56);
             }
-            else {
-                return (std::uint64_t(data[offset + 7]) & 0xff)           //
-                       | ((std::uint64_t(data[offset + 6]) & 0xff) << 8)  //
-                       | ((std::uint64_t(data[offset + 5]) & 0xff) << 16) //
-                       | ((std::uint64_t(data[offset + 4]) & 0xff) << 24) //
-                       | ((std::uint64_t(data[offset + 3]) & 0xff) << 32) //
-                       | ((std::uint64_t(data[offset + 2]) & 0xff) << 40) //
-                       | ((std::uint64_t(data[offset + 1]) & 0xff) << 48) //
-                       | ((std::uint64_t(data[offset + 0]) & 0xff) << 56);
-            }
+            return (std::uint64_t(data[offset + 7]) & 0xff)           //
+                   | ((std::uint64_t(data[offset + 6]) & 0xff) << 8)  //
+                   | ((std::uint64_t(data[offset + 5]) & 0xff) << 16) //
+                   | ((std::uint64_t(data[offset + 4]) & 0xff) << 24) //
+                   | ((std::uint64_t(data[offset + 3]) & 0xff) << 32) //
+                   | ((std::uint64_t(data[offset + 2]) & 0xff) << 40) //
+                   | ((std::uint64_t(data[offset + 1]) & 0xff) << 48) //
+                   | ((std::uint64_t(data[offset + 0]) & 0xff) << 56);
         }
     }
 }

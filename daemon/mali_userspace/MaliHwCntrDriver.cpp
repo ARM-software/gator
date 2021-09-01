@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliHwCntrDriver.h"
 
@@ -14,10 +14,7 @@
 
 namespace mali_userspace {
     MaliHwCntrDriver::MaliHwCntrDriver()
-        : SimpleDriver("MaliHwCntrDriver"),
-          mEnabledCounterKeysByGpuId(),
-          mPolledDrivers(),
-          mDevices(mali_userspace::enumerateAllMaliHwCntrDrivers())
+        : SimpleDriver("MaliHwCntrDriver"), mDevices(mali_userspace::enumerateAllMaliHwCntrDrivers())
     {
         if (mDevices.empty()) {
             logg.logMessage("There are no mali devices to create readers");

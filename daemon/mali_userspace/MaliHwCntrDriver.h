@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MIDGARDHWCOUNTERDRIVER_H_
 #define NATIVE_GATOR_DAEMON_MIDGARDHWCOUNTERDRIVER_H_
@@ -22,6 +22,12 @@ namespace mali_userspace {
 
     public:
         MaliHwCntrDriver();
+
+        // Intentionally unimplemented
+        MaliHwCntrDriver(const MaliHwCntrDriver &) = delete;
+        MaliHwCntrDriver & operator=(const MaliHwCntrDriver &) = delete;
+        MaliHwCntrDriver(MaliHwCntrDriver &&) = delete;
+        MaliHwCntrDriver & operator=(MaliHwCntrDriver &&) = delete;
 
         bool claimCounter(Counter & counter) const override;
         void resetCounters() override;
@@ -47,17 +53,11 @@ namespace mali_userspace {
         /** For each possible counter index, contains the counter key, or 0 if not enabled
          * Mapped to the GPUID not device number as counters are common across all devices with the same type.
          */
-        std::map<unsigned, std::unique_ptr<int[]>> mEnabledCounterKeysByGpuId;
+        std::map<unsigned, std::unique_ptr<int[]>> mEnabledCounterKeysByGpuId {};
         /** Map of the GPU device number and Polling driver for GPU clock etc. */
-        std::map<unsigned, std::unique_ptr<PolledDriver>> mPolledDrivers;
+        std::map<unsigned, std::unique_ptr<PolledDriver>> mPolledDrivers {};
         //Map between the device number and the mali devices .
         std::map<unsigned, std::unique_ptr<MaliDevice>> mDevices;
-
-        // Intentionally unimplemented
-        MaliHwCntrDriver(const MaliHwCntrDriver &) = delete;
-        MaliHwCntrDriver & operator=(const MaliHwCntrDriver &) = delete;
-        MaliHwCntrDriver(MaliHwCntrDriver &&) = delete;
-        MaliHwCntrDriver & operator=(MaliHwCntrDriver &&) = delete;
     };
 }
 

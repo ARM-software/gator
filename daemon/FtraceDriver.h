@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #ifndef FTRACEDRIVER_H
 #define FTRACEDRIVER_H
@@ -32,6 +32,12 @@ class FtraceDriver : public SimpleDriver {
 public:
     FtraceDriver(const TraceFsConstants & traceFsConstants, bool useForTracepoint, size_t numberOfCores);
 
+    // Intentionally unimplemented
+    FtraceDriver(const FtraceDriver &) = delete;
+    FtraceDriver & operator=(const FtraceDriver &) = delete;
+    FtraceDriver(FtraceDriver &&) = delete;
+    FtraceDriver & operator=(FtraceDriver &&) = delete;
+
     void readEvents(mxml_node_t * xml) override;
 
     std::pair<std::vector<int>, bool> prepare();
@@ -47,12 +53,6 @@ private:
     int mTracingOn;
     bool mSupported, mMonotonicRawSupport, mUseForTracepoints;
     size_t mNumberOfCores;
-
-    // Intentionally unimplemented
-    FtraceDriver(const FtraceDriver &) = delete;
-    FtraceDriver & operator=(const FtraceDriver &) = delete;
-    FtraceDriver(FtraceDriver &&) = delete;
-    FtraceDriver & operator=(FtraceDriver &&) = delete;
 };
 
 #endif // FTRACEDRIVER_H

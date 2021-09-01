@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
 #define INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
@@ -42,11 +42,11 @@ private:
     void run() noexcept;
     bool configureAffinity();
 
-    std::thread thread;
     ConsumerFunction consumerFunction;
-    std::atomic<bool> terminatedFlag;
+    std::atomic<bool> terminatedFlag {false};
     unsigned cpu;
     bool ignoreOffline;
+    std::thread thread;
 };
 
 #endif /* INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H */

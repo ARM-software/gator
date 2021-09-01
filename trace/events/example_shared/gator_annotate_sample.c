@@ -11,10 +11,11 @@
 
 /*
  * To integrate the gator annotations, define CREATE_TRACE_POINTS and include the gator_annotate.h header file as is required
- * by the Linux Tracepoints API
+ * by the Linux Tracepoints API. CREATE_TRACE_POINTS should be defined only once for the tracepoint header.
+ * In this example CREATE_TRACE_POINTS is already added in 'module_shared_annotate' which is a
+ * dependency for this sample.
  */
-#define CREATE_TRACE_POINTS
-#include "gator_annotate.h"
+#include "../include/gator_annotate.h"
 
 #define GATOR_ANN_SAWTOOTH_FREQ 10
 #define GATOR_ANN_SQUARE_FREQ 5
@@ -77,7 +78,7 @@ static int simple_thread(void * arg)
     return 0;
 }
 
-static int __init gator_annotation_init(void)
+static int __init gator_annotation_sample_init(void)
 {
     simple_tsk = kthread_run(simple_thread, NULL, "event-sample");
     if (IS_ERR(simple_tsk))
@@ -85,15 +86,15 @@ static int __init gator_annotation_init(void)
     return 0;
 }
 
-static void __exit gator_annotation_exit(void)
+static void __exit gator_annotation_sample_exit(void)
 {
     kthread_stop(simple_tsk);
     tracepoint_synchronize_unregister();
 }
 
-module_init(gator_annotation_init);
-module_exit(gator_annotation_exit);
+module_init(gator_annotation_sample_init);
+module_exit(gator_annotation_sample_exit);
 
 MODULE_AUTHOR("Arm Streamline");
-MODULE_DESCRIPTION("gator");
+MODULE_DESCRIPTION("gator_sample");
 MODULE_LICENSE("GPL");

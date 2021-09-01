@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <sstream>
 
-static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:VX:Z:";
+static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:k:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:VX:Z:";
 
 static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                                 // OF NEW ITEMS.
@@ -19,6 +19,7 @@ static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPH
     {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'}, //
     {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
     {"pid", /********************/ required_argument, nullptr, 'i'}, //
+    {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
     {"output", /*****************/ required_argument, nullptr, 'o'}, //
     {"port", /*******************/ required_argument, nullptr, 'p'}, //
     {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
@@ -59,54 +60,18 @@ static const char * SPE_MIN_LATENCY_KEY = "min_latency";
 static const char * SPE_EVENTS_KEY = "events";
 static const char * SPE_OPS_KEY = "ops";
 
-ParserResult::ParserResult()
-    : mSpeConfigs(),
-      mCaptureWorkingDir(),
-      mCaptureCommand(),
-      mPids(),
-      mSessionXMLPath(),
-      mTargetPath(),
-      mConfigurationXMLPath(),
-      mEventsXMLPath(),
-      mEventsXMLAppend(),
-      mWaitForCommand(),
-      mBacktraceDepth(),
-      mSampleRate(),
-      mDuration(),
-      mAndroidApiLevel(),
-      mPerfMmapSizeInPages(-1),
-      mSpeSampleRate(-1),
-      mFtraceRaw(),
-      mStopGator(false),
-      mSystemWide(true),
-      mAllowCommands(false),
-      mDisableCpuOnlining(false),
-      mDisableKernelAnnotations(false),
-      pmuPath(nullptr),
-      port(DEFAULT_PORT),
-      parameterSetFlag(0),
-      events(),
-      mode(ExecutionMode::DAEMON),
-      printables()
-{
-}
-
-GatorCLIParser::GatorCLIParser() : result(), perfCounterCount(0)
-{
-}
-
 SampleRate getSampleRate(const std::string & value)
 {
     if (value == "high") {
         return high;
     }
-    else if (value == "normal") {
+    if (value == "normal") {
         return normal;
     }
-    else if (value == "low") {
+    if (value == "low") {
         return low;
     }
-    else if (value == "none") {
+    if (value == "none") {
 
         return none;
     }
@@ -191,15 +156,13 @@ static int parseBoolean(const char * value)
         || strcmp(value, "1") == 0) {
         return 1;
     }
-    else if (strcasecmp(value, "no") == 0       //
-             || strcasecmp(value, "n") == 0     //
-             || strcasecmp(value, "false") == 0 //
-             || strcmp(value, "0") == 0) {
+    if (strcasecmp(value, "no") == 0       //
+        || strcasecmp(value, "n") == 0     //
+        || strcasecmp(value, "false") == 0 //
+        || strcmp(value, "0") == 0) {
         return 0;
     }
-    else {
-        return -1;
-    }
+    return -1;
 }
 
 // trim
@@ -242,7 +205,7 @@ void GatorCLIParser::parseAndUpdateSpe()
                             result.mode = ExecutionMode::EXIT;
                             return;
                         }
-                        else if (data.min_latency < 0 || data.min_latency >= 4096) {
+                        if (data.min_latency < 0 || data.min_latency >= 4096) {
                             logg.logError("Invalid minimum latency for %s (%d)", data.id.c_str(), data.min_latency);
                             result.mode = ExecutionMode::EXIT;
                             return;
@@ -259,7 +222,7 @@ void GatorCLIParser::parseAndUpdateSpe()
                                 result.mode = ExecutionMode::EXIT;
                                 return;
                             }
-                            else if ((event < 0 || event > 63)) {
+                            if ((event < 0 || event > 63)) {
                                 logg.logError("Event filter should be a bit position from 0 - 63 , failed for %d ",
                                               event);
                                 result.mode = ExecutionMode::EXIT;
@@ -531,6 +494,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        argument passed to gatord as all\n"
                     "                                        subsequent arguments are passed to the\n"
                     "                                        launched application.\n"
+                    "  -k|--exclude-kernel (yes|no)          Specify whether kernel events should be\n"
+                    "                                        filtered out of perf results.\n"
                     "  -S|--system-wide (yes|no)             Specify whether to capture the whole\n"
                     "                                        system. In daemon mode, 'no' is only\n"
                     "                                        applicable when --allow-command is\n"
@@ -706,6 +671,16 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     logg.logWarning("Invalid value for --spe-sample-rate (%s): default value will be used", optarg);
                     result.mSpeSampleRate = -1;
                 }
+                break;
+            }
+            case 'k': {
+                if (optionInt < 0) {
+                    logg.logError("Invalid value for --exclude-kernel (%s), 'yes' or 'no' expected.", optarg);
+                    result.mode = ExecutionMode::EXIT;
+                    return;
+                }
+                result.mExcludeKernelEvents = optionInt == 1;
+                result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_EXCLUDE_KERNEL;
                 break;
             }
         }

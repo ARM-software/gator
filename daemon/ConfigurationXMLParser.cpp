@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXMLParser.h"
 
@@ -21,10 +21,6 @@ static const char * ATTR_LOAD_FILTER = "load-filter";
 static const char * ATTR_STORE_FILTER = "store-filter";
 static const char * ATTR_BRANCH_FILTER = "branch-filter";
 static const char * ATTR_MIN_LATENCY = "min-latency";
-
-ConfigurationXMLParser::ConfigurationXMLParser() : counterConfigurations(), speConfigurations()
-{
-}
 
 #define CONFIGURATION_REVISION 3
 int static configurationsTag(mxml_node_t * node)
@@ -81,9 +77,7 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
             logg.logError("Configuration XML event must be an integer");
             return PARSER_ERROR;
         }
-        else {
-            counter.event = EventCode(event);
-        }
+        counter.event = EventCode(event);
     }
     counterConfigurations.push_back(counter);
     return 0;
@@ -106,11 +100,11 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
             logg.logError("Configuration XML spe event-filter must be an integer");
             return PARSER_ERROR;
         }
-        else if (event_mask == ULLONG_MAX && errno) {
+        if (event_mask == ULLONG_MAX && errno) {
             logg.logError("Configuration XML spe event-filter must be in the range of unsigned long long");
             return PARSER_ERROR;
         }
-        else if (*end != 0) {
+        if (*end != 0) {
             logg.logError("Configuration XML spe event-filter must be an integer");
             return PARSER_ERROR;
         }

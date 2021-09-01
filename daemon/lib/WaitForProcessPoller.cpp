@@ -13,7 +13,7 @@ namespace {
     class WaitForProcessPollerPass : public lnx::ProcessPollerBase::IProcessPollerReceiver {
     public:
         WaitForProcessPollerPass(const std::string & commandName, const lib::Optional<lib::FsEntry> & realPath)
-            : mCommandName(commandName), mRealPath(realPath), mPids()
+            : mCommandName(commandName), mRealPath(realPath)
         {
         }
 
@@ -27,9 +27,10 @@ namespace {
         }
 
     private:
+        std::set<int> mPids {};
+
         const std::string & mCommandName;
         const lib::Optional<lib::FsEntry> & mRealPath;
-        std::set<int> mPids;
 
         bool shouldTrack(const lib::FsEntry & path) const
         {

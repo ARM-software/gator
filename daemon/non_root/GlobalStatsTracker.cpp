@@ -1,24 +1,10 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "non_root/GlobalStatsTracker.h"
 
 #include "non_root/GlobalStateChangeHandler.h"
 
 namespace non_root {
-    GlobalStatsTracker::PerCoreStatsTracker::PerCoreStatsTracker()
-        : timeUserTicks(),
-          timeNiceTicks(),
-          timeSystemTicks(),
-          timeIdleTicks(),
-          timeIowaitTicks(),
-          timeIrqTicks(),
-          timeSoftirqTicks(),
-          timeStealTicks(),
-          timeGuestTicks(),
-          timeGuestNiceTicks(),
-          first(true)
-    {
-    }
 
     void GlobalStatsTracker::PerCoreStatsTracker::sendStats(unsigned long long timestampNS,
                                                             GlobalStateChangeHandler & handler,
@@ -65,21 +51,7 @@ namespace non_root {
         counter.done();
     }
 
-    GlobalStatsTracker::GlobalStatsTracker(GlobalStateChangeHandler & handler_)
-        : perCoreStats(),
-          loadavgOver1Minute(),
-          loadavgOver5Minutes(),
-          loadavgOver15Minutes(),
-          numProcessesRunning(),
-          numProcessesExist(),
-          numContextSwitchs(),
-          numIrq(),
-          numSoftIrq(),
-          numForks(),
-          handler(handler_),
-          first(true)
-    {
-    }
+    GlobalStatsTracker::GlobalStatsTracker(GlobalStateChangeHandler & handler_) : handler(handler_) {}
 
     void GlobalStatsTracker::sendStats(unsigned long long timestampNS)
     {

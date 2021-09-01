@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
@@ -27,7 +27,7 @@ constexpr std::size_t findLastSlash(const char (&str)[N],
 static constexpr std::size_t FILE_PREFIX_LEN = findLastSlash(__FILE__);
 static const char FILE_PREFIX[] = __FILE__;
 
-Logging::Logging() : mSetup(), mLoggingMutex(), mDebug(true), mErrBuf()
+Logging::Logging() : mErrBuf()
 {
     pthread_mutex_init(&mLoggingMutex, nullptr);
     reset();

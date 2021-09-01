@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "armnn/IAcceptor.h"
@@ -17,8 +17,8 @@ namespace armnn {
     class ThreadManagementServer : public ICaptureStartStopHandler {
     public:
         ThreadManagementServer(std::unique_ptr<IAcceptor> acceptor);
-        void stop();
         ~ThreadManagementServer() override { stop(); };
+        void stop();
 
         /**
          * Enables the capture on all capture sessions
@@ -37,15 +37,17 @@ namespace armnn {
             std::unique_ptr<bool> done;
         };
 
-        std::mutex mMutex;
-        std::condition_variable mSessionDiedCV;
-        std::vector<ThreadData> mThreads;
-        bool mEnabled;
-        bool mDone;
+        std::mutex mMutex {};
+        std::condition_variable mSessionDiedCV {};
+        std::vector<ThreadData> mThreads {};
+
+        bool mEnabled {false};
+        bool mDone {false};
+        bool mIsRunning {true};
+
         std::unique_ptr<IAcceptor> mAcceptor;
         std::thread mReaperThread;
         std::thread mAcceptorThread;
-        bool mIsRunning;
 
         void reaperLoop();
         void acceptLoop();

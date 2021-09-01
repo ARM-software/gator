@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
@@ -40,6 +40,12 @@ namespace non_root {
 
         MixedFrameBuffer(IRawFrameBuilder & buffer, CommitTimeChecker flushIsNeeded);
 
+        // Intentionally unimplemented
+        MixedFrameBuffer(const MixedFrameBuffer &) = delete;
+        MixedFrameBuffer & operator=(const MixedFrameBuffer &) = delete;
+        MixedFrameBuffer(MixedFrameBuffer &&) = delete;
+        MixedFrameBuffer & operator=(MixedFrameBuffer &&) = delete;
+
         bool activityFrameLinkMessage(std::uint64_t currentTime,
                                       std::int32_t cookie,
                                       std::int32_t pid,
@@ -80,12 +86,6 @@ namespace non_root {
 
         IRawFrameBuilder & buffer;
         CommitTimeChecker flushIsNeeded;
-
-        // Intentionally unimplemented
-        MixedFrameBuffer(const MixedFrameBuffer &) = delete;
-        MixedFrameBuffer & operator=(const MixedFrameBuffer &) = delete;
-        MixedFrameBuffer(MixedFrameBuffer &&) = delete;
-        MixedFrameBuffer & operator=(MixedFrameBuffer &&) = delete;
     };
 }
 

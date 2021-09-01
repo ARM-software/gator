@@ -1,24 +1,26 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef COUNTER_H
 #define COUNTER_H
 
 #include "EventCode.h"
 
-#include <cstring>
 #include <new>
+#include <string>
 
 class Driver;
 
 class Counter {
 public:
-    static const size_t MAX_STRING_LEN = 80;
     static const size_t MAX_DESCRIPTION_LEN = 400;
 
-    Counter() : mType(), mEnabled(false), mEvent(), mCount(0), mCores(-1), mKey(0), mDriver(nullptr)
-    {
-        mType[0] = '\0';
-    }
+    Counter() = default;
+
+    // Intentionally unimplemented
+    Counter(const Counter &) = delete;
+    Counter & operator=(const Counter &) = delete;
+    Counter(Counter &&) = delete;
+    Counter & operator=(Counter &&) = delete;
 
     void clear()
     {
@@ -26,11 +28,7 @@ public:
         new (static_cast<void *>(this)) Counter();
     }
 
-    void setType(const char * const type)
-    {
-        strncpy(mType, type, sizeof(mType));
-        mType[sizeof(mType) - 1] = '\0';
-    }
+    void setType(const char * const type) { mType = type; }
     void setEnabled(const bool enabled) { mEnabled = enabled; }
     void setEventCode(const EventCode event) { mEvent = event; }
     void setCount(const int count) { mCount = count; }
@@ -38,7 +36,7 @@ public:
     void setKey(const int key) { mKey = key; }
     void setDriver(Driver * const driver) { mDriver = driver; }
 
-    const char * getType() const { return mType; }
+    const char * getType() const { return mType.c_str(); }
     bool isEnabled() const { return mEnabled; }
     EventCode getEventCode() const { return mEvent; }
     int getCount() const { return mCount; }
@@ -47,19 +45,13 @@ public:
     Driver * getDriver() const { return mDriver; }
 
 private:
-    // Intentionally unimplemented
-    Counter(const Counter &) = delete;
-    Counter & operator=(const Counter &) = delete;
-    Counter(Counter &&) = delete;
-    Counter & operator=(Counter &&) = delete;
-
-    char mType[MAX_STRING_LEN];
-    bool mEnabled;
-    EventCode mEvent;
-    int mCount;
-    int mCores;
-    int mKey;
-    Driver * mDriver;
+    std::string mType {};
+    bool mEnabled {false};
+    EventCode mEvent {};
+    int mCount {0};
+    int mCores {-1};
+    int mKey {0};
+    Driver * mDriver {nullptr};
 };
 
 #endif // COUNTER_H

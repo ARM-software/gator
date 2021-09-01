@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
 #define MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
@@ -20,8 +20,7 @@ namespace mali_userspace {
         using super = PolledDriver;
 
     public:
-        MaliGPUClockPolledDriver(std::string clockPath)
-            : PolledDriver("MaliGPUClock"), mClockPath(std::move(clockPath)), mClockValue(0), mBuf()
+        MaliGPUClockPolledDriver(std::string clockPath) : PolledDriver("MaliGPUClock"), mClockPath(std::move(clockPath))
         {
             logg.logMessage("GPU CLOCK POLLING '%s'", mClockPath.c_str());
         }
@@ -60,8 +59,8 @@ namespace mali_userspace {
 
     private:
         std::string mClockPath;
-        uint64_t mClockValue;
-        DynBuf mBuf;
+        uint64_t mClockValue {0};
+        DynBuf mBuf {};
 
         bool doRead()
         {

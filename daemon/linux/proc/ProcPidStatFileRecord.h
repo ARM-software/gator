@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PROC_PROCPIDSTATFILERECORD_H
 #define INCLUDE_LINUX_PROC_PROCPIDSTATFILERECORD_H
@@ -25,7 +25,7 @@ namespace lnx {
         /**
          * Create an empty record with all fields null/zero/empty
          */
-        ProcPidStatFileRecord();
+        ProcPidStatFileRecord() = default;
 
         /**
          * Create and populate a record
@@ -164,50 +164,50 @@ namespace lnx {
         unsigned long getWchan() const { return wchan; }
 
     private:
-        char state;
-        int pid;
-        int ppid;
-        int pgid;
-        int session;
-        int tty_nr;
-        int tpgid;
-        int exit_signal;
-        int processor;
-        unsigned flags;
-        unsigned rt_priority;
-        unsigned policy;
-        long cutime;
-        long cstime;
-        long priority;
-        long nice;
-        long num_threads;
-        long itrealvalue;
-        long rss;
-        long cguest_time;
-        unsigned long minflt;
-        unsigned long cminflt;
-        unsigned long majflt;
-        unsigned long cmajflt;
-        unsigned long utime;
-        unsigned long stime;
-        unsigned long vsize;
-        unsigned long rsslim;
-        unsigned long startcode;
-        unsigned long endcode;
-        unsigned long startstack;
-        unsigned long kstkesp;
-        unsigned long kstkeip;
-        unsigned long signal;
-        unsigned long blocked;
-        unsigned long sigignore;
-        unsigned long sigcatch;
-        unsigned long wchan;
-        unsigned long nswap;
-        unsigned long cnswap;
-        unsigned long guest_time;
-        unsigned long long starttime;
-        unsigned long long delayacct_blkio_ticks;
-        std::string comm;
+        char state {0};
+        int pid {0};
+        int ppid {0};
+        int pgid {0};
+        int session {0};
+        int tty_nr {0};
+        int tpgid {0};
+        int exit_signal {0};
+        int processor {0};
+        unsigned flags {0};
+        unsigned rt_priority {0};
+        unsigned policy {0};
+        long cutime {0};
+        long cstime {0};
+        long priority {0};
+        long nice {0};
+        long num_threads {0};
+        long itrealvalue {0};
+        long rss {0};
+        long cguest_time {0};
+        unsigned long minflt {0};
+        unsigned long cminflt {0};
+        unsigned long majflt {0};
+        unsigned long cmajflt {0};
+        unsigned long utime {0};
+        unsigned long stime {0};
+        unsigned long vsize {0};
+        unsigned long rsslim {0};
+        unsigned long startcode {0};
+        unsigned long endcode {0};
+        unsigned long startstack {0};
+        unsigned long kstkesp {0};
+        unsigned long kstkeip {0};
+        unsigned long signal {0};
+        unsigned long blocked {0};
+        unsigned long sigignore {0};
+        unsigned long sigcatch {0};
+        unsigned long wchan {0};
+        unsigned long nswap {0};
+        unsigned long cnswap {0};
+        unsigned long guest_time {0};
+        unsigned long long starttime {0};
+        unsigned long long delayacct_blkio_ticks {0};
+        std::string comm {};
     };
 }
 

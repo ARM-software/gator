@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfSyncThread.h"
 
@@ -49,11 +49,7 @@ extern std::uint64_t getTime();
 #define NS_TO_SLEEP (NS_PER_S / 2)
 
 PerfSyncThread::PerfSyncThread(bool enableSyncThreadMode, bool readTimer, ConsumerFunction consumerFunction)
-    : thread(),
-      consumerFunction(std::move(consumerFunction)),
-      terminateFlag(false),
-      readTimer(readTimer),
-      enableSyncThreadMode(enableSyncThreadMode)
+    : consumerFunction(std::move(consumerFunction)), readTimer(readTimer), enableSyncThreadMode(enableSyncThreadMode)
 {
     runtime_assert(enableSyncThreadMode || readTimer, "At least one of enableSyncThreadMode or readTimer are required");
 }

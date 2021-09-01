@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef MONITOR_H
 #define MONITOR_H
@@ -10,6 +10,12 @@ public:
     Monitor();
     ~Monitor();
 
+    // Intentionally unimplemented
+    Monitor(const Monitor &) = delete;
+    Monitor & operator=(const Monitor &) = delete;
+    Monitor(Monitor &&) = delete;
+    Monitor & operator=(Monitor &&) = delete;
+
     void close();
     bool init();
     bool add(int fd);
@@ -20,12 +26,6 @@ public:
 private:
     int mFd;
     int mSize;
-
-    // Intentionally unimplemented
-    Monitor(const Monitor &) = delete;
-    Monitor & operator=(const Monitor &) = delete;
-    Monitor(Monitor &&) = delete;
-    Monitor & operator=(Monitor &&) = delete;
 };
 
 #endif // MONITOR_H

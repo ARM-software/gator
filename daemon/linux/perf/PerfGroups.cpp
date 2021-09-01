@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfGroups.h"
 
@@ -41,6 +41,7 @@ PerfGroups::PerfGroups(const PerfConfig & perfConfig,
                        int backtraceDepth,
                        int sampleRate,
                        bool enablePeriodicSampling,
+                       bool excludeKernelEvents,
                        lib::Span<const GatorCpu> clusters,
                        lib::Span<const int> clusterIds,
                        int64_t schedSwitchId)
@@ -50,6 +51,7 @@ PerfGroups::PerfGroups(const PerfConfig & perfConfig,
                  backtraceDepth,
                  sampleRate,
                  enablePeriodicSampling,
+                 excludeKernelEvents,
                  clusters,
                  clusterIds,
                  schedSwitchId,
@@ -63,6 +65,7 @@ PerfGroups::PerfGroups(const PerfConfig & perfConfig,
                        int backtraceDepth,
                        int sampleRate,
                        bool enablePeriodicSampling,
+                       bool excludeKernelEvents,
                        lib::Span<const GatorCpu> clusters,
                        lib::Span<const int> clusterIds,
                        int64_t schedSwitchId,
@@ -73,13 +76,12 @@ PerfGroups::PerfGroups(const PerfConfig & perfConfig,
                    backtraceDepth,
                    sampleRate,
                    enablePeriodicSampling,
+                   excludeKernelEvents,
                    clusters,
                    clusterIds,
                    schedSwitchId),
-      perfEventGroupMap(),
-      eventsOpenedPerCpu(),
-      maxFiles(maxFiles),
-      numberOfEventsAdded(0)
+
+      maxFiles(maxFiles)
 {
 }
 

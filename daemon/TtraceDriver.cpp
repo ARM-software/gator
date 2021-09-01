@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "TtraceDriver.h"
 
@@ -16,16 +16,16 @@ class TtraceCounter : public DriverCounter {
 public:
     TtraceCounter(DriverCounter * next, const char * name, int flag);
 
-    int getFlag() const { return mFlag; }
-
-private:
-    const int mFlag;
-
     // Intentionally unimplemented
     TtraceCounter(const TtraceCounter &) = delete;
     TtraceCounter & operator=(const TtraceCounter &) = delete;
     TtraceCounter(TtraceCounter &&) = delete;
     TtraceCounter & operator=(TtraceCounter &&) = delete;
+
+    int getFlag() const { return mFlag; }
+
+private:
+    const int mFlag;
 };
 
 TtraceCounter::TtraceCounter(DriverCounter * next, const char * name, int flag) : DriverCounter(next, name), mFlag(flag)

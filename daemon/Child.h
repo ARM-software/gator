@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef __CHILD_H__
 #define __CHILD_H__
@@ -37,6 +37,12 @@ public:
 
     ~Child();
 
+    // Intentionally unimplemented
+    Child(const Child &) = delete;
+    Child & operator=(const Child &) = delete;
+    Child(Child &&) = delete;
+    Child & operator=(Child &&) = delete;
+
     void run();
 
     void endSession(int signum = 0);
@@ -66,11 +72,6 @@ private:
     std::shared_ptr<Command> command {};
 
     Child(Drivers & drivers, OlySocket * sock, Config config);
-    // Intentionally unimplemented
-    Child(const Child &) = delete;
-    Child & operator=(const Child &) = delete;
-    Child(Child &&) = delete;
-    Child & operator=(Child &&) = delete;
 
     /**
      * Adds to sources if non empty

@@ -297,7 +297,7 @@ def select_from_menu(title, menuEntries):
             message = "    %%%uu) %%s" % countW
             for i, entry in enumerate(menuEntries):
                 print(message % (i + 1, entry))
-            print(message % (0, "Exit gator_me.py"))
+            print(message % (0, "Exit script"))
 
             # Process the response
             response = int(input("\n    Select entry: "))
@@ -543,7 +543,8 @@ def get_package_list(device, showDebuggableOnly):
     Returns:
         The list of packages, or an empty list on error.
     """
-    command = "pm list packages | sed 's/^package://'"
+    opt = "-3" if showDebuggableOnly else ""
+    command = "pm list packages %s | sed 's/^package://'" % opt
 
     if showDebuggableOnly:
         # Test if the package is debuggable on the device

@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 #include "lib/Utils.h"
 
 #include "Logging.h"
@@ -75,14 +75,10 @@ namespace lib {
             if (lib::writeFileContents(fsEntry, data)) {
                 return 0;
             }
-            else {
-                logg.logMessage("Opened but could not write to %s", fullpath);
-                return -1;
-            }
-        }
-        else {
+            logg.logMessage("Opened but could not write to %s", fullpath);
             return -1;
         }
+        return -1;
     }
 
     int writeIntToFile(const char * path, int value)

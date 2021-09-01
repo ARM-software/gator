@@ -19,6 +19,12 @@ namespace mali_userspace {
     class MaliHwCntrReader : public IMaliHwCntrReader {
     public:
         ~MaliHwCntrReader() override = default;
+
+        MaliHwCntrReader(const MaliHwCntrReader &) = delete;
+        MaliHwCntrReader & operator=(const MaliHwCntrReader &) = delete;
+        MaliHwCntrReader(MaliHwCntrReader &&) = delete;
+        MaliHwCntrReader & operator=(MaliHwCntrReader &&) = delete;
+
         const MaliDevice & getDevice() const override;
         HardwareVersion getHardwareVersion() const override;
         SampleBuffer waitForBuffer(int timeout) override;
@@ -122,11 +128,6 @@ namespace mali_userspace {
          * @return The number of matching blocks
          */
         unsigned probeBlockMaskCount();
-
-        MaliHwCntrReader(const MaliHwCntrReader &) = delete;
-        MaliHwCntrReader & operator=(const MaliHwCntrReader &) = delete;
-        MaliHwCntrReader(MaliHwCntrReader &&) = delete;
-        MaliHwCntrReader & operator=(MaliHwCntrReader &&) = delete;
     };
 }
 

@@ -35,6 +35,12 @@ public:
                bool enableOnCommandExec,
                ICpuInfo & cpuInfo);
 
+    // Intentionally undefined
+    PerfSource(const PerfSource &) = delete;
+    PerfSource & operator=(const PerfSource &) = delete;
+    PerfSource(PerfSource &&) = delete;
+    PerfSource & operator=(PerfSource &&) = delete;
+
     bool prepare();
     lib::Optional<uint64_t> sendSummary() override;
     void run(std::uint64_t, std::function<void()> endSession) override;
@@ -42,36 +48,30 @@ public:
     bool write(ISender & sender) override;
 
 private:
-    bool handleUEvent(uint64_t currTime);
-    bool handleCpuOnline(uint64_t currTime, unsigned cpu);
-    bool handleCpuOffline(uint64_t currTime, unsigned cpu);
-
     SummaryBuffer mSummary;
     Buffer mMemoryBuffer;
     PerfToMemoryBuffer mPerfToMemoryBuffer;
     PerfBuffer mCountersBuf;
     PerfGroups mCountersGroup;
-    Monitor mMonitor;
-    UEvent mUEvent;
+    Monitor mMonitor {};
+    UEvent mUEvent {};
     std::set<int> mAppTids;
     PerfDriver & mDriver;
-    std::unique_ptr<PerfAttrsBuffer> mAttrsBuffer;
-    std::unique_ptr<PerfAttrsBuffer> mProcBuffer;
+    std::unique_ptr<PerfAttrsBuffer> mAttrsBuffer {};
+    std::unique_ptr<PerfAttrsBuffer> mProcBuffer {};
     sem_t & mSenderSem;
     std::function<void()> mProfilingStartedCallback;
     lib::AutoClosingFd mInterruptRead {};
     lib::AutoClosingFd mInterruptWrite {};
-    std::atomic_bool mIsDone;
+    std::atomic_bool mIsDone {false};
     FtraceDriver & mFtraceDriver;
     ICpuInfo & mCpuInfo;
-    std::unique_ptr<PerfSyncThreadBuffer> mSyncThread;
-    bool enableOnCommandExec;
+    std::unique_ptr<PerfSyncThreadBuffer> mSyncThread {};
+    bool enableOnCommandExec {false};
 
-    // Intentionally undefined
-    PerfSource(const PerfSource &) = delete;
-    PerfSource & operator=(const PerfSource &) = delete;
-    PerfSource(PerfSource &&) = delete;
-    PerfSource & operator=(PerfSource &&) = delete;
+    bool handleUEvent(uint64_t currTime);
+    bool handleCpuOnline(uint64_t currTime, unsigned cpu);
+    bool handleCpuOffline(uint64_t currTime, unsigned cpu);
 };
 
 #endif // PERFSOURCE_H

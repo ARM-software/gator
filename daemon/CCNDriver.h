@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #ifndef CCNDRIVER_H
 #define CCNDRIVER_H
@@ -11,6 +11,12 @@ class CCNDriver : public Driver {
 public:
     CCNDriver();
     ~CCNDriver() override;
+
+    // Intentionally unimplemented
+    CCNDriver(const CCNDriver &) = delete;
+    CCNDriver & operator=(const CCNDriver &) = delete;
+    CCNDriver(CCNDriver &&) = delete;
+    CCNDriver & operator=(CCNDriver &&) = delete;
 
     bool claimCounter(Counter & counter) const override;
     void resetCounters() override;
@@ -32,12 +38,6 @@ private:
 
     NodeType * mNodeTypes;
     int mXpCount;
-
-    // Intentionally unimplemented
-    CCNDriver(const CCNDriver &) = delete;
-    CCNDriver & operator=(const CCNDriver &) = delete;
-    CCNDriver(CCNDriver &&) = delete;
-    CCNDriver & operator=(CCNDriver &&) = delete;
 };
 
 #endif // CCNDRIVER_H

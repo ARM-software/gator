@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2015-2021 by Arm Limited. All rights reserved. */
 
 #ifndef TTRACEDRIVER_H
 #define TTRACEDRIVER_H
@@ -11,6 +11,11 @@ class FtraceDriver;
 class TtraceDriver : public SimpleDriver {
 public:
     TtraceDriver(const FtraceDriver & ftraceDriver);
+    // Intentionally unimplemented
+    TtraceDriver(const TtraceDriver &) = delete;
+    TtraceDriver & operator=(const TtraceDriver &) = delete;
+    TtraceDriver(TtraceDriver &&) = delete;
+    TtraceDriver & operator=(TtraceDriver &&) = delete;
 
     void readEvents(mxml_node_t * xml) override;
 
@@ -24,12 +29,6 @@ private:
 
     bool mSupported;
     const FtraceDriver & mFtraceDriver;
-
-    // Intentionally unimplemented
-    TtraceDriver(const TtraceDriver &) = delete;
-    TtraceDriver & operator=(const TtraceDriver &) = delete;
-    TtraceDriver(TtraceDriver &&) = delete;
-    TtraceDriver & operator=(TtraceDriver &&) = delete;
 };
 
 #endif // TTRACEDRIVER_H

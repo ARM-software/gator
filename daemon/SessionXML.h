@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_XML_H
 #define SESSION_XML_H
@@ -25,20 +25,24 @@ struct ConfigParameters {
 
 class SessionXML {
 public:
-    SessionXML(const char * str);
-    void parse();
-    ConfigParameters parameters;
+    ConfigParameters parameters {};
 
-private:
-    const char * mSessionXML;
-    void sessionTag(mxml_node_t * tree, mxml_node_t * node);
-    static void sessionImage(mxml_node_t * node);
+    SessionXML(const char * str);
 
     // Intentionally unimplemented
     SessionXML(const SessionXML &) = delete;
     SessionXML & operator=(const SessionXML &) = delete;
     SessionXML(SessionXML &&) = delete;
     SessionXML & operator=(SessionXML &&) = delete;
+
+    void parse();
+
+private:
+    const char * mSessionXML;
+
+    static void sessionImage(mxml_node_t * node);
+
+    void sessionTag(mxml_node_t * tree, mxml_node_t * node);
 };
 
 #endif // SESSION_XML_H

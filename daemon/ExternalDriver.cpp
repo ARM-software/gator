@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "ExternalDriver.h"
 
@@ -58,24 +58,21 @@ static int readPackedInt(const char * const buf, const size_t bufSize, size_t * 
 
 class ExternalCounter : public DriverCounter {
 public:
-    ExternalCounter(DriverCounter * next, const char * name, int cores)
-        : DriverCounter(next, name), mCores(cores), mEvent()
-    {
-    }
-
-    int getCores() const { return mCores; }
-    void setEvent(EventCode event) { mEvent = event; }
-    EventCode getEvent() const { return mEvent; }
-
-private:
-    const int mCores;
-    EventCode mEvent;
+    ExternalCounter(DriverCounter * next, const char * name, int cores) : DriverCounter(next, name), mCores(cores) {}
 
     // Intentionally undefined
     ExternalCounter(const ExternalCounter &) = delete;
     ExternalCounter & operator=(const ExternalCounter &) = delete;
     ExternalCounter(ExternalCounter &&) = delete;
     ExternalCounter & operator=(ExternalCounter &&) = delete;
+
+    int getCores() const { return mCores; }
+    void setEvent(EventCode event) { mEvent = event; }
+    EventCode getEvent() const { return mEvent; }
+
+private:
+    EventCode mEvent {};
+    const int mCores;
 };
 
 ExternalDriver::ExternalDriver() : SimpleDriver("External"), mUds(-1), mQueried(false), mStarted(false)

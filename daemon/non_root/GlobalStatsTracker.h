@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_GLOBALSTATSTRACKER_H
 #define INCLUDE_NON_ROOT_GLOBALSTATSTRACKER_H
@@ -23,23 +23,21 @@ namespace non_root {
          */
         class PerCoreStatsTracker {
         public:
-            PerCoreStatsTracker();
-
             void sendStats(unsigned long long timestampNS, GlobalStateChangeHandler & handler, unsigned long cpuID);
             void updateFromProcStatFileRecordCpuTime(const lnx::ProcStatFileRecord::CpuTime & record);
 
         private:
-            DeltaCounter<unsigned long long> timeUserTicks;
-            DeltaCounter<unsigned long long> timeNiceTicks;
-            DeltaCounter<unsigned long long> timeSystemTicks;
-            DeltaCounter<unsigned long long> timeIdleTicks;
-            DeltaCounter<unsigned long long> timeIowaitTicks;
-            DeltaCounter<unsigned long long> timeIrqTicks;
-            DeltaCounter<unsigned long long> timeSoftirqTicks;
-            DeltaCounter<unsigned long long> timeStealTicks;
-            DeltaCounter<unsigned long long> timeGuestTicks;
-            DeltaCounter<unsigned long long> timeGuestNiceTicks;
-            bool first;
+            DeltaCounter<unsigned long long> timeUserTicks {};
+            DeltaCounter<unsigned long long> timeNiceTicks {};
+            DeltaCounter<unsigned long long> timeSystemTicks {};
+            DeltaCounter<unsigned long long> timeIdleTicks {};
+            DeltaCounter<unsigned long long> timeIowaitTicks {};
+            DeltaCounter<unsigned long long> timeIrqTicks {};
+            DeltaCounter<unsigned long long> timeSoftirqTicks {};
+            DeltaCounter<unsigned long long> timeStealTicks {};
+            DeltaCounter<unsigned long long> timeGuestTicks {};
+            DeltaCounter<unsigned long long> timeGuestNiceTicks {};
+            bool first {true};
 
             template<typename T>
             void writeCounter(unsigned long long timestampNS,
@@ -59,18 +57,18 @@ namespace non_root {
         void updateFromProcStatFileRecord(const lnx::ProcStatFileRecord & record);
 
     private:
-        std::map<unsigned long, PerCoreStatsTracker> perCoreStats;
-        AbsoluteCounter<unsigned long> loadavgOver1Minute;
-        AbsoluteCounter<unsigned long> loadavgOver5Minutes;
-        AbsoluteCounter<unsigned long> loadavgOver15Minutes;
-        AbsoluteCounter<unsigned long> numProcessesRunning;
-        AbsoluteCounter<unsigned long> numProcessesExist;
-        DeltaCounter<unsigned long> numContextSwitchs;
-        DeltaCounter<unsigned long> numIrq;
-        DeltaCounter<unsigned long> numSoftIrq;
-        DeltaCounter<unsigned long> numForks;
+        std::map<unsigned long, PerCoreStatsTracker> perCoreStats {};
+        AbsoluteCounter<unsigned long> loadavgOver1Minute {};
+        AbsoluteCounter<unsigned long> loadavgOver5Minutes {};
+        AbsoluteCounter<unsigned long> loadavgOver15Minutes {};
+        AbsoluteCounter<unsigned long> numProcessesRunning {};
+        AbsoluteCounter<unsigned long> numProcessesExist {};
+        DeltaCounter<unsigned long> numContextSwitchs {};
+        DeltaCounter<unsigned long> numIrq {};
+        DeltaCounter<unsigned long> numSoftIrq {};
+        DeltaCounter<unsigned long> numForks {};
         GlobalStateChangeHandler & handler;
-        bool first;
+        bool first {true};
 
         template<typename T>
         void writeCounter(unsigned long long timestampNS, AbsoluteGlobalCounter id, AbsoluteCounter<T> & counter);

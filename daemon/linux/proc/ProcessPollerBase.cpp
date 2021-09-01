@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessPollerBase.h"
 
@@ -74,10 +74,8 @@ namespace lnx {
                 // use realpath(exe)
                 return exe_path;
             }
-            else {
-                // exe was linked to nothing, try getting from cmdline
-                return getProcessCmdlineExePath(entry);
-            }
+            // exe was linked to nothing, try getting from cmdline
+            return getProcessCmdlineExePath(entry);
         }
     }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "FSDriver.h"
 
@@ -16,6 +16,12 @@ public:
     FSCounter(DriverCounter * next, const char * name, char * path, const char * regex);
     ~FSCounter() override;
 
+    // Intentionally unimplemented
+    FSCounter(const FSCounter &) = delete;
+    FSCounter & operator=(const FSCounter &) = delete;
+    FSCounter(FSCounter &&) = delete;
+    FSCounter & operator=(FSCounter &&) = delete;
+
     const char * getPath() const { return mPath; }
 
     int64_t read() override;
@@ -24,12 +30,6 @@ private:
     char * const mPath;
     regex_t mReg;
     bool mUseRegex;
-
-    // Intentionally unimplemented
-    FSCounter(const FSCounter &) = delete;
-    FSCounter & operator=(const FSCounter &) = delete;
-    FSCounter(FSCounter &&) = delete;
-    FSCounter & operator=(FSCounter &&) = delete;
 };
 
 FSCounter::FSCounter(DriverCounter * next, const char * name, char * path, const char * regex)

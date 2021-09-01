@@ -12,3 +12,9 @@ The different annotation types include:
 * Simple examples for all the above annotation types are available in the streamline/examples folder.
 * For more complicated examples, import the Linux application example projects into Arm DS IDE and refer to readme.html for more details.
 
+*** Options
+If your application needs to send annotations to gator running as a different
+user (usually root to use --system-wide=yes), and your system forbids unix
+domain socket connections between different users (should be the case in
+Android 11+), then you can use a TCP connection instead. Set -DTCP_ANNOTATIONS
+when compiling your application to do this.

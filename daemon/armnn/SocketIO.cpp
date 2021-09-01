@@ -122,14 +122,12 @@ namespace armnn {
         if (pollResult == 0) {
             return defaultReturnValue;
         }
-        else if (pollResult < 0) {
+        if (pollResult < 0) {
             // Ignore these error codes
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
                 return defaultReturnValue;
             }
-            else {
-                logg.logError("Failed to poll socket due to %s (%d)", std::strerror(errno), errno);
-            }
+            logg.logError("Failed to poll socket due to %s (%d)", std::strerror(errno), errno);
         }
         else {
             if (((pollFds[0].revents & POLLERR) == POLLERR) || ((pollFds[0].revents & POLLNVAL) == POLLNVAL)) {
@@ -232,13 +230,11 @@ namespace armnn {
             return std::unique_ptr<SocketIO>(new SocketIO(std::move(acceptFd), host.type));
         }
         // Ignore these error codes
-        else if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
             return nullptr;
         }
-        else {
-            logg.logError("Failed to accept socket due to %s (%d)", std::strerror(errno), errno);
-            handleException();
-        }
+        logg.logError("Failed to accept socket due to %s (%d)", std::strerror(errno), errno);
+        handleException();
     }
 
     std::unique_ptr<SocketIO> SocketIO::accept(int timeout) const
@@ -257,14 +253,12 @@ namespace armnn {
         }
 
         // Ignore these codes
-        else if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
             return 0;
         }
 
         // Failure
-        else {
-            return -1;
-        }
+        return -1;
     }
 
     int SocketIO::write(const std::uint8_t * buffer, std::size_t length, int timeout)
@@ -301,13 +295,13 @@ namespace armnn {
         }
 
         // If bytes == 0 then we are closed
-        else if (bytesRead == 0) {
+        if (bytesRead == 0) {
             host.close();
             return READ_EOF; // Indicate we can't poll this socket anymore.
         }
 
         // Ignore these error codes, allow another poll
-        else if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
             return READ_TIMEDOUT;
         }
 
@@ -333,9 +327,7 @@ namespace armnn {
                 }
                 return false;
             }
-            else {
-                accumulatedBytes += result;
-            }
+            accumulatedBytes += result;
         }
 
         return true;

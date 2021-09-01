@@ -36,24 +36,19 @@ Drivers::Drivers(bool systemWide,
                  bool disableCpuOnlining,
                  bool disableKernelAnnotations,
                  const TraceFsConstants & traceFsConstants)
-    : mMaliHwCntrs {},
-      mPrimarySourceProvider {createPrimarySourceProvider(systemWide,
+    : mPrimarySourceProvider {createPrimarySourceProvider(systemWide,
                                                           traceFsConstants,
                                                           std::move(pmuXml),
                                                           mMaliHwCntrs.getSupportedDeviceFamilyName(),
                                                           disableCpuOnlining,
                                                           disableKernelAnnotations)},
-      mMidgard {},
+
       mFtraceDriver {traceFsConstants,
                      !mPrimarySourceProvider->supportsTracepointCapture(),
                      mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
       mAtraceDriver {mFtraceDriver},
-      mTtraceDriver {mFtraceDriver},
-      mExternalDriver {},
-      mCcnDriver {},
-      mArmnnDriver {},
-      all {},
-      allPolled {}
+      mTtraceDriver {mFtraceDriver}
+
 {
     all.push_back(&mPrimarySourceProvider->getPrimaryDriver());
     for (PolledDriver * driver : mPrimarySourceProvider->getAdditionalPolledDrivers()) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 #ifndef INCLUDE_ARMNN_I_COUNTER_DIRECTORY_CONSUMER_H
 #define INCLUDE_ARMNN_I_COUNTER_DIRECTORY_CONSUMER_H
 
@@ -18,11 +18,11 @@ namespace armnn {
         enum class Interpolation : std::uint16_t { LINEAR = 0, STEP = 1 };
 
         struct DeviceRecord {
-            std::uint16_t uid;
-            std::uint16_t cores;
-            std::string name;
+            std::uint16_t uid {0};
+            std::uint16_t cores {0};
+            std::string name {};
 
-            DeviceRecord() : uid(0), cores(0), name() {}
+            DeviceRecord() = default;
             DeviceRecord(std::uint16_t uid, std::uint16_t cores, std::string name)
                 : uid(uid), cores(cores), name(std::move(name))
             {
@@ -30,11 +30,11 @@ namespace armnn {
         };
 
         struct CounterSetRecord {
-            std::uint16_t uid;
-            std::uint16_t count;
-            std::string name;
+            std::uint16_t uid {0};
+            std::uint16_t count {0};
+            std::string name {};
 
-            CounterSetRecord() : uid(0), count(0), name() {}
+            CounterSetRecord() = default;
             CounterSetRecord(std::uint16_t uid, std::uint16_t count, std::string name)
                 : uid(uid), count(count), name(std::move(name))
             {
@@ -42,30 +42,18 @@ namespace armnn {
         };
 
         struct EventRecord {
-            std::uint16_t uid;
-            std::uint16_t max_uid;
-            std::uint16_t device_uid;
-            std::uint16_t counter_set_uid;
-            Class clazz;
-            Interpolation interpolation;
-            double multiplier;
-            std::string name;
-            std::string description;
-            std::string units;
+            std::uint16_t uid {0};
+            std::uint16_t max_uid {0};
+            std::uint16_t device_uid {0};
+            std::uint16_t counter_set_uid {0};
+            Class clazz {Class::DELTA};
+            Interpolation interpolation {Interpolation::LINEAR};
+            double multiplier {0};
+            std::string name {};
+            std::string description {};
+            std::string units {};
 
-            EventRecord()
-                : uid(0),
-                  max_uid(0),
-                  device_uid(0),
-                  counter_set_uid(0),
-                  clazz(Class::DELTA),
-                  interpolation(Interpolation::LINEAR),
-                  multiplier(0),
-                  name(),
-                  description(),
-                  units()
-            {
-            }
+            EventRecord() = default;
 
             EventRecord(std::uint16_t uid,
                         std::uint16_t max_uid,
@@ -92,10 +80,10 @@ namespace armnn {
         };
 
         struct CategoryRecord {
-            std::string name;
-            std::map<std::uint16_t, EventRecord> events_by_uid;
+            std::string name {};
+            std::map<std::uint16_t, EventRecord> events_by_uid {};
 
-            CategoryRecord() : name(), events_by_uid() {}
+            CategoryRecord() = default;
             CategoryRecord(std::string name, std::map<std::uint16_t, EventRecord> events_by_uid)
                 : name(std::move(name)), events_by_uid(std::move(events_by_uid))
             {
