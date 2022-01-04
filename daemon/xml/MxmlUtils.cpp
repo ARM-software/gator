@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "xml/MxmlUtils.h"
 
@@ -12,7 +12,7 @@ void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src)
 
     const int numAttrs = mxmlElementGetAttrCount(src);
     for (int i = 0; i < numAttrs; ++i) {
-        const char * name;
+        const char * name = nullptr;
         const char * value = mxmlElementGetAttrByIndex(src, i, &name);
         mxmlElementSetAttr(dest, name, value);
     }

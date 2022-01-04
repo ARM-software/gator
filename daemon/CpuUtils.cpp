@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils.h"
 
@@ -14,12 +14,13 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <dirent.h>
 #include <map>
 #include <mutex>
 #include <set>
-#include <unistd.h>
 #include <vector>
+
+#include <dirent.h>
+#include <unistd.h>
 
 namespace cpu_utils {
     unsigned int getMaxCoreNum()
@@ -28,7 +29,7 @@ namespace cpu_utils {
         // or pick the highest in /sys/devices/system/cpu/possible?
         DIR * dir = opendir("/sys/devices/system/cpu");
         if (dir == nullptr) {
-            logg.logError("Unable to determine the number of cores on the target, opendir failed");
+            LOG_ERROR("Unable to determine the number of cores on the target, opendir failed");
             handleException();
         }
 
@@ -45,7 +46,7 @@ namespace cpu_utils {
         closedir(dir);
 
         if (maxCoreNum < 1) {
-            logg.logError("Unable to determine the number of cores on the target, no cpu# directories found");
+            LOG_ERROR("Unable to determine the number of cores on the target, no cpu# directories found");
             handleException();
         }
 
@@ -85,15 +86,15 @@ namespace cpu_utils {
 
         FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
         if (f == nullptr) {
-            logg.logMessage("Error opening /proc/cpuinfo\n"
-                            "The core name in the captured xml file will be 'unknown'.");
+            LOG_DEBUG("Error opening /proc/cpuinfo\n"
+                      "The core name in the captured xml file will be 'unknown'.");
             return hardwareName;
         }
 
         bool foundCoreName = false;
         constexpr size_t UNKNOWN_PROCESSOR = -1;
         size_t processor = UNKNOWN_PROCESSOR;
-        size_t minProcessor = cpuIds.length;
+        size_t minProcessor = cpuIds.size();
         size_t maxProcessor = 0;
         bool foundProcessorInSection = false;
         int outOfPlaceCpuId = -1;
@@ -106,7 +107,7 @@ namespace cpu_utils {
                 temp[len - 1] = '\0';
             }
 
-            logg.logMessage("cpuinfo: %s", temp);
+            LOG_DEBUG("cpuinfo: %s", temp);
 
             if (len == 1) {
                 // New section, clear the processor. Streamline will not know the cpus if the pre Linux 3.8 format of cpuinfo is encountered but also that no incorrect information will be transmitted.
@@ -122,8 +123,8 @@ namespace cpu_utils {
             if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
                 char * position = strchr(temp, ':');
                 if (position == nullptr || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
-                    logg.logMessage("Unknown format of /proc/cpuinfo\n"
-                                    "The core name in the captured xml file will be 'unknown'.");
+                    LOG_DEBUG("Unknown format of /proc/cpuinfo\n"
+                              "The core name in the captured xml file will be 'unknown'.");
                     return hardwareName;
                 }
                 position += 2;
@@ -181,8 +182,8 @@ namespace cpu_utils {
                     }
                     else if (converted) {
                         processor = processorId;
-                        if (processor >= cpuIds.length) {
-                            logg.logError("Found processor %zu but max is %zu", processor, cpuIds.length);
+                        if (processor >= cpuIds.size()) {
+                            LOG_ERROR("Found processor %zu but max is %zu", processor, cpuIds.size());
                             handleException();
                         }
                         foundProcessorInSection = true;
@@ -194,19 +195,19 @@ namespace cpu_utils {
 
         if (invalidFormat && (outOfPlaceCpuId != -1) && (minProcessor <= maxProcessor)) {
             minProcessor = (minProcessor > 0 ? minProcessor : 0);
-            maxProcessor = (maxProcessor < cpuIds.length ? maxProcessor + 1 : cpuIds.length);
+            maxProcessor = (maxProcessor < cpuIds.size() ? maxProcessor + 1 : cpuIds.size());
 
             for (size_t processor = minProcessor; processor < maxProcessor; ++processor) {
                 if (cpuIds[processor] == -1) {
-                    logg.logMessage("Setting global CPUID 0x%x for processors %zu ", outOfPlaceCpuId, processor);
+                    LOG_DEBUG("Setting global CPUID 0x%x for processors %zu ", outOfPlaceCpuId, processor);
                     cpuIds[processor] = outOfPlaceCpuId;
                 }
             }
         }
 
         if (!foundCoreName) {
-            logg.logMessage("Could not determine core name from /proc/cpuinfo\n"
-                            "The core name in the captured xml file will be 'unknown'.");
+            LOG_DEBUG("Could not determine core name from /proc/cpuinfo\n"
+                      "The core name in the captured xml file will be 'unknown'.");
         }
 
         return hardwareName;
@@ -229,7 +230,7 @@ namespace cpu_utils {
         // - the threads remain online until this function finishes (they are disposed of / terminated by destructor); this is so as
         //   to ensure that the cores remain online until cpuinfo is read
         {
-            for (unsigned cpu = 0; cpu < cpuIds.length; ++cpu) {
+            for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
                 perCoreThreads.emplace_back(new PerCoreIdentificationThread(
                     ignoreOffline,
                     cpu,
@@ -274,7 +275,7 @@ namespace cpu_utils {
             // wait until all threads are online
             std::unique_lock<std::mutex> lock {mutex};
             cv.wait_for(lock, std::chrono::seconds(10), [&] {
-                return identificationThreadCallbackCounter >= cpuIds.length;
+                return identificationThreadCallbackCounter >= cpuIds.size();
             });
         }
 
@@ -283,20 +284,20 @@ namespace cpu_utils {
 
         // log what we learnt
         for (const auto & pair : cpuToCpuIds) {
-            logg.logMessage("Read CPU %u CPUID from MIDR_EL1 -> 0x%05x", pair.first, pair.second);
+            LOG_DEBUG("Read CPU %u CPUID from MIDR_EL1 -> 0x%05x", pair.first, pair.second);
         }
         for (const auto & pair : cpuToCluster) {
-            logg.logMessage("Read CPU %u CLUSTER %u", pair.first, pair.second);
+            LOG_DEBUG("Read CPU %u CLUSTER %u", pair.first, pair.second);
         }
         for (const auto & pair : clusterToCpuIds) {
-            logg.logMessage("Read CLUSTER %u CPUIDs:", pair.first);
+            LOG_DEBUG("Read CLUSTER %u CPUIDs:", pair.first);
             for (auto cpuId : pair.second) {
-                logg.logMessage("    0x%05x", cpuId);
+                LOG_DEBUG("    0x%05x", cpuId);
             }
         }
 
         // did we successfully read all MIDR values from all cores?
-        const bool knowAllMidrValues = (cpuToCpuIds.size() == cpuIds.length);
+        const bool knowAllMidrValues = (cpuToCpuIds.size() == cpuIds.size());
 
         // do we need to read /proc/cpuinfo
         std::string hardwareName = parseProcCpuInfo(/* justGetHardwareName = */ knowAllMidrValues, cpuIds);

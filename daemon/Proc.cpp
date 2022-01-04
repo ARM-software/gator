@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -34,8 +35,8 @@ namespace {
         void onThreadDetails(int pid,
                              int tid,
                              const lnx::ProcPidStatFileRecord & statRecord,
-                             const lib::Optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
-                             const lib::Optional<lib::FsEntry> & exe) override
+                             const std::optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
+                             const std::optional<lib::FsEntry> & exe) override
         {
             buffer.marshalComm(pid, tid, (exe ? exe->path().c_str() : ""), statRecord.getComm().c_str());
         }
@@ -70,7 +71,7 @@ bool readProcSysDependencies(IPerfAttrsConsumer & buffer,
     poller.poll();
 
     if (!ftraceDriver.readTracepointFormats(buffer, printb, b1)) {
-        logg.logMessage("FtraceDriver::readTracepointFormats failed");
+        LOG_DEBUG("FtraceDriver::readTracepointFormats failed");
         return false;
     }
 
@@ -90,7 +91,7 @@ bool readKallsyms(IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & i
     int fd = ::open("/proc/kallsyms", O_RDONLY | O_CLOEXEC);
 
     if (fd < 0) {
-        logg.logMessage("open failed");
+        LOG_DEBUG("open failed");
         return true;
     };
 
@@ -99,7 +100,7 @@ bool readKallsyms(IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & i
     while (!isDone) {
         // Assert there is still space in the buffer
         if (sizeof(buf) - pos - 1 == 0) {
-            logg.logError("no space left in buffer");
+            LOG_ERROR("no space left in buffer");
             handleException();
         }
 
@@ -107,13 +108,13 @@ bool readKallsyms(IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & i
             // -1 to reserve space for \0
             const ssize_t bytes = ::read(fd, buf + pos, sizeof(buf) - pos - 1);
             if (bytes < 0) {
-                logg.logError("read failed");
+                LOG_ERROR("read failed");
                 handleException();
             }
             if (bytes == 0) {
                 // Assert the buffer is empty
                 if (pos != 0) {
-                    logg.logError("buffer not empty on eof");
+                    LOG_ERROR("buffer not empty on eof");
                     handleException();
                 }
                 break;
@@ -131,7 +132,7 @@ bool readKallsyms(IPerfAttrsConsumer & attrsConsumer, const std::atomic_bool & i
                 buf[0] = was;
                 // Assert the memory regions do not overlap
                 if (pos - newline >= newline + 1) {
-                    logg.logError("memcpy src and dst overlap");
+                    LOG_ERROR("memcpy src and dst overlap");
                     handleException();
                 }
                 if (pos - newline - 2 > 0) {

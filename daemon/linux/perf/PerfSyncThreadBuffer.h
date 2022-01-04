@@ -7,10 +7,11 @@
 #include "linux/perf/PerfSyncThread.h"
 
 #include <cstdint>
-#include <semaphore.h>
 #include <thread>
-#include <unistd.h>
 #include <vector>
+
+#include <semaphore.h>
+#include <unistd.h>
 
 class ISender;
 

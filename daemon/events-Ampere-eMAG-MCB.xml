@@ -3,7 +3,7 @@
  <counter_set name="MCB_cnt" count="4"/>
   <category name="MCB" counter_set="MCB_cnt" per_cpu="no">
     <!--CYCLES-->
-    <event counter="MCB_ccnt" title="MCB Clock" event="0x0000" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event counter="MCB_ccnt" title="MCB Clock" event="0x0000" name="Cycles" description="Cycle counter." units="cycles" />
     <!--Memory Subsystem-->
     <event title="Memory Subsystem" event="0x0001" name="Req recv" description="Request (Read or Write) Received from CSW." />
     <event title="Memory Subsystem" event="0x0002" name="Rd req recv" description="Read Request Received from CSW." />

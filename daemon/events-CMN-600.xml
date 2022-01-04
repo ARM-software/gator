@@ -2,7 +2,7 @@
 
   <counter_set name="CMN_600_cnt" count="8"/>
   <category name="CMN-600" counter_set="CMN_600_cnt" per_cpu="no">
-    <event counter="CMN_600_ccnt" event="0x30068" title="CMN-600 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="CMN_600_ccnt" event="0x30068" title="CMN-600 Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
     <!-- Porter2 CCIX (Neoverse N1) -->
     <!-- HN-F events -->
     <option_set name="HN-F_Region">

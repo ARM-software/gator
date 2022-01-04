@@ -6,13 +6,15 @@
 #include "Configuration.h"
 #include "Source.h"
 #include "lib/AutoClosingFd.h"
+#include "logging/suppliers.h"
 
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <semaphore.h>
 #include <set>
 #include <vector>
+
+#include <semaphore.h>
 
 class Drivers;
 class Sender;
@@ -32,8 +34,14 @@ public:
         std::set<SpeConfiguration> spes;
     };
 
-    static std::unique_ptr<Child> createLocal(Drivers & drivers, const Config & config);
-    static std::unique_ptr<Child> createLive(Drivers & drivers, OlySocket & sock);
+    static std::unique_ptr<Child> createLocal(Drivers & drivers,
+                                              const Config & config,
+                                              logging::last_log_error_supplier_t last_error_supplier,
+                                              logging::log_setup_supplier_t log_setup_supplier);
+    static std::unique_ptr<Child> createLive(Drivers & drivers,
+                                             OlySocket & sock,
+                                             logging::last_log_error_supplier_t last_error_supplier,
+                                             logging::log_setup_supplier_t log_setup_supplier);
 
     ~Child();
 
@@ -67,11 +75,16 @@ private:
     lib::AutoClosingFd sessionEndEventFd {};
     std::atomic_bool sessionEnded;
     std::atomic_int signalNumber {0};
-
     Config config;
+    logging::last_log_error_supplier_t last_error_supplier;
+    logging::log_setup_supplier_t log_setup_supplier;
     std::shared_ptr<Command> command {};
 
-    Child(Drivers & drivers, OlySocket * sock, Config config);
+    Child(Drivers & drivers,
+          OlySocket * sock,
+          Config config,
+          logging::last_log_error_supplier_t last_error_supplier,
+          logging::log_setup_supplier_t log_setup_supplier);
 
     /**
      * Adds to sources if non empty

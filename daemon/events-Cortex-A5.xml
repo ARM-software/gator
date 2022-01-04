@@ -2,7 +2,7 @@
 
 <counter_set count="2" name="ARMv7_Cortex_A5_cnt"/>
 <category counter_set="ARMv7_Cortex_A5_cnt" name="Cortex-A5" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="ARMv7_Cortex_A5_ccnt" event="0xff" title="Cycles" name="CPU Cycles" description="The counter increments on every cycle." display="hertz" units="Hz" average_selection="yes" average_cores="yes"/>
+    <event counter="ARMv7_Cortex_A5_ccnt" event="0xff" title="Cycles" name="CPU Cycles" description="The counter increments on every cycle." units="cycles"/>
     <event event="0x00" title="Instructions (Executed)" name="Increment PMSWINC Register" description="The counter increments on writes to the PMSWINC register." units="instructions"/>
     <event event="0x01" title="L1 Instruction Cache" name="Refill" description="The counter counts instruction memory accesses that cause a refill of at least the Level 1 instruction or unified cache. This includes each instruction memory access that causes a refill from outside the cache. It excludes accesses that do not cause a new cache refill but are satisfied from refilling data of a previous miss."/>
     <event event="0x02" title="L1 Instruction TLB" name="Refill" description="The counter counts instruction memory accesses that cause a TLB refill of at least the Level 1 instruction TLB. This includes each instruction memory access that causes an access to a level of memory system due to a translation table walk or an access to another level of TLB caching."/>

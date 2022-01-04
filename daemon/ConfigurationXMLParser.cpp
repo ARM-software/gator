@@ -34,11 +34,11 @@ int static configurationsTag(mxml_node_t * node)
 
     int revision;
     if (!stringToInt(&revision, revision_string, 10)) {
-        logg.logError("Configuration XML revision must be an integer");
+        LOG_ERROR("Configuration XML revision must be an integer");
         return VERSION_ERROR;
     }
     if (revision < CONFIGURATION_REVISION) {
-        logg.logError("Revision issue, please check configuration XML v%d", revision);
+        LOG_ERROR("Revision issue, please check configuration XML v%d", revision);
         return 1; // revision issue
     }
     // A revision >= CONFIGURATION_REVISION is okay
@@ -59,14 +59,14 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     counter.counterName = counterName;
     if (mxmlElementGetAttr(node, ATTR_COUNT) != nullptr) {
         if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), 10)) {
-            logg.logError("Configuration XML count must be an integer");
+            LOG_ERROR("Configuration XML count must be an integer");
             return PARSER_ERROR;
         }
         counter.count = count;
     }
     if (mxmlElementGetAttr(node, ATTR_CORES) != nullptr) {
         if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), 10)) {
-            logg.logError("Configuration XML cores must be an integer");
+            LOG_ERROR("Configuration XML cores must be an integer");
             return PARSER_ERROR;
         }
         counter.cores = cores;
@@ -74,7 +74,7 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     long long event;
     if (eventStr != nullptr) {
         if (!stringToLongLong(&event, eventStr, 16)) {
-            logg.logError("Configuration XML event must be an integer");
+            LOG_ERROR("Configuration XML event must be an integer");
             return PARSER_ERROR;
         }
         counter.event = EventCode(event);
@@ -97,15 +97,15 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
         errno = 0;
         uint64_t event_mask = strtoull(attrEventFilter, &end, 0);
         if (event_mask == 0 && end == attrEventFilter) {
-            logg.logError("Configuration XML spe event-filter must be an integer");
+            LOG_ERROR("Configuration XML spe event-filter must be an integer");
             return PARSER_ERROR;
         }
         if (event_mask == ULLONG_MAX && errno) {
-            logg.logError("Configuration XML spe event-filter must be in the range of unsigned long long");
+            LOG_ERROR("Configuration XML spe event-filter must be in the range of unsigned long long");
             return PARSER_ERROR;
         }
         if (*end != 0) {
-            logg.logError("Configuration XML spe event-filter must be an integer");
+            LOG_ERROR("Configuration XML spe event-filter must be an integer");
             return PARSER_ERROR;
         }
         spe.event_filter_mask = event_mask;
@@ -116,7 +116,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
             spe.ops.insert(SpeOps::LOAD); //set
         }
         else if (strcmp(attrLoadFilter, "false") != 0) {
-            logg.logError("Configuration XML spe load-filter must be either true or false");
+            LOG_ERROR("Configuration XML spe load-filter must be either true or false");
             return PARSER_ERROR;
         }
     }
@@ -126,7 +126,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
             spe.ops.insert(SpeOps::STORE); //set
         }
         else if (strcmp(attrStoreFilter, "false") != 0) {
-            logg.logError("Configuration XML spe store-filter must be either true or false");
+            LOG_ERROR("Configuration XML spe store-filter must be either true or false");
             return PARSER_ERROR;
         }
     }
@@ -136,14 +136,14 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
             spe.ops.insert(SpeOps::BRANCH); //set
         }
         else if (strcmp(attrBranchFilter, "false") != 0) {
-            logg.logError("Configuration XML spe branch-filter must be either true or false");
+            LOG_ERROR("Configuration XML spe branch-filter must be either true or false");
             return PARSER_ERROR;
         }
     }
     const char * attrMinLatency = mxmlElementGetAttr(node, ATTR_MIN_LATENCY);
     if (attrMinLatency != nullptr) {
         if (!stringToInt(&minLatency, attrMinLatency, 10)) {
-            logg.logError("Configuration XML spe min-latency must be an integer");
+            LOG_ERROR("Configuration XML spe min-latency must be an integer");
             return PARSER_ERROR;
         }
         spe.min_latency = minLatency;
@@ -185,21 +185,21 @@ int ConfigurationXMLParser::parseConfigurationContent(const char * config_xml_co
                 read_ret = readCounter(node);
             }
             else {
-                logg.logMessage("Ignoring unknown element while parsing configuration xml (%s)", mxmlGetElement0);
+                LOG_DEBUG("Ignoring unknown element while parsing configuration xml (%s)", mxmlGetElement0);
                 read_ret = 0;
             }
 
             if (read_ret == PARSER_ERROR) {
                 counterConfigurations.clear();
                 speConfigurations.clear();
-                logg.logError("Error while parsing configuration xml");
+                LOG_ERROR("Error while parsing configuration xml");
                 return PARSER_ERROR;
             }
             node = mxmlWalkNext(node, tree.get(), MXML_NO_DESCEND);
         }
     }
     else {
-        logg.logError("Error while parsing configuration xml");
+        LOG_ERROR("Error while parsing configuration xml");
         return PARSER_ERROR;
     }
     return 0;

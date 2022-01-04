@@ -1,13 +1,14 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSPOLLER_H
 #define INCLUDE_NON_ROOT_PROCESSPOLLER_H
 
 #include "lib/FsEntry.h"
-#include "lib/Optional.h"
 #include "lib/TimestampSource.h"
 #include "linux/proc/ProcessPollerBase.h"
 #include "non_root/ProcessStateTracker.h"
+
+#include <optional>
 
 namespace non_root {
     /**

@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cstring>
+
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -53,7 +54,7 @@ void SessionData::initialize()
     mTotalBufferSize = 0;
     long l = sysconf(_SC_PAGE_SIZE);
     if (l < 0) {
-        logg.logError("Unable to obtain the page size");
+        LOG_ERROR("Unable to obtain the page size");
         handleException();
     }
     mPageSize = static_cast<int>(l);
@@ -82,7 +83,7 @@ void SessionData::parseSessionXML(char * xmlString)
         }
         else {
 
-            logg.logError("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
+            LOG_ERROR("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
             handleException();
         }
     }
@@ -106,14 +107,14 @@ void SessionData::parseSessionXML(char * xmlString)
         mTotalBufferSize = 16;
     }
     else {
-        logg.logError("Invalid value for buffer mode in session xml.");
+        LOG_ERROR("Invalid value for buffer mode in session xml.");
         handleException();
     }
 
     mLiveRate = 0;
     if (session.parameters.live_rate > 0) {
         if (mLocalCapture) {
-            logg.logMessage("Local capture is not compatable with live, disabling live");
+            LOG_DEBUG("Local capture is not compatable with live, disabling live");
         }
         else {
             // Convert milli- to nanoseconds
@@ -121,14 +122,20 @@ void SessionData::parseSessionXML(char * xmlString)
         }
     }
     if ((!mSystemWide) && (mWaitForProcessCommand == nullptr) && mCaptureCommand.empty() && mPids.empty()) {
-        logg.logError("No command specified in Capture and Analysis Options.");
+        LOG_ERROR("No command specified in Capture and Analysis Options.");
         handleException();
     }
 
-    if ((!mAllowCommands) && (!mCaptureCommand.empty()) &&
-        ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)) {
-        logg.logError(
+    if ((!mAllowCommands) && (!mCaptureCommand.empty())
+        && ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)) {
+        LOG_ERROR(
             "Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
+        handleException();
+    }
+
+    if (mSystemWide && mExcludeKernelEvents) {
+        LOG_ERROR("Kernel events are currently required for system-wide mode. Please either include kernel events "
+                  "or disable system-wide mode.");
         handleException();
     }
 }
@@ -137,7 +144,7 @@ uint64_t getTime()
 {
     struct timespec ts;
     if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0) {
-        logg.logError("Failed to get uptime");
+        LOG_ERROR("Failed to get uptime");
         handleException();
     }
     return (NS_PER_S * ts.tv_sec + ts.tv_nsec);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/CoreOnliner.h"
 
@@ -18,7 +18,7 @@ CoreOnliner::CoreOnliner(unsigned core) : core(core), known(false), changed(fals
     changed = (known && !online ? (lib::writeCStringToFile(buffer, "1") == 0) //
                                 : false);
 
-    logg.logMessage("CoreOnliner(core=%u, known=%u, online=%u, changed=%u)", core, known, online, changed);
+    LOG_DEBUG("CoreOnliner(core=%u, known=%u, online=%u, changed=%u)", core, known, online, changed);
 }
 
 CoreOnliner::~CoreOnliner()
@@ -27,7 +27,7 @@ CoreOnliner::~CoreOnliner()
         char buffer[128];
         snprintf(buffer, sizeof(buffer), "/sys/devices/system/cpu/cpu%u/online", core);
         if (lib::writeCStringToFile(buffer, "0") != 0) {
-            logg.logError("Failed to restore online state for %u", core);
+            LOG_ERROR("Failed to restore online state for %u", core);
         }
     }
 }

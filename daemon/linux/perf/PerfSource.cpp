@@ -25,16 +25,19 @@
 #include <cinttypes>
 #include <csignal>
 #include <cstring>
+#include <utility>
+
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <utility>
 
 #ifndef SCHED_RESET_ON_FORK
 #define SCHED_RESET_ON_FORK 0x40000000
 #endif
+
+static constexpr auto MEGABYTES = 1024 * 1024;
 
 static PerfBuffer::Config createPerfBufferConfig()
 {
@@ -83,7 +86,7 @@ PerfSource::PerfSource(PerfDriver & driver,
     const PerfConfig & mConfig = mDriver.getConfig();
 
     if ((!mConfig.is_system_wide) && (!mConfig.has_attr_clockid_support)) {
-        logg.logMessage("Tracing gatord as well as target application as no clock_id support");
+        LOG_DEBUG("Tracing gatord as well as target application as no clock_id support");
         mAppTids.insert(getpid());
     }
 
@@ -102,51 +105,51 @@ PerfSource::PerfSource(PerfDriver & driver,
     // was !enableOnCommandExec but this causes us to miss the exec comm record associated with the
     // enable on exec doesn't work for cpu-wide events.
     // additionally, when profiling gator, must be turned off
-    this->enableOnCommandExec = (enableOnCommandExec && !mConfig.is_system_wide && mConfig.has_attr_clockid_support &&
-                                 mConfig.has_attr_comm_exec && !profileGator);
+    this->enableOnCommandExec = (enableOnCommandExec && !mConfig.is_system_wide && mConfig.has_attr_clockid_support
+                                 && mConfig.has_attr_comm_exec && !profileGator);
 }
 
 bool PerfSource::prepare()
 {
     const PerfConfig & mConfig = mDriver.getConfig();
 
-    mAttrsBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
-    mProcBuffer.reset(new PerfAttrsBuffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
+    mAttrsBuffer = std::make_unique<PerfAttrsBuffer>(gSessionData.mTotalBufferSize * MEGABYTES, mSenderSem);
+    mProcBuffer = std::make_unique<PerfAttrsBuffer>(gSessionData.mTotalBufferSize * MEGABYTES, mSenderSem);
 
     // Reread cpuinfo since cores may have changed since startup
     mCpuInfo.updateIds(false);
 
     if (!mMonitor.init()) {
-        logg.logMessage("monitor setup failed");
+        LOG_DEBUG("monitor setup failed");
         return false;
     }
 
     int pipefd[2];
     if (lib::pipe_cloexec(pipefd) != 0) {
-        logg.logError("pipe failed");
+        LOG_ERROR("pipe failed");
         return false;
     }
     mInterruptWrite = pipefd[1];
     mInterruptRead = pipefd[0];
 
     if (!mMonitor.add(*mInterruptRead)) {
-        logg.logError("Monitor::add failed");
+        LOG_ERROR("Monitor::add failed");
         return false;
     }
 
     // always try uevents, event as non-root, but continue if not supported
     if (mUEvent.init() && !mMonitor.add(mUEvent.getFd())) {
-        logg.logMessage("uevent setup failed");
+        LOG_DEBUG("uevent setup failed");
         return false;
     }
 
     if (mConfig.can_access_tracepoints && !mDriver.sendTracepointFormats(*mAttrsBuffer)) {
-        logg.logMessage("could not send tracepoint formats");
+        LOG_DEBUG("could not send tracepoint formats");
         return false;
     }
 
     if (!mDriver.enable(mCountersGroup, *mAttrsBuffer)) {
-        logg.logMessage("perf setup failed, are you running Linux 3.4 or later?");
+        LOG_DEBUG("perf setup failed, are you running Linux 3.4 or later?");
         return false;
     }
 
@@ -171,7 +174,7 @@ bool PerfSource::prepare()
             &lnx::getChildTids);
         switch (result.first) {
             case Result::FAILURE:
-                logg.logError("\n%s", result.second.c_str());
+                LOG_ERROR("\n%s", result.second.c_str());
                 handleException();
                 break;
             case Result::SUCCESS:
@@ -185,7 +188,7 @@ bool PerfSource::prepare()
     }
 
     if (numOnlined <= 0) {
-        logg.logMessage("PerfGroups::onlineCPU failed on all cores");
+        LOG_DEBUG("PerfGroups::onlineCPU failed on all cores");
     }
 
     mAttrsBuffer->flush();
@@ -193,12 +196,12 @@ bool PerfSource::prepare()
     return true;
 }
 
-lib::Optional<uint64_t> PerfSource::sendSummary()
+std::optional<uint64_t> PerfSource::sendSummary()
 {
     // Send the summary right before the start so that the monotonic delta is close to the start time
     auto montonicStart = mDriver.summary(mSummary, &getTime);
     if (!montonicStart) {
-        logg.logError("PerfDriver::summary failed");
+        LOG_ERROR("PerfDriver::summary failed");
         handleException();
     }
 
@@ -218,17 +221,17 @@ static void * procFunc(void * arg)
 
     // Gator runs at a high priority, reset the priority to the default
     if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
-        logg.logError("setpriority failed");
+        LOG_ERROR("setpriority failed");
         handleException();
     }
 
     if (!readProcMaps(*args->mProcBuffer)) {
-        logg.logError("readProcMaps failed");
+        LOG_ERROR("readProcMaps failed");
         handleException();
     }
 
     if (!readKallsyms(*args->mProcBuffer, args->mIsDone)) {
-        logg.logError("readKallsyms failed");
+        LOG_ERROR("readKallsyms failed");
         handleException();
     }
     args->mProcBuffer->flush();
@@ -250,7 +253,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         DynBuf b1;
 
         const uint64_t currTime = getTime() - monotonicStart;
-        logg.logMessage("run at current time: %" PRIu64, currTime);
+        LOG_DEBUG("run at current time: %" PRIu64, currTime);
 
         // Start events before reading proc to avoid race conditions
         if (!enableOnCommandExec) {
@@ -267,11 +270,11 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
 
         if (!readProcSysDependencies(*mAttrsBuffer, &printb, &b1, mFtraceDriver)) {
             if (mDriver.getConfig().is_system_wide) {
-                logg.logError("readProcSysDependencies failed");
+                LOG_ERROR("readProcSysDependencies failed");
                 handleException();
             }
             else {
-                logg.logMessage("readProcSysDependencies failed");
+                LOG_DEBUG("readProcSysDependencies failed");
             }
         }
         mAttrsBuffer->flush();
@@ -280,7 +283,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         procThreadArgs.mProcBuffer = mProcBuffer.get();
         procThreadArgs.mIsDone = false;
         if (pthread_create(&procThread, nullptr, procFunc, &procThreadArgs) != 0) {
-            logg.logError("pthread_create failed");
+            LOG_ERROR("pthread_create failed");
             handleException();
         }
     }
@@ -288,8 +291,8 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
     // monitor online cores if no uevents
     std::unique_ptr<PerfCpuOnlineMonitor> onlineMonitorThread;
     if (!mUEvent.enabled()) {
-        onlineMonitorThread.reset(new PerfCpuOnlineMonitor([&](unsigned cpu, bool online) -> void {
-            logg.logMessage("CPU online state changed: %u -> %s", cpu, (online ? "online" : "offline"));
+        onlineMonitorThread = std::make_unique<PerfCpuOnlineMonitor>([&](unsigned cpu, bool online) -> void {
+            LOG_DEBUG("CPU online state changed: %u -> %s", cpu, (online ? "online" : "offline"));
             const uint64_t currTime = getTime() - monotonicStart;
             if (online) {
                 handleCpuOnline(currTime, cpu);
@@ -297,7 +300,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
             else {
                 handleCpuOffline(currTime, cpu);
             }
-        }));
+        });
     }
 
     // start sync threads
@@ -321,7 +324,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         // wait for some events
         const int ready = mMonitor.wait(events.data(), events.size(), timeout);
         if (ready < 0) {
-            logg.logError("Monitor::wait failed");
+            LOG_ERROR("Monitor::wait failed");
             handleException();
         }
 
@@ -332,7 +335,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         for (int i = 0; i < ready; ++i) {
             if (events[i].data.fd == mUEvent.getFd()) {
                 if (!handleUEvent(currTimeMonotonicDelta)) {
-                    logg.logError("PerfSource::handleUEvent failed");
+                    LOG_ERROR("PerfSource::handleUEvent failed");
                     handleException();
                 }
             }
@@ -361,7 +364,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         // otherwise just flush when a buffer watermark notification happens
         if (liveTimedOut || complete || hasCoreData) {
             if (!mCountersBuf.send(mPerfToMemoryBuffer)) {
-                logg.logError("PerfBuffer::send failed");
+                LOG_ERROR("PerfBuffer::send failed");
                 handleException();
             }
 
@@ -372,9 +375,10 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
 
         // In one shot mode, stop collection once all the buffers are filled
         if (!complete) {
-            if (gSessionData.mOneShot && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0) ||
-                                          (mProcBuffer->bytesAvailable() <= 0) || mPerfToMemoryBuffer.isFull())) {
-                logg.logMessage("One shot (perf)");
+            if (gSessionData.mOneShot
+                && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0)
+                    || (mProcBuffer->bytesAvailable() <= 0) || mPerfToMemoryBuffer.isFull())) {
+                LOG_DEBUG("One shot (perf)");
                 endSession();
             }
 
@@ -404,7 +408,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
 
     // send any final remaining data now that the events are stopped
     if (!mCountersBuf.send(mPerfToMemoryBuffer)) {
-        logg.logError("PerfBuffer::send failed");
+        LOG_ERROR("PerfBuffer::send failed");
         handleException();
     }
 
@@ -427,26 +431,26 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
 {
     UEventResult result;
     if (!mUEvent.read(&result)) {
-        logg.logMessage("UEvent::Read failed");
+        LOG_DEBUG("UEvent::Read failed");
         return false;
     }
 
     if (strcmp(result.mSubsystem, "cpu") == 0) {
         if (strncmp(result.mDevPath, CPU_DEVPATH, sizeof(CPU_DEVPATH) - 1) != 0) {
-            logg.logMessage("Unexpected cpu DEVPATH format");
+            LOG_DEBUG("Unexpected cpu DEVPATH format");
             return false;
         }
         int cpu;
         if (!stringToInt(&cpu, result.mDevPath + sizeof(CPU_DEVPATH) - 1, 10)) {
-            logg.logMessage("stringToInt failed");
+            LOG_DEBUG("stringToInt failed");
             return false;
         }
 
         if (static_cast<size_t>(cpu) >= mCpuInfo.getNumberOfCores()) {
-            logg.logError("Only %zu cores are expected but core %i reports %s",
-                          mCpuInfo.getNumberOfCores(),
-                          cpu,
-                          result.mAction);
+            LOG_ERROR("Only %zu cores are expected but core %i reports %s",
+                      mCpuInfo.getNumberOfCores(),
+                      cpu,
+                      result.mAction);
             handleException();
         }
 
@@ -512,7 +516,7 @@ void PerfSource::interrupt()
     int8_t c = 0;
     // Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
     if (::write(*mInterruptWrite, &c, sizeof(c)) != sizeof(c)) {
-        logg.logError("write failed");
+        LOG_ERROR("write failed");
         handleException();
     }
 }

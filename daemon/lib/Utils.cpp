@@ -3,17 +3,23 @@
 
 #include "Logging.h"
 #include "lib/FsEntry.h"
+#include "lib/Syscall.h"
 
 #include <cerrno>
 #include <cinttypes>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
 #include <limits>
+
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
+
+//Works for Linux and Android
+#define ROOT_UID 0
+//Works for Android only
+#define ANDROID_SHELL_UID 2000
 
 namespace lib {
     int parseLinuxVersion(struct utsname & utsname)
@@ -44,7 +50,7 @@ namespace lib {
         errno = 0;
         value = strtol(data, &endptr, 10);
         if (errno != 0 || *endptr != '\n') {
-            logg.logMessage("Invalid value in file %s: %s", fullpath, data);
+            LOG_DEBUG("Invalid value in file %s: %s", fullpath, data);
             return -1;
         }
 
@@ -60,7 +66,7 @@ namespace lib {
         errno = 0;
         value = strtoll(data, &endptr, 0);
         if (errno != 0 || (data == endptr) || (*endptr != '\n' && *endptr != '\0')) {
-            logg.logMessage("Invalid value in file %s: %s", fullpath, data);
+            LOG_DEBUG("Invalid value in file %s: %s", fullpath, data);
             return -1;
         }
 
@@ -75,7 +81,7 @@ namespace lib {
             if (lib::writeFileContents(fsEntry, data)) {
                 return 0;
             }
-            logg.logMessage("Opened but could not write to %s", fullpath);
+            LOG_DEBUG("Opened but could not write to %s", fullpath);
             return -1;
         }
         return -1;
@@ -120,7 +126,7 @@ namespace lib {
         if (fsEntry.canAccess(true, false, false)) {
             std::string contents = lib::readFileContents(fsEntry);
 
-            logg.logMessage("Reading cpumask from %s", fsEntry.path().c_str());
+            LOG_DEBUG("Reading cpumask from %s", fsEntry.path().c_str());
 
             // split the input
             const std::size_t length = contents.length();
@@ -152,7 +158,7 @@ namespace lib {
                         int nf = (int) std::strtol(contents.c_str() + from, nullptr, 10);
                         const int nt = (int) std::strtol(contents.c_str() + split + 1, nullptr, 10);
                         while (nf <= nt) {
-                            logg.logMessage("    Adding cpu %d to mask", nf);
+                            LOG_DEBUG("    Adding cpu %d to mask", nf);
                             result.insert(nf);
                             nf += 1;
                         }
@@ -161,7 +167,7 @@ namespace lib {
                         // found single item
                         contents[to] = 0;
                         const int n = (int) std::strtol(contents.c_str() + from, nullptr, 10);
-                        logg.logMessage("    Adding cpu %d to mask", n);
+                        LOG_DEBUG("    Adding cpu %d to mask", n);
                         result.insert(n);
                     }
                 }
@@ -196,12 +202,18 @@ namespace lib {
     {
         constexpr std::uint64_t maxPerfEventMlockKb = std::numeric_limits<std::uint64_t>::max() / 1024ULL;
 
-        if (perfEventMlockKb <= maxPerfEventMlockKb && pageSizeBytes > 0 &&
-            perfEventMlockKb * 1024ULL > pageSizeBytes) {
+        if (perfEventMlockKb <= maxPerfEventMlockKb && pageSizeBytes > 0
+            && perfEventMlockKb * 1024ULL > pageSizeBytes) {
             const std::uint64_t bufferSize = roundDownToPowerOfTwo(perfEventMlockKb * 1024ULL - pageSizeBytes);
             const std::uint64_t bufferPages = bufferSize / pageSizeBytes;
             return int(std::min<std::uint64_t>(bufferPages, std::numeric_limits<int>::max()));
         }
         return 0;
+    }
+
+    bool isRootOrShell()
+    {
+        const uint32_t uid = lib::geteuid();
+        return (uid == ROOT_UID || uid == ANDROID_SHELL_UID);
     }
 }

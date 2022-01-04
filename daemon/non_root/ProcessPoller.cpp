@@ -15,8 +15,8 @@ namespace non_root {
             void onThreadDetails(int pid,
                                  int tid,
                                  const lnx::ProcPidStatFileRecord & statRecord,
-                                 const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                 const lib::Optional<lib::FsEntry> & exe) override
+                                 const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                                 const std::optional<lib::FsEntry> & exe) override
             {
                 activeScan.addProcess(pid, tid, statRecord, statmRecord, exe);
             }

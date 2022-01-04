@@ -2,6 +2,7 @@
 
 #include "lib/FsEntry.h"
 
+#include "Logging.h"
 #include "lib/Assert.h"
 
 #include <algorithm>
@@ -12,9 +13,15 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <system_error>
+#include <utility>
+
+#include <boost/filesystem.hpp>
+
 #include <sys/stat.h>
 #include <unistd.h>
-#include <utility>
+
+namespace fs = boost::filesystem;
 
 namespace lib {
     FsEntryDirectoryIterator::FsEntryDirectoryIterator(const FsEntry & parent)
@@ -25,15 +32,15 @@ namespace lib {
         }
     }
 
-    Optional<FsEntry> FsEntryDirectoryIterator::next()
+    std::optional<FsEntry> FsEntryDirectoryIterator::next()
     {
         if (directory_ != nullptr) {
             ::dirent * entry = ::readdir(directory_.get());
 
             if (entry != nullptr) {
                 // skip '.' and '..'
-                if ((::strcmp(entry->d_name, ".") == 0) ||
-                    (::strcmp(entry->d_name, "..") == 0)
+                if ((::strcmp(entry->d_name, ".") == 0)
+                    || (::strcmp(entry->d_name, "..") == 0)
                     // this shouldn't happen but was seen on a device in /sys/bus/usb/devices
                     || (::strcmp(entry->d_name, "") == 0)) {
                     return next();
@@ -43,7 +50,31 @@ namespace lib {
             }
         }
 
-        return Optional<FsEntry>();
+        return std::optional<FsEntry>();
+    }
+
+    std::optional<FsEntry> FsEntry::create_unique_file(const FsEntry & parent)
+    {
+        if (parent.read_stats().type() != FsEntry::Type::DIR) {
+            LOG_ERROR("Was asked to create a unique file under [%s] but it was not a directory", parent.path().c_str());
+            return {};
+        }
+
+        if (!parent.exists()) {
+            LOG_ERROR("Was asked to create a unique file under [%s] but the dir does not exist", parent.path().c_str());
+            return {};
+        }
+
+        auto template_buffer = parent.path() + "/XXXXXX";
+        auto result = ::mkstemp(template_buffer.data());
+        if (result >= 0) {
+            close(result);
+            return FsEntry::create(template_buffer);
+        }
+
+        //NOLINTNEXTLINE(concurrency-mt-unsafe)
+        LOG_ERROR("Error generating unique filename. errno: %d (%s)", errno, strerror(errno));
+        return {};
     }
 
     FsEntry::Stats::Stats() : Stats(Type::UNKNOWN, false, false) {}
@@ -80,13 +111,13 @@ namespace lib {
 
     FsEntry::FsEntry(const FsEntry & p, const std::string & n) : FsEntry(p.path().append("/").append(n)) {}
 
-    Optional<FsEntry> FsEntry::parent() const
+    std::optional<FsEntry> FsEntry::parent() const
     {
         if (!is_root()) {
             return FsEntry(path_.substr(0, name_offset));
         }
 
-        return Optional<FsEntry>();
+        return std::optional<FsEntry>();
     }
 
     std::string FsEntry::name() const { return path_.substr(name_offset + 1); }
@@ -97,7 +128,7 @@ namespace lib {
 
     FsEntryDirectoryIterator FsEntry::children() const { return FsEntryDirectoryIterator(*this); }
 
-    Optional<FsEntry> FsEntry::realpath() const
+    std::optional<FsEntry> FsEntry::realpath() const
     {
         std::unique_ptr<char[], void (*)(void *)> real_path {::realpath(path_.c_str(), nullptr), std::free};
 
@@ -105,7 +136,7 @@ namespace lib {
             return FsEntry(real_path.get());
         }
 
-        return Optional<FsEntry>();
+        return std::optional<FsEntry>();
     }
 
     bool FsEntry::operator==(const FsEntry & that) const { return (path_ == that.path_); }
@@ -225,5 +256,46 @@ namespace lib {
         }
         stream << data;
         return bool(stream);
+    }
+
+    void FsEntry::copyTo(const FsEntry & dest) const
+    {
+        auto from = fs::path(path());
+        auto to = fs::path(dest.path());
+
+        fs::copy(from, to);
+    }
+
+    bool FsEntry::remove() const
+    {
+        try {
+            return fs::remove(path());
+        }
+        catch (fs::filesystem_error const & e) {
+            LOG_DEBUG("remove(%s) failed with error '%s'.", path().c_str(), e.code().message().c_str());
+        }
+        return false;
+    }
+
+    uintmax_t FsEntry::remove_all() const
+    {
+        try {
+            return fs::remove_all(path());
+        }
+        catch (fs::filesystem_error const & e) {
+            LOG_DEBUG("remove_all(%s) failed with error '%s'.", path().c_str(), e.code().message().c_str());
+        }
+        return 0;
+    }
+
+    bool FsEntry::create_directory() const
+    {
+        try {
+            return fs::create_directory(path());
+        }
+        catch (fs::filesystem_error const & e) {
+            LOG_DEBUG("create_directory(%s) failed with error '%s'.", path().c_str(), e.code().message().c_str());
+        }
+        return false;
     }
 }

@@ -27,18 +27,21 @@
 #include "lib/FsUtils.h"
 #include "lib/WaitForProcessPoller.h"
 #include "lib/Waiter.h"
+#include "logging/global_log.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 #include "xml/EventsXML.h"
 
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
+#include <thread>
+#include <utility>
+
 #include <sys/eventfd.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
-#include <thread>
 #include <unistd.h>
-#include <utility>
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
 
@@ -54,10 +57,10 @@ void handleException()
 
     //if gatord is being used for a local capture: remove the incomplete APC directory.
     if (gSessionData.mLocalCapture) {
-        logg.logMessage("Cleaning incomplete APC directory.");
+        LOG_DEBUG("Cleaning incomplete APC directory.");
         int errorCodeForRemovingDir = local_capture::removeDirAndAllContents(gSessionData.mTargetPath);
         if (errorCodeForRemovingDir != 0) {
-            logg.logError("Could not remove incomplete APC directory.");
+            LOG_ERROR("Could not remove incomplete APC directory.");
         }
     }
 
@@ -66,14 +69,22 @@ void handleException()
     _exit(EXCEPTION_EXIT_CODE);
 }
 
-std::unique_ptr<Child> Child::createLocal(Drivers & drivers, const Child::Config & config)
+std::unique_ptr<Child> Child::createLocal(Drivers & drivers,
+                                          const Child::Config & config,
+                                          logging::last_log_error_supplier_t last_error_supplier,
+                                          logging::log_setup_supplier_t log_setup_supplier)
 {
-    return std::unique_ptr<Child>(new Child(drivers, nullptr, config));
+    return std::unique_ptr<Child>(
+        new Child(drivers, nullptr, config, std::move(last_error_supplier), std::move(log_setup_supplier)));
 }
 
-std::unique_ptr<Child> Child::createLive(Drivers & drivers, OlySocket & sock)
+std::unique_ptr<Child> Child::createLive(Drivers & drivers,
+                                         OlySocket & sock,
+                                         logging::last_log_error_supplier_t last_error_supplier,
+                                         logging::log_setup_supplier_t log_setup_supplier)
 {
-    return std::unique_ptr<Child>(new Child(drivers, &sock, {}));
+    return std::unique_ptr<Child>(
+        new Child(drivers, &sock, {}, std::move(last_error_supplier), std::move(log_setup_supplier)));
 }
 
 Child * Child::getSingleton()
@@ -93,7 +104,11 @@ void Child::signalHandler(int signum)
     singleton->endSession(signum);
 }
 
-Child::Child(Drivers & drivers, OlySocket * sock, Child::Config config)
+Child::Child(Drivers & drivers,
+             OlySocket * sock,
+             Child::Config config,
+             logging::last_log_error_supplier_t last_error_supplier,
+             logging::log_setup_supplier_t log_setup_supplier)
     : haltPipeline(),
       senderSem(),
       sender(),
@@ -101,11 +116,13 @@ Child::Child(Drivers & drivers, OlySocket * sock, Child::Config config)
       socket(sock),
       numExceptions(0),
       sessionEnded(),
-      config(std::move(config))
+      config(std::move(config)),
+      last_error_supplier(std::move(last_error_supplier)),
+      log_setup_supplier(std::move(log_setup_supplier))
 {
     const int fd = eventfd(0, EFD_CLOEXEC);
     if (fd == -1) {
-        logg.logError("eventfd failed (%d) %s", errno, strerror(errno));
+        LOG_ERROR("eventfd failed (%d) %s", errno, strerror(errno));
         handleException();
     }
 
@@ -143,7 +160,7 @@ void Child::run()
     mxmlSetWrapMargin(0);
 
     // Instantiate the Sender - must be done first, after which error messages can be sent
-    sender.reset(new Sender(socket));
+    sender = std::make_unique<Sender>(socket);
 
     auto & primarySourceProvider = drivers.getPrimarySourceProvider();
     // Populate gSessionData with the configuration
@@ -153,7 +170,7 @@ void Child::run()
     bool countersAreDefaults = false;
     const auto checkError = [](const std::string & error) {
         if (!error.empty()) {
-            logg.logError("%s", error.c_str());
+            LOG_ERROR("%s", error.c_str());
         }
     };
 
@@ -167,7 +184,7 @@ void Child::run()
                 checkError(configuration_xml::addCounterToSet(counterConfigs, std::move(counter)));
             }
             else {
-                logg.logMessage("Overriding <counter> '%s' from configuration.xml", counter.counterName.c_str());
+                LOG_DEBUG("Overriding <counter> '%s' from configuration.xml", counter.counterName.c_str());
             }
         }
         for (auto && spe : result.speConfigurations) {
@@ -175,7 +192,7 @@ void Child::run()
                 checkError(configuration_xml::addSpeToSet(speConfigs, std::move(spe)));
             }
             else {
-                logg.logMessage("Overriding <spe> '%s' from configuration.xml", spe.id.c_str());
+                LOG_DEBUG("Overriding <spe> '%s' from configuration.xml", spe.id.c_str());
             }
         }
     }
@@ -202,21 +219,21 @@ void Child::run()
         for (Driver * driver : drivers.getAll()) {
             auto && capturedSpe = driver->setupSpe(gSessionData.mSpeSampleRate, speConfig);
             if (capturedSpe) {
-                capturedSpes.push_back(std::move(capturedSpe.get()));
+                capturedSpes.push_back(std::move(*capturedSpe));
                 claimed = true;
                 break;
             }
         }
 
         if (!claimed) {
-            logg.logWarning("No driver claimed %s", speConfig.id.c_str());
+            LOG_WARNING("No driver claimed %s", speConfig.id.c_str());
         }
     }
 
     // Start up and parse session xml
     if (socket != nullptr) {
         // Respond to Streamline requests
-        StreamlineSetup ss(*socket, drivers, capturedSpes);
+        StreamlineSetup ss(*socket, drivers, capturedSpes, log_setup_supplier);
     }
     else {
         char * xmlString;
@@ -226,7 +243,7 @@ void Child::run()
                 gSessionData.parseSessionXML(xmlString);
             }
             else {
-                logg.logWarning("Unable to read session xml(%s) , using default values", gSessionData.mSessionXMLPath);
+                LOG_WARNING("Unable to read session xml(%s) , using default values", gSessionData.mSessionXMLPath);
             }
             free(xmlString);
         }
@@ -249,13 +266,13 @@ void Child::run()
             captureCommand += " ";
             captureCommand += cmd;
         }
-        logg.logWarning("Running command:%s", captureCommand.c_str());
+        LOG_WARNING("Running command:%s", captureCommand.c_str());
 
         // This is set before any threads are started so it doesn't need
         // to be protected by a mutex
         command = std::make_shared<Command>(Command::run([this]() {
             if (gSessionData.mStopOnExit) {
-                logg.logMessage("Ending session because command exited");
+                LOG_DEBUG("Ending session because command exited");
                 endSession();
             }
         }));
@@ -263,7 +280,7 @@ void Child::run()
         enableOnCommandExec = true;
 
         appPids.insert(command->getPid());
-        logg.logMessage("Profiling pid: %d", command->getPid());
+        LOG_DEBUG("Profiling pid: %d", command->getPid());
     }
 
     // set up stop thread early, so that ping commands get replied to, even if the
@@ -271,7 +288,9 @@ void Child::run()
     std::thread stopThread {[this]() { stopThreadEntryPoint(); }};
 
     if (gSessionData.mWaitForProcessCommand != nullptr) {
-        logg.logMessage("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
+        LOG_DEBUG("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
+
+        std::cout << "start app" << std::endl;
 
         WaitForProcessPoller poller {gSessionData.mWaitForProcessCommand};
 
@@ -279,7 +298,7 @@ void Child::run()
             usleep(1000);
         }
 
-        logg.logMessage("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
+        LOG_DEBUG("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
     }
 
     // we only consider --pid for stop on exit if we weren't given an
@@ -303,7 +322,7 @@ void Child::run()
                                                                       drivers.getFtraceDriver(),
                                                                       enableOnCommandExec);
     if (newPrimarySource == nullptr) {
-        logg.logError("%s", primarySourceProvider.getPrepareFailedMessage());
+        LOG_ERROR("%s", primarySourceProvider.getPrepareFailedMessage());
         handleException();
     }
 
@@ -314,14 +333,14 @@ void Child::run()
     // If initialized later, us gator with ftrace has time sync issues
     // Must be initialized before senderThread is started as senderThread checks externalSource
     if (!addSource(createExternalSource(senderSem, drivers))) {
-        logg.logError("Unable to prepare external source for capture");
+        LOG_ERROR("Unable to prepare external source for capture");
         handleException();
     }
 
     // initialize midgard hardware counters
     if (drivers.getMaliHwCntrs().countersEnabled()) {
         if (!addSource(mali_userspace::createMaliHwCntrSource(senderSem, drivers.getMaliHwCntrs()))) {
-            logg.logError("Unable to prepare midgard hardware counters source for capture");
+            LOG_ERROR("Unable to prepare midgard hardware counters source for capture");
             handleException();
         }
     }
@@ -344,20 +363,20 @@ void Child::run()
 
     if (shouldStartUserSpaceSource(drivers.getAllPolledConst())) {
         if (!addSource(createUserSpaceSource(senderSem, drivers.getAllPolled()))) {
-            logg.logError("Unable to prepare userspace source for capture");
+            LOG_ERROR("Unable to prepare userspace source for capture");
             handleException();
         }
     }
 
     if (!addSource(armnn::createSource(drivers.getArmnnDriver().getCaptureController(), senderSem))) {
-        logg.logError("Unable to prepare ArmNN source for capture");
+        LOG_ERROR("Unable to prepare ArmNN source for capture");
         handleException();
     }
 
     // do this last so that monotonic start is close to start of profiling
     auto monotonicStart = primarySource.sendSummary();
     if (!monotonicStart) {
-        logg.logError("Failed to send summary");
+        LOG_ERROR("Failed to send summary");
         handleException();
     }
 
@@ -397,18 +416,19 @@ void Child::run()
         counters_xml::write(gSessionData.mAPCDir,
                             primarySourceProvider.supportsMultiEbs(),
                             drivers.getAllConst(),
-                            primarySourceProvider.getCpuInfo());
+                            primarySourceProvider.getCpuInfo(),
+                            log_setup_supplier);
     }
 
-    logg.logMessage("Profiling ended.");
+    LOG_DEBUG("Profiling ended.");
 
     sources.clear();
     sender.reset();
 
     if (command) {
-        logg.logMessage("Waiting for command (PID: %d)", command->getPid());
+        LOG_DEBUG("Waiting for command (PID: %d)", command->getPid());
         command->join();
-        logg.logMessage("Command finished");
+        LOG_DEBUG("Command finished");
     }
 }
 
@@ -434,7 +454,7 @@ void Child::endSession(int signum)
             // and if this has failed something has gone really wrong
             _exit(SIGNAL_FAILED_EXIT_CODE);
         }
-        logg.logError("write failed (%d) %s", errno, strerror(errno));
+        LOG_ERROR("write failed (%d) %s", errno, strerror(errno));
         handleException();
     }
 }
@@ -459,7 +479,7 @@ void Child::cleanupException()
 {
     if (numExceptions++ > 0) {
         // it is possible one of the below functions itself can cause an exception, thus allow only one exception
-        logg.logMessage("Received multiple exceptions, terminating the child");
+        LOG_DEBUG("Received multiple exceptions, terminating the child");
 
         // Something is really wrong, exit immediately
         _exit(SECOND_EXCEPTION_EXIT_CODE);
@@ -472,7 +492,8 @@ void Child::cleanupException()
     if (socket != nullptr) {
         if (sender) {
             // send the error, regardless of the command sent by Streamline
-            sender->writeData(logg.getLastError(), strlen(logg.getLastError()), ResponseType::ERROR, true);
+            auto last_error = last_error_supplier();
+            sender->writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
 
             // cannot close the socket before Streamline issues the command, so wait for the command before exiting
             if (gSessionData.mWaitingOnCommand) {
@@ -491,17 +512,20 @@ void Child::cleanupException()
 
 void Child::durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd)
 {
+    if (sessionEnded) {
+        return;
+    }
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-duration"), 0, 0, 0);
 
     waitTillStart.wait();
 
     // Time out after duration seconds
     if (waitTillEnd.wait_for(std::chrono::seconds(gSessionData.mDuration))) {
-        logg.logMessage("Duration expired.");
+        LOG_DEBUG("Duration expired.");
         endSession();
     }
 
-    logg.logMessage("Exit duration thread");
+    LOG_DEBUG("Exit duration thread");
 }
 
 namespace {
@@ -511,44 +535,44 @@ namespace {
 
         State handleRequest(char *) override
         {
-            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
+            LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
             return State::PROCESS_COMMANDS;
         }
         State handleDeliver(char *) override
         {
-            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_DELIVER_XML");
+            LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_DELIVER_XML");
             return State::PROCESS_COMMANDS;
         }
         State handleApcStart() override
         {
-            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_APC_START");
+            LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_APC_START");
             return State::PROCESS_COMMANDS;
         }
         State handleApcStop() override
         {
-            logg.logMessage("Stop command received.");
+            LOG_DEBUG("Stop command received.");
             return State::EXIT_APC_STOP;
         }
         State handleDisconnect() override
         {
-            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_DISCONNECT");
+            LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_DISCONNECT");
             return State::PROCESS_COMMANDS;
         }
         State handlePing() override
         {
             // Ping is used to make sure gator is alive and requires an ACK as the response
-            logg.logMessage("Ping command received.");
+            LOG_DEBUG("Ping command received.");
             sender.writeData(nullptr, 0, ResponseType::ACK);
             return State::PROCESS_COMMANDS;
         }
         State handleExit() override
         {
-            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_EXIT");
+            LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_EXIT");
             return State::EXIT_OK;
         }
         State handleRequestCurrentConfig() override
         {
-            logg.logMessage("INVESTIGATE: Received unknown command type COMMAND_REQUEST_CURRENT_CONFIG");
+            LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_REQUEST_CURRENT_CONFIG");
             return State::PROCESS_COMMANDS;
         }
 
@@ -562,18 +586,15 @@ void Child::stopThreadEntryPoint()
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-stopper"), 0, 0, 0);
     Monitor monitor {};
     if (!monitor.init()) {
-        logg.logError("Monitor::init() failed: %d, (%s)", errno, strerror(errno));
+        LOG_ERROR("Monitor::init() failed: %d, (%s)", errno, strerror(errno));
         handleException();
     }
     if (!monitor.add(*sessionEndEventFd)) {
-        logg.logError("Monitor::add(sessionEndEventFd=%d) failed: %d, (%s)",
-                      *sessionEndEventFd,
-                      errno,
-                      strerror(errno));
+        LOG_ERROR("Monitor::add(sessionEndEventFd=%d) failed: %d, (%s)", *sessionEndEventFd, errno, strerror(errno));
         handleException();
     }
     if ((socket != nullptr) && !monitor.add(socket->getFd())) {
-        logg.logError("Monitor::add(socket=%d) failed: %d, (%s)", socket->getFd(), errno, strerror(errno));
+        LOG_ERROR("Monitor::add(socket=%d) failed: %d, (%s)", socket->getFd(), errno, strerror(errno));
         handleException();
     }
 
@@ -583,7 +604,7 @@ void Child::stopThreadEntryPoint()
         struct epoll_event ee;
         const int ready = monitor.wait(&ee, 1, -1);
         if (ready < 0) {
-            logg.logError("Monitor::wait failed");
+            LOG_ERROR("Monitor::wait failed");
             handleException();
         }
         if (ready == 0) {
@@ -592,7 +613,7 @@ void Child::stopThreadEntryPoint()
 
         if (ee.data.fd == *sessionEndEventFd) {
             if (signalNumber != 0) {
-                logg.logMessage("Gator child is shutting down due to signal: %s", strsignal(signalNumber));
+                LOG_DEBUG("Gator child is shutting down due to signal: %s", strsignal(signalNumber));
             }
             break;
         }
@@ -608,7 +629,7 @@ void Child::stopThreadEntryPoint()
 
     doEndSession();
 
-    logg.logMessage("Exit stop thread");
+    LOG_DEBUG("Exit stop thread");
 }
 
 bool Child::sendAllSources()
@@ -628,7 +649,7 @@ void Child::senderThreadEntryPoint()
 
     do {
         if (sem_wait(&senderSem) != 0) {
-            logg.logError("wait failed: %d, (%s)", errno, strerror(errno));
+            LOG_ERROR("wait failed: %d, (%s)", errno, strerror(errno));
         }
     } while (sendAllSources());
 
@@ -637,7 +658,7 @@ void Child::senderThreadEntryPoint()
         sender->writeData(nullptr, 0, ResponseType::APC_DATA);
     }
 
-    logg.logMessage("Exit sender thread");
+    LOG_DEBUG("Exit sender thread");
 }
 
 void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & waiter)
@@ -647,7 +668,7 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & 
 
     while (!pids.empty()) {
         if (!waiter.wait_for(std::chrono::seconds(1))) {
-            logg.logMessage("Exit watch pids thread by request");
+            LOG_DEBUG("Exit watch pids thread by request");
             return;
         }
 
@@ -655,7 +676,7 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & 
         auto it = pids.begin();
         while (it != pids.end()) {
             if (alivePids.count(*it) == 0) {
-                logg.logMessage("pid %d exited", *it);
+                LOG_DEBUG("pid %d exited", *it);
                 it = pids.erase(it);
             }
             else {
@@ -663,7 +684,7 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & 
             }
         }
     }
-    logg.logMessage("Ending session because all watched processes have exited");
+    LOG_DEBUG("Ending session because all watched processes have exited");
     endSession();
-    logg.logMessage("Exit watch pids thread");
+    LOG_DEBUG("Exit watch pids thread");
 }

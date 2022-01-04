@@ -1,14 +1,14 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVER_H
 #define DRIVER_H
 
 #include "CapturedSpe.h"
 #include "Constant.h"
-#include "lib/Optional.h"
 #include "mxml/mxml.h"
 
 #include <cstdint>
+#include <optional>
 #include <set>
 
 class Counter;
@@ -34,7 +34,7 @@ public:
     virtual void insertConstants(std::set<Constant> &) {}
 
     // Claims and prepares the SPE for capture
-    virtual lib::Optional<CapturedSpe> setupSpe(int /* sampleRate */, const SpeConfiguration & /* configuration */)
+    virtual std::optional<CapturedSpe> setupSpe(int /* sampleRate */, const SpeConfiguration & /* configuration */)
     {
         return {};
     }

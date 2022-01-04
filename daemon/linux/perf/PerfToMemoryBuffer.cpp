@@ -50,10 +50,10 @@ void PerfToMemoryBuffer::consumePerfAuxRecord(int cpu,
                                               std::uint64_t auxTailValue,
                                               lib::Span<const AuxRecordChunk> recordChunks)
 {
-    static constexpr int MAX_HEADER_SIZE = buffer_utils::MAXSIZE_PACK32    // frame type
-                                           + buffer_utils::MAXSIZE_PACK32  // cpu
-                                           + buffer_utils::MAXSIZE_PACK64  // tail
-                                           + buffer_utils::MAXSIZE_PACK32; // size
+    static constexpr int MAX_HEADER_SIZE = buffer_utils::MAXSIZE_PACK32  // frame type
+                                         + buffer_utils::MAXSIZE_PACK32  // cpu
+                                         + buffer_utils::MAXSIZE_PACK64  // tail
+                                         + buffer_utils::MAXSIZE_PACK32; // size
     static constexpr int MAX_FRAME_SIZE = ISender::MAX_RESPONSE_LENGTH - MAX_HEADER_SIZE;
 
     // skip if complete
@@ -91,9 +91,9 @@ void PerfToMemoryBuffer::consumePerfAuxRecord(int cpu,
 
 void PerfToMemoryBuffer::consumePerfDataRecord(int cpu, lib::Span<const DataRecordChunkTuple> recordChunks)
 {
-    static constexpr int MAX_HEADER_SIZE = buffer_utils::MAXSIZE_PACK32   // frame type
-                                           + buffer_utils::MAXSIZE_PACK32 // cpu
-                                           + 4;                           // blob length
+    static constexpr int MAX_HEADER_SIZE = buffer_utils::MAXSIZE_PACK32 // frame type
+                                         + buffer_utils::MAXSIZE_PACK32 // cpu
+                                         + 4;                           // blob length
 
     // skip if complete
     if (full) {
@@ -107,8 +107,8 @@ void PerfToMemoryBuffer::consumePerfDataRecord(int cpu, lib::Span<const DataReco
     std::uint32_t totalWrittenSinceFrameEnd = 0;
     for (const auto & recordChunk : recordChunks) {
         const std::size_t totalWordCount =
-            recordChunk.firstChunk.wordCount +
-            (recordChunk.optionalSecondChunk.chunkPointer != nullptr ? recordChunk.optionalSecondChunk.wordCount : 0);
+            recordChunk.firstChunk.wordCount
+            + (recordChunk.optionalSecondChunk.chunkPointer != nullptr ? recordChunk.optionalSecondChunk.wordCount : 0);
         const std::size_t requiredBytesForRecord = totalWordCount * buffer_utils::MAXSIZE_PACK64;
 
         // are we in a frame, is there space to push another record?

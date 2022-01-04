@@ -34,15 +34,15 @@ namespace armnn {
          */
         bool decodeString(ByteOrder byteOrder, const Bytes & bytes, std::uint32_t offset, std::string & str)
         {
-            if ((offset + sizeof(std::uint32_t)) > bytes.length) {
-                logg.logError("Failed to decode packet, invalid string offset 0x%x", offset);
+            if ((offset + sizeof(std::uint32_t)) > bytes.size()) {
+                LOG_ERROR("Failed to decode packet, invalid string offset 0x%x", offset);
                 return false;
             }
 
             const std::uint32_t length = byte_order::get_32(byteOrder, bytes, offset);
 
-            if ((offset + sizeof(std::uint32_t) + length) > bytes.length) {
-                logg.logError("Failed to decode packet, invalid string length %u at 0x%x", length, offset);
+            if ((offset + sizeof(std::uint32_t) + length) > bytes.size()) {
+                LOG_ERROR("Failed to decode packet, invalid string length %u at 0x%x", length, offset);
                 return false;
             }
             if (length == 0) {
@@ -66,8 +66,8 @@ namespace armnn {
                                 std::uint32_t offset,
                                 std::map<std::uint16_t, ICounterDirectoryConsumer::DeviceRecord> & map)
         {
-            if ((offset + DEVICE_RECORD_SIZE) > bytes.length) {
-                logg.logError("Failed to decode packet, invalid device record offset 0x%x", offset);
+            if ((offset + DEVICE_RECORD_SIZE) > bytes.size()) {
+                LOG_ERROR("Failed to decode packet, invalid device record offset 0x%x", offset);
                 return false;
             }
 
@@ -78,9 +78,9 @@ namespace armnn {
 
             std::string name;
             if (!decodeString(byteOrder, deviceRecord, name_offset, name)) {
-                logg.logError("Failed to decode packet, could not decode device_record@%x.name offset 0x%x",
-                              offset,
-                              name_offset);
+                LOG_ERROR("Failed to decode packet, could not decode device_record@%x.name offset 0x%x",
+                          offset,
+                          name_offset);
                 return false;
             }
 
@@ -99,8 +99,8 @@ namespace armnn {
                                     std::uint32_t offset,
                                     std::map<std::uint16_t, ICounterDirectoryConsumer::CounterSetRecord> & map)
         {
-            if ((offset + COUNTER_SET_RECORD_SIZE) > bytes.length) {
-                logg.logError("Failed to decode packet, invalid counter set record offset 0x%x", offset);
+            if ((offset + COUNTER_SET_RECORD_SIZE) > bytes.size()) {
+                LOG_ERROR("Failed to decode packet, invalid counter set record offset 0x%x", offset);
                 return false;
             }
 
@@ -111,9 +111,9 @@ namespace armnn {
 
             std::string name;
             if (!decodeString(byteOrder, counterSet, name_offset, name)) {
-                logg.logError("Failed to decode packet, could not decode counter_set_record@%x.name offset 0x%x",
-                              offset,
-                              name_offset);
+                LOG_ERROR("Failed to decode packet, could not decode counter_set_record@%x.name offset 0x%x",
+                          offset,
+                          name_offset);
                 return false;
             }
 
@@ -142,8 +142,8 @@ namespace armnn {
                                std::uint32_t offset,
                                std::map<std::uint16_t, ICounterDirectoryConsumer::EventRecord> & map)
         {
-            if ((offset + EVENT_RECORD_SIZE) > bytes.length) {
-                logg.logError("Failed to decode packet, invalid event record offset 0x%x", offset);
+            if ((offset + EVENT_RECORD_SIZE) > bytes.size()) {
+                LOG_ERROR("Failed to decode packet, invalid event record offset 0x%x", offset);
                 return false;
             }
 
@@ -166,25 +166,25 @@ namespace armnn {
 
             std::string name;
             if (!decodeString(byteOrder, eventRecord, name_offset, name)) {
-                logg.logError("Failed to decode packet, could not decode event_record@%x.name offset 0x%x",
-                              offset,
-                              name_offset);
+                LOG_ERROR("Failed to decode packet, could not decode event_record@%x.name offset 0x%x",
+                          offset,
+                          name_offset);
                 return false;
             }
 
             std::string description;
             if (!decodeString(byteOrder, eventRecord, description_offset, description)) {
-                logg.logError("Failed to decode packet, could not decode event_record@%x.description offset 0x%x",
-                              offset,
-                              description_offset);
+                LOG_ERROR("Failed to decode packet, could not decode event_record@%x.description offset 0x%x",
+                          offset,
+                          description_offset);
                 return false;
             }
 
             std::string units;
             if ((units_offset != 0) && !decodeString(byteOrder, eventRecord, units_offset, units)) {
-                logg.logError("Failed to decode packet, could not decode event_record@%x.units offset 0x%x",
-                              offset,
-                              units_offset);
+                LOG_ERROR("Failed to decode packet, could not decode event_record@%x.units offset 0x%x",
+                          offset,
+                          units_offset);
                 return false;
             }
 
@@ -219,8 +219,8 @@ namespace armnn {
                                   std::uint32_t offset,
                                   ICounterDirectoryConsumer::CategoryRecord & record)
         {
-            if ((offset + CATEGORY_RECORD_SIZE) > bytes.length) {
-                logg.logError("Failed to decode packet, invalid category record offset 0x%x", offset);
+            if ((offset + CATEGORY_RECORD_SIZE) > bytes.size()) {
+                LOG_ERROR("Failed to decode packet, invalid category record offset 0x%x", offset);
                 return false;
             }
 
@@ -234,9 +234,9 @@ namespace armnn {
 
             // decode name
             if (!decodeString(byteOrder, category, name_offset, record.name)) {
-                logg.logError("Failed to decode packet, could not decode category_record@%x.name offset 0x%x",
-                              offset,
-                              name_offset);
+                LOG_ERROR("Failed to decode packet, could not decode category_record@%x.name offset 0x%x",
+                          offset,
+                          name_offset);
                 return false;
             }
 
@@ -248,8 +248,8 @@ namespace armnn {
             if (event_count == 0) {
                 return true;
             }
-            if ((event_pointer_table_offset + (event_count * sizeof(std::uint32_t))) > category.length) {
-                logg.logError(
+            if ((event_pointer_table_offset + (event_count * sizeof(std::uint32_t))) > category.size()) {
+                LOG_ERROR(
                     "Failed to decode packet, could not decode event_record_table in category record at offset 0x%x",
                     offset);
                 return false;
@@ -261,11 +261,11 @@ namespace armnn {
                 const std::uint32_t event_offset = byte_order::get_32(byteOrder, events, i * OFFSET_SIZE);
 
                 if (!decodeEventRecord(byteOrder, events, event_offset, record.events_by_uid)) {
-                    logg.logError("Failed to decode packet, could not decode event_record[%u]@%x in category record at "
-                                  "offset 0x%x",
-                                  i,
-                                  event_offset,
-                                  offset);
+                    LOG_ERROR("Failed to decode packet, could not decode event_record[%u]@%x in category record at "
+                              "offset 0x%x",
+                              i,
+                              event_offset,
+                              offset);
                     return false;
                 }
             }
@@ -277,8 +277,8 @@ namespace armnn {
     bool CounterDirectoryDecoder::decode(Bytes bytes) const
     {
         // body_header section must exist
-        if (bytes.length < BODY_HEADER_SIZE) {
-            logg.logError("Failed to decode packet, too short (%zu)", bytes.length);
+        if (bytes.size() < BODY_HEADER_SIZE) {
+            LOG_ERROR("Failed to decode packet, too short (%zu)", bytes.size());
             return false;
         }
 
@@ -302,24 +302,23 @@ namespace armnn {
 
         // validate counts
         if (bytes.size() < device_records_pointer_table_offset + device_records_count * OFFSET_SIZE) {
-            logg.logError(
-                "Failed to decode packet, device_records_pointer_table_offset/count out of bounds (0x%x:0x%x)",
-                device_records_pointer_table_offset,
-                device_records_count);
+            LOG_ERROR("Failed to decode packet, device_records_pointer_table_offset/count out of bounds (0x%x:0x%x)",
+                      device_records_pointer_table_offset,
+                      device_records_count);
             return false;
         }
 
         if (bytes.size() < counter_set_pointer_table_offset + counter_set_count * OFFSET_SIZE) {
-            logg.logError("Failed to decode packet, counter_set_pointer_table_offset/count out of bounds (0x%x:0x%x)",
-                          counter_set_pointer_table_offset,
-                          counter_set_count);
+            LOG_ERROR("Failed to decode packet, counter_set_pointer_table_offset/count out of bounds (0x%x:0x%x)",
+                      counter_set_pointer_table_offset,
+                      counter_set_count);
             return false;
         }
 
         if (bytes.size() < categories_pointer_table_offset + categories_count * OFFSET_SIZE) {
-            logg.logError("Failed to decode packet, categories_pointer_table_offset/count out of bounds (0x%x:0x%x)",
-                          categories_pointer_table_offset,
-                          categories_count);
+            LOG_ERROR("Failed to decode packet, categories_pointer_table_offset/count out of bounds (0x%x:0x%x)",
+                      categories_pointer_table_offset,
+                      categories_count);
             return false;
         }
 
@@ -330,7 +329,7 @@ namespace armnn {
             const std::uint32_t offset = byte_order::get_32(byteOrder, deviceRecords, i * OFFSET_SIZE);
 
             if (!decodeDeviceRecord(byteOrder, deviceRecords, offset, device_record_map)) {
-                logg.logError("Failed to decode packet, failed to decode device record[%u]@%x", i, offset);
+                LOG_ERROR("Failed to decode packet, failed to decode device record[%u]@%x", i, offset);
                 return false;
             }
         }
@@ -342,7 +341,7 @@ namespace armnn {
             const std::uint32_t offset = byte_order::get_32(byteOrder, counterSets, i * OFFSET_SIZE);
 
             if (!decodeCounterSetRecord(byteOrder, counterSets, offset, counter_set_map)) {
-                logg.logError("Failed to decode packet, failed to decode counter set record[%u]@%x", i, offset);
+                LOG_ERROR("Failed to decode packet, failed to decode counter set record[%u]@%x", i, offset);
                 return false;
             }
         }
@@ -354,7 +353,7 @@ namespace armnn {
             const std::uint32_t offset = byte_order::get_32(byteOrder, categories, i * OFFSET_SIZE);
 
             if (!decodeCategoryRecord(byteOrder, categories, offset, categories_list[i])) {
-                logg.logError("Failed to decode packet, failed to decode category record[%u]@%x", i, offset);
+                LOG_ERROR("Failed to decode packet, failed to decode category record[%u]@%x", i, offset);
                 return false;
             }
         }
@@ -363,7 +362,7 @@ namespace armnn {
         if (!consumer.onCounterDirectory(std::move(device_record_map),
                                          std::move(counter_set_map),
                                          std::move(categories_list))) {
-            logg.logError("Packet consumer returned error ");
+            LOG_ERROR("Packet consumer returned error ");
             return false;
         }
         return true;

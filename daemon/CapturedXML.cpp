@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "CapturedXML.h"
 
@@ -16,8 +16,9 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <dirent.h>
 #include <set>
+
+#include <dirent.h>
 
 /* Basic target OS detection */
 #undef GATOR_TARGET_OS
@@ -77,7 +78,7 @@ static std::string modeAsString(const ConstantMode mode)
         case ConstantMode::PerCore:
             return "per-core";
         default:
-            logg.logError("Unexpected ConstantMode %d", static_cast<int>(mode));
+            LOG_ERROR("Unexpected ConstantMode %d", static_cast<int>(mode));
             handleException();
     }
 }
@@ -229,7 +230,7 @@ namespace captured_xml {
         snprintf(file, PATH_MAX, "%s/captured.xml", path);
 
         if (writeToDisk(file, getXML(true, spes, primarySourceProvider, maliGpuIds).get()) < 0) {
-            logg.logError("Error writing %s\nPlease verify the path.", file);
+            LOG_ERROR("Error writing %s\nPlease verify the path.", file);
             handleException();
         }
     }

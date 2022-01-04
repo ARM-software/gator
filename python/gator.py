@@ -180,7 +180,8 @@ class GatorProfiler:
                 frame = frame.f_back
             if (len(stack) > 0):
                 self.__emit(tls_data, os.getpid(), gator_gettid(), gator_monotonic_time(), stack)
-        return self.__profile_handler if tls_data.socket is not None else None
+        socket = getattr(tls_data, 'socket', None)
+        return self.__profile_handler if socket is not None else None
 
     def __emit(self, tls_data, pid, tid, timestamp, stack):
         """Transmit a call stack message to gatord"""

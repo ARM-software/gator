@@ -17,8 +17,9 @@
 
 #include <atomic>
 #include <functional>
-#include <semaphore.h>
 #include <set>
+
+#include <semaphore.h>
 
 class PerfDriver;
 class ISender;
@@ -42,7 +43,7 @@ public:
     PerfSource & operator=(PerfSource &&) = delete;
 
     bool prepare();
-    lib::Optional<uint64_t> sendSummary() override;
+    std::optional<uint64_t> sendSummary() override;
     void run(std::uint64_t, std::function<void()> endSession) override;
     void interrupt() override;
     bool write(ISender & sender) override;

@@ -18,7 +18,7 @@ public:
     AtraceCounter(AtraceCounter &&) = delete;
     AtraceCounter & operator=(AtraceCounter &&) = delete;
 
-    int getFlag() const { return mFlag; }
+    [[nodiscard]] int getFlag() const { return mFlag; }
 
 private:
     const int mFlag;
@@ -37,19 +37,19 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
 {
     if (access("/system/bin/setprop", X_OK) != 0) {
         // Reduce warning noise
-        //logg.logSetup("Atrace is disabled\nUnable to find setprop, this is not an Android target");
+        //LOG_SETUP("Atrace is disabled\nUnable to find setprop, this is not an Android target");
         return;
     }
     if (!mFtraceDriver.isSupported()) {
-        logg.logSetup("Atrace is disabled\nSupport for ftrace is required");
+        LOG_SETUP("Atrace is disabled\nSupport for ftrace is required");
         return;
     }
     if (getApplicationFullPath(mNotifyPath, sizeof(mNotifyPath)) != 0) {
-        logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
+        LOG_DEBUG("Unable to determine the full path of gatord, the cwd will be used");
     }
     strncat(mNotifyPath, "notify.dex", sizeof(mNotifyPath) - strlen(mNotifyPath) - 1);
     if (access(mNotifyPath, W_OK) != 0) {
-        logg.logSetup("Atrace is disabled\nUnable to locate notify.dex");
+        LOG_SETUP("Atrace is disabled\nUnable to locate notify.dex");
         return;
     }
 
@@ -72,12 +72,12 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
 
         const char * flagStr = mxmlElementGetAttr(node, "flag");
         if (flagStr == nullptr) {
-            logg.logError("The atrace counter %s is missing the required flag attribute", counter);
+            LOG_ERROR("The atrace counter %s is missing the required flag attribute", counter);
             handleException();
         }
         int flag;
         if (!stringToInt(&flag, flagStr, 16)) {
-            logg.logError("The flag attribute of the atrace counter %s is not a hex integer", counter);
+            LOG_ERROR("The flag attribute of the atrace counter %s is not a hex integer", counter);
             handleException();
         }
         setCounters(new AtraceCounter(getCounters(), counter, flag));
@@ -86,10 +86,10 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
 
 void AtraceDriver::setAtrace(const int flags)
 {
-    logg.logMessage("Setting atrace flags to %i", flags);
+    LOG_DEBUG("Setting atrace flags to %i", flags);
     pid_t pid = fork();
     if (pid < 0) {
-        logg.logError("fork failed");
+        LOG_ERROR("fork failed");
         handleException();
     }
     else if (pid == 0) {

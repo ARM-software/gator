@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "CCNDriver.h"
 
@@ -141,8 +141,8 @@ static unsigned int getConfig(unsigned int node,
                               unsigned int port,
                               unsigned int vc)
 {
-    return ((node & 0xff) << 0) | ((type & 0xff) << 8) | ((event & 0xff) << 16) | ((port & 0x03) << 24) |
-           ((vc & 0x07) << 26) | 0;
+    return ((node & 0xff) << 0) | ((type & 0xff) << 8) | ((event & 0xff) << 16) | ((port & 0x03) << 24)
+         | ((vc & 0x07) << 26) | 0;
 }
 
 static bool perfPoll(struct perf_event_attr * const pea)
@@ -190,7 +190,7 @@ void CCNDriver::readEvents(mxml_node_t * const /*unused*/)
 
     int type;
     if (lib::readIntFromFile("/sys/bus/event_source/devices/ccn/type", type) != 0) {
-        logg.logError("Unable to read CCN-5xx type");
+        LOG_ERROR("Unable to read CCN-5xx type");
         handleException();
     }
 

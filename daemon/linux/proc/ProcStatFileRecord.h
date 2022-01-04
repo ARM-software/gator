@@ -3,8 +3,7 @@
 #ifndef INCLUDE_LINUX_PROC_PROCSTATFILERECORD_H
 #define INCLUDE_LINUX_PROC_PROCSTATFILERECORD_H
 
-#include "lib/Optional.h"
-
+#include <optional>
 #include <vector>
 
 namespace lnx {
@@ -95,52 +94,52 @@ namespace lnx {
          * Construct a record populated with the specified values
          */
         ProcStatFileRecord(std::vector<CpuTime> && cpus,
-                           lib::Optional<PagingCounts> && page,
-                           lib::Optional<PagingCounts> && swap,
-                           lib::Optional<unsigned long> && intr,
-                           lib::Optional<unsigned long> && soft_irq,
-                           lib::Optional<unsigned long> && ctxt,
-                           lib::Optional<unsigned long> && btime,
-                           lib::Optional<unsigned long> && processes,
-                           lib::Optional<unsigned long> && procs_running,
-                           lib::Optional<unsigned long> && procs_blocked);
+                           std::optional<PagingCounts> && page,
+                           std::optional<PagingCounts> && swap,
+                           std::optional<unsigned long> && intr,
+                           std::optional<unsigned long> && soft_irq,
+                           std::optional<unsigned long> && ctxt,
+                           std::optional<unsigned long> && btime,
+                           std::optional<unsigned long> && processes,
+                           std::optional<unsigned long> && procs_running,
+                           std::optional<unsigned long> && procs_blocked);
 
         /**
          * Parse the contents of /proc/stat, fill in optional fields with any values detected
          */
         ProcStatFileRecord(const char * stat_contents);
 
-        const lib::Optional<unsigned long> & getBtime() const { return btime; }
+        const std::optional<unsigned long> & getBtime() const { return btime; }
 
         const std::vector<CpuTime> & getCpus() const { return cpus; }
 
-        const lib::Optional<unsigned long> & getCtxt() const { return ctxt; }
+        const std::optional<unsigned long> & getCtxt() const { return ctxt; }
 
-        const lib::Optional<unsigned long> & getIntr() const { return intr; }
+        const std::optional<unsigned long> & getIntr() const { return intr; }
 
-        const lib::Optional<PagingCounts> & getPage() const { return page; }
+        const std::optional<PagingCounts> & getPage() const { return page; }
 
-        const lib::Optional<unsigned long> & getProcesses() const { return processes; }
+        const std::optional<unsigned long> & getProcesses() const { return processes; }
 
-        const lib::Optional<unsigned long> & getProcsBlocked() const { return procs_blocked; }
+        const std::optional<unsigned long> & getProcsBlocked() const { return procs_blocked; }
 
-        const lib::Optional<unsigned long> & getProcsRunning() const { return procs_running; }
+        const std::optional<unsigned long> & getProcsRunning() const { return procs_running; }
 
-        const lib::Optional<unsigned long> & getSoftIrq() const { return soft_irq; }
+        const std::optional<unsigned long> & getSoftIrq() const { return soft_irq; }
 
-        const lib::Optional<PagingCounts> & getSwap() const { return swap; }
+        const std::optional<PagingCounts> & getSwap() const { return swap; }
 
     private:
         std::vector<CpuTime> cpus {};
-        lib::Optional<PagingCounts> page {};
-        lib::Optional<PagingCounts> swap {};
-        lib::Optional<unsigned long> intr {};
-        lib::Optional<unsigned long> soft_irq {};
-        lib::Optional<unsigned long> ctxt {};
-        lib::Optional<unsigned long> btime {};
-        lib::Optional<unsigned long> processes {};
-        lib::Optional<unsigned long> procs_running {};
-        lib::Optional<unsigned long> procs_blocked {};
+        std::optional<PagingCounts> page {};
+        std::optional<PagingCounts> swap {};
+        std::optional<unsigned long> intr {};
+        std::optional<unsigned long> soft_irq {};
+        std::optional<unsigned long> ctxt {};
+        std::optional<unsigned long> btime {};
+        std::optional<unsigned long> processes {};
+        std::optional<unsigned long> procs_running {};
+        std::optional<unsigned long> procs_blocked {};
     };
 }
 

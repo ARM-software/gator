@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/ArmNNDriver.h"
 
@@ -22,7 +22,7 @@ namespace armnn {
         // but as these threads will be in a steady state (unless we get a connection exactly when we fork),
         // there shouldn't be any threading issues, just a small memory leak.
         mSessionManager.stop();
-        logg.logError("Arm NN connection listening disabled due to address or thread sanitizer being enabled.");
+        LOG_ERROR("Arm NN connection listening disabled due to address or thread sanitizer being enabled.");
 #endif
     }
 

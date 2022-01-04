@@ -15,12 +15,13 @@
 #include <cerrno>
 #include <cstring>
 #include <exception>
+#include <utility>
+
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <utility>
 
 /** The number of connections to queue whilst waiting for accept */
 constexpr int MAX_LISTEN_BACKLOG = 128;
@@ -69,13 +70,13 @@ namespace armnn {
         if (flags >= 0) {
             if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
                 // Unable to set socket flags, running in blocking mode
-                logg.logWarning("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
+                LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
                 return false;
             }
         }
         else {
             // Unable to get socket flags, running in blocking mode
-            logg.logWarning("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
             return false;
         }
 
@@ -94,7 +95,7 @@ namespace armnn {
 #ifdef USE_SO_NOSIGPIPE
         const int set = 1;
         if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof(set)) < 0) {
-            logg.logWarning("Failed to set no sigpipe socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_WARNING("Failed to set no sigpipe socket due to %s (%d)", std::strerror(errno), errno);
             return false;
         }
 #else
@@ -127,11 +128,11 @@ namespace armnn {
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
                 return defaultReturnValue;
             }
-            logg.logError("Failed to poll socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to poll socket due to %s (%d)", std::strerror(errno), errno);
         }
         else {
             if (((pollFds[0].revents & POLLERR) == POLLERR) || ((pollFds[0].revents & POLLNVAL) == POLLNVAL)) {
-                logg.logError("Remote closed failed as error/invalid");
+                LOG_ERROR("Remote closed failed as error/invalid");
             }
             // can we perform action
             else if ((pollFds[0].revents & pollFlag) == pollFlag) {
@@ -156,15 +157,15 @@ namespace armnn {
         // open it
         AutoClosingFd fd {armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0)};
         if (!fd) {
-            logg.logError("Failed to create client socket");
+            LOG_ERROR("Failed to create client socket");
             handleException();
         }
 
         sockaddr_un udsAddress;
-        const socklen_t addressLength = init_sockaddr_un(udsAddress, address.data, length, useStructSize);
+        const socklen_t addressLength = init_sockaddr_un(udsAddress, address.data(), length, useStructSize);
 
         if (connect(*fd, reinterpret_cast<const sockaddr *>(&udsAddress), addressLength) < 0) {
-            logg.logError("Failed to connect socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to connect socket due to %s (%d)", std::strerror(errno), errno);
             handleException();
         }
 
@@ -172,7 +173,7 @@ namespace armnn {
         setNoSigPipe(*fd);
 
         if (!setNonBlocking(*fd)) {
-            logg.logError("Failed to set non-blocking flag when connecting socket");
+            LOG_ERROR("Failed to set non-blocking flag when connecting socket");
             handleException();
         }
 
@@ -187,28 +188,28 @@ namespace armnn {
         // open it
         AutoClosingFd fd {armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0)};
         if (!fd) {
-            logg.logError("Failed to obtain file descriptor when preparing to listen on socket due to %s (%d)",
-                          std::strerror(errno),
-                          errno);
+            LOG_ERROR("Failed to obtain file descriptor when preparing to listen on socket due to %s (%d)",
+                      std::strerror(errno),
+                      errno);
             handleException();
         }
 
         sockaddr_un udsAddress;
-        const socklen_t addressLength = init_sockaddr_un(udsAddress, address.data, length, useStructSize);
+        const socklen_t addressLength = init_sockaddr_un(udsAddress, address.data(), length, useStructSize);
 
         // bind socket to address
         if (bind(*fd, reinterpret_cast<const sockaddr *>(&udsAddress), addressLength) < 0) {
-            logg.logError("Failed to bind socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to bind socket due to %s (%d)", std::strerror(errno), errno);
             handleException();
         }
 
         if (listen(*fd, MAX_LISTEN_BACKLOG) < 0) {
-            logg.logError("Failed to listen socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to listen socket due to %s (%d)", std::strerror(errno), errno);
             handleException();
         }
 
         if (!setNonBlocking(*fd)) {
-            logg.logError("Failed to set non-blocking flag when creating listening socket");
+            LOG_ERROR("Failed to set non-blocking flag when creating listening socket");
             handleException();
         }
 
@@ -223,7 +224,7 @@ namespace armnn {
             setNoSigPipe(*acceptFd);
 
             if (!setNonBlocking(*acceptFd)) {
-                logg.logError("Failed to set non-blocking flag for accepted socket");
+                LOG_ERROR("Failed to set non-blocking flag for accepted socket");
                 handleException();
             }
 
@@ -233,7 +234,7 @@ namespace armnn {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
             return nullptr;
         }
-        logg.logError("Failed to accept socket due to %s (%d)", std::strerror(errno), errno);
+        LOG_ERROR("Failed to accept socket due to %s (%d)", std::strerror(errno), errno);
         handleException();
     }
 
@@ -268,7 +269,7 @@ namespace armnn {
 
     bool SocketIO::writeExact(lib::Span<const std::uint8_t> buf)
     {
-        const std::uint8_t * const buffer {buf.data};
+        const std::uint8_t * const buffer {buf.data()};
         std::size_t length {buf.size()};
         int timeoutMillis = 100;
         int bytesRemaining = length;
@@ -315,7 +316,7 @@ namespace armnn {
 
     bool SocketIO::readExact(lib::Span<std::uint8_t> buf)
     {
-        std::uint8_t * const buffer {buf.data};
+        std::uint8_t * const buffer {buf.data()};
         const std::size_t length {buf.size()};
         std::size_t accumulatedBytes = 0;
 

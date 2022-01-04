@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #include "AnnotateListener.h"
 
@@ -13,7 +13,7 @@ struct AnnotateClient {
     int fd;
 };
 
-AnnotateListener::AnnotateListener()
+AnnotateListener::AnnotateListener() noexcept
     : mClients(nullptr),
 #ifdef TCP_ANNOTATIONS
       mSock(nullptr),

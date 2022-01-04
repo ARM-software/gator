@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "LocalCapture.h"
 
@@ -8,8 +8,9 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <dirent.h>
 #include <memory>
+
+#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -21,12 +22,12 @@ static char * createUniqueDirectory(const char * initialPath, const char * endin
 
     // Ensure the path is an absolute path, i.e. starts with a slash
     if (initialPath == nullptr || strlen(initialPath) == 0) {
-        logg.logError("Missing -o command line option required for a local capture.");
+        LOG_ERROR("Missing -o command line option required for a local capture.");
         handleException();
     }
     else if (initialPath[0] != '/') {
         if (getcwd(path, PATH_MAX) == nullptr) {
-            logg.logMessage("Unable to retrieve the current working directory");
+            LOG_DEBUG("Unable to retrieve the current working directory");
         }
         strncat(path, "/", PATH_MAX - strlen(path) - 1);
         strncat(path, initialPath, PATH_MAX - strlen(path) - 1);
@@ -50,9 +51,9 @@ namespace local_capture {
     void createAPCDirectory(const char * target_path)
     {
         gSessionData.mAPCDir = createUniqueDirectory(target_path, ".apc");
-        if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0 ||
-             mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
-            logg.logError("Unable to create directory %s", gSessionData.mAPCDir);
+        if ((removeDirAndAllContents(gSessionData.mAPCDir) != 0
+             || mkdir(gSessionData.mAPCDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)) {
+            LOG_ERROR("Unable to create directory %s", gSessionData.mAPCDir);
             handleException();
         }
     }
@@ -102,10 +103,10 @@ namespace local_capture {
             }
             strncat(dstfilename, getFilePart(element.c_str()), PATH_MAX - strlen(dstfilename) - 1);
             if (copyFile(element.c_str(), dstfilename) != 0) {
-                logg.logMessage("copied file %s to %s", element.c_str(), dstfilename);
+                LOG_DEBUG("copied file %s to %s", element.c_str(), dstfilename);
             }
             else {
-                logg.logMessage("copy of file %s to %s failed", element.c_str(), dstfilename);
+                LOG_DEBUG("copy of file %s to %s failed", element.c_str(), dstfilename);
             }
         }
     }

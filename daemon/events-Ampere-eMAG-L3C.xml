@@ -3,7 +3,7 @@
  <counter_set name="L3C_cnt" count="4"/>
   <category name="L3C" counter_set="L3C_cnt" per_cpu="no">
     <!--CYCLES-->
-    <event counter="L3C_ccnt" title="L3C Clock" event="0x0000" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event counter="L3C_ccnt" title="L3C Clock" event="0x0000" name="Cycles" description="Cycle counter." units="cycles" />
     <!--L3_CACHE-->
     <event title="L3 Cache" event="0x0001" name="Read hit" description="Read is a hit." />
     <event title="L3 Cache" event="0x0002" name="Read miss" description="Read is a miss." />

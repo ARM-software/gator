@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "Syscall.h"
 
@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace lib {
@@ -42,10 +43,13 @@ namespace lib {
 
     ssize_t write(int fd, const void * buf, size_t count) { return ::write(fd, buf, count); }
 
+    int pipe2(std::array<int, 2> & fds, int flags) { return ::pipe2(fds.data(), flags); }
+
     int uname(struct utsname * buf) { return ::uname(buf); }
 
     uid_t geteuid() { return ::geteuid(); }
 
+    pid_t waitpid(pid_t pid, int * wstatus, int options) { return ::waitpid(pid, wstatus, options); }
     int poll(struct pollfd * fds, nfds_t nfds, int timeout) { return ::poll(fds, nfds, timeout); }
 
     int access(const char * filename, int how) { return ::access(filename, how); }

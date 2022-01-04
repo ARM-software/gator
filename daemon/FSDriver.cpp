@@ -22,7 +22,7 @@ public:
     FSCounter(FSCounter &&) = delete;
     FSCounter & operator=(FSCounter &&) = delete;
 
-    const char * getPath() const { return mPath; }
+    [[nodiscard]] const char * getPath() const { return mPath; }
 
     int64_t read() override;
 
@@ -40,7 +40,7 @@ FSCounter::FSCounter(DriverCounter * next, const char * name, char * path, const
         if (result != 0) {
             char buf[128];
             regerror(result, &mReg, buf, sizeof(buf));
-            logg.logError("Invalid regex '%s': %s", regex, buf);
+            LOG_ERROR("Invalid regex '%s': %s", regex, buf);
             handleException();
         }
     }
@@ -91,7 +91,7 @@ int64_t FSCounter::read()
             errno = 0;
             value = strtoll(buf + match[1].rm_so, nullptr, 0);
             if (errno != 0) {
-                logg.logError("Parsing %s failed: %s", mPath, strerror(errno));
+                LOG_ERROR("Parsing %s failed: %s", mPath, strerror(errno));
                 handleException();
             }
         }
@@ -104,7 +104,7 @@ int64_t FSCounter::read()
     return value;
 
 fail:
-    logg.logError("Unable to read %s", mPath);
+    LOG_ERROR("Unable to read %s", mPath);
     handleException();
 }
 
@@ -126,9 +126,9 @@ void FSDriver::readEvents(mxml_node_t * const xml)
         }
 
         if (counter[0] == '/') {
-            logg.logError("Old style filesystem counter (%s) detected, please create a new unique counter value and "
-                          "move the filename into the path attribute, see events-Filesystem.xml for examples",
-                          counter);
+            LOG_ERROR("Old style filesystem counter (%s) detected, please create a new unique counter value and "
+                      "move the filename into the path attribute, see events-Filesystem.xml for examples",
+                      counter);
             handleException();
         }
 
@@ -138,7 +138,7 @@ void FSDriver::readEvents(mxml_node_t * const xml)
 
         const char * path = mxmlElementGetAttr(node, "path");
         if (path == nullptr) {
-            logg.logError("The filesystem counter %s is missing the required path attribute", counter);
+            LOG_ERROR("The filesystem counter %s is missing the required path attribute", counter);
             handleException();
         }
         const char * regex = mxmlElementGetAttr(node, "regex");

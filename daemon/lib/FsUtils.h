@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef LIB_FS_UTILS_H
 #define LIB_FS_UTILS_H
@@ -22,8 +22,8 @@ namespace lib {
         std::set<IntType> numbers;
         auto iterator = FsEntry::create(parent).children();
 
-        Optional<FsEntry> childEntry;
-        while ((childEntry = iterator.next()).valid()) {
+        std::optional<FsEntry> childEntry;
+        while (!!(childEntry = iterator.next())) {
             auto nameStream = std::stringstream(childEntry->name());
 
             IntType value;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "Sender.h"
 
@@ -12,6 +12,7 @@
 #include <climits>
 #include <cstdlib>
 #include <cstring>
+
 #include <unistd.h>
 
 Sender::Sender(OlySocket * socket)
@@ -26,7 +27,7 @@ Sender::Sender(OlySocket * socket)
         // Streamline will send data prior to the magic sequence for legacy support, which should be ignored for v4+
         while (strcmp("STREAMLINE", streamline) != 0) {
             if (mDataSocket->receiveString(streamline, sizeof(streamline)) == -1) {
-                logg.logError("Socket disconnected");
+                LOG_ERROR("Socket disconnected");
                 handleException();
             }
         }
@@ -37,13 +38,13 @@ Sender::Sender(OlySocket * socket)
         mDataSocket->send(magic, strlen(magic));
 
         gSessionData.mWaitingOnCommand = true;
-        logg.logMessage("Completed magic sequence");
+        LOG_DEBUG("Completed magic sequence");
     }
 
     pthread_mutexattr_t attr;
-    if (pthread_mutexattr_init(&attr) != 0 || pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0 ||
-        pthread_mutex_init(&mSendMutex, &attr) != 0 || pthread_mutexattr_destroy(&attr) != 0) {
-        logg.logError("Unable to setup mutex");
+    if (pthread_mutexattr_init(&attr) != 0 || pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0
+        || pthread_mutex_init(&mSendMutex, &attr) != 0 || pthread_mutexattr_destroy(&attr) != 0) {
+        LOG_ERROR("Unable to setup mutex");
         handleException();
     }
 }
@@ -67,7 +68,7 @@ void Sender::createDataFile(const char * apcDir)
     sprintf(mDataFileName.get(), "%s/0000000000", apcDir);
     mDataFile.reset(lib::fopen_cloexec(mDataFileName.get(), "wb"));
     if (!mDataFile) {
-        logg.logError("Failed to open binary file: %s", mDataFileName.get());
+        LOG_ERROR("Failed to open binary file: %s", mDataFileName.get());
         handleException();
     }
 }
@@ -78,19 +79,20 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
 {
     int length = 0;
     for (const auto & data : dataParts) {
-        length += data.length;
-        if (data.length < 0) {
-            logg.logError("Negative length message part (%d)", data.length);
+        int d_length = data.size();
+        length += d_length;
+        if (d_length < 0) {
+            LOG_ERROR("Negative length message part (%d)", d_length);
             handleException();
         }
-        else if (data.length > MAX_RESPONSE_LENGTH) {
-            logg.logError("Message part too big (%d)", data.length);
+        else if (d_length > MAX_RESPONSE_LENGTH) {
+            LOG_ERROR("Message part too big (%d)", d_length);
             handleException();
         }
     }
 
     if (length > MAX_RESPONSE_LENGTH) {
-        logg.logError("Message too big (%d)", length);
+        LOG_ERROR("Message too big (%d)", length);
         handleException();
     }
 
@@ -99,7 +101,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
         if (ignoreLockErrors) {
             return;
         }
-        logg.logError("pthread_mutex_lock failed");
+        LOG_ERROR("pthread_mutex_lock failed");
         handleException();
     }
 
@@ -110,7 +112,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
         alarm(alarmDuration);
 
         // Send data over the socket, sending the type and size first
-        logg.logMessage("Sending data with length %d", length);
+        LOG_DEBUG("Sending data with length %d", length);
         if (type != ResponseType::RAW) {
             char header[5];
             header[0] = static_cast<char>(type);
@@ -123,15 +125,15 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
         for (const auto & data : dataParts) {
             int pos = 0;
             while (true) {
-                mDataSocket->send(data.data + pos, std::min(data.length - pos, chunkSize));
+                mDataSocket->send(data.data() + pos, std::min(data.size() - pos, chunkSize));
                 pos += chunkSize;
-                if (pos >= data.length) {
+                if (pos >= data.size()) {
                     break;
                 }
 
                 // Reset the alarm
                 alarm(alarmDuration);
-                logg.logMessage("Resetting the alarm");
+                LOG_DEBUG("Resetting the alarm");
             }
         }
 
@@ -141,11 +143,11 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
 
     // Write data to disk as long as it is not meta data
     if (mDataFile && (type == ResponseType::APC_DATA || type == ResponseType::RAW)) {
-        logg.logMessage("Writing data with length %d", length);
+        LOG_DEBUG("Writing data with length %d", length);
         // Send data to the data file
         auto writeData = [this](lib::Span<const char, int> data) {
-            if (fwrite(data.data, 1, data.length, mDataFile.get()) != static_cast<size_t>(data.length)) {
-                logg.logError("Failed writing binary file %s", mDataFileName.get());
+            if (fwrite(data.data(), 1, data.size(), mDataFile.get()) != static_cast<size_t>(data.size())) {
+                LOG_ERROR("Failed writing binary file %s", mDataFileName.get());
                 handleException();
             }
         };
@@ -162,7 +164,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
     }
 
     if (pthread_mutex_unlock(&mSendMutex) != 0) {
-        logg.logError("pthread_mutex_unlock failed");
+        LOG_ERROR("pthread_mutex_unlock failed");
         handleException();
     }
 }

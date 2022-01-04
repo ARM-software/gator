@@ -33,35 +33,57 @@
 
 /*
  *  ANNOTATE_DEFINE                              Deprecated and no longer used
+ *
  *  ANNOTATE_SETUP                               Execute at the start of the program before other ANNOTATE macros are called
+ *
+ *  For defining integer counters where the numeric value is in the range 0...1<<63-1:
+ *
  *  ANNOTATE_DELTA_COUNTER                       Define a delta counter
  *  ANNOTATE_ABSOLUTE_COUNTER                    Define an absolute counter
  *  ANNOTATE_COUNTER_VALUE                       Emit a counter value
+ *
+ *  For defining fractional (float/double) counters:
+ *
+ *  NB: The float value is converted to an integer value in the above range using some fixed multiplier, so for example
+ *  to send a float value in the range 0.000...1.000, with 3-decimal places accuracy, use a modifier value of 1000.
+ *  The float values will be converted to integers between 0 ... 1000.
+ *
  *  ANNOTATE_DELTA_COUNTER_SCALE                 Define a delta counter with scaling
  *  ANNOTATE_ABSOLUTE_COUNTER_SCALE              Define an absolute counter with scaling
  *  ANNOTATE_COUNTER_VALUE_SCALE                 Emit a counter value with scaling
+ *
+ *  For defining CAM views, which visualize multiple linked 'jobs' within a Gantt-like view:
+ *
+ *  CAM_VIEW_NAME                                Name the custom activity map view
  *  CAM_TRACK                                    Create a new custom activity map track
  *  CAM_JOB                                      Add a new job to a CAM track, use gator_get_time() to obtain the time in nanoseconds
- *  CAM_VIEW_NAME                                Name the custom activity map view
  *
+ *  For defining textual annotations:
+ *
+ *  NB: Channels and groups are defined per thread. This means that if the same
+ *  channel number is used on different threads they are in fact separate
+ *  channels. A channel can belong to only one group per thread. This means
+ *  channel 1 cannot be part of both group 1 and group 2 on the same thread.
+ *
+ *  ANNOTATE_NAME_GROUP(group, str)              Name a group
+ *  ANNOTATE_NAME_CHANNEL(channel, group, str)   Name a channel and link it to a group
  *  ANNOTATE(str)                                String annotation
  *  ANNOTATE_CHANNEL(channel, str)               String annotation on a channel
  *  ANNOTATE_COLOR(color, str)                   String annotation with color
  *  ANNOTATE_CHANNEL_COLOR(channel, color, str)  String annotation on a channel with color
  *  ANNOTATE_END()                               Terminate an annotation
  *  ANNOTATE_CHANNEL_END(channel)                Terminate an annotation on a channel
- *  ANNOTATE_NAME_CHANNEL(channel, group, str)   Name a channel and link it to a group
- *  ANNOTATE_NAME_GROUP(group, str)              Name a group
+ *
+ *  For sending image annotations:
+ *
  *  ANNOTATE_VISUAL(data, length, str)           Image annotation with optional string
+ *
+ *  For sending bookmark annotations:
+ *
  *  ANNOTATE_MARKER()                            Marker annotation
  *  ANNOTATE_MARKER_STR(str)                     Marker annotation with a string
  *  ANNOTATE_MARKER_COLOR(color)                 Marker annotation with a color
  *  ANNOTATE_MARKER_COLOR_STR(color, str)        Marker annotation with a string and color
- *
- *  Channels and groups are defined per thread. This means that if the same
- *  channel number is used on different threads they are in fact separate
- *  channels. A channel can belong to only one group per thread. This means
- *  channel 1 cannot be part of both group 1 and group 2 on the same thread.
  */
 
 /* ESC character, hex RGB (little endian) */
@@ -133,7 +155,7 @@ void gator_annotate_counter(uint32_t id,
                             uint32_t cores,
                             uint32_t color,
                             const char * description);
-void gator_annotate_counter_value(uint32_t core, uint32_t id, uint32_t value);
+void gator_annotate_counter_value(uint32_t core, uint32_t id, int64_t value);
 void gator_annotate_activity_switch(uint32_t core, uint32_t id, uint32_t activity, uint32_t tid);
 void gator_cam_track(uint32_t view_uid, uint32_t track_uid, uint32_t parent_track, const char * name);
 void gator_cam_job(uint32_t view_uid,
@@ -265,7 +287,7 @@ void gator_cam_view_name(uint32_t view_uid, const char * name);
                            NULL)
 #define ANNOTATE_COUNTER_VALUE_SCALE(id, value, modifier)                                                              \
     do {                                                                                                               \
-        uint32_t __scaledvalue = (uint32_t) ((value) * (modifier) + 0.5f);                                             \
+        uint64_t __scaledvalue = (uint64_t) ((value) * (modifier) + 0.5f);                                             \
         gator_annotate_counter_value(0, id, __scaledvalue);                                                            \
     } while (0)
 

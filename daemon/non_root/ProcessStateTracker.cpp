@@ -31,8 +31,8 @@ namespace non_root {
     void ProcessStateTracker::ActiveScan::addProcess(int pid,
                                                      int tid,
                                                      const lnx::ProcPidStatFileRecord & statRecord,
-                                                     const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                                     const lib::Optional<lib::FsEntry> & exe)
+                                                     const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                                                     const std::optional<lib::FsEntry> & exe)
     {
         // forward to parent
         const unsigned long long processTimeDelta = parent.add(timestampNS, pid, tid, statRecord, statmRecord, exe);
@@ -98,8 +98,8 @@ namespace non_root {
         unsigned long long bootTimeBaseNS,
         unsigned long clktck,
         const lnx::ProcPidStatFileRecord & statRecord,
-        const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-        const lib::Optional<lib::FsEntry> & exe)
+        const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+        const std::optional<lib::FsEntry> & exe)
     {
         if (isNew()) {
             // pull out parent pid
@@ -190,8 +190,8 @@ namespace non_root {
                                                 int pid,
                                                 int tid,
                                                 const lnx::ProcPidStatFileRecord & statRecord,
-                                                const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                                const lib::Optional<lib::FsEntry> & exe)
+                                                const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                                                const std::optional<lib::FsEntry> & exe)
     {
         runtime_assert(statRecord.getPid() == tid, "Record does not match tid");
 

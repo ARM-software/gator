@@ -1,8 +1,9 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include <memory>
+
 #include <semaphore.h>
 
 class Child;

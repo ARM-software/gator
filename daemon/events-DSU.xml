@@ -3,13 +3,13 @@
 <counter_set name="DSU_cnt" count="6"/>
 <category name="DSU" counter_set="DSU_cnt" per_cpu="no">
     <!--CYCLES-->
-    <event counter="DSU_ccnt" title="DSU Clock" event="0x0011" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event counter="DSU_ccnt" title="DSU Clock" event="0x0011" name="Cycles" description="Cycle counter." units="cycles" />
     <!--BUS_ACCESS-->
     <event title="DSU Bus" event="0x0019" name="Bus access" description="Counts every beat of data that is transferred over the data channels between the SCU and the interconnect. This event counts the sum of BUS_ACCESS_RD and BUS_ACCESS_WR." />
     <!--MEMORY_ERROR-->
     <event title="DSU Errors" event="0x001A" name="Local memory error" description="Counts every Correctable or Uncorrectable memory error (ECC or parity) in the protected RAMs." />
     <!--BUS_CYCLES-->
-    <event title="DSU Bus Clock" event="0x001D" name="Bus cycles" description="ACE or CHI bus cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event title="DSU Bus Clock" event="0x001D" name="Bus cycles" description="ACE or CHI bus cycle counter." units="cycles" />
     <!--L3D_CACHE_ALLOCATE-->
     <event title="DSU L3 Cache" event="0x0029" name="Level 3 unified cache allocation without refill" description="Counts every full cache line write into the L3 cache which does not cause a linefill." />
     <!--L3D_CACHE_REFILL-->
@@ -41,7 +41,7 @@
     <!--ACP_ACCESS-->
     <event title="DSU ACP" event="0x0119" name="ACP access" description="Counts every beat of data transferred over the data channels between the SCU and the accelerated coherency port. This event counts the sum of ACP_ACCESS_RD and ACP_ACCESS_WR." />
     <!--ACP_CYCLES-->
-    <event title="DSU ACP Clock" event="0x011D" name="ACP cycles" description="ACP cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event title="DSU ACP Clock" event="0x011D" name="ACP cycles" description="ACP cycle counter." units="cycles" />
     <!--ACP_ACCESS_RD-->
     <event title="DSU ACP" event="0x0160" name="ACP access, read" description="Counts every beat of data transferred over the read data channel between the SCU and the peripheral port." />
     <!--ACP_ACCESS_WR-->
@@ -49,7 +49,7 @@
     <!--PP_ACCESS-->
     <event title="DSU PP" event="0x0219" name="Peripheral port access" description="Counts every beat of data transferred over the data channels between the SCU and the peripheral port. This event counts the sum of PP_ACCESS_RD and PP_ACCESS_WR." />
     <!--PP_CYCLES-->
-    <event title="DSU PP Clock" event="0x021D" name="Peripheral port cycles" description="Peripheral port cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event title="DSU PP Clock" event="0x021D" name="Peripheral port cycles" description="Peripheral port cycle counter." units="cycles" />
     <!--PP_ACCESS_RD-->
     <event title="DSU PP" event="0x0260" name="Peripheral port access, read" description="Counts every beat of data transferred over the read data channel between the SCU and the peripheral port." />
     <!--PP_ACCESS_WR-->

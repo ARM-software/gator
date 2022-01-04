@@ -38,12 +38,12 @@ bool stringToBool(const char * string, bool defValue)
         i++;
     }
 
-    if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0 ||
-        strcmp(value, "on") == 0) {
+    if (strcmp(value, "true") == 0 || strcmp(value, "yes") == 0 || strcmp(value, "1") == 0
+        || strcmp(value, "on") == 0) {
         return true;
     }
-    if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0 ||
-        strcmp(value, "off") == 0) {
+    if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0 || strcmp(value, "0") == 0
+        || strcmp(value, "off") == 0) {
         return false;
     }
     return defValue;

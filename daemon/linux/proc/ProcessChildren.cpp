@@ -1,11 +1,12 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessChildren.h"
 
 #include <cstring>
-#include <dirent.h>
 #include <fstream>
 #include <memory>
+
+#include <dirent.h>
 
 namespace lnx {
     static void addTidsRecursively(std::set<int> & tids, int tid)

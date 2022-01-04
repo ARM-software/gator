@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <functional>
+
 #include <semaphore.h>
 
 class ICpuInfo;
@@ -27,7 +28,7 @@ namespace non_root {
                       std::function<void()> profilingStartedCallback,
                       const ICpuInfo & cpuInfo);
 
-        lib::Optional<std::uint64_t> sendSummary() override;
+        std::optional<std::uint64_t> sendSummary() override;
         void run(std::uint64_t, std::function<void()> endSession) override;
         void interrupt() override;
         bool write(ISender & sender) override;

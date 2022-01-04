@@ -78,13 +78,13 @@ namespace armnn {
                         }
                     }
                     else {
-                        logg.logError("Unknown event number 0x%" PRIxEventCode " for counter: %s",
-                                      eventNumber.asU64(),
-                                      counterName.c_str());
+                        LOG_ERROR("Unknown event number 0x%" PRIxEventCode " for counter: %s",
+                                  eventNumber.asU64(),
+                                  counterName.c_str());
                     }
                 }
                 else {
-                    logg.logError("Unknown counter: %s", counterName.c_str());
+                    LOG_ERROR("Unknown counter: %s", counterName.c_str());
                 }
             }
             else {
@@ -97,7 +97,7 @@ namespace armnn {
                     }
                 }
                 else {
-                    logg.logError("Unknown counter: %s", counterName.c_str());
+                    LOG_ERROR("Unknown counter: %s", counterName.c_str());
                 }
             }
         }
@@ -182,7 +182,7 @@ namespace armnn {
     }
 
     /// @return empty if the event doesn't have a counter name (because it's part of a counter set)
-    lib::Optional<std::string> GlobalState::makeCounterNameIfFixed(const GlobalState::CategoryId & id,
+    std::optional<std::string> GlobalState::makeCounterNameIfFixed(const GlobalState::CategoryId & id,
                                                                    const std::string & eventName)
     {
         if (id.counterSet) {
@@ -200,25 +200,25 @@ namespace armnn {
     static bool checkEventProperties(EventProperties & current, const EventProperties & new_)
     {
         if (current.clazz != new_.clazz) {
-            logg.logError("Mismatching class %d vs %d", lib::toEnumValue(current.clazz), lib::toEnumValue(new_.clazz));
+            LOG_ERROR("Mismatching class %d vs %d", lib::toEnumValue(current.clazz), lib::toEnumValue(new_.clazz));
             return false;
         }
         if (current.interpolation != new_.interpolation) {
-            logg.logError("Mismatching interpolation %d vs %d",
-                          lib::toEnumValue(current.interpolation),
-                          lib::toEnumValue(new_.interpolation));
+            LOG_ERROR("Mismatching interpolation %d vs %d",
+                      lib::toEnumValue(current.interpolation),
+                      lib::toEnumValue(new_.interpolation));
             return false;
         }
         if (current.multiplier != new_.multiplier) {
-            logg.logError("Mismatching multiplier %f vs %f", current.multiplier, new_.multiplier);
+            LOG_ERROR("Mismatching multiplier %f vs %f", current.multiplier, new_.multiplier);
             return false;
         }
         if (current.description != new_.description) {
-            logg.logError("Mismatching description %s vs %s", current.description.c_str(), new_.description.c_str());
+            LOG_ERROR("Mismatching description %s vs %s", current.description.c_str(), new_.description.c_str());
             return false;
         }
         if (current.units != new_.units) {
-            logg.logError("Mismatching units %s vs %s", current.units.c_str(), new_.units.c_str());
+            LOG_ERROR("Mismatching units %s vs %s", current.units.c_str(), new_.units.c_str());
             return false;
         }
 
@@ -258,10 +258,7 @@ namespace armnn {
         auto & category = categoryIter->second;
         if (category.counterSetCount != counterSetCount) {
             std::uint16_t min = std::min(category.counterSetCount, counterSetCount);
-            logg.logError("Mismatching counterSetCount %d vs %d, using %d",
-                          category.counterSetCount,
-                          counterSetCount,
-                          min);
+            LOG_ERROR("Mismatching counterSetCount %d vs %d, using %d", category.counterSetCount, counterSetCount, min);
             for (int i = min; i < category.counterSetCount; ++i) {
                 const auto counterName = makeCounterSetCounterName(categoryId, i);
                 // deliberately not removing the permanent counter name reference
@@ -295,8 +292,8 @@ namespace armnn {
             auto & currentProperties = propertiesIter->second; // will be empty if there was a conflict previously
             if (currentProperties) {
                 if (!checkEventProperties(*currentProperties, properties)) {
-                    logg.logError("Event (%s) removed due to conflicting property", eventIdToString(id).c_str());
-                    currentProperties.clear();
+                    LOG_ERROR("Event (%s) removed due to conflicting property", eventIdToString(id).c_str());
+                    currentProperties.reset();
                 }
             }
         }
@@ -336,7 +333,7 @@ namespace armnn {
         return xmlEvents;
     }
 
-    lib::Optional<CounterSet> GlobalState::makeCounterSet(const CategoryId & catId,
+    std::optional<CounterSet> GlobalState::makeCounterSet(const CategoryId & catId,
                                                           const CategoryEvents & categoryEvents)
     {
         if (!catId.counterSet) {
@@ -395,12 +392,12 @@ namespace armnn {
     int GlobalState::enableCounter(const std::string & counterName, EventCode eventNumber)
     {
         if (enabledIdKeyAndEventNumbers->full()) {
-            logg.logError("Could not enable %s, limit of ArmNN counters reached", counterName.c_str());
+            LOG_ERROR("Could not enable %s, limit of ArmNN counters reached", counterName.c_str());
             return -1;
         }
         const auto iter = permanentCounterNameReferences.find(counterName);
         if (iter == permanentCounterNameReferences.end()) {
-            logg.logError("Could not enable %s, unknown counter name", counterName.c_str());
+            LOG_ERROR("Could not enable %s, unknown counter name", counterName.c_str());
             return -1;
         }
 

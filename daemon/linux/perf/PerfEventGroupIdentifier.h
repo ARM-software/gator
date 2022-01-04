@@ -36,8 +36,8 @@ public:
     /** Equality operator, are they the same group? */
     inline bool operator==(const PerfEventGroupIdentifier & that) const
     {
-        return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber) &&
-               (cpuNumberToType == that.cpuNumberToType);
+        return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber)
+            && (cpuNumberToType == that.cpuNumberToType);
     }
 
     /** Inequality operator, are they not the same group? */

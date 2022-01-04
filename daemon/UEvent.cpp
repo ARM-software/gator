@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "UEvent.h"
 
@@ -7,6 +7,7 @@
 
 #include <cerrno>
 #include <cstring>
+
 #include <linux/netlink.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -31,7 +32,7 @@ bool UEvent::init()
 {
     mFd = socket_cloexec(PF_NETLINK, SOCK_RAW, NETLINK_KOBJECT_UEVENT);
     if (mFd < 0) {
-        logg.logMessage("Socket failed for uevents (%d - %s)", errno, strerror(errno));
+        LOG_DEBUG("Socket failed for uevents (%d - %s)", errno, strerror(errno));
         return false;
     }
 
@@ -41,7 +42,7 @@ bool UEvent::init()
     sockaddr.nl_groups = 1; // bitmask: (1 << 0) == kernel events, (1 << 1) == udev events
     sockaddr.nl_pid = 0;
     if (bind(mFd, reinterpret_cast<struct sockaddr *>(&sockaddr), sizeof(sockaddr)) != 0) {
-        logg.logMessage("Bind failed for uevents (%d - %s)", errno, strerror(errno));
+        LOG_DEBUG("Bind failed for uevents (%d - %s)", errno, strerror(errno));
         return false;
     }
 
@@ -52,7 +53,7 @@ bool UEvent::read(UEventResult * const result)
 {
     ssize_t bytes = recv(mFd, result->mBuf, sizeof(result->mBuf), 0);
     if (bytes <= 0) {
-        logg.logMessage("recv failed");
+        LOG_DEBUG("recv failed");
         return false;
     }
 
@@ -62,7 +63,7 @@ bool UEvent::read(UEventResult * const result)
 
     for (int pos = 0; pos < bytes; pos += strlen(result->mBuf + pos) + 1) {
         char * const str = result->mBuf + pos;
-        logg.logMessage("uevent + %i: %s", pos, str);
+        LOG_DEBUG("uevent + %i: %s", pos, str);
         if (strncmp(str, ACTION, sizeof(ACTION) - 1) == 0) {
             result->mAction = str + sizeof(ACTION) - 1;
         }

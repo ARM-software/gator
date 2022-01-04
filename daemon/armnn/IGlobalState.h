@@ -1,12 +1,12 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "armnn/CaptureMode.h"
 #include "armnn/ICounterDirectoryConsumer.h"
-#include "lib/Optional.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -15,15 +15,15 @@ namespace armnn {
 
     struct EventId {
         std::string category;
-        lib::Optional<std::string> device;
-        lib::Optional<std::string> counterSet;
+        std::optional<std::string> device;
+        std::optional<std::string> counterSet;
         std::string name;
     };
 
     inline bool operator==(const EventId & lhs, const EventId & rhs)
     {
-        return std::tie(lhs.category, lhs.device, lhs.counterSet, lhs.name) ==
-               std::tie(rhs.category, rhs.device, rhs.counterSet, rhs.name);
+        return std::tie(lhs.category, lhs.device, lhs.counterSet, lhs.name)
+            == std::tie(rhs.category, rhs.device, rhs.counterSet, rhs.name);
     }
 
     inline bool operator<(const EventId & lhs, const EventId & rhs)
@@ -63,13 +63,8 @@ namespace armnn {
 
     inline bool operator==(const EventProperties & lhs, const EventProperties & rhs)
     {
-        return std::tie(lhs.counterSetCount,
-                        lhs.clazz,
-                        lhs.interpolation,
-                        lhs.multiplier,
-                        lhs.description,
-                        lhs.units) ==
-               std::tie(rhs.counterSetCount, rhs.clazz, rhs.interpolation, rhs.multiplier, rhs.description, rhs.units);
+        return std::tie(lhs.counterSetCount, lhs.clazz, lhs.interpolation, lhs.multiplier, lhs.description, lhs.units)
+            == std::tie(rhs.counterSetCount, rhs.clazz, rhs.interpolation, rhs.multiplier, rhs.description, rhs.units);
     }
 
     using EventKeyMap = std::map<armnn::EventId, int>;

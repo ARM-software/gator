@@ -38,7 +38,7 @@ namespace lnx {
         /**
          * Get the exe path for a process by reading /proc/[PID]/cmdline
          */
-        lib::Optional<lib::FsEntry> getProcessCmdlineExePath(const lib::FsEntry & entry)
+        std::optional<lib::FsEntry> getProcessCmdlineExePath(const lib::FsEntry & entry)
         {
             const lib::FsEntry cmdline_file = lib::FsEntry::create(entry, "cmdline");
             const std::string cmdline_contents = lib::readFileContents(cmdline_file);
@@ -48,35 +48,76 @@ namespace lnx {
             if ((!cmdline_exe.empty()) && (cmdline_exe.at(0) != '\n') && (cmdline_exe.at(0) != '\r')) {
                 return lib::FsEntry::create(cmdline_exe);
             }
-            return lib::Optional<lib::FsEntry> {};
+            return std::optional<lib::FsEntry> {};
         }
+    }
 
-        /**
-         * Get the exe path for the process
-         */
-        lib::Optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry)
+    std::optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry)
+    {
+        auto proc_pid_exe = lib::FsEntry::create(entry, "exe");
+
         {
-            const lib::FsEntry exe_file = lib::FsEntry::create(entry, "exe");
+            auto exe_realpath = proc_pid_exe.realpath();
 
-            lib::Optional<lib::FsEntry> exe_path = exe_file.realpath();
-
-            if (exe_path) {
+            if (exe_realpath) {
                 // check android paths
-                const std::string name = exe_path->name();
+                auto name = exe_realpath->name();
                 if ((name == "app_process") || (name == "app_process32") || (name == "app_process64")) {
                     // use the command line instead
-                    const lib::Optional<lib::FsEntry> cmdline_exe = getProcessCmdlineExePath(entry);
+                    auto cmdline_exe = getProcessCmdlineExePath(entry);
                     if (cmdline_exe) {
                         return cmdline_exe;
                     }
                 }
 
-                // use realpath(exe)
-                return exe_path;
+                // use realpath(/proc/pid/exe)
+                return exe_realpath;
             }
-            // exe was linked to nothing, try getting from cmdline
-            return getProcessCmdlineExePath(entry);
         }
+
+        // exe was linked to nothing, try getting from cmdline (but it must be for a real file)
+        auto cmdline_exe = getProcessCmdlineExePath(entry);
+        if (!cmdline_exe) {
+            // no cmdline, must be a kernel thread
+            return {};
+        }
+
+        // resolve the cmdline string to a real path
+        if (cmdline_exe->path().front() == '/') {
+            // already an absolute path, so just resolve it to its realpath
+            auto cmldine_exe_realpath = cmdline_exe->realpath();
+            if (cmldine_exe_realpath) {
+                return cmldine_exe_realpath;
+            }
+        }
+        else {
+            // try relative to process cwd first
+            auto cwd_file = lib::FsEntry::create(entry, "cwd");
+            auto rel_exe_file = lib::FsEntry::create(cwd_file, cmdline_exe->path());
+            auto abs_exe_file = rel_exe_file.realpath();
+
+            if (abs_exe_file) {
+                // great, use that
+                return abs_exe_file;
+            }
+        }
+
+        // we could not resolve exe or the command to a real path.
+        // Since the exe_path value *must* contain something for any non-kernel PID,
+        // then prefer to send 'comm' (so long as it is not an empty string)
+        auto comm_file = lib::FsEntry::create(entry, "comm");
+        auto comm_file_contents = lib::readFileContents(comm_file);
+        if (!comm_file_contents.empty()) {
+            return lib::FsEntry::create(comm_file_contents);
+        }
+
+        // comm was empty, so fall back to whatever the commandline was
+        if (cmdline_exe) {
+            return cmdline_exe;
+        }
+
+        // worst case just send /proc/<pid>/exe
+        return proc_pid_exe;
     }
 
     void ProcessPollerBase::IProcessPollerReceiver::onProcessDirectory(int /*unused*/, const lib::FsEntry & /*unused*/)
@@ -93,8 +134,8 @@ namespace lnx {
         int /*unused*/,
         int /*unused*/,
         const ProcPidStatFileRecord & /*unused*/,
-        const lib::Optional<ProcPidStatmFileRecord> & /*unused*/,
-        const lib::Optional<lib::FsEntry> & /*unused*/)
+        const std::optional<ProcPidStatmFileRecord> & /*unused*/,
+        const std::optional<lib::FsEntry> & /*unused*/)
     {
     }
 
@@ -105,7 +146,7 @@ namespace lnx {
         // scan directory /proc for all pid files
         lib::FsEntryDirectoryIterator iterator = procDir.children();
 
-        while (lib::Optional<lib::FsEntry> entry = iterator.next()) {
+        while (std::optional<lib::FsEntry> entry = iterator.next()) {
             if (isPidDirectory(*entry)) {
                 processPidDirectory(wantThreads, wantStats, receiver, *entry);
             }
@@ -118,7 +159,7 @@ namespace lnx {
                                                 const lib::FsEntry & entry)
     {
         const std::string name = entry.name();
-        lib::Optional<lib::FsEntry> exe_path = getProcessExePath(entry);
+        std::optional<lib::FsEntry> exe_path = getProcessExePath(entry);
 
         // read the pid
         const long pid = std::strtol(name.c_str(), nullptr, 0);
@@ -143,7 +184,7 @@ namespace lnx {
             // scan all the TIDs in the task directory
             lib::FsEntryDirectoryIterator task_iterator = task_directory.children();
 
-            while (lib::Optional<lib::FsEntry> task_entry = task_iterator.next()) {
+            while (std::optional<lib::FsEntry> task_entry = task_iterator.next()) {
                 if (isPidDirectory(*task_entry)) {
                     processTidDirectory(wantStats, receiver, pid, *task_entry, exe_path);
                 }
@@ -155,7 +196,7 @@ namespace lnx {
                                                 IProcessPollerReceiver & receiver,
                                                 const int pid,
                                                 const lib::FsEntry & entry,
-                                                const lib::Optional<lib::FsEntry> & exe)
+                                                const std::optional<lib::FsEntry> & exe)
     {
         const long tid = std::strtol(entry.name().c_str(), nullptr, 0);
 
@@ -164,7 +205,7 @@ namespace lnx {
 
         // process stats?
         if (wantStats) {
-            lib::Optional<ProcPidStatmFileRecord> statm_file_record {ProcPidStatmFileRecord()};
+            std::optional<ProcPidStatmFileRecord> statm_file_record {ProcPidStatmFileRecord()};
 
             // open /proc/[PID]/statm
             {
@@ -175,7 +216,7 @@ namespace lnx {
                     const std::string statm_file_contents = lib::readFileContents(statm_file);
 
                     if (!ProcPidStatmFileRecord::parseStatmFile(*statm_file_record, statm_file_contents.c_str())) {
-                        statm_file_record.clear();
+                        statm_file_record.reset();
                     }
                 }
             }

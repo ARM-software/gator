@@ -1,10 +1,11 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_UTILS_H
 #define INCLUDE_LIB_UTILS_H
 
 #include <cstdint>
 #include <set>
+
 #include <sys/utsname.h>
 
 // From include/generated/uapi/linux/version.h
@@ -28,6 +29,11 @@ namespace lib {
 
     uint64_t roundDownToPowerOfTwo(uint64_t in);
     int calculatePerfMmapSizeInPages(const std::uint64_t perfEventMlockKb, const std::uint64_t pageSizeBytes);
+
+    /**
+    * @returns true if current uid is for Root or Android Shell, false otherwise
+    */
+    bool isRootOrShell();
 }
 
 #endif // INCLUDE_LIB_UTILS_H

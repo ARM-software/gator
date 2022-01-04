@@ -13,6 +13,7 @@
 #include <cinttypes>
 #include <climits>
 #include <cstring>
+
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -26,28 +27,28 @@ static T readOnceAtomicRelaxed(const T & val)
 void validate(const PerfBuffer::Config & config)
 {
     if (((config.pageSize - 1) & config.pageSize) != 0) {
-        logg.logError("PerfBuffer::Config.pageSize (%zu) must be a power of 2", config.pageSize);
+        LOG_ERROR("PerfBuffer::Config.pageSize (%zu) must be a power of 2", config.pageSize);
         handleException();
     }
     if (((config.dataBufferSize - 1) & config.dataBufferSize) != 0) {
-        logg.logError("PerfBuffer::Config.dataBufferSize (%zu) must be a power of 2", config.dataBufferSize);
+        LOG_ERROR("PerfBuffer::Config.dataBufferSize (%zu) must be a power of 2", config.dataBufferSize);
         handleException();
     }
     if (config.dataBufferSize < config.pageSize) {
-        logg.logError("PerfBuffer::Config.dataBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)",
-                      config.dataBufferSize,
-                      config.pageSize);
+        LOG_ERROR("PerfBuffer::Config.dataBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)",
+                  config.dataBufferSize,
+                  config.pageSize);
         handleException();
     }
 
     if (((config.auxBufferSize - 1) & config.auxBufferSize) != 0) {
-        logg.logError("PerfBuffer::Config.auxBufferSize (%zu) must be a power of 2", config.auxBufferSize);
+        LOG_ERROR("PerfBuffer::Config.auxBufferSize (%zu) must be a power of 2", config.auxBufferSize);
         handleException();
     }
     if ((config.auxBufferSize < config.pageSize) && (config.auxBufferSize != 0)) {
-        logg.logError("PerfBuffer::Config.auxBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)",
-                      config.auxBufferSize,
-                      config.pageSize);
+        LOG_ERROR("PerfBuffer::Config.auxBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)",
+                  config.auxBufferSize,
+                  config.pageSize);
         handleException();
     }
 }
@@ -88,22 +89,22 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
         void * const buf = lib::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 
         if (buf == MAP_FAILED) {
-            logg.logMessage("mmap failed for fd %i (errno=%d, %s, mmapLength=%zu, offset=%zu)",
-                            fd,
-                            errno,
-                            strerror(errno),
-                            length,
-                            offset);
+            LOG_DEBUG("mmap failed for fd %i (errno=%d, %s, mmapLength=%zu, offset=%zu)",
+                      fd,
+                      errno,
+                      strerror(errno),
+                      length,
+                      offset);
             if ((errno == ENOMEM) || ((errno == EPERM) && (geteuid() != 0))) {
-                logg.logError("Could not mmap perf buffer on cpu %d, '%s' (errno: %d) returned.\n"
-                              "This may be caused by too small limit in /proc/sys/kernel/perf_event_mlock_kb\n"
-                              "Try again with a smaller value of --mmap-pages\n"
-                              "Usually a value of ((perf_event_mlock_kb * 1024 / page_size) - 1) or lower will work.\n"
-                              "The current value effective value for --mmap-pages is %zu",
-                              cpu,
-                              strerror(errno),
-                              errno,
-                              mConfig.dataBufferSize / mConfig.pageSize);
+                LOG_ERROR("Could not mmap perf buffer on cpu %d, '%s' (errno: %d) returned.\n"
+                          "This may be caused by too small limit in /proc/sys/kernel/perf_event_mlock_kb\n"
+                          "Try again with a smaller value of --mmap-pages\n"
+                          "Usually a value of ((perf_event_mlock_kb * 1024 / page_size) - 1) or lower will work.\n"
+                          "The current value effective value for --mmap-pages is %zu",
+                          cpu,
+                          strerror(errno),
+                          errno,
+                          mConfig.dataBufferSize / mConfig.pageSize);
             }
         }
         return buf;
@@ -112,7 +113,7 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
     auto buffer = mBuffers.find(cpu);
     if (buffer != mBuffers.end()) {
         if (lib::ioctl(fd, PERF_EVENT_IOC_SET_OUTPUT, buffer->second.fd) < 0) {
-            logg.logMessage("ioctl failed for fd %i (errno=%d, %s)", fd, errno, strerror(errno));
+            LOG_DEBUG("ioctl failed for fd %i (errno=%d, %s)", fd, errno, strerror(errno));
             return false;
         }
     }
@@ -128,7 +129,7 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
         // Check the version
         const uint32_t compat_version = pemp.compat_version;
         if (compat_version != 0) {
-            logg.logMessage("Incompatible perf_event_mmap_page compat_version (%i) for fd %i", compat_version, fd);
+            LOG_DEBUG("Incompatible perf_event_mmap_page compat_version (%i) for fd %i", compat_version, fd);
             return false;
         }
     }
@@ -150,7 +151,7 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
 
             buffer.aux_buffer = buf;
             if (buffer.aux_fd >= 0) {
-                logg.logMessage("Multiple aux fds");
+                LOG_DEBUG("Multiple aux fds");
                 return false;
             }
             buffer.aux_fd = fd;
@@ -325,7 +326,7 @@ bool PerfBuffer::send(IPerfBufferConsumer & bufferConsumer)
                 // disabled, it will be reenabled now so more data can be received
                 if ((!shouldDiscard) && (cpuAndBufIt->second.aux_fd >= 0)) {
                     if (lib::ioctl(cpuAndBufIt->second.aux_fd, PERF_EVENT_IOC_ENABLE, 0) != 0) {
-                        logg.logError("Unable to enable a perf event");
+                        LOG_ERROR("Unable to enable a perf event");
                     }
                 }
             }
@@ -346,7 +347,7 @@ bool PerfBuffer::send(IPerfBufferConsumer & bufferConsumer)
                 lib::munmap(auxBuf, auxBufferLength);
             }
             mDiscard.erase(discard);
-            logg.logMessage("Unmapped cpu %i", cpu);
+            LOG_DEBUG("Unmapped cpu %i", cpu);
             cpuAndBufIt = mBuffers.erase(cpuAndBufIt);
         }
         else {

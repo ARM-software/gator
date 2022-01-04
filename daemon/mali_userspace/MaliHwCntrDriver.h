@@ -6,11 +6,11 @@
 #include "PolledDriver.h"
 #include "SessionData.h"
 #include "SimpleDriver.h"
-#include "lib/Optional.h"
 #include "mali_userspace/MaliHwCntrReader.h"
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 namespace mali_userspace {
     /**

@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+
 #include <unistd.h>
 
 namespace mali_userspace {
@@ -17,7 +18,7 @@ namespace mali_userspace {
         : SimpleDriver("MaliHwCntrDriver"), mDevices(mali_userspace::enumerateAllMaliHwCntrDrivers())
     {
         if (mDevices.empty()) {
-            logg.logMessage("There are no mali devices to create readers");
+            LOG_DEBUG("There are no mali devices to create readers");
             return;
         }
 
@@ -27,8 +28,8 @@ namespace mali_userspace {
             const MaliDevice & t_device = *device.second;
             const uint32_t gpuId = t_device.getGpuId();
 
-            if (std::find(addedGpuIds.begin(), addedGpuIds.end(), gpuId) ==
-                addedGpuIds.end()) { // finds if counter already created for gpu
+            if (std::find(addedGpuIds.begin(), addedGpuIds.end(), gpuId)
+                == addedGpuIds.end()) { // finds if counter already created for gpu
                 // add all the device counters
                 const uint32_t numNameBlocks = t_device.getNameBlockCount();
 
@@ -46,11 +47,11 @@ namespace mali_userspace {
                         // create a counter object for it
                         char * name;
                         if (asprintf(&name, "ARM_Mali-%s", counterName) <= 0) {
-                            logg.logError("asprintf failed");
+                            LOG_ERROR("asprintf failed");
                             handleException();
                         }
 
-                        logg.logMessage("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
+                        LOG_DEBUG("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
                         setCounters(new MaliHwCntr(getCounters(), name, nameBlockIndex, counterIndex, gpuId));
                         ::free(name);
                     }
@@ -68,7 +69,7 @@ namespace mali_userspace {
                     std::unique_ptr<PolledDriver>(new MaliGPUClockPolledDriver(device.getClockPath()));
             }
             else {
-                logg.logSetup("Mali GPU counters\nGPU frequency counters not available for GPU # %d.", mDevice.first);
+                LOG_SETUP("Mali GPU counters\nGPU frequency counters not available for GPU # %d.", mDevice.first);
             }
         }
     }
@@ -105,8 +106,8 @@ namespace mali_userspace {
             return;
         }
         uint32_t gpuId = malihwcCounter->getGpuId();
-        const int32_t index = (malihwcCounter->getNameBlockIndex() * MaliDevice::NUM_COUNTERS_PER_BLOCK +
-                               malihwcCounter->getCounterIndex());
+        const int32_t index = (malihwcCounter->getNameBlockIndex() * MaliDevice::NUM_COUNTERS_PER_BLOCK
+                               + malihwcCounter->getCounterIndex());
         if (mEnabledCounterKeysByGpuId.find(gpuId) != mEnabledCounterKeysByGpuId.end()) {
             mEnabledCounterKeysByGpuId.find(gpuId)->second[index] = malihwcCounter->getKey();
         }

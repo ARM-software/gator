@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #ifndef ARMNN_PACKETUTILITY_H_
 #define ARMNN_PACKETUTILITY_H_
@@ -13,8 +13,8 @@ namespace armnn {
 
     static constexpr std::uint32_t makePacketType(std::uint8_t family, std::uint16_t id, std::uint16_t extra = 0)
     {
-        return ((std::uint32_t(family & 0x3F) << 26) | (std::uint32_t(id & 0x03FF) << 16) |
-                (std::uint32_t(extra) & 0xFFFF));
+        return ((std::uint32_t(family & 0x3F) << 26) | (std::uint32_t(id & 0x03FF) << 16)
+                | (std::uint32_t(extra) & 0xFFFF));
     }
 
     //Version format
@@ -25,8 +25,8 @@ namespace armnn {
      */
     static constexpr std::uint32_t makeVersion(std::uint16_t major, std::uint16_t minor, std::uint16_t patch)
     {
-        return ((std::uint32_t(major & 0x3FF) << 22) | (std::uint32_t(minor & 0x03FF) << 12) |
-                (std::uint32_t(patch) & 0x0FFF));
+        return ((std::uint32_t(major & 0x3FF) << 22) | (std::uint32_t(minor & 0x03FF) << 12)
+                | (std::uint32_t(patch) & 0x0FFF));
     }
 
     static constexpr std::uint32_t SUPPORTED_VERSION[] = {makeVersion(1, 0, 0)}; //array of supported versions

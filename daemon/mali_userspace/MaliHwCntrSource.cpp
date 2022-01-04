@@ -25,12 +25,13 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <semaphore.h>
-#include <sys/prctl.h>
 #include <thread>
-#include <unistd.h>
 #include <utility>
 #include <vector>
+
+#include <semaphore.h>
+#include <sys/prctl.h>
+#include <unistd.h>
 
 namespace mali_userspace {
     class MaliHwCntrSource : public Source, public virtual IMaliDeviceCounterDumpCallback {
@@ -45,7 +46,7 @@ namespace mali_userspace {
 
                 std::unique_ptr<MaliHwCntrReader> reader = MaliHwCntrReader::createReader(device);
                 if (!reader) {
-                    logg.logError(
+                    LOG_ERROR(
                         "Failed to create reader for mali GPU # %d. Please try again, and if this happens repeatedly "
                         "please try rebooting your device.",
                         deviceNumber);
@@ -117,7 +118,9 @@ namespace mali_userspace {
             }
         }
 
-        bool isCounterActive(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const override
+        [[nodiscard]] bool isCounterActive(uint32_t nameBlockIndex,
+                                           uint32_t counterIndex,
+                                           uint32_t gpuId) const override
         {
             const int key = mDriver.getCounterKey(nameBlockIndex, counterIndex, gpuId);
             return (key != 0);

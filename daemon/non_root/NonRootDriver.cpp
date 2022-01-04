@@ -10,6 +10,7 @@
 #include "non_root/GlobalStatsTracker.h"
 
 #include <cstring>
+
 #include <unistd.h>
 
 namespace non_root {
@@ -65,27 +66,27 @@ namespace non_root {
             NonRootDriverCounter(NonRootDriverCounter &&) = delete;
             NonRootDriverCounter & operator=(NonRootDriverCounter &&) = delete;
 
-            NonRootCounter getType() const { return mType; }
+            [[nodiscard]] NonRootCounter getType() const { return mType; }
 
-            const char * getLabel() const { return mLabel; }
+            [[nodiscard]] const char * getLabel() const { return mLabel; }
 
-            const char * getTitle() const { return mTitle; }
+            [[nodiscard]] const char * getTitle() const { return mTitle; }
 
-            const char * getDescription() const { return mDescription; }
+            [[nodiscard]] const char * getDescription() const { return mDescription; }
 
-            const char * getDisplay() const { return mDisplay; }
+            [[nodiscard]] const char * getDisplay() const { return mDisplay; }
 
-            const char * getCounterClass() const { return mCounterClass; }
+            [[nodiscard]] const char * getCounterClass() const { return mCounterClass; }
 
-            const char * getUnit() const { return mUnit; }
+            [[nodiscard]] const char * getUnit() const { return mUnit; }
 
-            const char * getSeriesComposition() const { return mSeriesComposition; }
+            [[nodiscard]] const char * getSeriesComposition() const { return mSeriesComposition; }
 
-            double getMultiplier() const { return mMultiplier; }
+            [[nodiscard]] double getMultiplier() const { return mMultiplier; }
 
-            bool isPerCPU() const { return mPerCPU; }
+            [[nodiscard]] bool isPerCPU() const { return mPerCPU; }
 
-            bool isProc() const { return mProc; }
+            [[nodiscard]] bool isProc() const { return mProc; }
 
         private:
             NonRootCounter mType;
@@ -204,7 +205,7 @@ namespace non_root {
                 false));
         }
         else {
-            logg.logSetup("/proc support\nCannot access /proc/loadavg");
+            LOG_SETUP("/proc support\nCannot access /proc/loadavg");
         }
 
         if (canAccessProcStat) {
@@ -430,7 +431,7 @@ namespace non_root {
                 false));
         }
         else {
-            logg.logSetup("/proc support\nCannot access /proc/stat");
+            LOG_SETUP("/proc support\nCannot access /proc/stat");
         }
 
         static const int ANDROID_N_API_LEVEL = 24;
@@ -486,7 +487,7 @@ namespace non_root {
                     true));
             }
             else {
-                logg.logSetup("/proc support\nCannot access /proc/self/statm");
+                LOG_SETUP("/proc support\nCannot access /proc/self/statm");
             }
 
             if (canAccessProcSelfStat) {
@@ -641,13 +642,13 @@ namespace non_root {
                 }
             }
             else {
-                logg.logSetup("/proc support\nCannot access /proc/self/stat");
+                LOG_SETUP("/proc support\nCannot access /proc/self/stat");
             }
         }
         else {
-            logg.logSetup("/proc limited on Android 7+\nDisabled per-process proc counters on Android 7+ due to access "
-                          "restrictions on /proc (Android API level detected as %d)",
-                          gSessionData.mAndroidApiLevel);
+            LOG_SETUP("/proc limited on Android 7+\nDisabled per-process proc counters on Android 7+ due to access "
+                      "restrictions on /proc (Android API level detected as %d)",
+                      gSessionData.mAndroidApiLevel);
         }
     }
 
@@ -659,8 +660,8 @@ namespace non_root {
         for (auto * counter = static_cast<NonRootDriverCounter *>(getCounters()); counter != nullptr;
              counter = static_cast<NonRootDriverCounter *>(counter->getNext())) {
 
-            if ((counter->getType() != NonRootCounter::ACTIVITY_SYSTEM) &&
-                (counter->getType() != NonRootCounter::ACTIVITY_USER)) {
+            if ((counter->getType() != NonRootCounter::ACTIVITY_SYSTEM)
+                && (counter->getType() != NonRootCounter::ACTIVITY_USER)) {
                 mxml_node_t * node = mxmlNewElement(root, "event");
                 mxmlElementSetAttr(node, "counter", counter->getName());
                 mxmlElementSetAttr(node, "title", counter->getTitle());

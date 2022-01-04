@@ -3,11 +3,11 @@
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
 
-#include "lib/Optional.h"
 #include "non_root/ProcessStatsTracker.h"
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace lib {
@@ -48,8 +48,8 @@ namespace non_root {
             void addProcess(int pid,
                             int tid,
                             const lnx::ProcPidStatFileRecord & statRecord,
-                            const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                            const lib::Optional<lib::FsEntry> & exe);
+                            const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                            const std::optional<lib::FsEntry> & exe);
 
         private:
             /** Only ProcessStateTracker can construct */
@@ -126,8 +126,8 @@ namespace non_root {
             unsigned long long update(unsigned long long bootTimeBaseNS,
                                       unsigned long clktck,
                                       const lnx::ProcPidStatFileRecord & statRecord,
-                                      const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                      const lib::Optional<lib::FsEntry> & exe);
+                                      const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                                      const std::optional<lib::FsEntry> & exe);
             void sendStats(unsigned long long timestampNS,
                            ProcessStateChangeHandler & handler,
                            bool sendFakeSchedulingEvents);
@@ -170,8 +170,8 @@ namespace non_root {
                                int pid,
                                int tid,
                                const lnx::ProcPidStatFileRecord & statRecord,
-                               const lib::Optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                               const lib::Optional<lib::FsEntry> & exe);
+                               const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
+                               const std::optional<lib::FsEntry> & exe);
 
         /** Called when active scan is destructed to mutate state */
         void endScan(const ActiveScan & activeScan,

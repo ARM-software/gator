@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/FrameBuilderFactory.h"
 
@@ -20,7 +20,7 @@ namespace armnn {
         rawBuilder.waitForSpace(IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + data.size());
         rawBuilder.beginFrame(FrameType::EXTERNAL);
         rawBuilder.packInt(fd);
-        rawBuilder.writeBytes(data.data, data.size());
+        rawBuilder.writeBytes(data.data(), data.size());
         rawBuilder.endFrame();
     }
 }

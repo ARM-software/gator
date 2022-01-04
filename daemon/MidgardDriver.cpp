@@ -9,6 +9,7 @@
 #include "lib/FileDescriptor.h"
 
 #include <cinttypes>
+
 #include <unistd.h>
 
 static const uint32_t PACKET_SHARED_PARAMETER = 0x0000;
@@ -77,16 +78,16 @@ public:
     MidgardCounter(MidgardCounter &&) = delete;
     MidgardCounter & operator=(MidgardCounter &&) = delete;
 
-    int getType() const { return mCounterData.mType; }
+    [[nodiscard]] int getType() const { return mCounterData.mType; }
 
     // PERF
-    int getIndex() const { return mCounterData.mIndex; }
+    [[nodiscard]] int getIndex() const { return mCounterData.mIndex; }
 
     // ACTIVITY
-    int getCores() const { return mCounterData.mCores; }
+    [[nodiscard]] int getCores() const { return mCounterData.mCores; }
 
     void setEvent(EventCode event) { mEvent = event; }
-    EventCode getEvent() const { return mEvent; }
+    [[nodiscard]] EventCode getEvent() const { return mEvent; }
 
 private:
     const CounterData mCounterData;
@@ -107,15 +108,15 @@ void MidgardDriver::query() const
 
     // Prefer not to requery once obtained as it could throw capture off, assume it doesn't change
     if (gSessionData.mSharedData->mMaliMidgardCountersSize > 0) {
-        logg.logMessage("Using cached Midgard counters");
+        LOG_DEBUG("Using cached Midgard counters");
     }
     else {
         int uds = OlySocket::connect(MALI_GRAPHICS, MALI_GRAPHICS_SIZE);
         if (uds < 0) {
-            logg.logMessage("Unable to connect to Midgard");
+            LOG_DEBUG("Unable to connect to Midgard");
         }
         else {
-            logg.logMessage("Connected to midgard");
+            LOG_DEBUG("Connected to midgard");
             gSessionData.mSharedData->mMaliMidgardCountersSize = 0;
 
             PacketHeader header;
@@ -123,49 +124,49 @@ void MidgardDriver::query() const
 
             while (true) {
                 if (!lib::readAll(uds, &header, sizeof(PacketHeader))) {
-                    logg.logError("Unable to read Midgard header");
+                    LOG_ERROR("Unable to read Midgard header");
                     handleException();
                 }
                 if (first && (reinterpret_cast<const uint8_t *>(&header)[0] != 0)) {
-                    logg.logMessage("Midgard data is not in encapsulated format");
+                    LOG_DEBUG("Midgard data is not in encapsulated format");
                     break;
                 }
                 first = false;
 
                 if (header.mSequenceNumbered) {
-                    logg.logError("sequence_numbered is true and is unsupported");
+                    LOG_ERROR("sequence_numbered is true and is unsupported");
                     handleException();
                 }
 
-                logg.logMessage("MIPE Packet: 0x%x 0x%x 0x%x 0x%x 0x%x",
-                                header.mDataLength,
-                                header.mImplSpec,
-                                header.mPacketIdentifier,
-                                header.mReserved0,
-                                header.mReserved1);
+                LOG_DEBUG("MIPE Packet: 0x%x 0x%x 0x%x 0x%x 0x%x",
+                          header.mDataLength,
+                          header.mImplSpec,
+                          header.mPacketIdentifier,
+                          header.mReserved0,
+                          header.mReserved1);
 
                 switch (header.mPacketIdentifier) {
                     case PACKET_SHARED_PARAMETER: {
                         SharedParameterPacket packet;
                         if (header.mDataLength < sizeof(packet)) {
-                            logg.logError("Unable to read Shared Parameter Packet because it's at least %zu bytes long "
-                                          "but only %" PRIu32 " bytes were given",
-                                          sizeof(packet),
-                                          header.mDataLength);
+                            LOG_ERROR("Unable to read Shared Parameter Packet because it's at least %zu bytes long "
+                                      "but only %" PRIu32 " bytes were given",
+                                      sizeof(packet),
+                                      header.mDataLength);
                             handleException();
                         }
                         if (!lib::readAll(uds, &packet, sizeof(packet))) {
-                            logg.logError("Unable to read Shared Parameter Packet");
+                            LOG_ERROR("Unable to read Shared Parameter Packet");
                             handleException();
                         }
                         if (!lib::skipAll(uds, header.mDataLength - sizeof(packet))) {
-                            logg.logError("Unable to skip Shared Parameter Packet pool");
+                            LOG_ERROR("Unable to skip Shared Parameter Packet pool");
                             handleException();
                         }
 
                         if (header.mImplSpec == 0 && packet.mReserved2 == 0) {
                             if (packet.mMaliMagic != 0x6D616C69) {
-                                logg.logError("mali_magic does not match expected value");
+                                LOG_ERROR("mali_magic does not match expected value");
                                 handleException();
                             }
                         }
@@ -176,16 +177,16 @@ void MidgardDriver::query() const
                         if (header.mImplSpec == 0) {
                             constexpr size_t buffSize = sizeof(gSessionData.mSharedData->mMaliMidgardCounters);
                             if (header.mDataLength > buffSize) {
-                                logg.logError("Unable to read Hardware Counter Directory Packet because it's %" PRIu32
-                                              " bytes but no more than %zu bytes was expected",
-                                              header.mDataLength,
-                                              buffSize);
+                                LOG_ERROR("Unable to read Hardware Counter Directory Packet because it's %" PRIu32
+                                          " bytes but no more than %zu bytes was expected",
+                                          header.mDataLength,
+                                          buffSize);
                                 handleException();
                             }
 
                             char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
                             if (!lib::readAll(uds, buf, header.mDataLength)) {
-                                logg.logError("Unable to read Hardware Counter Directory Packet");
+                                LOG_ERROR("Unable to read Hardware Counter Directory Packet");
                                 handleException();
                             }
                             gSessionData.mSharedData->mMaliMidgardCountersSize = header.mDataLength;
@@ -200,7 +201,7 @@ void MidgardDriver::query() const
                     case 0x0408: {
                         // Ignore
                         if (!lib::skipAll(uds, header.mDataLength)) {
-                            logg.logError("Unable to skip packet body");
+                            LOG_ERROR("Unable to skip packet body");
                             handleException();
                         }
 
@@ -226,7 +227,7 @@ void MidgardDriver::query() const
         const auto * counter = reinterpret_cast<const HardwareCounter *>(buf + i);
         char * name;
         if (asprintf(&name, "ARM_Mali-%s", counter->mCounterName) <= 0) {
-            logg.logError("asprintf failed");
+            LOG_ERROR("asprintf failed");
             handleException();
         }
         cd.mIndex = counter->mCounterIndex;
@@ -270,7 +271,7 @@ bool MidgardDriver::start(const int uds)
 
         int i = counter->getIndex() / 64;
         if (i >= ARRAY_LENGTH(enabled)) {
-            logg.logError("enabled is too small");
+            LOG_ERROR("enabled is too small");
             handleException();
         }
         enabled[i] |= uint64_t(1) << (counter->getIndex() & 63);
@@ -299,7 +300,7 @@ bool MidgardDriver::start(const int uds)
         }
 
         if (foundWindumpCounter) {
-            logg.logError("Only one Mali Midgard filmstrip counter can be enabled at a time");
+            LOG_ERROR("Only one Mali Midgard filmstrip counter can be enabled at a time");
             handleException();
         }
         foundWindumpCounter = true;
@@ -316,12 +317,12 @@ bool MidgardDriver::start(const int uds)
     }
 
     if (bufPos > sizeof(buf)) {
-        logg.logError("Buffer overflow");
+        LOG_ERROR("Buffer overflow");
         handleException();
     }
 
     if (!lib::writeAll(uds, buf, bufPos)) {
-        logg.logError("Unable to enable Midgard counters");
+        LOG_ERROR("Unable to enable Midgard counters");
         handleException();
     }
 

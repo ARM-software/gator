@@ -26,7 +26,7 @@ static sensors_subfeature_type getInput(const sensors_feature_type type)
         case SENSORS_FEATURE_HUMIDITY:
             return SENSORS_SUBFEATURE_HUMIDITY_INPUT;
         default:
-            logg.logError("Unsupported hwmon feature %i", type);
+            LOG_ERROR("Unsupported hwmon feature %i", type);
             handleException();
     }
 }
@@ -42,13 +42,13 @@ public:
     HwmonCounter(HwmonCounter &&) = delete;
     HwmonCounter & operator=(HwmonCounter &&) = delete;
 
-    const char * getLabel() const { return mLabel; }
-    const char * getTitle() const { return mTitle; }
-    bool isDuplicate() const { return mDuplicate; }
-    const char * getDisplay() const { return mDisplay; }
-    const char * getCounterClass() const { return mCounterClass; }
-    const char * getUnit() const { return mUnit; }
-    double getMultiplier() const { return mMultiplier; }
+    [[nodiscard]] const char * getLabel() const { return mLabel; }
+    [[nodiscard]] const char * getTitle() const { return mTitle; }
+    [[nodiscard]] bool isDuplicate() const { return mDuplicate; }
+    [[nodiscard]] const char * getDisplay() const { return mDisplay; }
+    [[nodiscard]] const char * getCounterClass() const { return mCounterClass; }
+    [[nodiscard]] const char * getUnit() const { return mUnit; }
+    [[nodiscard]] double getMultiplier() const { return mMultiplier; }
 
     int64_t read() override;
 
@@ -144,7 +144,7 @@ HwmonCounter::HwmonCounter(DriverCounter * next,
             mMonotonic = false;
             break;
         default:
-            logg.logError("Unsupported hwmon feature %i", mFeature->type);
+            LOG_ERROR("Unsupported hwmon feature %i", mFeature->type);
             handleException();
     }
 
@@ -172,12 +172,12 @@ int64_t HwmonCounter::read()
     // Keep in sync with the read check in HwmonDriver::readEvents
     subfeature = sensors_get_subfeature(mChip, mFeature, getInput(mFeature->type));
     if (subfeature == nullptr) {
-        logg.logError("No input value for hwmon sensor %s", mLabel);
+        LOG_ERROR("No input value for hwmon sensor %s", mLabel);
         handleException();
     }
 
     if (sensors_get_value(mChip, subfeature->number, &value) != 0) {
-        logg.logError("Can't get input value for hwmon sensor %s", mLabel);
+        LOG_ERROR("Can't get input value for hwmon sensor %s", mLabel);
         handleException();
     }
 
@@ -200,7 +200,7 @@ void HwmonDriver::readEvents(mxml_node_t * const /*unused*/)
 {
     int err = sensors_init(nullptr);
     if (err != 0) {
-        logg.logSetup("Libsensors is disabled\nInitialize failed (%d)", err);
+        LOG_SETUP("Libsensors is disabled\nInitialize failed (%d)", err);
         return;
     }
     sensors_sysfs_no_scaling = 1;

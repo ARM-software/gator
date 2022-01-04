@@ -1,0 +1,11 @@
+{
+  "name": "gator",
+  "version-string": "0.0.0",
+  "dependencies": [
+    "mxml",
+    "boost-asio",
+    "boost-lexical-cast",
+    "boost-filesystem",
+    "boost-process"
+  ]
+}

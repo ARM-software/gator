@@ -4,7 +4,6 @@
 
 #include "Logging.h"
 #include "lib/Assert.h"
-#include "lib/Optional.h"
 #include "lib/Utils.h"
 #include "linux/CoreOnliner.h"
 
@@ -12,10 +11,12 @@
 #include <csignal>
 #include <cstdio>
 #include <cstring>
+#include <optional>
+#include <utility>
+
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <utility>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -63,7 +64,7 @@ bool PerCoreIdentificationThread::configureAffinity()
     }
 
     if (!affinitySucceeded) {
-        logg.logMessage("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, strerror(errno));
+        LOG_DEBUG("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, strerror(errno));
         return false;
     }
 
@@ -76,7 +77,7 @@ bool PerCoreIdentificationThread::configureAffinity()
 
 void PerCoreIdentificationThread::run() noexcept
 {
-    lib::Optional<CoreOnliner> coreOnliner;
+    std::optional<CoreOnliner> coreOnliner;
     bool core_id_valid = false;
     bool physical_package_id_valid = false;
     bool midr_el1_valid = false;
@@ -94,7 +95,7 @@ void PerCoreIdentificationThread::run() noexcept
 
     if (!ignoreOffline) {
         // attempt to read the online state of the core and then set it online
-        coreOnliner.set(CoreOnliner(cpu));
+        coreOnliner = CoreOnliner(cpu);
         // affine the thread to a single CPU
         configureAffinity();
     }

@@ -7,80 +7,27 @@
 #include "GatorCLIFlags.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "ParserResult.h"
 
 #include <cstring>
-#include <getopt.h>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <vector>
 
-const int ERROR_PARSING = -101;
+#include <getopt.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#define DEFAULT_PORT 8080
+const int ERROR_PARSING = -101;
+static const struct option ANDROID_ACTIVITY = {"android-activity", /*******/ required_argument, nullptr, 'm'};
+static const struct option ANDROID_PACKAGE = {"android-pkg", /************/ required_argument, nullptr, 'l'};
+static const struct option WAIT_PROCESS = {"wait-process", /***********/ required_argument, nullptr, 'Q'};
+
 #define DISABLE_TCP_USE_UDS_PORT (-1)
 
-/**
- * For containing the results of parsing
- */
-class ParserResult {
-public:
-    enum class ExecutionMode {
-        LOCAL_CAPTURE,
-        PRINT,
-        DAEMON,
-        EXIT,
-    };
-
-    enum class Printable {
-        EVENTS_XML,
-        COUNTERS_XML,
-        DEFAULT_CONFIGURATION_XML,
-    };
-
-    std::vector<SpeConfiguration> mSpeConfigs {};
-    std::vector<std::string> mCaptureCommand {};
-    std::set<int> mPids {};
-    std::map<std::string, EventCode> events {};
-    std::set<Printable> printables {};
-
-    std::uint64_t parameterSetFlag {0};
-
-    ExecutionMode mode {ExecutionMode::DAEMON};
-
-    const char * mCaptureWorkingDir {nullptr};
-    const char * mSessionXMLPath {nullptr};
-    const char * mTargetPath {nullptr};
-    const char * mConfigurationXMLPath {nullptr};
-    const char * mEventsXMLPath {nullptr};
-    const char * mEventsXMLAppend {nullptr};
-    const char * mWaitForCommand {nullptr};
-    const char * pmuPath {nullptr};
-
-    int mBacktraceDepth {0};
-    int mSampleRate {0};
-    int mDuration {0};
-    int mAndroidApiLevel {0};
-    int mPerfMmapSizeInPages {-1};
-    int mSpeSampleRate {-1};
-    int port {DEFAULT_PORT};
-
-    bool mFtraceRaw {false};
-    bool mStopGator {false};
-    bool mSystemWide {true};
-    bool mAllowCommands {false};
-    bool mDisableCpuOnlining {false};
-    bool mDisableKernelAnnotations {false};
-    bool mExcludeKernelEvents {false};
-
-    ParserResult() = default;
-    ParserResult(const ParserResult &) = delete;
-    ParserResult & operator=(const ParserResult &) = delete;
-    ParserResult(ParserResult &&) = delete;
-    ParserResult & operator=(ParserResult &&) = delete;
-};
+static const struct option APP = {"app", /********************/ required_argument, nullptr, 'A'};
 /**
  * This class is responsible for parsing all the command line arguments
  * passed to Gator.

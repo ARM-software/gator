@@ -9,9 +9,10 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <semaphore.h>
 #include <set>
 #include <vector>
+
+#include <semaphore.h>
 
 class Child;
 class Driver;

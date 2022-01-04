@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "Monitor.h"
 
@@ -6,10 +6,15 @@
 
 #include <cerrno>
 #include <cstring>
+
 #include <fcntl.h>
 #include <unistd.h>
 
-Monitor::Monitor() : mFd(-1), mSize(0)
+namespace gator::io {
+    std::unique_ptr<IMonitor> create_monitor() { return std::make_unique<Monitor>(); }
+}
+
+Monitor::Monitor() noexcept : mFd(-1), mSize(0)
 {
 }
 
@@ -36,14 +41,14 @@ bool Monitor::init()
     mFd = epoll_create(16);
 #endif
     if (mFd < 0) {
-        logg.logMessage("epoll_create1 failed");
+        LOG_DEBUG("epoll_create1 failed");
         return false;
     }
 
 #ifndef EPOLL_CLOEXEC
     int fdf = fcntl(mFd, F_GETFD);
     if ((fdf == -1) || (fcntl(mFd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-        logg.logMessage("fcntl failed");
+        LOG_DEBUG("fcntl failed");
         ::close(mFd);
         return false;
     }
@@ -63,7 +68,7 @@ static bool addOrRemove(int mFd, int fd, bool add)
     event.data.fd = fd;
     event.events = EPOLLIN | EPOLLERR | EPOLLHUP;
     if (epoll_ctl(mFd, op, fd, &event) != 0) {
-        logg.logMessage("epoll_ctl failed");
+        LOG_DEBUG("epoll_ctl failed");
         return false;
     }
     return true;
@@ -96,7 +101,7 @@ int Monitor::wait(struct epoll_event * const events, int maxevents, int timeout)
             result = 0;
         }
         else {
-            logg.logMessage("epoll_wait failed");
+            LOG_DEBUG("epoll_wait failed");
         }
     }
 

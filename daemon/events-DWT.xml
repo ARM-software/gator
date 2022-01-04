@@ -12,5 +12,5 @@
     <event event="0x02" title="Sleep" name="Cycles" description="Cycles that the processor is sleeping"/>
     <event event="0x03" title="Overhead" name="Load-store" description="Additional cycles required to execute all load or store instructions"/>
     <event event="0x04" title="Instruction" name="Folded" description="Instructions that execute in zero cycles"/>
-    <event event="0x05" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="Processor cycles"/>
+    <event event="0x05" title="Clock" name="Cycles" units="cycles" description="Processor cycles"/>
   </category>

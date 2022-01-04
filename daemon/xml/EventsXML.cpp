@@ -28,13 +28,13 @@ namespace events_xml {
             if (fl != nullptr) {
                 mainXml = makeMxmlUniquePtr(mxmlLoadFile(nullptr, fl.get(), MXML_NO_CALLBACK));
                 if (mainXml == nullptr) {
-                    logg.logError("Unable to parse %s", gSessionData.mEventsXMLPath);
+                    LOG_ERROR("Unable to parse %s", gSessionData.mEventsXMLPath);
                     handleException();
                 }
             }
         }
         if (mainXml == nullptr) {
-            logg.logMessage("Unable to locate events.xml, using default");
+            LOG_DEBUG("Unable to locate events.xml, using default");
             mainXml = makeMxmlUniquePtr(
                 mxmlLoadString(nullptr, reinterpret_cast<const char *>(events_xml), MXML_NO_CALLBACK));
         }
@@ -43,13 +43,13 @@ namespace events_xml {
         if (gSessionData.mEventsXMLAppend != nullptr) {
             std::unique_ptr<FILE, int (*)(FILE *)> fl {lib::fopen_cloexec(gSessionData.mEventsXMLAppend, "r"), fclose};
             if (fl == nullptr) {
-                logg.logError("Unable to open additional events XML %s", gSessionData.mEventsXMLAppend);
+                LOG_ERROR("Unable to open additional events XML %s", gSessionData.mEventsXMLAppend);
                 handleException();
             }
 
             mxml_unique_ptr appendXml = makeMxmlUniquePtr(mxmlLoadFile(nullptr, fl.get(), MXML_NO_CALLBACK));
             if (appendXml == nullptr) {
-                logg.logError("Unable to parse %s", gSessionData.mEventsXMLAppend);
+                LOG_ERROR("Unable to parse %s", gSessionData.mEventsXMLAppend);
                 handleException();
             }
 
@@ -70,7 +70,7 @@ namespace events_xml {
         // Add dynamic events from the drivers
         mxml_node_t * events = getEventsElement(xml.get());
         if (events == nullptr) {
-            logg.logError(
+            LOG_ERROR(
                 "Unable to find <events> node in the events.xml, please ensure the first two lines of events XML are:\n"
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 "<events>");
@@ -134,7 +134,7 @@ namespace events_xml {
         snprintf(file, PATH_MAX, "%s/events.xml", path);
 
         if (writeToDisk(file, getDynamicXML(drivers, clusters, uncores).get()) < 0) {
-            logg.logError("Error writing %s\nPlease verify the path.", file);
+            LOG_ERROR("Error writing %s\nPlease verify the path.", file);
             handleException();
         }
     }

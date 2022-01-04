@@ -106,17 +106,17 @@ namespace lnx {
          *
          * @return As per skipLine
          */
-        unsigned parseUnsignedLong(lib::Optional<unsigned long> & result, const char * string, const unsigned from)
+        unsigned parseUnsignedLong(std::optional<unsigned long> & result, const char * string, const unsigned from)
         {
             // just decode a single value
             unsigned long value = 0;
             const unsigned pos = decodeUnsignedLong(value, string, skipSpaces(string, from));
 
             if (pos > from) {
-                result.set(value);
+                result = value;
             }
             else {
-                result.clear();
+                result.reset();
             }
 
             return skipLine(string, pos);
@@ -127,7 +127,7 @@ namespace lnx {
          *
          * @return As per skipLine
          */
-        unsigned parsePagingCounts(lib::Optional<ProcStatFileRecord::PagingCounts> & result,
+        unsigned parsePagingCounts(std::optional<ProcStatFileRecord::PagingCounts> & result,
                                    const char * string,
                                    const unsigned from)
         {
@@ -143,15 +143,15 @@ namespace lnx {
                 const unsigned pos_out = decodeUnsignedLong(out, string, pos_in + 1);
 
                 if (pos_out > (pos_in + 1)) {
-                    result.set(ProcStatFileRecord::PagingCounts(in, out));
+                    result = ProcStatFileRecord::PagingCounts(in, out);
                 }
                 else {
-                    result.clear();
+                    result.reset();
                 }
 
                 return skipLine(string, pos_out);
             }
-            result.clear();
+            result.reset();
 
             return skipLine(string, pos_in);
         }
@@ -319,15 +319,15 @@ namespace lnx {
     }
 
     ProcStatFileRecord::ProcStatFileRecord(std::vector<CpuTime> && cpus_,
-                                           lib::Optional<PagingCounts> && page_,
-                                           lib::Optional<PagingCounts> && swap_,
-                                           lib::Optional<unsigned long> && intr_,
-                                           lib::Optional<unsigned long> && soft_irq_,
-                                           lib::Optional<unsigned long> && ctxt_,
-                                           lib::Optional<unsigned long> && btime_,
-                                           lib::Optional<unsigned long> && processes_,
-                                           lib::Optional<unsigned long> && procs_running_,
-                                           lib::Optional<unsigned long> && procs_blocked_)
+                                           std::optional<PagingCounts> && page_,
+                                           std::optional<PagingCounts> && swap_,
+                                           std::optional<unsigned long> && intr_,
+                                           std::optional<unsigned long> && soft_irq_,
+                                           std::optional<unsigned long> && ctxt_,
+                                           std::optional<unsigned long> && btime_,
+                                           std::optional<unsigned long> && processes_,
+                                           std::optional<unsigned long> && procs_running_,
+                                           std::optional<unsigned long> && procs_blocked_)
         : cpus(std::move(cpus_)),
           page(std::move(page_)),
           swap(std::move(swap_)),

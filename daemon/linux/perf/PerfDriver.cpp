@@ -112,15 +112,18 @@ public:
 
     virtual void read(IPerfAttrsConsumer & /*unused*/, const int /* cpu */, const GatorCpu * /* cluster */) {}
 
-    inline const PerfEventGroupIdentifier & getPerfEventGroupIdentifier() const { return eventGroupIdentifier; }
+    [[nodiscard]] inline const PerfEventGroupIdentifier & getPerfEventGroupIdentifier() const
+    {
+        return eventGroupIdentifier;
+    }
 
-    IPerfGroups::Attr getAttr() const { return attr; }
+    [[nodiscard]] IPerfGroups::Attr getAttr() const { return attr; }
 
-    inline bool hasConfigId2() const { return mConfigId2 != noConfigId2; }
+    [[nodiscard]] inline bool hasConfigId2() const { return mConfigId2 != noConfigId2; }
 
-    inline bool usesAux() const { return mUsesAux; }
+    [[nodiscard]] inline bool usesAux() const { return mUsesAux; }
 
-    IPerfGroups::Attr getAttr2() const
+    [[nodiscard]] IPerfGroups::Attr getAttr2() const
     {
         IPerfGroups::Attr attr2 {attr};
         attr2.config = mConfigId2;
@@ -199,9 +202,7 @@ static long long _getTracepointId(const TraceFsConstants & traceFsConstants, con
 {
     long long result = getTracepointId(traceFsConstants, name);
     if (result <= 0) {
-        logg.logSetup("%s is disabled\n%s was not found",
-                      counter,
-                      getTracepointPath(traceFsConstants, name, "id").c_str());
+        LOG_SETUP("%s is disabled\n%s was not found", counter, getTracepointPath(traceFsConstants, name, "id").c_str());
     }
     return result;
 }
@@ -210,9 +211,7 @@ static std::int64_t _getTracepointId(const TraceFsConstants & traceFsConstants, 
 {
     auto result = getTracepointId(traceFsConstants, name);
     if (result <= 0) {
-        logg.logSetup("%s is disabled\n%s was not found",
-                      name,
-                      getTracepointPath(traceFsConstants, name, "id").c_str());
+        LOG_SETUP("%s is disabled\n%s was not found", name, getTracepointPath(traceFsConstants, name, "id").c_str());
     }
     return result;
 }
@@ -235,16 +234,14 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
     for (const auto & perfCpu : mConfig.cpus) {
 
         if ((perfCpu.pmu_type != PERF_TYPE_RAW) && (perfCpu.pmu_type != PERF_TYPE_HARDWARE)) {
-            logg.logMessage("Adding cpu counters for %s with type %i",
-                            perfCpu.gator_cpu.getCoreName(),
-                            perfCpu.pmu_type);
+            LOG_DEBUG("Adding cpu counters for %s with type %i", perfCpu.gator_cpu.getCoreName(), perfCpu.pmu_type);
         }
-        else if ((perfCpu.gator_cpu.getCpuIds().size() > 1) ||
-                 (!perfCpu.gator_cpu.hasCpuId(PerfDriverConfiguration::UNKNOWN_CPUID))) {
-            logg.logMessage("Adding cpu counters (based on cpuid) for %s", perfCpu.gator_cpu.getCoreName());
+        else if ((perfCpu.gator_cpu.getCpuIds().size() > 1)
+                 || (!perfCpu.gator_cpu.hasCpuId(PerfDriverConfiguration::UNKNOWN_CPUID))) {
+            LOG_DEBUG("Adding cpu counters (based on cpuid) for %s", perfCpu.gator_cpu.getCoreName());
         }
         else {
-            logg.logMessage("Adding cpu counters based on default CPU object");
+            LOG_DEBUG("Adding cpu counters based on default CPU object");
         }
 
         addCpuCounters(perfCpu);
@@ -252,12 +249,11 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
 
     // add uncore PMUs
     for (const auto & perfUncore : mConfig.uncores) {
-        logg.logMessage("Adding uncore counters for %s %s with type %i",
-                        perfUncore.uncore_pmu.getCoreName(),
-                        perfUncore.uncore_pmu.getDeviceInstance() != nullptr
-                            ? perfUncore.uncore_pmu.getDeviceInstance() //
-                            : "",
-                        perfUncore.pmu_type);
+        LOG_DEBUG("Adding uncore counters for %s %s with type %i",
+                  perfUncore.uncore_pmu.getCoreName(),
+                  perfUncore.uncore_pmu.getDeviceInstance() != nullptr ? perfUncore.uncore_pmu.getDeviceInstance() //
+                                                                       : "",
+                  perfUncore.pmu_type);
         addUncoreCounters(perfUncore);
     }
 
@@ -433,9 +429,9 @@ public:
     PerfTracepoint(PerfTracepoint &&) = delete;
     PerfTracepoint & operator=(PerfTracepoint &&) = delete;
 
-    PerfTracepoint * getNext() const { return mNext; }
-    const DriverCounter * getCounter() const { return mCounter; }
-    const char * getTracepoint() const { return mTracepoint.c_str(); }
+    [[nodiscard]] PerfTracepoint * getNext() const { return mNext; }
+    [[nodiscard]] const DriverCounter * getCounter() const { return mCounter; }
+    [[nodiscard]] const char * getTracepoint() const { return mTracepoint.c_str(); }
 
 private:
     PerfTracepoint * const mNext;
@@ -538,11 +534,11 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
         if (tracepoint == nullptr) {
             const char * regex = mxmlElementGetAttr(node, "regex");
             if (regex == nullptr) {
-                logg.logError("The tracepoint counter %s is missing the required tracepoint attribute", counter);
+                LOG_ERROR("The tracepoint counter %s is missing the required tracepoint attribute", counter);
                 handleException();
             }
             else {
-                logg.logMessage("Not using perf for counter %s", counter);
+                LOG_DEBUG("Not using perf for counter %s", counter);
                 continue;
             }
         }
@@ -551,7 +547,7 @@ void PerfDriver::readEvents(mxml_node_t * const xml)
 
         long long id = _getTracepointId(traceFsConstants, counter, tracepoint);
         if (id >= 0) {
-            logg.logMessage("Using perf for %s", counter);
+            LOG_DEBUG("Using perf for %s", counter);
             setCounters(new PerfCounter(getCounters(),
                                         PerfEventGroupIdentifier(),
                                         counter,
@@ -571,9 +567,9 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
     bool isSystemWide = getConfig().is_system_wide;
     bool canAccessTrcPnt = getConfig().can_access_tracepoints;
     if (!isSystemWide || !canAccessTrcPnt) {
-        logg.logMessage("No Mali Tracepoint counters added, (systemwide (%d), canAccessTracepoints(%d))",
-                        isSystemWide,
-                        canAccessTrcPnt);
+        LOG_DEBUG("No Mali Tracepoint counters added, (systemwide (%d), canAccessTracepoints(%d))",
+                  isSystemWide,
+                  canAccessTrcPnt);
         return;
     }
 
@@ -668,12 +664,12 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
     }
 }
 
-lib::Optional<std::uint64_t> PerfDriver::summary(ISummaryConsumer & consumer,
+std::optional<std::uint64_t> PerfDriver::summary(ISummaryConsumer & consumer,
                                                  const std::function<uint64_t()> & getMonotonicTime)
 {
     struct utsname utsname;
     if (uname(&utsname) != 0) {
-        logg.logMessage("uname failed");
+        LOG_DEBUG("uname failed");
         return {};
     }
 
@@ -689,13 +685,13 @@ lib::Optional<std::uint64_t> PerfDriver::summary(ISummaryConsumer & consumer,
 
     long pageSize = sysconf(_SC_PAGESIZE);
     if (pageSize < 0) {
-        logg.logMessage("sysconf _SC_PAGESIZE failed");
+        LOG_DEBUG("sysconf _SC_PAGESIZE failed");
         return {};
     }
 
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-        logg.logMessage("clock_gettime failed");
+        LOG_DEBUG("clock_gettime failed");
         return {};
     }
 
@@ -760,9 +756,9 @@ void PerfDriver::setupCounter(Counter & counter)
 
     const auto & optionalEventCode = counter.getEventCode();
 
-    logg.logMessage("Configuring perf counter %s with event (0x%" PRIxEventCode ")",
-                    perfCounter->getName(),
-                    (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
+    LOG_DEBUG("Configuring perf counter %s with event (0x%" PRIxEventCode ")",
+              perfCounter->getName(),
+              (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
 
     // Don't use the config from counters XML if it's not set, ex: software counters
     if (optionalEventCode.isValid()) {
@@ -776,7 +772,7 @@ void PerfDriver::setupCounter(Counter & counter)
     counter.setKey(perfCounter->getKey());
 }
 
-lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfiguration & spe)
+std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfiguration & spe)
 {
     for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<PerfCounter *>(counter->getNext())) {
@@ -786,18 +782,18 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
             uint64_t config2 = 0;
 
             SET_SPE_CFG(event_filter, spe.event_filter_mask);
-            logg.logMessage("Set Spe Event filter mask : 0x%jx\n ", spe.event_filter_mask);
+            LOG_DEBUG("Set Spe Event filter mask : 0x%jx\n ", spe.event_filter_mask);
             SET_SPE_CFG(min_latency, spe.min_latency);
-            logg.logMessage("Set Spe Event min latency : %d\n ", spe.min_latency);
+            LOG_DEBUG("Set Spe Event min latency : %d\n ", spe.min_latency);
             size_t branchCount = spe.ops.count(SpeOps::BRANCH);
             SET_SPE_CFG(branch_filter, branchCount);
-            logg.logMessage("Set Spe branch ops count : %zu\n ", branchCount);
+            LOG_DEBUG("Set Spe branch ops count : %zu\n ", branchCount);
             size_t loadCount = spe.ops.count(SpeOps::LOAD);
             SET_SPE_CFG(load_filter, loadCount);
-            logg.logMessage("Set Spe load ops count : %zu\n ", loadCount);
+            LOG_DEBUG("Set Spe load ops count : %zu\n ", loadCount);
             size_t storeCount = spe.ops.count(SpeOps::STORE);
             SET_SPE_CFG(store_filter, storeCount);
-            logg.logMessage("Set Spe store ops count : %zu\n ", storeCount);
+            LOG_DEBUG("Set Spe store ops count : %zu\n ", storeCount);
 
             // enable timestamps
             SET_SPE_CFG(ts_enable, 1);
@@ -813,11 +809,11 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
             counter->setConfig2(config2);
 
             if (sampleRate < 0) {
-                logg.logMessage("SPE: Using default sample rate");
+                LOG_DEBUG("SPE: Using default sample rate");
                 counter->setCount(100000 /* approx 10KHz sample rate at 1GHz CPU clock */);
             }
             else {
-                logg.logMessage("SPE: Using user supplied sample rate %d", sampleRate);
+                LOG_DEBUG("SPE: Using user supplied sample rate %d", sampleRate);
                 counter->setCount(sampleRate);
             }
             counter->setEnabled(true);
@@ -832,8 +828,8 @@ lib::Optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
 bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const
 {
     const uint64_t id = getConfig().can_access_tracepoints
-                            ? _getTracepointId(traceFsConstants, "Mali: Job slot events", "mali/mali_job_slots_event")
-                            : 0 /* never used */;
+                          ? _getTracepointId(traceFsConstants, "Mali: Job slot events", "mali/mali_job_slots_event")
+                          : 0 /* never used */;
     bool sentMaliJobSlotEvents = false;
 
     for (const PerfCpu & cluster : mConfig.cpus) {
@@ -868,9 +864,9 @@ bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer)
         if (counter->isEnabled() && (counter->getAttr().type != TYPE_DERIVED)) {
             // do not sent mali_job_slots_event tracepoint multiple times; just send it once and let the processing on the host side
             // deal with multiple counters that are generated from it
-            const bool isMaliJobSlotEvents = getConfig().can_access_tracepoints &&
-                                             (counter->getAttr().type == PERF_TYPE_TRACEPOINT) &&
-                                             (counter->getAttr().config == id);
+            const bool isMaliJobSlotEvents = getConfig().can_access_tracepoints
+                                          && (counter->getAttr().type == PERF_TYPE_TRACEPOINT)
+                                          && (counter->getAttr().config == id);
             const bool skip = (isMaliJobSlotEvents && sentMaliJobSlotEvents);
 
             sentMaliJobSlotEvents |= isMaliJobSlotEvents;
@@ -887,13 +883,13 @@ bool PerfDriver::enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer)
                                        counter->getKey() | 0x40000000,
                                        counter->getAttr2(),
                                        counter->usesAux())) {
-                            logg.logMessage("PerfGroups::add (2nd) failed");
+                            LOG_DEBUG("PerfGroups::add (2nd) failed");
                             return false;
                         }
                     }
                 }
                 else {
-                    logg.logMessage("PerfGroups::add failed");
+                    LOG_DEBUG("PerfGroups::add failed");
                     return false;
                 }
             }
@@ -940,23 +936,23 @@ static bool readKernelAnnotateTrcPntFrmt(IPerfAttrsConsumer & attrsConsumer,
 
 bool PerfDriver::sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer)
 {
-    if (!readTracepointFormat(attrsConsumer, traceFsConstants, SCHED_SWITCH) ||
-        !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_IDLE) ||
-        !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_FREQUENCY)) {
+    if (!readTracepointFormat(attrsConsumer, traceFsConstants, SCHED_SWITCH)
+        || !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_IDLE)
+        || !readTracepointFormat(attrsConsumer, traceFsConstants, CPU_FREQUENCY)) {
         return false;
     }
 
     if (!mDisableKernelAnnotations) {
-        if (!readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_BOOKMARK) ||
-            !readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_TEXT) ||
-            !readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_COUNTER)) {
+        if (!readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_BOOKMARK)
+            || !readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_TEXT)
+            || !readKernelAnnotateTrcPntFrmt(attrsConsumer, traceFsConstants, GATOR_COUNTER)) {
             return false;
         }
     }
 
     for (PerfTracepoint * tracepoint = mTracepoints; tracepoint != nullptr; tracepoint = tracepoint->getNext()) {
-        if (tracepoint->getCounter()->isEnabled() &&
-            !readTracepointFormat(attrsConsumer, traceFsConstants, tracepoint->getTracepoint())) {
+        if (tracepoint->getCounter()->isEnabled()
+            && !readTracepointFormat(attrsConsumer, traceFsConstants, tracepoint->getTracepoint())) {
             return false;
         }
     }

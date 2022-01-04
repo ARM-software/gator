@@ -12,12 +12,12 @@ namespace {
      */
     class WaitForProcessPollerPass : public lnx::ProcessPollerBase::IProcessPollerReceiver {
     public:
-        WaitForProcessPollerPass(const std::string & commandName, const lib::Optional<lib::FsEntry> & realPath)
+        WaitForProcessPollerPass(const std::string & commandName, const std::optional<lib::FsEntry> & realPath)
             : mCommandName(commandName), mRealPath(realPath)
         {
         }
 
-        inline const std::set<int> & pids() const { return mPids; }
+        [[nodiscard]] inline const std::set<int> & pids() const { return mPids; }
 
         void onProcessDirectory(int pid, const lib::FsEntry & path) override
         {
@@ -30,9 +30,9 @@ namespace {
         std::set<int> mPids {};
 
         const std::string & mCommandName;
-        const lib::Optional<lib::FsEntry> & mRealPath;
+        const std::optional<lib::FsEntry> & mRealPath;
 
-        bool shouldTrack(const lib::FsEntry & path) const
+        [[nodiscard]] bool shouldTrack(const lib::FsEntry & path) const
         {
             if (!mCommandName.empty()) {
                 const auto cmdlineFile = lib::FsEntry::create(path, "cmdline");
@@ -41,13 +41,13 @@ namespace {
                 // cmdline is separated by nulls so use c_str() to extract the command name
                 const std::string command {cmdline.c_str()}; // NOLINT(readability-redundant-string-cstr)
                 if (!command.empty()) {
-                    logg.logMessage("Wait for Process: Scanning '%s': cmdline[0] = '%s'",
-                                    path.path().c_str(),
-                                    command.c_str());
+                    LOG_DEBUG("Wait for Process: Scanning '%s': cmdline[0] = '%s'",
+                              path.path().c_str(),
+                              command.c_str());
 
                     // track it if they are the same string
                     if (mCommandName == command) {
-                        logg.logMessage("    Selected as cmdline matches");
+                        LOG_DEBUG("    Selected as cmdline matches");
                         return true;
                     }
 
@@ -57,14 +57,14 @@ namespace {
 
                     // they are the same executable command
                     if (mRealPath && realPath && (*mRealPath == *realPath)) {
-                        logg.logMessage("    Selected as realpath matches (%s)", mRealPath->path().c_str());
+                        LOG_DEBUG("    Selected as realpath matches (%s)", mRealPath->path().c_str());
                         return true;
                     }
 
                     // the basename of the command matches the command name
                     // (e.g. /usr/bin/ls == ls)
                     if (commandPath.name() == mCommandName) {
-                        logg.logMessage("    Selected as name matches");
+                        LOG_DEBUG("    Selected as name matches");
                         return true;
                     }
                 }
@@ -77,7 +77,7 @@ namespace {
 
                 // they are the same executable command
                 if (realPath && (*mRealPath == *realPath)) {
-                    logg.logMessage("Wait for Process: Selected as exe matches (%s)", mRealPath->path().c_str());
+                    LOG_DEBUG("Wait for Process: Selected as exe matches (%s)", mRealPath->path().c_str());
                     return true;
                 }
             }

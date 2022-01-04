@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_SPAN_H
 #define INCLUDE_LIB_SPAN_H
@@ -14,7 +14,8 @@ namespace lib {
      * Array length pair
      */
     template<typename T, typename L = std::size_t>
-    struct Span {
+    class Span {
+    public:
         using value_type = typename std::remove_cv<T>::type;
         using size_type = L;
         using difference_type = typename std::make_signed<L>::type;
@@ -24,72 +25,109 @@ namespace lib {
         using iterator = T *;
         using const_iterator = const T *;
 
-        T * data = nullptr;
-        L length = 0;
+        constexpr L size() const { return length; }
 
-        L size() const { return length; }
-
-        T & operator[](std::size_t pos) const
+        constexpr T & operator[](std::size_t pos) const
         {
             assert(pos < length);
-            return data[pos];
+            return pointer[pos];
         }
 
-        bool operator==(const Span<T, L> & other) const
+        constexpr bool operator==(const Span<T, L> & other) const
         {
             return std::equal(begin(), end(), other.begin(), other.end());
         }
 
-        Span() = default;
+        constexpr Span() = default;
 
         /// convert Span<T> -> Span<const T>
         template<typename U,
                  typename M,
-                 typename = typename std::enable_if<std::is_same<value_type, U>::value &&
-                                                    std::is_convertible<M, L>::value>::type>
-        Span(Span<U, M> other) : data {other.data}, length {other.length}
+                 typename = typename std::enable_if<std::is_same<value_type, U>::value
+                                                    && std::is_convertible<M, L>::value>::type>
+        //NOLINTNEXTLINE(hicpp-explicit-conversions)
+        constexpr Span(Span<U, M> other) : pointer {other.pointer}, length {other.length}
         {
         }
 
-        Span(T * data, L length) : data {data}, length {length} {}
+        constexpr Span(T * data, L length) : pointer {data}, length {length} {}
 
         template<typename C, //
                  typename = typename C::value_type,
                  typename = typename C::size_type, // make sure is a container
                  // make sure copy constructor is preferred to this
                  typename = typename std::enable_if<!std::is_same<typename std::remove_cv<C>::type, Span>::value>::type>
-        Span(C & container) : data {container.data()}, length {container.size()}
+        //NOLINTNEXTLINE(hicpp-explicit-conversions)
+        constexpr Span(C & container) : pointer {container.data()}, length {container.size()}
         {
         }
 
         template<L Size>
-        Span(T (&array)[Size]) : data {array}, length {Size}
+        //NOLINTNEXTLINE(hicpp-explicit-conversions)
+        constexpr Span(T (&array)[Size]) : pointer {array}, length {Size}
         {
         }
 
-        Span subspan(size_type offset) const
+        constexpr Span subspan(size_type offset) const
         {
             assert(offset <= length);
-            return {data + offset, length - offset};
+            return {pointer + offset, length - offset};
         }
 
-        Span subspan(size_type offset, size_type count) const
+        constexpr Span subspan(size_type offset, size_type count) const
         {
             assert(offset + count <= length);
-            return {data + offset, count};
+            return {pointer + offset, count};
         }
 
-        iterator begin() { return data; }
+        [[nodiscard]] constexpr T * data() { return pointer; }
 
-        const_iterator begin() const { return data; }
+        [[nodiscard]] constexpr T const * data() const { return pointer; }
 
-        const_iterator cbegin() const { return data; }
+        [[nodiscard]] constexpr iterator begin() { return pointer; }
 
-        iterator end() { return data + length; }
+        [[nodiscard]] constexpr const_iterator begin() const { return pointer; }
 
-        const_iterator end() const { return data + length; }
+        [[nodiscard]] constexpr const_iterator cbegin() const { return pointer; }
 
-        const_iterator cend() const { return data + length; }
+        [[nodiscard]] constexpr iterator end() { return pointer + length; }
+
+        [[nodiscard]] constexpr const_iterator end() const { return pointer + length; }
+
+        [[nodiscard]] constexpr const_iterator cend() const { return pointer + length; }
+
+        [[nodiscard]] constexpr bool empty() const { return (pointer == nullptr) || (length <= 0); }
+
+        [[nodiscard]] constexpr reference front()
+        {
+            assert(!empty());
+            return pointer[0];
+        }
+
+        [[nodiscard]] constexpr reference back()
+        {
+            assert(!empty());
+            return pointer[length - 1];
+        }
+
+        [[nodiscard]] constexpr const_reference front() const
+        {
+            assert(!empty());
+            return pointer[0];
+        }
+
+        [[nodiscard]] constexpr const_reference back() const
+        {
+            assert(!empty());
+            return pointer[length - 1];
+        }
+
+    private:
+        template<typename, typename>
+        friend class Span;
+
+        T * pointer = nullptr;
+        L length = 0;
     };
 
     /// Creates a Span object, deducing the value_type from the type of the argument

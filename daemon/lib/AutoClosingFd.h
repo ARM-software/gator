@@ -1,12 +1,13 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_AUTO_CLOSING_FD_H
 #define INCLUDE_LIB_AUTO_CLOSING_FD_H
 
 #include "lib/Syscall.h"
 
-#include <unistd.h>
 #include <utility>
+
+#include <unistd.h>
 
 namespace lib {
     /**

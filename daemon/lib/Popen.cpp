@@ -2,16 +2,25 @@
 
 #include "lib/Popen.h"
 
+#include "Logging.h"
+#include "lib/Assert.h"
+
 #include <cerrno>
 #include <climits>
+#include <cstdio>
 #include <cstdlib>
+
 #include <fcntl.h>
+#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 namespace lib {
-    struct PopenResult popen(const char * const command[])
+    struct PopenResult popen(lib::Span<const char * const> command_and_args)
     {
+        runtime_assert(command_and_args.size() > 0, "args size must be > 0");
+        runtime_assert(command_and_args.back() == nullptr, "lib::popen requires null terminated list");
+
         int execerr[2];
         int in[2];
         int out[2];
@@ -41,7 +50,14 @@ namespace lib {
             close(out[1]);
             close(err[1]);
 
-            execvp(command[0], const_cast<char * const *>(command));
+            // disable buffering
+            ::setvbuf(stdout, nullptr, _IONBF, 0);
+            ::setvbuf(stderr, nullptr, _IONBF, 0);
+
+            // get sighup if parent exits
+            ::prctl(PR_SET_PDEATHSIG, SIGHUP);
+
+            execvp(command_and_args[0], const_cast<char * const *>(command_and_args.data()));
             const int error = errno;
             // try and send the errno, but ignore it if it fails
             const ssize_t num = write(execerr[1], &error, sizeof(error));
@@ -49,6 +65,8 @@ namespace lib {
             exit(1);
         }
         else {
+            LOG_DEBUG("Forked child process for '%s' has pid %d", command_and_args[0], pid);
+
             // parent
             close(execerr[1]);
             close(in[0]);

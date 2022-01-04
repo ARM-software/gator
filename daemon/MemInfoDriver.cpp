@@ -43,7 +43,7 @@ void MemInfoDriver::readEvents(mxml_node_t * const /*unused*/)
         setCounters(new MemInfoCounter(getCounters(), "Linux_meminfo_slab", &mSlab));
     }
     else {
-        logg.logSetup("Linux counters\nCannot access /proc/meminfo. Memory usage counters not available.");
+        LOG_SETUP("Linux counters\nCannot access /proc/meminfo. Memory usage counters not available.");
     }
 }
 
@@ -54,7 +54,7 @@ void MemInfoDriver::read(IBlockCounterFrameBuilder & buffer)
     }
 
     if (!mBuf.read("/proc/meminfo")) {
-        logg.logError("Failed to read /proc/meminfo");
+        LOG_ERROR("Failed to read /proc/meminfo");
         handleException();
     }
 

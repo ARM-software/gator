@@ -3,7 +3,7 @@
  <counter_set name="MCU_cnt" count="4"/>
   <category name="MCU" counter_set="MCU_cnt" per_cpu="no">
     <!--CYCLES-->
-    <event counter="MCU_ccnt" title="MCU Clock" event="0x0000" name="Cycles" description="Cycle counter." display="hertz" units="Hz" average_selection="yes" />
+    <event counter="MCU_ccnt" title="MCU Clock" event="0x0000" name="Cycles" description="Cycle counter." units="cycles" />
     <!--Memory Controller-->
     <event title="Memory Controller" event="0x0001" name="Act sent" description="DMC sent ACT command on DFI." />
     <event title="Memory Controller" event="0x0002" name="Pre sent" description="DMC sent PRE command on DFI." />

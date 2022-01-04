@@ -1,0 +1,654 @@
+# Copyright (C) 2010-2021 by Arm Limited. All rights reserved.
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16 FATAL_ERROR)
+
+OPTION(ENABLE_VCPKG "Pull in dependencies using vcpkg" ON)
+
+IF(ENABLE_VCPKG)
+    SET(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/triplets)
+    SET(CMAKE_TOOLCHAIN_FILE   ${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
+ENDIF()
+
+PROJECT(gatord C CXX)
+
+SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+####
+#   Generate compile_commands.json for clang-tidy et al
+####
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Configuration options
+OPTION(GATORD_WERROR                    "Build with -Werror set"                                ON)
+OPTION(CLANG_TIDY_FIX                   "Enable --fix with clang-tidy"                          OFF)
+OPTION(CONFIG_SUPPORT_PROC_POLLING      "Support polling of /proc"                              ON)
+OPTION(CONFIG_PREFER_SYSTEM_WIDE_MODE   "Enable system-wide capture by default"                 ON)
+OPTION(CONFIG_ASSUME_PERF_HIGH_PARANOIA "Assume perf_event_paranoid is 2 if it cannot be read"  ON)
+
+# Include the target detection code
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build-target.cmake)
+
+# Include the source MD5 macro
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/create-src-md5.cmake)
+
+# Include the strip/split-debug rules
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/split-strip.cmake)
+
+# Use ExternalProject to build the native gatord-xml-escape exe
+INCLUDE(ExternalProject)
+
+# Native compiler configuration options (for gatord-xml-escape tool)
+SET(CMAKE_NATIVE_GENERATOR      "${CMAKE_GENERATOR}"
+                                CACHE STRING "Native generator configuration")
+IF(CMAKE_CROSSCOMPILING)
+    IF(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+    SET(CMAKE_NATIVE_C_COMPILER     "clang"
+                                CACHE STRING "Native GCC compiler to use")
+    SET(CMAKE_NATIVE_CXX_COMPILER   "clang++"
+                                CACHE STRING "Native GCC C++ compiler to use")
+    ELSE()
+    SET(CMAKE_NATIVE_C_COMPILER     "gcc"
+                                CACHE STRING "Native GCC compiler to use")
+    SET(CMAKE_NATIVE_CXX_COMPILER   "g++"
+                                CACHE STRING "Native GCC C++ compiler to use")
+    ENDIF()
+ELSE()
+    SET(CMAKE_NATIVE_C_COMPILER     "${CMAKE_C_COMPILER}"
+                                CACHE STRING "Native GCC compiler to use")
+    SET(CMAKE_NATIVE_CXX_COMPILER   "${CMAKE_CXX_COMPILER}"
+                                CACHE STRING "Native GCC C++ compiler to use")
+ENDIF()
+
+# Configure target flags
+SET(GATORD_C_CXX_FLAGS          "-fvisibility=hidden")
+IF(GATORD_WERROR)
+    SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -Werror")
+ENDIF()
+IF(GATORD_BUILD_STATIC)
+    SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -static")
+    SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -static")
+ENDIF()
+IF(GATORD_BUILD_ID)
+    SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -DGATORD_BUILD_ID=\"${GATORD_BUILD_ID}\"")
+    MESSAGE(STATUS "GATORD_BUILD_ID = ${GATORD_BUILD_ID}")
+ENDIF()
+IF (NOT CONFIG_SUPPORT_PROC_POLLING)
+SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -DCONFIG_SUPPORT_PROC_POLLING=0")
+ENDIF()
+IF (NOT CONFIG_PREFER_SYSTEM_WIDE_MODE)
+SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -DCONFIG_PREFER_SYSTEM_WIDE_MODE=0")
+ENDIF()
+IF (NOT CONFIG_ASSUME_PERF_HIGH_PARANOIA)
+SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -DCONFIG_ASSUME_PERF_HIGH_PARANOIA=0")
+ENDIF()
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler-flags.cmake)
+
+# Find the external dependencies
+FIND_PACKAGE(mxml CONFIG REQUIRED)
+FIND_PACKAGE(Threads REQUIRED)
+SET(Boost_USE_MULTITHREADED ON)
+FIND_PACKAGE(Boost 1.75 REQUIRED COMPONENTS
+    filesystem
+)
+ADD_DEFINITIONS(-DBOOST_FILESYSTEM_NO_DEPRECATED)
+
+
+ADD_DEFINITIONS(-DETCDIR="/etc")
+INCLUDE_DIRECTORIES(        ${CMAKE_CURRENT_SOURCE_DIR}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/libsensors
+                            ${CMAKE_CURRENT_BINARY_DIR})
+
+# This file is generated and contains a hash of the source files
+SET(GENERATED_MD5_SOURCE    ${CMAKE_CURRENT_BINARY_DIR}/SrcMd5.cpp)
+SET(GENERATED_MD5_FILE      ${CMAKE_CURRENT_BINARY_DIR}/SrcMd5.md5)
+
+# The source files to build
+SET(GATORD_3RD_PARTY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/k/perf_event.h
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/access.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/conf-lex.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/conf-parse.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/data.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/error.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/general.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/init.c
+                             ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/sysfs.c)
+
+SET_SOURCE_FILES_PROPERTIES(${GATORD_3RD_PARTY_SOURCES}
+                            COMPILE_FLAGS -w)
+
+SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/AtraceDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/AtraceDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/BlockCounterFrameBuilder.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/BlockCounterFrameBuilder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/BlockCounterMessageConsumer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/BlockCounterMessageConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Buffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Buffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/BufferUtils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/BufferUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CapturedSpe.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CapturedXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CapturedXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CCNDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CCNDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Child.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Child.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Command.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Command.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CommitTimeChecker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Config.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Configuration.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationXMLParser.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ConfigurationXMLParser.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Constant.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Constant.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ConstantMode.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Counter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CounterXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CounterXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CpuUtils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CpuUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CpuUtils_Topology.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/CpuUtils_Topology.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/DiskIODriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/DiskIODriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/DriverCounter.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/DriverCounter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Driver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Drivers.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Drivers.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/DynBuf.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/DynBuf.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/EventCode.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Events.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ExitStatus.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ExternalDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ExternalDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ExternalSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ExternalSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Fifo.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Fifo.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/FSDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/FSDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/FtraceDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/FtraceDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GatorCLIFlags.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GatorCLIParser.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GatorCLIParser.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GatorException.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GatorMain.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GatorMain.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GetEventKey.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/GetEventKey.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/HwmonDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/HwmonDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/IBlockCounterFrameBuilder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/IBlockCounterMessageConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/IBufferControl.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ICpuInfo.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/IMonitor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/IRawFrameBuilder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ISender.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ISummaryConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/LocalCapture.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/LocalCapture.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Logging.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/MemInfoDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/MemInfoDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/MidgardDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/MidgardDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Monitor.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Monitor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/NetDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/NetDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/OlySocket.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/OlySocket.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/OlyUtility.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/OlyUtility.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ParserResult.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ParserResult.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/pmus_xml.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/PolledDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/PolledDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/PrimarySourceProvider.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/PrimarySourceProvider.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Proc.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Proc.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Protocol.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ProtocolVersion.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Sender.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Sender.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SessionData.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SessionData.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Source.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetup.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetup.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetupLoop.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetupLoop.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Tracepoints.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Tracepoints.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/UEvent.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/UEvent.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/UserSpaceSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/UserSpaceSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/AndroidActivityManager.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/AndroidActivityManager.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/AppGatorRunner.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/AppGatorRunner.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/GatorAndroidSetupHandler.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/GatorAndroidSetupHandler.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/IAppGatorRunner.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/Spawn.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/Spawn.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/Utils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/Utils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ByteOrder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/CaptureMode.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/CounterDirectoryDecoder.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/CounterDirectoryDecoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/CounterDirectoryStateUtils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/CounterDirectoryStateUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DecoderUtility.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DecoderUtility.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DriverSourceIpc.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DriverSourceIpc.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/FrameBuilderFactory.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/FrameBuilderFactory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/GlobalState.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/GlobalState.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IAcceptor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ICaptureController.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ICounterConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ICounterDirectoryConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IEncoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IFrameBuilderFactory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IGlobalState.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPacketConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPacketDecoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPeriodicCounterCaptureConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPeriodicCounterSelectionConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPerJobCounterCaptureConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPerJobCounterSelectionConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISender.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISession.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISessionPacketSender.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IStartStopHandler.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketDecoder.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketDecoderEncoderFactory.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketDecoderEncoderFactory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketDecoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketEncoder.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketEncoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketUtility.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketUtility.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketUtilityModels.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SenderQueue.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SenderQueue.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SenderThread.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SenderThread.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/Session.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/Session.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionPacketSender.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionPacketSender.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionStateTracker.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionStateTracker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketAcceptor.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketAcceptor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketIO.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketIO.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ThreadManagementServer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ThreadManagementServer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/TimestampCorrector.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/armnn/TimestampCorrector.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/capture/CaptureProcess.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/capture/CaptureProcess.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/capture/internal/UdpListener.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/codec.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/message_key.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/messages.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/message_traits.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/raw_ipc_channel_sink.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/raw_ipc_channel_source.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Assert.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Assert.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/AutoClosingFd.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/EnumUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/File.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/File.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Format.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsEntry.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsEntry.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/GenericTimer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Istream.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Memory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/PmuCommonEvents.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Popen.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Popen.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Process.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Process.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Resource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Resource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/SharedMemory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Span.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/StaticVector.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/String.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Syscall.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Syscall.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Throw.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Time.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/TimestampSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/TimestampSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Utils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Utils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/Waiter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/WaitForProcessPoller.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/WaitForProcessPoller.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/CoreOnliner.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/CoreOnliner.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/PerCoreIdentificationThread.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/PerCoreIdentificationThread.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfAttrsConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfBufferConsumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfGroups.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfAttrsBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfAttrsBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfConfig.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfCpuOnlineMonitor.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfCpuOnlineMonitor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverConfiguration.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverConfiguration.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroup.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroup.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroupIdentifier.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroupIdentifier.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfGroups.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfGroups.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThreadBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThreadBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThread.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThread.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfToMemoryBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfToMemoryBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcessChildren.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcessChildren.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcessPollerBase.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcessPollerBase.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcLoadAvgFileRecord.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcLoadAvgFileRecord.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcPidStatFileRecord.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcPidStatFileRecord.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcPidStatmFileRecord.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcPidStatmFileRecord.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcStatFileRecord.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcStatFileRecord.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/SysfsSummaryInformation.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/SysfsSummaryInformation.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/logging/logging.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/IMaliHwCntrReader.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDeviceApi.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDeviceApi_DdkDefines.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDeviceApi.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntr.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNames.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrReader.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrReader.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrTask.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrTask.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliInstanceLocator.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliInstanceLocator.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/CounterHelpers.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalCounter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalPoller.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalPoller.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStateChangeHandler.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStateChangeHandler.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStatsTracker.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStatsTracker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/MixedFrameBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/MixedFrameBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootCounter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootDriver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootSource.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/PerCoreMixedFrameBuffer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/PerCoreMixedFrameBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessCounter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessPoller.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessPoller.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateChangeHandler.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateChangeHandler.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateTracker.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateTracker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStatsTracker.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStatsTracker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/CurrentConfigXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/CurrentConfigXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXMLProcessor.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXMLProcessor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/MxmlUtils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/MxmlUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/PmuXML.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/PmuXML.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/PmuXMLParser.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/xml/PmuXMLParser.h
+)
+
+SET(GATORD_SOURCES          ${GATORD_SRC_FILES}
+                            ${GATORD_3RD_PARTY_SOURCES}
+                            ${GENERATED_MD5_SOURCE}
+                            ${CMAKE_CURRENT_BINARY_DIR}/defaults_xml.h
+                            ${CMAKE_CURRENT_BINARY_DIR}/events_xml.h
+                            ${CMAKE_CURRENT_BINARY_DIR}/pmus_xml.h)
+
+
+# Create a list of files to hash for the generated hash file
+SET(GLOB                    FILES_TO_HASH
+                            ${CMAKE_CURRENT_SOURCE_DIR}/events-*.xml)
+SET(FILES_TO_HASH           ${FILES_TO_HASH}
+                            ${GATORD_SRC_FILES}
+                            ${GATORD_3RD_PARTY_SOURCES}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/events_header.xml
+                            ${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml
+                            ${CMAKE_CURRENT_SOURCE_DIR}/pmus.xml
+                            ${CMAKE_CURRENT_SOURCE_DIR}/defaults.xml)
+LIST(FILTER                 FILES_TO_HASH EXCLUDE REGEX "SrcMd5\\.cpp|_xml\\.h|events\\.xml")
+CREATE_SRC_MD5(             "gSrcMd5"
+                            ${GENERATED_MD5_SOURCE} ${GENERATED_MD5_FILE}
+                            ${FILES_TO_HASH})
+
+# Build the merged events.xml
+FILE(GLOB                   EVENTS_XML_FILES
+                            ${CMAKE_CURRENT_SOURCE_DIR}/events-*.xml)
+LIST(SORT                   EVENTS_XML_FILES)
+LIST(REMOVE_DUPLICATES      EVENTS_XML_FILES)
+
+# Convert the list to a string that can be passed to the custom command
+SET(EVENTS_XML_FILES_STRING "${CMAKE_CURRENT_SOURCE_DIR}/events_header.xml")
+FOREACH(EVENTS_XML_FILE     ${EVENTS_XML_FILES})
+    SET(EVENTS_XML_FILES_STRING
+                            "${EVENTS_XML_FILES_STRING};${EVENTS_XML_FILE}")
+ENDFOREACH()
+SET(EVENTS_XML_FILES_STRING "${EVENTS_XML_FILES_STRING};${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml")
+
+SET(CONCATENATED_EVENTS_XML ${CMAKE_CURRENT_BINARY_DIR}/events.xml)
+ADD_CUSTOM_COMMAND(OUTPUT   ${CONCATENATED_EVENTS_XML}
+                   COMMAND  ${CMAKE_COMMAND} -DOUTPUT_FILE="${CONCATENATED_EVENTS_XML}"
+                                             -DFILES_TO_CONCATENATE="${EVENTS_XML_FILES_STRING}"
+                                             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake
+                   DEPENDS  ${CMAKE_CURRENT_SOURCE_DIR}/events_header.xml
+                            ${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml
+                            ${EVENTS_XML_FILES}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake)
+
+# Build the gatord-xml-escape using the native compiler
+SET(GATORD_XML_ESCAPE_TOOL  ${CMAKE_CURRENT_BINARY_DIR}/escape/gatord-xml-escape)
+
+ExternalProject_Add(gatord-xml-escape
+    DOWNLOAD_COMMAND        ""
+    SOURCE_DIR              "${CMAKE_CURRENT_SOURCE_DIR}/escape"
+    CONFIGURE_COMMAND       ${CMAKE_COMMAND} -G "${CMAKE_NATIVE_GENERATOR}" "${CMAKE_CURRENT_SOURCE_DIR}/escape"
+                                             -DCMAKE_C_COMPILER=${CMAKE_NATIVE_C_COMPILER}
+                                             -DCMAKE_CXX_COMPILER=${CMAKE_NATIVE_CXX_COMPILER}
+                                             -DCMAKE_C_FLAGS=
+                                             -DCMAKE_CXX_FLAGS=
+    INSTALL_COMMAND         ""
+    BINARY_DIR              ${CMAKE_CURRENT_BINARY_DIR}/escape
+)
+
+ADD_CUSTOM_COMMAND(OUTPUT   ${GATORD_XML_ESCAPE_TOOL}
+                   DEPENDS  gatord-xml-escape)
+
+# Macro to aid generation of xml->header files
+SET(ALL_XML_HEADERS         )
+MACRO(CREATE_XML_HEADER     CONSTANT_NAME
+                            SOURCE_XML_FILE
+                            OUTPUT_HEADER_FILE)
+    ADD_CUSTOM_COMMAND(OUTPUT   ${OUTPUT_HEADER_FILE}
+                       COMMAND  ${GATORD_XML_ESCAPE_TOOL} ${CONSTANT_NAME} ${SOURCE_XML_FILE} ${OUTPUT_HEADER_FILE}
+                       DEPENDS  gatord-xml-escape
+                                ${GATORD_XML_ESCAPE_TOOL}
+                                ${SOURCE_XML_FILE})
+    LIST(APPEND ALL_XML_HEADERS ${OUTPUT_HEADER_FILE})
+ENDMACRO()
+
+# Target to generate defaults_xml.h
+CREATE_XML_HEADER(          defaults.xml
+                            ${CMAKE_CURRENT_SOURCE_DIR}/defaults.xml
+                            ${CMAKE_CURRENT_BINARY_DIR}/defaults_xml.h)
+
+# Target to generate pmus_xml.h
+CREATE_XML_HEADER(          pmus.xml
+                            ${CMAKE_CURRENT_SOURCE_DIR}/pmus.xml
+                            ${CMAKE_CURRENT_BINARY_DIR}/pmus_xml.h)
+
+# Target to generate events.h
+CREATE_XML_HEADER(          events.xml
+                            ${CONCATENATED_EVENTS_XML}
+                            ${CMAKE_CURRENT_BINARY_DIR}/events_xml.h)
+
+
+####
+#   Find various optional tools
+####
+FIND_FILE(CLANG_FORMAT NAMES "clang-format${CMAKE_EXECUTABLE_SUFFIX}"
+                       NO_CMAKE_FIND_ROOT_PATH)
+FIND_FILE(CLANG_TIDY NAMES "clang-tidy${CMAKE_EXECUTABLE_SUFFIX}"
+                     NO_CMAKE_FIND_ROOT_PATH)
+
+####
+#   Add a custom targets for running clang-format and clang tidy
+####
+IF(EXISTS ${CLANG_FORMAT})
+    ADD_CUSTOM_TARGET(clang-format
+                      COMMAND ${CLANG_FORMAT} -i ${GATORD_SRC_FILES}
+                      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                      DEPENDS ${ALL_XML_HEADERS}
+                      SOURCES ${GATORD_SRC_FILES}
+                      COMMENT "Run clang-format on the sources")
+ENDIF()
+
+IF(EXISTS ${CLANG_TIDY})
+    ### CMAKE_xxx_CLANG_TIDY need to be before the ADD_EXECUTABLE
+    OPTION(ENABLE_CLANG_TIDY_DURING_BUILD   "Compile and tidy at the same time" OFF)
+    IF(ENABLE_CLANG_TIDY_DURING_BUILD)
+        SET(CMAKE_C_CLANG_TIDY      ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR})
+        SET(CMAKE_CXX_CLANG_TIDY    ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR})
+    ENDIF()
+    ADD_CUSTOM_TARGET(clang-tidy
+                      COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR} $<$<BOOL:${CLANG_TIDY_FIX}>:--fix> ${GATORD_SRC_FILES}
+                      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                      DEPENDS ${ALL_XML_HEADERS}
+                      SOURCES ${GATORD_SRC_FILES}
+                      COMMENT "Run clang-tidy on the sources")
+ENDIF()
+
+# Generate the gatord executable
+ADD_EXECUTABLE(gatord ${GATORD_SOURCES})
+
+TARGET_LINK_LIBRARIES(gatord
+    PRIVATE Threads::Threads
+    PRIVATE atomic
+    PRIVATE mxml
+    PRIVATE Boost::boost
+    PRIVATE Boost::filesystem
+)
+IF(NOT ANDROID)
+    TARGET_LINK_LIBRARIES(gatord
+        PRIVATE rt
+        PRIVATE m
+    )
+ENDIF()
+
+# Strip binary
+IF (NOT((${CMAKE_BUILD_TYPE} STREQUAL "Debug") OR (${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")))
+    ADD_CUSTOM_COMMAND(TARGET gatord POST_BUILD
+                       COMMAND ${CMAKE_STRIP} --strip-unneeded --strip-debug $<TARGET_FILE:gatord>
+                       COMMENT "Stripping gatord")
+ENDIF()
+
+
+#
+#   Strip target?
+#
+STRIP_TARGET("gatord")
+
+# Installation configuration
+IF(NOT DEFINED GATOR_INSTALL_PREFIX)
+    SET(GATOR_INSTALL_PREFIX    "share/gator-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+ENDIF()
+
+SET(GATORD_INSTALL_DIR      ./${GATOR_INSTALL_PREFIX}/daemon/)
+
+INSTALL(TARGETS             gatord
+        RUNTIME DESTINATION ${GATORD_INSTALL_DIR})
+
+INSTALL(FILES       ${CMAKE_CURRENT_SOURCE_DIR}/COPYING
+        DESTINATION ${GATORD_INSTALL_DIR})
+

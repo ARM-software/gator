@@ -10,10 +10,11 @@
 #include <csignal>
 #include <cstdio>
 #include <cstring>
+#include <utility>
+
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <utility>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -69,7 +70,9 @@ void PerfSyncThread::start(std::uint64_t monotonicRawBase)
 void PerfSyncThread::terminate()
 {
     terminateFlag.store(true, std::memory_order_release);
-    thread.join();
+    if (thread.joinable()) {
+        thread.join();
+    }
 }
 
 void PerfSyncThread::rename(std::uint64_t currentTime) const
@@ -101,10 +104,10 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
         struct sched_param param;
         param.sched_priority = sched_get_priority_max(SCHED_FIFO);
         if (sched_setscheduler(tid, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
-            logg.logMessage("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
+            LOG_DEBUG("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
             param.sched_priority = sched_get_priority_max(SCHED_OTHER);
             if (sched_setscheduler(tid, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
-                logg.logMessage("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
+                LOG_DEBUG("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
             }
         }
     }
@@ -113,11 +116,11 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
     {
         sigset_t set;
         if (sigfillset(&set) != 0) {
-            logg.logError("sigfillset failed: %d (%s)", errno, strerror(errno));
+            LOG_ERROR("sigfillset failed: %d (%s)", errno, strerror(errno));
             handleException();
         }
         if (sigprocmask(SIG_SETMASK, &set, nullptr) != 0) {
-            logg.logError("sigprocmask failed %d (%s)", errno, strerror(errno));
+            LOG_ERROR("sigprocmask failed %d (%s)", errno, strerror(errno));
             handleException();
         }
     }
@@ -152,7 +155,7 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
         ts.tv_sec = NS_TO_SLEEP / NS_PER_S;
         ts.tv_nsec = NS_TO_SLEEP % NS_PER_S;
         if (nanosleep(&ts, nullptr) != 0) {
-            logg.logError("nanosleep failed: %d (%s)", errno, strerror(errno));
+            LOG_ERROR("nanosleep failed: %d (%s)", errno, strerror(errno));
             handleException();
         }
     } while (!terminateFlag.load(std::memory_order_acquire));

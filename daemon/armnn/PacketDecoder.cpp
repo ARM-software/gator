@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 #include "armnn/PacketDecoder.h"
 
 #include "armnn/CounterDirectoryDecoder.h"
@@ -23,7 +23,7 @@ namespace armnn {
                 //1.x.x
                 const CounterDirectoryDecoder cdd(byteOrder, consumer);
                 if (!cdd.decode(payload)) {
-                    logg.logError("Decode and consume of counter directory packet failed");
+                    LOG_ERROR("Decode and consume of counter directory packet failed");
                     return DecodingStatus::Failed;
                 }
             } break;
@@ -32,7 +32,7 @@ namespace armnn {
             {
                 //1.x.x
                 if (!armnn::decodeAndConsumePeriodicCounterSelectionPkt(payload, byteOrder, consumer)) {
-                    logg.logError("Decode and consume of period counter selection failed");
+                    LOG_ERROR("Decode and consume of period counter selection failed");
                     return DecodingStatus::Failed;
                 }
 
@@ -41,7 +41,7 @@ namespace armnn {
             {
                 //1.x.x
                 if (!armnn::decodeAndConsumePerJobCounterSelectionPkt(payload, byteOrder, consumer)) {
-                    logg.logError("Decode and consume of per job counter selection failed");
+                    LOG_ERROR("Decode and consume of per job counter selection failed");
                     return DecodingStatus::Failed;
                 }
 
@@ -50,7 +50,7 @@ namespace armnn {
             {
                 //1.x.x
                 if (!armnn::decodeAndConsumePeriodicCounterCapturePkt(payload, byteOrder, consumer)) {
-                    logg.logError("Decode and consume of periodic counter capture failed");
+                    LOG_ERROR("Decode and consume of periodic counter capture failed");
                     return DecodingStatus::Failed;
                 }
 
@@ -59,7 +59,7 @@ namespace armnn {
             {
                 //1.x.x
                 if (!armnn::decodeAndConsumePerJobCounterCapturePkt(true, payload, byteOrder, consumer)) {
-                    logg.logError("Decode and consume of pre per job counter capture failed");
+                    LOG_ERROR("Decode and consume of pre per job counter capture failed");
                     return DecodingStatus::Failed;
                 }
 
@@ -68,7 +68,7 @@ namespace armnn {
             {
                 //1.x.x
                 if (!armnn::decodeAndConsumePerJobCounterCapturePkt(false, payload, byteOrder, consumer)) {
-                    logg.logError("Decode and consume of post per job counter capture failed");
+                    LOG_ERROR("Decode and consume of post per job counter capture failed");
                     return DecodingStatus::Failed;
                 }
 
@@ -86,10 +86,10 @@ namespace armnn {
                 break;
             }
             default:
-                logg.logError("Packet type unsupported by decoder 0x%08x (family=0x%02x, id=0x%03x)",
-                              type,
-                              getBits(type, 26, 31),
-                              getBits(type, 16, 25));
+                LOG_ERROR("Packet type unsupported by decoder 0x%08x (family=0x%02x, id=0x%03x)",
+                          type,
+                          getBits(type, 26, 31),
+                          getBits(type, 16, 25));
                 return DecodingStatus::Failed;
                 break;
         }
@@ -114,13 +114,12 @@ namespace armnn {
                 case lib::toEnumValue(PacketType::TimelineMessagePkt): {
                     auto majorVersion = getBits(packetVersion, 22, 31);
                     if (majorVersion != SUPPORTED_PACKET_MAJOR_VERSION[0]) {
-                        logg.logError(
-                            "Unsupported packet version (%u:%u:%u) for packet type (family=0x%02x, id=0x%03x)",
-                            majorVersion,
-                            getBits(packetVersion, 12, 22),
-                            getBits(packetVersion, 0, 11),
-                            pktVersion.packetFamily,
-                            pktVersion.packetId);
+                        LOG_ERROR("Unsupported packet version (%u:%u:%u) for packet type (family=0x%02x, id=0x%03x)",
+                                  majorVersion,
+                                  getBits(packetVersion, 12, 22),
+                                  getBits(packetVersion, 0, 11),
+                                  pktVersion.packetFamily,
+                                  pktVersion.packetId);
                         return false;
                     }
                     validPacket = true;
@@ -134,9 +133,9 @@ namespace armnn {
                     break;
                 }
                 default:
-                    logg.logError("No decoder supported yet for packet type (family=0x%02x, id=0x%03x)",
-                                  pktVersion.packetFamily,
-                                  pktVersion.packetId);
+                    LOG_ERROR("No decoder supported yet for packet type (family=0x%02x, id=0x%03x)",
+                              pktVersion.packetFamily,
+                              pktVersion.packetId);
                     break;
             }
         }

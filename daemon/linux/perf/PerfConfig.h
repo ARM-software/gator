@@ -23,7 +23,8 @@ struct PerfConfig {
     bool has_armv7_pmu_driver = false;
 
     // which register sets are available
-    bool has_64bit_register_set = false;
+    bool has_64bit_uname = false;
+    bool use_64bit_register_set = false;
 };
 
 #endif // PERFCONFIG_H

@@ -2,7 +2,7 @@
 
   <counter_set name="Perf_Hardware_cnt" count="6"/>
   <category name="Perf Hardware" counter_set="Perf_Hardware_cnt" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="Perf_Hardware_ccnt" event="0" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+    <event counter="Perf_Hardware_ccnt" event="0" title="Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
     <event event="1" title="Instruction" name="Executed" description="Instruction executed"/>
     <event event="2" title="Cache" name="References" description="Cache References"/>
     <event event="3" title="Cache" name="Misses" description="Cache Misses"/>

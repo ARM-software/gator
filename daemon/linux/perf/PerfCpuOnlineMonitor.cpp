@@ -5,9 +5,10 @@
 #include "lib/FsEntry.h"
 
 #include <cstring>
+#include <utility>
+
 #include <sys/prctl.h>
 #include <unistd.h>
-#include <utility>
 
 PerfCpuOnlineMonitor::PerfCpuOnlineMonitor(NotificationCallback callback)
     : callback(std::move(callback)), thread(launch, this)
@@ -42,11 +43,11 @@ void PerfCpuOnlineMonitor::run() noexcept
     const lib::FsEntry sysFsCpuRootPath = lib::FsEntry::create("/sys/devices/system/cpu");
     while (!terminated.load(std::memory_order_acquire)) {
         // loop through files
-        lib::Optional<lib::FsEntry> child;
+        std::optional<lib::FsEntry> child;
         lib::FsEntryDirectoryIterator iterator = sysFsCpuRootPath.children();
 
         bool anyOffline = false;
-        while ((child = iterator.next()).valid()) {
+        while (!!(child = iterator.next())) {
             const auto & name = child->name();
             if ((name.length() > 3) && (name.find("cpu") == 0)) {
                 // find a CPU node

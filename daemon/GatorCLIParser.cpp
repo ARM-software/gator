@@ -4,11 +4,22 @@
 
 #include "Config.h"
 #include "lib/Istream.h"
+#include "lib/Utils.h"
 
 #include <algorithm>
 #include <sstream>
 
-static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:k:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:VX:Z:";
+namespace {
+    constexpr int DECIMAL_BASE = 10;
+    constexpr int HEX_BASE = 16;
+    constexpr int MIN_LATENCY = 4096;
+    constexpr int MAX_EVENT_BIT_POSITION = 63;
+    constexpr int GATOR_ANNOTATION_PORT1 = 8082;
+    constexpr int GATOR_ANNOTATION_PORT2 = 8083;
+    constexpr int GATOR_MAX_VALUE_PORT = 65535;
+}
+
+static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:VX:Z:";
 
 static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                                 // OF NEW ITEMS.
@@ -20,6 +31,8 @@ static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPH
     {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
     {"pid", /********************/ required_argument, nullptr, 'i'}, //
     {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
+    ANDROID_PACKAGE,                                                 //
+    ANDROID_ACTIVITY,                                                //
     {"output", /*****************/ required_argument, nullptr, 'o'}, //
     {"port", /*******************/ required_argument, nullptr, 'p'}, //
     {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
@@ -29,7 +42,7 @@ static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPH
     {"version", /****************/ required_argument, nullptr, 'v'}, //
     {"app-cwd", /****************/ required_argument, nullptr, 'w'}, //
     {"stop-on-exit", /***********/ required_argument, nullptr, 'x'}, //
-    {"app", /********************/ required_argument, nullptr, 'A'}, //
+    APP,                                                             //
     {"counters", /***************/ required_argument, nullptr, 'C'}, //
     {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
     {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
@@ -37,7 +50,7 @@ static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPH
     /********************************************************* 'N' ***/
     {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
     {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
-    {"wait-process", /***********/ required_argument, nullptr, 'Q'}, //
+    WAIT_PROCESS,                                                    //
     {"print", /******************/ required_argument, nullptr, 'R'}, //
     {"system-wide", /************/ required_argument, nullptr, 'S'}, //
     {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
@@ -89,10 +102,10 @@ void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
     if ((eventpos = subStr.find(':')) != std::string::npos) {
         auto eventStr = subStr.substr(eventpos + 1, subStr.size());
         long long eventCode;
-        if (!stringToLongLong(&eventCode, eventStr.c_str(), 10)) {     //check for decimal
-            if (!stringToLongLong(&eventCode, eventStr.c_str(), 16)) { //check for hex
-                logg.logError("event must be an integer");
-                result.mode = ExecutionMode::EXIT;
+        if (!stringToLongLong(&eventCode, eventStr.c_str(), DECIMAL_BASE)) { //check for decimal
+            if (!stringToLongLong(&eventCode, eventStr.c_str(), HEX_BASE)) { //check for hex
+                LOG_ERROR("event must be an integer");
+                result.parsingFailed();
                 return;
             }
         }
@@ -109,8 +122,8 @@ void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
 
     while (it != result.events.end()) {
         if (strcasecmp(it->first.c_str(), counterType.c_str()) == 0) {
-            logg.logError("Counter already added. %s ", counterType.c_str());
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("Counter already added. %s ", counterType.c_str());
+            result.parsingFailed();
             return;
         }
         ++it;
@@ -120,6 +133,7 @@ void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
 
 int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
 {
+    std::string command;
     result.mCaptureCommand.clear();
     int found = 0;
     std::string shortAppArg("-A");
@@ -136,9 +150,13 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
             if (argc > found + 1) {
                 for (int i = found + 1; i < argc; i++) {
                     result.mCaptureCommand.emplace_back(argv[i]);
+                    command += " " + std::string(argv[i]);
                 }
             }
-
+            size_t start = command.find_first_not_of(' ');
+            result.addArgValuePair({"A",
+                                    start == std::string::npos ? std::optional<std::string>(command)
+                                                               : std::optional<std::string>(command.substr(start))});
             result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_CAPTURE_COMMAND;
         }
     }
@@ -201,13 +219,13 @@ void GatorCLIParser::parseAndUpdateSpe()
                 if (spe.size() == 2) { //should be a key value pair to add
                     if (spe[0] == SPE_MIN_LATENCY_KEY) {
                         if (!stringToInt(&(data.min_latency), spe[1].c_str(), 0)) {
-                            logg.logError("latency not an integer %s (%s)", data.id.c_str(), spe[1].c_str());
-                            result.mode = ExecutionMode::EXIT;
+                            LOG_ERROR("latency not an integer %s (%s)", data.id.c_str(), spe[1].c_str());
+                            result.parsingFailed();
                             return;
                         }
-                        if (data.min_latency < 0 || data.min_latency >= 4096) {
-                            logg.logError("Invalid minimum latency for %s (%d)", data.id.c_str(), data.min_latency);
-                            result.mode = ExecutionMode::EXIT;
+                        if (data.min_latency < 0 || data.min_latency >= MIN_LATENCY) {
+                            LOG_ERROR("Invalid minimum latency for %s (%d)", data.id.c_str(), data.min_latency);
+                            result.parsingFailed();
                             return;
                         }
                     }
@@ -216,18 +234,18 @@ void GatorCLIParser::parseAndUpdateSpe()
                         split(spe[1], SPES_KEY_VALUE_DELIMITER, spe_events);
                         for (const std::string & spe_event : spe_events) {
                             int event;
-                            if (!stringToInt(&event, spe_event.c_str(), 10)) {
-                                logg.logError("Event filter cannot be a non integer , failed for %s ",
-                                              spe_event.c_str());
-                                result.mode = ExecutionMode::EXIT;
+                            if (!stringToInt(&event, spe_event.c_str(), DECIMAL_BASE)) {
+                                LOG_ERROR("Event filter cannot be a non integer , failed for %s ", spe_event.c_str());
+                                result.parsingFailed();
                                 return;
                             }
-                            if ((event < 0 || event > 63)) {
-                                logg.logError("Event filter should be a bit position from 0 - 63 , failed for %d ",
-                                              event);
-                                result.mode = ExecutionMode::EXIT;
+                            if ((event < 0 || event > MAX_EVENT_BIT_POSITION)) {
+                                LOG_ERROR("Event filter should be a bit position from 0 - 63 , failed for %d ", event);
+                                result.parsingFailed();
                                 return;
                             }
+                            //FIXME
+                            //NOLINTNEXTLINE(hicpp-signed-bitwise)
                             data.event_filter_mask = data.event_filter_mask | 1 << event;
                         }
                     }
@@ -248,31 +266,31 @@ void GatorCLIParser::parseAndUpdateSpe()
                                     data.ops.insert(SpeOps::BRANCH);
                                 }
                                 else {
-                                    logg.logError("Not a valid Ops %s", spe_ops_it.c_str());
-                                    result.mode = ExecutionMode::EXIT;
+                                    LOG_ERROR("Not a valid Ops %s", spe_ops_it.c_str());
+                                    result.parsingFailed();
                                     return;
                                 }
                             }
                         }
                     }
                     else { // invalid key
-                        logg.logError("--spe arguments not in correct format %s ", spe_data_it.c_str());
-                        result.mode = ExecutionMode::EXIT;
+                        LOG_ERROR("--spe arguments not in correct format %s ", spe_data_it.c_str());
+                        result.parsingFailed();
                         return;
                     }
                 }
                 else {
-                    logg.logError("--spe arguments not in correct format %s ", spe_data_it.c_str());
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("--spe arguments not in correct format %s ", spe_data_it.c_str());
+                    result.parsingFailed();
                     return;
                 }
             }
             result.mSpeConfigs.push_back(data);
-            logg.logMessage("Adding spe -> %s", data.id.c_str());
+            LOG_DEBUG("Adding spe -> %s", data.id.c_str());
         }
         else {
-            logg.logError("No Id provided for --spe");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("No Id provided for --spe");
+            result.parsingFailed();
             return;
         }
     }
@@ -284,7 +302,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                                        int maxPerformanceCounter,
                                        const char * gSrcMd5)
 {
-    logg.logError("%s", version_string);
+    LOG_ERROR("%s", version_string);
     const int indexApp = findAndUpdateCmndLineCmnd(argc, argv);
     if (indexApp > 0) {
         argc = indexApp;
@@ -297,11 +315,13 @@ void GatorCLIParser::parseCLIArguments(int argc,
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
         SampleRate sampleRate;
         std::string value;
+        result.addArgValuePair(
+            {std::string(1, char(c)), optarg == nullptr ? std::nullopt : std::optional<std::string>(optarg)});
         switch (c) {
             case 'N':
                 if (!stringToInt(&result.mAndroidApiLevel, optarg, 10)) {
-                    logg.logError("-N must be followed by an int");
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("-N must be followed by an int");
+                    result.parsingFailed();
                     return;
                 }
                 break;
@@ -325,23 +345,23 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     result.port = DISABLE_TCP_USE_UDS_PORT;
                 }
                 else {
-                    if (!stringToInt(&result.port, optarg, 10)) {
-                        logg.logError("Port must be an integer");
-                        result.mode = ExecutionMode::EXIT;
+                    if (!stringToInt(&result.port, optarg, DECIMAL_BASE)) {
+                        LOG_ERROR("Port must be an integer");
+                        result.parsingFailed();
                         return;
                     }
-                    if ((result.port == 8082) || (result.port == 8083)) {
-                        logg.logError("Gator can't use port %i, as it already uses ports 8082 and 8083 for "
-                                      "annotations. Please select a different port.",
-                                      result.port);
-                        result.mode = ExecutionMode::EXIT;
+                    if ((result.port == GATOR_ANNOTATION_PORT1) || (result.port == GATOR_ANNOTATION_PORT2)) {
+                        LOG_ERROR("Gator can't use port %i, as it already uses ports 8082 and 8083 for "
+                                  "annotations. Please select a different port.",
+                                  result.port);
+                        result.parsingFailed();
                         return;
                     }
-                    if (result.port < 1 || result.port > 65535) {
-                        logg.logError(
+                    if (result.port < 1 || result.port > GATOR_MAX_VALUE_PORT) {
+                        LOG_ERROR(
                             "Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535",
                             result.port);
-                        result.mode = ExecutionMode::EXIT;
+                        result.parsingFailed();
                         return;
                     }
                 }
@@ -359,8 +379,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'u': //-call-stack-unwinding
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_CALL_STACK_UNWINDING;
                 if (optionInt < 0) {
-                    logg.logError("Invalid value for --call-stack-unwinding (%s), 'yes' or 'no' expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --call-stack-unwinding (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 result.mBacktraceDepth = optionInt == 1 ? 128 : 0;
@@ -373,8 +393,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     result.mSampleRate = sampleRate;
                 }
                 else {
-                    logg.logError("Invalid sample rate (%s).", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid sample rate (%s).", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 break;
@@ -382,24 +402,24 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_DURATION;
 
                 if (!stringToInt(&result.mDuration, optarg, 10)) {
-                    logg.logError("Invalid max duration (%s).", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid max duration (%s).", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 break;
             case 'f': //use-efficient-ftrace
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_FTRACE_RAW;
                 if (optionInt < 0) {
-                    logg.logError("Invalid value for --use-efficient-ftrace (%s), 'yes' or 'no' expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --use-efficient-ftrace (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 result.mFtraceRaw = optionInt == 1;
                 break;
             case 'S': //--system-wide
                 if (optionInt < 0) {
-                    logg.logError("Invalid value for --system-wide (%s), 'yes' or 'no' expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --system-wide (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 result.mSystemWide = optionInt == 1;
@@ -416,8 +436,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'x': //stop on exit
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_STOP_GATOR;
                 if (optionInt < 0) {
-                    logg.logError("Invalid value for --stop-on-exit (%s), 'yes' or 'no' expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --stop-on-exit (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 result.mStopGator = optionInt == 1;
@@ -454,8 +474,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 std::stringstream stream {optarg};
                 std::vector<int> pids = lib::parseCommaSeparatedNumbers<int>(stream);
                 if (stream.fail() || !stream.eof()) {
-                    logg.logError("Invalid value for --pid (%s), comma separated and numeric list expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --pid (%s), comma separated and numeric list expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
 
@@ -464,14 +484,16 @@ void GatorCLIParser::parseCLIArguments(int argc,
             }
             case 'h':
             case '?':
-                logg.logError(
+            default:
+                LOG_ERROR(
                     /* ------------------------------------ last character before new line here ----+ */
                     /*                                                                              | */
                     /*                                                                              v */
                     "\n"
                     "Streamline has 2 modes of operation. Daemon mode (the default), and local\n"
                     "capture mode, which will capture to disk and then exit. To enable local capture\n"
-                    "mode specify an output directory with --output.\n\n"
+                    "mode specify an output directory with --output.\n"
+                    "\n"
                     "* Arguments available to all modes:\n"
                     "  -h|--help                             This help page\n"
                     "  -c|--config-xml <config_xml>          Specify path and filename of the\n"
@@ -501,9 +523,12 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        applicable when --allow-command is\n"
                     "                                        specified, but a command must be entered\n"
                     "                                        in the Capture and Analysis Options of\n"
-                    "                                        Streamline. (Defaults to 'yes' unless\n"
-                    "                                        --app, --pid or --wait-process is\n"
-                    "                                        specified).\n"
+                    "                                        Streamline. Requires kernel events to \n"
+                    "                                        be enabled in Capture and Analysis\n"
+                    "                                        Options of Streamline, or by setting\n"
+                    "                                        '--exclude-kernel no'.\n"
+                    "                                        (Defaults to 'yes' unless --app, --pid\n"
+                    "                                        or--wait-process is specified).\n"
                     "  -u|--call-stack-unwinding (yes|no)    Enable or disable call stack unwinding\n"
                     "                                        (defaults to 'yes')\n"
                     "  -r|--sample-rate (none|low|normal|high)\n"
@@ -536,7 +561,28 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        is useful for kernels that fail to\n"
                     "                                        handle this correctly (e.g., they\n"
                     "                                        reboot) (defaults to 'no').\n"
+                    "  -F|--spe-sample-rate <n>              Specify the SPE periodic sampling rate.\n"
+                    "                                        The rate, <n> is the number of \n"
+                    "                                        operations between each sample, and must\n"
+                    "                                        be a non-zero positive integer. The rate\n"
+                    "                                        is subject to certain minimum rate\n"
+                    "                                        specified by the hardware its self.\n"
+                    "                                        Values below this threshold are ignored\n"
+                    "                                        and the hardware minimum is used\n"
+                    "                                        instead.\n"
+                    "\n"
+                    "* Arguments available only on Android targets:\n"
+                    "\n"
+                    "  -l|--android-pkg <pkg>                Profiles the specified android package.\n"
+                    "                                        Waits for the package app to launch\n"
+                    "                                        before starting a capture unless\n"
+                    "                                        --android-activity is specified.\n"
+                    "  -m|--android-activity <activity>      Launch the specified activity of a\n"
+                    "                                        package and profile its process. You\n"
+                    "                                        must also specify --android-pkg.\n"
+                    "\n"
                     "* Arguments available in daemon mode only:\n"
+                    "\n"
                     "  -p|--port <port_number>|uds           Port upon which the server listens;\n"
                     "                                        default is 8080.\n"
                     "                                        If the argument given here is 'uds' then\n"
@@ -553,13 +599,21 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        in Streamline.\n"
                     "  -a|--allow-command                    Allow the user to issue a command from\n"
                     "                                        Streamline\n"
+                    "\n"
                     "* Arguments available to local capture mode only:\n"
+                    "\n"
                     "  -s|--session-xml <session_xml>        Take configuration from specified\n"
                     "                                        session.xml file. Any additional\n"
                     "                                        arguments will override values\n"
                     "                                        specified in this file.\n"
                     "  -o|--output <apc_dir>                 The path and name of the output for\n"
-                    "                                        a local capture\n"
+                    "                                        a local capture.\n"
+                    "                                        If used with android options (-m, -l),\n"
+                    "                                        apc will be created inside the android\n"
+                    "                                        package. Eg if -o /data/local/tmp/test.apc,\n"
+                    "                                        apc will be at /data/data/<pkg>/test.apc\n"
+                    "                                        and copied to -o path \n"
+                    "                                        after capture finished.\n"
                     "  -i|--pid <pids...>                    Comma separated list of process IDs to\n"
                     "                                        profile\n"
                     "  -C|--counters <counters>              A comma separated list of counters to\n"
@@ -587,32 +641,23 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                          will only be recorded if its latency \n"
                     "                                          is greater than or equal to this \n"
                     "                                          value. The valid range is [0,4096).\n"
-                    "  -F|--spe-sample-rate <n>              Specify the SPE periodic sampling rate.\n"
-                    "                                        The rate, <n> is the number of \n"
-                    "                                        operations between each sample, and must\n"
-                    "                                        be a non-zero positive integer. The rate\n"
-                    "                                        is subject to certain minimum rate\n"
-                    "                                        specified by the hardware its self.\n"
-                    "                                        Values below this threshold are ignored\n"
-                    "                                        and the hardware minimum is used\n"
-                    "                                        instead."
                     /*                                                                              ^ */
                     /*                                                                              | */
                     /* ------------------------------------ last character before new line here ----+ */
                 );
-                result.mode = ExecutionMode::EXIT;
+                result.parsingFailed();
                 return;
             case 'v': // version is already printed/logged at the start of this function
-                result.mode = ExecutionMode::EXIT;
+                result.parsingFailed();
                 return;
             case 'V':
-                logg.logError("%s\nSRC_MD5: %s\nBUILD_ID: %s", version_string, gSrcMd5, STRIFY(GATORD_BUILD_ID));
-                result.mode = ExecutionMode::EXIT;
+                LOG_ERROR("%s\nSRC_MD5: %s\nBUILD_ID: %s", version_string, gSrcMd5, STRIFY(GATORD_BUILD_ID));
+                result.parsingFailed();
                 return;
             case 'O':
                 if (optionInt < 0) {
-                    logg.logError("Invalid value for --disable-cpu-onlining (%s), 'yes' or 'no' expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --disable-cpu-onlining (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 result.mDisableCpuOnlining = optionInt == 1;
@@ -623,18 +668,20 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'Z':
                 result.mPerfMmapSizeInPages = -1;
                 if (!stringToInt(&result.mPerfMmapSizeInPages, optarg, 0)) {
-                    logg.logError("Invalid value for --mmap-pages (%s): not an integer", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --mmap-pages (%s): not an integer", optarg);
+                    result.parsingFailed();
                     result.mPerfMmapSizeInPages = -1;
                 }
                 else if (result.mPerfMmapSizeInPages < 1) {
-                    logg.logError("Invalid value for --mmap-pages (%s): not more than 0", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --mmap-pages (%s): not more than 0", optarg);
+                    result.parsingFailed();
                     result.mPerfMmapSizeInPages = -1;
                 }
+                //FIXME
+                //NOLINTNEXTLINE(hicpp-signed-bitwise)
                 else if (((result.mPerfMmapSizeInPages - 1) & result.mPerfMmapSizeInPages) != 0) {
-                    logg.logError("Invalid value for --mmap-pages (%s): not a power of 2", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --mmap-pages (%s): not a power of 2", optarg);
+                    result.parsingFailed();
                     result.mPerfMmapSizeInPages = -1;
                 }
                 break;
@@ -653,8 +700,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                         result.printables.insert(ParserResult::Printable::DEFAULT_CONFIGURATION_XML);
                     }
                     else {
-                        logg.logError("Invalid value for --print (%s)", optarg);
-                        result.mode = ExecutionMode::EXIT;
+                        LOG_ERROR("Invalid value for --print (%s)", optarg);
+                        result.parsingFailed();
                         return;
                     }
                 }
@@ -663,32 +710,46 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'F': {
                 result.mSpeSampleRate = -1;
                 if (!stringToInt(&result.mSpeSampleRate, optarg, 0)) {
-                    logg.logError("Invalid value for --spe-sample-rate (%s): not an integer", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --spe-sample-rate (%s): not an integer", optarg);
+                    result.parsingFailed();
                     result.mSpeSampleRate = -1;
                 }
                 else if ((result.mSpeSampleRate < 1) || (result.mSpeSampleRate > 1000000000)) {
-                    logg.logWarning("Invalid value for --spe-sample-rate (%s): default value will be used", optarg);
+                    LOG_WARNING("Invalid value for --spe-sample-rate (%s): default value will be used", optarg);
                     result.mSpeSampleRate = -1;
                 }
                 break;
             }
             case 'k': {
                 if (optionInt < 0) {
-                    logg.logError("Invalid value for --exclude-kernel (%s), 'yes' or 'no' expected.", optarg);
-                    result.mode = ExecutionMode::EXIT;
+                    LOG_ERROR("Invalid value for --exclude-kernel (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
                     return;
                 }
                 result.mExcludeKernelEvents = optionInt == 1;
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_EXCLUDE_KERNEL;
                 break;
             }
+            case 'l': // android-pkg
+            {
+                result.mAndroidPackage = optarg;
+                break;
+            }
+            case 'm': // android-activity
+            {
+                result.mAndroidActivity = optarg;
+                break;
+            }
         }
+    }
+    if (indexApp > 0) {
+        //Some --app args was found
+        result.moveAppArgToEndOfVector();
     }
 
     // Defaults depending on other flags
-    const bool haveProcess =
-        !result.mCaptureCommand.empty() || !result.mPids.empty() || result.mWaitForCommand != nullptr;
+    const bool haveProcess = !result.mCaptureCommand.empty() || !result.mPids.empty()
+                          || result.mWaitForCommand != nullptr || result.mAndroidPackage != nullptr;
 
     // default to stopping on process exit unless user specified otherwise
     if (haveProcess && ((result.parameterSetFlag & USE_CMDLINE_ARG_STOP_GATOR) == 0)) {
@@ -708,74 +769,108 @@ void GatorCLIParser::parseCLIArguments(int argc,
     }
 
     // Error checking
+    if (result.mSystemWide && result.mExcludeKernelEvents) {
+        LOG_ERROR("Kernel events are currently required for system-wide mode. "
+                  "Either restart gatord with '--exclude-kernel no' or specify a process to profile.");
+        result.parsingFailed();
+        return;
+    }
+
     if (result.mode == ExecutionMode::LOCAL_CAPTURE) {
         if (result.mAllowCommands) {
-            logg.logError("--allow-command is not applicable in local capture mode.");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("--allow-command is not applicable in local capture mode.");
+            result.parsingFailed();
             return;
         }
         if (result.port != DEFAULT_PORT) {
-            logg.logError("--port is not applicable in local capture mode");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("--port is not applicable in local capture mode");
+            result.parsingFailed();
             return;
         }
 
         if (!result.mSystemWide && result.mSessionXMLPath == nullptr && !haveProcess) {
-            logg.logError("In local capture mode, without --system-wide=yes, a process to profile must be specified "
-                          "with --session-xml, --app, --wait-process or --pid.");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("In local capture mode, without --system-wide=yes, a process to profile must be specified "
+                      "with --session-xml, --app, --wait-process, --pid, or --android-pkg.");
+            result.parsingFailed();
             return;
         }
 
         if (result.events.empty() && (result.mConfigurationXMLPath == nullptr)) {
-            logg.logWarning("No counters (--counters) specified, default counters will be used");
+            LOG_WARNING("No counters (--counters) specified, default counters will be used");
         }
     }
     else if (result.mode == ExecutionMode::DAEMON) {
         if (!result.mSystemWide && !result.mAllowCommands && !haveProcess) {
-            logg.logError("In daemon mode, without --system-wide=yes, a process to profile must be specified with "
-                          "--allow-command, --app, --wait-process or --pid.");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("In daemon mode, without --system-wide=yes, a process to profile must be specified with "
+                      "--allow-command, --app, --wait-process, --pid, or --android-pkg.");
+            result.parsingFailed();
             return;
         }
         if (result.mSessionXMLPath != nullptr) {
-            logg.logError("--session-xml is not applicable in daemon mode.");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("--session-xml is not applicable in daemon mode.");
+            result.parsingFailed();
             return;
         }
         if (!result.events.empty()) {
-            logg.logError("--counters is not applicable in daemon mode.");
-            result.mode = ExecutionMode::EXIT;
+            LOG_ERROR("--counters is not applicable in daemon mode.");
+            result.parsingFailed();
             return;
         }
     }
 
+    if ((result.mAndroidActivity != nullptr) && (result.mAndroidPackage == nullptr)) {
+        LOG_ERROR("--android-pkg must be specified when supplying --android-activity.");
+        result.parsingFailed();
+        return;
+    }
+
+    const bool hasAnotherProcessArg = !result.mCaptureCommand.empty() || !result.mPids.empty()
+                                   || result.mWaitForCommand != nullptr || result.mAllowCommands;
+    if ((result.mAndroidPackage != nullptr) && hasAnotherProcessArg) {
+        LOG_ERROR("--android-pkg is not compatible with --allow-command, --app, --wait-process, or --pid.");
+        result.parsingFailed();
+        return;
+    }
+
+#if !defined(__ANDROID__)
+    if (result.mAndroidPackage != nullptr) {
+        //__ANDROID__ will not be defined in case of static linking with musl, logging this only as a warning.
+        LOG_WARNING("--android-pkg will only work on Android OS.");
+    }
+#endif
+
+    if (result.mAndroidPackage != nullptr && !lib::isRootOrShell()) {
+        LOG_ERROR("--android-pkg requires to be run from a shell or root user.");
+        result.parsingFailed();
+        return;
+    }
+
     if (result.mDuration < 0) {
-        logg.logError("Capture duration cannot be a negative value : %d ", result.mDuration);
-        result.mode = ExecutionMode::EXIT;
+        LOG_ERROR("Capture duration cannot be a negative value : %d ", result.mDuration);
+        result.parsingFailed();
         return;
     }
 
     if (indexApp > 0 && result.mCaptureCommand.empty()) {
-        logg.logError("--app requires a command to be specified");
-        result.mode = ExecutionMode::EXIT;
+        LOG_ERROR("--app requires a command to be specified");
+        result.parsingFailed();
         return;
     }
 
     if ((indexApp > 0) && (result.mWaitForCommand != nullptr)) {
-        logg.logError("--app and --wait-process are mutually exclusive");
-        result.mode = ExecutionMode::EXIT;
+        LOG_ERROR("--app and --wait-process are mutually exclusive");
+        result.parsingFailed();
         return;
     }
     if (indexApp > 0 && result.mAllowCommands) {
-        logg.logError("Cannot allow command (--allow-command) from Streamline, if --app is specified.");
-        result.mode = ExecutionMode::EXIT;
+        LOG_ERROR("Cannot allow command (--allow-command) from Streamline, if --app is specified.");
+        result.parsingFailed();
         return;
     }
     // Error checking
     if (optind < argc) {
-        logg.logError("Unknown argument: %s. Use --help to list valid arguments.", argv[optind]);
-        result.mode = ExecutionMode::EXIT;
+        LOG_ERROR("Unknown argument: %s. Use --help to list valid arguments.", argv[optind]);
+        result.parsingFailed();
         return;
     }
 }

@@ -45,11 +45,11 @@ namespace armnn {
         id.name = record.name;
         if (record.device_uid > 0) {
             const ICounterDirectoryConsumer::DeviceRecord & dr = deviceMap.at(record.device_uid);
-            id.device = lib::Optional<std::string>(dr.name);
+            id.device = std::optional<std::string>(dr.name);
         }
         if (record.counter_set_uid > 0) {
             const ICounterDirectoryConsumer::CounterSetRecord & csr = counterSetMap.at(record.counter_set_uid);
-            id.counterSet = lib::Optional<std::string>(csr.name);
+            id.counterSet = std::optional<std::string>(csr.name);
         }
         return id;
     }
@@ -80,16 +80,15 @@ namespace armnn {
             for (const auto & epair : cat.events_by_uid) {
                 const auto & event = epair.second;
                 if ((event.device_uid != 0) && (devices.count(event.device_uid) == 0)) {
-                    logg.logError(
-                        "Invalid counter directory, event '%s'.'%s' (0x%04x) references invalid device 0x%04x",
-                        cat.name.c_str(),
-                        event.name.c_str(),
-                        event.uid,
-                        event.device_uid);
+                    LOG_ERROR("Invalid counter directory, event '%s'.'%s' (0x%04x) references invalid device 0x%04x",
+                              cat.name.c_str(),
+                              event.name.c_str(),
+                              event.uid,
+                              event.device_uid);
                     return false;
                 }
                 if ((event.counter_set_uid != 0) && (counterSets.count(event.counter_set_uid) == 0)) {
-                    logg.logError(
+                    LOG_ERROR(
                         "Invalid counter directory, event '%s'.'%s' (0x%04x) references invalid counter set 0x%04x",
                         cat.name.c_str(),
                         event.name.c_str(),
@@ -101,11 +100,11 @@ namespace armnn {
                 // track/validate UIDs (they should be unique)
                 for (std::uint32_t i = event.uid; i <= event.max_uid; ++i) {
                     if (!seenUids.insert(i).second) {
-                        logg.logError("Invalid counter directory, event '%s'.'%s' (0x%04x) overlaps another event with "
-                                      "the same UID",
-                                      cat.name.c_str(),
-                                      event.name.c_str(),
-                                      event.uid);
+                        LOG_ERROR("Invalid counter directory, event '%s'.'%s' (0x%04x) overlaps another event with "
+                                  "the same UID",
+                                  cat.name.c_str(),
+                                  event.name.c_str(),
+                                  event.uid);
                         return false;
                     }
                 }
@@ -116,11 +115,11 @@ namespace armnn {
                 // update global id -> cat/event map
                 if (!newGlobalIdToCategoryAndEvent.emplace(std::move(globalId), CategoryIndexEventUID {i, event.uid})
                          .second) {
-                    logg.logError("Invalid counter directory, event '%s'.'%s' (0x%04x) overlaps another event with the "
-                                  "same global id",
-                                  cat.name.c_str(),
-                                  event.name.c_str(),
-                                  event.uid);
+                    LOG_ERROR("Invalid counter directory, event '%s'.'%s' (0x%04x) overlaps another event with the "
+                              "same global id",
+                              cat.name.c_str(),
+                              event.name.c_str(),
+                              event.uid);
                     return false;
                 }
             }
@@ -230,7 +229,7 @@ namespace armnn {
         captureIsActive = true;
 
         if (!counterConsumer.consumePacket(sessionID, streamMetadata)) {
-            logg.logError("Failed to send Arm NN stream metadata");
+            LOG_ERROR("Failed to send Arm NN stream metadata");
             return false;
         }
 
@@ -280,20 +279,20 @@ namespace armnn {
         for (const auto & i : newGlobalIdToCategoryAndEvent) {
             const auto & cr = categories.at(i.second.index);
             const auto & event = cr.events_by_uid.at(i.second.uid);
-            lib::Optional<std::string> deviceOpt;
-            lib::Optional<std::string> counterSetOpt;
-            lib::Optional<std::uint16_t> counterSetCount;
+            std::optional<std::string> deviceOpt;
+            std::optional<std::string> counterSetOpt;
+            std::optional<std::uint16_t> counterSetCount;
             if (event.device_uid > 0) {
-                deviceOpt.set(devicesById.at(event.device_uid).name);
+                deviceOpt = devicesById.at(event.device_uid).name;
             }
             if (event.counter_set_uid > 0) {
                 const auto & csrecord = counterSetsById.at(event.counter_set_uid);
-                counterSetOpt.set(csrecord.name);
-                counterSetCount.set(csrecord.count);
+                counterSetOpt = csrecord.name;
+                counterSetCount = csrecord.count;
             }
 
             armnn::EventId eventId {cr.name, deviceOpt, counterSetOpt, event.name};
-            armnn::EventProperties eventProperties {(counterSetCount ? counterSetCount.get() : std::uint16_t {0}),
+            armnn::EventProperties eventProperties {(counterSetCount ? *counterSetCount : std::uint16_t {0}),
                                                     event.clazz,
                                                     event.interpolation,
                                                     event.multiplier,

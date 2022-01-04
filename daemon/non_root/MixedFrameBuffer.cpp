@@ -37,7 +37,7 @@ namespace non_root {
             bytesAvailable -= size;
         }
         else {
-            logg.logError("checkSize: %i failed (%u)", size, valid);
+            LOG_ERROR("checkSize: %i failed (%u)", size, valid);
 
             valid = false;
         }

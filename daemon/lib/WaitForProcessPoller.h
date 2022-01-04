@@ -35,7 +35,7 @@ public:
 
 private:
     const std::string mCommandName;
-    const lib::Optional<lib::FsEntry> mRealPath;
+    const std::optional<lib::FsEntry> mRealPath;
 };
 
 #endif /* WAIT_FOR_PROCESS_POLLER_H */

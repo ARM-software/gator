@@ -12,9 +12,10 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <utility>
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <utility>
 
 #if defined(ANDROID) || defined(__ANDROID__)
 /* We use _IOR_BAD/_IOW_BAD rather than _IOR/_IOW otherwise fails to compile with NDK-BUILD because of _IOC_TYPECHECK is defined, not because the paramter is invalid */
@@ -84,7 +85,7 @@ namespace mali_userspace {
                 formatter << "). Please try updating your version of gatord.";
             }
 
-            logg.logSetup("%s", std::string(formatter).c_str());
+            LOG_SETUP("%s", std::string(formatter).c_str());
         }
 
         uint32_t extractBusWidth(uint32_t raw_l2_features)
@@ -129,8 +130,8 @@ namespace mali_userspace {
                   shaderCoreAvailabilityMask(calcShaderCoreMask(props)),
                   numberOfL2Slices(props.props.l2_props.num_l2_slices),
                   gpuId(props.props.core_props.product_id),
-                  hwVersion((uint32_t(props.props.core_props.major_revision) << 16) |
-                            props.props.core_props.minor_revision),
+                  hwVersion((uint32_t(props.props.core_props.major_revision) << 16)
+                            | props.props.core_props.minor_revision),
                   busWidth(extractBusWidth(props.props.raw_props.l2_features))
             {
                 logDetectedMaliDevice(maliDevicePath,
@@ -150,12 +151,12 @@ namespace mali_userspace {
                                                    uint32_t mmuL2Bitmask,
                                                    bool & failedDueToBufferCount) override
             {
-                logg.logMessage("MaliDeviceApi: create (%zu, 0x%x, 0x%x, 0x%x, 0x%x)",
-                                bufferCount,
-                                jmBitmask,
-                                shaderBitmask,
-                                tilerBitmask,
-                                mmuL2Bitmask);
+                LOG_DEBUG("MaliDeviceApi: create (%zu, 0x%x, 0x%x, 0x%x, 0x%x)",
+                          bufferCount,
+                          jmBitmask,
+                          shaderBitmask,
+                          tilerBitmask,
+                          mmuL2Bitmask);
 
                 kbase_uk_hwcnt_reader_setup setup_args {};
                 setup_args.header.id = KBASE_FUNC_HWCNT_READER_SETUP;
@@ -168,12 +169,12 @@ namespace mali_userspace {
 
                 if (doMaliIoctl(*devFd, setup_args) != 0) {
                     if (setup_args.header.ret != 0) {
-                        logg.logMessage("MaliDeviceApi: Failed sending hwcnt reader ioctl. fd=%i ret = %lu",
-                                        *devFd,
-                                        static_cast<unsigned long>(setup_args.header.ret));
+                        LOG_DEBUG("MaliDeviceApi: Failed sending hwcnt reader ioctl. fd=%i ret = %lu",
+                                  *devFd,
+                                  static_cast<unsigned long>(setup_args.header.ret));
                     }
                     else {
-                        logg.logMessage("MaliDeviceApi: Failed sending hwcnt reader ioctl");
+                        LOG_DEBUG("MaliDeviceApi: Failed sending hwcnt reader ioctl");
                     }
                     failedDueToBufferCount = true;
                     return {};
@@ -183,25 +184,25 @@ namespace mali_userspace {
                 return setup_args.fd;
             }
 
-            uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
+            [[nodiscard]] uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
 
-            uint32_t getMaxShaderCoreBlockIndex() const override
+            [[nodiscard]] uint32_t getMaxShaderCoreBlockIndex() const override
             {
                 return calcShaderCoreMaskBlockCount(shaderCoreAvailabilityMask);
             }
 
-            uint32_t getNumberOfUsableShaderCores() const override
+            [[nodiscard]] uint32_t getNumberOfUsableShaderCores() const override
             {
                 return calcNumShaders(shaderCoreAvailabilityMask);
             }
 
-            uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
+            [[nodiscard]] uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
 
-            uint32_t getGpuId() const override { return gpuId; }
+            [[nodiscard]] uint32_t getGpuId() const override { return gpuId; }
 
-            uint32_t getHwVersion() const override { return hwVersion; }
+            [[nodiscard]] uint32_t getHwVersion() const override { return hwVersion; }
 
-            uint32_t getExternalBusWidth() const override { return busWidth; }
+            [[nodiscard]] uint32_t getExternalBusWidth() const override { return busWidth; }
 
         private:
             static uint64_t calcShaderCoreMask(const kbase_uk_gpuprops & props)
@@ -230,17 +231,15 @@ namespace mali_userspace {
                 version_check.minor = 0;
 
                 if (doMaliIoctl(*devFd, version_check) != 0) {
-                    logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl - may be r21p0 or later...");
+                    LOG_DEBUG("MaliDeviceApi: Failed setting ABI version ioctl - may be r21p0 or later...");
                     return {};
                 }
                 if (version_check.major < 10) {
-                    logg.logMessage("MaliDeviceApi: Unsupported ABI version %u.%u",
-                                    version_check.major,
-                                    version_check.minor);
+                    LOG_DEBUG("MaliDeviceApi: Unsupported ABI version %u.%u", version_check.major, version_check.minor);
                     return {};
                 }
 
-                logg.logMessage("MaliDeviceApi: ABI version: %u.%u", version_check.major, version_check.minor);
+                LOG_DEBUG("MaliDeviceApi: ABI version: %u.%u", version_check.major, version_check.minor);
             }
 
             // set the flags / create context
@@ -250,7 +249,7 @@ namespace mali_userspace {
                 flags.create_flags = BASE_CONTEXT_CREATE_KERNEL_FLAGS;
 
                 if (doMaliIoctl(*devFd, flags) != 0) {
-                    logg.logMessage("MaliDeviceApi: Failed setting flags ioctl");
+                    LOG_DEBUG("MaliDeviceApi: Failed setting flags ioctl");
                     return {};
                 }
             }
@@ -261,7 +260,7 @@ namespace mali_userspace {
                 props.header.id = KBASE_FUNC_GET_PROPS;
 
                 if (doMaliIoctl(*devFd, props) != 0) {
-                    logg.logMessage("MaliDeviceApi: Failed getting props from ioctl");
+                    LOG_DEBUG("MaliDeviceApi: Failed getting props from ioctl");
                     return {};
                 }
 
@@ -308,8 +307,8 @@ namespace mali_userspace {
         {
             runtime_assert((pos + 4) <= size, "Buffer overflow reading GPU properties");
 
-            const uint32_t result = buffer[pos] | (uint32_t(buffer[pos + 1]) << 8) | (uint32_t(buffer[pos + 2]) << 16) |
-                                    (uint32_t(buffer[pos + 3]) << 24);
+            const uint32_t result = buffer[pos] | (uint32_t(buffer[pos + 1]) << 8) | (uint32_t(buffer[pos + 2]) << 16)
+                                  | (uint32_t(buffer[pos + 3]) << 24);
             pos += 4;
             return result;
         }
@@ -319,10 +318,10 @@ namespace mali_userspace {
         {
             runtime_assert((pos + 8) <= size, "Buffer overflow reading GPU properties");
 
-            const uint64_t result = buffer[pos] | (uint64_t(buffer[pos + 1]) << 8) | (uint64_t(buffer[pos + 2]) << 16) |
-                                    (uint64_t(buffer[pos + 3]) << 24) | (uint64_t(buffer[pos + 4]) << 32) |
-                                    (uint64_t(buffer[pos + 5]) << 40) | (uint64_t(buffer[pos + 6]) << 48) |
-                                    (uint64_t(buffer[pos + 7]) << 56);
+            const uint64_t result = buffer[pos] | (uint64_t(buffer[pos + 1]) << 8) | (uint64_t(buffer[pos + 2]) << 16)
+                                  | (uint64_t(buffer[pos + 3]) << 24) | (uint64_t(buffer[pos + 4]) << 32)
+                                  | (uint64_t(buffer[pos + 5]) << 40) | (uint64_t(buffer[pos + 6]) << 48)
+                                  | (uint64_t(buffer[pos + 7]) << 56);
             pos += 8;
             return result;
         }
@@ -477,32 +476,32 @@ namespace mali_userspace {
                 const int hwcntReaderFd =
                     lib::ioctl(*devFd, KBASE_IOCTL_HWCNT_READER_SETUP, reinterpret_cast<unsigned long>(&setup_args));
                 if (hwcntReaderFd < 0) {
-                    logg.logMessage("MaliDeviceApi: Failed sending hwcnt reader ioctl");
+                    LOG_DEBUG("MaliDeviceApi: Failed sending hwcnt reader ioctl");
                     failedDueToBufferCount = true;
                     return {};
                 }
                 return hwcntReaderFd;
             }
 
-            uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
+            [[nodiscard]] uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
 
-            uint32_t getMaxShaderCoreBlockIndex() const override
+            [[nodiscard]] uint32_t getMaxShaderCoreBlockIndex() const override
             {
                 return calcShaderCoreMaskBlockCount(shaderCoreAvailabilityMask);
             }
 
-            uint32_t getNumberOfUsableShaderCores() const override
+            [[nodiscard]] uint32_t getNumberOfUsableShaderCores() const override
             {
                 return calcNumShaders(shaderCoreAvailabilityMask);
             }
 
-            uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
+            [[nodiscard]] uint32_t getNumberOfL2Slices() const override { return numberOfL2Slices; }
 
-            uint32_t getGpuId() const override { return gpuId; }
+            [[nodiscard]] uint32_t getGpuId() const override { return gpuId; }
 
-            uint32_t getHwVersion() const override { return hwVersion; }
+            [[nodiscard]] uint32_t getHwVersion() const override { return hwVersion; }
 
-            uint32_t getExternalBusWidth() const override { return busWidth; }
+            [[nodiscard]] uint32_t getExternalBusWidth() const override { return busWidth; }
 
         private:
             static uint64_t calcShaderCoreMask(const gpu_properties & props)
@@ -530,26 +529,25 @@ namespace mali_userspace {
                 version_check.major = 0;
                 version_check.minor = 0;
 
-                if (lib::ioctl(*devFd, KBASE_IOCTL_VERSION_CHECK_JM, reinterpret_cast<unsigned long>(&version_check)) !=
-                    0) {
-                    logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl for JM based ddk. Trying with CSF "
-                                    "ioctl version");
+                if (lib::ioctl(*devFd, KBASE_IOCTL_VERSION_CHECK_JM, reinterpret_cast<unsigned long>(&version_check))
+                    != 0) {
+                    LOG_DEBUG("MaliDeviceApi: Failed setting ABI version ioctl for JM based ddk. Trying with CSF "
+                              "ioctl version");
                     if (lib::ioctl(*devFd,
                                    KBASE_IOCTL_VERSION_CHECK_CSF,
-                                   reinterpret_cast<unsigned long>(&version_check)) != 0) {
-                        logg.logMessage("MaliDeviceApi: Failed setting ABI version ioctl for CSF based ddk");
+                                   reinterpret_cast<unsigned long>(&version_check))
+                        != 0) {
+                        LOG_DEBUG("MaliDeviceApi: Failed setting ABI version ioctl for CSF based ddk");
                         return {};
                     }
                 }
 
                 if ((version_check.major != 1) && (version_check.major != 11)) {
-                    logg.logMessage("MaliDeviceApi: Unsupported ABI version %u.%u",
-                                    version_check.major,
-                                    version_check.minor);
+                    LOG_DEBUG("MaliDeviceApi: Unsupported ABI version %u.%u", version_check.major, version_check.minor);
                     return {};
                 }
 
-                logg.logMessage("MaliDeviceApi: ABI version: %u.%u", version_check.major, version_check.minor);
+                LOG_DEBUG("MaliDeviceApi: ABI version: %u.%u", version_check.major, version_check.minor);
             }
 
             // set the flags
@@ -558,7 +556,7 @@ namespace mali_userspace {
                 flags.create_flags = BASE_CONTEXT_SYSTEM_MONITOR_SUBMIT_DISABLED;
 
                 if (lib::ioctl(*devFd, KBASE_IOCTL_SET_FLAGS, reinterpret_cast<unsigned long>(&flags)) != 0) {
-                    logg.logMessage("MaliDeviceApi: Failed setting flags ioctl");
+                    LOG_DEBUG("MaliDeviceApi: Failed setting flags ioctl");
                     return {};
                 }
             }
@@ -570,7 +568,7 @@ namespace mali_userspace {
                 // probe first for size
                 int size = lib::ioctl(*devFd, KBASE_IOCTL_GET_GPUPROPS, reinterpret_cast<unsigned long>(&get_props));
                 if (size < 0) {
-                    logg.logMessage("MaliDeviceApi: Failed getting properties ioctl (1)");
+                    LOG_DEBUG("MaliDeviceApi: Failed getting properties ioctl (1)");
                     return {};
                 }
 
@@ -581,7 +579,7 @@ namespace mali_userspace {
 
                 size = lib::ioctl(*devFd, KBASE_IOCTL_GET_GPUPROPS, reinterpret_cast<unsigned long>(&get_props));
                 if (size < 0) {
-                    logg.logMessage("MaliDeviceApi: Failed getting properties ioctl (2)");
+                    LOG_DEBUG("MaliDeviceApi: Failed getting properties ioctl (2)");
                     return {};
                 }
 
@@ -603,9 +601,9 @@ namespace mali_userspace {
             lib::AutoClosingFd devFd {lib::open(devMaliPath, O_RDWR | O_CLOEXEC | O_NONBLOCK)};
             if (!devFd) {
                 if (errno != ENOENT) {
-                    logg.logMessage("MaliDeviceApi: Failed to open mali device '%s' due to '%s'",
-                                    devMaliPath,
-                                    strerror(errno));
+                    LOG_DEBUG("MaliDeviceApi: Failed to open mali device '%s' due to '%s'",
+                              devMaliPath,
+                              strerror(errno));
                 }
                 return {};
             }
@@ -621,9 +619,9 @@ namespace mali_userspace {
             lib::AutoClosingFd devFd {lib::open(devMaliPath, O_RDWR | O_CLOEXEC | O_NONBLOCK)};
             if (!devFd) {
                 if (errno != ENOENT) {
-                    logg.logMessage("MaliDeviceApi: Failed to open mali device '%s' due to '%s'",
-                                    devMaliPath,
-                                    strerror(errno));
+                    LOG_DEBUG("MaliDeviceApi: Failed to open mali device '%s' due to '%s'",
+                              devMaliPath,
+                              strerror(errno));
                 }
                 return {};
             }

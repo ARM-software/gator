@@ -7,7 +7,6 @@
 #include <string>
 
 class IPerfAttrsConsumer;
-class DynBuf;
 
 /**
  * Contains the set of paths we care about within tracefs.

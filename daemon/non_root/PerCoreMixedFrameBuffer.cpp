@@ -51,10 +51,11 @@ namespace non_root {
         if (wrapperPtrRef == nullptr) {
             auto & bufferPtrRef = buffers[core];
             if (bufferPtrRef == nullptr) {
-                bufferPtrRef.reset(new Buffer(bufferSize, readerSem));
+                bufferPtrRef = std::make_unique<Buffer>(bufferSize, readerSem);
             }
 
-            wrapperPtrRef.reset(new MixedFrameBuffer(*bufferPtrRef, {gSessionData.mLiveRate}));
+            wrapperPtrRef =
+                std::make_unique<MixedFrameBuffer>(*bufferPtrRef, CommitTimeChecker {gSessionData.mLiveRate});
         }
 
         return *wrapperPtrRef;

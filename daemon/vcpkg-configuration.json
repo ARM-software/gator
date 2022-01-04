@@ -1,0 +1,9 @@
+{
+    "registries": [
+        {
+            "kind": "filesystem",
+            "path": "../vcpkg_registry",
+            "packages": ["boost-filesystem", "mxml"]
+        }
+    ]
+}

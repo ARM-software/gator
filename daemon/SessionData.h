@@ -16,10 +16,11 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <semaphore.h>
 #include <set>
 #include <string>
 #include <vector>
+
+#include <semaphore.h>
 
 #define NS_PER_S 1000000000LL
 #define NS_PER_MS 1000000LL
@@ -73,6 +74,8 @@ public:
     const char * mCaptureWorkingDir {nullptr};
     const char * mCaptureUser {nullptr};
     const char * mWaitForProcessCommand {nullptr};
+    const char * mAndroidPackage {nullptr};
+    const char * mAndroidActivity {nullptr};
     uint64_t mLiveRate {0};
     uint64_t parameterSetFlag {0};
     int mAndroidApiLevel {0};

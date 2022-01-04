@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -38,7 +39,7 @@ bool DynBuf::read(const char * const path)
 
     const int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
-        logg.logMessage("open '%s' failed", path);
+        LOG_DEBUG("open '%s' failed", path);
         return false;
     }
 
@@ -48,14 +49,14 @@ bool DynBuf::read(const char * const path)
         const size_t minCapacity = length + MIN_BUFFER_FREE + 1;
         if (capacity < minCapacity) {
             if (resize(minCapacity) != 0) {
-                logg.logMessage("DynBuf::resize failed");
+                LOG_DEBUG("DynBuf::resize failed");
                 goto fail;
             }
         }
 
         const ssize_t bytes = ::read(fd, buf + length, capacity - length - 1);
         if (bytes < 0) {
-            logg.logMessage("read failed");
+            LOG_DEBUG("read failed");
             goto fail;
         }
         else if (bytes == 0) {
@@ -131,7 +132,7 @@ bool DynBuf::append(const char * format, va_list ap)
 
     if (capacity <= 0) {
         if (resize(2 * MIN_BUFFER_FREE) != 0) {
-            logg.logMessage("DynBuf::resize failed");
+            LOG_DEBUG("DynBuf::resize failed");
             return false;
         }
     }
@@ -139,20 +140,20 @@ bool DynBuf::append(const char * format, va_list ap)
     va_copy(dup, ap);
     int bytes = vsnprintf(buf + length, capacity - length, format, dup);
     if (bytes < 0) {
-        logg.logMessage("fsnprintf failed");
+        LOG_DEBUG("fsnprintf failed");
         return false;
     }
     bytes += length;
 
     if (static_cast<size_t>(bytes) >= capacity) {
         if (resize(bytes + 1) != 0) {
-            logg.logMessage("DynBuf::resize failed");
+            LOG_DEBUG("DynBuf::resize failed");
             return false;
         }
 
         bytes = vsnprintf(buf + length, capacity - length, format, ap);
         if (bytes < 0) {
-            logg.logMessage("fsnprintf failed");
+            LOG_DEBUG("fsnprintf failed");
             return false;
         }
         bytes += length;
@@ -167,7 +168,7 @@ bool DynBuf::appendStr(const char * str)
 {
     if (capacity <= 0) {
         if (resize(2 * MIN_BUFFER_FREE) != 0) {
-            logg.logMessage("DynBuf::resize failed");
+            LOG_DEBUG("DynBuf::resize failed");
             return false;
         }
     }
@@ -175,7 +176,7 @@ bool DynBuf::appendStr(const char * str)
     size_t bytes = strlen(str);
     if (length + bytes >= capacity) {
         if (resize(length + bytes + 1) != 0) {
-            logg.logMessage("DynBuf::resize failed");
+            LOG_DEBUG("DynBuf::resize failed");
             return false;
         }
     }

@@ -53,7 +53,7 @@
     <pmu id="ARMv7R_Cortex_R7" cpuid="0x41c17" core_name="Cortex-R7" dt_name="arm,cortex-r7" pmnc_counters="8" profile="7r"/>
     <pmu id="ARMv7R_Cortex_R8" cpuid="0x41c18" core_name="Cortex-R8" dt_name="arm,cortex-r8" pmnc_counters="8" profile="7r"/>
     <pmu id="ARMv8R_Cortex_R52" cpuid="0x41d13" core_name="Cortex-R52" dt_name="arm,cortex-r52" pmnc_counters="4" profile="8r"/>
-    <pmu id="ARMv8R_Cortex_R52+" cpuid="0x41d16" core_name="Cortex-R52+" dt_name="arm,cortex-r52+" pmnc_counters="4" profile="8r"/>
+    <pmu id="ARMv8R_Cortex_R52X" cpuid="0x41d16" core_name="Cortex-R52+" dt_name="arm,cortex-r52+" pmnc_counters="4" profile="8r"/>
     <pmu id="ARMv8R_Cortex_R82" cpuid="0x41d15" core_name="Cortex-R82" dt_name="arm,cortex-r82" pmnc_counters="6" profile="8r"/>
 
     <pmu counter_set="ARM_ARM11" id="ARMv6_1136" cpuid="0x41b36" core_name="ARM1136" dt_name="arm,arm1136" pmnc_counters="3" profile="6a"/>

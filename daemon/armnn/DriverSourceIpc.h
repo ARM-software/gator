@@ -6,11 +6,11 @@
 #include "armnn/ICounterConsumer.h"
 #include "armnn/IStartStopHandler.h"
 #include "lib/AutoClosingFd.h"
-#include "lib/Optional.h"
 #include "lib/Span.h"
 
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -163,7 +163,7 @@ namespace armnn {
 
     private:
         ChildToParentController mControlChannel {};
-        lib::Optional<ParentToChildCounterConsumer> mCountersChannel {};
+        std::optional<ParentToChildCounterConsumer> mCountersChannel {};
         std::thread mControlThread {};
         ICaptureStartStopHandler & mArmnnController;
         std::mutex mParentMutex {};

@@ -1,11 +1,10 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
-#include "lib/Optional.h"
-
 #include <cstdint>
 #include <functional>
+#include <optional>
 
 class ISender;
 
@@ -29,5 +28,5 @@ public:
      *
      * @return monotonic start or empty on failure
      */
-    virtual lib::Optional<std::uint64_t> sendSummary() = 0;
+    virtual std::optional<std::uint64_t> sendSummary() = 0;
 };

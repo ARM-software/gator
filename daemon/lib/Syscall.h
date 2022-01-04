@@ -1,7 +1,9 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_SYSCALL_H
 #define INCLUDE_LIB_SYSCALL_H
+
+#include <array>
 
 #include <poll.h>
 #include <sys/socket.h>
@@ -32,9 +34,13 @@ namespace lib {
     ssize_t read(int fd, void * buf, size_t count);
     ssize_t write(int fd, const void * buf, size_t count);
 
+    int pipe2(std::array<int, 2> & fds, int flags);
+
     int uname(struct utsname * buf);
 
     uid_t geteuid();
+
+    pid_t waitpid(pid_t pid, int * wstatus, int options);
 
     int poll(struct pollfd * __fds, nfds_t __nfds, int __timeout);
     int access(const char * filename, int how);

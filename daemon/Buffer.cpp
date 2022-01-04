@@ -30,7 +30,7 @@ Buffer::Buffer(const int size, sem_t & readerSem, bool includeResponseType)
 {
     if ((mSize & mask) != 0) {
         delete[] mBuf;
-        logg.logError("Buffer size is not a power of 2");
+        LOG_ERROR("Buffer size is not a power of 2");
         handleException();
     }
 
@@ -69,7 +69,7 @@ bool Buffer::write(ISender & sender)
         length2 = commitPos;
     }
 
-    logg.logMessage("Sending data length1: %i length2: %i", length1, length2);
+    LOG_DEBUG("Sending data length1: %i length2: %i", length1, length2);
 
     constexpr std::size_t numberOfParts = 2;
     const lib::Span<const char, int> parts[numberOfParts] = {{buffer1, length1}, {buffer2, length2}};
@@ -106,7 +106,7 @@ int Buffer::bytesAvailable() const
 void Buffer::waitForSpace(int bytes)
 {
     if (!supportsWriteOfSize(bytes)) {
-        logg.logError("Buffer not big enough, %d but need %d", mSize, bytes);
+        LOG_ERROR("Buffer not big enough, %d but need %d", mSize, bytes);
         handleException();
     }
 
@@ -213,10 +213,10 @@ void Buffer::endFrame()
         mBuf[(commitPos + typeLength + byte) & mask] = (length >> byte * 8) & 0xFF;
     }
 
-    logg.logMessage("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i",
-                    mReadPos.load(std::memory_order_relaxed),
-                    mWritePos,
-                    commitPos);
+    LOG_DEBUG("Committing data mReadPos: %i mWritePos: %i mCommitPos: %i",
+              mReadPos.load(std::memory_order_relaxed),
+              mWritePos,
+              commitPos);
     // release the commited data for the consumer to acquire
     mCommitPos.store(mWritePos, std::memory_order_release);
 }

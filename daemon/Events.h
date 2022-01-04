@@ -1,10 +1,10 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "EventCode.h"
-#include "lib/Optional.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -13,7 +13,7 @@ struct Event {
 
     // at least one of eventNumber or counter should be present
     EventCode eventNumber;
-    lib::Optional<std::string> counter;
+    std::optional<std::string> counter;
     Class clazz;
     double multiplier;
     std::string name;
@@ -29,6 +29,6 @@ struct CounterSet {
 
 struct Category {
     std::string name;
-    lib::Optional<CounterSet> counterSet;
+    std::optional<CounterSet> counterSet;
     std::vector<Event> events;
 };

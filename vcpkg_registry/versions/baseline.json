@@ -1,0 +1,12 @@
+{
+    "default": {
+        "boost-filesystem": {
+            "baseline": "1.75.0",
+            "port-version": 1
+        },
+        "mxml": {
+            "baseline": "3.0.0",
+            "port-version": 0
+        }
+    }
+}

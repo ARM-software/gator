@@ -3,6 +3,7 @@
 #include "FtraceDriver.h"
 
 #include "Config.h"
+#include "DynBuf.h"
 #include "Logging.h"
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
@@ -14,6 +15,8 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <thread>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <regex.h>
@@ -22,7 +25,6 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <thread>
 #include <unistd.h>
 
 Barrier::Barrier() : mMutex(), mCond(), mCount(0)
@@ -110,10 +112,10 @@ void FtraceCounter::prepare()
 {
     if (mEnable == nullptr) {
         if (gSessionData.mFtraceRaw) {
-            logg.logError("The ftrace counter %s is not compatible with the more efficient ftrace collection as it is "
-                          "missing the enable attribute. Please either add the enable attribute to the counter in "
-                          "events XML or disable the counter in counter configuration.",
-                          getName());
+            LOG_ERROR("The ftrace counter %s is not compatible with the more efficient ftrace collection as it is "
+                      "missing the enable attribute. Please either add the enable attribute to the counter in "
+                      "events XML or disable the counter in counter configuration.",
+                      getName());
             handleException();
         }
         return;
@@ -122,7 +124,7 @@ void FtraceCounter::prepare()
     char buf[1 << 10];
     snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, mEnable);
     if ((lib::readIntFromFile(buf, mWasEnabled) != 0) || (lib::writeIntToFile(buf, 1) != 0)) {
-        logg.logError("Unable to read or write to %s", buf);
+        LOG_ERROR("Unable to read or write to %s", buf);
         handleException();
     }
 }
@@ -162,11 +164,11 @@ public:
 
     void start();
     bool interrupt();
-    bool join() const;
+    [[nodiscard]] bool join() const;
 
     static FtraceReader * getHead() { return mHead; }
-    FtraceReader * getNext() const { return mNext; }
-    int getPfd0() const { return mPfd0; }
+    [[nodiscard]] FtraceReader * getNext() const { return mNext; }
+    [[nodiscard]] int getPfd0() const { return mPfd0; }
 
 private:
     static constexpr auto FTRACE_TIMEOUT = std::chrono::seconds {2};
@@ -184,13 +186,12 @@ private:
     void run();
 };
 
-constexpr decltype(FtraceReader::FTRACE_TIMEOUT) FtraceReader::FTRACE_TIMEOUT;
 FtraceReader * FtraceReader::mHead;
 
 void FtraceReader::start()
 {
     if (pthread_create(&mThread, nullptr, runStatic, this) != 0) {
-        logg.logError("Unable to start the ftraceReader thread");
+        LOG_ERROR("Unable to start the ftraceReader thread");
         handleException();
     }
 }
@@ -239,7 +240,7 @@ void FtraceReader::run()
 
     // Gator runs at a high priority, reset the priority to the default
     if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
-        logg.logError("setpriority failed");
+        LOG_ERROR("setpriority failed");
         handleException();
     }
 
@@ -248,19 +249,19 @@ void FtraceReader::run()
     while (mSessionIsActive) {
         const ssize_t bytes = splice(mTfd, nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
         if (bytes == 0) {
-            logg.logError("ftrace splice unexpectedly returned 0");
+            LOG_ERROR("ftrace splice unexpectedly returned 0");
             handleException();
         }
         else if (bytes < 0) {
             if (errno != EINTR) {
-                logg.logError("splice failed");
+                LOG_ERROR("splice failed");
                 handleException();
             }
         }
         else {
             // Can there be a short splice read?
             if (bytes != pageSize) {
-                logg.logError("splice short read");
+                LOG_ERROR("splice short read");
                 handleException();
             }
             // Will be read by gatord-external
@@ -268,7 +269,7 @@ void FtraceReader::run()
     }
 
     if (!lib::setNonblock(mTfd)) {
-        logg.logError("lib::setNonblock failed");
+        LOG_ERROR("lib::setNonblock failed");
         handleException();
     }
 
@@ -277,7 +278,7 @@ void FtraceReader::run()
     std::thread timeoutThread([&, isStuck]() {
         std::this_thread::sleep_for(FtraceReader::FTRACE_TIMEOUT);
         if (*isStuck) {
-            logg.logMessage("ftrace reader is hanging. Interrupting reader thread");
+            LOG_DEBUG("ftrace reader is hanging. Interrupting reader thread");
             close(mTfd);
             close(mPfd1);
             pthread_kill(mThread, SIGKILL);
@@ -294,7 +295,7 @@ void FtraceReader::run()
         }
         // Can there be a short splice read?
         if (bytes != pageSize) {
-            logg.logError("splice short read");
+            LOG_ERROR("splice short read");
             handleException();
         }
         // Will be read by gatord-external
@@ -307,18 +308,18 @@ void FtraceReader::run()
         char buf[1 << 16];
 
         if (sizeof(buf) < static_cast<size_t>(pageSize)) {
-            logg.logError("ftrace slop buffer is too small");
+            LOG_ERROR("ftrace slop buffer is too small");
             handleException();
         }
         for (;;) {
             bytes = read(mTfd, buf, sizeof(buf));
             if (bytes == 0) {
-                logg.logError("ftrace read unexpectedly returned 0");
+                LOG_ERROR("ftrace read unexpectedly returned 0");
                 handleException();
             }
             else if (bytes < 0) {
                 if (errno != EAGAIN) {
-                    logg.logError("reading slop from ftrace failed");
+                    LOG_ERROR("reading slop from ftrace failed");
                     handleException();
                 }
                 break;
@@ -327,7 +328,7 @@ void FtraceReader::run()
                 size = bytes;
                 bytes = write(mPfd1, buf, size);
                 if (bytes != static_cast<ssize_t>(size)) {
-                    logg.logError("writing slop to ftrace pipe failed");
+                    LOG_ERROR("writing slop to ftrace pipe failed");
                     handleException();
                 }
             }
@@ -359,7 +360,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     // Check the kernel version
     struct utsname utsname;
     if (uname(&utsname) != 0) {
-        logg.logError("uname failed");
+        LOG_ERROR("uname failed");
         handleException();
     }
 
@@ -367,7 +368,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     const int kernelVersion = lib::parseLinuxVersion(utsname);
     if (kernelVersion < KERNEL_VERSION(3, 10, 0)) {
         mSupported = false;
-        logg.logSetup(
+        LOG_SETUP(
             "Ftrace is disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With user space "
             "gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be available.");
         return;
@@ -377,13 +378,13 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     // Is debugfs or tracefs available?
     if (access(traceFsConstants.path, R_OK) != 0) {
         mSupported = false;
-        logg.logSetup("Ftrace is disabled\nUnable to locate the tracing directory");
+        LOG_SETUP("Ftrace is disabled\nUnable to locate the tracing directory");
         return;
     }
 
     if (geteuid() != 0) {
         mSupported = false;
-        logg.logSetup("Ftrace is disabled\nFtrace is not supported when running non-root");
+        LOG_SETUP("Ftrace is disabled\nFtrace is not supported when running non-root");
         return;
     }
 
@@ -406,7 +407,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
 
         const char * regex = mxmlElementGetAttr(node, "regex");
         if (regex == nullptr) {
-            logg.logError("The regex counter %s is missing the required regex attribute", counter);
+            LOG_ERROR("The regex counter %s is missing the required regex attribute", counter);
             handleException();
         }
 
@@ -416,19 +417,19 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
             enable = tracepoint;
         }
         if (!mUseForTracepoints && tracepoint != nullptr) {
-            logg.logMessage("Not using ftrace for counter %s", counter);
+            LOG_DEBUG("Not using ftrace for counter %s", counter);
             continue;
         }
         if (enable != nullptr) {
             char buf[1 << 10];
             snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, enable);
             if (access(buf, W_OK) != 0) {
-                logg.logSetup("%s is disabled\n%s was not found", counter, buf);
+                LOG_SETUP("%s is disabled\n%s was not found", counter, buf);
                 continue;
             }
         }
 
-        logg.logMessage("Using ftrace for %s", counter);
+        LOG_DEBUG("Using ftrace for %s", counter);
         setCounters(new FtraceCounter(getCounters(), traceFsConstants, counter, enable));
     }
 }
@@ -438,7 +439,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     if (gSessionData.mFtraceRaw) {
         // Don't want the performace impact of sending all formats so gator only sends it for the enabled counters. This means other counters need to be disabled
         if (lib::writeCStringToFile(traceFsConstants.path__events__enable, "0") != 0) {
-            logg.logError("Unable to turn off all events");
+            LOG_ERROR("Unable to turn off all events");
             handleException();
         }
     }
@@ -452,12 +453,12 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     }
 
     if (lib::readIntFromFile(traceFsConstants.path__tracing_on, mTracingOn) != 0) {
-        logg.logError("Unable to read if ftrace is enabled");
+        LOG_ERROR("Unable to read if ftrace is enabled");
         handleException();
     }
 
     if (lib::writeCStringToFile(traceFsConstants.path__tracing_on, "0") != 0) {
-        logg.logError("Unable to turn ftrace off before truncating the buffer");
+        LOG_ERROR("Unable to turn ftrace off before truncating the buffer");
         handleException();
     }
 
@@ -466,7 +467,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         // The below call can be slow on loaded high-core count systems.
         fd = open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC);
         if (fd < 0) {
-            logg.logError("Unable truncate ftrace buffer: %s", strerror(errno));
+            LOG_ERROR("Unable truncate ftrace buffer: %s", strerror(errno));
             handleException();
         }
         close(fd);
@@ -485,11 +486,11 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     // the right clock is already being used.
     int fd = open(traceFsConstants.path__trace_clock, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
-        logg.logError("Couldn't open %s", traceFsConstants.path__trace_clock);
+        LOG_ERROR("Couldn't open %s", traceFsConstants.path__trace_clock);
         handleException();
     }
     if ((trace_clock_file_length = ::read(fd, trace_clock_file_content, max_trace_clock_file_length - 1)) < 0) {
-        logg.logError("Couldn't read from %s", traceFsConstants.path__trace_clock);
+        LOG_ERROR("Couldn't read from %s", traceFsConstants.path__trace_clock);
         close(fd);
         handleException();
     }
@@ -503,16 +504,16 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     // Writing to trace_clock can be very slow on loaded high core count
     // systems.
     if (must_switch_clock && lib::writeCStringToFile(traceFsConstants.path__trace_clock, clock) != 0) {
-        logg.logError("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later",
-                      clock,
-                      mMonotonicRawSupport ? "4.2" : "3.10");
+        LOG_ERROR("Unable to switch ftrace to the %s clock, please ensure you are running Linux %s or later",
+                  clock,
+                  mMonotonicRawSupport ? "4.2" : "3.10");
         handleException();
     }
 
     if (!gSessionData.mFtraceRaw) {
         const int fd = open(traceFsConstants.path__trace_pipe, O_RDONLY | O_CLOEXEC);
         if (fd < 0) {
-            logg.logError("Unable to open trace_pipe");
+            LOG_ERROR("Unable to open trace_pipe");
             handleException();
         }
         return {{fd}, true};
@@ -522,13 +523,13 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     memset(&act, 0, sizeof(act));
     act.sa_handler = handlerUsr1;
     if (sigaction(SIGUSR1, &act, nullptr) != 0) {
-        logg.logError("sigaction failed");
+        LOG_ERROR("sigaction failed");
         handleException();
     }
 
     pageSize = sysconf(_SC_PAGESIZE);
     if (pageSize <= 0) {
-        logg.logError("sysconf PAGESIZE failed");
+        LOG_ERROR("sysconf PAGESIZE failed");
         handleException();
     }
 
@@ -538,7 +539,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     for (size_t cpu = 0; cpu < mNumberOfCores; ++cpu) {
         int pfd[2];
         if (pipe2(pfd, O_CLOEXEC) != 0) {
-            logg.logError("pipe2 failed, %s (%i)", strerror(errno), errno);
+            LOG_ERROR("pipe2 failed, %s (%i)", strerror(errno), errno);
             handleException();
         }
 
@@ -555,7 +556,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
 void FtraceDriver::start()
 {
     if (lib::writeCStringToFile(traceFsConstants.path__tracing_on, "1") != 0) {
-        logg.logError("Unable to turn ftrace on");
+        LOG_ERROR("Unable to turn ftrace on");
         handleException();
     }
 
@@ -583,7 +584,9 @@ std::vector<int> FtraceDriver::stop()
             fds.push_back(reader->getPfd0());
         }
         for (FtraceReader * reader = FtraceReader::getHead(); reader != nullptr; reader = reader->getNext()) {
-            reader->join();
+            if (!reader->join()) {
+                LOG_WARNING("Failed to wait for FtraceReader to finish. It's possible the thread has already ended.");
+            }
         }
     }
     return fds;
@@ -596,28 +599,28 @@ bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, Dyn
     }
 
     if (!printb->printf("%s/header_page", traceFsConstants.path__events)) {
-        logg.logMessage("DynBuf::printf failed");
+        LOG_DEBUG("DynBuf::printf failed");
         return false;
     }
     if (!b->read(printb->getBuf())) {
-        logg.logMessage("DynBuf::read failed");
+        LOG_DEBUG("DynBuf::read failed");
         return false;
     }
     attrsConsumer.marshalHeaderPage(b->getBuf());
 
     if (!printb->printf("%s/header_event", traceFsConstants.path__events)) {
-        logg.logMessage("DynBuf::printf failed");
+        LOG_DEBUG("DynBuf::printf failed");
         return false;
     }
     if (!b->read(printb->getBuf())) {
-        logg.logMessage("DynBuf::read failed");
+        LOG_DEBUG("DynBuf::read failed");
         return false;
     }
     attrsConsumer.marshalHeaderEvent(b->getBuf());
 
     std::unique_ptr<DIR, int (*)(DIR *)> dir {opendir(traceFsConstants.path__events__ftrace), &closedir};
     if (dir == nullptr) {
-        logg.logError("Unable to open events ftrace folder");
+        LOG_ERROR("Unable to open events ftrace folder");
         handleException();
     }
     struct dirent * dirent;
@@ -626,11 +629,11 @@ bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, Dyn
             continue;
         }
         if (!printb->printf("%s/%s/format", traceFsConstants.path__events__ftrace, dirent->d_name)) {
-            logg.logMessage("DynBuf::printf failed");
+            LOG_DEBUG("DynBuf::printf failed");
             return false;
         }
         if (!b->read(printb->getBuf())) {
-            logg.logMessage("DynBuf::read failed");
+            LOG_DEBUG("DynBuf::read failed");
             return false;
         }
         attrsConsumer.marshalFormat(b->getLength(), b->getBuf());

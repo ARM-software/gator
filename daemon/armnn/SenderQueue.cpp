@@ -47,7 +47,7 @@ namespace armnn {
                 sendItem(std::move(data));
             }
         }
-        logg.logMessage("Exit sender loop");
+        LOG_DEBUG("Exit sender loop");
     }
 
     void SenderQueue::sendItem(std::vector<std::uint8_t> && data)
@@ -59,7 +59,7 @@ namespace armnn {
 
     void SenderQueue::unableToSendItem()
     {
-        logg.logError("Unable to send packet");
+        LOG_ERROR("Unable to send packet");
         stopSending();
     }
 }

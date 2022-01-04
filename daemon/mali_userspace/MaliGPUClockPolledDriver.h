@@ -10,8 +10,9 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <unistd.h>
 #include <utility>
+
+#include <unistd.h>
 
 namespace mali_userspace {
 
@@ -22,7 +23,7 @@ namespace mali_userspace {
     public:
         MaliGPUClockPolledDriver(std::string clockPath) : PolledDriver("MaliGPUClock"), mClockPath(std::move(clockPath))
         {
-            logg.logMessage("GPU CLOCK POLLING '%s'", mClockPath.c_str());
+            LOG_DEBUG("GPU CLOCK POLLING '%s'", mClockPath.c_str());
         }
 
         // Intentionally unimplemented
@@ -34,15 +35,14 @@ namespace mali_userspace {
         void readEvents(mxml_node_t * const /*root*/) override
         {
             if (access(mClockPath.c_str(), R_OK) == 0) {
-                logg.logSetup("Mali GPU counters\nAccess %s is OK. GPU frequency counters available.",
-                              mClockPath.c_str());
+                LOG_SETUP("Mali GPU counters\nAccess %s is OK. GPU frequency counters available.", mClockPath.c_str());
                 setCounters(
                     new mali_userspace::MaliGPUClockPolledDriverCounter(getCounters(), "ARM_Mali-clock", mClockValue));
             }
             else {
 
-                logg.logSetup("Mali GPU counters\nCannot access %s. GPU frequency counters not available.",
-                              mClockPath.c_str());
+                LOG_SETUP("Mali GPU counters\nCannot access %s. GPU frequency counters not available.",
+                          mClockPath.c_str());
             }
         }
 
@@ -51,7 +51,7 @@ namespace mali_userspace {
         void read(IBlockCounterFrameBuilder & buffer) override
         {
             if (!doRead()) {
-                logg.logError("Unable to read GPU clock frequency");
+                LOG_ERROR("Unable to read GPU clock frequency");
                 handleException();
             }
             super::read(buffer);

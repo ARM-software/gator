@@ -9,6 +9,7 @@
 #include "SessionData.h"
 
 #include <cinttypes>
+
 #include <unistd.h>
 
 class NetCounter : public DriverCounter {
@@ -47,8 +48,7 @@ void NetDriver::readEvents(mxml_node_t * const /*unused*/)
         setCounters(new NetCounter(getCounters(), "Linux_net_tx", &mTransmitBytes));
     }
     else {
-        logg.logSetup(
-            "Linux counters\nCannot access /proc/net/dev. Network transmit and receive counters not available.");
+        LOG_SETUP("Linux counters\nCannot access /proc/net/dev. Network transmit and receive counters not available.");
     }
 }
 
@@ -106,7 +106,7 @@ bool NetDriver::doRead()
 void NetDriver::start()
 {
     if (!doRead()) {
-        logg.logError("Unable to read network stats");
+        LOG_ERROR("Unable to read network stats");
         handleException();
     }
     // Initialize previous values
@@ -121,7 +121,7 @@ void NetDriver::start()
 void NetDriver::read(IBlockCounterFrameBuilder & buffer)
 {
     if (!doRead()) {
-        logg.logError("Unable to read network stats");
+        LOG_ERROR("Unable to read network stats");
         handleException();
     }
     super::read(buffer);

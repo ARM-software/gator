@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "Fifo.h"
 
@@ -22,12 +22,12 @@ Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t * readerSem)
       mEnd(false)
 {
     if (mBuffer == nullptr) {
-        logg.logError("failed to allocate %d bytes", bufferSize + singleBufferSize);
+        LOG_ERROR("failed to allocate %d bytes", bufferSize + singleBufferSize);
         handleException();
     }
 
     if (sem_init(&mWaitForSpaceSem, 0, 0) != 0) {
-        logg.logError("sem_init() failed");
+        LOG_ERROR("sem_init() failed");
         handleException();
     }
 }

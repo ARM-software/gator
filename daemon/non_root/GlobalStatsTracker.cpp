@@ -79,8 +79,8 @@ namespace non_root {
     {
         loadavgOver1Minute.update(record.getLoadAvgOver1Minutes() * non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
         loadavgOver5Minutes.update(record.getLoadAvgOver5Minutes() * non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
-        loadavgOver15Minutes.update(record.getLoadAvgOver15Minutes() *
-                                    non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
+        loadavgOver15Minutes.update(record.getLoadAvgOver15Minutes()
+                                    * non_root::GlobalStatsTracker::LOADAVG_MULTIPLIER);
         numProcessesRunning.update(record.getNumRunnableThreads());
         numProcessesExist.update(record.getNumThreads());
     }

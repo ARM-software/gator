@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -27,7 +27,7 @@ namespace armnn {
                                              ICounterConsumer & counterConsumer,
                                              const std::uint32_t sessionID)
     {
-        logg.logMessage("Creating new ArmNN session");
+        LOG_DEBUG("Creating new ArmNN session");
 
         HeaderPacket headerPacket {};
         if (!Session::initialiseConnection(*connection, headerPacket)) {
@@ -36,15 +36,15 @@ namespace armnn {
 
         // Decode the metadata packet and create the decoder
         const auto packetBodyAfterMagic = lib::makeConstSpan(headerPacket.packet).subspan(HEADER_SIZE + MAGIC_SIZE);
-        lib::Optional<StreamMetadataContent> streamMetadata =
+        std::optional<StreamMetadataContent> streamMetadata =
             getStreamMetadata(packetBodyAfterMagic, headerPacket.byteOrder);
         if (!streamMetadata) {
-            logg.logError("Unable to decode the session metadata. Dropping Session.");
+            LOG_ERROR("Unable to decode the session metadata. Dropping Session.");
             return nullptr;
         }
 
         std::unique_ptr<IEncoder> encoder =
-            armnn::createEncoder(streamMetadata.get().pktVersionTables, headerPacket.byteOrder);
+            armnn::createEncoder(streamMetadata->pktVersionTables, headerPacket.byteOrder);
         if (!encoder) {
             return nullptr;
         }
@@ -66,13 +66,15 @@ namespace armnn {
                                                                            std::move(headerPacket.packet)}};
 
         std::unique_ptr<IPacketDecoder> decoder =
-            armnn::createDecoder(streamMetadata.get().pktVersionTables, headerPacket.byteOrder, *sst);
+            armnn::createDecoder(streamMetadata->pktVersionTables, headerPacket.byteOrder, *sst);
         if (!decoder) {
             return nullptr;
         }
 
-        return std::unique_ptr<Session> {
-            new Session {std::move(connection), headerPacket.byteOrder, std::move(decoder), std::move(sst)}};
+        return std::make_unique<Session>(std::move(connection),
+                                         headerPacket.byteOrder,
+                                         std::move(decoder),
+                                         std::move(sst));
     }
 
     bool Session::initialiseConnection(SocketIO & connection, HeaderPacket & headerPacket)
@@ -83,7 +85,7 @@ namespace armnn {
 
             if (!connection.readExact(packet)) {
                 // Can't read the header.
-                logg.logError("Unable to read the ArmNN metadata packet header");
+                LOG_ERROR("Unable to read the ArmNN metadata packet header");
                 return false;
             }
 
@@ -96,20 +98,20 @@ namespace armnn {
             }
             else {
                 // invalid magic
-                logg.logError("Invalid ArmNN metadata packet magic");
+                LOG_ERROR("Invalid ArmNN metadata packet magic");
                 return false;
             }
 
             const std::uint32_t streamMetadataIdentifier =
                 byte_order::get_32<std::uint8_t>(headerPacket.byteOrder, packet, 0);
             if (streamMetadataIdentifier != 0) {
-                logg.logError("Invalid ArmNN stream_metadata_identifier (%" PRIu32 ")", streamMetadataIdentifier);
+                LOG_ERROR("Invalid ArmNN stream_metadata_identifier (%" PRIu32 ")", streamMetadataIdentifier);
                 return false;
             }
 
             const std::uint32_t length = byte_order::get_32<std::uint8_t>(headerPacket.byteOrder, packet, 4);
             if (length < MAGIC_SIZE) {
-                logg.logError("Invalid ArmNN metadata packet length (%" PRIu32 ")", length);
+                LOG_ERROR("Invalid ArmNN metadata packet length (%" PRIu32 ")", length);
                 return false;
             }
 
@@ -117,7 +119,7 @@ namespace armnn {
             std::vector<std::uint8_t> restOfPacketBody(remainingLength);
             if (!connection.readExact(restOfPacketBody)) {
                 // Can't read the payload
-                logg.logError("Unable to read the ArmNN metadata packet payload");
+                LOG_ERROR("Unable to read the ArmNN metadata packet payload");
                 return false;
             }
 
@@ -156,7 +158,7 @@ namespace armnn {
         // Main reading loop, decode packets
         while (true) {
             if (!receiveNextPacket()) {
-                logg.logMessage("Session: disconnected due to invalid packet or connection shutdown");
+                LOG_DEBUG("Session: disconnected due to invalid packet or connection shutdown");
                 break;
             }
         }

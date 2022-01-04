@@ -8,8 +8,9 @@
 #include "SessionData.h"
 #include "lib/Syscall.h"
 
-#include <unistd.h>
 #include <utility>
+
+#include <unistd.h>
 
 namespace mali_userspace {
     MaliHwCntrTask::MaliHwCntrTask(std::unique_ptr<IBufferControl> buffer,
@@ -40,7 +41,7 @@ namespace mali_userspace {
         if (mConstantValues.size() > 0) {
             bool wroteConstants = writeConstants();
             if (!wroteConstants) {
-                logg.logError("Failed to send constants for device %d", deviceNumber);
+                LOG_ERROR("Failed to send constants for device %d", deviceNumber);
                 mFrameBuilder->flush();
                 mBuffer->setDone();
                 return;
@@ -48,7 +49,7 @@ namespace mali_userspace {
         }
 
         if (!mReader.startPeriodicSampling(sampleIntervalNs)) {
-            logg.logError("Could not enable periodic sampling");
+            LOG_ERROR("Could not enable periodic sampling");
             terminated = true;
         }
 
@@ -75,24 +76,24 @@ namespace mali_userspace {
                     break;
                 }
                 case WAIT_STATUS_TERMINATED: {
-                    logg.logMessage("Stopped capturing HW counters");
+                    LOG_DEBUG("Stopped capturing HW counters");
                     terminated = true;
                     break;
                 }
                 case WAIT_STATUS_ERROR:
                 default: {
-                    logg.logError("Error - Stopped capturing HW counters");
+                    LOG_ERROR("Error - Stopped capturing HW counters");
                     break;
                 }
             }
             if (isOneShot && (mBuffer->isFull())) {
-                logg.logMessage("One shot (malihwc)");
+                LOG_DEBUG("One shot (malihwc)");
                 endSession();
             }
         }
 
         if (!mReader.startPeriodicSampling(0)) {
-            logg.logError("Could not disable periodic sampling");
+            LOG_ERROR("Could not disable periodic sampling");
         }
 
         mFrameBuilder->flush();

@@ -1,10 +1,11 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
 #include <algorithm>
 #include <cerrno>
 #include <cstdint>
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -16,10 +17,10 @@ namespace lib {
 
         if (result != 0) {
             if (errno == EMFILE) {
-                logg.logError("The process limit on the number of open file descriptors has been reached.");
+                LOG_ERROR("The process limit on the number of open file descriptors has been reached.");
             }
             else if (errno == ENFILE) {
-                logg.logError("The system wide limit on the number of open files has been reached.");
+                LOG_ERROR("The system wide limit on the number of open files has been reached.");
             }
         }
 
@@ -32,12 +33,12 @@ namespace lib {
 
         flags = fcntl(fd, F_GETFL);
         if (flags < 0) {
-            logg.logMessage("fcntl getfl failed");
+            LOG_DEBUG("fcntl getfl failed");
             return false;
         }
 
         if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
-            logg.logMessage("fcntl setfl failed");
+            LOG_DEBUG("fcntl setfl failed");
             return false;
         }
 
@@ -50,7 +51,7 @@ namespace lib {
         while (written < pos) {
             ssize_t bytes = write(fd, reinterpret_cast<const uint8_t *>(buf) + written, pos - written);
             if (bytes <= 0) {
-                logg.logMessage("write failed");
+                LOG_DEBUG("write failed");
                 return false;
             }
             written += bytes;
@@ -65,7 +66,7 @@ namespace lib {
         while (pos < count) {
             ssize_t bytes = read(fd, reinterpret_cast<uint8_t *>(buf) + pos, count - pos);
             if (bytes <= 0) {
-                logg.logMessage("read failed");
+                LOG_DEBUG("read failed");
                 return false;
             }
             pos += bytes;
@@ -82,7 +83,7 @@ namespace lib {
             const size_t nToRead = std::min<size_t>(sizeof(buf), count - pos);
             ssize_t bytes = read(fd, buf, nToRead);
             if (bytes <= 0) {
-                logg.logMessage("skip failed");
+                LOG_DEBUG("skip failed");
                 return false;
             }
             pos += bytes;

@@ -1,12 +1,12 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #ifndef CONSTANT_H
 #define CONSTANT_H
 
 #include "ConstantMode.h"
 #include "GetEventKey.h"
-#include "lib/Optional.h"
 
+#include <optional>
 #include <string>
 
 /**

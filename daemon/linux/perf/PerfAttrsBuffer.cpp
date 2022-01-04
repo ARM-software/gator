@@ -57,8 +57,8 @@ void PerfAttrsBuffer::marshalPea(const struct perf_event_attr * const pea, int k
 
 void PerfAttrsBuffer::marshalKeys(const int count, const uint64_t * const ids, const int * const keys)
 {
-    waitForSpace(2 * buffer_utils::MAXSIZE_PACK32 +
-                 count * (buffer_utils::MAXSIZE_PACK32 + buffer_utils::MAXSIZE_PACK64));
+    waitForSpace(2 * buffer_utils::MAXSIZE_PACK32
+                 + count * (buffer_utils::MAXSIZE_PACK32 + buffer_utils::MAXSIZE_PACK64));
     buffer.packInt(static_cast<int32_t>(CodeType::KEYS));
     buffer.packInt(count);
     for (int i = 0; i < count; ++i) {
@@ -95,7 +95,7 @@ void PerfAttrsBuffer::marshalMaps(const int pid, const int tid, const char * con
 
     // ignore map files that are *really* large
     if (!buffer.supportsWriteOfSize(requiredLen)) {
-        logg.logWarning("proc maps file too large for buffer (%d > %d bytes), ignoring", requiredLen, buffer.size());
+        LOG_WARNING("proc maps file too large for buffer (%d > %d bytes), ignoring", requiredLen, buffer.size());
         return;
     }
 
@@ -141,7 +141,7 @@ void PerfAttrsBuffer::marshalKallsyms(const char * const kallsyms)
 
     // ignore kallsyms files that are *really* large
     if (!buffer.supportsWriteOfSize(requiredLen)) {
-        logg.logWarning("kallsyms file too large for buffer (%d > %d bytes), ignoring", requiredLen, buffer.size());
+        LOG_WARNING("kallsyms file too large for buffer (%d > %d bytes), ignoring", requiredLen, buffer.size());
         return;
     }
 
@@ -158,9 +158,10 @@ void PerfAttrsBuffer::perfCounterHeader(const uint64_t time, const int numberOfC
         buffer_utils::MAXSIZE_PACK32   // code type
         + buffer_utils::MAXSIZE_PACK64 // time
         // counters (perfCounter)
-        + numberOfCounters * (buffer_utils::MAXSIZE_PACK32    // core
-                              + buffer_utils::MAXSIZE_PACK32  // key
-                              + buffer_utils::MAXSIZE_PACK64) // value
+        + numberOfCounters
+              * (buffer_utils::MAXSIZE_PACK32    // core
+                 + buffer_utils::MAXSIZE_PACK32  // key
+                 + buffer_utils::MAXSIZE_PACK64) // value
         // footer (perfCounterFooter)
         + buffer_utils::MAXSIZE_PACK32 // sentinel value
     );

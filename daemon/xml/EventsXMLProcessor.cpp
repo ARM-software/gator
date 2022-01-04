@@ -4,11 +4,11 @@
 
 #include "Logging.h"
 #include "lib/Assert.h"
-#include "lib/Optional.h"
 #include "xml/PmuXML.h"
 
 #include <cstring>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -69,8 +69,8 @@ namespace events_xml {
         template<typename T>
         static void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
         {
-            if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr ||
-                mxmlGetType(src) != MXML_ELEMENT) {
+            if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr
+                || mxmlGetType(src) != MXML_ELEMENT) {
                 return;
             }
 
@@ -79,7 +79,7 @@ namespace events_xml {
             std::string modifiedValue;
             const int numAttrs = mxmlElementGetAttrCount(src);
             for (int i = 0; i < numAttrs; ++i) {
-                const char * name;
+                const char * name = nullptr;
                 const char * value = mxmlElementGetAttrByIndex(src, i, &name);
 
                 if (!attributeFilter(elementName, name, value, modifiedValue)) {
@@ -146,7 +146,7 @@ namespace events_xml {
                 const auto categoryIt = categoryNodes.find(counterSetName);
 
                 if ((counterSetIt == counterSetNodes.end()) || (categoryIt == categoryNodes.end())) {
-                    logg.logError("Missing category or counter set named '%s'", counterSetName.c_str());
+                    LOG_ERROR("Missing category or counter set named '%s'", counterSetName.c_str());
                     handleException();
                 }
 
@@ -246,7 +246,7 @@ namespace events_xml {
         for (mxml_node_t * node : MxmlChildElementsWithNameView {mainParent, TAG_SPE}) {
             const char * const id = mxmlElementGetAttr(node, ATTR_ID);
             if (id == nullptr) {
-                logg.logError("Not all event XML <spe> nodes have the required 'id' attribute");
+                LOG_ERROR("Not all event XML <spe> nodes have the required 'id' attribute");
                 return false;
             }
             existingSpesById[id] = node;
@@ -260,21 +260,21 @@ namespace events_xml {
 
             const char * const id = mxmlElementGetAttr(node, ATTR_ID);
             if (id == nullptr) {
-                logg.logError("Not all appended event XML <spe> have the required 'id' attribute");
+                LOG_ERROR("Not all appended event XML <spe> have the required 'id' attribute");
                 return false;
             }
 
             // Replace any duplicate <spe>s
             const auto existingSpe = existingSpesById.find(id);
             if (existingSpe != existingSpesById.end()) {
-                logg.logMessage("Replacing old <spe id=\"%s\">", id);
+                LOG_DEBUG("Replacing old <spe id=\"%s\">", id);
                 // counter set can be inside categories
                 mxmlDelete(existingSpe->second);
                 existingSpesById.erase(existingSpe);
             }
 
             // Add new spe
-            logg.logMessage("Appending <spe id=\"%s\">", id);
+            LOG_DEBUG("Appending <spe id=\"%s\">", id);
             mxmlAdd(mainParent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
         }
         return true;
@@ -291,7 +291,7 @@ namespace events_xml {
         for (mxml_node_t * node : MxmlChildElementsWithNameView {mainParent, TAG_COUNTER_SET}) {
             const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
             if (name == nullptr) {
-                logg.logError("Not all event XML counter_set nodes have the required name attribute");
+                LOG_ERROR("Not all event XML counter_set nodes have the required name attribute");
                 return false;
             }
             existingCounterSetsByName[name] = node;
@@ -305,20 +305,20 @@ namespace events_xml {
 
             const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
             if (name == nullptr) {
-                logg.logError("Not all appended event XML counter_sets have the required name attribute");
+                LOG_ERROR("Not all appended event XML counter_sets have the required name attribute");
                 return false;
             }
 
             // Replace any duplicate counter_sets
             auto existingCounterSet = existingCounterSetsByName.find(name);
             if (existingCounterSet != existingCounterSetsByName.end()) {
-                logg.logMessage("Replacing counter set %s", name);
+                LOG_DEBUG("Replacing counter set %s", name);
                 mxmlDelete(existingCounterSet->second);
                 existingCounterSetsByName.erase(existingCounterSet);
             }
 
             // Add new counter_set
-            logg.logMessage("Appending counter_set %s", name);
+            LOG_DEBUG("Appending counter_set %s", name);
             mxmlAdd(mainParent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
         }
         return true;
@@ -334,7 +334,7 @@ namespace events_xml {
             const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
 
             if (title == nullptr || name == nullptr) {
-                logg.logError("Not all event XML nodes have the required title and name");
+                LOG_ERROR("Not all event XML nodes have the required title and name");
                 return false;
             }
 
@@ -351,14 +351,14 @@ namespace events_xml {
             const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
 
             if (title == nullptr || name == nullptr) {
-                logg.logError("Not all appended event XML nodes have the required title and name");
+                LOG_ERROR("Not all appended event XML nodes have the required title and name");
                 return false;
             }
 
             // Remove any duplicate events
             auto existingEvent = existingEventsByTitleAndName.find({title, name});
             if (existingEvent != existingEventsByTitleAndName.end()) {
-                logg.logMessage("Replacing event %s: %s", title, name);
+                LOG_DEBUG("Replacing event %s: %s", title, name);
                 mxmlDelete(existingEvent->second);
                 existingEventsByTitleAndName.erase(existingEvent);
             }
@@ -376,7 +376,7 @@ namespace events_xml {
         for (mxml_node_t * node : MxmlChildElementsWithNameView {mainParent, TAG_CATEGORY}) {
             const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
             if (name == nullptr) {
-                logg.logError("Not all event XML category nodes have the required name attribute");
+                LOG_ERROR("Not all event XML category nodes have the required name attribute");
                 return false;
             }
             existingCategoriesByName[name] = node;
@@ -385,21 +385,21 @@ namespace events_xml {
         for (mxml_node_t * node : MxmlChildElementsWithNameView {appendParent, TAG_CATEGORY}) {
             const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
             if (name == nullptr) {
-                logg.logError("Not all appended event XML category nodes have the required name attribute");
+                LOG_ERROR("Not all appended event XML category nodes have the required name attribute");
                 return false;
             }
 
             auto existingCategory = existingCategoriesByName.find(name);
             if (existingCategory != existingCategoriesByName.end()) {
                 // Merge identically named categories
-                logg.logMessage("Merging category %s", name);
+                LOG_DEBUG("Merging category %s", name);
                 if (!mergeEvents(existingCategory->second, node) || !mergeCounterSets(existingCategory->second, node)) {
                     return false;
                 }
             }
             else {
                 // Add new category
-                logg.logMessage("Appending category %s", name);
+                LOG_DEBUG("Appending category %s", name);
                 mxmlAdd(mainParent, MXML_ADD_AFTER, MXML_ADD_TO_PARENT, node);
             }
         }
@@ -414,26 +414,25 @@ namespace events_xml {
 
         mxml_node_t * const mainEventsNode = getEventsElement(mainXml);
         if (mainEventsNode == nullptr) {
-            logg.logError(
-                "Unable to find <events> node in the events.xml, please ensure the first two lines of events XML "
-                "starts with:\n"
-                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                "<events>");
+            LOG_ERROR("Unable to find <events> node in the events.xml, please ensure the first two lines of events XML "
+                      "starts with:\n"
+                      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                      "<events>");
             return false;
         }
 
         mxml_node_t * const appendEventsNode = getEventsElement(appendXml.get());
         if (appendEventsNode == nullptr) {
-            logg.logError("Unable to find <events> node in the appended events.xml, please ensure the first two lines "
-                          "of events XML "
-                          "starts with:\n"
-                          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                          "<events>");
+            LOG_ERROR("Unable to find <events> node in the appended events.xml, please ensure the first two lines "
+                      "of events XML "
+                      "starts with:\n"
+                      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                      "<events>");
             return false;
         }
 
-        return mergeCounterSets(mainEventsNode, appendEventsNode) &&
-               mergeCategories(mainEventsNode, appendEventsNode) && mergeSpes(mainEventsNode, appendEventsNode);
+        return mergeCounterSets(mainEventsNode, appendEventsNode) && mergeCategories(mainEventsNode, appendEventsNode)
+            && mergeSpes(mainEventsNode, appendEventsNode);
     }
 
     void processClusters(mxml_node_t * xml, lib::Span<const GatorCpu> clusters, lib::Span<const UncorePmu> uncores)
@@ -443,9 +442,7 @@ namespace events_xml {
 
         for (const auto & uncore : uncores) {
             if ((uncore.getDeviceInstance() != nullptr) && (strcmp(uncore.getId(), uncore.getCounterSet()) == 0)) {
-                logg.logError("Invalid Uncore PMU %s (%s) is reported as instanced",
-                              uncore.getId(),
-                              uncore.getCoreName());
+                LOG_ERROR("Invalid Uncore PMU %s (%s) is reported as instanced", uncore.getId(), uncore.getCoreName());
                 handleException();
             }
         }
@@ -483,7 +480,7 @@ namespace events_xml {
         // Create the counter set node
         mxml_unique_ptr counterSetNode {makeMxmlUniquePtr(nullptr)};
         if (category.counterSet) {
-            const CounterSet & counterSet = category.counterSet.get();
+            const CounterSet & counterSet = *category.counterSet;
 
             counterSetNode.reset(mxmlNewElement(MXML_NO_PARENT, TAG_COUNTER_SET));
             mxmlElementSetAttrf(counterSetNode.get(), ATTR_COUNT, "%i", counterSet.count);
@@ -502,7 +499,7 @@ namespace events_xml {
                 mxmlElementSetAttrf(eventNode, ATTR_EVENT, "0x%" PRIxEventCode, event.eventNumber.asU64());
             }
             if (event.counter) {
-                mxmlElementSetAttr(eventNode, ATTR_COUNTER, event.counter.get().c_str());
+                mxmlElementSetAttr(eventNode, ATTR_COUNTER, event.counter->c_str());
             }
             mxmlElementSetAttr(eventNode, ATTR_TITLE, event.title.c_str());
             mxmlElementSetAttr(eventNode, ATTR_NAME, event.name.c_str());

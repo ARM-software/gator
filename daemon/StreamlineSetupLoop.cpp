@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #include "StreamlineSetupLoop.h"
 
@@ -41,7 +41,7 @@ namespace {
         receivedOneByteCallback(true);
 
         if (response < 0) {
-            logg.logError("Target error: Unexpected socket disconnect");
+            LOG_ERROR("Target error: Unexpected socket disconnect");
             return result;
         }
 
@@ -50,7 +50,7 @@ namespace {
 
         // add artificial limit
         if ((length < 0) || length > 1024 * 1024) {
-            logg.logError("Target error: Invalid length received, %d", length);
+            LOG_ERROR("Target error: Invalid length received, %d", length);
             return result;
         }
 
@@ -60,7 +60,7 @@ namespace {
         // receive data
         response = socket.receiveNBytes(result.data.data(), length);
         if (response < 0) {
-            logg.logError("Target error: Unexpected socket disconnect");
+            LOG_ERROR("Target error: Unexpected socket disconnect");
             return result;
         }
 
@@ -109,24 +109,22 @@ IStreamlineCommandHandler::State streamlineSetupCommandIteration(
             return handler.handleDeliver(readResult.data.data());
         case COMMAND_APC_START:
             if (!readResult.data.empty()) {
-                logg.logMessage("INVESTIGATE: Received APC_START command but with length = %zu",
-                                readResult.data.size());
+                LOG_DEBUG("INVESTIGATE: Received APC_START command but with length = %zu", readResult.data.size());
             }
             return handler.handleApcStart();
         case COMMAND_APC_STOP:
             if (!readResult.data.empty()) {
-                logg.logMessage("INVESTIGATE: Received APC_STOP command but with length = %zu", readResult.data.size());
+                LOG_DEBUG("INVESTIGATE: Received APC_STOP command but with length = %zu", readResult.data.size());
             }
             return handler.handleApcStop();
         case COMMAND_DISCONNECT:
             if (!readResult.data.empty()) {
-                logg.logMessage("INVESTIGATE: Received DISCONNECT command but with length = %zu",
-                                readResult.data.size());
+                LOG_DEBUG("INVESTIGATE: Received DISCONNECT command but with length = %zu", readResult.data.size());
             }
             return handler.handleDisconnect();
         case COMMAND_PING:
             if (!readResult.data.empty()) {
-                logg.logMessage("INVESTIGATE: Received PING command but with length = %zu", readResult.data.size());
+                LOG_DEBUG("INVESTIGATE: Received PING command but with length = %zu", readResult.data.size());
             }
             return handler.handlePing();
         case COMMAND_EXIT:
@@ -134,12 +132,11 @@ IStreamlineCommandHandler::State streamlineSetupCommandIteration(
             return handler.handleExit();
         case COMMAND_REQUEST_CURRENT_CONFIG:
             if (!readResult.data.empty()) {
-                logg.logMessage("INVESTIGATE: Received REQUEST_CONFIG command but with length = %zu",
-                                readResult.data.size());
+                LOG_DEBUG("INVESTIGATE: Received REQUEST_CONFIG command but with length = %zu", readResult.data.size());
             }
             return handler.handleRequestCurrentConfig();
         default:
-            logg.logError("Target error: Unknown command type, %d", readResult.commandType);
+            LOG_ERROR("Target error: Unknown command type, %d", readResult.commandType);
             return IStreamlineCommandHandler::State::EXIT_ERROR;
     }
 }

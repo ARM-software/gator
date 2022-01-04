@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+
 #include <sys/mman.h>
 
 namespace shared_memory {

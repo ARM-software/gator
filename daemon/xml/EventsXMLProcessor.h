@@ -4,12 +4,12 @@
 #define EVENTS_XML_PROCESSOR_H
 
 #include "Events.h"
-#include "lib/Optional.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "xml/MxmlUtils.h"
 
 #include <memory>
+#include <optional>
 #include <tuple>
 
 class GatorCpu;

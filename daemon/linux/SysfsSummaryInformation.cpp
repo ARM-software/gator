@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #include "linux/SysfsSummaryInformation.h"
 
@@ -15,7 +15,7 @@ namespace lnx {
         {
             lib::FsEntry sysBusEventSourceDevices = lib::FsEntry::create("/sys/bus/event_source/devices");
             lib::FsEntryDirectoryIterator deviceDirIterator = sysBusEventSourceDevices.children();
-            while (lib::Optional<lib::FsEntry> deviceDir = deviceDirIterator.next()) {
+            while (std::optional<lib::FsEntry> deviceDir = deviceDirIterator.next()) {
                 std::string deviceName = deviceDir->name();
                 // send metadata about perf devices
                 addSysfsSummaryInformation(additionalAttributes,
@@ -42,7 +42,7 @@ namespace lnx {
                      ? lib::Format() << prefix << "." << deviceName << "." << dataFile.name()
                      : lib::Format() << prefix << "." << deviceName << "." << dataDirName << "." << dataFile.name());
 
-            logg.logMessage("Read summary metadata item '%s' = '%s'", key.c_str(), contents.c_str());
+            LOG_DEBUG("Read summary metadata item '%s' = '%s'", key.c_str(), contents.c_str());
             additionalAttributes[key] = contents;
         }
     }
@@ -56,7 +56,7 @@ namespace lnx {
         lib::FsEntry dataDir = lib::FsEntry::create(deviceDirectory, dataDirName);
         lib::FsEntryDirectoryIterator dataDirIterator = dataDir.children();
 
-        while (lib::Optional<lib::FsEntry> dataFile = dataDirIterator.next()) {
+        while (std::optional<lib::FsEntry> dataFile = dataDirIterator.next()) {
             addSysfsSummaryInformation(additionalAttributes, prefix, deviceName, dataDirName, *dataFile);
         }
     }

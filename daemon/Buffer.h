@@ -11,6 +11,7 @@
 
 #include <atomic>
 #include <cstdint>
+
 #include <semaphore.h>
 
 class Buffer : public IBufferControl, public IRawFrameBuilderWithDirectAccess {

@@ -20,6 +20,7 @@
 #include "lib/Memory.h"
 
 #include <atomic>
+
 #include <fcntl.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
@@ -58,7 +59,7 @@ public:
     {
         while (mBuffer.bytesAvailable() <= bytes) {
             if (gSessionData.mOneShot && mSessionIsActive) {
-                logg.logMessage("One shot (external)");
+                LOG_DEBUG("One shot (external)");
                 endSession();
             }
             sem_wait(&mBufferSem);
@@ -68,18 +69,18 @@ public:
     void configureConnection(const int fd, const char * const handshake, size_t size)
     {
         if (!lib::setNonblock(fd)) {
-            logg.logError("Unable to set nonblock on fh");
+            LOG_ERROR("Unable to set nonblock on fh");
             handleException();
         }
 
         if (!mMonitor.add(fd)) {
-            logg.logError("Unable to add fh to monitor");
+            LOG_ERROR("Unable to add fh to monitor");
             handleException();
         }
 
         // Write the handshake to the circular buffer
         waitFor(IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + size - 1, []() {
-            logg.logError("Unable to configure connection, buffer too small");
+            LOG_ERROR("Unable to configure connection, buffer too small");
             handleException();
         });
         mBuffer.beginFrame(FrameType::EXTERNAL);
@@ -130,9 +131,9 @@ public:
 
     bool prepare()
     {
-        if (!mMonitor.init() || !lib::setNonblock(mMidgardStartupUds.getFd()) ||
-            !mMonitor.add(mMidgardStartupUds.getFd()) || !lib::setNonblock(mUtgardStartupUds.getFd()) ||
-            !mMonitor.add(mUtgardStartupUds.getFd())
+        if (!mMonitor.init() || !lib::setNonblock(mMidgardStartupUds.getFd())
+            || !mMonitor.add(mMidgardStartupUds.getFd()) || !lib::setNonblock(mUtgardStartupUds.getFd())
+            || !mMonitor.add(mUtgardStartupUds.getFd())
 #ifdef TCP_ANNOTATIONS
             || !lib::setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
 #endif
@@ -142,14 +143,14 @@ public:
 
         int pipefd[2];
         if (lib::pipe_cloexec(pipefd) != 0) {
-            logg.logError("pipe failed");
+            LOG_ERROR("pipe failed");
             return false;
         }
         mInterruptWrite = pipefd[1];
         mInterruptRead = pipefd[0];
 
         if (!mMonitor.add(pipefd[0])) {
-            logg.logError("Monitor::add failed");
+            LOG_ERROR("Monitor::add failed");
             return false;
         }
 
@@ -166,14 +167,14 @@ public:
 
         // Gator runs at a high priority, reset the priority to the default
         if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
-            logg.logError("setpriority failed");
+            LOG_ERROR("setpriority failed");
             handleException();
         }
 
         // Notify annotate clients to retry connecting to gatord
         uint64_t val = 1;
         if (::write(gSessionData.mAnnotateStart, &val, sizeof(val)) != sizeof(val)) {
-            logg.logMessage("Writing to annotate pipe failed");
+            LOG_DEBUG("Writing to annotate pipe failed");
         }
 
         if (mDrivers.getFtraceDriver().isSupported()) {
@@ -189,7 +190,7 @@ public:
             }
             int ready = mMonitor.wait(events, ARRAY_LENGTH(events), -1);
             if (ready < 0) {
-                logg.logError("Monitor::wait failed");
+                LOG_ERROR("Monitor::wait failed");
                 handleException();
             }
 
@@ -201,7 +202,7 @@ public:
                     // Don't read from this connection, establish a new connection to Midgard
                     close(client);
                     if (!connectMidgard()) {
-                        logg.logError("Unable to configure incoming Midgard graphics connection");
+                        LOG_ERROR("Unable to configure incoming Midgard graphics connection");
                         handleException();
                     }
                 }
@@ -217,7 +218,7 @@ public:
                 else if (fd == mAnnotate.getFd()) {
                     int client = mAnnotate.acceptConnection();
                     if (!lib::setNonblock(client) || !mMonitor.add(client)) {
-                        logg.logError("Unable to set socket options on incoming annotation connection");
+                        LOG_ERROR("Unable to set socket options on incoming annotation connection");
                         handleException();
                     }
                 }
@@ -225,7 +226,7 @@ public:
                 else if (fd == mAnnotateUds.getFd()) {
                     int client = mAnnotateUds.acceptConnection();
                     if (!lib::setNonblock(client) || !mMonitor.add(client)) {
-                        logg.logError("Unable to set socket options on incoming annotation connection");
+                        LOG_ERROR("Unable to set socket options on incoming annotation connection");
                         handleException();
                     }
                 }
@@ -302,7 +303,7 @@ public:
         int8_t c = 0;
         // Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
         if (::write(*mInterruptWrite, &c, sizeof(c)) != sizeof(c)) {
-            logg.logError("write failed");
+            LOG_ERROR("write failed");
             handleException();
         }
     }

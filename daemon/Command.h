@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
 
 #ifndef COMMAND_H
 #define COMMAND_H
@@ -7,8 +7,9 @@
 
 #include <atomic>
 #include <functional>
-#include <semaphore.h>
 #include <thread>
+
+#include <semaphore.h>
 
 class Command {
 public:

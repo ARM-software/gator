@@ -16,8 +16,9 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <dirent.h>
 #include <sstream>
+
+#include <dirent.h>
 
 static const char TAG_CONFIGURATION[] = "configuration";
 
@@ -70,7 +71,7 @@ namespace configuration_xml {
         }
 
         // fall back to the defaults
-        logg.logMessage("Unable to locate configuration.xml, using default in binary");
+        LOG_DEBUG("Unable to locate configuration.xml, using default in binary");
 
         {
             auto && configurationXML = getDefaultConfigurationXml(clusters);
@@ -84,7 +85,7 @@ namespace configuration_xml {
         }
 
         // should not happen
-        logg.logError("bad default configuration.xml");
+        LOG_ERROR("bad default configuration.xml");
         handleException();
     }
 
@@ -198,7 +199,7 @@ namespace configuration_xml {
         }
         else {
             if (getApplicationFullPath(path, n) != 0) {
-                logg.logMessage("Unable to determine the full path of gatord, the cwd will be used");
+                LOG_DEBUG("Unable to determine the full path of gatord, the cwd will be used");
             }
             strncat(path, "configuration.xml", n - strlen(path) - 1);
         }
@@ -210,11 +211,11 @@ namespace configuration_xml {
         getPath(path, sizeof(path));
 
         if (::remove(path) != 0) {
-            logg.logError("Invalid configuration.xml file detected and unable to delete it. To resolve, delete "
-                          "configuration.xml on disk");
+            LOG_ERROR("Invalid configuration.xml file detected and unable to delete it. To resolve, delete "
+                      "configuration.xml on disk");
             handleException();
         }
-        logg.logMessage("Invalid configuration.xml file detected and removed");
+        LOG_DEBUG("Invalid configuration.xml file detected and removed");
     }
 
     static bool addCounter(const char * counterName,
@@ -258,12 +259,11 @@ namespace configuration_xml {
         // the counter is not in events.xml. This usually means it is a PMU slot counter, but since
         // the user has not specified an event code, this is probably incorrect.
         else if (strcasestr(counterName, "_cnt") != nullptr) {
-            logg.logWarning(
-                "Counter '%s' does not have an event code specified, PMU slot counters require an event code",
-                counterName);
+            LOG_WARNING("Counter '%s' does not have an event code specified, PMU slot counters require an event code",
+                        counterName);
         }
         else {
-            logg.logWarning("Counter '%s' was not recognized", counterName);
+            LOG_WARNING("Counter '%s' was not recognized", counterName);
         }
         counter.setCount(count);
         counter.setCores(cores);
@@ -276,11 +276,11 @@ namespace configuration_xml {
             if (driver->claimCounter(counter)) {
                 if ((counter.getDriver() != nullptr) && (counter.getDriver() != driver)) {
                     const auto & optionalEventCode = counter.getEventCode();
-                    logg.logError("More than one driver has claimed %s:0x%" PRIxEventCode " (%s vs %s)",
-                                  counter.getType(),
-                                  (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0),
-                                  counter.getDriver()->getName(),
-                                  driver->getName());
+                    LOG_ERROR("More than one driver has claimed %s:0x%" PRIxEventCode " (%s vs %s)",
+                              counter.getType(),
+                              (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0),
+                              counter.getDriver()->getName(),
+                              driver->getName());
                     handleException();
                 }
                 counter.setDriver(driver);
@@ -291,9 +291,9 @@ namespace configuration_xml {
             if (printWarningIfUnclaimed) {
                 const auto & optionalEventCode = counter.getEventCode();
 
-                logg.logWarning("No driver has claimed %s:0x%" PRIxEventCode,
-                                counter.getType(),
-                                (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
+                LOG_WARNING("No driver has claimed %s:0x%" PRIxEventCode,
+                            counter.getType(),
+                            (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
             }
             counter.setEnabled(false);
         }

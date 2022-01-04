@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #ifndef ARMNN_PACKETDECODER_H_
 #define ARMNN_PACKETDECODER_H_
@@ -9,7 +9,8 @@
 #include "armnn/IPacketDecoder.h"
 #include "armnn/PacketUtility.h"
 #include "armnn/PacketUtilityModels.h"
-#include "lib/Optional.h"
+
+#include <optional>
 
 namespace armnn {
 

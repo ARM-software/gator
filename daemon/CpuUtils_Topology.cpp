@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils_Topology.h"
 
@@ -11,7 +11,7 @@ namespace cpu_utils {
                                              const std::map<unsigned, std::set<unsigned>> & clusterToCpuIds)
     {
         // update/set known items from MIDR map and topology information. This will override anything read from /proc/cpuinfo
-        for (unsigned cpu = 0; cpu < cpuIds.length; ++cpu) {
+        for (std::size_t cpu = 0; cpu < cpuIds.size(); ++cpu) {
             const auto cpuIdIt = cpuToCpuIds.find(cpu);
             if (cpuIdIt != cpuToCpuIds.end()) {
                 // use known MIDR value
@@ -41,7 +41,7 @@ namespace cpu_utils {
         }
 
         // second pass, try to fill gaps based on siblings
-        for (unsigned cpu = 0; cpu < cpuIds.length; ++cpu) {
+        for (std::size_t cpu = 0; cpu < cpuIds.size(); ++cpu) {
             const unsigned currentCpuId = cpuIds[cpu] & 0xfffff;
             if ((currentCpuId == 0) || (currentCpuId == 0xfffff)) {
                 const auto cpuClusterIt = cpuToCluster.find(cpu);
@@ -64,7 +64,7 @@ namespace cpu_utils {
                     }
                 }
             }
-            logg.logMessage("CPU %u is configured to use CPUID 0x%05x", cpu, cpuIds[cpu]);
+            LOG_DEBUG("CPU %zu is configured to use CPUID 0x%05x", cpu, cpuIds[cpu]);
         }
     }
 }

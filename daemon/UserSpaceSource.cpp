@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #define __STDC_FORMAT_MACROS
 #define BUFFER_USE_SESSION_DATA
@@ -20,9 +20,10 @@
 
 #include <atomic>
 #include <cinttypes>
+#include <utility>
+
 #include <sys/prctl.h>
 #include <unistd.h>
-#include <utility>
 
 class UserSpaceSource : public Source {
 public:
@@ -50,7 +51,7 @@ public:
             // Sample ten times a second ignoring gSessionData.mSampleRate
             nextTime += NS_PER_S / 10; //gSessionData.mSampleRate;
             if (nextTime < currTime) {
-                logg.logMessage("Too slow, currTime: %" PRIi64 " nextTime: %" PRIi64, currTime, nextTime);
+                LOG_DEBUG("Too slow, currTime: %" PRIi64 " nextTime: %" PRIi64, currTime, nextTime);
                 nextTime = currTime;
             }
 
@@ -64,7 +65,7 @@ public:
             }
 
             if (gSessionData.mOneShot && mSessionIsActive && (mBuffer.bytesAvailable() <= 0)) {
-                logg.logMessage("One shot (counters)");
+                LOG_DEBUG("One shot (counters)");
                 endSession();
             }
 

@@ -10,6 +10,7 @@
 #include <ws2tcpip.h>
 #else
 #include <cstddef>
+
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -41,19 +42,19 @@ int socket_cloexec(int domain, int type, int protocol)
     if (sock >= 0) {
         return sock;
     }
-    logg.logMessage("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
+    LOG_DEBUG("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
 
 #endif
 
     /* Try create socket */
     sock = socket(domain, type, protocol);
     if (sock < 0) {
-        logg.logMessage("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)",
-                        domain,
-                        type,
-                        protocol,
-                        errno,
-                        strerror(errno));
+        LOG_DEBUG("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)",
+                  domain,
+                  type,
+                  protocol,
+                  errno,
+                  strerror(errno));
         return -1;
     }
 
@@ -61,15 +62,14 @@ int socket_cloexec(int domain, int type, int protocol)
 #ifdef FD_CLOEXEC
     int fdf = fcntl(sock, F_GETFD);
     if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-        logg.logMessage(
-            "Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)",
-            domain,
-            type,
-            protocol,
-            sock,
-            fdf,
-            errno,
-            strerror(errno));
+        LOG_DEBUG("Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)",
+                  domain,
+                  type,
+                  protocol,
+                  sock,
+                  fdf,
+                  errno,
+                  strerror(errno));
         close(sock);
         return -1;
     }
@@ -107,7 +107,7 @@ OlyServerSocket::OlyServerSocket(int port) : mFDServer(0)
 #ifdef WIN32
     WSADATA wsaData;
     if (WSAStartup(0x0202, &wsaData) != 0) {
-        logg.logError("Windows socket initialization failed");
+        LOG_ERROR("Windows socket initialization failed");
         handleException();
     }
 #endif
@@ -133,7 +133,7 @@ OlyServerSocket::OlyServerSocket(const char * path, const size_t pathSize, const
     // Create socket
     mFDServer = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
     if (mFDServer < 0) {
-        logg.logError("Error creating server unix socket");
+        LOG_ERROR("Error creating server unix socket");
         handleException();
     }
 
@@ -147,18 +147,19 @@ OlyServerSocket::OlyServerSocket(const char * path, const size_t pathSize, const
     // Bind the socket to an address
     if (bind(mFDServer,
              reinterpret_cast<const struct sockaddr *>(&sockaddr),
-             calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
+             calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr))
+        < 0) {
         //                                                                    use sun_path because it is null terminated
         //                                                                    if path was actually empty string
         //                                                                    vv
         const char * const printablePath = path[0] != '\0' ? path : &sockaddr.sun_path[1];
-        logg.logError("Binding of server socket to '%s' failed: %s", printablePath, strerror(errno));
+        LOG_ERROR("Binding of server socket to '%s' failed: %s", printablePath, strerror(errno));
         handleException();
     }
 
     // Listen for connections on this socket
     if (listen(mFDServer, 1) < 0) {
-        logg.logError("Listening of server socket failed");
+        LOG_ERROR("Listening of server socket failed");
         handleException();
     }
 }
@@ -179,7 +180,8 @@ int OlySocket::connect(const char * path, const size_t pathSize, const bool calc
 
     if (::connect(fd,
                   reinterpret_cast<const struct sockaddr *>(&sockaddr),
-                  calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr)) < 0) {
+                  calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr))
+        < 0) {
         close(fd);
         return -1;
     }
@@ -221,7 +223,7 @@ void OlySocket::closeSocket()
 void OlyServerSocket::closeServerSocket()
 {
     if (mFDServer > 0 && CLOSE_SOCKET(mFDServer) != 0) {
-        logg.logError("Failed to close server socket.");
+        LOG_ERROR("Failed to close server socket.");
         handleException();
     }
     mFDServer = -1;
@@ -237,7 +239,7 @@ void OlyServerSocket::createServerSocket(int port)
         family = AF_INET;
         mFDServer = socket_cloexec(PF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (mFDServer < 0) {
-            logg.logError("Error creating server TCP socket (%d : %s)", errno, strerror(errno));
+            LOG_ERROR("Error creating server TCP socket (%d : %s)", errno, strerror(errno));
             handleException();
         }
     }
@@ -245,14 +247,14 @@ void OlyServerSocket::createServerSocket(int port)
     // Enable address reuse, another solution would be to create the server socket once and only close it when the object exits
     int on = 1;
     if (setsockopt(mFDServer, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) != 0) {
-        logg.logError("Setting server socket reuse option failed");
+        LOG_ERROR("Setting server socket reuse option failed");
         handleException();
     }
 
     // Listen on both IPv4 and IPv6
     on = 0;
     if (setsockopt(mFDServer, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) != 0) {
-        logg.logMessage("setsockopt IPV6_V6ONLY failed");
+        LOG_DEBUG("setsockopt IPV6_V6ONLY failed");
     }
 
     // Create sockaddr_in structure, ensuring non-populated fields are zero
@@ -264,15 +266,15 @@ void OlyServerSocket::createServerSocket(int port)
 
     // Bind the socket to an address
     if (bind(mFDServer, reinterpret_cast<const struct sockaddr *>(&sockaddr), sizeof(sockaddr)) < 0) {
-        logg.logError("Binding of server socket on port %i failed.\nIs an instance already running or is another "
-                      "application using that port?",
-                      port);
+        LOG_ERROR("Binding of server socket on port %i failed.\nIs an instance already running or is another "
+                  "application using that port?",
+                  port);
         handleException();
     }
 
     // Listen for connections on this socket
     if (listen(mFDServer, 1) < 0) {
-        logg.logError("Listening of server socket failed");
+        LOG_ERROR("Listening of server socket failed");
         handleException();
     }
 }
@@ -283,15 +285,15 @@ int OlyServerSocket::acceptConnection()
 {
     int socketID;
     if (mFDServer <= 0) {
-        logg.logError("Attempting multiple connections on a single connection server socket or attempting to accept on "
-                      "a client socket");
+        LOG_ERROR("Attempting multiple connections on a single connection server socket or attempting to accept on "
+                  "a client socket");
         handleException();
     }
 
     // Accept a connection, note that this call blocks until a client connects
     socketID = accept_cloexec(mFDServer, nullptr, nullptr);
     if (socketID < 0) {
-        logg.logError("Socket acceptance failed");
+        LOG_ERROR("Socket acceptance failed");
         handleException();
     }
     return socketID;
@@ -306,7 +308,7 @@ void OlySocket::send(const char * buffer, int size)
     while (size > 0) {
         int n = ::send(mSocketID, buffer, size, 0);
         if (n < 0) {
-            logg.logError("Socket send error (%d): %s", errno, strerror(errno));
+            LOG_ERROR("Socket send error (%d): %s", errno, strerror(errno));
             handleException();
         }
         size -= n;
@@ -323,11 +325,11 @@ int OlySocket::receive(char * buffer, int size)
 
     int bytes = recv(mSocketID, buffer, size, 0);
     if (bytes < 0) {
-        logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
+        LOG_ERROR("Socket receive error (%d): %s", errno, strerror(errno));
         handleException();
     }
     else if (bytes == 0) {
-        logg.logMessage("Socket disconnected");
+        LOG_DEBUG("Socket disconnected");
         return -1;
     }
     return bytes;
@@ -340,11 +342,11 @@ int OlySocket::receiveNBytes(char * buffer, int size)
     while (size > 0 && buffer != nullptr) {
         bytes = recv(mSocketID, buffer, size, 0);
         if (bytes < 0) {
-            logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
+            LOG_ERROR("Socket receive error (%d): %s", errno, strerror(errno));
             handleException();
         }
         else if (bytes == 0) {
-            logg.logMessage("Socket disconnected");
+            LOG_DEBUG("Socket disconnected");
             return -1;
         }
         buffer += bytes;
@@ -367,11 +369,11 @@ int OlySocket::receiveString(char * buffer, int size)
         // Receive a single character
         int bytes = recv(mSocketID, &buffer[bytes_received], 1, 0);
         if (bytes < 0) {
-            logg.logError("Socket receive error (%d): %s", errno, strerror(errno));
+            LOG_ERROR("Socket receive error (%d): %s", errno, strerror(errno));
             handleException();
         }
         else if (bytes == 0) {
-            logg.logMessage("Socket disconnected");
+            LOG_DEBUG("Socket disconnected");
             return -1;
         }
 

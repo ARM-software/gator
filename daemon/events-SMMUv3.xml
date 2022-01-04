@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2021, Arm Limited -->
 <counter_set name="SMMUv3_cnt" count="8"/>
 <category name="System MMU v3" counter_set="SMMUv3_cnt" per_cpu="no">
-    <event event="0x00" title="SMMUv3 (Clock)" name="Cycles" description="Cycle counter" display="hertz" units="Hz" />
+    <event event="0x00" title="SMMUv3 (Clock)" name="Cycles" description="Cycle counter" units="cycles" />
     <event event="0x01" title="SMMUv3 (Transactions/Requests)" name="All" description="For a component processing client device transactions, this event counts once for each transaction. For a component performing translation services, this event counts once for each translation request received from another component. This event includes transactions or translation requests that lead to TLB or cache misses." />
     <event event="0x02" title="SMMUv3 (Transactions/Requests)" name="TLB Misses" description="This event is counted once when translation for an incoming transaction or translation request cannot be satisfied from internal TLB caching, and depends on a translation table access procedure or translation request to a different component." />
     <event event="0x03" title="SMMUv3 (Transactions/Requests)" name="Config Cache Misses" description="This event is counted once when translation for an incoming transaction or translation request cannot be satisfied from internal configuration caching, and depends on a configuration table access procedure or request to a different component that that provides configuration structure access services." />

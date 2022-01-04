@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
 
 #include "armnn/PacketEncoder.h"
 
@@ -45,7 +45,7 @@ namespace armnn {
         appendHeader(packetIdentifier, dataLength, payload);
 
         if (eventUids.empty()) {
-            logg.logMessage("Event uids are empty, creating disable counter collection packet data");
+            LOG_DEBUG("Event uids are empty, creating disable counter collection packet data");
         }
         else {
             assert(dataLength > 0 && "PeriodicCounterSelection packet datalength is zero but eventUids not empty");
@@ -69,7 +69,7 @@ namespace armnn {
         appendHeader(packetIdentifier, dataLength, payload);
 
         if (eventUids.empty()) {
-            logg.logMessage("Event uids are empty, creating disable counter collection packet data");
+            LOG_DEBUG("Event uids are empty, creating disable counter collection packet data");
         }
         else {
             assert(dataLength > 0 && "PerJobCounterSelection packet datalength is zero but eventUids not empty");
@@ -128,13 +128,12 @@ namespace armnn {
                 {
                     auto majorVersion = getBits(packetVersion, 22, 31);
                     if (majorVersion != SUPPORTED_PACKET_MAJOR_VERSION[0]) {
-                        logg.logError(
-                            "Unsupported packet version (%u:%u:%u) for packet type (family=0x%02x, id=0x%03x)",
-                            majorVersion,
-                            getBits(packetVersion, 12, 22),
-                            getBits(packetVersion, 0, 11),
-                            pktVersion.packetFamily,
-                            pktVersion.packetId);
+                        LOG_ERROR("Unsupported packet version (%u:%u:%u) for packet type (family=0x%02x, id=0x%03x)",
+                                  majorVersion,
+                                  getBits(packetVersion, 12, 22),
+                                  getBits(packetVersion, 0, 11),
+                                  pktVersion.packetFamily,
+                                  pktVersion.packetId);
                         return false;
                     }
                     validPacket = true;

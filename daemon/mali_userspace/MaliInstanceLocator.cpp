@@ -1,11 +1,10 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
 
 #include "DynBuf.h"
 #include "Logging.h"
 #include "lib/FsEntry.h"
-#include "lib/Optional.h"
 #include "mali_userspace/MaliDeviceApi.h"
 
 #include <cstddef>
@@ -13,7 +12,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <sstream>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -24,21 +25,21 @@ namespace mali_userspace {
     {
         // open sysfs directory
         if (currentDirectory.read_stats().type() != lib::FsEntry::Type::DIR) {
-            logg.logMessage("Failed to open '%s'", currentDirectory.path().c_str());
+            LOG_DEBUG("Failed to open '%s'", currentDirectory.path().c_str());
             return;
         }
 
         // is the parent called 'misc'
         const bool dirIsCalledMisc = (currentDirectory.name() == "misc");
-        const lib::Optional<lib::FsEntry> dirsParent = currentDirectory.parent();
-        const lib::Optional<lib::FsEntry> parentClockPath =
-            (dirsParent.valid() ? lib::Optional<lib::FsEntry> {lib::FsEntry::create(dirsParent.get(), "clock")}
-                                : lib::Optional<lib::FsEntry> {});
+        const std::optional<lib::FsEntry> dirsParent = currentDirectory.parent();
+        const std::optional<lib::FsEntry> parentClockPath =
+            (dirsParent ? std::optional<lib::FsEntry> {lib::FsEntry::create(*dirsParent, "clock")}
+                        : std::optional<lib::FsEntry> {});
 
         // walk children looking for directories named 'mali%d'
         lib::FsEntryDirectoryIterator iterator = currentDirectory.children();
-        lib::Optional<lib::FsEntry> childEntry;
-        while ((childEntry = iterator.next()).valid()) {
+        std::optional<lib::FsEntry> childEntry;
+        while (!!(childEntry = iterator.next())) {
             // determine type
             lib::FsEntry::Stats childStats = childEntry->read_stats();
             if (childStats.type() == lib::FsEntry::Type::DIR) {
@@ -56,8 +57,8 @@ namespace mali_userspace {
                         gpuClockPaths[id] = childClockPath.path();
                     }
                     // use ../../clock ?
-                    else if (parentClockPath.valid() && parentClockPath->exists() &&
-                             parentClockPath->canAccess(true, false, false)) {
+                    else if (parentClockPath && parentClockPath->exists()
+                             && parentClockPath->canAccess(true, false, false)) {
                         gpuClockPaths[id] = parentClockPath->path();
                     }
                 }

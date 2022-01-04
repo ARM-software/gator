@@ -3,11 +3,11 @@
 #ifndef INCLUDE_LIB_FSENTRY_H
 #define INCLUDE_LIB_FSENTRY_H
 
-#include "lib/Optional.h"
+#include <memory>
+#include <optional>
+#include <string>
 
 #include <dirent.h>
-#include <memory>
-#include <string>
 
 namespace lib {
     /* forward decls */
@@ -58,8 +58,10 @@ namespace lib {
          */
         inline static FsEntry create(const FsEntry & parent, const std::string & path) { return FsEntry(parent, path); }
 
+        static std::optional<FsEntry> create_unique_file(const FsEntry & parent);
+
         /** @return Object representing the parent directory for some path, or empty for root directory */
-        Optional<FsEntry> parent() const;
+        std::optional<FsEntry> parent() const;
         /** @return The name of the entry */
         std::string name() const;
         /** @return The full path of the entry */
@@ -71,7 +73,7 @@ namespace lib {
         /** @return An iterator object for enumerating the children of a directory entry */
         FsEntryDirectoryIterator children() const;
         /** @return The absolute, cannonical path, or nothing if it was not possible to resolve the read path */
-        Optional<FsEntry> realpath() const;
+        std::optional<FsEntry> realpath() const;
 
         /** Equality operator */
         bool operator==(const FsEntry & that) const;
@@ -118,6 +120,21 @@ namespace lib {
          */
         bool writeFileContents(const char * data) const;
 
+        /**
+         * Copy the contents of this file to the destination.
+         */
+        void copyTo(const FsEntry & dest) const;
+
+        bool remove() const;
+
+        /**
+         * Removes all the content of path and finally the path itself.
+         * @return The number of files removed.
+         */
+        uintmax_t remove_all() const;
+
+        bool create_directory() const;
+
     private:
         std::string path_;
         std::string::size_type name_offset;
@@ -161,10 +178,10 @@ namespace lib {
          * Get the next child entry. Users should repeatedly call this function to enumerate children until it returns nothing.
          * @return The next child, or nothing in the case the list is complete
          */
-        Optional<FsEntry> next();
+        std::optional<FsEntry> next();
 
     private:
-        Optional<FsEntry> parent_;
+        std::optional<FsEntry> parent_;
         std::unique_ptr<DIR, int (*)(DIR *)> directory_;
     };
 

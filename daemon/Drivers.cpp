@@ -21,10 +21,9 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
                                       disableCpuOnlining,
                                       disableKernelAnnotations);
     if (!primarySourceProvider) {
-        logg.logError(
-            "Unable to initialize primary capture source:\n"
-            "  >>> Run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing "
-            "(CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
+        LOG_ERROR("Unable to initialize primary capture source:\n"
+                  "  >>> Run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing "
+                  "(CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
         handleException();
     }
 

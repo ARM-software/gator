@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
@@ -18,7 +18,7 @@ std::unique_ptr<PerfSyncThreadBuffer> PerfSyncThreadBuffer::create(bool supports
     if (hasSPEConfiguration || !supportsClockId) {
         const bool enableSyncThreadMode = (!supportsClockId);
         const bool readTimer = hasSPEConfiguration;
-        result.reset(new PerfSyncThreadBuffer(enableSyncThreadMode, readTimer, senderSem));
+        result = std::make_unique<PerfSyncThreadBuffer>(enableSyncThreadMode, readTimer, senderSem);
     }
 
     return result;
@@ -51,9 +51,9 @@ void PerfSyncThreadBuffer::write(pid_t pid,
                                  std::uint64_t freq)
 {
     // make sure there is space for at least one more record
-    const int minBytesRequired = IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 +
-                                 ((1 * buffer_utils::MAXSIZE_PACK64) + (3 * buffer_utils::MAXSIZE_PACK32)) +
-                                 (2 * buffer_utils::MAXSIZE_PACK64);
+    const int minBytesRequired = IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32
+                               + ((1 * buffer_utils::MAXSIZE_PACK64) + (3 * buffer_utils::MAXSIZE_PACK32))
+                               + (2 * buffer_utils::MAXSIZE_PACK64);
 
     // wait for write space
     buffer.waitForSpace(minBytesRequired);

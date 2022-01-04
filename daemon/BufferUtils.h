@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
 
 #ifndef BUFFER_UTILS_H
 #define BUFFER_UTILS_H
@@ -35,10 +35,10 @@ namespace buffer_utils {
 
     inline uint32_t readLEInt(const char * buf)
     {
-        return (static_cast<uint32_t>(static_cast<uint8_t>(buf[0])) << 0) |
-               (static_cast<uint32_t>(static_cast<uint8_t>(buf[1])) << 8) |
-               (static_cast<uint32_t>(static_cast<uint8_t>(buf[2])) << 16) |
-               (static_cast<uint32_t>(static_cast<uint8_t>(buf[3])) << 24);
+        return (static_cast<uint32_t>(static_cast<uint8_t>(buf[0])) << 0)
+             | (static_cast<uint32_t>(static_cast<uint8_t>(buf[1])) << 8)
+             | (static_cast<uint32_t>(static_cast<uint8_t>(buf[2])) << 16)
+             | (static_cast<uint32_t>(static_cast<uint8_t>(buf[3])) << 24);
     }
 
     inline uint32_t readLEInt(const char * buf, int & readPos)
@@ -68,14 +68,14 @@ namespace buffer_utils {
 
     inline uint64_t readLELong(const char * buf)
     {
-        return (static_cast<uint64_t>(static_cast<uint8_t>(buf[0])) << 0) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[1])) << 8) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[2])) << 16) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[3])) << 24) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[4])) << 32) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[5])) << 40) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[6])) << 48) |
-               (static_cast<uint64_t>(static_cast<uint8_t>(buf[7])) << 56);
+        return (static_cast<uint64_t>(static_cast<uint8_t>(buf[0])) << 0)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[1])) << 8)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[2])) << 16)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[3])) << 24)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[4])) << 32)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[5])) << 40)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[6])) << 48)
+             | (static_cast<uint64_t>(static_cast<uint8_t>(buf[7])) << 56);
     }
 
     inline uint64_t readLELong(const char * buf, int & readPos)

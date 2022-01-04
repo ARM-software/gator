@@ -55,8 +55,8 @@ namespace armnn {
     private:
         struct CategoryId {
             std::string category;
-            lib::Optional<std::string> device;
-            lib::Optional<std::string> counterSet;
+            std::optional<std::string> device;
+            std::optional<std::string> counterSet;
 
             static CategoryId fromEventId(const EventId & eventId);
 
@@ -66,7 +66,7 @@ namespace armnn {
         };
 
         struct CategoryEvents {
-            std::map<std::string, lib::Optional<EventProperties>> events;
+            std::map<std::string, std::optional<EventProperties>> events;
             std::uint16_t counterSetCount;
             std::map<int, std::string> eventsByNumber;
         };
@@ -83,8 +83,8 @@ namespace armnn {
         static std::string makeCounterSetCounterName(const CategoryId & id, int counterNumber);
         static std::string makeEventCounterName(const CategoryId & id, const std::string & eventName);
         static EventId makeEventId(const CategoryId & id, const std::string & eventName);
-        static lib::Optional<std::string> makeCounterNameIfFixed(const CategoryId & id, const std::string & eventName);
-        static lib::Optional<CounterSet> makeCounterSet(const CategoryId & catId,
+        static std::optional<std::string> makeCounterNameIfFixed(const CategoryId & id, const std::string & eventName);
+        static std::optional<CounterSet> makeCounterSet(const CategoryId & catId,
                                                         const CategoryEvents & categoryEvents);
         static std::vector<Event> createXmlEvents(const CategoryId & catId, const CategoryEvents & category);
 

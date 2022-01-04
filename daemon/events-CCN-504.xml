@@ -2,7 +2,7 @@
 
   <counter_set name="CCN-504_cnt" count="4"/>
   <category name="CCN-504" counter_set="CCN-504_cnt">
-    <event counter="CCN-504_ccnt" title="CCN-504 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="CCN-504_ccnt" title="CCN-504 Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
     <option_set name="XP_Region">
       <option event_delta="0x400000" name="XP 0" description="Crosspoint 0"/>
       <option event_delta="0x410000" name="XP 1" description="Crosspoint 1"/>

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
 #define BUFFER_USE_SESSION_DATA
 
 #include "non_root/NonRootSource.h"
@@ -18,10 +18,11 @@
 #include "non_root/ProcessPoller.h"
 #include "non_root/ProcessStateChangeHandler.h"
 
+#include <utility>
+
 #include <sys/prctl.h>
 #include <sys/utsname.h>
 #include <unistd.h>
-#include <utility>
 
 namespace non_root {
     NonRootSource::NonRootSource(NonRootDriver & driver_,
@@ -75,9 +76,10 @@ namespace non_root {
 
         while (!interrupted) {
             // check buffer not full
-            if (gSessionData.mOneShot && (mGlobalCounterBuffer.isFull() || mProcessCounterBuffer.isFull() ||
-                                          mMiscBuffer.isFull() || mSwitchBuffers.anyFull())) {
-                logg.logMessage("One shot (nrsrc)");
+            if (gSessionData.mOneShot
+                && (mGlobalCounterBuffer.isFull() || mProcessCounterBuffer.isFull() || mMiscBuffer.isFull()
+                    || mSwitchBuffers.anyFull())) {
+                LOG_DEBUG("One shot (nrsrc)");
                 endSession();
             }
 
@@ -109,15 +111,15 @@ namespace non_root {
     bool NonRootSource::write(ISender & sender)
     {
         // bitwise & no short-circuit
-        return mGlobalCounterBuffer.write(sender) & mProcessCounterBuffer.write(sender) & mMiscBuffer.write(sender) &
-               mSwitchBuffers.write(sender);
+        return mGlobalCounterBuffer.write(sender) & mProcessCounterBuffer.write(sender) & mMiscBuffer.write(sender)
+             & mSwitchBuffers.write(sender);
     }
 
-    lib::Optional<std::uint64_t> NonRootSource::sendSummary()
+    std::optional<std::uint64_t> NonRootSource::sendSummary()
     {
         struct utsname utsname;
         if (uname(&utsname) != 0) {
-            logg.logMessage("uname failed");
+            LOG_DEBUG("uname failed");
             return {};
         }
 
@@ -133,13 +135,13 @@ namespace non_root {
 
         long pageSize = sysconf(_SC_PAGESIZE);
         if (pageSize < 0) {
-            logg.logMessage("sysconf _SC_PAGESIZE failed");
+            LOG_DEBUG("sysconf _SC_PAGESIZE failed");
             return {};
         }
 
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-            logg.logMessage("clock_gettime failed");
+            LOG_DEBUG("clock_gettime failed");
             return {};
         }
         const int64_t timestamp = ts.tv_sec * NS_PER_S + ts.tv_nsec;

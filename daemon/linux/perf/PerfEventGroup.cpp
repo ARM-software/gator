@@ -6,7 +6,6 @@
 #include "Logging.h"
 #include "SessionData.h"
 #include "lib/Format.h"
-#include "lib/Optional.h"
 #include "lib/Syscall.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 #include "linux/perf/PerfUtils.h"
@@ -15,9 +14,11 @@
 #include <cassert>
 #include <cinttypes>
 #include <climits>
-#include <fcntl.h>
 #include <iostream>
+#include <optional>
 #include <set>
+
+#include <fcntl.h>
 #include <sys/ioctl.h>
 
 namespace {
@@ -52,7 +53,7 @@ namespace {
             char buf[1024];
             ssize_t bytes = lib::read(fd, buf, sizeof(buf));
             if (bytes < 0) {
-                logg.logMessage("read failed");
+                LOG_DEBUG("read failed");
                 return false;
             }
 
@@ -67,7 +68,7 @@ namespace {
         }
 
         /* not able to pin even, log and return true, data is skipped */
-        logg.logError("Could not pin event %u:0x%llx, skipping", attr.type, attr.config);
+        LOG_ERROR("Could not pin event %u:0x%llx, skipping", attr.type, attr.config);
         return true;
     }
 
@@ -76,23 +77,28 @@ namespace {
                                  const char * indentation,
                                  const char * separator)
     {
-        return (lib::Format() << indentation << "type: " << attr.type << " (" << (typeLabel != nullptr ? typeLabel : "<unk>") << ")" << separator //
-                              << indentation << "config: " << attr.config << separator //
-                              << indentation << "config1: " << attr.config1 << separator //
-                              << indentation << "config2: " << attr.config2 << separator //
-                              << indentation << "sample: " << attr.sample_period << separator << std::hex //
-                              << indentation << "sample_type: 0x" << attr.sample_type << separator //
+        return (lib::Format() << indentation << "type: " << attr.type << " ("
+                              << (typeLabel != nullptr ? typeLabel : "<unk>") << ")" << separator              //
+                              << indentation << "config: " << attr.config << separator                         //
+                              << indentation << "config1: " << attr.config1 << separator                       //
+                              << indentation << "config2: " << attr.config2 << separator                       //
+                              << indentation << "sample: " << attr.sample_period << separator << std::hex      //
+                              << indentation << "sample_type: 0x" << attr.sample_type << separator             //
                               << indentation << "read_format: 0x" << attr.read_format << separator << std::dec //
-                              << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator //
-                              << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator //
-                              << indentation << "comm: " << (attr.comm ? "true" : "false") << separator //
-                              << indentation << "freq: " << (attr.freq ? "true" : "false") << separator //
-                              << indentation << "task: " << (attr.task ? "true" : "false") << separator //
-                              << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false") << separator //
-                              << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false") << separator //
+                              << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator    //
+                              << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator        //
+                              << indentation << "comm: " << (attr.comm ? "true" : "false") << separator        //
+                              << indentation << "freq: " << (attr.freq ? "true" : "false") << separator        //
+                              << indentation << "task: " << (attr.task ? "true" : "false") << separator        //
+                              << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false")
+                              << separator //
+                              << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")
+                              << separator                                                                    //
                               << indentation << "inherit: " << (attr.inherit ? "true" : "false") << separator //
-                              << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false") << separator //
-                              << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator << std::dec //
+                              << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false")
+                              << separator //
+                              << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator
+                              << std::dec //
                               << indentation << "aux_watermark: " << attr.aux_watermark << separator);
     }
 }
@@ -148,8 +154,8 @@ bool PerfEventGroup::addEvent(const bool leader,
              ? 0
              : PERF_SAMPLE_READ); // Unfortunately PERF_SAMPLE_READ is not allowed with inherit
     event.attr.sample_type =
-        PERF_SAMPLE_TIME |
-        (attr.sampleType & ~sampleReadMask)
+        PERF_SAMPLE_TIME
+        | (attr.sampleType & ~sampleReadMask)
         // required fields for reading 'id'
         | (sharedConfig.perfConfig.has_sample_identifier ? PERF_SAMPLE_IDENTIFIER
                                                          : PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_ID)
@@ -164,7 +170,7 @@ bool PerfEventGroup::addEvent(const bool leader,
     // collect the user mode registers if sampling the callchain
     if (event.attr.sample_type & PERF_SAMPLE_CALLCHAIN) {
         event.attr.sample_type |= PERF_SAMPLE_REGS_USER;
-        if (sharedConfig.perfConfig.has_64bit_register_set) {
+        if (sharedConfig.perfConfig.use_64bit_register_set) {
             // https://elixir.bootlin.com/linux/latest/source/arch/arm64/include/uapi/asm/perf_regs.h
             // bits 0-32 are set (PC = 2^32)
             event.attr.sample_regs_user = 0x1ffffffffull;
@@ -175,6 +181,8 @@ bool PerfEventGroup::addEvent(const bool leader,
             event.attr.sample_regs_user = 0xffffull;
         }
     }
+#else
+    event.attr.sample_regs_user = 0;
 #endif
 
     // when running in application mode, inherit must always be set, in system wide mode, inherit must always be clear
@@ -267,7 +275,7 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
         // Use sched switch to drive the sampling so that event counts are
         // exactly attributed to each thread in system-wide mode
         if (sharedConfig.schedSwitchId == UNKNOWN_TRACEPOINT_ID) {
-            logg.logMessage("Unable to read sched_switch id");
+            LOG_DEBUG("Unable to read sched_switch id");
             return false;
         }
         attr.type = PERF_TYPE_TRACEPOINT;
@@ -321,8 +329,8 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
     }
 
     // Periodic PC sampling
-    if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && sharedConfig.sampleRate > 0 &&
-        sharedConfig.enablePeriodicSampling) {
+    if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && sharedConfig.sampleRate > 0
+        && sharedConfig.enablePeriodicSampling) {
         IPerfGroups::Attr pcAttr {};
         pcAttr.type = PERF_TYPE_SOFTWARE;
         pcAttr.config = PERF_COUNT_SW_CPU_CLOCK;
@@ -483,19 +491,18 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
             event.attr.type = replaceType;
         }
 
-        logg.logMessage(
-            "Opening attribute:\n"
-            "    cpu: %i\n"
-            "    key: %i\n"
-            "    cluster: %s\n"
-            "    index: %" PRIuPTR "\n"
-            "    -------------\n"
-            "%s",
-            cpu,
-            event.key,
-            (cluster != nullptr ? cluster->getId() : (uncorePmu != nullptr ? uncorePmu->getId() : "<nullptr>")),
-            eventIndex,
-            perfAttrToString(event.attr, typeLabel, "    ", "\n").c_str());
+        LOG_DEBUG("Opening attribute:\n"
+                  "    cpu: %i\n"
+                  "    key: %i\n"
+                  "    cluster: %s\n"
+                  "    index: %" PRIuPTR "\n"
+                  "    -------------\n"
+                  "%s",
+                  cpu,
+                  event.key,
+                  (cluster != nullptr ? cluster->getId() : (uncorePmu != nullptr ? uncorePmu->getId() : "<nullptr>")),
+                  eventIndex,
+                  perfAttrToString(event.attr, typeLabel, "    ", "\n").c_str());
 
         auto open_perf_event =
             [&event, cpu](const int tid, const int groupLeaderFd, bool excl_kernel, bool excl_hv, bool excl_idle) {
@@ -536,15 +543,15 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
                 // retry with just exclude_kernel set
                 if ((!fd) && (peo_errno == EACCES)) {
-                    logg.logMessage("Failed when exclude_kernel == 0, retrying with exclude_kernel = 1");
+                    LOG_DEBUG("Failed when exclude_kernel == 0, retrying with exclude_kernel = 1");
 
                     // open event
                     fd = open_perf_event(tid, groupLeaderFd, true, false, false);
 
                     // retry with exclude_kernel and all set
                     if ((!fd) && (peo_errno == EACCES)) {
-                        logg.logMessage("Failed when exclude_kernel == 1, exclude_hv == 0, exclude_idle == 0, retrying "
-                                        "with all exclusions enabled");
+                        LOG_DEBUG("Failed when exclude_kernel == 1, exclude_hv == 0, exclude_idle == 0, retrying "
+                                  "with all exclusions enabled");
 
                         // open event
                         fd = open_perf_event(tid, groupLeaderFd, true, true, true);
@@ -555,10 +562,10 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                 }
             }
 
-            logg.logMessage("perf_event_open: tid: %i, leader = %i -> fd = %i", tid, groupLeaderFd, *fd);
+            LOG_DEBUG("perf_event_open: tid: %i, leader = %i -> fd = %i", tid, groupLeaderFd, *fd);
 
             if (!fd) {
-                logg.logMessage("failed (%d) %s", peo_errno, strerror(peo_errno));
+                LOG_DEBUG("failed (%d) %s", peo_errno, strerror(peo_errno));
 
                 if (peo_errno == ENODEV) {
                     // The core is offline
@@ -605,14 +612,14 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                     }
                     return std::make_pair(OnlineResult::FAILURE, stringStream.str());
                 }
-                logg.logWarning("%s", stringStream.str().c_str());
+                LOG_WARNING("%s", stringStream.str().c_str());
             }
             else if (!addToBuffer(*fd, cpu, event.attr.aux_watermark != 0)) {
                 std::string message("PerfBuffer::useFd failed");
                 if (sharedConfig.perfConfig.is_system_wide) {
                     return std::make_pair(OnlineResult::FAILURE, message.c_str());
                 }
-                logg.logMessage("PerfBuffer::useFd failed");
+                LOG_DEBUG("PerfBuffer::useFd failed");
             }
             else if (!addToMonitor(*fd)) {
                 std::string message("Monitor::add failed");
@@ -646,9 +653,10 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                     // Workaround for running 32-bit gatord on 64-bit systems, kernel patch in the works
                     lib::ioctl(*fd,
                                (PERF_EVENT_IOC_ID & ~IOCSIZE_MASK) | (8 << _IOC_SIZESHIFT),
-                               reinterpret_cast<unsigned long>(&id)) != 0) {
+                               reinterpret_cast<unsigned long>(&id))
+                        != 0) {
                     std::string message("ioctl failed");
-                    logg.logMessage("%s", message.c_str());
+                    LOG_DEBUG("%s", message.c_str());
                     return std::make_pair(OnlineResult::OTHER_FAILURE, message.c_str());
                 }
 
@@ -657,14 +665,14 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                 ids.emplace_back(id);
 
                 // log it
-                logg.logMessage("Perf id for key : %i, fd : %i  -->  %" PRIu64, key, *fd, id);
+                LOG_DEBUG("Perf id for key : %i, fd : %i  -->  %" PRIu64, key, *fd, id);
 
                 addedEvents = true;
             }
         }
 
         if (!addedEvents) {
-            logg.logMessage("no events came online");
+            LOG_DEBUG("no events came online");
         }
 
         attrsConsumer.marshalKeys(ids.size(), ids.data(), coreKeys.data());
@@ -731,7 +739,7 @@ bool PerfEventGroup::offlineCPU(int cpu)
         for (auto tidToFdIt = tidToFdMap.rbegin(); tidToFdIt != tidToFdRend; ++tidToFdIt) {
             const auto & fd = tidToFdIt->second;
             if (lib::ioctl(*fd, PERF_EVENT_IOC_DISABLE, 0) != 0) {
-                logg.logMessage("ioctl failed");
+                LOG_DEBUG("ioctl failed");
                 return false;
             }
         }
@@ -754,7 +762,7 @@ bool PerfEventGroup::enable(const std::map<int, std::map<int, lib::AutoClosingFd
             const auto & fd = tidToFdPair.second;
 
             if (event.attr.pinned && (lib::ioctl(*fd, PERF_EVENT_IOC_ENABLE, 0) != 0)) {
-                logg.logError("Unable to enable a perf event");
+                LOG_ERROR("Unable to enable a perf event");
                 return false;
             }
         }
@@ -780,20 +788,20 @@ bool PerfEventGroup::checkEnabled(const std::map<int, std::map<int, lib::AutoClo
             if (event.attr.pinned) {
                 const auto readResult = lib::read(*fd, buf, sizeof(buf));
                 if (readResult < 0) {
-                    logg.logError("Unable to read all perf groups, perhaps too many events were enabled (%d, %s)",
-                                  errno,
-                                  strerror(errno));
+                    LOG_ERROR("Unable to read all perf groups, perhaps too many events were enabled (%d, %s)",
+                              errno,
+                              strerror(errno));
                     return false;
                 }
                 if (readResult == 0) {
                     ++readResultCount;
 
-                    logg.logWarning("Unable to enable a perf group, pinned group marked as in disabled due to conflict "
-                                    "or insufficient resources. (%d: tid = %d, fd = %d, attr = \n%s)",
-                                    eventIndex,
-                                    tid,
-                                    *fd,
-                                    perfAttrToString(event.attr, nullptr, "    ", "\n").c_str());
+                    LOG_WARNING("Unable to enable a perf group, pinned group marked as in disabled due to conflict "
+                                "or insufficient resources. (%d: tid = %d, fd = %d, attr = \n%s)",
+                                eventIndex,
+                                tid,
+                                *fd,
+                                perfAttrToString(event.attr, nullptr, "    ", "\n").c_str());
                 }
             }
         }
@@ -801,14 +809,13 @@ bool PerfEventGroup::checkEnabled(const std::map<int, std::map<int, lib::AutoClo
 
     // log an error message on the console to the user telling them that some items were disabled.
     if (readResultCount > 0) {
-        logg.logError(
-            "Unable to enable %d perf groups due to them being reported as being disabled due to conflict or "
-            "insufficient resources.\n"
-            "Another process may be using one or more perf counters.\n"
-            "Use `lsof|grep perf_event` (if available) to find other processes that may be using perf counters.\n"
-            "Not all event data may be available in the capture.\n"
-            "See debug log for more information.",
-            readResultCount);
+        LOG_ERROR("Unable to enable %d perf groups due to them being reported as being disabled due to conflict or "
+                  "insufficient resources.\n"
+                  "Another process may be using one or more perf counters.\n"
+                  "Use `lsof|grep perf_event` (if available) to find other processes that may be using perf counters.\n"
+                  "Not all event data may be available in the capture.\n"
+                  "See debug log for more information.",
+                  readResultCount);
     }
 
     return true;

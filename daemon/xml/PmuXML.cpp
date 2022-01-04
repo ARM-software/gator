@@ -58,9 +58,9 @@ const GatorCpu * PmuXML::findCpuByName(const char * const name) const
         }
 
         // Do these names match but have the old vs new prefix?
-        if (((strncasecmp(name, OLD_PMU_PREFIX, sizeof(OLD_PMU_PREFIX) - 1) == 0) &&
-             (strncasecmp(gatorCpu.getId(), NEW_PMU_PREFIX, sizeof(NEW_PMU_PREFIX) - 1) == 0) &&
-             (strcasecmp(name + sizeof(OLD_PMU_PREFIX) - 1, gatorCpu.getId() + sizeof(NEW_PMU_PREFIX) - 1) == 0))) {
+        if (((strncasecmp(name, OLD_PMU_PREFIX, sizeof(OLD_PMU_PREFIX) - 1) == 0)
+             && (strncasecmp(gatorCpu.getId(), NEW_PMU_PREFIX, sizeof(NEW_PMU_PREFIX) - 1) == 0)
+             && (strcasecmp(name + sizeof(OLD_PMU_PREFIX) - 1, gatorCpu.getId() + sizeof(NEW_PMU_PREFIX) - 1) == 0))) {
             return &gatorCpu;
         }
     }

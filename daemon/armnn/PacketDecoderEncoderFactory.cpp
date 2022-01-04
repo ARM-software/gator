@@ -28,33 +28,33 @@ namespace armnn {
      * Returns a tuple, if the stream metadata version of the packet matched the available decoder for the
      * packet to the metadata version from the packetBodyAfterMagic passed as argument.
      */
-    static lib::Optional<std::uint32_t> isMatchedStreamMetadata(Bytes packetBodyAfterMagic, const ByteOrder byteOrder)
+    static std::optional<std::uint32_t> isMatchedStreamMetadata(Bytes packetBodyAfterMagic, const ByteOrder byteOrder)
     {
-        if (packetBodyAfterMagic.length >= 4) {
+        if (packetBodyAfterMagic.size() >= 4) {
             const std::uint32_t streamMetaVersion = byte_order::get_32(byteOrder, packetBodyAfterMagic, 0);
             if (validateStreamMetadataVersion(streamMetaVersion)) {
                 return streamMetaVersion;
             }
         }
-        return lib::Optional<std::uint32_t>();
+        return std::optional<std::uint32_t>();
     }
 
     /**
      * get stream meta data packet body based on the stream meta data version
      */
-    lib::Optional<StreamMetadataContent> getStreamMetadata(Bytes packetBodyAfterMagic, const ByteOrder byteOrder)
+    std::optional<StreamMetadataContent> getStreamMetadata(Bytes packetBodyAfterMagic, const ByteOrder byteOrder)
     {
         auto matchedStreamMetadata = isMatchedStreamMetadata(packetBodyAfterMagic, byteOrder);
-        if (matchedStreamMetadata.valid()) {
+        if (matchedStreamMetadata) {
             //check for major version only
-            std::uint32_t majorNumber = armnn::getBits(matchedStreamMetadata.get(), 22, 31);
+            std::uint32_t majorNumber = armnn::getBits(*matchedStreamMetadata, 22, 31);
             if (majorNumber == 1) { //1.0.0 - return decoder for
                 return armnn::decodeStreamMetaData(packetBodyAfterMagic, byteOrder);
             }
         }
         // add support for newer versions
-        logg.logError("Unsupported stream metadata version");
-        return lib::Optional<StreamMetadataContent>();
+        LOG_ERROR("Unsupported stream metadata version");
+        return std::optional<StreamMetadataContent>();
     }
 
     /**
@@ -69,10 +69,10 @@ namespace armnn {
                 std::unique_ptr<IPacketDecoder> decoder(new PacketDecoder(order, consumer));
                 return decoder;
             }
-            logg.logError("Cannot create decoder, as invalid versions in packet version table");
+            LOG_ERROR("Cannot create decoder, as invalid versions in packet version table");
             return std::unique_ptr<IPacketDecoder> {};
         }
-        logg.logError("Cannot create decoder, as packet version table was empty");
+        LOG_ERROR("Cannot create decoder, as packet version table was empty");
         return std::unique_ptr<IPacketDecoder> {};
     }
 
@@ -86,10 +86,10 @@ namespace armnn {
                 std::unique_ptr<IEncoder> encoder(new PacketEncoder(order));
                 return encoder;
             }
-            logg.logError("Cannot create encoder, as invalid versions in packet version table");
+            LOG_ERROR("Cannot create encoder, as invalid versions in packet version table");
             return std::unique_ptr<IEncoder> {};
         }
-        logg.logError("Cannot create encoder, as packet version table was empty");
+        LOG_ERROR("Cannot create encoder, as packet version table was empty");
         return std::unique_ptr<IEncoder> {};
     }
 }

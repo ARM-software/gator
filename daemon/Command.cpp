@@ -8,6 +8,7 @@
 #include "lib/FileDescriptor.h"
 
 #include <cstdio>
+
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
@@ -37,7 +38,7 @@ static bool getUid(const char * const name, const char * const tmpDir, uid_t * c
 
     const int pid = fork();
     if (pid < 0) {
-        logg.logError("fork failed");
+        LOG_ERROR("fork failed");
         handleException();
     }
 
@@ -91,7 +92,7 @@ static void checkCommandStatus(int pid)
     int status;
     while (waitpid(pid, &status, WNOHANG) == -1) {
         if (errno != EINTR) {
-            logg.logError("Could not waitpid(%d) on child command. (%s)", pid, strerror(errno));
+            LOG_ERROR("Could not waitpid(%d) on child command. (%s)", pid, strerror(errno));
             return;
         }
     }
@@ -100,30 +101,30 @@ static void checkCommandStatus(int pid)
         const int exitCode = WEXITSTATUS(status);
 
         // add some special case handling for when we are launching via bash shell
-        if ((gSessionData.mCaptureCommand.size() == 3) && (gSessionData.mCaptureCommand[0] == "sh") &&
-            (gSessionData.mCaptureCommand[1] == "-c")) {
+        if ((gSessionData.mCaptureCommand.size() == 3) && (gSessionData.mCaptureCommand[0] == "sh")
+            && (gSessionData.mCaptureCommand[1] == "-c")) {
             if (exitCode == 126) {
-                logg.logError("Failed to run command %s: Permission denied or is a directory",
-                              gSessionData.mCaptureCommand[2].c_str());
+                LOG_ERROR("Failed to run command %s: Permission denied or is a directory",
+                          gSessionData.mCaptureCommand[2].c_str());
                 handleException();
             }
             if (exitCode == 127) {
-                logg.logError("Failed to run command %s: Command not found", gSessionData.mCaptureCommand[2].c_str());
+                LOG_ERROR("Failed to run command %s: Command not found", gSessionData.mCaptureCommand[2].c_str());
                 handleException();
             }
         }
 
         if (exitCode != 0) {
-            logg.logError("command exited with code %d", exitCode);
+            LOG_ERROR("command exited with code %d", exitCode);
         }
         else {
-            logg.logMessage("command exited with code 0");
+            LOG_DEBUG("command exited with code 0");
         }
     }
     else if (WIFSIGNALED(status)) {
         const int signal = WTERMSIG(status);
         if (signal != SIGTERM && signal != SIGINT) { // should we consider any others normal?
-            logg.logError("command terminated abnormally: %s", strsignal(signal));
+            LOG_ERROR("command terminated abnormally: %s", strsignal(signal));
         }
     }
 }
@@ -152,7 +153,7 @@ void Command::cancel()
     // once it is RUNNING, the command will have created it's own process group
     // so we can signal the whole process group
     if (::kill(-pid, SIGTERM) == -1) {
-        logg.logError("kill(%d) failed (%d) %s", -pid, errno, strerror(errno));
+        LOG_ERROR("kill(%d) failed (%d) %s", -pid, errno, strerror(errno));
     }
 
     if (sharedData->state.exchange(KILLED_OR_EXITED) != BEING_KILLED) {
@@ -174,12 +175,12 @@ Command Command::run(const std::function<void()> & terminationCallback)
         // Verify root permissions
         const bool isRoot = (geteuid() == 0);
         if (!isRoot) {
-            logg.logError("Unable to set user to %s for command because gatord is not running as root", name);
+            LOG_ERROR("Unable to set user to %s for command because gatord is not running as root", name);
             handleException();
         }
 
         if (!getUid(name, &uid, &gid)) {
-            logg.logError("Unable to look up the user %s, please double check that the user exists", name);
+            LOG_ERROR("Unable to look up the user %s, please double check that the user exists", name);
             handleException();
         }
     }
@@ -192,13 +193,13 @@ Command Command::run(const std::function<void()> & terminationCallback)
     constexpr size_t bufSize = 1 << 8;
     int pipefd[2];
     if (lib::pipe_cloexec(pipefd) != 0) {
-        logg.logError("pipe failed");
+        LOG_ERROR("pipe failed");
         handleException();
     }
 
     const int pid = fork();
     if (pid < 0) {
-        logg.logError("fork failed");
+        LOG_ERROR("fork failed");
         handleException();
     }
 
@@ -312,7 +313,7 @@ Command Command::run(const std::function<void()> & terminationCallback)
                         }
                         else if (errno != EAGAIN) {
                             buf[bytesRead] = '\0';
-                            logg.logError("Failed to read pipe from child: %s", strerror(errno));
+                            LOG_ERROR("Failed to read pipe from child: %s", strerror(errno));
                             break;
                         }
                     }
@@ -320,14 +321,14 @@ Command Command::run(const std::function<void()> & terminationCallback)
                     close(pipefd[0]);
 
                     if (bytesRead > 0) {
-                        logg.logError("%s", buf);
+                        LOG_ERROR("%s", buf);
                         handleException();
                     }
                     else {
                         siginfo_t info;
                         while (waitid(P_PID, pid, &info, WEXITED | WNOWAIT) == -1) {
                             if (errno != EINTR) {
-                                logg.logError("waitid(%d) failed (%d) %s", pid, errno, strerror(errno));
+                                LOG_ERROR("waitid(%d) failed (%d) %s", pid, errno, strerror(errno));
                                 break;
                             }
                         }

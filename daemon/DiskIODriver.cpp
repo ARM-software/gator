@@ -9,6 +9,7 @@
 #include "SessionData.h"
 
 #include <cinttypes>
+
 #include <unistd.h>
 
 class DiskIOCounter : public DriverCounter {
@@ -48,7 +49,7 @@ void DiskIODriver::readEvents(mxml_node_t * const /*unused*/)
         setCounters(new DiskIOCounter(getCounters(), "Linux_block_rq_wr", &mWriteBytes));
     }
     else {
-        logg.logSetup("Linux counters\nCannot access /proc/diskstats. Disk I/O read and write counters not available.");
+        LOG_SETUP("Linux counters\nCannot access /proc/diskstats. Disk I/O read and write counters not available.");
     }
 }
 
@@ -59,7 +60,7 @@ void DiskIODriver::doRead()
     }
 
     if (!mBuf.read("/proc/diskstats")) {
-        logg.logError("Unable to read /proc/diskstats");
+        LOG_ERROR("Unable to read /proc/diskstats");
         handleException();
     }
 
@@ -87,7 +88,7 @@ void DiskIODriver::doRead()
                                  &readBytes,
                                  &writeBytes);
         if (count != 2) {
-            logg.logError("Unable to parse /proc/diskstats");
+            LOG_ERROR("Unable to parse /proc/diskstats");
             handleException();
         }
 

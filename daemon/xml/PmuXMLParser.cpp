@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cstring>
+
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -103,7 +104,7 @@ static bool parseCpuId(std::set<int> & cpuIds,
 {
     if (cpuIdStr == nullptr) {
         if (required) {
-            logg.logError("The %s for '%s' in pmus.xml is missing", locationStr, pmuId);
+            LOG_ERROR("The %s for '%s' in pmus.xml is missing", locationStr, pmuId);
             return false;
         }
         return true;
@@ -111,7 +112,7 @@ static bool parseCpuId(std::set<int> & cpuIds,
 
     int cpuid;
     if (!stringToInt(&cpuid, cpuIdStr, 0)) {
-        logg.logError("The %s for '%s' in pmu XML is not an integer", locationStr, pmuId);
+        LOG_ERROR("The %s for '%s' in pmu XML is not an integer", locationStr, pmuId);
         return false;
     }
 
@@ -119,7 +120,7 @@ static bool parseCpuId(std::set<int> & cpuIds,
         cpuIds.insert(cpuid);
         return true;
     }
-    logg.logError("The %s for '%s' in pmu XML is not valid", locationStr, pmuId);
+    LOG_ERROR("The %s for '%s' in pmu XML is not valid", locationStr, pmuId);
     return false;
 }
 
@@ -134,14 +135,14 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
              ? documentPtr.get()
              : mxmlFindElement(documentPtr.get(), documentPtr.get(), TAG_PMUS, nullptr, nullptr, MXML_DESCEND));
     if (root == nullptr) {
-        logg.logError("Invalid 'pmus.xml'");
+        LOG_ERROR("Invalid 'pmus.xml'");
         return false;
     }
 
     const char * const versionStr = mxmlElementGetAttr(root, "version");
     if ((versionStr == nullptr) || (strcmp(versionStr, "2") != 0)) {
-        logg.logError("Invalid or missing version string in 'pmus.xml': (%s)",
-                      (versionStr != nullptr ? versionStr : "<missing>"));
+        LOG_ERROR("Invalid or missing version string in 'pmus.xml': (%s)",
+                  (versionStr != nullptr ? versionStr : "<missing>"));
         return false;
     }
 
@@ -174,17 +175,16 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
 
         int pmncCounters;
         if (!stringToInt(&pmncCounters, pmncCountersStr, 0)) {
-            logg.logError("The pmnc_counters for '%s' in pmu XML is not an integer", id);
+            LOG_ERROR("The pmnc_counters for '%s' in pmu XML is not an integer", id);
             return false;
         }
-        if ((id == nullptr) || (strlen(id) == 0) || (counterSet == nullptr) || (strlen(counterSet) == 0) ||
-            cpuIds.empty() || (coreName == nullptr) || (strlen(coreName) == 0) || (pmncCounters <= 0)) {
-            logg.logError(
-                "A pmu from the pmu XML is missing one or more of the required attributes (%s, %s, %s and %s)",
-                ATTR_ID,
-                ATTR_CPUID,
-                ATTR_CORE_NAME,
-                ATTR_PMNC_COUNTERS);
+        if ((id == nullptr) || (strlen(id) == 0) || (counterSet == nullptr) || (strlen(counterSet) == 0)
+            || cpuIds.empty() || (coreName == nullptr) || (strlen(coreName) == 0) || (pmncCounters <= 0)) {
+            LOG_ERROR("A pmu from the pmu XML is missing one or more of the required attributes (%s, %s, %s and %s)",
+                      ATTR_ID,
+                      ATTR_CPUID,
+                      ATTR_CORE_NAME,
+                      ATTR_PMNC_COUNTERS);
             return false;
         }
 
@@ -196,18 +196,18 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
             }
         }
 
-        logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"0x%05x\" %s=\"%d\" />",
-                        TAG_PMU,
-                        ATTR_CORE_NAME,
-                        coreName,
-                        ATTR_ID,
-                        id,
-                        ATTR_COUNTER_SET,
-                        counterSet,
-                        ATTR_CPUID,
-                        *cpuIds.begin(),
-                        ATTR_PMNC_COUNTERS,
-                        pmncCounters);
+        LOG_DEBUG("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"0x%05x\" %s=\"%d\" />",
+                  TAG_PMU,
+                  ATTR_CORE_NAME,
+                  coreName,
+                  ATTR_ID,
+                  id,
+                  ATTR_COUNTER_SET,
+                  counterSet,
+                  ATTR_CPUID,
+                  *cpuIds.begin(),
+                  ATTR_PMNC_COUNTERS,
+                  pmncCounters);
 
         pmuXml.cpus.emplace_back(coreName, id, counterSet, dtName, speName, std::move(cpuIds), pmncCounters, isV8);
     }
@@ -223,14 +223,14 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         const char * const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS);
         int pmncCounters;
         if (!stringToInt(&pmncCounters, pmncCountersStr, 0)) {
-            logg.logError("The pmnc_counters for '%s' in pmu XML is not an integer", id);
+            LOG_ERROR("The pmnc_counters for '%s' in pmu XML is not an integer", id);
             return false;
         }
         const char * const hasCyclesCounterStr = mxmlElementGetAttr(node, ATTR_HAS_CYCLES_COUNTER);
         const bool hasCyclesCounter = stringToBool(hasCyclesCounterStr, true);
-        if ((id == nullptr) || (strlen(id) == 0) || (counterSet == nullptr) || (strlen(counterSet) == 0) ||
-            (coreName == nullptr) || (strlen(coreName) == 0) || (pmncCounters == 0)) {
-            logg.logError(
+        if ((id == nullptr) || (strlen(id) == 0) || (counterSet == nullptr) || (strlen(counterSet) == 0)
+            || (coreName == nullptr) || (strlen(coreName) == 0) || (pmncCounters == 0)) {
+            LOG_ERROR(
                 "An uncore_pmu from the pmu XML is missing one or more of the required attributes (%s, %s and %s)",
                 ATTR_ID,
                 ATTR_CORE_NAME,
@@ -239,21 +239,21 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         }
 
         // check if the path contains a wildcard
-        if ((strstr(id, UNCORE_PMNC_NAME_WILDCARD_D) == nullptr) &&
-            (strstr(id, UNCORE_PMNC_NAME_WILDCARD_S) == nullptr)) {
+        if ((strstr(id, UNCORE_PMNC_NAME_WILDCARD_D) == nullptr)
+            && (strstr(id, UNCORE_PMNC_NAME_WILDCARD_S) == nullptr)) {
             // no - just add one item
-            logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
-                            TAG_UNCORE_PMU,
-                            ATTR_CORE_NAME,
-                            coreName,
-                            ATTR_ID,
-                            id,
-                            ATTR_COUNTER_SET,
-                            counterSet,
-                            ATTR_HAS_CYCLES_COUNTER,
-                            hasCyclesCounter ? "true" : "false",
-                            ATTR_PMNC_COUNTERS,
-                            pmncCounters);
+            LOG_DEBUG("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
+                      TAG_UNCORE_PMU,
+                      ATTR_CORE_NAME,
+                      coreName,
+                      ATTR_ID,
+                      id,
+                      ATTR_COUNTER_SET,
+                      counterSet,
+                      ATTR_HAS_CYCLES_COUNTER,
+                      hasCyclesCounter ? "true" : "false",
+                      ATTR_PMNC_COUNTERS,
+                      pmncCounters);
 
             pmuXml.uncores.emplace_back(coreName, id, counterSet, "", pmncCounters, hasCyclesCounter);
         }
@@ -261,28 +261,28 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
             // yes - add actual matching items from filesystem
             bool matched = false;
             lib::FsEntryDirectoryIterator it = lib::FsEntry::create(PERF_DEVICES).children();
-            lib::Optional<lib::FsEntry> child;
-            while ((child = it.next()).valid()) {
+            std::optional<lib::FsEntry> child;
+            while (!!(child = it.next())) {
                 size_t wc_start = 0;
                 size_t wc_len = 0;
                 if (matchPMUName(id, child->name().c_str(), wc_start, wc_len)) {
                     std::string patternPart = child->name().substr(wc_start, wc_len);
 
                     // matched dirent
-                    logg.logMessage("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" %s=\"%s\" />",
-                                    TAG_UNCORE_PMU,
-                                    ATTR_CORE_NAME,
-                                    coreName,
-                                    ATTR_ID,
-                                    child->name().c_str(),
-                                    ATTR_COUNTER_SET,
-                                    counterSet,
-                                    ATTR_HAS_CYCLES_COUNTER,
-                                    hasCyclesCounter ? "true" : "false",
-                                    ATTR_PMNC_COUNTERS,
-                                    pmncCounters,
-                                    ATTR_DEVICE_INSTANCE,
-                                    patternPart.c_str());
+                    LOG_DEBUG("Found <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" %s=\"%s\" />",
+                              TAG_UNCORE_PMU,
+                              ATTR_CORE_NAME,
+                              coreName,
+                              ATTR_ID,
+                              child->name().c_str(),
+                              ATTR_COUNTER_SET,
+                              counterSet,
+                              ATTR_HAS_CYCLES_COUNTER,
+                              hasCyclesCounter ? "true" : "false",
+                              ATTR_PMNC_COUNTERS,
+                              pmncCounters,
+                              ATTR_DEVICE_INSTANCE,
+                              patternPart.c_str());
                     pmuXml.uncores.emplace_back(coreName,
                                                 child->name(),
                                                 counterSet,
@@ -292,24 +292,23 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                     matched = true;
                 }
                 else {
-                    logg.logMessage("no match '%s' for '%s'", child->name().c_str(), id);
+                    LOG_DEBUG("no match '%s' for '%s'", child->name().c_str(), id);
                 }
             }
 
             if (!matched) {
-                logg.logMessage(
-                    "No matching devices for wildcard <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
-                    TAG_UNCORE_PMU,
-                    ATTR_CORE_NAME,
-                    coreName,
-                    ATTR_ID,
-                    id,
-                    ATTR_COUNTER_SET,
-                    counterSet,
-                    ATTR_HAS_CYCLES_COUNTER,
-                    hasCyclesCounter ? "true" : "false",
-                    ATTR_PMNC_COUNTERS,
-                    pmncCounters);
+                LOG_DEBUG("No matching devices for wildcard <%s %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%s\" %s=\"%d\" />",
+                          TAG_UNCORE_PMU,
+                          ATTR_CORE_NAME,
+                          coreName,
+                          ATTR_ID,
+                          id,
+                          ATTR_COUNTER_SET,
+                          counterSet,
+                          ATTR_HAS_CYCLES_COUNTER,
+                          hasCyclesCounter ? "true" : "false",
+                          ATTR_PMNC_COUNTERS,
+                          pmncCounters);
             }
         }
     }
@@ -331,7 +330,7 @@ PmuXML readPmuXml(const char * const path)
         // Parse user defined items second as they will show up first in the linked list
         std::unique_ptr<char, void (*)(void *)> xml {readFromDisk(path), std::free};
         if (xml == nullptr) {
-            logg.logError("Unable to open additional pmus XML %s", path);
+            LOG_ERROR("Unable to open additional pmus XML %s", path);
             handleException();
         }
         if (!parseXml(xml.get(), pmuXml)) {

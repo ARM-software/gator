@@ -64,11 +64,11 @@ public:
 
     void readEvents(mxml_node_t * xml) override;
     int writeCounters(mxml_node_t * root) const override;
-    lib::Optional<std::uint64_t> summary(ISummaryConsumer & consumer,
+    std::optional<std::uint64_t> summary(ISummaryConsumer & consumer,
                                          const std::function<uint64_t()> & getMonotonicTime);
     void coreName(ISummaryConsumer & consumer, int cpu);
     void setupCounter(Counter & counter) override;
-    lib::Optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
+    std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
     bool enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
     void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
     bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);

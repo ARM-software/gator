@@ -3,6 +3,7 @@
 #include "Tracepoints.h"
 
 #include "Config.h"
+#include "DynBuf.h"
 #include "Logging.h"
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
@@ -13,6 +14,7 @@
 #include <array>
 #include <fstream>
 #include <string>
+
 #include <unistd.h>
 
 std::string getTracepointPath(const char * tracefsEventsPath, const char * name, const char * file)
@@ -26,7 +28,7 @@ bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer, const char * trace
 
     if (!file.canAccess(true, false, false)) {
         const std::string path = file.path();
-        logg.logMessage("can't read %s", path.c_str());
+        LOG_DEBUG("can't read %s", path.c_str());
         return false;
     }
 
@@ -40,7 +42,7 @@ int64_t getTracepointId(const char * tracefsEventsPath, const char * const name)
 {
     int64_t result;
     if (lib::readInt64FromFile(getTracepointPath(tracefsEventsPath, name, "id").c_str(), result) != 0) {
-        logg.logMessage("Unable to read tracepoint id for %s", name);
+        LOG_DEBUG("Unable to read tracepoint id for %s", name);
         return UNKNOWN_TRACEPOINT_ID;
     }
 
@@ -122,12 +124,12 @@ namespace {
             return &pointer->constants;
         }
 
-        logg.logMessage("Reading /proc/mounts");
+        LOG_DEBUG("Reading /proc/mounts");
 
         // iterate each line of /proc/mounts
         std::ifstream file("/proc/mounts", std::ios_base::in);
         for (std::string line; std::getline(file, line);) {
-            logg.logMessage("    '%s'", line.c_str());
+            LOG_DEBUG("    '%s'", line.c_str());
 
             // find the mount point section of the string, provided it is a tracefs mount
             const auto indexOfFirstSep = line.find(" /");
@@ -141,7 +143,7 @@ namespace {
 
             // found it
             auto mountPoint = line.substr(indexOfFirstSep + 1, indexOfTraceFs - (indexOfFirstSep + 1));
-            logg.logMessage("Found tracefs at '%s'", mountPoint.c_str());
+            LOG_DEBUG("Found tracefs at '%s'", mountPoint.c_str());
 
             if (lib::access(mountPoint.c_str(), R_OK) == 0) {
                 // check it is not one of the baked in configurations, reuse it instead of constructing a new item
@@ -152,7 +154,7 @@ namespace {
                 }
 
                 // OK, construct a new item
-                pointer.reset(new TraceFsConstantsWrapper(std::move(mountPoint)));
+                pointer = std::make_unique<TraceFsConstantsWrapper>(std::move(mountPoint));
                 return &pointer->constants;
             }
         }

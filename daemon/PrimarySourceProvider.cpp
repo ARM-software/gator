@@ -26,8 +26,9 @@
 #endif
 
 #include <algorithm>
-#include <unistd.h>
 #include <utility>
+
+#include <unistd.h>
 
 static const char CORE_NAME_UNKNOWN[] = "unknown";
 
@@ -44,11 +45,11 @@ namespace {
 
         lib::Span<int> getCpuIds() { return {ids.get(), maxCoreNumber}; }
 
-        lib::Span<const int> getCpuIds() const { return {ids.get(), maxCoreNumber}; }
+        [[nodiscard]] lib::Span<const int> getCpuIds() const { return {ids.get(), maxCoreNumber}; }
 
         lib::Span<int> getClusterIds() { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
 
-        lib::Span<const int> getClusterIds() const { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
+        [[nodiscard]] lib::Span<const int> getClusterIds() const { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
 
     private:
         unsigned int maxCoreNumber;
@@ -67,11 +68,11 @@ namespace {
             updateClusterIds();
         }
 
-        lib::Span<const int> getCpuIds() const override { return ids.getCpuIds(); }
+        [[nodiscard]] lib::Span<const int> getCpuIds() const override { return ids.getCpuIds(); }
 
-        lib::Span<const GatorCpu> getClusters() const override { return clusters; }
+        [[nodiscard]] lib::Span<const GatorCpu> getClusters() const override { return clusters; }
 
-        lib::Span<const int> getClusterIds() const override { return ids.getClusterIds(); }
+        [[nodiscard]] lib::Span<const int> getClusterIds() const override { return ids.getClusterIds(); }
 
         void updateIds(bool ignoreOffline) override
         {
@@ -79,12 +80,12 @@ namespace {
             updateClusterIds();
         }
 
-        const char * getModelName() const override { return modelName.c_str(); }
+        [[nodiscard]] const char * getModelName() const override { return modelName.c_str(); }
 
         void updateClusterIds()
         {
             int lastClusterId = 0;
-            for (size_t i = 0; i < ids.getCpuIds().length; ++i) {
+            for (size_t i = 0; i < ids.getCpuIds().size(); ++i) {
                 int clusterId = -1;
                 for (size_t j = 0; j < clusters.size(); ++j) {
                     if (clusters[j].hasCpuId(ids.getCpuIds()[i])) {
@@ -156,35 +157,30 @@ namespace {
             return nullptr;
         }
 
-        const char * getCaptureXmlTypeValue() const override { return "Perf"; }
+        [[nodiscard]] const char * getCaptureXmlTypeValue() const override { return "Perf"; }
 
-// if using register unwinding, backtrace mode is set to 'gator' to allow handling of 'lr' epilog/prolog correctly
-#if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
-        const char * getBacktraceProcessingMode() const override { return "gator"; }
-#else
-        const char * getBacktraceProcessingMode() const override { return "perf"; }
-#endif
+        [[nodiscard]] const char * getBacktraceProcessingMode() const override { return "perf"; }
 
-        bool supportsTracepointCapture() const override { return true; }
+        [[nodiscard]] bool supportsTracepointCapture() const override { return true; }
 
-        bool supportsMultiEbs() const override { return true; }
+        [[nodiscard]] bool supportsMultiEbs() const override { return true; }
 
-        const char * getPrepareFailedMessage() const override
+        [[nodiscard]] const char * getPrepareFailedMessage() const override
         {
             return "Unable to communicate with the perf API, please ensure that CONFIG_TRACING and "
                    "CONFIG_CONTEXT_SWITCH_TRACER are enabled. Please refer to streamline/gator/README.md for more "
                    "information.";
         }
 
-        const Driver & getPrimaryDriver() const override { return driver; }
+        [[nodiscard]] const Driver & getPrimaryDriver() const override { return driver; }
 
         Driver & getPrimaryDriver() override { return driver; }
 
-        const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
+        [[nodiscard]] const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
 
         ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
-        lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return uncorePmus; }
+        [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return uncorePmus; }
 
         std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
                                                            std::function<void()> profilingStartedCallback,
@@ -192,13 +188,13 @@ namespace {
                                                            FtraceDriver & ftraceDriver,
                                                            bool enableOnCommandExec) override
         {
-            auto source = std::unique_ptr<PerfSource>(new PerfSource(driver,
-                                                                     senderSem,
-                                                                     profilingStartedCallback,
-                                                                     appTids,
-                                                                     ftraceDriver,
-                                                                     enableOnCommandExec,
-                                                                     cpuInfo));
+            auto source = std::make_unique<PerfSource>(driver,
+                                                       senderSem,
+                                                       profilingStartedCallback,
+                                                       appTids,
+                                                       ftraceDriver,
+                                                       enableOnCommandExec,
+                                                       cpuInfo);
             if (!source->prepare()) {
                 return {};
             }
@@ -284,29 +280,32 @@ namespace {
                                          {std::move(ids), std::move(clusters), modelName, disableCpuOnlining}));
         }
 
-        const char * getCaptureXmlTypeValue() const override
+        [[nodiscard]] const char * getCaptureXmlTypeValue() const override
         {
             // Sends data in gator format
             return "Gator";
         }
 
-        const char * getBacktraceProcessingMode() const override { return "none"; }
+        [[nodiscard]] const char * getBacktraceProcessingMode() const override { return "none"; }
 
-        bool supportsTracepointCapture() const override { return true; }
+        [[nodiscard]] bool supportsTracepointCapture() const override { return true; }
 
-        bool supportsMultiEbs() const override { return false; }
+        [[nodiscard]] bool supportsMultiEbs() const override { return false; }
 
-        const char * getPrepareFailedMessage() const override { return "Could not initialize /proc data capture"; }
+        [[nodiscard]] const char * getPrepareFailedMessage() const override
+        {
+            return "Could not initialize /proc data capture";
+        }
 
-        const Driver & getPrimaryDriver() const override { return driver; }
+        [[nodiscard]] const Driver & getPrimaryDriver() const override { return driver; }
 
         Driver & getPrimaryDriver() override { return driver; }
 
-        const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
+        [[nodiscard]] const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
 
         ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
-        lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return {}; }
+        [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return {}; }
 
         std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
                                                            std::function<void()> profilingStartedCallback,
@@ -365,23 +364,23 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
     const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, ids.getCpuIds());
-    const char * modelNameToUse = !modelName.empty()      ? modelName.c_str()
-                                  : !hardwareName.empty() ? hardwareName.c_str()
-                                                          : CORE_NAME_UNKNOWN;
+    const char * modelNameToUse = !modelName.empty()    ? modelName.c_str()
+                                : !hardwareName.empty() ? hardwareName.c_str()
+                                                        : CORE_NAME_UNKNOWN;
     std::unique_ptr<PrimarySourceProvider> result;
 
     // Verify root permissions
     const bool isRoot = (geteuid() == 0);
 
-    logg.logMessage("Determining primary source");
+    LOG_DEBUG("Determining primary source");
 
     // try perf
 #if CONFIG_SUPPORT_PERF
     if (isRoot) {
-        logg.logMessage("Trying perf API as root...");
+        LOG_DEBUG("Trying perf API as root...");
     }
     else {
-        logg.logMessage("Trying perf API as non-root...");
+        LOG_DEBUG("Trying perf API as non-root...");
     }
 
     result = PerfPrimarySource::tryCreate(systemWide,
@@ -393,32 +392,31 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
                                           disableCpuOnlining,
                                           disableKernelAnnotations);
     if (result != nullptr) {
-        logg.logMessage("...Success");
-        logg.logSetup("Profiling Source\nUsing perf API for primary data source");
+        LOG_DEBUG("...Success");
+        LOG_SETUP("Profiling Source\nUsing perf API for primary data source");
         return result;
     }
-    logg.logError("...Perf API is not available.");
+    LOG_ERROR("...Perf API is not available.");
 
 #endif /* CONFIG_SUPPORT_PERF */
 
     // fall back to proc mode
 #if CONFIG_SUPPORT_PROC_POLLING
     if (isRoot) {
-        logg.logMessage("Trying /proc counters as root...");
+        LOG_DEBUG("Trying /proc counters as root...");
     }
     else {
-        logg.logMessage("Trying /proc counters as non-root; limited system profiling information available...");
+        LOG_DEBUG("Trying /proc counters as non-root; limited system profiling information available...");
     }
 
     result = NonRootPrimarySource::tryCreate(std::move(pmuXml), ids, modelNameToUse, disableCpuOnlining);
     if (result != nullptr) {
-        logg.logMessage("...Success");
-        logg.logSetup("Profiling Source\nUsing /proc polling for primary data source");
-        logg.logError(
-            "Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
+        LOG_DEBUG("...Success");
+        LOG_SETUP("Profiling Source\nUsing /proc polling for primary data source");
+        LOG_ERROR("Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
         return result;
     }
-    logg.logMessage("...Unable to set /proc counters");
+    LOG_DEBUG("...Unable to set /proc counters");
 
 #endif /* CONFIG_SUPPORT_PROC_POLLING */
 

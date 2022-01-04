@@ -6,9 +6,10 @@
 #include "SimpleDriver.h"
 #include "Tracepoints.h"
 
-#include <pthread.h>
 #include <utility>
 #include <vector>
+
+#include <pthread.h>
 
 class DynBuf;
 class IPerfAttrsConsumer;

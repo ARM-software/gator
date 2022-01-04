@@ -3,7 +3,7 @@
   <counter_set name="ARMv8R_Cortex_R52_cnt" count="4"/>
   <category name="Cortex_R52" counter_set="ARMv8R_Cortex_R52_cnt" per_cpu="yes">
 
-    <event counter="ARMv8R_Cortex_R52_ccnt" event="0xff" title="Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" average_cores="yes" description="The number of core clock cycles"/>
+    <event counter="ARMv8R_Cortex_R52_ccnt" event="0xff" title="Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
 
     <event event="0x00" title="Software" name="Increment" description="Incremented only on writes to the Software Increment Register"/>
 

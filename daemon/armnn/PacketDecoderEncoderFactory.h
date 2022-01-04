@@ -12,9 +12,9 @@
 #include "armnn/PacketEncoder.h"
 #include "armnn/PacketUtility.h"
 #include "armnn/PacketUtilityModels.h"
-#include "lib/Optional.h"
 
 #include <memory>
+#include <optional>
 #include <tuple>
 
 namespace armnn {
@@ -25,7 +25,7 @@ namespace armnn {
     /**
      * get stream meta data packet body based on the stream meta data version
      */
-    lib::Optional<StreamMetadataContent> getStreamMetadata(Bytes packetBodyAfterMagic, ByteOrder byteOrder);
+    std::optional<StreamMetadataContent> getStreamMetadata(Bytes packetBodyAfterMagic, ByteOrder byteOrder);
 
     /**
      * Create decoders based on PacketVersionTable

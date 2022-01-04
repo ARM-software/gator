@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #ifndef __STREAMLINE_SETUP_H__
 #define __STREAMLINE_SETUP_H__
@@ -6,6 +6,7 @@
 #include "ISender.h"
 #include "StreamlineSetupLoop.h"
 #include "lib/Span.h"
+#include "logging/suppliers.h"
 
 #include <cstdint>
 #include <cstring>
@@ -18,7 +19,10 @@ struct CapturedSpe;
 
 class StreamlineSetup : private IStreamlineCommandHandler {
 public:
-    StreamlineSetup(OlySocket & socket, Drivers & drivers, lib::Span<const CapturedSpe> capturedSpes);
+    StreamlineSetup(OlySocket & socket,
+                    Drivers & drivers,
+                    lib::Span<const CapturedSpe> capturedSpes,
+                    logging::log_setup_supplier_t log_setup_supplier);
 
     // Intentionally unimplemented
     StreamlineSetup(const StreamlineSetup &) = delete;
@@ -30,6 +34,7 @@ private:
     OlySocket & mSocket;
     Drivers & mDrivers;
     lib::Span<const CapturedSpe> mCapturedSpes;
+    logging::log_setup_supplier_t log_setup_supplier;
 
     State handleRequest(char * xml) override;
     State handleDeliver(char * xml) override;

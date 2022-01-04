@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -8,6 +8,7 @@
 #include "linux/perf/IPerfBufferConsumer.h"
 
 #include <atomic>
+
 #include <semaphore.h>
 
 class PerfToMemoryBuffer : public IPerfBufferConsumer, public IBufferControl {

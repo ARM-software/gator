@@ -2,7 +2,7 @@
 
   <counter_set name="CCI_400_cnt" count="4"/>
   <category name="CCI-400" counter_set="CCI_400_cnt" per_cpu="no">
-    <event counter="CCI_400_ccnt" event="0xff" title="CCI-400 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="CCI_400_ccnt" event="0xff" title="CCI-400 Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
     <option_set name="Slave">
       <option event_delta="0x00" name="S0" description="Slave interface 0"/>
       <option event_delta="0x20" name="S1" description="Slave interface 1"/>
@@ -45,7 +45,7 @@
   </category>
   <counter_set name="CCI_400_r1_cnt" count="4"/>
   <category name="CCI-400" counter_set="CCI_400_r1_cnt" per_cpu="no">
-    <event counter="CCI_400_r1_ccnt" event="0xff" title="CCI-400 Clock" name="Cycles" display="hertz" units="Hz" average_selection="yes" description="The number of core clock cycles"/>
+    <event counter="CCI_400_r1_ccnt" event="0xff" title="CCI-400 Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
     <option_set name="Slave">
       <option event_delta="0x00" name="S0" description="Slave interface 0"/>
       <option event_delta="0x20" name="S1" description="Slave interface 1"/>

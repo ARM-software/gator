@@ -8,7 +8,7 @@ class OlyServerSocket;
 
 class AnnotateListener {
 public:
-    AnnotateListener();
+    AnnotateListener() noexcept;
     ~AnnotateListener();
 
     // Intentionally unimplemented

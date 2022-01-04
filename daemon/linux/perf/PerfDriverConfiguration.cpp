@@ -15,14 +15,12 @@
 
 #include <algorithm>
 #include <set>
+
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
-
-constexpr int PerfDriverConfiguration::UNKNOWN_CPUID;
-constexpr char PerfDriverConfiguration::ARMV82_SPE[];
 
 static const std::string debugPerfEventMlockKbPropString = "debug.perf_event_mlock_kb";
 static const std::string securityPerfHardenPropString = "security.perf_harden";
@@ -34,10 +32,7 @@ static bool getPerfHarden()
     const char * const command[] = {"getprop", securityPerfHardenPropString.c_str(), nullptr};
     const lib::PopenResult getprop = lib::popen(command);
     if (getprop.pid < 0) {
-        logg.logMessage("lib::popen(%s %s) failed: %s. Probably not android",
-                        command[0],
-                        command[1],
-                        strerror(-getprop.pid));
+        LOG_DEBUG("lib::popen(%s %s) failed: %s. Probably not android", command[0], command[1], strerror(-getprop.pid));
         return false;
     }
 
@@ -54,31 +49,23 @@ static void setProp(const std::string & prop, const std::string & value)
     const lib::PopenResult setPropResult = lib::popen(command);
     //setprop not found, probably not Android.
     if (setPropResult.pid == -ENOENT) {
-        logg.logMessage("lib::popen(%s %s %s) failed: %s",
-                        command[0],
-                        command[1],
-                        command[2],
-                        strerror(-setPropResult.pid));
+        LOG_DEBUG("lib::popen(%s %s %s) failed: %s", command[0], command[1], command[2], strerror(-setPropResult.pid));
         return;
     }
     if (setPropResult.pid < 0) {
-        logg.logError("lib::popen(%s %s %s) failed: %s",
-                      command[0],
-                      command[1],
-                      command[2],
-                      strerror(-setPropResult.pid));
+        LOG_ERROR("lib::popen(%s %s %s) failed: %s", command[0], command[1], command[2], strerror(-setPropResult.pid));
         return;
     }
 
     const int status = lib::pclose(setPropResult);
     if (!WIFEXITED(status)) {
-        logg.logError("'%s %s %s' exited abnormally", command[0], command[1], command[2]);
+        LOG_ERROR("'%s %s %s' exited abnormally", command[0], command[1], command[2]);
         return;
     }
 
     const int exitCode = WEXITSTATUS(status);
     if (exitCode != 0) {
-        logg.logError("'%s %s %s' failed: %d", command[0], command[1], command[2], exitCode);
+        LOG_ERROR("'%s %s %s' failed: %d", command[0], command[1], command[2], exitCode);
     }
 }
 
@@ -89,13 +76,13 @@ static void setPerfHarden(bool on)
 
 static bool setPerfEventMlockKb(int newValue)
 {
-    lib::Optional<std::int64_t> fileValue = perf_utils::readPerfEventMlockKb();
+    std::optional<std::int64_t> fileValue = perf_utils::readPerfEventMlockKb();
 
-    if (fileValue.valid() && fileValue.get() == newValue) {
+    if (fileValue && (*fileValue == newValue)) {
         return true;
     }
 
-    logg.logMessage("setting property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
+    LOG_DEBUG("setting property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
     setProp(debugPerfEventMlockKbPropString, std::to_string(newValue));
 
     // Trigger debug property update
@@ -105,10 +92,10 @@ static bool setPerfEventMlockKb(int newValue)
     sleep(1);
 
     fileValue = perf_utils::readPerfEventMlockKb();
-    const bool result = fileValue.valid() ? fileValue.get() == newValue : false;
+    const bool result = (fileValue && (*fileValue == newValue));
 
     if (!result) {
-        logg.logMessage("failed to set property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
+        LOG_DEBUG("failed to set property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
     }
 
     return result;
@@ -135,7 +122,7 @@ static bool disablePerfHarden()
         return true;
     }
 
-    logg.logWarning("disabling property %s", securityPerfHardenPropString.c_str());
+    LOG_WARNING("disabling property %s", securityPerfHardenPropString.c_str());
 
     setPerfHarden(false);
 
@@ -157,9 +144,9 @@ static bool isValidCpuId(int cpuId)
 void logCpuNotFound()
 {
 #if defined(__arm__) || defined(__aarch64__)
-    logg.logSetup("CPU is not recognized\nUsing the Arm architected counters");
+    LOG_SETUP("CPU is not recognized\nUsing the Arm architected counters");
 #else
-    logg.logSetup("CPU is not recognized\nUsing perf hardware counters");
+    LOG_SETUP("CPU is not recognized\nUsing perf hardware counters");
 #endif
 }
 
@@ -170,42 +157,47 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 {
     struct utsname utsname;
     if (lib::uname(&utsname) != 0) {
-        logg.logError("uname failed");
+        LOG_ERROR("uname failed");
         return nullptr;
     }
 
-    logg.logMessage("Kernel version: %s", utsname.release);
+    LOG_DEBUG("Kernel version: %s", utsname.release);
 
     // Check the kernel version
     const int kernelVersion = lib::parseLinuxVersion(utsname);
 
     const bool hasArmv7PmuDriver = beginsWith(utsname.machine, "armv7")
-        || FsEntry::create("/sys/bus/event_source/devices").hasChildWithNamePrefix("armv7");
+                                || FsEntry::create("/sys/bus/event_source/devices").hasChildWithNamePrefix("armv7");
 
 #if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
-    const bool has_64bit_register_set = beginsWith(utsname.machine, "aarch64") || beginsWith(utsname.machine, "arm64"); // use the machine name as allowed to run 32-bit gator on aarch64 machine
+    const bool has_64bit_uname =
+        beginsWith(utsname.machine, "aarch64") || beginsWith(utsname.machine, "arm64")
+        || beginsWith(utsname.machine,
+                      "armv8"); // use the machine name as allowed to run 32-bit gator on aarch64 machine
 #else
-    const bool has_64bit_register_set = (sizeof(void*) == 8);
+    const bool has_64bit_uname = (sizeof(void *) == 8);
 #endif
+
+    const bool use_64bit_register_set = (sizeof(void *) == 8) || has_64bit_uname;
 
     if (kernelVersion < KERNEL_VERSION(3, 4, 0)) {
         const char error[] = "Unsupported kernel version\nPlease upgrade to 3.4 or later";
-        logg.logSetup(error);
-        logg.logError(error);
+        LOG_SETUP(error);
+        LOG_ERROR(error);
         return nullptr;
     }
 
     const bool isRoot = (lib::geteuid() == 0);
 
     if (!isRoot && !disablePerfHarden()) {
-        logg.logSetup("Failed to disable property %s\n" //
-                      "Try 'adb shell setprop %s 0'",
-                      securityPerfHardenPropString.c_str(),
-                      securityPerfHardenPropString.c_str());
-        logg.logError("Failed to disable property %s\n" //
-                      "Try 'setprop %s 0' as the shell or root user.",
-                      securityPerfHardenPropString.c_str(),
-                      securityPerfHardenPropString.c_str());
+        LOG_SETUP("Failed to disable property %s\n" //
+                  "Try 'adb shell setprop %s 0'",
+                  securityPerfHardenPropString.c_str(),
+                  securityPerfHardenPropString.c_str());
+        LOG_ERROR("Failed to disable property %s\n" //
+                  "Try 'setprop %s 0' as the shell or root user.",
+                  securityPerfHardenPropString.c_str(),
+                  securityPerfHardenPropString.c_str());
         return nullptr;
     }
 
@@ -214,8 +206,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         if (isRoot) {
             const char error[] = "perf_event_paranoid not accessible\n"
                                  "Is CONFIG_PERF_EVENTS enabled?";
-            logg.logSetup(error);
-            logg.logError(error);
+            LOG_SETUP(error);
+            LOG_ERROR(error);
             return nullptr;
         }
 #if defined(CONFIG_ASSUME_PERF_HIGH_PARANOIA) && CONFIG_ASSUME_PERF_HIGH_PARANOIA
@@ -223,10 +215,10 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 #else
         perf_event_paranoid = 1;
 #endif
-        logg.logSetup("perf_event_paranoid not accessible\nAssuming high paranoia (%d).", perf_event_paranoid);
+        LOG_SETUP("perf_event_paranoid not accessible\nAssuming high paranoia (%d).", perf_event_paranoid);
     }
     else {
-        logg.logMessage("perf_event_paranoid: %d", perf_event_paranoid);
+        LOG_DEBUG("perf_event_paranoid: %d", perf_event_paranoid);
     }
 
     const bool allow_system_wide = isRoot || perf_event_paranoid <= 0;
@@ -236,66 +228,66 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     if (!allow_non_system_wide) {
         // This is only actually true if the kernel has the grsecurity PERF_HARDEN patch
         // but we assume no-one would ever set perf_event_paranoid > 2 without it.
-        logg.logSetup("perf_event_open\nperf_event_paranoid > 2 is not supported for non-root");
-        logg.logError("perf_event_open: perf_event_paranoid > 2 is not supported for non-root.\n"
-                      "To use it try (as root):\n"
-                      "  echo 2 > /proc/sys/kernel/perf_event_paranoid");
+        LOG_SETUP("perf_event_open\nperf_event_paranoid > 2 is not supported for non-root");
+        LOG_ERROR("perf_event_open: perf_event_paranoid > 2 is not supported for non-root.\n"
+                  "To use it try (as root):\n"
+                  "  echo 2 > /proc/sys/kernel/perf_event_paranoid");
         return nullptr;
     }
 
     if (systemWide && !allow_system_wide) {
-        logg.logSetup("System wide tracing\nperf_event_paranoid > 0 is not supported for system-wide non-root");
-        logg.logError("perf_event_open: perf_event_paranoid > 0 is not supported for system-wide non-root.\n"
-                      "To use it\n"
-                      " * try --system-wide=no,\n"
-                      " * run gatord as root,\n"
-                      " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
-                      "   Try (as root):\n"
-                      "    - echo -1 > /proc/sys/kernel/perf_event_paranoid");
+        LOG_SETUP("System wide tracing\nperf_event_paranoid > 0 is not supported for system-wide non-root");
+        LOG_ERROR("perf_event_open: perf_event_paranoid > 0 is not supported for system-wide non-root.\n"
+                  "To use it\n"
+                  " * try --system-wide=no,\n"
+                  " * run gatord as root,\n"
+                  " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
+                  "   Try (as root):\n"
+                  "    - echo -1 > /proc/sys/kernel/perf_event_paranoid");
         return nullptr;
     }
 
     const bool can_access_tracepoints = (lib::access(tracefsEventsPath, R_OK) == 0);
     const bool can_access_raw_tracepoints = can_access_tracepoints && (isRoot || perf_event_paranoid == -1);
     if (can_access_tracepoints) {
-        logg.logMessage("Have access to tracepoints");
+        LOG_DEBUG("Have access to tracepoints");
     }
     else {
-        logg.logMessage("Don't have access to tracepoints");
+        LOG_DEBUG("Don't have access to tracepoints");
     }
 
     // Must have tracepoints or perf_event_attr.context_switch for sched switch info
     if (systemWide && (!can_access_raw_tracepoints) && (kernelVersion < KERNEL_VERSION(4, 3, 0))) {
         if (can_access_tracepoints) {
-            logg.logSetup("System wide tracing\nperf_event_paranoid > -1 is not supported for system-wide non-root");
-            logg.logError("perf_event_open: perf_event_paranoid > -1 is not supported for system-wide non-root.\n"
-                          "To use it\n"
-                          " * try --system-wide=no,\n"
-                          " * run gatord as root,\n"
-                          " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
-                          "   Try (as root):\n"
-                          "    - echo -1 > /proc/sys/kernel/perf_event_paranoid");
+            LOG_SETUP("System wide tracing\nperf_event_paranoid > -1 is not supported for system-wide non-root");
+            LOG_ERROR("perf_event_open: perf_event_paranoid > -1 is not supported for system-wide non-root.\n"
+                      "To use it\n"
+                      " * try --system-wide=no,\n"
+                      " * run gatord as root,\n"
+                      " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
+                      "   Try (as root):\n"
+                      "    - echo -1 > /proc/sys/kernel/perf_event_paranoid");
         }
         else {
             if (isRoot) {
-                logg.logSetup("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
-                              tracefsEventsPath);
-                logg.logError("%s is not available.\n"
-                              "Try:\n"
-                              " - mount -t debugfs none /sys/kernel/debug",
-                              tracefsEventsPath);
+                LOG_SETUP("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
+                          tracefsEventsPath);
+                LOG_ERROR("%s is not available.\n"
+                          "Try:\n"
+                          " - mount -t debugfs none /sys/kernel/debug",
+                          tracefsEventsPath);
             }
             else {
-                logg.logSetup("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
-                              tracefsEventsPath);
-                logg.logError("%s is not available.\n"
-                              "Try:\n"
-                              " * --system-wide=no,\n"
-                              " * run gatord as root,\n"
-                              " * or (as root):\n"
-                              "    - mount -o remount,mode=755 /sys/kernel/debug\n"
-                              "    - mount -o remount,mode=755 /sys/kernel/debug/tracing",
-                              tracefsEventsPath);
+                LOG_SETUP("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
+                          tracefsEventsPath);
+                LOG_ERROR("%s is not available.\n"
+                          "Try:\n"
+                          " * --system-wide=no,\n"
+                          " * run gatord as root,\n"
+                          " * or (as root):\n"
+                          "    - mount -o remount,mode=755 /sys/kernel/debug\n"
+                          "    - mount -o remount,mode=755 /sys/kernel/debug/tracing",
+                          tracefsEventsPath);
             }
         }
         return nullptr;
@@ -320,7 +312,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 
     configuration->config.has_armv7_pmu_driver = hasArmv7PmuDriver;
 
-    configuration->config.has_64bit_register_set = has_64bit_register_set;
+    configuration->config.has_64bit_uname = has_64bit_uname;
+    configuration->config.use_64bit_register_set = use_64bit_register_set;
 
     // detect the PMUs
     std::set<const GatorCpu *> cpusDetectedViaSysFs;
@@ -331,17 +324,17 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     FsEntry dir = FsEntry::create(PERF_DEVICES);
     if (dir.exists()) {
         auto children = dir.children();
-        lib::Optional<FsEntry> dirent;
+        std::optional<FsEntry> dirent;
         while ((dirent = children.next())) {
-            const std::string nameString = dirent.get().name();
+            const std::string nameString = dirent->name();
             const char * const name = nameString.c_str();
-            logg.logMessage("perf pmu: %s", name);
+            LOG_DEBUG("perf pmu: %s", name);
             const GatorCpu * gatorCpu = pmuXml.findCpuByName(name);
             if (gatorCpu != nullptr) {
                 int type;
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
-                    logg.logMessage("    ... using pmu type %d for %s cores", type, gatorCpu->getCoreName());
+                    LOG_DEBUG("    ... using pmu type %d for %s cores", type, gatorCpu->getCoreName());
                     configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
                     cpusDetectedViaSysFs.insert(gatorCpu);
                     if (gatorCpu->getSpeName() != nullptr) {
@@ -356,7 +349,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 int type;
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
-                    logg.logMessage("    ... is uncore pmu %s", uncorePmu->getCoreName());
+                    LOG_DEBUG("    ... is uncore pmu %s", uncorePmu->getCoreName());
                     configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
                     continue;
                 }
@@ -382,7 +375,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                             // track generic pmu's type to the cpuId associated with it.
                             // if multiple different cpuIds are associated, then use -1 as cannot map to a unique pmu.
                             const int cpuIdForCpu = cpuIds[cpuNumber];
-                            logg.logMessage("    ... cpu %d, with cpuid 0x%05x", cpuNumber, cpuIdForCpu);
+                            LOG_DEBUG("    ... cpu %d, with cpuid 0x%05x", cpuNumber, cpuIdForCpu);
                             if (!isValidCpuId(cpuIdForCpu)) {
                                 // skip it as we don't know what it is. fair to assume
                                 // homogeneous clusters.
@@ -398,9 +391,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                         if (isValidCpuId(cpuIdForType)) {
                             const GatorCpu * gatorCpu = pmuXml.findCpuById(cpuIdForType);
                             if (gatorCpu != nullptr) {
-                                logg.logMessage("    ... using generic pmu type %d for %s cores",
-                                                type,
-                                                gatorCpu->getCoreName());
+                                LOG_DEBUG("    ... using generic pmu type %d for %s cores",
+                                          type,
+                                          gatorCpu->getCoreName());
                                 configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
                                 cpusDetectedViaSysFs.insert(gatorCpu);
                                 if (gatorCpu->getSpeName() != nullptr) {
@@ -421,7 +414,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 if (lib::readIntFromFile(typePath.c_str(), type) == 0) {
                     const std::set<int> cpuNumbers = lib::readCpuMaskFromFile(maskPath.c_str());
                     for (int cpuNumber : cpuNumbers) {
-                        logg.logMessage("    ... using SPE pmu type %d for cpu %d", type, cpuNumber);
+                        LOG_DEBUG("    ... using SPE pmu type %d for cpu %d", type, cpuNumber);
                         configuration->cpuNumberToSpeType[cpuNumber] = type;
                     }
                     continue;
@@ -430,7 +423,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         }
     }
     else {
-        logg.logMessage(PERF_DEVICES " doesn't exist");
+        LOG_DEBUG(PERF_DEVICES " doesn't exist");
     }
 
     // additionally add any by CPUID
@@ -444,7 +437,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
             }
         }
         else if ((cpusDetectedViaSysFs.count(gatorCpu) == 0) && (cpusDetectedViaCpuid.count(gatorCpu) == 0)) {
-            logg.logMessage("generic pmu: %s", gatorCpu->getCoreName());
+            LOG_DEBUG("generic pmu: %s", gatorCpu->getCoreName());
             configuration->cpus.push_back(PerfCpu {*gatorCpu, PERF_TYPE_RAW});
             cpusDetectedViaCpuid.insert(gatorCpu);
             if (gatorCpu->getSpeName() != nullptr) {
@@ -507,7 +500,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     }
 
     if (cpusDetectedViaSysFs.empty() && !cpusDetectedViaCpuid.empty() && (dir.exists())) {
-        logg.logSetup(
+        LOG_SETUP(
             "No Perf PMUs detected\n"
             "Could not detect any Perf PMUs in /sys/bus/event_source/devices/ but the system contains recognised CPUs. "
             "The system may not support perf hardware counters. Check CONFIG_HW_PERF_EVENTS is set and that the PMU is "

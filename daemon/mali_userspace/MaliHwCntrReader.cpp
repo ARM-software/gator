@@ -10,12 +10,13 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <utility>
+
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <utility>
 
 namespace mali_userspace {
 
@@ -106,13 +107,15 @@ namespace mali_userspace {
     {
         if (ioctl(*hwcntReaderFd,
                   (preJob ? KBASE_HWCNT_READER_ENABLE_EVENT : KBASE_HWCNT_READER_DISABLE_EVENT),
-                  HWCNT_READER_EVENT_PREJOB) != 0) {
+                  HWCNT_READER_EVENT_PREJOB)
+            != 0) {
             return false;
         }
 
         if (ioctl(*hwcntReaderFd,
                   (postJob ? KBASE_HWCNT_READER_ENABLE_EVENT : KBASE_HWCNT_READER_DISABLE_EVENT),
-                  HWCNT_READER_EVENT_POSTJOB) != 0) {
+                  HWCNT_READER_EVENT_POSTJOB)
+            != 0) {
             return false;
         }
 
@@ -137,7 +140,7 @@ namespace mali_userspace {
         // process result
         if (ready < 0) {
             // error occurred
-            logg.logError("MaliHwCntrReader::waitForBuffer - poll failed");
+            LOG_ERROR("MaliHwCntrReader::waitForBuffer - poll failed");
             temp.status = WAIT_STATUS_ERROR;
             return temp;
         }
@@ -165,9 +168,9 @@ namespace mali_userspace {
         if ((fds[POLL_DESCRIPTOR_HWCNT_READER].revents & POLLIN) == POLLIN) {
             // get the buffer
             kbase_hwcnt_reader_metadata metadata;
-            if (lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_GET_BUFFER, reinterpret_cast<unsigned long>(&metadata)) !=
-                0) {
-                logg.logError("MaliHwCntrReader: Could not get buffer due to ioctl failure (%s)", strerror(errno));
+            if (lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_GET_BUFFER, reinterpret_cast<unsigned long>(&metadata))
+                != 0) {
+                LOG_ERROR("MaliHwCntrReader: Could not get buffer due to ioctl failure (%s)", strerror(errno));
                 temp.status = WAIT_STATUS_ERROR;
                 return temp;
             }
@@ -190,8 +193,7 @@ namespace mali_userspace {
             return temp;
         }
         // error occurred
-        logg.logError("MaliHwCntrReader::waitForBuffer - unexpected event 0x%x",
-                      fds[POLL_DESCRIPTOR_HWCNT_READER].revents);
+        LOG_ERROR("MaliHwCntrReader::waitForBuffer - unexpected event 0x%x", fds[POLL_DESCRIPTOR_HWCNT_READER].revents);
         temp.status = WAIT_STATUS_ERROR;
         return temp;
     }
@@ -200,14 +202,14 @@ namespace mali_userspace {
     {
         poll_data_t exit = 0;
         if (lib::write(*selfPipe[PIPE_DESCRIPTOR_OUT], &exit, sizeof(exit)) < 0) {
-            logg.logError("MaliHwCntrReader::interrupt failed (%s)", strerror(errno));
+            LOG_ERROR("MaliHwCntrReader::interrupt failed (%s)", strerror(errno));
         }
     }
 
     bool MaliHwCntrReader::releaseBuffer(kbase_hwcnt_reader_metadata & metadata)
     {
-        return lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_PUT_BUFFER, reinterpret_cast<unsigned long>(&metadata)) ==
-               0;
+        return lib::ioctl(*hwcntReaderFd, KBASE_HWCNT_READER_PUT_BUFFER, reinterpret_cast<unsigned long>(&metadata))
+            == 0;
     }
 
     std::unique_ptr<MaliHwCntrReader> MaliHwCntrReader::create(const MaliDevice & device,
@@ -220,7 +222,7 @@ namespace mali_userspace {
         const uint32_t shaderBlockCount = device.getShaderBlockCount();
 
         if (shaderBlockCount < 1) {
-            logg.logError("MaliHwCntrReader: shaderBlockCount = %u", shaderBlockCount);
+            LOG_ERROR("MaliHwCntrReader: shaderBlockCount = %u", shaderBlockCount);
             return {};
         }
 
@@ -253,15 +255,15 @@ namespace mali_userspace {
                 uint32_t api_version = ~HWCNT_READER_API;
                 if (lib::ioctl(*hwcntReaderFd,
                                KBASE_HWCNT_READER_GET_API_VERSION,
-                               reinterpret_cast<unsigned long>(&api_version)) != 0) {
-                    logg.logError(
+                               reinterpret_cast<unsigned long>(&api_version))
+                    != 0) {
+                    LOG_ERROR(
                         "MaliHwCntrReader: Could not determine hwcnt reader api version due to ioctl failure (%s)",
                         strerror(errno));
                     return {};
                 }
                 if (api_version != HWCNT_READER_API) {
-                    logg.logError("MaliHwCntrReader: Invalid API version (%lu)",
-                                  static_cast<unsigned long>(api_version));
+                    LOG_ERROR("MaliHwCntrReader: Invalid API version (%lu)", static_cast<unsigned long>(api_version));
                     return {};
                 }
             }
@@ -269,8 +271,9 @@ namespace mali_userspace {
             // get sample buffer size
             if (lib::ioctl(*hwcntReaderFd,
                            KBASE_HWCNT_READER_GET_BUFFER_SIZE,
-                           reinterpret_cast<unsigned long>(&sampleBufferSize)) != 0) {
-                logg.logError(
+                           reinterpret_cast<unsigned long>(&sampleBufferSize))
+                != 0) {
+                LOG_ERROR(
                     "MaliHwCntrReader: Could not determine hwcnt reader sample buffer size due to ioctl failure (%s)",
                     strerror(errno));
                 return {};
@@ -279,22 +282,23 @@ namespace mali_userspace {
             // get hardware version
             if (lib::ioctl(*hwcntReaderFd,
                            KBASE_HWCNT_READER_GET_HWVER,
-                           reinterpret_cast<unsigned long>(&hardwareVersion)) != 0) {
-                logg.logError(
+                           reinterpret_cast<unsigned long>(&hardwareVersion))
+                != 0) {
+                LOG_ERROR(
                     "MaliHwCntrReader: Could not determine hwcnt reader hardware version due to ioctl failure (%s)",
                     strerror(errno));
                 return {};
             }
 
             if ((hardwareVersion < 4) || (hardwareVersion > 6)) {
-                logg.logError("MaliHwCntrReader: Hardware version %u is not supported", hardwareVersion);
+                LOG_ERROR("MaliHwCntrReader: Hardware version %u is not supported", hardwareVersion);
                 return {};
             }
 
             if ((hardwareVersion > 4) && (mmuL2BlockCount < 1)) {
-                logg.logError("MaliHwCntrReader: Hardware version %u detected, but mmuL2BlockCount = %u",
-                              hardwareVersion,
-                              mmuL2BlockCount);
+                LOG_ERROR("MaliHwCntrReader: Hardware version %u detected, but mmuL2BlockCount = %u",
+                          hardwareVersion,
+                          mmuL2BlockCount);
                 return {};
             }
 
@@ -302,7 +306,7 @@ namespace mali_userspace {
             auto * const sampleMemoryPtr = reinterpret_cast<uint8_t *>(
                 lib::mmap(nullptr, bufferCount * sampleBufferSize, PROT_READ, MAP_PRIVATE, *hwcntReaderFd, 0));
             if ((sampleMemoryPtr == nullptr) || (sampleMemoryPtr == reinterpret_cast<uint8_t *>(-1UL))) {
-                logg.logMessage("MaliHwCntrReader: Could not mmap sample buffer");
+                LOG_DEBUG("MaliHwCntrReader: Could not mmap sample buffer");
                 continue;
             }
             MmappedBuffer sampleMemory {sampleMemoryPtr, [bufferCount, sampleBufferSize](uint8_t * ptr) -> void {
@@ -316,14 +320,14 @@ namespace mali_userspace {
             {
                 int selfPipeFd[2] = {-1, -1};
                 if (pipe2(selfPipeFd, O_CLOEXEC) != 0) {
-                    logg.logError("MaliHwCntrReader: Could not create pipe (%s)", strerror(errno));
+                    LOG_ERROR("MaliHwCntrReader: Could not create pipe (%s)", strerror(errno));
                     return {};
                 }
                 selfPipe[0] = selfPipeFd[0];
                 selfPipe[1] = selfPipeFd[1];
             }
 
-            logg.logMessage("MaliHwCntrReader: Successfully created reader, with buffer size of %u", bufferCount);
+            LOG_DEBUG("MaliHwCntrReader: Successfully created reader, with buffer size of %u", bufferCount);
             return std::unique_ptr<MaliHwCntrReader> {new MaliHwCntrReader(device,
                                                                            std::move(hwcntReaderFd),
                                                                            std::move(selfPipe[0]),

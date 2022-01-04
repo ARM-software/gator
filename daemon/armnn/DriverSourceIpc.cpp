@@ -8,17 +8,18 @@
 
 #include <cstdio>
 #include <cstring>
-#include <fcntl.h>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <fcntl.h>
+
 namespace armnn {
 
     bool Pipe::writeAll(const Bytes buf)
     {
-        const std::uint8_t * const buffer {buf.data};
+        const std::uint8_t * const buffer {buf.data()};
         const std::size_t length = {buf.size()};
         std::size_t bytesWritten = 0;
 
@@ -42,7 +43,7 @@ namespace armnn {
 
     bool Pipe::readAll(MutBytes buf)
     {
-        std::uint8_t * const buffer {buf.data};
+        std::uint8_t * const buffer {buf.data()};
         const std::size_t length {buf.size()};
         std::size_t accumulatedBytes = 0;
 
@@ -77,7 +78,7 @@ namespace armnn {
         int result = ::pipe2(fds, O_CLOEXEC);
 
         if (result < 0) {
-            logg.logError("Could not create pipe for armnn, errcode from pipe(fds): %d", result);
+            LOG_ERROR("Could not create pipe for armnn, errcode from pipe(fds): %d", result);
             handleException();
         }
         return Pipe {fds[0], fds[1]};
@@ -115,11 +116,11 @@ namespace armnn {
                     }
                     return false;
             }
-            logg.logError("Received unexpected message type %d", data[0]);
+            LOG_ERROR("Received unexpected message type %d", data[0]);
         }
         else {
             std::string p {mChildToParent.toString()};
-            logg.logError("Could not read control message from pipe: %s", p.c_str());
+            LOG_ERROR("Could not read control message from pipe: %s", p.c_str());
         }
         return false;
     }
@@ -130,7 +131,7 @@ namespace armnn {
         bool result = mChildToParent.writeAll(startmsg);
 
         if (!result) {
-            logg.logError("Failed to send start message to gator-main");
+            LOG_ERROR("Failed to send start message to gator-main");
         }
     }
 
@@ -140,7 +141,7 @@ namespace armnn {
         bool result = mChildToParent.writeAll(stopmsg);
 
         if (!result) {
-            logg.logError("Failed to send stop message to gator-main");
+            LOG_ERROR("Failed to send stop message to gator-main");
         }
     }
 
@@ -150,7 +151,7 @@ namespace armnn {
         bool result = mChildToParent.writeAll(msg);
 
         if (!result) {
-            logg.logError("Failed to notify of child process's death to gator-main");
+            LOG_ERROR("Failed to notify of child process's death to gator-main");
         }
     }
 
@@ -197,7 +198,7 @@ namespace armnn {
             }
         }
         else {
-            logg.logError("Failed to read message from gator-main");
+            LOG_ERROR("Failed to read message from gator-main");
         }
         return false;
     }
@@ -212,7 +213,7 @@ namespace armnn {
                                             msg.counterValue);
             return true;
         }
-        logg.logError("Failed to read counters from gator-main");
+        LOG_ERROR("Failed to read counters from gator-main");
 
         return readResult;
     }
@@ -252,8 +253,9 @@ namespace armnn {
             return false;
         }
 
-        if (isOneShot && (getBufferBytesAvailable() <
-                          IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + data.size())) {
+        if (isOneShot
+            && (getBufferBytesAvailable()
+                < IRawFrameBuilder::MAX_FRAME_HEADER_SIZE + buffer_utils::MAXSIZE_PACK32 + data.size())) {
             mOneShotModeEnabledAndEnded = true;
             return false;
         }
@@ -287,7 +289,7 @@ namespace armnn {
     void DriverSourceIpc::prepareForFork()
     {
         std::lock_guard<std::mutex> guard(mParentMutex);
-        mCountersChannel.set(ParentToChildCounterConsumer {});
+        mCountersChannel = ParentToChildCounterConsumer {};
     }
 
     void DriverSourceIpc::afterFork()
@@ -295,19 +297,19 @@ namespace armnn {
         mControlThread = std::thread {[&]() -> void {
             while (mControlChannel.consumeControlMsg(mArmnnController)) {
             }
-            logg.logMessage("Finished listening for armnn start/stop messages");
+            LOG_DEBUG("Finished listening for armnn start/stop messages");
         }};
     }
 
     void DriverSourceIpc::onChildDeath()
     {
-        logg.logMessage("Detected gator-child has died");
+        LOG_DEBUG("Detected gator-child has died");
 
         mControlChannel.onChildDeath();
         mControlThread.join();
 
         std::lock_guard<std::mutex> guard(mParentMutex);
-        mCountersChannel.clear();
+        mCountersChannel.reset();
     }
 
     bool DriverSourceIpc::consumeCounterValue(std::uint64_t timestamp,
@@ -315,8 +317,8 @@ namespace armnn {
                                               std::uint32_t counterValue)
     {
         std::lock_guard<std::mutex> guard(mParentMutex);
-        if (mCountersChannel.valid()) {
-            return mCountersChannel.get().consumeCounterValue(timestamp, keyAndCore, counterValue);
+        if (mCountersChannel) {
+            return mCountersChannel->consumeCounterValue(timestamp, keyAndCore, counterValue);
         }
         return true;
     }
@@ -324,8 +326,8 @@ namespace armnn {
     bool DriverSourceIpc::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
     {
         std::lock_guard<std::mutex> guard(mParentMutex);
-        if (mCountersChannel.valid()) {
-            return mCountersChannel.get().consumePacket(sessionId, data);
+        if (mCountersChannel) {
+            return mCountersChannel->consumePacket(sessionId, data);
         }
         return true;
     }
@@ -337,20 +339,20 @@ namespace armnn {
     {
         mControlChannel.startCapture();
 
-        while (mCountersChannel.get().readMessage(counterConsumer, isOneShot, getBufferBytesAvailable)) {
+        while (mCountersChannel->readMessage(counterConsumer, isOneShot, getBufferBytesAvailable)) {
         }
         mControlChannel.stopCapture();
 
-        if (mCountersChannel.get().getOneShotModeEnabledAndEnded()) {
-            logg.logError("One shot (Arm NN)");
+        if (mCountersChannel->getOneShotModeEnabledAndEnded()) {
+            LOG_ERROR("One shot (Arm NN)");
             endSession();
         }
     }
 
     void DriverSourceIpc::interrupt()
     {
-        if (!mCountersChannel.get().interruptReader()) {
-            logg.logError("Could not interrupt armnn::DriverSourceIpc");
+        if (!mCountersChannel->interruptReader()) {
+            LOG_ERROR("Could not interrupt armnn::DriverSourceIpc");
             handleException();
         }
     }

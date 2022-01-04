@@ -35,58 +35,58 @@ namespace armnn {
         template<typename T>
         inline std::uint16_t get_16(ByteOrder order, ByteArray<T> data, std::size_t offset = 0)
         {
-            runtime_assert((offset + 2) <= data.length, "Invalid offset");
+            runtime_assert((offset + 2) <= data.size(), "Invalid offset");
 
             if (order == ByteOrder::LITTLE) {
                 return (std::uint16_t(data[offset + 0]) & 0xff) //
-                       | ((std::uint16_t(data[offset + 1]) & 0xff) << 8);
+                     | ((std::uint16_t(data[offset + 1]) & 0xff) << 8);
             }
             return (std::uint16_t(data[offset + 1]) & 0xff) //
-                   | ((std::uint16_t(data[offset + 0]) & 0xff) << 8);
+                 | ((std::uint16_t(data[offset + 0]) & 0xff) << 8);
         }
 
         /** Read an unaligned 32-bit value from some byte array. */
         template<typename T>
         inline std::uint32_t get_32(ByteOrder order, ByteArray<T> data, std::size_t offset = 0)
         {
-            runtime_assert((offset + 4) <= data.length, "Invalid offset");
+            runtime_assert((offset + 4) <= data.size(), "Invalid offset");
 
             if (order == ByteOrder::LITTLE) {
-                return (std::uint32_t(data[offset + 0]) & 0xff)           //
-                       | ((std::uint32_t(data[offset + 1]) & 0xff) << 8)  //
-                       | ((std::uint32_t(data[offset + 2]) & 0xff) << 16) //
-                       | ((std::uint32_t(data[offset + 3]) & 0xff) << 24);
+                return (std::uint32_t(data[offset + 0]) & 0xff)         //
+                     | ((std::uint32_t(data[offset + 1]) & 0xff) << 8)  //
+                     | ((std::uint32_t(data[offset + 2]) & 0xff) << 16) //
+                     | ((std::uint32_t(data[offset + 3]) & 0xff) << 24);
             }
-            return (std::uint32_t(data[offset + 3]) & 0xff)           //
-                   | ((std::uint32_t(data[offset + 2]) & 0xff) << 8)  //
-                   | ((std::uint32_t(data[offset + 1]) & 0xff) << 16) //
-                   | ((std::uint32_t(data[offset + 0]) & 0xff) << 24);
+            return (std::uint32_t(data[offset + 3]) & 0xff)         //
+                 | ((std::uint32_t(data[offset + 2]) & 0xff) << 8)  //
+                 | ((std::uint32_t(data[offset + 1]) & 0xff) << 16) //
+                 | ((std::uint32_t(data[offset + 0]) & 0xff) << 24);
         }
 
         /** Read an unaligned 64-bit value from some byte array. */
         template<typename T>
         inline std::uint64_t get_64(ByteOrder order, ByteArray<T> data, std::size_t offset = 0)
         {
-            runtime_assert((offset + 8) <= data.length, "Invalid offset");
+            runtime_assert((offset + 8) <= data.size(), "Invalid offset");
 
             if (order == ByteOrder::LITTLE) {
-                return (std::uint64_t(data[offset + 0]) & 0xff)           //
-                       | ((std::uint64_t(data[offset + 1]) & 0xff) << 8)  //
-                       | ((std::uint64_t(data[offset + 2]) & 0xff) << 16) //
-                       | ((std::uint64_t(data[offset + 3]) & 0xff) << 24) //
-                       | ((std::uint64_t(data[offset + 4]) & 0xff) << 32) //
-                       | ((std::uint64_t(data[offset + 5]) & 0xff) << 40) //
-                       | ((std::uint64_t(data[offset + 6]) & 0xff) << 48) //
-                       | ((std::uint64_t(data[offset + 7]) & 0xff) << 56);
+                return (std::uint64_t(data[offset + 0]) & 0xff)         //
+                     | ((std::uint64_t(data[offset + 1]) & 0xff) << 8)  //
+                     | ((std::uint64_t(data[offset + 2]) & 0xff) << 16) //
+                     | ((std::uint64_t(data[offset + 3]) & 0xff) << 24) //
+                     | ((std::uint64_t(data[offset + 4]) & 0xff) << 32) //
+                     | ((std::uint64_t(data[offset + 5]) & 0xff) << 40) //
+                     | ((std::uint64_t(data[offset + 6]) & 0xff) << 48) //
+                     | ((std::uint64_t(data[offset + 7]) & 0xff) << 56);
             }
-            return (std::uint64_t(data[offset + 7]) & 0xff)           //
-                   | ((std::uint64_t(data[offset + 6]) & 0xff) << 8)  //
-                   | ((std::uint64_t(data[offset + 5]) & 0xff) << 16) //
-                   | ((std::uint64_t(data[offset + 4]) & 0xff) << 24) //
-                   | ((std::uint64_t(data[offset + 3]) & 0xff) << 32) //
-                   | ((std::uint64_t(data[offset + 2]) & 0xff) << 40) //
-                   | ((std::uint64_t(data[offset + 1]) & 0xff) << 48) //
-                   | ((std::uint64_t(data[offset + 0]) & 0xff) << 56);
+            return (std::uint64_t(data[offset + 7]) & 0xff)         //
+                 | ((std::uint64_t(data[offset + 6]) & 0xff) << 8)  //
+                 | ((std::uint64_t(data[offset + 5]) & 0xff) << 16) //
+                 | ((std::uint64_t(data[offset + 4]) & 0xff) << 24) //
+                 | ((std::uint64_t(data[offset + 3]) & 0xff) << 32) //
+                 | ((std::uint64_t(data[offset + 2]) & 0xff) << 40) //
+                 | ((std::uint64_t(data[offset + 1]) & 0xff) << 48) //
+                 | ((std::uint64_t(data[offset + 0]) & 0xff) << 56);
         }
     }
 }

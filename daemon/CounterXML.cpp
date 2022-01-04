@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
 
 #include "CounterXML.h"
 
@@ -7,14 +7,20 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
+#include "logging/global_log.h"
+#include "mxml/mxml.h"
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
 #include <cstdlib>
 #include <cstring>
+
 #include <dirent.h>
 
-static mxml_node_t * getTree(bool supportsMultiEbs, lib::Span<const Driver * const> drivers, const ICpuInfo & cpuInfo)
+static mxml_node_t * getTree(bool supportsMultiEbs,
+                             lib::Span<const Driver * const> drivers,
+                             const ICpuInfo & cpuInfo,
+                             logging::log_setup_supplier_t log_setup_supplier)
 {
     auto * const xml = mxmlNewXML("1.0");
     auto * const counters = mxmlNewElement(xml, "counters");
@@ -29,13 +35,14 @@ static mxml_node_t * getTree(bool supportsMultiEbs, lib::Span<const Driver * con
     }
 
     if (count == 0) {
-        logg.logError("No counters found, this could be because /dev/gator/events can not be read or because perf is "
-                      "not working correctly");
+        LOG_ERROR("No counters found, this could be because /dev/gator/events can not be read or because perf is "
+                  "not working correctly");
         handleException();
     }
 
+    auto setup_message = log_setup_supplier();
     mxml_node_t * setup = mxmlNewElement(counters, "setup_warnings");
-    mxmlNewText(setup, 0, logg.getSetup());
+    mxmlNewText(setup, 0, setup_message.c_str());
 
     // always send the cluster information; even on devices where not all the information is available.
     for (size_t cluster = 0; cluster < cpuInfo.getClusters().size(); ++cluster) {
@@ -57,9 +64,10 @@ namespace counters_xml {
 
     std::unique_ptr<char, void (*)(void *)> getXML(bool supportsMultiEbs,
                                                    lib::Span<const Driver * const> drivers,
-                                                   const ICpuInfo & cpuInfo)
+                                                   const ICpuInfo & cpuInfo,
+                                                   logging::log_setup_supplier_t log_setup_supplier)
     {
-        mxml_node_t * xml = getTree(supportsMultiEbs, drivers, cpuInfo);
+        mxml_node_t * xml = getTree(supportsMultiEbs, drivers, cpuInfo, std::move(log_setup_supplier));
         auto * const xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
         mxmlDelete(xml);
         return {xml_string, &::free};
@@ -68,15 +76,16 @@ namespace counters_xml {
     void write(const char * path,
                bool supportsMultiEbs,
                lib::Span<const Driver * const> drivers,
-               const ICpuInfo & cpuInfo)
+               const ICpuInfo & cpuInfo,
+               logging::log_setup_supplier_t log_setup_supplier)
     {
         char file[PATH_MAX];
 
         // Set full path
         snprintf(file, PATH_MAX, "%s/counters.xml", path);
 
-        if (writeToDisk(file, getXML(supportsMultiEbs, drivers, cpuInfo).get()) < 0) {
-            logg.logError("Error writing %s\nPlease verify the path.", file);
+        if (writeToDisk(file, getXML(supportsMultiEbs, drivers, cpuInfo, std::move(log_setup_supplier)).get()) < 0) {
+            LOG_ERROR("Error writing %s\nPlease verify the path.", file);
             handleException();
         }
     }

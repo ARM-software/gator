@@ -3,12 +3,12 @@
 #ifndef MONITOR_H
 #define MONITOR_H
 
-#include <sys/epoll.h>
+#include "IMonitor.h"
 
-class Monitor {
+class Monitor : public gator::io::IMonitor {
 public:
-    Monitor();
-    ~Monitor();
+    Monitor() noexcept;
+    virtual ~Monitor();
 
     // Intentionally unimplemented
     Monitor(const Monitor &) = delete;
@@ -16,12 +16,12 @@ public:
     Monitor(Monitor &&) = delete;
     Monitor & operator=(Monitor &&) = delete;
 
-    void close();
-    bool init();
-    bool add(int fd);
-    bool remove(int fd);
-    int wait(struct epoll_event * events, int maxevents, int timeout) const;
-    int size() const { return mSize; }
+    void close() override;
+    bool init() override;
+    bool add(int fd) override;
+    bool remove(int fd) override;
+    int wait(struct epoll_event * events, int maxevents, int timeout) const override;
+    int size() const override { return mSize; }
 
 private:
     int mFd;

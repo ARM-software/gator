@@ -32,7 +32,7 @@ namespace {
 
 SessionXML::SessionXML(const char * str) : mSessionXML(str)
 {
-    logg.logMessage("%s", mSessionXML);
+    LOG_DEBUG("%s", mSessionXML);
 }
 
 void SessionXML::parse()
@@ -46,23 +46,23 @@ void SessionXML::parse()
         return;
     }
 
-    logg.logError("No session tag found in the session.xml file");
+    LOG_ERROR("No session tag found in the session.xml file");
     handleException();
 }
 
 void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
 {
     int version = 0;
-    if ((mxmlElementGetAttr(node, ATTR_VERSION) != nullptr) &&
-        !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), 10)) {
-        logg.logError("Invalid session.xml version must be an integer");
+    if ((mxmlElementGetAttr(node, ATTR_VERSION) != nullptr)
+        && !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), 10)) {
+        LOG_ERROR("Invalid session.xml version must be an integer");
         handleException();
     }
 
     // Version 2 has only enum-like 'resolution_mode' attribute instead of boolean 'high_resolution' attribute taht version 1 has
     // but none of these are used by gator, so both versions are correctly supported by this implementation.
     if (version < 1 || version > 2) {
-        logg.logError("Invalid session.xml version: %d", version);
+        LOG_ERROR("Invalid session.xml version: %d", version);
         handleException();
     }
     // copy to pre-allocated strings
@@ -87,8 +87,8 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
         }
     }
 
-    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0) &&
-        (mxmlElementGetAttr(node, ATTR_CAPTURE_COMMAND) != nullptr)) {
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)
+        && (mxmlElementGetAttr(node, ATTR_CAPTURE_COMMAND) != nullptr)) {
         //sh and -c added for shell interpreted execution of the command
         gSessionData.mCaptureCommand.emplace_back("sh");
         gSessionData.mCaptureCommand.emplace_back("-c");
@@ -113,7 +113,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_DURATION) == 0)) {
         if (mxmlElementGetAttr(node, ATTR_DURATION) != nullptr) {
             if (!stringToInt(&gSessionData.mDuration, mxmlElementGetAttr(node, ATTR_DURATION), 10)) {
-                logg.logError("Invalid session.xml duration must be an integer");
+                LOG_ERROR("Invalid session.xml duration must be an integer");
                 handleException();
             }
         }
@@ -124,7 +124,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     }
     if (mxmlElementGetAttr(node, ATTR_LIVE_RATE) != nullptr) {
         if (!stringToInt(&parameters.live_rate, mxmlElementGetAttr(node, ATTR_LIVE_RATE), 10)) {
-            logg.logError("Invalid session.xml live_rate must be an integer");
+            LOG_ERROR("Invalid session.xml live_rate must be an integer");
             handleException();
         }
     }

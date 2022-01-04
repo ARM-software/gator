@@ -256,9 +256,9 @@ namespace mali_userspace {
                 return *this;
             }
 
-            bool isValid() const { return count > 0; }
+            [[nodiscard]] bool isValid() const { return count > 0; }
 
-            uint32_t average() const { return sum / count; }
+            [[nodiscard]] uint32_t average() const { return sum / count; }
         };
 
         /**
@@ -511,7 +511,7 @@ namespace mali_userspace {
                 static bool shownLog = false;
                 if (!shownLog) {
                     shownLog = true;
-                    logg.logError("MaliDevice::dumpAllCounters - Cannot process hardware V%u", hardwareVersion);
+                    LOG_ERROR("MaliDevice::dumpAllCounters - Cannot process hardware V%u", hardwareVersion);
                 }
                 break;
             }
@@ -546,8 +546,8 @@ namespace mali_userspace {
 
                 const uint32_t mask = buffer[maskBufferIndex];
 
-                if (((mask & (1 << counterAddress.groupIndex)) == 0U) ||
-                    (isShaderCore && !(shaderCoreAvailabilityMask & (1ull << blockIndex)))) {
+                if (((mask & (1 << counterAddress.groupIndex)) == 0U)
+                    || (isShaderCore && !(shaderCoreAvailabilityMask & (1ull << blockIndex)))) {
                     continue;
                 }
 
@@ -622,8 +622,8 @@ namespace mali_userspace {
 
                 const uint32_t mask = buffer[maskBufferIndex];
 
-                if (((mask & (1 << counterAddress.groupIndex)) == 0U) ||
-                    (isShaderCore && !(shaderCoreAvailabilityMask & (1ull << blockIndex)))) {
+                if (((mask & (1 << counterAddress.groupIndex)) == 0U)
+                    || (isShaderCore && !(shaderCoreAvailabilityMask & (1ull << blockIndex)))) {
                     continue;
                 }
 
