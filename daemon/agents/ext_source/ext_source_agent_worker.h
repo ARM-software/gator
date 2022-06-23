@@ -73,7 +73,7 @@ namespace agents {
 
             auto st = this->shared_from_this();
 
-            return start_on<on_executor_mode_t::dispatch>(strand) //
+            return start_on(strand) //
                  | then([st, uid]() -> polymorphic_continuation_t<> {
                        // close this end first
                        auto it = st->external_source_pipes.find(uid);
@@ -145,6 +145,18 @@ namespace agents {
         static void cont_on_recv_message(ipc::msg_cpu_state_change_t const & /*message*/)
         {
             LOG_DEBUG("Unexpected message ipc::msg_cpu_state_change_t; ignoring");
+        }
+
+        /** Handle one of the IPC variant values */
+        static void cont_on_recv_message(ipc::msg_capture_failed_t const & /*message*/)
+        {
+            LOG_DEBUG("Unexpected message ipc::msg_capture_failed_t; ignoring");
+        }
+
+        /** Handle one of the IPC variant values */
+        static void cont_on_recv_message(ipc::msg_capture_started_t const & /*message*/)
+        {
+            LOG_DEBUG("Unexpected message ipc::msg_capture_started_t; ignoring");
         }
 
         /** Handle the 'ready' IPC message variant. The agent is ready. */
@@ -266,8 +278,10 @@ namespace agents {
 
             return repeatedly(
                 [st]() {
-                    return start_on(st->strand) //
-                         | then([st]() { return (st->get_state() != state_t::terminated); });
+                    // don't stop until the agent terminates and closes the connection from its end
+                    LOG_DEBUG("Receive loop would have terminated? %d",
+                              (st->get_state() >= state_t::terminated_pending_message_loop));
+                    return true;
                 },
                 [st]() {
                     return st->source().async_recv_message(use_continuation) //
@@ -284,27 +298,33 @@ namespace agents {
         static constexpr char const * get_agent_process_id() { return agent_id_ext_source.data(); }
 
         ext_source_agent_worker_t(boost::asio::io_context & io_context,
-                                  agent_process_t const & agent_process,
+                                  agent_process_t && agent_process,
                                   state_change_observer_t && state_change_observer,
                                   ExternalSource & external_source)
-            : agent_worker_base_t(agent_process, std::move(state_change_observer)),
+            : agent_worker_base_t(std::move(agent_process), std::move(state_change_observer)),
               strand(io_context),
               external_source(external_source)
         {
         }
 
         /** Start the worker. Spawns the receive-message loop on the io_context */
-        void start()
+        [[nodiscard]] bool start()
         {
             using namespace async::continuations;
 
-            cont_recv_message_loop() //
-                | finally([st = this->shared_from_this()](auto err) {
-                      // log the failure
-                      if (error_swallower_t::consume("IPC message loop", err)) {
+            spawn("IPC message loop",
+                  cont_recv_message_loop(), //
+                  [st = this->shared_from_this()](bool error) {
+                      LOG_DEBUG("Receive loop ended");
+
+                      boost::asio::post(st->strand, [st]() { st->set_message_loop_terminated(); });
+
+                      if (error) {
                           st->shutdown();
                       }
                   });
+
+            return this->exec_agent();
         }
 
         /** Called when SIGCHLD is received for the remote process */
@@ -312,13 +332,13 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            start_on(strand) //
-                | then([st = this->shared_from_this()]() {
-                      if (st->transition_state(state_t::terminated)) {
-                          LOG_DEBUG("ext_source agent is now terminated");
-                      }
-                  }) //
-                | DETACH_LOG_ERROR("SIGCHLD handler operation");
+            spawn("SIGCHLD handler operation",
+                  start_on(strand) //
+                      | then([st = this->shared_from_this()]() {
+                            if (st->transition_state(state_t::terminated)) {
+                                LOG_DEBUG("ext_source agent is now terminated");
+                            }
+                        }));
         }
 
         /** Called to shutdown the remote process and worker */
@@ -326,8 +346,10 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            cont_shutdown() //
-                | DETACH_LOG_ERROR("Shutdown request");
+            spawn("Shutdown request", cont_shutdown());
         }
+
+    protected:
+        [[nodiscard]] boost::asio::io_context::strand & work_strand() override { return strand; }
     };
 }

@@ -1,8 +1,9 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "Logging.h"
+#include "async/async_line_reader.hpp"
 #include "lib/AutoClosingFd.h"
 
 #include <functional>
@@ -14,7 +15,6 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/streambuf.hpp>
 
 namespace logging {
     /** Implements log_sink_t for agent sub-processes that log out via the IPC channel */
@@ -67,27 +67,27 @@ namespace logging {
         }
 
         agent_log_reader_t(boost::asio::io_context & io_context, lib::AutoClosingFd && fd, consumer_fn_t consumer)
-            : in(io_context, fd.release()), consumer(std::move(consumer))
+            : consumer(std::move(consumer)),
+              line_reader(std::make_shared<async::async_line_reader_t>(
+                  boost::asio::posix::stream_descriptor {io_context, fd.release()}))
         {
         }
 
     private:
-        boost::asio::posix::stream_descriptor in;
         consumer_fn_t consumer;
-        boost::asio::streambuf buffer {};
+        std::shared_ptr<async::async_line_reader_t> line_reader;
 
         /** Read the next line of data from the stream */
         void do_async_read();
 
         /** Process the received line */
-        void do_process_next_line(std::size_t n);
+        void do_process_next_line(std::string_view line);
 
         /** Handle the line having an unexpected format */
-        void do_unexpected_message(std::size_t n_to_consume, std::string_view msg);
+        void do_unexpected_message(std::string_view msg);
 
         /** Handle the decoded log item */
-        void do_expected_message(std::size_t n_to_consume,
-                                 thread_id_t tid,
+        void do_expected_message(thread_id_t tid,
                                  log_level_t level,
                                  log_timestamp_t timestamp,
                                  source_loc_t location,

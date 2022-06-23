@@ -12,7 +12,7 @@
 #include <system_error>
 #include <type_traits>
 
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
 
 namespace async::continuations::detail {
@@ -76,6 +76,13 @@ namespace async::continuations::detail {
             return {std::make_shared<value_type>(exceptionally)};
         }
 
+        static polymorphic_exceptionally_t wrap_exceptionally(polymorphic_exceptionally_t const & exceptionally)
+        {
+            return exceptionally;
+        }
+
+        constexpr polymorphic_exceptionally_t() = default;
+
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         polymorphic_exceptionally_t(std::shared_ptr<polymorphic_exceptionally_base_t> && exceptionally)
             : exceptionally(exceptionally)
@@ -136,14 +143,26 @@ namespace async::continuations::detail {
             return {std::make_unique<value_type>(std::forward<NextInitiator>(next_initiator))};
         }
 
+        static polymorphic_next_initiator_t wrap_next_initiator(polymorphic_next_initiator_t next_initiator)
+        {
+            return next_initiator;
+        }
+
+        constexpr polymorphic_next_initiator_t() = default;
+
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         polymorphic_next_initiator_t(std::unique_ptr<polymorphic_next_initiator_base_t<InputArgs...>> && next_initiator)
             : next_initiator(std::move(next_initiator))
         {
         }
 
+        [[nodiscard]] explicit operator bool() const { return !!next_initiator; }
+
         void operator()(polymorphic_exceptionally_t const & exceptionally, InputArgs &&... args)
         {
+            std::unique_ptr<polymorphic_next_initiator_base_t<InputArgs...>> next_initiator {
+                std::move(this->next_initiator)};
+
             (*next_initiator)(exceptionally, std::move(args)...);
         }
 

@@ -31,6 +31,8 @@ namespace ipc {
         apc_frame_data,
         exec_target_app,
         cpu_state_change,
+        capture_failed,
+        capture_started,
     };
 
     /** The wire-size of the message key */

@@ -3,6 +3,8 @@
 #include "linux/perf/PerfGroups.h"
 
 #include "Logging.h"
+#include "k/perf_event.h"
+#include "lib/Assert.h"
 #include "linux/perf/PerfEventGroup.h"
 
 #include <cassert>
@@ -31,11 +33,36 @@ perf_event_group_configurer_t perf_groups_configurer_t::getGroup(attr_to_key_map
             LOG_DEBUG("    Group leader not created");
         }
         else {
-            state.numberOfEventsAdded += it->second.common.events.size();
+            state.numberOfEventsAdded += it->second.events.size();
         }
     }
 
     return eventGroup;
+}
+
+void perf_groups_configurer_t::initHeader(attr_to_key_mapping_tracker_t & mapping_tracker)
+{
+    IPerfGroups::Attr attr {};
+    attr.type = PERF_TYPE_SOFTWARE;
+    attr.config = (configuration.perfConfig.has_count_sw_dummy ? PERF_COUNT_SW_DUMMY : PERF_COUNT_SW_CPU_CLOCK);
+    attr.periodOrFreq = 0;
+    attr.sampleType = 0;
+    attr.comm = true;
+    attr.task = true;
+    attr.mmap = true;
+
+    auto result = perf_event_group_configurer_t::initEvent(configuration,
+                                                           state.header,
+                                                           true,
+                                                           false,
+                                                           PerfEventGroupIdentifier::Type::GLOBAL,
+                                                           true,
+                                                           mapping_tracker,
+                                                           perf_event_group_configurer_t::nextDummyKey(configuration),
+                                                           attr,
+                                                           false);
+
+    runtime_assert(result, "Failed to init header event");
 }
 
 bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_tracker,
@@ -87,124 +114,4 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
     LOG_DEBUG("    Adding event");
 
     return eventGroup.addEvent(false, mapping_tracker, key, newAttr, hasAuxData);
-}
-
-bool perf_groups_activator_t::hasSPE() const
-{
-    for (const auto & pair : state.perfEventGroupMap) {
-        if (pair.first.getType() == PerfEventGroupIdentifier::Type::SPE) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-std::size_t perf_groups_activator_t::getMaxFileDescriptors()
-{
-    // Get the maximum amount of file descriptors that can be opened.
-    struct rlimit rlim;
-    if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-        LOG_ERROR("getrlimit failed: %s", strerror(errno));
-        handleException();
-    }
-
-    const rlim_t numberOfFdsReservedForGatord = 150;
-    // rlim_cur should've been set to rlim_max in main.cpp
-    if (rlim.rlim_cur < numberOfFdsReservedForGatord) {
-        LOG_ERROR("Not enough file descriptors to run gatord. Must have a minimum of %" PRIuMAX
-                  " (currently the limit is %" PRIuMAX ").",
-                  static_cast<uintmax_t>(numberOfFdsReservedForGatord),
-                  static_cast<uintmax_t>(rlim.rlim_cur));
-        handleException();
-    }
-
-    return std::size_t(rlim.rlim_cur - numberOfFdsReservedForGatord);
-}
-
-std::pair<OnlineResult, std::string> perf_groups_activator_t::onlineCPU(
-    int cpu,
-    const std::set<int> & appPids,
-    OnlineEnabledState enabledState,
-    id_to_key_mapping_tracker_t & mapping_tracker,
-    const std::function<bool(int)> & addToMonitor,
-    const std::function<bool(int, int, bool)> & addToBuffer,
-    const std::function<std::set<int>(int)> & childTids)
-{
-    LOG_DEBUG("Onlining cpu %i", cpu);
-    if (!configuration.perfConfig.is_system_wide && appPids.empty()) {
-        std::string message("No task given for non-system-wide");
-        return std::make_pair(OnlineResult::FAILURE, message.c_str());
-    }
-
-    std::set<int> tids {};
-    if (configuration.perfConfig.is_system_wide) {
-        tids.insert(-1);
-    }
-    else {
-        for (int appPid : appPids) {
-            for (int tid : childTids(appPid)) {
-                tids.insert(tid);
-            }
-        }
-    }
-
-    // Check to see if there are too many events/ not enough fds
-    // This is an over estimation because not every event will be opened.
-    const unsigned int amountOfEventsAboutToOpen = tids.size() * state.numberOfEventsAdded;
-    eventsOpenedPerCpu[cpu] = amountOfEventsAboutToOpen;
-    const unsigned int currentAmountOfEvents = std::accumulate(
-        std::begin(eventsOpenedPerCpu),
-        std::end(eventsOpenedPerCpu),
-        0,
-        [](unsigned int total, const std::map<int, unsigned int>::value_type & p) { return total + p.second; });
-
-    if (maxFiles < currentAmountOfEvents) {
-        LOG_ERROR("Not enough file descriptors for the amount of events requested.");
-        handleException();
-    }
-
-    for (auto & pair : state.perfEventGroupMap) {
-        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
-        const auto result = activator.onlineCPU(cpu, tids, enabledState, mapping_tracker, addToMonitor, addToBuffer);
-        if (result.first != OnlineResult::SUCCESS) {
-            return result;
-        }
-    }
-    return std::make_pair(OnlineResult::SUCCESS, "");
-}
-
-bool perf_groups_activator_t::offlineCPU(int cpu, const std::function<void(int)> & removeFromBuffer)
-{
-    LOG_DEBUG("Offlining cpu %i", cpu);
-
-    for (auto & pair : state.perfEventGroupMap) {
-        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
-        if (!activator.offlineCPU(cpu)) {
-            return false;
-        }
-    }
-
-    // Mark the buffer so that it will be released next time it's read
-    removeFromBuffer(cpu);
-
-    eventsOpenedPerCpu.erase(cpu);
-
-    return true;
-}
-
-void perf_groups_activator_t::start()
-{
-    for (auto & pair : state.perfEventGroupMap) {
-        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
-        activator.start();
-    }
-}
-
-void perf_groups_activator_t::stop()
-{
-    for (auto & pair : state.perfEventGroupMap) {
-        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
-        activator.stop();
-    }
 }

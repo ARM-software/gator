@@ -10,7 +10,6 @@
 #include "ISummaryConsumer.h"
 #include "Logging.h"
 #include "SessionData.h"
-#include "Tracepoints.h"
 #include "agents/perf/perf_driver_summary.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
@@ -18,10 +17,10 @@
 #include "lib/Time.h"
 #include "lib/Utils.h"
 #include "linux/SysfsSummaryInformation.h"
+#include "linux/Tracepoints.h"
 #include "linux/perf/IPerfGroups.h"
 #include "linux/perf/PerfAttrsBuffer.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
-#include "linux/perf/PerfSource.h"
 #include "xml/PmuXML.h"
 
 #include <array>

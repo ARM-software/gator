@@ -11,7 +11,7 @@ namespace agents::perf {
     std::optional<apc::perf_counter_t> read_cpu_frequency(
         int cpu_no,
         ICpuInfo const & cpu_info,
-        lib::Span<perf_capture_configuration_t::cpu_freq_properties_t> cluster_keys_for_cpu_frequency_counter)
+        lib::Span<perf_capture_configuration_t::cpu_freq_properties_t const> cluster_keys_for_cpu_frequency_counter)
     {
         static constexpr std::size_t buffer_size = 128;
         static constexpr std::int64_t freq_multiplier = 1000;

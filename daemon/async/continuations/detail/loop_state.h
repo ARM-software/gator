@@ -46,13 +46,15 @@ namespace async::continuations::detail {
                 template<typename Exceptionally>
                 void operator()(Exceptionally const & exceptionally, InputArgs &&... args)
                 {
+                    auto const & sloc = iteration_state->state.sloc;
+
                     predicate_type & predicate = iteration_state->state.predicate;
 
-                    TRACE_CONTINUATION(iteration_state->state.sloc,
+                    TRACE_CONTINUATION(sloc,
                                        "loop... calling predicate (iteration=%zu)",
                                        ++(iteration_state->loop_count));
 
-                    predicate_then_helper_type::initiate(iteration_state->state.sloc,
+                    predicate_then_helper_type::initiate(sloc,
                                                          predicate,
                                                          predicate_result_initiator_t {std::move(iteration_state)},
                                                          exceptionally,
@@ -67,23 +69,23 @@ namespace async::continuations::detail {
                 template<typename Exceptionally>
                 void operator()(Exceptionally const & exceptionally, bool condition, InputArgs &&... args)
                 {
+                    auto const & sloc = iteration_state->state.sloc;
+
                     if (condition) {
                         generator_type & generator = iteration_state->state.generator;
 
-                        TRACE_CONTINUATION(iteration_state->state.sloc,
+                        TRACE_CONTINUATION(sloc,
                                            "loop... calling generator (iteration=%zu)",
                                            iteration_state->loop_count);
 
-                        generator_then_helper_type::initiate(iteration_state->state.sloc,
+                        generator_then_helper_type::initiate(sloc,
                                                              generator,
                                                              generator_result_initiator_t {std::move(iteration_state)},
                                                              exceptionally,
                                                              std::move(args)...);
                     }
                     else {
-                        TRACE_CONTINUATION(iteration_state->state.sloc,
-                                           "loop... complete (iteration=%zu)",
-                                           iteration_state->loop_count);
+                        TRACE_CONTINUATION(sloc, "loop... complete (iteration=%zu)", iteration_state->loop_count);
 
                         iteration_state->next(exceptionally, std::move(args)...);
                     }
@@ -102,13 +104,13 @@ namespace async::continuations::detail {
             template<typename Exceptionally>
             void operator()(Exceptionally const & exceptionally, InputArgs &&... args)
             {
+                auto const & sloc = iteration_state->state.sloc;
+
+                TRACE_CONTINUATION(sloc, "loop... calling predicate (iteration=%zu)", iteration_state->loop_count);
+
                 predicate_type & predicate = iteration_state->state.predicate;
 
-                TRACE_CONTINUATION(iteration_state->state.sloc,
-                                   "loop... calling predicate (iteration=%zu)",
-                                   iteration_state->loop_count);
-
-                predicate_then_helper_type::initiate(iteration_state->state.sloc,
+                predicate_then_helper_type::initiate(sloc,
                                                      predicate,
                                                      predicate_result_initiator_t {std::move(iteration_state)},
                                                      exceptionally,

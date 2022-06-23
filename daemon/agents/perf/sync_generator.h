@@ -87,7 +87,7 @@ namespace agents::perf {
         std::vector<char> buffer;
         SyncThread thread;
 
-        void write(pid_t pid, pid_t tid, std::uint64_t monotonic_raw, std::uint64_t vcnt, std::uint64_t freq)
+        void write(pid_t pid, pid_t tid, std::uint64_t freq, std::uint64_t monotonic_raw, std::uint64_t vcnt)
         {
             buffer.resize(max_sync_buffer_size);
             auto builder = apc_buffer_builder_t(buffer);
@@ -108,7 +108,12 @@ namespace agents::perf {
 
             builder.endFrame();
 
-            LOG_DEBUG("Committing perf sync data written: %i", builder.getWriteIndex());
+            LOG_DEBUG("Committing perf sync data (freq: %" PRIu64 ", monotonic: %" PRIu64 ", vcnt: %" PRIu64
+                      ") written: %zu bytes",
+                      freq,
+                      monotonic_raw,
+                      vcnt,
+                      builder.getWriteIndex());
 
             // Send frame
             sink->async_send_message(ipc::msg_apc_frame_data_t {std::move(buffer)},

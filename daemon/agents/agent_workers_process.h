@@ -1,13 +1,16 @@
 /* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
+
 #include "agents/agent_worker.h"
 #include "agents/ext_source/ext_source_agent_worker.h"
+#include "agents/perf/perf_agent_worker.h"
 #include "async/completion_handler.h"
 #include "async/continuations/async_initiate.h"
 #include "async/continuations/continuation.h"
 #include "async/continuations/operations.h"
 #include "async/continuations/use_continuation.h"
+#include "async/proc/process_monitor.hpp"
 #include "lib/String.h"
 #include "lib/Syscall.h"
 
@@ -92,12 +95,24 @@ namespace agents {
         auto async_add_external_source(ExternalSource & external_souce, CompletionToken && token)
         {
             return worker_manager.template async_add_agent<ext_source_agent_worker_t<ExternalSource>>(
+                process_monitor,
                 std::forward<CompletionToken>(token),
                 std::ref(external_souce));
         }
 
+        template<typename EventHandler, typename ConfigMsg, typename CompletionToken>
+        auto async_add_perf_source(EventHandler & event_handler, ConfigMsg && msg, CompletionToken && token)
+        {
+            return worker_manager.template async_add_agent<agents::perf::perf_agent_worker_t<EventHandler>>(
+                process_monitor,
+                std::forward<CompletionToken>(token),
+                std::ref(event_handler),
+                std::forward<ConfigMsg>(msg));
+        }
+
     private:
         boost::asio::io_context io_context {};
+        async::proc::process_monitor_t process_monitor {io_context};
         boost::asio::signal_set signal_set {io_context};
         boost::asio::thread_pool threads {n_threads};
         WorkerManager worker_manager;
@@ -107,13 +122,20 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            repeatedly([this]() { return !worker_manager.is_terminated(); }, //
-                       [this]() {
-                           return signal_set.async_wait(use_continuation) //
-                                | map_error()                             //
-                                | then([this](int signo) { worker_manager.on_signal(signo); });
-                       }) //
-                | DETACH_LOG_ERROR("Signal handler loop");
+            spawn("Signal handler loop",
+                  repeatedly([this]() { return !worker_manager.is_terminated(); }, //
+                             [this]() {
+                                 return signal_set.async_wait(use_continuation) //
+                                      | map_error()                             //
+                                      | then([this](int signo) {
+                                            if (signo == SIGCHLD) {
+                                                process_monitor.on_sigchild();
+                                            }
+                                            else {
+                                                worker_manager.on_signal(signo);
+                                            }
+                                        });
+                             }));
         }
 
         /** The worker thread body */
@@ -170,10 +192,6 @@ namespace agents {
                 LOG_DEBUG("Received signal %d", signo);
                 parent.on_terminal_signal(signo);
             }
-            else if (signo == SIGCHLD) {
-                LOG_DEBUG("Received sigchld");
-                do_waitpid_children();
-            }
             else {
                 LOG_DEBUG("Unexpected signal # %d", signo);
             }
@@ -185,19 +203,19 @@ namespace agents {
             using namespace async::continuations;
 
             // spawn an async operation on the strand that performs the shutdown
-            start_on(strand) //
-                | then([this]() {
-                      if (agent_workers.empty()) {
-                          terminate();
-                      }
-                      else {
-                          LOG_DEBUG("Requesting all agents to shut down");
-                          for (auto & agent : agent_workers) {
-                              agent.second->shutdown();
-                          }
-                      }
-                  }) //
-                | DETACH_LOG_ERROR("Join operation");
+            spawn("Join operation",
+                  start_on(strand) //
+                      | then([this]() {
+                            if (agent_workers.empty()) {
+                                terminate();
+                            }
+                            else {
+                                LOG_DEBUG("Requesting all agents to shut down");
+                                for (auto & agent : agent_workers) {
+                                    agent.second->shutdown();
+                                }
+                            }
+                        }));
         }
 
         /**
@@ -208,20 +226,106 @@ namespace agents {
          * @param args Any additional arguments that may be passed to the constructor of the worker type (any references must be wrapped in a std::reference_wrapper or similar)
          * @return Depends on the completion token type
          */
-        template<typename WorkerType, typename CompletionToken, typename... Args>
-        auto async_add_agent(CompletionToken && token, Args &&... args)
+        template<typename WorkerType, typename ProcessMonitor, typename CompletionToken, typename... Args>
+        auto async_add_agent(ProcessMonitor & process_monitor, CompletionToken && token, Args &&... args)
         {
-            return async::continuations::async_initiate_explicit<void(bool)>(
-                [this](auto && receiver, auto && exceptionally, auto &&... args) mutable {
-                    this->do_async_add_agent<WorkerType>(std::forward<decltype(receiver)>(receiver),
-                                                         std::forward<decltype(exceptionally)>(exceptionally),
-                                                         std::forward<decltype(args)>(args)...);
+            using namespace async::continuations;
+
+            return async_initiate(
+                [this, &process_monitor](auto &&... args) mutable {
+                    LOG_DEBUG("Creating ext_source agent process");
+
+                    return start_with(std::move(args)...) //
+                         | post_on(strand)                //
+                         | then([this, &process_monitor](auto &&... args) -> polymorphic_continuation_t<bool> {
+                               // do nothing if already terminated
+                               if (terminated) {
+                                   return start_with(false);
+                               }
+
+                               // start the process, returning the wrapper instance
+                               return async_spawn_agent_worker<WorkerType>(io_context,
+                                                                           spawner,
+                                                                           make_state_observer(),
+                                                                           use_continuation,
+                                                                           std::forward<decltype(args)>(args)...) //
+                                    | then([this, &process_monitor](auto worker) -> polymorphic_continuation_t<bool> {
+                                          // spawn failed, just let the handler know directly
+                                          if (!worker.second) {
+                                              return start_with(false);
+                                          }
+
+                                          // great, store it
+                                          created_any = true;
+                                          agent_workers.emplace(worker);
+
+                                          // monitor pid
+                                          observe_agent_pid(process_monitor, worker.first, worker.second);
+
+                                          // now wait for it to be ready
+                                          return worker.second->async_wait_launched(use_continuation);
+                                      });
+                           });
                 },
                 token,
                 std::forward<Args>(args)...);
         }
 
     private:
+        /** Monitor the agent process for termination */
+        template<typename ProcessMonitor>
+        static void observe_agent_pid(ProcessMonitor & process_monitor,
+                                      pid_t pid,
+                                      std::shared_ptr<i_agent_worker_t> const & worker)
+        {
+            using namespace async::continuations;
+
+            spawn("observe_agent_pid",
+                  process_monitor.async_monitor_forked_pid(pid, use_continuation) //
+                      | then([&process_monitor, pid, worker](auto uid) {
+                            auto repeat_flag = std::make_shared<bool>(true);
+                            return repeatedly(
+                                [repeat_flag]() { return *repeat_flag; },
+                                [&process_monitor, pid, uid, worker, repeat_flag]() {
+                                    LOG_DEBUG("Waiting for event %d", pid);
+
+                                    return process_monitor.async_wait_event(uid, use_continuation) //
+                                         | then([pid, worker, repeat_flag](auto ec, auto event) {
+                                               if (ec) {
+                                                   LOG_DEBUG("unexpected error reported for process %d (%s)",
+                                                             pid,
+                                                             ec.message().c_str());
+                                               }
+
+                                               switch (event.state) {
+                                                   case async::proc::ptrace_process_state_t::no_such_process:
+                                                   case async::proc::ptrace_process_state_t::terminated_exit:
+                                                   case async::proc::ptrace_process_state_t::terminated_signal: {
+                                                       // notify of the signal
+                                                       LOG_DEBUG(
+                                                           "Notifying worker that agent process %d (%p) terminated.",
+                                                           pid,
+                                                           worker.get());
+                                                       worker->on_sigchild();
+
+                                                       *repeat_flag = false;
+                                                       return;
+                                                   }
+
+                                                   case async::proc::ptrace_process_state_t::attached:
+                                                   case async::proc::ptrace_process_state_t::attaching:
+                                                   default: {
+                                                       LOG_TRACE("ignoring unexpected event state %s::%s",
+                                                                 to_cstring(event.type),
+                                                                 to_cstring(event.state));
+                                                       return;
+                                                   }
+                                               }
+                                           });
+                                });
+                        }));
+        }
+
         Parent & parent;
         i_agent_spawner_t & spawner;
         boost::asio::io_context & io_context;
@@ -248,162 +352,27 @@ namespace agents {
             }
         }
 
-        /** Process the async request to start the external source worker */
-        template<typename WorkerType, typename Receiver, typename Exceptionally, typename... Args>
-        void do_async_add_agent(Receiver receiver, Exceptionally && exceptionally, Args &&... args)
-        {
-            using namespace async::continuations;
-
-            LOG_DEBUG("Creating ext_source agent process");
-
-            submit(start_on(strand) //
-                       | then([this,
-                               r = std::forward<Receiver>(receiver),
-                               args_tuple =
-                                   std::make_tuple<std::decay_t<Args>...>(std::forward<Args>(args)...)]() mutable {
-                             std::apply(
-                                 [this, r = std::move(r)](auto &&... args) mutable {
-                                     if (!on_strand_create_worker<WorkerType>(std::move(r),
-                                                                              spawner,
-                                                                              std::forward<decltype(args)>(args)...)) {
-                                         LOG_ERROR("Could not start external source worker");
-                                     }
-                                 },
-                                 std::move(args_tuple));
-                         }),
-                   std::forward<Exceptionally>(exceptionally));
-        }
-
-        /** Create one worker and add it to the map */
-        template<typename T, typename Handler, typename... Args>
-        bool on_strand_create_worker(Handler handler, i_agent_spawner_t & spawner, Args &&... args)
-        {
-            // do nothing if already terminated
-            if (terminated) {
-                boost::asio::post(io_context, [handler = std::move(handler)]() { handler(false); });
-                return false;
-            }
-
-            // start the process, returning the wrapper instance
-            auto worker =
-                spawn_agent_worker<T>(io_context, spawner, make_state_observer(handler), std::forward<Args>(args)...);
-
-            // spawn failed, just let the handler know directly
-            if (!worker.second) {
-                boost::asio::post(io_context, [handler = std::move(handler)]() { handler(false); });
-                return false;
-            }
-
-            // great, the handler will be called once the agent is ready
-            created_any = true;
-            agent_workers.emplace(worker);
-            return true;
-        }
-
         /** Construct the state observer object for some agent process. This function will
          * process state changes, and update this class's state as appropriate. It will
          * also notify the agent-process-started handler at the correct time. */
-        template<typename Handler>
-        auto make_state_observer(Handler handler)
+        i_agent_worker_t::state_change_observer_t make_state_observer()
         {
             using namespace async::continuations;
 
-            return [this, handler = std::move(handler), notified_handler = false](auto pid,
-                                                                                  auto old_state,
-                                                                                  auto new_state) mutable {
-                // transition from launched (the initial state) to any other state...
-                if ((old_state == i_agent_worker_t::state_t::launched) && !notified_handler) {
-                    // handler should only be called once
-                    notified_handler = true;
-                    // handler receives 'true' for ready and 'false' for all other states as it indicates an error on startup
-                    start_with(new_state == i_agent_worker_t::state_t::ready) //
-                        | post_on(io_context)                                 //
-                        | then(std::move(handler))                            //
-                        | DETACH_LOG_ERROR("Notify launch handler operation");
-                }
-
+            return [this](auto pid, auto /*old_state*/, auto new_state) mutable {
                 // transition to terminated
                 if (new_state == i_agent_worker_t::state_t::terminated) {
-                    start_on(strand) //
-                        | then([this, pid]() {
-                              LOG_DEBUG("Received agent terminated notification for agent process %d", pid);
-                              // remove it
-                              agent_workers.erase(pid);
-                              // stop if no more agents
-                              on_strand_check_terminated();
-                          }) //
-                        | DETACH_LOG_ERROR("Handle agent terminated notification operation");
+                    spawn("Handle agent terminated notification operation",
+                          start_on(strand) //
+                              | then([this, pid]() {
+                                    LOG_DEBUG("Received agent terminated notification for agent process %d", pid);
+                                    // remove it
+                                    agent_workers.erase(pid);
+                                    // stop if no more agents
+                                    on_strand_check_terminated();
+                                }));
                 }
             };
-        }
-
-        /** Handle the sigchld event */
-        void do_waitpid_children()
-        {
-            using namespace async::continuations;
-
-            // iterate each child agent and check if it terminated.
-            // if so, notify its worker and remove it from the map.
-            //
-            // We don't use waitpid(0 or -1, ...) since there are other waitpid calls that block on a single pid and we dont
-            // want to swallow the process event from them
-            start_on<on_executor_mode_t::dispatch>(strand) //
-                | then([this]() {
-                      // check all the child processes
-                      for (auto it = agent_workers.begin(); it != agent_workers.end();) {
-                          if (do_waitpid_for(it->first, it->second)) {
-                              it = agent_workers.erase(it);
-                          }
-                          else {
-                              ++it;
-                          }
-                      }
-
-                      // stop if no more items
-                      on_strand_check_terminated();
-                  })
-                | DETACH_LOG_ERROR("SIGCHLD handler");
-        }
-
-        /** Check the exit status for some worker process */
-        bool do_waitpid_for(pid_t agent_pid, std::shared_ptr<i_agent_worker_t> worker)
-        {
-            int wstatus = 0;
-            pid_t result = lib::waitpid(agent_pid, &wstatus, WNOHANG);
-            int error = errno;
-
-            LOG_TRACE("Got waitpid(result=%d, wstatus=%d, pid=%d, worker=%p)",
-                      result,
-                      wstatus,
-                      agent_pid,
-                      worker.get());
-
-            // call waitpid to reap the child pid, but nothing to do
-            if (worker == nullptr) {
-                LOG_DEBUG("Unexpected state, received SIGCHLD for pid=%d, but no worker found", agent_pid);
-                return true;
-            }
-
-            auto const process_exited = ((result == agent_pid) && (WIFEXITED(wstatus) || WIFSIGNALED(wstatus)));
-            auto const no_such_child = ((result == pid_t(-1)) && (error == ECHILD));
-
-            // the process terminated, or no such child exists, notify the worker class to update its state machine
-            if (process_exited || no_such_child) {
-                // notify of the signal
-                LOG_DEBUG("Notifying worker that agent process %d (%p) terminated.", agent_pid, worker.get());
-                worker->on_sigchild();
-
-                // dont erase it yet, wait for the state machine to update
-                return false;
-            }
-
-            // some other error occured, log it
-            if (result == pid_t(-1)) {
-                // NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_DEBUG("waitpid received error %d %s", error, strerror(error));
-            }
-
-            return false;
         }
     };
 

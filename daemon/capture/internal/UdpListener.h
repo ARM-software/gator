@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -9,10 +9,10 @@
 #include "ProtocolVersion.h"
 
 #include <array>
+#include <cstring>
 #include <sstream>
 
 #include <arpa/inet.h>
-#include <string.h>
 #include <unistd.h>
 
 namespace capture::internal {

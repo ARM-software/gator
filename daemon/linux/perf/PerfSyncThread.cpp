@@ -6,6 +6,7 @@
 #include "lib/Assert.h"
 #include "lib/GenericTimer.h"
 #include "lib/String.h"
+#include "lib/Syscall.h"
 
 #include <cerrno>
 #include <csignal>
@@ -100,7 +101,7 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
 {
     // get pid and tid
     const pid_t pid = getpid();
-    const pid_t tid = syscall(__NR_gettid);
+    const pid_t tid = lib::gettid();
 
     // change thread priority
     {

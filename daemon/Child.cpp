@@ -3,7 +3,6 @@
 #include "Child.h"
 
 #include "CapturedXML.h"
-#include "Command.h"
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "Driver.h"
@@ -23,6 +22,7 @@
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
 #include "armnn/ArmNNSource.h"
+#include "capture/CaptureProcess.h"
 #include "lib/Assert.h"
 #include "lib/FsUtils.h"
 #include "lib/WaitForProcessPoller.h"
@@ -72,21 +72,33 @@ void handleException()
 std::unique_ptr<Child> Child::createLocal(agents::i_agent_spawner_t & spawner,
                                           Drivers & drivers,
                                           const Child::Config & config,
+                                          capture::capture_process_event_listener_t & event_listener,
                                           logging::last_log_error_supplier_t last_error_supplier,
                                           logging::log_setup_supplier_t log_setup_supplier)
 {
-    return std::unique_ptr<Child>(
-        new Child(spawner, drivers, nullptr, config, std::move(last_error_supplier), std::move(log_setup_supplier)));
+    return std::unique_ptr<Child>(new Child(spawner,
+                                            drivers,
+                                            nullptr,
+                                            config,
+                                            event_listener,
+                                            std::move(last_error_supplier),
+                                            std::move(log_setup_supplier)));
 }
 
 std::unique_ptr<Child> Child::createLive(agents::i_agent_spawner_t & spawner,
                                          Drivers & drivers,
                                          OlySocket & sock,
+                                         capture::capture_process_event_listener_t & event_listener,
                                          logging::last_log_error_supplier_t last_error_supplier,
                                          logging::log_setup_supplier_t log_setup_supplier)
 {
-    return std::unique_ptr<Child>(
-        new Child(spawner, drivers, &sock, {}, std::move(last_error_supplier), std::move(log_setup_supplier)));
+    return std::unique_ptr<Child>(new Child(spawner,
+                                            drivers,
+                                            &sock,
+                                            {},
+                                            event_listener,
+                                            std::move(last_error_supplier),
+                                            std::move(log_setup_supplier)));
 }
 
 Child * Child::getSingleton()
@@ -110,6 +122,7 @@ Child::Child(agents::i_agent_spawner_t & spawner,
              Drivers & drivers,
              OlySocket * sock,
              Child::Config config,
+             capture::capture_process_event_listener_t & event_listener,
              logging::last_log_error_supplier_t last_error_supplier,
              logging::log_setup_supplier_t log_setup_supplier)
     : haltPipeline(),
@@ -117,6 +130,7 @@ Child::Child(agents::i_agent_spawner_t & spawner,
       sender(),
       drivers(drivers),
       socket(sock),
+      event_listener(event_listener),
       numExceptions(0),
       sessionEnded(),
       config(std::move(config)),
@@ -149,7 +163,7 @@ Child::~Child()
     runtime_assert(prevSingleton == this, "Exchanged Child::gSingleton with something other than this");
 }
 
-void Child::run(int notify_pid)
+void Child::run()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
 
@@ -258,73 +272,36 @@ void Child::run(int notify_pid)
                           primarySourceProvider.getDetectedUncorePmus());
     }
 
-    std::set<int> appPids;
-    bool enableOnCommandExec = false;
-    if (!gSessionData.mCaptureCommand.empty()) {
-        std::string captureCommand;
-        for (auto const & cmd : gSessionData.mCaptureCommand) {
-            captureCommand += " ";
-            captureCommand += cmd;
-        }
-        LOG_WARNING("Running command:%s", captureCommand.c_str());
-
-        // This is set before any threads are started so it doesn't need
-        // to be protected by a mutex
-        command = std::make_shared<Command>(Command::run([this]() {
-            if (gSessionData.mStopOnExit) {
-                LOG_DEBUG("Ending session because command exited");
-                endSession();
-            }
-        }));
-
-        enableOnCommandExec = true;
-
-        appPids.insert(command->getPid());
-        LOG_DEBUG("Profiling pid: %d", command->getPid());
-    }
-
     // set up stop thread early, so that ping commands get replied to, even if the
     // setup phase below takes a long time.
     std::thread stopThread {[this]() { stopThreadEntryPoint(); }};
 
     // tell the controller that we're ready for the app to start
-    if (notify_pid > 0) {
-        LOG_DEBUG("Telling notify_pid (%d) to start the target app", notify_pid);
-        kill(notify_pid, SIGUSR1);
-    }
-
-    if (gSessionData.mWaitForProcessCommand != nullptr) {
-        LOG_DEBUG("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
-
-        WaitForProcessPoller poller {gSessionData.mWaitForProcessCommand};
-
-        while ((!poller.poll(appPids)) && !sessionEnded) {
-            usleep(1000);
+    auto execTargetCallback = [this]() {
+        LOG_DEBUG("Received exec_target callback");
+        if (!event_listener.waiting_for_target()) {
+            handleException();
         }
-        LOG_DEBUG("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
-    }
-
-    // we only consider --pid for stop on exit if we weren't given an
-    // app to run
-    std::set<int> watchPids = appPids.empty() ? gSessionData.mPids : appPids;
-
-    appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
+    };
 
     lib::Waiter waitTillStart;
     lib::Waiter waitForAgents;
 
     auto startedCallback = [&]() {
+        LOG_DEBUG("Received start capture callback");
         waitTillStart.disable();
-        if (command) {
-            command->start();
-        }
     };
 
-    auto newPrimarySource = primarySourceProvider.createPrimarySource(senderSem,
-                                                                      startedCallback,
-                                                                      appPids,
-                                                                      drivers.getFtraceDriver(),
-                                                                      enableOnCommandExec);
+    auto newPrimarySource = primarySourceProvider.createPrimarySource(
+        senderSem,
+        *sender,
+        [this]() -> bool { return sessionEnded; },
+        execTargetCallback,
+        startedCallback,
+        gSessionData.mPids,
+        drivers.getFtraceDriver(),
+        !gSessionData.mCaptureCommand.empty(),
+        agent_workers_process);
     if (newPrimarySource == nullptr) {
         LOG_ERROR("%s", primarySourceProvider.getPrepareFailedMessage());
         handleException();
@@ -377,11 +354,6 @@ void Child::run(int notify_pid)
         durationThread = std::thread([&]() { durationThreadEntryPoint(waitTillStart, waitTillEnd); });
     }
 
-    std::thread watchPidsThread {};
-    if (gSessionData.mStopOnExit && !watchPids.empty()) {
-        watchPidsThread = std::thread([&]() { watchPidsThreadEntryPoint(watchPids, waitTillEnd); });
-    }
-
     if (shouldStartUserSpaceSource(drivers.getAllPolledConst())) {
         if (!addSource(createUserSpaceSource(senderSem, drivers.getAllPolled()))) {
             LOG_ERROR("Unable to prepare userspace source for capture");
@@ -418,9 +390,6 @@ void Child::run(int notify_pid)
         thread.join();
     }
 
-    if (watchPidsThread.joinable()) {
-        watchPidsThread.join();
-    }
     if (durationThread.joinable()) {
         durationThread.join();
     }
@@ -448,12 +417,6 @@ void Child::run(int notify_pid)
 
     sources.clear();
     sender.reset();
-
-    if (command) {
-        LOG_DEBUG("Waiting for command (PID: %d)", command->getPid());
-        command->join();
-        LOG_DEBUG("Command finished");
-    }
 }
 
 template<typename S>
@@ -497,10 +460,6 @@ void Child::doEndSession()
 
     sessionEnded = true;
 
-    if (command) {
-        command->cancel();
-    }
-
     for (auto & source : sources) {
         source->interrupt();
     }
@@ -515,10 +474,6 @@ void Child::cleanupException()
 
         // Something is really wrong, exit immediately
         _exit(SECOND_EXCEPTION_EXIT_CODE);
-    }
-
-    if (command) {
-        command->cancel();
     }
 
     if (socket != nullptr) {

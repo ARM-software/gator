@@ -103,7 +103,7 @@ namespace gator::android {
         mxmlElementSetAttr(node, "class", "activity");
         mxmlElementSetAttr(node, "units", "");
         mxmlElementSetAttr(node, "average_selection", "yes");
-        mxmlElementSetAttr(node, "series_composition", "stack");
+        mxmlElementSetAttr(node, "series_composition", "stacked");
         mxmlElementSetAttr(node, "rendering_type", "bar");
         mxmlElementSetAttr(node, "proc", "no");
         mxmlElementSetAttr(node, "per_core", "no");

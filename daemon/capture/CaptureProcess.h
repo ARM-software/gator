@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -33,8 +33,9 @@ namespace capture {
          * @brief Called by the capturing agent when it has performed any required initialisation
          * (e.g. enumerating & configuring counters) and it is ready for the target application to
          * be started.
+         * @return true unless the android package or other target could not be started
          */
-        virtual void waiting_for_target() = 0;
+        [[nodiscard]] virtual bool waiting_for_target() = 0;
     };
 
     using GatorReadyCallback = std::function<void()>;

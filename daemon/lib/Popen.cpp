@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "lib/Popen.h"
 
@@ -55,7 +55,7 @@ namespace lib {
             ::setvbuf(stderr, nullptr, _IONBF, 0);
 
             // get sighup if parent exits
-            ::prctl(PR_SET_PDEATHSIG, SIGHUP);
+            ::prctl(PR_SET_PDEATHSIG, SIGKILL);
 
             execvp(command_and_args[0], const_cast<char * const *>(command_and_args.data()));
             const int error = errno;

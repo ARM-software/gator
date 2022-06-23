@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -12,6 +12,8 @@ namespace logging {
     /** Default log sink, prints to stdout / stderr depending on message type and configuration */
     class global_log_sink_t : public log_sink_t {
     public:
+        global_log_sink_t();
+
         /** Toggle whether TRACE/DEBUG/SETUP messages are output to the console */
         void set_debug_enabled(bool enabled) override { output_debug = enabled; }
         /** Store some log item to the log */

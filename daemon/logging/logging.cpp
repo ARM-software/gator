@@ -69,6 +69,18 @@ namespace logging {
             // write it out
             log_item(level, location, std::string_view(buffer.get(), n));
         }
+
+        void do_log_item(log_level_t level, source_loc_t const & location, std::string_view msg)
+        {
+            // write it out
+            log_item(level, location, msg);
+        }
+
+        void do_log_item(pid_t tid, log_level_t level, source_loc_t const & location, std::string_view msg)
+        {
+            // write it out
+            log_item(thread_id_t(tid), level, location, msg);
+        }
     }
 
     void log_item(log_level_t level, source_loc_t const & location, std::string_view message)
@@ -76,11 +88,22 @@ namespace logging {
         std::shared_ptr<log_sink_t> sink = current_log_sink;
 
         if (sink != nullptr) {
-
             struct timespec t;
             clock_gettime(CLOCK_MONOTONIC, &t);
 
             sink->log_item(thread_id_t(syscall(SYS_gettid)), level, {t.tv_sec, t.tv_nsec}, location, message);
+        }
+    }
+
+    void log_item(thread_id_t tid, log_level_t level, source_loc_t const & location, std::string_view message)
+    {
+        std::shared_ptr<log_sink_t> sink = current_log_sink;
+
+        if (sink != nullptr) {
+            struct timespec t;
+            clock_gettime(CLOCK_MONOTONIC, &t);
+
+            sink->log_item(tid, level, {t.tv_sec, t.tv_nsec}, location, message);
         }
     }
 

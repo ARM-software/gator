@@ -15,6 +15,7 @@ message capture_configuration_t {
         int32 sample_rate = 3;                  // Equivalent to SessionData::mSampleRate
         bool one_shot = 4;                      // Equivalent to SessionData::mOneShot
         bool exclude_kernel_events = 5;         // Equivalent to SessionData::mExcludeKernelEvents
+        bool stop_on_exit = 6;                  // Equivalent to SessionData::mStopOnExit
     }
 
     /** Equivalent to PerfConfig */
@@ -28,14 +29,15 @@ message capture_configuration_t {
         bool has_attr_context_switch = 7;
         bool has_ioctl_read_id = 8;
         bool has_aux_support = 9;
+        bool has_exclude_callchain_kernel = 10;
 
-        bool is_system_wide = 10;
-        bool exclude_kernel = 11;
-        bool can_access_tracepoints = 12;
+        bool is_system_wide = 11;
+        bool exclude_kernel = 12;
+        bool can_access_tracepoints = 13;
 
-        bool has_armv7_pmu_driver = 13;
-        bool has_64bit_uname = 14;
-        bool use_64bit_register_set = 15;
+        bool has_armv7_pmu_driver = 14;
+        bool has_64bit_uname = 15;
+        bool use_64bit_register_set = 16;
     }
 
     /** Equivalent to perf_ringbuffer_config_t */
@@ -82,7 +84,7 @@ message capture_configuration_t {
     message cpu_properties_t {
         int32 cluster_index = 1;
         int32 cpu_id = 2;
-        int32 spe_type = 3;
+        uint32 spe_type = 3;
     }
 
     /** Equivalent to UncorePmu */
@@ -93,25 +95,6 @@ message capture_configuration_t {
         string device_instance = 4;
         uint32 pmnc_counters = 5;
         bool has_cycles_counter = 6;
-    }
-
-    /** Equivalent to PerfEventGroupIdentifier.
-     *
-     * Because pointers do not work between forks, the types (and therefore meaning)
-     * have changed:
-     * - cluster                capture_configuration_t.clusters index
-     * - pmu                    capture_configuration_t.uncore_pmus index
-     * - specific_cpu           the specific cpu_number
-     * - spe                    if true then type == SPE, when false type == GLOBAL
-     * - <none set>             type == GLOBAL
-     */
-    message perf_event_group_identifier_t {
-        oneof type {
-            uint64 per_cluster_cpu = 1; // Type::PER_CLUSTER_CPU
-            uint64 uncore_pmu = 2;      // Type::UNCORE_PMU
-            int32 specific_cpu = 3;     // Type::SPECIFIC_CPU
-            bool spe = 4;               // Type::SPE (when true), Type::GLOBAL (when false, or no other type field set)
-        }
     }
 
     /** Equivalent to perf_event_attr */
@@ -162,22 +145,26 @@ message capture_configuration_t {
         uint32 aux_watermark = 38;
     }
 
-    /** Equivalent to perf_event_t */
-    message perf_event_t {
+    /** Equivalent to event_definition_t */
+    message perf_event_definition_t {
         perf_event_attribute_t attr = 1;
         int32 key = 2;
     }
 
-    /** A tuple of identifier + list of events representing one event group */
-    message perf_event_group_events_t {
-        perf_event_group_identifier_t id = 1;
-        repeated perf_event_t events = 2;
+    /** List of perf_event_definition_t (for map entries) */
+    message perf_event_definition_list_t {
+        repeated perf_event_definition_t events = 1;
     }
 
-    /** A subset of perf_groups_state_t required for the activator */
-    message perf_groups_t {
-        repeated perf_event_group_events_t groups = 1;
-        uint64 number_of_events_added = 2;
+
+    /** Equivalent to event_configuration_t */
+    message perf_event_configuration_t {
+        perf_event_definition_t header_event = 1;
+        perf_event_definition_list_t global_events = 2;
+        perf_event_definition_list_t spe_events = 3;
+        map<uint32, perf_event_definition_list_t> cluster_specific_events = 4;
+        map<uint32, perf_event_definition_list_t> cpu_specific_events = 5;
+        map<uint32, perf_event_definition_list_t> uncore_specific_events = 6;
     }
 
     // -------------------------------------------
@@ -187,7 +174,7 @@ message capture_configuration_t {
     repeated cpu_cluster_t clusters = 3;
     repeated uncore_pmu_t uncore_pmus = 4;
     repeated cpu_properties_t cpus = 5;
-    perf_groups_t perf_groups = 6;
+    perf_event_configuration_t event_configuration = 6;
     perf_ringbuffer_config_t ringbuffer_config = 7;
     command_t command = 8;
     string wait_process = 9;
@@ -195,4 +182,6 @@ message capture_configuration_t {
     uint32 num_cpu_cores = 11;
     bool enable_on_exec = 12;
     map<uint32, string> cpuid_to_core_name = 13;
+    map<uint32, string> perf_pmu_type_to_name = 14;
+    bool stop_pids = 15;
 }

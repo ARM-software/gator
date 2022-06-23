@@ -116,14 +116,18 @@ namespace {
     }
 }
 
-LinuxEnvironmentConfig::LinuxEnvironmentConfig(SessionData & sessionData) noexcept : CaptureEnvironment()
+LinuxEnvironmentConfig::LinuxEnvironmentConfig() noexcept
 {
     configureRlimit();
-    configurePerfMmapSize(sessionData);
 }
 
 LinuxEnvironmentConfig::~LinuxEnvironmentConfig() noexcept
 {
+}
+
+void LinuxEnvironmentConfig::postInit(SessionData & sessionData)
+{
+    configurePerfMmapSize(sessionData);
 }
 
 OsType capture::detectOs()
@@ -151,15 +155,15 @@ OsType capture::detectOs()
 #endif
 }
 
-std::unique_ptr<CaptureEnvironment> capture::prepareCaptureEnvironment(SessionData & sessionData)
+std::unique_ptr<CaptureEnvironment> capture::prepareCaptureEnvironment()
 
 {
     switch (detectOs()) {
         case OsType::Android: {
-            return std::make_unique<gator::android::GatorAndroidSetupHandler>(sessionData, classifyUser());
+            return std::make_unique<gator::android::GatorAndroidSetupHandler>(classifyUser());
         }
         case OsType::Linux:
-            return std::make_unique<capture::LinuxEnvironmentConfig>(sessionData);
+            return std::make_unique<capture::LinuxEnvironmentConfig>();
     }
     throw GatorException("Invalid capture environment");
 }

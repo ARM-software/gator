@@ -2,9 +2,11 @@
 
 #include "logging/global_log.h"
 
+#include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
+#include <ostream>
 
 namespace logging {
     namespace {
@@ -29,6 +31,16 @@ namespace logging {
                           << std::endl;
             }
         }
+    }
+
+    global_log_sink_t::global_log_sink_t()
+    {
+        // disable buffering of output
+        ::setvbuf(stdout, nullptr, _IONBF, 0);
+        ::setvbuf(stderr, nullptr, _IONBF, 0);
+        // make sure that everything goes to output immediately
+        std::cout << std::unitbuf;
+        std::cerr << std::unitbuf;
     }
 
     void global_log_sink_t::log_item(thread_id_t tid,
@@ -74,6 +86,21 @@ namespace logging {
                 // store the last error message
                 last_error = std::string(message);
                 output_item(output_debug, "FATAL:", tid, timestamp, location, message);
+                break;
+            case log_level_t::child_stdout:
+                if (output_debug) {
+                    output_item(output_debug, "STDOU:", tid, timestamp, location, message);
+                }
+                // always output to cout, regardless of whether the cerr log was also output
+                std::cout << message;
+                break;
+            case log_level_t::child_stderr:
+                if (output_debug) {
+                    output_item(output_debug, "STDER:", tid, timestamp, location, message);
+                }
+                else {
+                    std::cerr << message;
+                }
                 break;
         }
     }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2019-2021 by Arm Limited
+# Copyright (C) 2019-2022 by Arm Limited
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -573,16 +573,9 @@ def clean_gatord(device, package):
     device.adb_quiet("shell", "am", "force-stop", package)
 
     # Remove any data files in both bounce directory and app directory
-    adir = "/data/data/%s/" % package
     device.adb_quiet("shell", "rm", "-f", "%sgatord" % bounce_dir)
     device.adb_quiet("shell", "rm", "-f", "%sconfiguration.xml" % bounce_dir)
     device.adb_quiet("shell", "rm", "-rf", "%s%s.apc" % (bounce_dir, package))
-    target = "%sgatord" % adir
-    device.adb_quiet("shell", "run-as", package, "rm", "-f", target)
-    target = "%sconfiguration.xml" % adir
-    device.adb_quiet("shell", "run-as", package, "rm", "-f", target)
-    target = "%s%s.apc" % (adir, package)
-    device.adb_quiet("shell", "run-as", package, "rm", "-rf", target)
 
     # Disable perf counters
     device.adb_quiet("shell", "setprop", "security.perf_harden", "1")
@@ -599,17 +592,13 @@ def install_gatord(device, package, gatord, configuration):
             may be None for non-headless runs.
     """
     # Install gatord
-    adir = "/data/data/%s/" % package
     device.adb("push", gatord, "%sgatord" % bounce_dir)
     device.adb("shell", "chmod", "0777", "%sgatord" % bounce_dir)
-    device.adb("shell", "run-as", package, "cp", "%sgatord" % bounce_dir, adir)
 
     # Install gatord counter configuration
     if configuration:
         device.adb("push", configuration, "%sconfiguration.xml" % bounce_dir)
         device.adb("shell", "chmod", "0666", "%sconfiguration.xml" % bounce_dir)
-        device.adb("shell", "run-as", package, "cp",
-                   "%sconfiguration.xml" % bounce_dir, adir)
 
     # Enable perf conters
     device.adb("shell", "setprop", "security.perf_harden", "0")
@@ -626,8 +615,7 @@ def run_gatord_interactive(device, package):
 
     # Run gatord
     commands = [
-        "shell", "run-as", package, "/data/data/%s/gatord" % package,
-        "--wait-process", package, "-p", "uds"]
+        "shell", "%sgatord" % bounce_dir, "--android-pkg", package, "-p", "uds"]
 
     if DEBUG_GATORD:
         commands.append("-d")
@@ -681,44 +669,38 @@ def run_gatord_headless(device, package, outputName, timeout):
 
     # Run gatord
     apcName = "%s.apc" % package
+    remoteApcPath = "%s%s" % (bounce_dir, apcName,)
     device.adb(
-        "shell", "run-as", package, "/data/data/%s/gatord" % package,
-        "--wait-process", package, "--stop-on-exit", "yes",
-        "--max-duration", "%u" % timeout, "--output", apcName)
+        "shell", "%sgatord" % bounce_dir,
+        "--android-pkg", package, "--stop-on-exit", "yes",
+        "--max-duration", "%u" % timeout, "--output", remoteApcPath)
 
     print("    Capture complete, downloading from target")
 
-    with tempfile.NamedTemporaryFile() as fileHandle:
-        # Fetch the results by streaming a tar file; we can't "adb pull"
-        # directly for new Android applications due to SELinux policy
-        tempName = fileHandle.name
-        fileHandle.close()
-        device.adb(
-            "exec-out", "run-as", package, "tar", "-c", apcName, ">", tempName,
-            text=False, shell=True)
+    with tempfile.TemporaryDirectory() as tempDir:
+        # Fetch the results
+        device.adb("pull", remoteApcPath, tempDir)
 
-        # Repack the tar file into the required output format
-        with tempfile.TemporaryDirectory() as tempDir:
-            with tarfile.TarFile(tempName) as tarHandle:
-                # Extract the tar file
-                tarHandle.extractall(tempDir)
+        # Repack the capture directory into the required output format
 
-                # Rename the APC to the required name
-                outApcName = os.path.basename(outputName)
-                if outApcName.endswith(".zip"):
-                    outApcName = outApcName[:-4]
+        # Rename the APC to the required name
+        outApcName = os.path.basename(outputName)
+        if outApcName.endswith(".zip"):
+            outApcName = outApcName[:-4]
 
-                oldName = os.path.join(tempDir, apcName)
-                newName = os.path.join(tempDir, outApcName)
-                os.rename(oldName, newName)
+        oldName = os.path.join(tempDir, apcName)
+        newName = os.path.join(tempDir, outApcName)
 
-                # Pack as appropriate
-                if outputName.endswith(".apc"):
-                    shutil.move(newName, outputName)
-                else:
-                    # Remove .zip from the path (the shutil function adds it)
-                    outZipName = outputName[:-4]
-                    shutil.make_archive(outZipName, "zip", tempDir)
+        if (oldName != newName):
+            os.rename(oldName, newName)
+
+        # Pack as appropriate
+        if outputName.endswith(".apc"):
+            shutil.move(newName, outputName)
+        else:
+            # Remove .zip from the path (the shutil function adds it)
+            outZipName = outputName[:-4]
+            shutil.make_archive(outZipName, "zip", tempDir)
 
 
 def exit_handler(device, package):

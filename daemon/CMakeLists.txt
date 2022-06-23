@@ -4,8 +4,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.16 FATAL_ERROR)
 OPTION(ENABLE_VCPKG "Pull in dependencies using vcpkg" ON)
 
 IF(ENABLE_VCPKG)
-    SET(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/triplets)
-    SET(CMAKE_TOOLCHAIN_FILE   ${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake)
+    SET(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/triplets" CACHE STRING "")
+    SET(CMAKE_TOOLCHAIN_FILE   "${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 ENDIF()
 
 PROJECT(gatord C CXX)
@@ -115,8 +115,6 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/CCNDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/Child.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/Child.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/Command.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/Command.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/CommitTimeChecker.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/Config.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/Configuration.h
@@ -217,18 +215,17 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/Time.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/Tracepoints.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/Tracepoints.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/UEvent.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/UEvent.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/UserSpaceSource.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/UserSpaceSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_environment.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_environment.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_worker_base.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_worker.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_workers_process.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/apc/intermediate_buffer_consumer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/coalescing_cpu_monitor.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/nl_cpu_monitor.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/polling_cpu_monitor.h
@@ -240,24 +237,39 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_main.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_worker.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ipc_sink_wrapper.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/apc_encoders.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/apc_encoders.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/async_buffer_builder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/async_perf_ringbuffer_monitor.hpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/capture_configuration.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/capture_configuration.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/cpufreq_counter.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/cpufreq_counter.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/detail/perf_buffer_consumer_detail.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/detail/perf_buffer_consumer_detail.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/frame_encoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/cpu_info.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/event_binding_manager.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/event_bindings.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/event_configuration.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/perf_activator.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/perf_activator.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/perf_event_utils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/perf_event_utils.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/perf_ringbuffer_mmap.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/events/types.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_agent.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_agent_main.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_agent_main.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_agent_worker.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_buffer_consumer.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_buffer_consumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_capture_cpu_monitor.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_capture.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_capture_helper.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_driver_summary.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_driver_summary.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_frame_packer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_frame_packer.hpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/record_types.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/source_adapter.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/source_adapter.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/sync_generator.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/tracepoint_formats.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/spawn_agent.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/agents/spawn_agent.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/AndroidActivityManager.cpp
@@ -342,6 +354,7 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/TimestampCorrector.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/TimestampCorrector.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/asio_traits.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/async_line_reader.hpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/completion_handler.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/async_initiate.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/continuation.h
@@ -367,23 +380,37 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/then.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/then_state.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/trace.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/unpack_tuple.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/unpack_tuple_state.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/unpack_variant.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/unpack_variant_state.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/use_continuation_state.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/nop_receiver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/operations.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/stored_continuation.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/use_continuation.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/netlink/nl_protocol.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/netlink/uevents.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_exec.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_exec.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_process.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_process.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_proc_poller.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_proc_poller.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_read_proc_maps.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_read_proc_sys_dependencies.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_wait_for_process.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/process_monitor.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/process_monitor.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/process_state.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/process_state_tracker.hpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/wait.hpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/CaptureProcess.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/CaptureProcess.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/internal/UdpListener.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ipc/async_streamline_sender.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/ipc/codec.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/ipc/message_key.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/ipc/messages.h
@@ -394,11 +421,16 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Assert.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/AutoClosingFd.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/EnumUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/error_code_or.hpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/exception.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/File.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/File.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/forked_process.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/forked_process.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/forked_process_utils.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/forked_process_utils.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Format.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsEntry.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsEntry.h
@@ -406,8 +438,6 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/GenericTimer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Istream.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Memory.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/memory_pool.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/memory_pool.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/PmuCommonEvents.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Popen.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Popen.h
@@ -436,17 +466,11 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/PerCoreIdentificationThread.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/PerCoreIdentificationThread.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/attr_to_key_mapping_tracker.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/id_to_key_mapping_tracker.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfAttrsConsumer.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfBufferConsumer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfGroups.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfAttrsBuffer.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfAttrsBuffer.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfBuffer.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfBuffer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfConfig.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfCpuOnlineMonitor.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfCpuOnlineMonitor.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverConfiguration.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverConfiguration.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriver.cpp
@@ -458,14 +482,8 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroupIdentifier.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfGroups.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfGroups.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSource.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSource.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThreadBuffer.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThreadBuffer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThread.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfSyncThread.h
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfToMemoryBuffer.cpp
-                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfToMemoryBuffer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfUtils.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcessChildren.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcessChildren.h
@@ -481,6 +499,8 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/proc/ProcStatFileRecord.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/SysfsSummaryInformation.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/SysfsSummaryInformation.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/Tracepoints.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/Tracepoints.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.cpp
@@ -494,11 +514,13 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriver.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrDriver.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntr.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNames.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNamesBifrost.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrReader.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrReader.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.cpp

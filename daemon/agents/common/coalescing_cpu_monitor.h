@@ -6,8 +6,10 @@
 #include "async/completion_handler.h"
 #include "async/continuations/async_initiate.h"
 #include "async/continuations/operations.h"
+#include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
 #include "lib/Assert.h"
+#include "lib/EnumUtils.h"
 
 #include <deque>
 #include <memory>
@@ -59,12 +61,12 @@ namespace agents {
             using namespace async::continuations;
 
             return async_initiate_explicit<void(event_t)>(
-                [st = this->shared_from_this()](auto && receiver, auto && exceptionally) {
+                [st = this->shared_from_this()](auto && stored_continuation) {
                     submit(start_on(st->strand) //
-                               | then([st, r = std::forward<decltype(receiver)>(receiver)]() mutable {
+                               | then([st, r = stored_continuation.move()]() mutable {
                                      st->on_strand_do_receive_one(std::move(r));
                                  }),
-                           std::forward<decltype(exceptionally)>(exceptionally));
+                           stored_continuation.get_exceptionally());
                 },
                 std::forward<CompletionToken>(token));
         }
@@ -74,17 +76,17 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            start_on(strand) //
-                | then([st = shared_from_this()]() {
-                      // mark as terminated
-                      st->terminated = true;
-                      // cancel the pending request if there is one
-                      st->cancel_pending();
-                      // clear any state
-                      st->per_core_state.clear();
-                      st->pending_cpu_nos.clear();
-                  }) //
-                | DETACH_LOG_ERROR("terminate cpu monitor");
+            spawn("terminate cpu monitor",
+                  start_on(strand) //
+                      | then([st = shared_from_this()]() {
+                            // mark as terminated
+                            st->terminated = true;
+                            // cancel the pending request if there is one
+                            st->cancel_pending();
+                            // clear any state
+                            st->per_core_state.clear();
+                            st->pending_cpu_nos.clear();
+                        }));
         }
 
     private:
@@ -100,7 +102,7 @@ namespace agents {
             pending_online_offline,
         };
 
-        using completion_handler_t = async::completion_handler_ref_t<event_t>;
+        using completion_handler_t = async::continuations::stored_continuation_t<event_t>;
 
         /**
          * Transition current->new state value based on received raw on-off event
@@ -193,7 +195,7 @@ namespace agents {
         template<typename Handler>
         void post_handler(Handler && handler, event_t event)
         {
-            boost::asio::post(strand.context(), [event, h = std::forward<Handler>(handler)]() mutable { h(event); });
+            resume_continuation(strand.context(), std::forward<Handler>(handler), event);
         }
 
         /** Cancel and clear any pending request */
@@ -239,7 +241,7 @@ namespace agents {
             // find the next pending core
             auto cpu_no = pending_cpu_nos.front();
 
-            runtime_assert((cpu_no >= 0) && (cpu_no < per_core_state.size()), "Invalid cpu_no value");
+            runtime_assert((cpu_no >= 0) && (std::size_t(cpu_no) < per_core_state.size()), "Invalid cpu_no value");
 
             // transform its state
             auto current_state = per_core_state[cpu_no];
@@ -251,8 +253,8 @@ namespace agents {
             per_core_state[cpu_no] = new_state;
 
             LOG_TRACE("Consuming coalesced CPU state from %u->%u, %u / %u",
-                      current_state,
-                      new_state,
+                      lib::toEnumValue(current_state),
+                      lib::toEnumValue(new_state),
                       online,
                       is_pending(new_state));
 
@@ -288,8 +290,8 @@ namespace agents {
             auto now_pending = is_pending(new_state);
 
             LOG_TRACE("Transitioning coalesced CPU state from %u->%u (%u/%u)",
-                      current_state,
-                      new_state,
+                      lib::toEnumValue(current_state),
+                      lib::toEnumValue(new_state),
                       was_pending,
                       now_pending);
 

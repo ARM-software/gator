@@ -26,17 +26,21 @@
 #include <unistd.h>
 
 namespace non_root {
+    static constexpr std::size_t default_buffer_size = 1UL * 1024UL * 1024UL;
+
     NonRootSource::NonRootSource(NonRootDriver & driver_,
                                  sem_t & senderSem_,
+                                 std::function<void()> execTargetAppCallback_,
                                  std::function<void()> profilingStartedCallback_,
                                  const ICpuInfo & cpuInfo)
-        : mSwitchBuffers(1 * 1024 * 1024, senderSem_),
-          mGlobalCounterBuffer(1 * 1024 * 1024, senderSem_),
-          mProcessCounterBuffer(1 * 1024 * 1024, senderSem_),
-          mMiscBuffer(1 * 1024 * 1024, senderSem_),
+        : mSwitchBuffers(default_buffer_size, senderSem_),
+          mGlobalCounterBuffer(default_buffer_size, senderSem_),
+          mProcessCounterBuffer(default_buffer_size, senderSem_),
+          mMiscBuffer(default_buffer_size, senderSem_),
           interrupted(false),
           timestampSource(CLOCK_MONOTONIC_RAW),
           driver(driver_),
+          execTargetAppCallback(std::move(execTargetAppCallback_)),
           profilingStartedCallback(std::move(profilingStartedCallback_)),
           cpuInfo(cpuInfo)
 
@@ -71,6 +75,7 @@ namespace non_root {
         ProcessPoller processPoller(processStateTracker, timestampSource);
 
         profilingStartedCallback();
+        execTargetAppCallback();
 
         const useconds_t sleepIntervalUs =
             (gSessionData.mSampleRate < 1000 ? 10000 : 1000); // select 1ms or 10ms depending on normal or low rate
@@ -142,8 +147,7 @@ namespace non_root {
             LOG_DEBUG("clock_gettime failed");
             return {};
         }
-        const int64_t timestamp = ts.tv_sec * NS_PER_S + ts.tv_nsec;
-
+        const uint64_t timestamp = ts.tv_sec * NS_PER_S + ts.tv_nsec;
         const uint64_t monotonicStarted = timestampSource.getBaseTimestampNS();
         const uint64_t currTime = 0;
 

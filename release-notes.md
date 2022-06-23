@@ -1,3 +1,7 @@
+# Gator 8.1
+
+This release completes the preparatory work needed to support accessing data from Perfetto (traced) on the target.
+
 # Gator 8.0
 
 This release introduces support for Android Thermal State polling and associated visualization in Streamline. As a side affect, separate Android and Linux binaries are shipped with Streamline.

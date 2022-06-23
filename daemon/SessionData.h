@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
@@ -9,6 +9,7 @@
 #include "Counter.h"
 #include "GatorCLIFlags.h"
 #include "ProtocolVersion.h"
+#include "Time.h"
 #include "lib/SharedMemory.h"
 #include "mxml/mxml.h"
 
@@ -21,10 +22,6 @@
 #include <vector>
 
 #include <semaphore.h>
-
-#define NS_PER_S 1000000000LL
-#define NS_PER_MS 1000000LL
-#define NS_PER_US 1000LL
 
 extern const char MALI_GRAPHICS[];
 extern const size_t MALI_GRAPHICS_SIZE;
@@ -105,8 +102,6 @@ public:
 
 extern SessionData gSessionData;
 extern const char * const gSrcMd5;
-
-uint64_t getTime();
 
 void logCpuNotFound();
 

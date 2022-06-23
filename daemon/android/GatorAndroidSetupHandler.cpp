@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "GatorAndroidSetupHandler.h"
 
@@ -20,13 +20,12 @@ namespace {
     constexpr std::string_view SECURITY_PERF_HIDDEN_PROP = "security.perf_harden";
 
     constexpr int ONE_KB = 1024;
-    constexpr int LARGE_BUFFER_CORE_MULTIPLIER = 64;
+    constexpr int LARGE_BUFFER_CORE_MULTIPLIER = 512;
     constexpr int SMALL_BUFFER_MULTIPLIER = 129; //128 +1
     constexpr int DEBUG_PERF_EVENT_MLOCK_KB = 8196;
 }
 
-GatorAndroidSetupHandler::GatorAndroidSetupHandler(SessionData & sessionData, UserClassification userClassification)
-    : LinuxEnvironmentConfig(sessionData)
+GatorAndroidSetupHandler::GatorAndroidSetupHandler(UserClassification userClassification)
 {
     auto propSecurityperfHarden = readProperty(SECURITY_PERF_HIDDEN_PROP);
     if (propSecurityperfHarden) {

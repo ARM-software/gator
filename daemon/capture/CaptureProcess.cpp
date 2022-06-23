@@ -13,6 +13,7 @@
 #include "Sender.h"
 #include "SessionData.h"
 #include "StreamlineSetupLoop.h"
+#include "agents/spawn_agent.h"
 #include "capture/internal/UdpListener.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Process.h"
@@ -128,6 +129,7 @@ namespace {
             case State::EXIT:
                 break;
         }
+
         return currentStateAndChildPid;
     }
 
@@ -220,6 +222,7 @@ namespace {
                              Drivers & drivers,
                              OlyServerSocket & sock,
                              OlyServerSocket * otherSock,
+                             capture::capture_process_event_listener_t & event_listener,
                              logging::last_log_error_supplier_t last_log_error_supplier,
                              logging::log_setup_supplier_t log_setup_supplier)
     {
@@ -236,7 +239,6 @@ namespace {
             driver->preChildFork();
         }
 
-        int parent_pid = getpid();
         int pid = fork();
         if (pid < 0) {
             // Error
@@ -244,8 +246,9 @@ namespace {
             ss << errno;
             throw GatorException(ss.str());
         }
-        else if (pid == 0) {
-            gator::process::set_parent_death_signal(SIGINT);
+
+        if (pid == 0) {
+            gator::process::set_parent_death_signal(SIGKILL);
 
             // Child
             for (const auto & driver : drivers.getAll()) {
@@ -260,13 +263,26 @@ namespace {
             monitor.close();
             annotateListenerPtr.reset();
 
-            // TODO: android spawner
-            agents::simple_agent_spawner_t spawner {};
+            // create the agent process spawner
+            std::unique_ptr<agents::i_agent_spawner_t> spawner {};
 
-            auto child =
-                Child::createLive(spawner, drivers, client, last_log_error_supplier, std::move(log_setup_supplier));
-            child->run(parent_pid);
+            if ((!gSessionData.mSystemWide) && (gSessionData.mAndroidPackage != nullptr)) {
+                spawner = std::make_unique<agents::android_pkg_agent_spawner_t>(gSessionData.mAndroidPackage);
+            }
+            else {
+                spawner = std::make_unique<agents::simple_agent_spawner_t>();
+            }
+
+            auto child = Child::createLive(*spawner,
+                                           drivers,
+                                           client,
+                                           event_listener,
+                                           last_log_error_supplier,
+                                           std::move(log_setup_supplier));
+            child->run();
             child.reset();
+            spawner.reset(); // the dtor may perform some necessary cleanup
+
             exit(0);
         }
         else {
@@ -281,13 +297,13 @@ namespace {
 
     StateAndPid doLocalCapture(Drivers & drivers,
                                const Child::Config & config,
+                               capture::capture_process_event_listener_t & event_listener,
                                logging::last_log_error_supplier_t last_log_error_supplier,
                                logging::log_setup_supplier_t log_setup_supplier)
     {
         for (const auto & driver : drivers.getAll()) {
             driver->preChildFork();
         }
-        int parent_pid = getpid();
         int pid = fork();
         if (pid < 0) {
             // Error
@@ -303,15 +319,23 @@ namespace {
             monitor.close();
             annotateListenerPtr.reset();
 
-            // TODO: android spawner
-            agents::simple_agent_spawner_t spawner {};
+            // create the agent process spawner
+            std::unique_ptr<agents::i_agent_spawner_t> spawner {};
 
-            auto child = Child::createLocal(spawner,
+            if ((!gSessionData.mSystemWide) && (gSessionData.mAndroidPackage != nullptr)) {
+                spawner = std::make_unique<agents::android_pkg_agent_spawner_t>(gSessionData.mAndroidPackage);
+            }
+            else {
+                spawner = std::make_unique<agents::simple_agent_spawner_t>();
+            }
+
+            auto child = Child::createLocal(*spawner,
                                             drivers,
                                             config,
+                                            event_listener,
                                             std::move(last_log_error_supplier),
                                             std::move(log_setup_supplier));
-            child->run(parent_pid);
+            child->run();
             LOG_DEBUG("gator-child finished running");
             child.reset();
 
@@ -336,7 +360,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
                                  capture::capture_process_event_listener_t & event_listener)
 {
     // Set to high priority
-    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), high_priority) == -1) {
+    if (setpriority(PRIO_PROCESS, lib::gettid(), high_priority) == -1) {
         LOG_DEBUG("setpriority() failed");
     }
 
@@ -346,6 +370,8 @@ int capture::beginCaptureProcess(const ParserResult & result,
 
     // only enable when running in system-wide mode
     bool enable_annotation_listener = result.mSystemWide;
+
+    StateAndPid stateAndChildPid = {.state = State::IDLE, .pid = -1};
 
     try {
         std::unique_ptr<OlyServerSocket> socketUds;
@@ -370,8 +396,6 @@ int capture::beginCaptureProcess(const ParserResult & result,
             throw GatorException("Monitor setup failed");
         }
 
-        StateAndPid stateAndChildPid = {.state = State::IDLE, .pid = -1};
-
         // If the command line argument is a session xml file, no need to open a socket
         if (gSessionData.mLocalCapture) {
             Child::Config childConfig {{}, {}};
@@ -384,7 +408,8 @@ int capture::beginCaptureProcess(const ParserResult & result,
             for (const auto & spe : result.mSpeConfigs) {
                 childConfig.spes.insert(spe);
             }
-            stateAndChildPid = doLocalCapture(drivers, childConfig, last_log_error_supplier, log_setup_supplier);
+            stateAndChildPid =
+                doLocalCapture(drivers, childConfig, event_listener, last_log_error_supplier, log_setup_supplier);
         }
         else {
             // enable TCP socket
@@ -420,6 +445,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
                                                     drivers,
                                                     *socketUds,
                                                     socketTcp.get(),
+                                                    event_listener,
                                                     last_log_error_supplier,
                                                     log_setup_supplier);
                 }
@@ -428,6 +454,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
                                                     drivers,
                                                     *socketTcp,
                                                     socketUds.get(),
+                                                    event_listener,
                                                     last_log_error_supplier,
                                                     log_setup_supplier);
                 }
@@ -460,19 +487,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
                         throw GatorException(ss.str());
                     }
 
-                    /* this is a horrible hack so that we don't have to implement an IPC mechanism between
-                     * Child.cpp (which is going to be removed soon) and the capture controller. We have
-                     * the child process send us a SIGUSR1 when the target app needs to be started so that
-                     * we can tell the controller process - which has the correct privileges - to do that
-                     * for us.
-                     */
-                    if (signum == SIGUSR1) {
-                        LOG_DEBUG("Got SIGUSR1 from Child. Notifying event listener.");
-                        event_listener.waiting_for_target();
-                    }
-                    else {
-                        stateAndChildPid = handleSignal(stateAndChildPid, drivers, signum);
-                    }
+                    stateAndChildPid = handleSignal(stateAndChildPid, drivers, signum);
                 }
                 else {
                     // shouldn't really happen unless we forgot to handle a new item
@@ -486,6 +501,19 @@ int capture::beginCaptureProcess(const ParserResult & result,
     }
     catch (const GatorException & ex) {
         LOG_DEBUG("%s", ex.what());
+
+        // hard-kill the child process if its running
+        switch (stateAndChildPid.state) {
+            case State::CAPTURING:
+                LOG_DEBUG("Sending SIGKILL to child process");
+                kill(-stateAndChildPid.pid, SIGKILL);
+                break;
+            case State::IDLE:
+            case State::EXITING:
+            case State::EXIT:
+                break;
+        }
+
         handleException();
     }
 

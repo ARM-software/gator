@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #ifndef ANDROID_GATORANDROIDSETUPHANDLER_H_
 #define ANDROID_GATORANDROIDSETUPHANDLER_H_
@@ -26,7 +26,7 @@ namespace gator::android {
          * debug.perf_event_mlock_kb 8192
          * security.perf_harden 0
          */
-        GatorAndroidSetupHandler(SessionData & sessionData, UserClassification userClassification);
+        explicit GatorAndroidSetupHandler(UserClassification userClassification);
 
         /**
          * Will restore the android security properties
@@ -34,7 +34,7 @@ namespace gator::android {
          * were configured before profiling.
          * The initial values are saved during configureAndroidSecurityProperties, and will be used for restore.
          */
-        virtual ~GatorAndroidSetupHandler() noexcept;
+        ~GatorAndroidSetupHandler() noexcept override;
 
     private:
         std::map<std::string_view, std::string> initialPropertyMap {};

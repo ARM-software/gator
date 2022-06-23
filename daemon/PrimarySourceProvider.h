@@ -3,6 +3,8 @@
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
 
+#include "ISender.h"
+#include "agents/agent_workers_process.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 
@@ -80,10 +82,14 @@ public:
     /** Create the primary Source instance */
     [[nodiscard]] virtual std::unique_ptr<PrimarySource> createPrimarySource(
         sem_t & senderSem,
+        ISender & sender,
+        std::function<bool()> session_ended_callback,
+        std::function<void()> execTargetAppCallback,
         std::function<void()> profilingStartedCallback,
         const std::set<int> & appTids,
         FtraceDriver & ftraceDriver,
-        bool enableOnCommandExec) = 0;
+        bool enableOnCommandExec,
+        agents::agent_workers_process_t<Child> & agent_workers_process) = 0;
 
     [[nodiscard]] virtual const ICpuInfo & getCpuInfo() const = 0;
     [[nodiscard]] virtual ICpuInfo & getCpuInfo() = 0;

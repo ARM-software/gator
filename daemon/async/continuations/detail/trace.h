@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Config.h"
 #include "Logging.h"
 #include "lib/source_location.h"
 
@@ -11,7 +12,9 @@
     } while (false)
 
 // continuation tracing is expensive and only available on debug builds (and only outputs when --trace is set)
-#ifndef NDEBUG
+#if (!defined(NDEBUG)                                                                                                  \
+     && (!defined(CONFIG_DISABLE_CONTINUATION_TRACING) || (CONFIG_DISABLE_CONTINUATION_TRACING == 0)))                 \
+    || (defined(GATOR_UNIT_TESTS) && (GATOR_UNIT_TESTS != 0))
 
 #include "lib/Span.h"
 

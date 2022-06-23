@@ -125,7 +125,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     LOG_DEBUG("Kernel version: %s", utsname.release);
 
     // Check the kernel version
-    const int kernelVersion = lib::parseLinuxVersion(utsname);
+    auto const kernelVersion = lib::parseLinuxVersion(utsname);
 
     const bool hasArmv7PmuDriver = beginsWith(utsname.machine, "armv7")
                                 || FsEntry::create("/sys/bus/event_source/devices").hasChildWithNamePrefix("armv7");
@@ -141,7 +141,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 
     const bool use_64bit_register_set = (sizeof(void *) == 8) || has_64bit_uname;
 
-    if (kernelVersion < KERNEL_VERSION(3, 4, 0)) {
+    if (kernelVersion < KERNEL_VERSION(3U, 4U, 0U)) {
         const char error[] = "Unsupported kernel version\nPlease upgrade to 3.4 or later";
         LOG_SETUP(error);
         LOG_ERROR(error);
@@ -221,7 +221,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     }
 
     // Must have tracepoints or perf_event_attr.context_switch for sched switch info
-    if (systemWide && (!can_access_raw_tracepoints) && (kernelVersion < KERNEL_VERSION(4, 3, 0))) {
+    if (systemWide && (!can_access_raw_tracepoints) && (kernelVersion < KERNEL_VERSION(4U, 3U, 0U))) {
         if (can_access_tracepoints) {
             LOG_SETUP("System wide tracing\nperf_event_paranoid > -1 is not supported for system-wide non-root");
             LOG_ERROR("perf_event_open: perf_event_paranoid > -1 is not supported for system-wide non-root.\n"
@@ -263,15 +263,16 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     // create the configuration object, from this point on perf is supported
     std::unique_ptr<PerfDriverConfiguration> configuration {new PerfDriverConfiguration()};
 
-    configuration->config.has_fd_cloexec = (kernelVersion >= KERNEL_VERSION(3, 14, 0));
-    configuration->config.has_count_sw_dummy = (kernelVersion >= KERNEL_VERSION(3, 12, 0));
-    configuration->config.has_sample_identifier = (kernelVersion >= KERNEL_VERSION(3, 12, 0));
-    configuration->config.has_attr_comm_exec = (kernelVersion >= KERNEL_VERSION(3, 16, 0));
-    configuration->config.has_attr_mmap2 = (kernelVersion >= KERNEL_VERSION(3, 16, 0));
-    configuration->config.has_attr_clockid_support = (kernelVersion >= KERNEL_VERSION(4, 1, 0));
-    configuration->config.has_attr_context_switch = (kernelVersion >= KERNEL_VERSION(4, 3, 0));
-    configuration->config.has_ioctl_read_id = (kernelVersion >= KERNEL_VERSION(3, 12, 0));
-    configuration->config.has_aux_support = (kernelVersion >= KERNEL_VERSION(4, 1, 0));
+    configuration->config.has_fd_cloexec = (kernelVersion >= KERNEL_VERSION(3U, 14U, 0U));
+    configuration->config.has_count_sw_dummy = (kernelVersion >= KERNEL_VERSION(3U, 12U, 0U));
+    configuration->config.has_sample_identifier = (kernelVersion >= KERNEL_VERSION(3U, 12U, 0U));
+    configuration->config.has_attr_comm_exec = (kernelVersion >= KERNEL_VERSION(3U, 16U, 0U));
+    configuration->config.has_attr_mmap2 = (kernelVersion >= KERNEL_VERSION(3U, 16U, 0U));
+    configuration->config.has_attr_clockid_support = (kernelVersion >= KERNEL_VERSION(4U, 1U, 0U));
+    configuration->config.has_attr_context_switch = (kernelVersion >= KERNEL_VERSION(4U, 3U, 0U));
+    configuration->config.has_ioctl_read_id = (kernelVersion >= KERNEL_VERSION(3U, 12U, 0U));
+    configuration->config.has_aux_support = (kernelVersion >= KERNEL_VERSION(4U, 1U, 0U));
+    configuration->config.has_exclude_callchain_kernel = (kernelVersion >= KERNEL_VERSION(3U, 7U, 0U));
 
     configuration->config.is_system_wide = systemWide;
     configuration->config.exclude_kernel = exclude_kernel;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "ExternalDriver.h"
 
@@ -223,8 +223,12 @@ void ExternalDriver::start()
     pos = HEADER_SIZE;
     // ns/sec / samples/sec = ns/sample
     // For sample rate of none, sample every 100ms
-    buffer_utils::packInt(buf, pos, NS_PER_S / (gSessionData.mSampleRate == 0 ? 10 : gSessionData.mSampleRate));
-    buffer_utils::packInt(buf, pos, gSessionData.mLiveRate);
+    static constexpr std::uint64_t min_rate = 10UL;
+    buffer_utils::packInt(
+        buf,
+        pos,
+        static_cast<int32_t>(NS_PER_S / (gSessionData.mSampleRate == 0 ? min_rate : gSessionData.mSampleRate)));
+    buffer_utils::packInt(buf, pos, static_cast<int32_t>(gSessionData.mLiveRate));
     buffer_utils::writeLEInt(buf + 1, pos);
     if (!lib::writeAll(mUds, buf, pos)) {
         LOG_ERROR("Unable to send start message");

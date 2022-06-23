@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "SessionXML.h"
 
@@ -67,13 +67,15 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     }
     // copy to pre-allocated strings
     if (mxmlElementGetAttr(node, ATTR_BUFFER_MODE) != nullptr) {
-        strncpy(parameters.buffer_mode, mxmlElementGetAttr(node, ATTR_BUFFER_MODE), sizeof(parameters.buffer_mode));
+        strncpy(parameters.buffer_mode, mxmlElementGetAttr(node, ATTR_BUFFER_MODE), sizeof(parameters.buffer_mode) - 1);
         parameters.buffer_mode[sizeof(parameters.buffer_mode) - 1] =
             0; // strncpy does not guarantee a null-terminated string
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0)) {
         if (mxmlElementGetAttr(node, ATTR_SAMPLE_RATE) != nullptr) {
-            strncpy(parameters.sample_rate, mxmlElementGetAttr(node, ATTR_SAMPLE_RATE), sizeof(parameters.sample_rate));
+            strncpy(parameters.sample_rate,
+                    mxmlElementGetAttr(node, ATTR_SAMPLE_RATE),
+                    sizeof(parameters.sample_rate) - 1);
             parameters.sample_rate[sizeof(parameters.sample_rate) - 1] =
                 0; // strncpy does not guarantee a null-terminated string
         }

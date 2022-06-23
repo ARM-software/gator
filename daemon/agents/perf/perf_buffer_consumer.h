@@ -2,287 +2,315 @@
 
 #pragma once
 
-#include "agents/perf/apc_encoders.h"
-#include "agents/perf/detail/perf_buffer_consumer_detail.h"
-#include "agents/perf/frame_encoder.h"
+#include "Logging.h"
+#include "agents/perf/events/perf_ringbuffer_mmap.hpp"
+#include "agents/perf/record_types.h"
 #include "async/continuations/async_initiate.h"
 #include "async/continuations/continuation.h"
+#include "async/continuations/continuation_of.h"
+#include "async/continuations/operations.h"
+#include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
-#include "lib/Span.h"
+#include "ipc/raw_ipc_channel_sink.h"
 
-#include <boost/asio/error.hpp>
+#include <atomic>
+#include <deque>
+#include <memory>
+#include <set>
+
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/strand.hpp>
+#include <boost/asio/io_context_strand.hpp>
+#include <boost/system/errc.hpp>
 #include <boost/system/error_code.hpp>
 
 namespace agents::perf {
-
     /**
-     * Instances of this class track and manage the perf buffers across multiple CPUs. They are responsible
-     * for initiating a chain of async operations that read from each buffer and feed the results into an
-     * intermediate buffer.
+     * This class consumes the contents of the perf mmap ringbuffers, outputing perf data apc frames and perf aux apc frames.
+     * It is not responsible for monitoring of the perf file descriptors / periodic timer (these are handled elsewhere), but it provides
+     * an interface where some other caller can trigger the data in the ringbuffer(s) to be consumed.
      */
     class perf_buffer_consumer_t : public std::enable_shared_from_this<perf_buffer_consumer_t> {
-        using strand_type = boost::asio::io_context::strand;
-
-        template<typename CompletionToken>
-        auto async_send(std::shared_ptr<detail::perf_consume_op_t<strand_type>> op,
-                        std::shared_ptr<async::async_buffer_t> intermediate_buffer,
-                        CompletionToken && token)
+    public:
+        perf_buffer_consumer_t(boost::asio::io_context & context,
+                               std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink,
+                               std::size_t one_shot_mode_limit)
+            : one_shot_mode_limit(one_shot_mode_limit), ipc_sink(std::move(ipc_sink)), strand(context)
         {
-            return op->async_send(detail::data_encode_op_t<data_encoder_type> {data_encoder, intermediate_buffer},
-                                  detail::aux_encode_op_t<aux_encoder_type> {aux_encoder, intermediate_buffer},
-                                  std::forward<CompletionToken>(token));
         }
 
-    public:
         /**
-         * Constructor.
+         * Insert a mmap into the consumer
          *
-         * @param io I/O context to use
-         * @param config Buffer configuration
-         * @exception GatorException Thrown if @a config fails validation
-         */
-        perf_buffer_consumer_t(boost::asio::io_context & io, buffer_config_t config);
-
-        [[nodiscard]] std::size_t get_data_buffer_length() const { return config.data_buffer_size; }
-
-        [[nodiscard]] std::size_t get_aux_buffer_length() const { return config.aux_buffer_size; }
-
-        /**
-         * Start tracking a perf event file descriptor for a specific CPU.
-         *
-         * @tparam CompletionToken Token type, expects an error_code.
-         * @param fd The perf event fd.
-         * @param cpu The CPU number that the fd is linked to.
-         * @param collect_aux_trace Whether to also map (and eventually read from) the aux buffer.
-         * @param token Called once the perf buffer has been registered with this instance, or if a
-         * failure has occurred.
-         * @return Nothing or a continuation, depending on @a CompletionToken
+         * @param cpu The cpu the mmap is associated with
+         * @param mmap The mmap object
          */
         template<typename CompletionToken>
-        auto async_add_ringbuffer(int fd, int cpu, bool collect_aux_trace, CompletionToken && token)
+        auto async_add_ringbuffer(int cpu, std::shared_ptr<perf_ringbuffer_mmap_t> mmap, CompletionToken && token)
         {
             using namespace async::continuations;
+
+            LOG_DEBUG("Add new mmap request for %d", cpu);
+
             return async_initiate<continuation_of_t<boost::system::error_code>>(
-                [self = shared_from_this(), fd, cpu, collect_aux_trace]() mutable {
-                    return start_on(self->strand) //
-                         | then([self, fd, cpu, collect_aux_trace]() mutable {
-                               // Create the ringbuffer instance if necessary
-                               auto buf_it = self->per_cpu_buffers.find(cpu);
-                               if (buf_it == self->per_cpu_buffers.end()) {
-                                   auto op = detail::perf_consume_op_factory_t(self->strand, fd, cpu, self->config);
-                                   if (!op) {
-                                       return boost::asio::error::make_error_code(boost::asio::error::invalid_argument);
-                                   }
+                [st = shared_from_this(), cpu, mmap = std::move(mmap)]() mutable {
+                    return start_on(st->strand) //
+                         | then([st, cpu, mmap = std::move(mmap)]() mutable {
+                               LOG_DEBUG("Added new mmap for %d", cpu);
 
-                                   buf_it = self->per_cpu_buffers.emplace(cpu, std::move(op)).first;
-                               }
-                               else {
-                                   // Otherwise just instruct the event FD to output to our ringbuffer
-                                   const auto ec = buf_it->second->set_output(fd);
-                                   if (ec) {
-                                       return ec;
-                                   }
+                               // validate the pointer
+                               if ((!mmap) || (!mmap->has_data())) {
+                                   return boost::system::errc::make_error_code(boost::system::errc::invalid_argument);
                                }
 
-                               if (collect_aux_trace) {
-                                   const auto ec = buf_it->second->attach_aux_buffer(fd);
-                                   if (ec) {
-                                       return ec;
-                                   }
+                               // insert it into the map
+                               auto [it, inserted] = st->per_cpu_mmaps.try_emplace(cpu, std::move(mmap));
+                               (void) it;
+
+                               if (!inserted) {
+                                   LOG_DEBUG("... failed, as already has mmap");
+                                   return boost::system::errc::make_error_code(
+                                       boost::system::errc::device_or_resource_busy);
                                }
 
+                               // success
                                return boost::system::error_code {};
                            });
                 },
-                token);
+                std::forward<CompletionToken>(token));
         }
 
         /**
-         * Overload where no aux data will be collected.
+         * Cause the mmap associated with `cpu` to be polled and any data to be written out to the capture.
          *
-         * @tparam CompletionToken Token type, expects an error_code.
-         * @param fd The perf event fd.
-         * @param cpu The CPU number that the fd is linked to.
-         * @param token Called once the perf buffer has been registered with this instance, or if a
-         * failure has occurred.
-         * @return Nothing or a continuation, depending on @a CompletionToken
+         * The operation will complete successfully if the cpu is already in the process of being polled by some other trigger, or if the cpu currently doesn't have any mmap associated with it.
+         *
+         * @param cpu The cpu for which the associated mmap should be polled
          */
         template<typename CompletionToken>
-        auto async_add_ringbuffer(int fd, int cpu, CompletionToken && token)
-        {
-            return async_add_ringbuffer(fd, cpu, false, std::forward<CompletionToken>(token));
-        }
-
-        /**
-         * Stop tracking for a specific CPU.
-         *
-         * @tparam CompletionToken Token type, expects an error_code.
-         * @param cpu The CPU number that the fd is linked to.
-         * @param intermediate_buffer Buffer to dump the ringbuffer data into
-         * @param token Called once the perf buffer has been deregistered with this instance, or if a
-         * failure has occurred.
-         * @return Nothing or a continuation, depending on @a CompletionToken
-         */
-        template<typename CompletionToken>
-        auto async_remove_ringbuffer(int cpu,
-                                     std::shared_ptr<async::async_buffer_t> intermediate_buffer,
-                                     CompletionToken && token)
+        auto async_poll(int cpu, CompletionToken && token)
         {
             using namespace async::continuations;
+
+            LOG_TRACE("Poll requested for %d", cpu);
+
             return async_initiate<continuation_of_t<boost::system::error_code>>(
-                [self = shared_from_this(), cpu, ibuf = std::move(intermediate_buffer)]() mutable {
-                    return start_on(self->strand)
-                         | then([self, cpu, ibuf = std::move(ibuf)]() mutable
-                                -> polymorphic_continuation_t<boost::system::error_code> {
-                               auto buf_it = self->per_cpu_buffers.find(cpu);
-                               if (buf_it == self->per_cpu_buffers.end()) {
-                                   return start_with(
-                                       boost::asio::error::make_error_code(boost::asio::error::misc_errors::not_found));
+                [st = shared_from_this(), cpu]() mutable {
+                    return start_on(st->strand) //
+                         | then([cpu, st]() mutable -> polymorphic_continuation_t<boost::system::error_code> {
+                               LOG_TRACE("Poll started for %d", cpu);
+
+                               auto mmap_it = st->per_cpu_mmaps.find(cpu);
+                               // ignore cpus that don't exist; its probably just poll_all
+                               if (mmap_it == st->per_cpu_mmaps.end()) {
+                                   LOG_TRACE("No such mmap found for %d", cpu);
+                                   return start_with(boost::system::error_code {});
                                }
 
-                               auto buf = std::move(buf_it->second);
-                               self->per_cpu_buffers.erase(buf_it);
+                               // if it is already being polled, also ignore the request
+                               if (!st->busy_cpus.insert(cpu).second) {
+                                   LOG_TRACE("Already polling %d", cpu);
+                                   return start_with(boost::system::error_code {});
+                               }
 
-                               // Drain ringbuffer before destroying
-                               return buf->async_send(
-                                   detail::data_encode_op_t<data_encoder_type>(self->data_encoder, ibuf),
-                                   detail::aux_encode_op_t<aux_encoder_type>(self->aux_encoder, ibuf),
-                                   use_continuation);
+                               // ok, poll it
+                               return do_poll(st, mmap_it->second, cpu);
                            });
                 },
                 token);
         }
 
         /**
-         * Stop tracking for all CPUs.
-         *
-         * @tparam CompletionToken Token type, expects an error_code.
-         * @param intermediate_buffer Buffer to dump the ringbuffer data into
-         * @param token Called once complete.
-         * @return Nothing or a continuation, depending on @a CompletionToken
+         * Cause the mmap for all currently tracked cpus to be polled.
          */
         template<typename CompletionToken>
-        auto async_remove_all(std::shared_ptr<async::async_buffer_t> intermediate_buffer, CompletionToken && token)
+        auto async_poll_all(CompletionToken && token)
         {
             using namespace async::continuations;
 
+            LOG_TRACE("Poll all requested");
+
             return async_initiate<continuation_of_t<boost::system::error_code>>(
-                [self = shared_from_this(), ibuf = std::move(intermediate_buffer)]() mutable {
-                    // If there's a failure, we need to report an appropriate error code, but we don't
-                    // want to exit early as all other ringbuffers still need removing
-                    return start_on(self->strand) //
-                         | then([]() { return boost::system::error_code {}; })
-                         | loop(
-                               [self](auto ec) {
-                                   // Even in the event of failure async_remove_ringbuffer will always
-                                   // remove the entry in per_cpu_buffers
-                                   return start_on(self->strand) //
-                                        | then([self, ec]() { return start_with(!self->per_cpu_buffers.empty(), ec); });
-                               },
-                               [self, ibuf = std::move(ibuf)](auto ec) mutable {
-                                   const int cpu = self->per_cpu_buffers.begin()->first;
-                                   return self->async_remove_ringbuffer(cpu, ibuf, use_continuation)
-                                        | then([ec](auto new_ec) mutable {
-                                              if (new_ec) {
-                                                  ec = new_ec;
-                                              }
-
-                                              return ec;
-                                          });
-                               });
-                },
-                token);
-        }
-
-        /**
-         * Write out data from a per-CPU ringbuffer to the intermediate buffer.
-         *
-         * @tparam CompletionToken Token type, expects an error_code.
-         * @param cpu The CPU number that the fd is linked to.
-         * @param intermediate_buffer Buffer to dump the ringbuffer data into
-         * @param token Called once complete.
-         * @return Nothing or a continuation, depending on @a CompletionToken
-         */
-        template<typename CompletionToken>
-        auto async_poll(int cpu, std::shared_ptr<async::async_buffer_t> intermediate_buffer, CompletionToken && token)
-        {
-            using namespace async::continuations;
-            return async_initiate<continuation_of_t<boost::system::error_code>>(
-                [self = shared_from_this(), cpu, ibuf = std::move(intermediate_buffer)]() mutable {
-                    return start_on(self->strand)
-                         | then([self, cpu, ibuf = std::move(ibuf)]() mutable
-                                -> polymorphic_continuation_t<boost::system::error_code> {
-                               auto buf_it = self->per_cpu_buffers.find(cpu);
-                               if (buf_it == self->per_cpu_buffers.end()) {
-                                   LOG_DEBUG("No perf buffer for CPU %d", cpu);
-                                   return start_with(
-                                       boost::asio::error::make_error_code(boost::asio::error::misc_errors::not_found));
-                               }
-
-                               return self->async_send(buf_it->second, ibuf, use_continuation);
+                [st = shared_from_this()]() mutable {
+                    return start_on(st->strand) //
+                         | then([st]() mutable {
+                               return start_with<std::size_t, std::size_t, boost::system::error_code>(
+                                          0,
+                                          st->per_cpu_mmaps.size(),
+                                          {}) //
+                                    | loop(
+                                          [](std::size_t n, std::size_t count, boost::system::error_code ec) { //
+                                              return start_with((n < count) && !ec, n, count, ec);
+                                          },
+                                          [st](std::size_t n, std::size_t count, boost::system::error_code /*ec*/) {
+                                              return st->async_poll(n, use_continuation) //
+                                                   | then([n, count](auto ec) { return start_with(n + 1, count, ec); });
+                                          })
+                                    | then([](std::size_t /*n*/, std::size_t /*count*/, boost::system::error_code ec) {
+                                          LOG_TRACE("Poll all completed (ec=%s)", ec.message().c_str());
+                                          return ec;
+                                      });
                            });
                 },
                 token);
         }
 
         /**
-         * Write out data from all ringbuffers to the intermediate buffer.
+         * Remove the mmap associated with some cpu.
          *
-         * @tparam CompletionToken Token type, expects an error_code.
-         * @param intermediate_buffer Buffer to dump the ringbuffer data into
-         * @param token Called once complete.
-         * @return Nothing or a continuation, depending on @a CompletionToken
+         * The mmap will be polled one more time before removal, and any currently active poll operations will complete successfully in parallel.
+         *
+         * @param cpu The cpu for which the associated mmap should be removed
          */
         template<typename CompletionToken>
-        auto async_poll_all(std::shared_ptr<async::async_buffer_t> intermediate_buffer, CompletionToken && token)
+        auto async_remove_ringbuffer(int cpu, CompletionToken && token)
         {
             using namespace async::continuations;
 
+            LOG_TRACE("Remove mmap requested for %d", cpu);
+
             return async_initiate<continuation_of_t<boost::system::error_code>>(
-                [self = shared_from_this(), ibuf = std::move(intermediate_buffer)]() mutable {
-                    // If there's a failure, we need to report an appropriate error code, but we don't
-                    // want to exit early as all other ringbuffers still need polling
-                    return start_on(self->strand) //
-                         | then([self]() {
-                               return start_with(self->per_cpu_buffers.begin(), boost::system::error_code {});
-                           })
-                         | loop(
-                               [self](auto it, auto ec) {
-                                   return start_on(self->strand)
-                                        | then([=]() { return start_with(it != self->per_cpu_buffers.end(), it, ec); });
-                               },
-                               [self, ibuf = std::move(ibuf)](auto it, auto ec) mutable {
-                                   return self->async_send(it->second, ibuf, use_continuation)
-                                        | then([=](auto new_ec) mutable {
-                                              // Even in the event of failure, always increment the iterator
-                                              if (new_ec) {
-                                                  ec = new_ec;
-                                              }
-                                              return start_with(++it, ec);
-                                          });
-                               })
-                         | then([](auto /*it*/, auto ec) { return ec; });
+                [st = shared_from_this(), cpu]() mutable {
+                    return start_on(st->strand) //
+                         | then([st, cpu]() {
+                               LOG_TRACE("Remove mmap marked for %d", cpu);
+                               st->removed_cpus.insert(cpu);
+                           }) //
+                         | st->async_poll(cpu, use_continuation);
                 },
                 token);
+        }
+
+        /**
+         * Wait for notification that the required number of bytes is sent in one-shot mode
+         * NB: will never notify if one-shot mode is disabled
+         */
+        template<typename CompletionToken>
+        auto async_wait_one_shot_full(CompletionToken && token)
+        {
+            using namespace async::continuations;
+
+            LOG_TRACE("Wait oneshot-full requested");
+
+            return async_initiate_explicit<void()>(
+                [st = shared_from_this()](auto && sc) mutable {
+                    submit(start_on(st->strand) //
+                               | then([st, sc = sc.move()]() mutable {
+                                     LOG_TRACE("Wait oneshot-full started");
+
+                                     // notify directly if already full
+                                     if (st->is_one_shot_full()) {
+                                         resume_continuation(st->strand.context(), std::move(sc));
+                                     }
+
+                                     // save it for later
+                                     runtime_assert(!st->one_shot_mode_observer,
+                                                    "Cannot register two one-shot mode observers");
+
+                                     st->one_shot_mode_observer = std::move(sc);
+                                 }),
+                           sc.get_exceptionally());
+                },
+                token);
+        }
+
+        /** Is the output data full wrt one-shot mode */
+        [[nodiscard]] bool is_one_shot_full() const
+        {
+            return ((one_shot_mode_limit > 0)
+                    && (cumulative_bytes_sent_apc_frames.load(std::memory_order_acquire) >= one_shot_mode_limit));
+        }
+
+        /** Manually trigger the one-shot-mode callback */
+        void trigger_one_shot_mode()
+        {
+            // set  both to non-zero to mark as triggered
+            one_shot_mode_limit = 1;
+            cumulative_bytes_sent_apc_frames.store(1, std::memory_order_release);
+
+            // trigger if possible
+            boost::asio::post(strand, [st = this->shared_from_this()]() {
+                async::continuations::stored_continuation_t<> one_shot_mode_observer {
+                    std::move(st->one_shot_mode_observer)};
+
+                if (one_shot_mode_observer) {
+                    resume_continuation(st->strand.context(), std::move(one_shot_mode_observer));
+                }
+            });
         }
 
     private:
-        using data_encoder_type =
-            frame_encoder_t<strand_type, data_record_chunk_tuple_t, encoders::data_record_apc_encoder_t>;
-        using aux_encoder_type = frame_encoder_t<strand_type, aux_record_chunk_t, encoders::aux_record_apc_encoder_t>;
+        /**
+         * Send one apc_frame IPC message, returns the head, new-tail and error code as required at the end of each send loop iteration
+         *
+         * @param st The this pointer for the perf_buffer_consumer_t that made the request
+         * @param cpu The cpu associated with the request
+         * @param buffer The apc_frame data buffer
+         * @param head The aux_head or data_head value
+         * @param tail The new value for aux_tail or data_tail after the send completes
+         * @return A continuation producing the head, new-tail and error code values
+         */
+        static async::continuations::polymorphic_continuation_t<std::uint64_t, std::uint64_t, boost::system::error_code>
+        do_send_msg(std::shared_ptr<perf_buffer_consumer_t> const & st,
+                    int cpu,
+                    std::vector<char> buffer,
+                    std::uint64_t head,
+                    std::uint64_t tail);
 
-        // It's better performance-wise to use unordered_map, but the lack of determinisim of frame order makes
-        // testing impossible (no, the default hash has does not order the buckets in ascending order)
-        using per_cpu_buffer_type = std::map<int /*cpu*/, std::shared_ptr<detail::perf_consume_op_t<strand_type>>>;
+        /**
+         * Common to both aux and data send loops, this function will extract the head and tail field, then iterate over the buffer until tail == head, sending some chunk and then moving tail
+         *
+         * @tparam HeadField A pointer-to-member-variable for the aux_head or data_head field in the mmap header
+         * @tparam TailField A pointer-to-member-variable for the aux_tail or data_tail field in the mmap header
+         * @tparam Op The loop body operation, that encodes and sends some chunk of the mmap. Must return a continuation over `(head, new-tail, error-code)`
+         * @param mmap The mmap object
+         * @param cpu The cpu associated with this mmap
+         * @param op The operation
+         * @return a continuation that produces an error code
+         */
+        template<__u64 perf_event_mmap_page::*HeadField, __u64 perf_event_mmap_page::*TailField, typename Op>
+        static async::continuations::polymorphic_continuation_t<boost::system::error_code, bool> do_send_common(
+            std::shared_ptr<perf_buffer_consumer_t> const & st,
+            std::shared_ptr<perf_ringbuffer_mmap_t> const & mmap,
+            int cpu,
+            Op && op);
 
-        strand_type strand;
-        buffer_config_t config;
+        /**
+         * Read and send the aux section
+         */
+        static async::continuations::polymorphic_continuation_t<boost::system::error_code, bool> do_send_aux_section(
+            std::shared_ptr<perf_buffer_consumer_t> const & st,
+            std::shared_ptr<perf_ringbuffer_mmap_t> const & mmap,
+            int cpu,
+            boost::system::error_code ec_from_data,
+            bool modified_from_data);
 
-        std::shared_ptr<data_encoder_type> data_encoder;
-        std::shared_ptr<aux_encoder_type> aux_encoder;
+        /**
+         * Read and send the data section
+         */
+        static async::continuations::polymorphic_continuation_t<boost::system::error_code, bool> do_send_data_section(
+            std::shared_ptr<perf_buffer_consumer_t> const & st,
+            std::shared_ptr<perf_ringbuffer_mmap_t> const & mmap,
+            int cpu);
 
-        per_cpu_buffer_type per_cpu_buffers;
+        /**
+         * Construct the poll operation for one cpu
+         *
+         * @param st The shared this
+         * @param mmap The mmap being read from
+         * @param cpu The cpu to poll
+         */
+        [[nodiscard]] static async::continuations::polymorphic_continuation_t<boost::system::error_code> do_poll(
+            std::shared_ptr<perf_buffer_consumer_t> const & st,
+            std::shared_ptr<perf_ringbuffer_mmap_t> const & mmap,
+            int cpu);
+
+        std::atomic_size_t cumulative_bytes_sent_apc_frames {0};
+        std::size_t one_shot_mode_limit {0};
+        std::set<int> busy_cpus {};
+        std::set<int> removed_cpus {};
+        std::map<int, std::shared_ptr<perf_ringbuffer_mmap_t>> per_cpu_mmaps {};
+        std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink;
+        async::continuations::stored_continuation_t<> one_shot_mode_observer {};
+        boost::asio::io_context::strand strand;
     };
 }

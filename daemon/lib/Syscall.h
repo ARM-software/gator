@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_SYSCALL_H
 #define INCLUDE_LIB_SYSCALL_H
@@ -19,6 +19,8 @@ namespace lib {
     int close(int fd);
 
     int open(const char * path, int flag);
+
+    int open(const char * path, int flag, mode_t mode);
 
     int fcntl(int fd, int cmd, unsigned long arg = 0);
 
@@ -45,6 +47,12 @@ namespace lib {
     int poll(struct pollfd * __fds, nfds_t __nfds, int __timeout);
     int access(const char * filename, int how);
     void exit(int status);
+
+    int kill(pid_t pid, int signal);
+
+    pid_t getppid();
+    pid_t getpid();
+    pid_t gettid();
 }
 
 #endif // INCLUDE_LIB_SYSCALL_H

@@ -5,6 +5,7 @@
 #include "Logging.h"
 #include "lib/Assert.h"
 #include "lib/String.h"
+#include "lib/Syscall.h"
 #include "lib/Utils.h"
 #include "linux/CoreOnliner.h"
 
@@ -50,7 +51,7 @@ bool PerCoreIdentificationThread::configureAffinity()
     // the maximum number of times we will attempt to affine to the core before bailing
     static constexpr unsigned AFFINE_LOOP_COUNT = 65535;
 
-    const pid_t tid = syscall(__NR_gettid);
+    const pid_t tid = lib::gettid();
 
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);

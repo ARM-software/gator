@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_SPAN_H
 #define INCLUDE_LIB_SPAN_H
@@ -159,6 +159,11 @@ namespace lib {
     {
         return Span<const T, L> {array, Size};
     }
+
+    template<typename C, //
+             typename = typename C::value_type,
+             typename = typename C::size_type>
+    Span(C const &) -> Span<typename C::value_type, typename C::size_type>;
 }
 
 #endif // INCLUDE_LIB_SPAN_H

@@ -4,10 +4,12 @@
 
 #include "ICpuInfo.h"
 #include "SessionData.h"
+#include "agents/perf/events/event_configuration.hpp"
+#include "agents/perf/events/types.hpp"
+#include "agents/perf/record_types.h"
 #include "ipc/messages.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
-#include "linux/perf/PerfBuffer.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
@@ -21,7 +23,6 @@ namespace agents::perf {
         using perf_config_t = PerfConfig;
         using gator_cpu_t = GatorCpu;
         using uncore_pmu_t = UncorePmu;
-        using perf_groups_t = perf_groups_common_serialized_state_t<perf_event_group_activator_state_t>;
 
         struct session_data_t {
             std::uint64_t live_rate;
@@ -29,6 +30,7 @@ namespace agents::perf {
             std::int32_t sample_rate;
             bool one_shot;
             bool exclude_kernel_events;
+            bool stop_on_exit;
         };
 
         struct command_t {
@@ -50,16 +52,18 @@ namespace agents::perf {
         std::vector<cpu_freq_properties_t> cluster_keys_for_cpu_frequency_counter {};
         std::vector<std::int32_t> per_core_cluster_index {};
         std::vector<std::int32_t> per_core_cpuids {};
-        std::map<std::int32_t, std::int32_t> per_core_spe_type {};
+        std::map<core_no_t, std::uint32_t> per_core_spe_type {};
         std::vector<uncore_pmu_t> uncore_pmus {};
         std::map<std::uint32_t, std::string> cpuid_to_core_name {};
-        perf_groups_t perf_groups {};
-        perf_ringbuffer_config_t ringbuffer_config {};
+        std::map<std::uint32_t, std::string> perf_pmu_type_to_name {};
+        event_configuration_t event_configuration {};
+        buffer_config_t ringbuffer_config {};
         std::optional<command_t> command {};
-        std::optional<std::string> wait_process {};
+        std::string wait_process {};
         std::set<pid_t> pids {};
         std::uint32_t num_cpu_cores {};
         bool enable_on_exec {};
+        bool stop_pids {};
     };
 
     /**
@@ -69,13 +73,15 @@ namespace agents::perf {
         SessionData const & session_data,
         PerfConfig const & perf_config,
         ICpuInfo const & cpu_info,
-        std::map<int, int> const & cpu_number_to_spe_type,
+        std::map<int, std::uint32_t> const & cpu_number_to_spe_type,
         lib::Span<perf_capture_configuration_t::cpu_freq_properties_t> cluster_keys_for_cpu_frequency_counter,
         lib::Span<UncorePmu const> uncore_pmus,
         lib::Span<GatorCpu const> all_known_cpu_pmus,
         perf_groups_configurer_state_t const & perf_groups,
-        perf_ringbuffer_config_t const & ringbuffer_config,
-        bool enable_on_exec);
+        agents::perf::buffer_config_t const & ringbuffer_config,
+        std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name,
+        bool enable_on_exec,
+        bool stop_pids);
 
     /** Add a command to execute (for --app, --allow-cmd) */
     void add_command(ipc::msg_capture_configuration_t & msg,
@@ -91,6 +97,6 @@ namespace agents::perf {
     void add_pids(ipc::msg_capture_configuration_t & msg, std::set<int> const & pids);
 
     /** Extract and validate the fields from the received msg. (Passed by value to allow moving out strings, rather than copying) */
-    [[nodiscard]] std::unique_ptr<perf_capture_configuration_t> parse_capture_configuration_msg(
+    [[nodiscard]] std::shared_ptr<perf_capture_configuration_t> parse_capture_configuration_msg(
         ipc::msg_capture_configuration_t msg);
 };

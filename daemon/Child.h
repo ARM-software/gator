@@ -6,6 +6,7 @@
 #include "Configuration.h"
 #include "Source.h"
 #include "agents/agent_workers_process.h"
+#include "capture/CaptureProcess.h"
 #include "lib/AutoClosingFd.h"
 #include "logging/suppliers.h"
 
@@ -38,11 +39,13 @@ public:
     static std::unique_ptr<Child> createLocal(agents::i_agent_spawner_t & spawner,
                                               Drivers & drivers,
                                               const Config & config,
+                                              capture::capture_process_event_listener_t & event_listener,
                                               logging::last_log_error_supplier_t last_error_supplier,
                                               logging::log_setup_supplier_t log_setup_supplier);
     static std::unique_ptr<Child> createLive(agents::i_agent_spawner_t & spawner,
                                              Drivers & drivers,
                                              OlySocket & sock,
+                                             capture::capture_process_event_listener_t & event_listener,
                                              logging::last_log_error_supplier_t last_error_supplier,
                                              logging::log_setup_supplier_t log_setup_supplier);
 
@@ -55,12 +58,9 @@ public:
     Child & operator=(Child &&) = delete;
 
     /**
-     * @brief Runs the capture process. If notify_pid is set then SIGUSR1 will be sent to
-     * that pid when the capture process is ready for the target app to be started.
-     *
-     * @param notify_pid The pid to signal when the target app should be started. When <= 0 no signal is sent.
+     * @brief Runs the capture process
      */
-    void run(int notify_pid);
+    void run();
 
     void endSession(int signum = 0);
 
@@ -80,6 +80,7 @@ private:
     std::unique_ptr<Sender> sender;
     Drivers & drivers;
     OlySocket * socket;
+    capture::capture_process_event_listener_t & event_listener;
     int numExceptions;
     std::mutex sessionEndedMutex {};
     lib::AutoClosingFd sessionEndEventFd {};
@@ -95,6 +96,7 @@ private:
           Drivers & drivers,
           OlySocket * sock,
           Config config,
+          capture::capture_process_event_listener_t & event_listener,
           logging::last_log_error_supplier_t last_error_supplier,
           logging::log_setup_supplier_t log_setup_supplier);
 

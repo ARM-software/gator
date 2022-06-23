@@ -4,6 +4,8 @@
 
 #include "Logging.h"
 #include "agents/common/socket_reference.h"
+#include "async/continuations/async_initiate.h"
+#include "async/continuations/stored_continuation.h"
 #include "lib/Assert.h"
 
 #include <array>
@@ -32,11 +34,12 @@ namespace agents {
         using ipc_sink_type = IpcSinkType;
 
         /** Factory method */
-        static std::shared_ptr<socket_read_worker_t> create(ipc_sink_type && ipc_sink,
+        static std::shared_ptr<socket_read_worker_t> create(boost::asio::io_context & context,
+                                                            ipc_sink_type && ipc_sink,
                                                             std::shared_ptr<socket_reference_base_t> socket_ref)
         {
             return std::make_shared<socket_read_worker_t>(
-                socket_read_worker_t {std::move(ipc_sink), std::move(socket_ref)});
+                socket_read_worker_t {context, std::move(ipc_sink), std::move(socket_ref)});
         }
 
         /** @return True if the socket is still open */
@@ -49,7 +52,7 @@ namespace agents {
             ipc_sink.async_send_new_connection([st = this->shared_from_this()](auto const & ec, auto /*msg*/) {
                 if (ec) {
                     // log it and close the connection
-                    LOG_ERROR_IF_NOT_EOF(
+                    LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(
                         ec,
                         "(%p) Error occured while notifying IPC of new external connection %d, dropping due to %s",
                         st.get(),
@@ -66,69 +69,72 @@ namespace agents {
         template<typename CompletionToken>
         auto async_send_bytes(std::vector<char> && bytes, CompletionToken && token)
         {
+            using namespace async::continuations;
+
             LOG_TRACE("(%p) Received request to send %zu bytes", this, bytes.size());
 
-            return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code)>(
-                [st = this->shared_from_this(), bytes = std::move(bytes)](auto && handler) mutable {
-                    using Handler = decltype(handler);
-                    return st->do_async_send_bytes(std::move(bytes), std::forward<Handler>(handler));
+            return async_initiate_explicit<void(boost::system::error_code)>(
+                [st = this->shared_from_this(), bytes = std::move(bytes)](auto && sc) mutable {
+                    return st->do_async_send_bytes(std::move(bytes), std::forward<decltype(sc)>(sc));
                 },
-                token);
+                std::forward<CompletionToken>(token));
         }
 
         /** Close the connection */
         template<typename CompletionToken>
         auto async_close(CompletionToken && token)
         {
-            return boost::asio::async_initiate<CompletionToken, void()>(
-                [st = this->shared_from_this()](auto && handler) mutable {
-                    using Handler = decltype(handler);
-                    st->do_async_close(std::forward<Handler>(handler));
+            using namespace async::continuations;
+
+            return async_initiate_explicit<void()>(
+                [st = this->shared_from_this()](auto && sc) mutable {
+                    st->do_async_close(std::forward<decltype(sc)>(sc));
                 },
-                token);
+                std::forward<CompletionToken>(token));
         }
 
     private:
+        boost::asio::io_context & context;
         ipc_sink_type ipc_sink;
         std::shared_ptr<socket_reference_base_t> socket_ref;
         std::vector<char> receive_message_buffer {};
 
-        socket_read_worker_t(ipc_sink_type && ipc_sink, std::shared_ptr<socket_reference_base_t> socket_ref)
-            : ipc_sink(std::move(ipc_sink)), socket_ref(std::move(socket_ref))
+        socket_read_worker_t(boost::asio::io_context & context,
+                             ipc_sink_type && ipc_sink,
+                             std::shared_ptr<socket_reference_base_t> socket_ref)
+            : context(context), ipc_sink(std::move(ipc_sink)), socket_ref(std::move(socket_ref))
         {
         }
 
         /** Perform the async close operation */
-        template<typename Handler>
-        void do_async_close(Handler && handler)
+        template<typename R, typename E>
+        void do_async_close(async::continuations::raw_stored_continuation_t<R, E> && sc)
         {
-            using handler_type = std::decay_t<Handler>;
-
             // tell the IPC mechanism, but only once
             if (is_open()) {
                 return ipc_sink.async_send_close_connection(
-                    [st = this->shared_from_this(), handler = std::forward<handler_type>(handler)](auto const & /*ec*/,
-                                                                                                   auto /*msg*/) {
+                    [st = this->shared_from_this(), sc = std::move(sc)](auto const & /*ec*/, auto /*msg*/) mutable {
                         // close the socket
                         st->socket_ref->close();
                         // notify the handler
-                        return handler();
+                        return resume_continuation(st->context, std::move(sc));
                     });
             }
 
             // otherwise just call the handler directly
-            return handler();
+            return resume_continuation(context, std::move(sc));
         }
 
         /** Perform the async send operation */
-        template<typename Handler>
-        void do_async_send_bytes(std::vector<char> && bytes, Handler && handler)
+        template<typename R, typename E>
+        void do_async_send_bytes(std::vector<char> && bytes,
+                                 async::continuations::raw_stored_continuation_t<R, E, boost::system::error_code> && sc)
         {
-            using handler_type = std::decay_t<Handler>;
+            using namespace async::continuations;
 
             socket_ref->with_socket([st = this->shared_from_this(),
                                      bytes_ptr = std::make_unique<std::vector<char>>(std::move(bytes)),
-                                     handler = std::forward<handler_type>(handler)](auto & socket) mutable {
+                                     sc = std::move(sc)](auto & socket) mutable {
                 // make the buffer before the call to move(bytes_ptr) otherwise the move will happen before the deref
                 auto buffer = boost::asio::buffer(*bytes_ptr);
 
@@ -138,21 +144,21 @@ namespace agents {
                     socket,
                     buffer,
                     // write result handler
-                    [st, bytes_ptr = std::move(bytes_ptr), handler = std::forward<handler_type>(handler), &socket] //
+                    [st, bytes_ptr = std::move(bytes_ptr), sc = std::move(sc), &socket] //
                     (auto const & ec, auto n_written) mutable {
                         // handle send error?
                         if (ec) {
                             // log it and close the connection
-                            LOG_ERROR_IF_NOT_EOF(ec,
-                                                 "(%p) Error occured forwarding bytes to external "
-                                                 "connection %d, dropping due to %s",
-                                                 st.get(),
-                                                 socket.native_handle(),
-                                                 ec.message().c_str());
-                            return st->async_close([ec, handler = std::forward<handler_type>(handler)]() {
-                                // pass the error code to the handler
-                                handler(ec);
-                            });
+                            LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(ec,
+                                                              "(%p) Error occured forwarding bytes to external "
+                                                              "connection %d, dropping due to %s",
+                                                              st.get(),
+                                                              socket.native_handle(),
+                                                              ec.message().c_str());
+
+                            return submit(st->context,
+                                          st->async_close(use_continuation) | then([ec]() { return ec; }),
+                                          std::move(sc));
                         }
 
                         // send length error
@@ -163,16 +169,20 @@ namespace agents {
                                       "short write",
                                       st.get(),
                                       socket.native_handle());
-                            return st->async_close([handler = std::forward<handler_type>(handler)]() {
-                                // pass EOF error code to handler
-                                handler(boost::asio::error::make_error_code(boost::asio::error::misc_errors::eof));
-                            });
+
+                            // pass EOF error code to handler
+                            return submit(st->context,
+                                          st->async_close(use_continuation) | then([]() {
+                                              return boost::asio::error::make_error_code(
+                                                  boost::asio::error::misc_errors::eof);
+                                          }),
+                                          std::move(sc));
                         }
 
                         LOG_TRACE("(%p) Sent %zu bytes", st.get(), n_written);
 
                         // wait for the next message
-                        return handler(boost::system::error_code {});
+                        return resume_continuation(st->context, std::move(sc), boost::system::error_code {});
                     });
             });
         }
@@ -192,7 +202,7 @@ namespace agents {
                     [st](auto ec, auto n_read) mutable {
                         if (ec) {
                             // log it and close the connection
-                            LOG_ERROR_IF_NOT_EOF(
+                            LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(
                                 ec,
                                 "(%p) Error occured reading bytes for external connection %d, dropping due to %s",
                                 st.get(),
@@ -226,7 +236,7 @@ namespace agents {
                     // handle send error?
                     if (ec) {
                         // log it and close the connection
-                        LOG_ERROR_IF_NOT_EOF(
+                        LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(
                             ec,
                             "(%p) Error occured forwarding bytes for external connection %d, dropping due to %s",
                             st.get(),

@@ -159,7 +159,7 @@ public:
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-external"), 0, 0, 0);
 
         // Gator runs at a high priority, reset the priority to the default
-        if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
+        if (setpriority(PRIO_PROCESS, lib::gettid(), 0) == -1) {
             LOG_ERROR("setpriority failed");
             handleException();
         }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTSOURCE_H
 #define INCLUDE_NON_ROOT_NONROOTSOURCE_H
@@ -25,6 +25,7 @@ namespace non_root {
     public:
         NonRootSource(NonRootDriver & driver,
                       sem_t & senderSem,
+                      std::function<void()> execTargetAppCallback,
                       std::function<void()> profilingStartedCallback,
                       const ICpuInfo & cpuInfo);
 
@@ -41,6 +42,7 @@ namespace non_root {
         std::atomic<bool> interrupted;
         lib::TimestampSource timestampSource;
         NonRootDriver & driver;
+        std::function<void()> execTargetAppCallback;
         std::function<void()> profilingStartedCallback;
         const ICpuInfo & cpuInfo;
 

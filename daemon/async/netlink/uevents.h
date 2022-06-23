@@ -3,6 +3,9 @@
 #pragma once
 
 #include "Logging.h"
+#include "async/continuations/async_initiate.h"
+#include "async/continuations/stored_continuation.h"
+#include "async/continuations/use_continuation.h"
 #include "async/netlink/nl_protocol.h"
 #include "lib/String.h"
 
@@ -70,16 +73,18 @@ namespace async::netlink {
         template<typename CompletionToken>
         auto async_receive_one(CompletionToken && token)
         {
-            return boost::asio::async_initiate<CompletionToken,
-                                               void(boost::system::error_code const &, std::string_view)>(
-                [this](auto && handler) {
-                    socket.async_receive(
-                        boost::asio::buffer(buffer),
-                        [this, h = std::forward<decltype(handler)>(handler)](auto const & ec, auto n) mutable {
-                            h(ec, std::string_view(buffer.data(), !ec ? n : 0));
-                        });
+            using namespace async::continuations;
+
+            return async_initiate_explicit<void(boost::system::error_code, std::string_view)>(
+                [this](auto && sc) {
+                    submit(socket.async_receive(boost::asio::buffer(buffer),
+                                                use_continuation) //
+                               | then([this](auto const & ec, auto n) {
+                                     return start_with(ec, std::string_view(buffer.data(), !ec ? n : 0));
+                                 }),
+                           std::forward<decltype(sc)>(sc));
                 },
-                token);
+                std::forward<CompletionToken>(token));
         }
 
     private:
@@ -108,10 +113,13 @@ namespace async::netlink {
         };
 
         /** Constructor, using the provided context */
-        explicit nl_kobject_uevent_monitor_t(boost::asio::io_context & context) : socket(context) {}
+        explicit nl_kobject_uevent_monitor_t(boost::asio::io_context & context) : context(context), socket(context) {}
 
         /** Constructor, using the provided socket (for testing) */
-        explicit nl_kobject_uevent_monitor_t(socket_type && socket) : socket(std::forward<socket_type>(socket)) {}
+        nl_kobject_uevent_monitor_t(boost::asio::io_context & context, socket_type && socket)
+            : context(context), socket(std::forward<socket_type>(socket))
+        {
+        }
 
         /** @return True if the socket is open, false otherwise */
         [[nodiscard]] bool is_open() const { return socket.is_open(); }
@@ -126,9 +134,11 @@ namespace async::netlink {
         template<typename CompletionToken>
         auto async_receive_one(CompletionToken && token)
         {
-            return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code const &, event_t)>(
-                [this](auto && handler) { this->do_receive_one(std::forward<decltype(handler)>(handler)); },
-                token);
+            using namespace async::continuations;
+
+            return async_initiate_explicit<void(boost::system::error_code, event_t)>(
+                [this](auto && sc) { this->do_receive_one(std::forward<decltype(sc)>(sc)); },
+                std::forward<CompletionToken>(token));
         }
 
     private:
@@ -136,21 +146,25 @@ namespace async::netlink {
         static constexpr std::string_view devpath_prefix {"DEVPATH="};
         static constexpr std::string_view subsystem_prefix {"SUBSYSTEM="};
 
+        boost::asio::io_context & context;
         socket_type socket;
 
-        template<typename Handler>
-        void do_receive_one(Handler && handler)
+        template<typename R, typename E>
+        void do_receive_one(
+            async::continuations::raw_stored_continuation_t<R, E, boost::system::error_code, event_t> && sc)
         {
             LOG_TRACE("Waiting for uevent data");
 
-            socket.async_receive_one([this, h = std::forward<decltype(handler)>(handler)](auto const & ec,
-                                                                                          auto sv) mutable {
+            socket.async_receive_one([this, sc = std::forward<decltype(sc)>(sc)](auto const & ec, auto sv) mutable {
                 if (!ec) {
-                    this->parse(std::move(h), sv);
+                    this->parse(std::move(sc), sv);
                 }
                 else {
-                    LOG_ERROR_IF_NOT_EOF(ec, "Unexpected NETLINK_KOBJECT_UEVENT socket error %s", ec.message().c_str());
-                    h(ec, event_t {});
+                    LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(ec,
+                                                      "Unexpected NETLINK_KOBJECT_UEVENT socket error %s",
+                                                      ec.message().c_str());
+
+                    resume_continuation(context, std::move(sc), ec, event_t {});
                 }
             });
         }
@@ -160,11 +174,12 @@ namespace async::netlink {
          * This method extracts the relevent strings from that sequence and
          * passes them to the handler as an `event_t` object.
          *
-         * @param handler The async initiator that receives the event
+         * @param sc The stored continuation that receives the event
          * @param sv The string view containing the raw event blob
          */
-        template<typename Handler>
-        void parse(Handler && handler, std::string_view sv)
+        template<typename R, typename E>
+        void parse(async::continuations::raw_stored_continuation_t<R, E, boost::system::error_code, event_t> && sc,
+                   std::string_view sv)
         {
             bool has_action = false;
             bool has_devpath = false;
@@ -208,11 +223,11 @@ namespace async::netlink {
                           event.action.data(),
                           event.devpath.data(),
                           event.subsystem.data());
-                return handler(boost::system::error_code {}, event);
+                return resume_continuation(context, std::move(sc), boost::system::error_code {}, event);
             }
 
             // ignore the event if the string_view is not parsed correctly
-            return do_receive_one(std::forward<Handler>(handler));
+            return do_receive_one(std::move(sc));
         }
     };
 }

@@ -2,12 +2,14 @@
 
 #include "PrimarySourceProvider.h"
 
+#include "Child.h"
 #include "Config.h"
 #include "CpuUtils.h"
 #include "DiskIODriver.h"
 #include "FSDriver.h"
 #include "HwmonDriver.h"
 #include "ICpuInfo.h"
+#include "ISender.h"
 #include "Logging.h"
 #include "MemInfoDriver.h"
 #include "NetDriver.h"
@@ -20,7 +22,6 @@
 #if CONFIG_SUPPORT_PERF
 #include "linux/perf/PerfDriver.h"
 #include "linux/perf/PerfDriverConfiguration.h"
-#include "linux/perf/PerfSource.h"
 #endif
 #if CONFIG_SUPPORT_PROC_POLLING
 #include "non_root/NonRootDriver.h"
@@ -169,18 +170,28 @@ namespace {
 
         [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return uncorePmus; }
 
-        std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
-                                                           std::function<void()> profilingStartedCallback,
-                                                           const std::set<int> & appTids,
-                                                           FtraceDriver & ftraceDriver,
-                                                           bool enableOnCommandExec) override
+        std::unique_ptr<PrimarySource> createPrimarySource(
+            sem_t & senderSem,
+            ISender & sender,
+            std::function<bool()> session_ended_callback,
+            std::function<void()> execTargetAppCallback,
+            std::function<void()> profilingStartedCallback,
+            const std::set<int> & appTids,
+            FtraceDriver & ftraceDriver,
+            bool enableOnCommandExec,
+            agents::agent_workers_process_t<Child> & agent_workers_process) override
         {
             return driver.create_source(senderSem,
-                                        profilingStartedCallback,
+                                        sender,
+                                        std::move(session_ended_callback),
+                                        std::move(execTargetAppCallback),
+                                        std::move(profilingStartedCallback),
                                         appTids,
                                         ftraceDriver,
                                         enableOnCommandExec,
-                                        cpuInfo);
+                                        cpuInfo,
+                                        uncorePmus,
+                                        agent_workers_process);
         }
 
     private:
@@ -295,14 +306,22 @@ namespace {
 
         [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return {}; }
 
-        std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
-                                                           std::function<void()> profilingStartedCallback,
-                                                           const std::set<int> & /*appTids*/,
-                                                           FtraceDriver & /*ftraceDriver*/,
-                                                           bool /*enableOnCommandExec*/) override
+        std::unique_ptr<PrimarySource> createPrimarySource(
+            sem_t & senderSem,
+            ISender & /*sender*/,
+            std::function<bool()> /*session_ended_callback*/,
+            std::function<void()> execTargetAppCallback,
+            std::function<void()> profilingStartedCallback,
+            const std::set<int> & /*appTids*/,
+            FtraceDriver & /*ftraceDriver*/,
+            bool /*enableOnCommandExec*/,
+            agents::agent_workers_process_t<Child> & /*agent_workers_process*/) override
         {
-            return std::unique_ptr<PrimarySource>(
-                new non_root::NonRootSource(driver, senderSem, profilingStartedCallback, cpuInfo));
+            return std::unique_ptr<PrimarySource>(new non_root::NonRootSource(driver,
+                                                                              senderSem,
+                                                                              std::move(execTargetAppCallback),
+                                                                              std::move(profilingStartedCallback),
+                                                                              cpuInfo));
         }
 
     private:

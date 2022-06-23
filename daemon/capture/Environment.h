@@ -19,18 +19,21 @@ namespace capture {
 
         CaptureEnvironment(const CaptureEnvironment &) = delete;
         CaptureEnvironment & operator=(const CaptureEnvironment &) = delete;
+
+        virtual void postInit(SessionData & sessionData) = 0;
     };
 
     class LinuxEnvironmentConfig : public CaptureEnvironment {
     public:
-        LinuxEnvironmentConfig(SessionData & sessionData) noexcept;
+        LinuxEnvironmentConfig() noexcept;
 
-        virtual ~LinuxEnvironmentConfig() noexcept;
+        ~LinuxEnvironmentConfig() noexcept override;
+
+        void postInit(SessionData & sessionData) override;
     };
 
     OsType detectOs();
-    std::unique_ptr<CaptureEnvironment> prepareCaptureEnvironment(SessionData & sessionData);
-
+    std::unique_ptr<CaptureEnvironment> prepareCaptureEnvironment();
 }
 
 #endif

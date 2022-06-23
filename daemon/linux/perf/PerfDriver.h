@@ -5,10 +5,12 @@
 
 #include "IPerfGroups.h"
 #include "SimpleDriver.h"
+#include "agents/agent_workers_process.h"
 #include "agents/perf/capture_configuration.h"
+#include "agents/perf/source_adapter.h"
+#include "linux/Tracepoints.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfDriverConfiguration.h"
-#include "linux/perf/PerfSource.h"
 
 #include <cstdint>
 #include <functional>
@@ -24,6 +26,7 @@ static constexpr const char * GATOR_BOOKMARK = "gator/gator_bookmark";
 static constexpr const char * GATOR_COUNTER = "gator/gator_counter";
 static constexpr const char * GATOR_TEXT = "gator/gator_text";
 
+class Child;
 class ISummaryConsumer;
 class GatorCpu;
 class IPerfGroups;
@@ -31,8 +34,8 @@ class IPerfAttrsConsumer;
 class PerfTracepoint;
 class UncorePmu;
 class ICpuInfo;
+class FtraceDriver;
 struct TraceFsConstants;
-class PerfSource;
 
 static const char * MALI_MMU_IN_USE = "Mali: MMU address space in use";
 static const char * MALI_PM_STATUS = "Mali: PM Status";
@@ -78,12 +81,17 @@ public:
 
     const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
 
-    std::unique_ptr<PerfSource> create_source(sem_t & senderSem,
-                                              std::function<void()> profilingStartedCallback,
-                                              std::set<int> appTids,
-                                              FtraceDriver & ftraceDriver,
-                                              bool enableOnCommandExec,
-                                              ICpuInfo & cpuInfo);
+    std::unique_ptr<PrimarySource> create_source(sem_t & senderSem,
+                                                 ISender & sender,
+                                                 std::function<bool()> session_ended_callback,
+                                                 std::function<void()> exec_target_app_callback,
+                                                 std::function<void()> profilingStartedCallback,
+                                                 const std::set<int> & appTids,
+                                                 FtraceDriver & ftraceDriver,
+                                                 bool enableOnCommandExec,
+                                                 ICpuInfo & cpuInfo,
+                                                 lib::Span<UncorePmu> uncore_pmus,
+                                                 agents::agent_workers_process_t<Child> & agent_workers_process);
 
 private:
     const TraceFsConstants & traceFsConstants;
@@ -102,6 +110,19 @@ private:
 
     std::vector<agents::perf::perf_capture_configuration_t::cpu_freq_properties_t>
     get_cpu_cluster_keys_for_cpu_frequency_counter();
+
+    std::unique_ptr<agents::perf::perf_source_adapter_t> create_source_adapter(
+        agents::agent_workers_process_t<Child> & agent_workers_process,
+        sem_t & senderSem,
+        ISender & sender,
+        std::function<bool()> session_ended_callback,
+        std::function<void()> exec_target_app_callback,
+        std::function<void()> profiling_started_callback,
+        const std::set<int> & app_tids,
+        lib::Span<UncorePmu> uncore_pmus,
+        const perf_groups_configurer_state_t & perf_groups,
+        const agents::perf::buffer_config_t & ringbuffer_config,
+        bool enable_on_exec);
 };
 
 #endif // PERFDRIVER_H

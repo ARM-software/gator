@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliDevice.h"
 
@@ -6,6 +6,7 @@
 #include "Logging.h"
 #include "lib/Assert.h"
 #include "mali_userspace/MaliHwCntrNames.h"
+#include "mali_userspace/MaliHwCntrNamesBifrost.h"
 
 #include <cstddef>
 #include <cstdint>

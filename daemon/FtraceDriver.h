@@ -4,7 +4,7 @@
 #define FTRACEDRIVER_H
 
 #include "SimpleDriver.h"
-#include "Tracepoints.h"
+#include "linux/Tracepoints.h"
 
 #include <functional>
 #include <utility>

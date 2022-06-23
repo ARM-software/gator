@@ -20,6 +20,7 @@ namespace agents {
             ready,
             shutdown_requested,
             shutdown_received,
+            terminated_pending_message_loop,
             terminated,
         };
 

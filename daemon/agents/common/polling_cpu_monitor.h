@@ -5,6 +5,7 @@
 #include "async/completion_handler.h"
 #include "async/continuations/async_initiate.h"
 #include "async/continuations/operations.h"
+#include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
 #include "lib/Assert.h"
 #include "lib/FsEntry.h"
@@ -87,36 +88,43 @@ namespace agents {
 
             auto st = shared_from_this();
 
-            repeatedly(
-                [st]() {
-                    return start_on(st->strand) //
-                         | then([st]() { return (!st->terminated) || (!st->monitor_paths.empty()); });
-                },
-                [st]() {
-                    return start_on(st->strand)                             //
-                         | then([st]() { return st->on_strand_do_poll(); }) //
-                         | then([st](bool any_offline) {
-                               st->timer.expires_from_now(any_offline ? short_poll_interval : long_poll_interval);
-                           })                                     //
-                         | st->timer.async_wait(use_continuation) //
-                         | dispatch_on(st->strand)                //
-                         | then([st](auto ec) {
-                               // swallow cancel event, mark as terminated instead
-                               if (ec == boost::asio::error::make_error_code(boost::asio::error::operation_aborted)) {
-                                   LOG_DEBUG("Polling CPU monitor is now terminated");
-                                   if (!std::exchange(st->terminated, true)) {
-                                       st->enqueue_event(-1, false);
+            spawn(
+                "raw cpu event monitor",
+                repeatedly(
+                    [st]() {
+                        return start_on(st->strand) //
+                             | then([st]() { return (!st->terminated) || (!st->monitor_paths.empty()); });
+                    },
+                    [st]() {
+                        return start_on(st->strand)                             //
+                             | then([st]() { return st->on_strand_do_poll(); }) //
+                             | then([st](bool any_offline) {
+                                   st->timer.expires_from_now(any_offline ? short_poll_interval : long_poll_interval);
+                               })                                     //
+                             | st->timer.async_wait(use_continuation) //
+                             | post_on(st->strand)                    //
+                             | then([st](auto ec) {
+                                   // swallow cancel event, mark as terminated instead
+                                   if (ec
+                                       == boost::asio::error::make_error_code(boost::asio::error::operation_aborted)) {
+                                       LOG_DEBUG("Polling CPU monitor is now terminated");
+                                       if (!std::exchange(st->terminated, true)) {
+                                           st->enqueue_event(-1, false);
+                                       }
+                                       return boost::system::error_code {};
                                    }
-                                   return boost::system::error_code {};
-                               }
-                               if (ec) {
-                                   LOG_ERROR("??? %s", ec.message().c_str());
-                               }
-                               return ec;
-                           }) //
-                         | map_error();
-                }) //
-                | DETACH_LOG_ERROR("raw cpu event monitor");
+                                   if (ec) {
+                                       LOG_ERROR("??? %s", ec.message().c_str());
+                                   }
+                                   return ec;
+                               }) //
+                             | map_error();
+                    }),
+                [st](bool failed) {
+                    if (failed) {
+                        st->stop();
+                    }
+                });
         }
 
         /** Stop observing for changes */
@@ -126,14 +134,14 @@ namespace agents {
 
             auto st = shared_from_this();
 
-            start_on(strand) //
-                | then([st]() {
-                      if (!std::exchange(st->terminated, true)) {
-                          st->timer.cancel();
-                          st->enqueue_event(-1, false);
-                      }
-                  }) //
-                | DETACH_LOG_ERROR("stop raw cpu event monitor");
+            spawn("stop raw cpu event monitor",
+                  start_on(strand) //
+                      | then([st]() {
+                            if (!std::exchange(st->terminated, true)) {
+                                st->timer.cancel();
+                                st->enqueue_event(-1, false);
+                            }
+                        }));
         }
 
         template<typename CompletionToken>
@@ -142,18 +150,18 @@ namespace agents {
             using namespace async::continuations;
 
             return async_initiate_explicit<void(event_t)>(
-                [st = shared_from_this()](auto && receiver, auto && exceptionally) {
+                [st = shared_from_this()](auto && stored_continuation) {
                     submit(start_on(st->strand) //
-                               | then([st, r = std::forward<decltype(receiver)>(receiver)]() mutable {
+                               | then([st, r = stored_continuation.move()]() mutable {
                                      st->on_strand_do_receive_one(std::move(r));
                                  }),
-                           std::forward<decltype(exceptionally)>(exceptionally));
+                           stored_continuation.get_exceptionally());
                 },
                 std::forward<CompletionToken>(token));
         }
 
     private:
-        using completion_handler_t = async::completion_handler_ref_t<event_t>;
+        using completion_handler_t = async::continuations::stored_continuation_t<event_t>;
 
         boost::asio::steady_timer timer;
         boost::asio::io_context::strand strand;
@@ -168,7 +176,7 @@ namespace agents {
         template<typename Handler>
         void post_handler(Handler && handler, event_t event)
         {
-            boost::asio::post(strand.context(), [event, h = std::forward<Handler>(handler)]() mutable { h(event); });
+            resume_continuation(strand.context(), std::forward<Handler>(handler), event);
         }
 
         /** Handle the request to consume one pending event */
@@ -246,6 +254,7 @@ namespace agents {
                 if (inserted || first_pass) {
                     enqueue_event(cpu, true);
                 }
+                (void) it; // gcc7
             }
             else {
                 auto count = online_cpu_nos.erase(cpu);

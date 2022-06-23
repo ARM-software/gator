@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -45,6 +45,26 @@
 #define CONFIG_PERF_SUPPORT_REGISTER_UNWINDING 1
 #else
 #define CONFIG_PERF_SUPPORT_REGISTER_UNWINDING 0
+#endif
+#endif
+
+#ifndef CONFIG_DISABLE_CONTINUATION_TRACING
+#define CONFIG_DISABLE_CONTINUATION_TRACING 0
+#endif
+
+#ifndef CONFIG_ASSERTIONS
+#if (!defined(NDEBUG) || (defined(GATOR_UNIT_TESTS) && GATOR_UNIT_TESTS))
+#define CONFIG_ASSERTIONS 1
+#else
+#define CONFIG_ASSERTIONS 0
+#endif
+#endif
+
+#ifndef CONFIG_LOG_TRACE
+#if (!defined(NDEBUG) || (defined(GATOR_UNIT_TESTS) && GATOR_UNIT_TESTS))
+#define CONFIG_LOG_TRACE 1
+#else
+#define CONFIG_LOG_TRACE 0
 #endif
 #endif
 

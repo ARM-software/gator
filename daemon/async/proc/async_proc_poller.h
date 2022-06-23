@@ -2,12 +2,16 @@
 
 #pragma once
 
+#include "async/asio_traits.h"
 #include "async/continuations/async_initiate.h"
+#include "async/continuations/continuation.h"
 #include "async/continuations/operations.h"
 #include "async/continuations/use_continuation.h"
 #include "lib/FsEntry.h"
 #include "lib/Utils.h"
 #include "linux/proc/ProcessPollerBase.h"
+
+#include <memory>
 
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/bind.hpp>
@@ -23,110 +27,71 @@ namespace async {
          *
          * @return True if criteria are met, false otherwise
          */
-        bool is_pid_directory(const lib::FsEntry & entry)
-        {
-            // type must be directory
-            const lib::FsEntry::Stats stats = entry.read_stats();
-            if (stats.type() != lib::FsEntry::Type::DIR) {
-                return false;
-            }
-
-            // name must be only digits
-            const std::string name = entry.name();
-            for (char chr : name) {
-                if (std::isdigit(chr) == 0) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        /**
-         * Get the exe path for a process by reading /proc/[PID]/cmdline
-         */
-        std::optional<lib::FsEntry> get_process_cmdline_exe_path(const lib::FsEntry & entry)
-        {
-            const lib::FsEntry cmdline_file = lib::FsEntry::create(entry, "cmdline");
-            const std::string cmdline_contents = lib::readFileContents(cmdline_file);
-            // need to extract just the first part of cmdline_contents (as it is an packed sequence of c-strings)
-            // so use .c_str() to extract the first string (which is the exe path) and create a new string from it
-            const std::string cmdline_exe = cmdline_contents.c_str(); // NOLINT(readability-redundant-string-cstr)
-            if ((!cmdline_exe.empty()) && (cmdline_exe.at(0) != '\n') && (cmdline_exe.at(0) != '\r')) {
-                return lib::FsEntry::create(cmdline_exe);
-            }
-            return std::optional<lib::FsEntry> {};
-        }
+        bool is_pid_directory(const lib::FsEntry & entry);
 
         /** @return The process exe path (or some estimation of it). Empty if the thread is a kernel thread, otherwise
          * contains 'something'
          */
-        std::optional<lib::FsEntry> get_process_exe_path(const lib::FsEntry & entry)
-        {
-            auto proc_pid_exe = lib::FsEntry::create(entry, "exe");
+        std::optional<lib::FsEntry> get_process_exe_path(const lib::FsEntry & entry);
 
+        /** Helper for iterating some directory asynchronously */
+        template<typename Executor, typename Op>
+        class async_dir_iterator_t : public std::enable_shared_from_this<async_dir_iterator_t<Executor, Op>> {
+        public:
+            async_dir_iterator_t(Executor const & executor, lib::FsEntry const & dir, Op && op)
+                : executor(executor), dir(dir), iterator(dir.children()), op(std::forward<Op>(op))
             {
-                auto exe_realpath = proc_pid_exe.realpath();
-
-                if (exe_realpath) {
-                    // check android paths
-                    auto name = exe_realpath->name();
-                    if ((name == "app_process") || (name == "app_process32") || (name == "app_process64")) {
-                        // use the command line instead
-                        auto cmdline_exe = get_process_cmdline_exe_path(entry);
-                        if (cmdline_exe) {
-                            return cmdline_exe;
-                        }
-                    }
-
-                    // use realpath(/proc/pid/exe)
-                    return exe_realpath;
-                }
             }
 
-            // exe was linked to nothing, try getting from cmdline (but it must be for a real file)
-            auto cmdline_exe = get_process_cmdline_exe_path(entry);
-            if (!cmdline_exe) {
-                // no cmdline, must be a kernel thread
-                return {};
+            [[nodiscard]] async::continuations::polymorphic_continuation_t<boost::system::error_code> async_run()
+            {
+                using namespace async::continuations;
+
+                LOG_TRACE("SCAN DIR: %s", dir.path().c_str());
+
+                auto self = this->shared_from_this();
+
+                return start_with(iterator.next(), boost::system::error_code {}) //
+                     | loop(
+                           // iterate while no error and has another value
+                           [self](std::optional<lib::FsEntry> entry, boost::system::error_code const & ec) {
+                               auto const valid = entry.has_value() && !ec;
+                               LOG_TRACE("LOOP DIR: '%s' = '%s' == %d",
+                                         self->dir.path().c_str(),
+                                         (entry ? entry->path().c_str() : ""),
+                                         valid);
+                               return start_with(valid, std::move(entry), ec);
+                           },
+                           [self](std::optional<lib::FsEntry> entry, boost::system::error_code const & /*ec*/) {
+                               LOG_TRACE("EXEC DIR: '%s' = '%s'", self->dir.path().c_str(), entry->path().c_str());
+                               return start_on(self->executor)    //
+                                    | self->op(std::move(*entry)) //
+                                    | post_on(self->executor)     //
+                                    | then([self](boost::system::error_code const & ec) {
+                                          LOG_TRACE("... ec=%s", ec.message().c_str());
+                                          return start_with(self->iterator.next(), ec);
+                                      });
+                           }) //
+                     | then(
+                           [self](std::optional<lib::FsEntry> const & /*entry*/, boost::system::error_code const & ec) {
+                               LOG_TRACE("FINISHED DIR: '%s' = %s", self->dir.path().c_str(), ec.message().c_str());
+                               return ec;
+                           });
             }
 
-            // resolve the cmdline string to a real path
-            if (cmdline_exe->path().front() == '/') {
-                // already an absolute path, so just resolve it to its realpath
-                auto cmdline_exe_realpath = cmdline_exe->realpath();
-                if (cmdline_exe_realpath) {
-                    return cmdline_exe_realpath;
-                }
-            }
-            else {
-                // try relative to process cwd first
-                auto cwd_file = lib::FsEntry::create(entry, "cwd");
-                auto rel_exe_file = lib::FsEntry::create(cwd_file, cmdline_exe->path());
-                auto abs_exe_file = rel_exe_file.realpath();
+        private:
+            Executor executor;
+            lib::FsEntry dir;
+            lib::FsEntryDirectoryIterator iterator;
+            Op op;
+        };
 
-                if (abs_exe_file) {
-                    // great, use that
-                    return abs_exe_file;
-                }
-            }
-
-            // we could not resolve exe or the command to a real path.
-            // Since the exe_path value *must* contain something for any non-kernel PID,
-            // then prefer to send 'comm' (so long as it is not an empty string)
-            auto comm_file = lib::FsEntry::create(entry, "comm");
-            auto comm_file_contents = lib::readFileContents(comm_file);
-            if (!comm_file_contents.empty()) {
-                return lib::FsEntry::create(comm_file_contents);
-            }
-
-            // comm was empty, so fall back to whatever the commandline was
-            if (cmdline_exe) {
-                return cmdline_exe;
-            }
-
-            // worst case just send /proc/<pid>/exe
-            return proc_pid_exe;
+        template<typename Executor, typename Op>
+        auto make_async_dir_iterator(Executor && executor, lib::FsEntry const & dir, Op && op)
+        {
+            return std::make_shared<async_dir_iterator_t<Executor, Op>>(std::forward<Executor>(executor),
+                                                                        dir,
+                                                                        std::forward<Op>(op));
         }
     }
 
@@ -139,16 +104,20 @@ namespace async {
     template<typename Executor>
     class async_proc_poller_t : public std::enable_shared_from_this<async_proc_poller_t<Executor>> {
     public:
-        /* Callback signatures. */
-        using on_process_directory_type = std::function<void(int, const lib::FsEntry &)>;
-        using on_thread_directory_type = std::function<void(int, int, const lib::FsEntry &)>;
-        using on_thread_details_type = std::function<void(int,
-                                                          int,
-                                                          const lnx::ProcPidStatFileRecord &,
-                                                          const std::optional<lnx::ProcPidStatmFileRecord> &,
-                                                          const std::optional<lib::FsEntry> &)>;
+        using error_code_continuation_t = async::continuations::polymorphic_continuation_t<boost::system::error_code>;
 
-        explicit async_proc_poller_t(Executor & executor) : executor {executor}, procDir {lib::FsEntry::create("/proc")}
+        /* Callback signatures. */
+        using on_process_directory_type = std::function<error_code_continuation_t(int, const lib::FsEntry &)>;
+        using on_thread_directory_type = std::function<error_code_continuation_t(int, int, const lib::FsEntry &)>;
+        using on_thread_details_type =
+            std::function<error_code_continuation_t(int,
+                                                    int,
+                                                    const lnx::ProcPidStatFileRecord &,
+                                                    const std::optional<lnx::ProcPidStatmFileRecord> &,
+                                                    const std::optional<lib::FsEntry> &)>;
+
+        explicit async_proc_poller_t(Executor const & executor)
+            : executor {executor}, procDir {lib::FsEntry::create("/proc")}
         {
         }
 
@@ -180,7 +149,7 @@ namespace async {
                 boost::mp11::mp_bind<std::is_convertible, boost::mp11::_1, on_thread_details_type>>::value;
 
             // Iterate over the callbacks and assign to the right var
-            boost::mp11::tuple_for_each(std::tuple {std::forward<Callbacks>(callbacks)...}, [&](auto && callback) {
+            boost::mp11::tuple_for_each(std::tuple {std::forward<Callbacks>(callbacks)...}, [&](auto callback) {
                 using callback_type = std::decay_t<decltype(callback)>;
 
                 if constexpr (std::is_convertible_v<callback_type, on_process_directory_type>) {
@@ -208,26 +177,30 @@ namespace async {
                 boost::mp11::tuple_for_each(callback_ptrs, [&](auto callback_ptr) {
                     auto & callback = *callback_ptr;
                     if (!callback) {
-                        callback = [](auto &&...) {};
+                        callback = [](auto &&...) {
+                            return error_code_continuation_t {
+                                start_with(boost::system::error_code {}),
+                            };
+                        };
                     }
                 });
             }
 
             return async_initiate<continuation_of_t<boost::system::error_code>>(
-                [self = this->shared_from_this(), callbacks = std::move(callbacks_wrapper)]() mutable {
-                    return start_on(self->executor) | //
-                           then([self, callbacks = std::move(callbacks)]() mutable {
-                               auto iterator = lib::FsEntryDirectoryIterator(self->procDir.children());
-                               while (std::optional<lib::FsEntry> entry = iterator.next()) {
-                                   if (async::detail::is_pid_directory(*entry)) {
-                                       self->template process_pid_directory<want_threads, want_stats>(*entry,
-                                                                                                      callbacks);
-                                   }
-                               }
+                [self = this->shared_from_this(),
+                 callbacks = std::make_shared<callbacks_t>(std::move(callbacks_wrapper))]() mutable {
+                    auto iterator = async::detail::make_async_dir_iterator(
+                        self->executor,
+                        self->procDir,
+                        [self, callbacks](lib::FsEntry entry) {
+                            return async_proc_poller_t::template process_pid_directory<want_threads, want_stats>(
+                                self,
+                                std::move(entry),
+                                callbacks);
+                        });
 
-                               // Currently we always succeed
-                               return boost::system::error_code {};
-                           });
+                    return start_on(self->executor) //
+                         | iterator->async_run();
                 },
                 token);
         }
@@ -240,89 +213,155 @@ namespace async {
         };
 
         template<bool WantThreads, bool WantStats>
-        static void process_pid_directory(const lib::FsEntry & entry, callbacks_t & callbacks)
+        static error_code_continuation_t process_pid_directory(std::shared_ptr<async_proc_poller_t> self,
+                                                               lib::FsEntry entry,
+                                                               std::shared_ptr<callbacks_t> callbacks)
         {
-            const auto name = entry.name();
-            auto exe_path = detail::get_process_exe_path(entry);
+            using namespace async::continuations;
 
+            // ignore non-pid directories
+            if (!async::detail::is_pid_directory(entry)) {
+                return start_with(boost::system::error_code {});
+            }
+
+            auto name = entry.name();
+            auto exe_path = async::detail::get_process_exe_path(entry);
             // read the pid
-            const auto pid = std::strtol(name.c_str(), nullptr, 0);
-
-            // call the receiver object
-            callbacks.on_process_directory(pid, entry);
+            auto pid = std::strtol(name.c_str(), nullptr, 0);
 
             // process threads?
             if constexpr (WantThreads || WantStats) {
-                // the /proc/[PID]/task directory
-                const auto task_directory = lib::FsEntry::create(entry, "task");
+                // call the receiver object
+                return callbacks->on_process_directory(pid, entry)
+                     // then process the threads
+                     | then([entry = std::move(entry),
+                             name = std::move(name),
+                             exe_path = std::move(exe_path),
+                             pid,
+                             self = std::move(self),
+                             callbacks](boost::system::error_code const & ec) mutable -> error_code_continuation_t {
+                           // forward error?
+                           if (ec) {
+                               return start_with(ec);
+                           }
 
-                // the /proc/[PID]/task/[PID]/ directory
-                const auto task_pid_directory = lib::FsEntry::create(task_directory, name);
-                const auto task_pid_directory_stats = task_pid_directory.read_stats();
+                           // the /proc/[PID]/task directory
+                           const auto task_directory = lib::FsEntry::create(entry, "task");
 
-                // if for some reason taskPidDirectory does not exist, then use stat and statm in the procPid directory instead
-                if ((!task_pid_directory_stats.exists())
-                    || (task_pid_directory_stats.type() != lib::FsEntry::Type::DIR)) {
-                    process_tid_directory<WantStats>(pid, entry, exe_path, callbacks);
-                }
+                           // the /proc/[PID]/task/[PID]/ directory
+                           const auto task_pid_directory = lib::FsEntry::create(task_directory, name);
+                           const auto task_pid_directory_stats = task_pid_directory.read_stats();
 
-                // scan all the TIDs in the task directory
-                auto task_iterator = task_directory.children();
-                while (auto task_entry = task_iterator.next()) {
-                    if (detail::is_pid_directory(*task_entry)) {
-                        process_tid_directory<WantStats>(pid, *task_entry, exe_path, callbacks);
-                    }
-                }
+                           // if for some reason taskPidDirectory does not exist, then use stat and statm in the procPid directory instead
+                           if ((!task_pid_directory_stats.exists())
+                               || (task_pid_directory_stats.type() != lib::FsEntry::Type::DIR)) {
+                               return process_tid_directory<WantStats>(pid,
+                                                                       std::move(entry),
+                                                                       std::move(exe_path),
+                                                                       std::move(callbacks));
+                           }
+
+                           // scan all the TIDs in the task directory
+                           auto task_iterator = async::detail::make_async_dir_iterator(
+                               self->executor,
+                               task_directory,
+                               [exe_path, callbacks, pid](lib::FsEntry entry) {
+                                   return async_proc_poller_t::template process_tid_directory<WantStats>(
+                                       pid,
+                                       std::move(entry),
+                                       exe_path,
+                                       callbacks);
+                               });
+
+                           return task_iterator->async_run();
+                       });
+            }
+            else {
+                // just call the receiver object
+                return callbacks->on_process_directory(pid, entry);
             }
         }
 
         template<bool WantStats>
-        static void process_tid_directory(int pid,
-                                          const lib::FsEntry & entry,
-                                          const std::optional<lib::FsEntry> & exe,
-                                          callbacks_t & callbacks)
+        static error_code_continuation_t process_tid_directory(int pid,
+                                                               lib::FsEntry entry,
+                                                               std::optional<lib::FsEntry> exe,
+                                                               std::shared_ptr<callbacks_t> callbacks)
         {
-            const long tid = std::strtol(entry.name().c_str(), nullptr, 0);
+            using namespace async::continuations;
 
-            // call the receiver object
-            callbacks.on_thread_directory(pid, tid, entry);
+            const long tid = std::strtol(entry.name().c_str(), nullptr, 0);
 
             // process stats?
             if constexpr (WantStats) {
-                std::optional<lnx::ProcPidStatmFileRecord> statm_file_record {lnx::ProcPidStatmFileRecord()};
+                // call the receiver object
+                return callbacks->on_thread_directory(pid, tid, entry)
+                     // then call the stats handler
+                     | then([entry, callbacks, pid, tid, exe = std::move(exe)](
+                                boost::system::error_code const & ec) mutable -> error_code_continuation_t {
+                           // forward error?
+                           if (ec) {
+                               return start_with(ec);
+                           }
 
-                // open /proc/[PID]/statm
-                {
-                    const lib::FsEntry statm_file = lib::FsEntry::create(entry, "statm");
-                    const lib::FsEntry::Stats statm_file_stats = statm_file.read_stats();
+                           std::optional<lnx::ProcPidStatmFileRecord> statm_file_record {lnx::ProcPidStatmFileRecord()};
 
-                    if (statm_file_stats.exists() && statm_file_stats.type() == lib::FsEntry::Type::FILE) {
-                        const std::string statm_file_contents = lib::readFileContents(statm_file);
+                           // open /proc/[PID]/statm
+                           {
+                               const lib::FsEntry statm_file = lib::FsEntry::create(entry, "statm");
+                               const lib::FsEntry::Stats statm_file_stats = statm_file.read_stats();
 
-                        if (!lnx::ProcPidStatmFileRecord::parseStatmFile(*statm_file_record,
-                                                                         statm_file_contents.c_str())) {
-                            statm_file_record.reset();
-                        }
-                    }
-                }
+                               if (statm_file_stats.exists() && statm_file_stats.type() == lib::FsEntry::Type::FILE) {
+                                   const std::string statm_file_contents = lib::readFileContents(statm_file);
 
-                // open /proc/[PID]/stat
-                {
-                    const lib::FsEntry stat_file = lib::FsEntry::create(entry, "stat");
-                    const lib::FsEntry::Stats stat_file_stats = stat_file.read_stats();
+                                   if (!lnx::ProcPidStatmFileRecord::parseStatmFile(*statm_file_record,
+                                                                                    statm_file_contents.c_str())) {
+                                       statm_file_record.reset();
+                                   }
+                               }
+                           }
 
-                    if (stat_file_stats.exists() && stat_file_stats.type() == lib::FsEntry::Type::FILE) {
-                        const std::string stat_file_contents = lib::readFileContents(stat_file);
-                        lnx::ProcPidStatFileRecord stat_file_record;
-                        if (lnx::ProcPidStatFileRecord::parseStatFile(stat_file_record, stat_file_contents.c_str())) {
-                            callbacks.on_thread_details(pid, tid, stat_file_record, statm_file_record, exe);
-                        }
-                    }
-                }
+                           // open /proc/[PID]/stat
+                           {
+                               const lib::FsEntry stat_file = lib::FsEntry::create(entry, "stat");
+                               const lib::FsEntry::Stats stat_file_stats = stat_file.read_stats();
+
+                               if (stat_file_stats.exists() && stat_file_stats.type() == lib::FsEntry::Type::FILE) {
+                                   const std::string stat_file_contents = lib::readFileContents(stat_file);
+                                   lnx::ProcPidStatFileRecord stat_file_record;
+                                   if (lnx::ProcPidStatFileRecord::parseStatFile(stat_file_record,
+                                                                                 stat_file_contents.c_str())) {
+                                       return callbacks->on_thread_details(pid,
+                                                                           tid,
+                                                                           stat_file_record,
+                                                                           statm_file_record,
+                                                                           exe);
+                                   }
+                               }
+                           }
+
+                           return start_with(boost::system::error_code {});
+                       });
+            }
+            else {
+                // call the receiver object
+                return callbacks->on_thread_directory(pid, tid, entry);
             }
         }
 
-        Executor & executor;
+        Executor executor;
         lib::FsEntry procDir;
     };
+
+    template<typename Executor, std::enable_if_t<is_asio_executor_v<Executor>, bool> = false>
+    auto make_async_proc_poller(Executor const & ex)
+    {
+        return std::make_shared<async_proc_poller_t<Executor>>(ex);
+    }
+
+    template<typename ExecutionContext, std::enable_if_t<is_asio_execution_context_v<ExecutionContext>, bool> = false>
+    auto make_async_proc_poller(ExecutionContext & context)
+    {
+        return make_async_proc_poller(context.get_executor());
+    }
 }

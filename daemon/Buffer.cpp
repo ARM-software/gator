@@ -193,6 +193,17 @@ void Buffer::beginFrame(FrameType frameType)
     packInt(static_cast<int32_t>(frameType));
 }
 
+void Buffer::writeRawFrame(lib::Span<const char> frame)
+{
+    if (mIncludeResponseType) {
+        packInt(static_cast<int32_t>(ResponseType::APC_DATA));
+    }
+    // Reserve space for the length
+    // NOLINTNEXTLINE(bugprone-narrowing-conversions, hicpp-signed-bitwise)
+    mWritePos = (mWritePos + sizeof(int32_t)) & mask;
+    writeBytes(frame.data(), frame.size());
+}
+
 void Buffer::abortFrame()
 {
     mWritePos = mCommitPos;

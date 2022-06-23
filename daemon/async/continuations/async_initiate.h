@@ -5,13 +5,16 @@
 #include "async/continuations/continuation.h"
 #include "async/continuations/detail/continuation_factory.h"
 #include "async/continuations/operations.h"
+#include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
 #include "lib/exception.h"
+#include "lib/source_location.h"
 
 #include <exception>
 #include <type_traits>
 
 #include <boost/asio/async_result.hpp>
+#include <boost/system/error_code.hpp>
 
 namespace async::continuations {
     namespace detail {
@@ -48,6 +51,32 @@ namespace async::continuations {
             }
         };
 
+        /** Converts a boost::asio::async_initiate handler to a continuations receiver */
+        template<typename Handler, typename... Args>
+        struct async_initiate_receiver_to_handler_adaptor_t {
+            using handler_type = std::decay_t<Handler>;
+
+            handler_type handler;
+
+            template<typename Exceptionally>
+            void operator()(Exceptionally && exceptionally, Args... args)
+            {
+                try {
+                    handler(std::move(args)...);
+                }
+                catch (...) {
+                    LOG_DEBUG("async_initiate_explicit caught exception from receiver");
+                    exceptionally(std::current_exception());
+                }
+            }
+        };
+
+        /** Exception handler*/
+        struct async_initiate_exceptionally_t {
+            void operator()(boost::system::error_code e) const { error_swallower_t::consume("async_init_explicit", e); }
+            void operator()(std::exception_ptr e) const { error_swallower_t::consume("async_init_explicit", e); }
+        };
+
         /** Helper for async_initiate_explicit; specialized for different token types */
         template<typename TokenType, typename Signature>
         struct async_initiate_explicit_t;
@@ -68,26 +97,6 @@ namespace async::continuations {
                     using state_type = state_t;
                     using next_type = std::decay_t<NextInitiator>;
 
-                    /** Handler type passed to the boost initiator, initiates the next step in the chain */
-                    template<typename Exceptionally>
-                    struct receiver_adaptor_t {
-                        using exceptionally_type = std::decay_t<Exceptionally>;
-
-                        next_type next;
-                        exceptionally_type exceptionally;
-
-                        void operator()(SigArgs... args)
-                        {
-                            try {
-                                next(exceptionally, std::move(args)...);
-                            }
-                            catch (...) {
-                                LOG_DEBUG("async_initiate_explicit caught exception from receiver");
-                                exceptionally(std::current_exception());
-                            }
-                        }
-                    };
-
                     state_type state;
                     next_type next;
 
@@ -103,8 +112,12 @@ namespace async::continuations {
                         try {
                             std::apply(
                                 [this, &exceptionally](auto &&... args) mutable {
-                                    state.initiator(receiver_adaptor_t<Exceptionally> {std::move(next), exceptionally},
-                                                    exceptionally,
+                                    using stored_continuation_type =
+                                        raw_stored_continuation_t<next_type,
+                                                                  std::decay_t<Exceptionally>,
+                                                                  std::decay_t<SigArgs>...>;
+
+                                    state.initiator(stored_continuation_type(std::move(next), exceptionally),
                                                     std::forward<decltype(args)>(args)...);
                                 },
                                 std::move(state.init_args));
@@ -117,17 +130,22 @@ namespace async::continuations {
                 };
 
                 boost_initiator_type initiator;
+                lib::source_loc_t sloc;
                 init_args_tuple init_args;
+
+                [[nodiscard]] constexpr name_and_loc_t trace() const { return {"async_initiate_explicit", sloc}; }
             };
 
             template<typename Initiator, typename... InitArgs>
             static auto initiate(use_continuation_t<Allocator> const & /*token*/,
                                  Initiator && initiator,
+                                 lib::source_loc_t sloc,
                                  InitArgs &&... args)
             {
                 return detail::continuation_factory_t<std::decay_t<SigArgs>...>::make_continuation(
                     state_t<Initiator, InitArgs...> {
                         std::forward<Initiator>(initiator),
+                        sloc,
                         std::make_tuple<std::decay_t<InitArgs>...>(std::forward<InitArgs>(args)...)});
             }
         };
@@ -136,17 +154,24 @@ namespace async::continuations {
         template<typename TokenType, typename... SigArgs>
         struct async_initiate_explicit_t<TokenType, void(SigArgs...)> {
             template<typename CompletionToken, typename Initiator, typename... InitArgs>
-            static auto initiate(CompletionToken && token, Initiator && initiator, InitArgs &&... args)
+            static auto initiate(CompletionToken && token,
+                                 Initiator && initiator,
+                                 [[maybe_unused]] lib::source_loc_t sloc,
+                                 InitArgs &&... args)
             {
                 return boost::asio::async_initiate<CompletionToken, void(SigArgs...)>(
                     [initiator = std::forward<Initiator>(initiator)](auto && handler, InitArgs &&... args) mutable {
-                        initiator(
-                            std::forward<decltype(handler)>(handler),
-                            [](auto exception_ptr) {
-                                LOG_DEBUG("Unexpected exception: %s",
-                                          lib::get_exception_ptr_str(std::move(exception_ptr)));
-                            },
-                            std::forward<InitArgs>(args)...);
+                        using handler_type = decltype(handler);
+                        using handler_wrapper_type =
+                            async_initiate_receiver_to_handler_adaptor_t<std::decay_t<handler_type>,
+                                                                         std::decay_t<SigArgs>...>;
+                        using stored_continuation_type = raw_stored_continuation_t<handler_wrapper_type,
+                                                                                   async_initiate_exceptionally_t,
+                                                                                   std::decay_t<SigArgs>...>;
+
+                        initiator(stored_continuation_type(handler_wrapper_type {std::forward<handler_type>(handler)},
+                                                           async_initiate_exceptionally_t {}),
+                                  std::forward<InitArgs>(args)...);
                     },
                     token,
                     std::forward<InitArgs>(args)...);
@@ -209,14 +234,33 @@ namespace async::continuations {
      * @tparam Signature The receiver's signature (`void(Args...)`) as per boost::asio::async_initiate
      * @param initiator A callable that initiates the operation, taking `receiver, exceptionally, args...` as input
      * @param token The completion token
-     * @param args Any args to pass to the initiator
+     * @param sloc Source location
      */
-    template<typename Signature, typename Initiator, typename CompletionToken, typename... InitArgs>
-    auto async_initiate_explicit(Initiator && initiator, CompletionToken && token, InitArgs &&... args)
+    template<typename Signature, typename Initiator, typename CompletionToken>
+    auto async_initiate_explicit(Initiator && initiator, CompletionToken && token, SLOC_DEFAULT_ARGUMENT)
     {
         return detail::async_initiate_explicit_t<std::decay_t<CompletionToken>, Signature>::initiate(
             std::forward<CompletionToken>(token),
             std::forward<Initiator>(initiator),
+            sloc);
+    }
+
+    /**
+     * @param initiator A callable that initiates the operation, taking `receiver, exceptionally, args...` as input
+     * @param token The completion token
+     * @param sloc Source location
+     * @param args Any args to pass to the initiator
+     */
+    template<typename Signature, typename Initiator, typename CompletionToken, typename... InitArgs>
+    auto async_initiate_explicit(Initiator && initiator,
+                                 CompletionToken && token,
+                                 ::lib::source_loc_t sloc,
+                                 InitArgs &&... args)
+    {
+        return detail::async_initiate_explicit_t<std::decay_t<CompletionToken>, Signature>::initiate(
+            std::forward<CompletionToken>(token),
+            std::forward<Initiator>(initiator),
+            sloc,
             std::forward<InitArgs>(args)...);
     }
 }

@@ -3,12 +3,15 @@
 #pragma once
 
 #include "async/continuations/async_initiate.h"
+#include "async/continuations/continuation.h"
 #include "async/continuations/operations.h"
 #include "async/continuations/use_continuation.h"
 #include "async/proc/async_proc_poller.h"
 
+#include <memory>
+
 #include <boost/asio/error.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/error_code.hpp>
 
 namespace async {
 
@@ -20,37 +23,58 @@ namespace async {
      * @tparam CompletionToken CompletionToken type
      * @param executor Executor instance, typically the one used inside @a sender
      * @param sender Sends the data
+     * @param filter filter callable that decides whether or not to send a specific process's details
      * @param token Called upon completion with an error_code
      * @return Nothing or a continuation, depending on @a CompletionToken
      */
-    template<typename Executor, typename Sender, typename CompletionToken>
-    auto async_read_proc_maps(Executor & executor, Sender & sender, CompletionToken && token)
+    template<typename Executor, typename Sender, typename Filter, typename CompletionToken>
+    auto async_read_proc_maps(Executor && executor,
+                              std::shared_ptr<Sender> sender,
+                              Filter && filter,
+                              CompletionToken && token)
     {
         using namespace async::continuations;
-        using boost_error_type = boost::system::error_code;
 
         return async_initiate<continuation_of_t<boost::system::error_code>>(
-            [&, ec_record = std::make_shared<boost_error_type>()]() mutable {
-                auto poller = std::make_shared<async_proc_poller_t<Executor>>(executor);
+            [poller = make_async_proc_poller(std::forward<Executor>(executor)),
+             sender = std::move(sender),
+             filter = std::forward<Filter>(filter)]() mutable {
+                return poller->async_poll(use_continuation,
+                                          [sender, filter = std::move(filter)](int pid, const lib::FsEntry & entry)
+                                              -> polymorphic_continuation_t<boost::system::error_code> {
+                                              // check filter
+                                              if (!filter(pid)) {
+                                                  return start_with(boost::system::error_code {});
+                                              }
 
-                return poller->async_poll(use_continuation, [&sender, ec_record](int pid, const lib::FsEntry & entry) {
-                    const lib::FsEntry mapsFile = lib::FsEntry::create(entry, "maps");
-                    if (!mapsFile.exists()) {
-                        *ec_record = boost::asio::error::not_found;
-                        return;
-                    }
-                    else if (!mapsFile.canAccess(true, false, false)) {
-                        *ec_record = boost::asio::error::no_permission;
-                        return;
-                    }
-                    return sender.async_send_maps_frame(pid,
-                                                        pid,
-                                                        lib::readFileContents(mapsFile),
-                                                        [ec_record](boost::system::error_code new_ec) mutable {
-                                                            *ec_record = (!!new_ec) ? new_ec : *ec_record;
-                                                        });
-                }) | then([ec_record](auto ec) { return ec ? ec : *ec_record; });
+                                              // missing or inaccessible file is not an error
+                                              const lib::FsEntry mapsFile = lib::FsEntry::create(entry, "maps");
+
+                                              if (!mapsFile.exists()) {
+                                                  return start_with(boost::system::error_code {});
+                                              }
+
+                                              if (!mapsFile.canAccess(true, false, false)) {
+                                                  return start_with(boost::system::error_code {});
+                                              }
+
+                                              // send the contents
+                                              return sender->async_send_maps_frame(pid,
+                                                                                   pid,
+                                                                                   lib::readFileContents(mapsFile),
+                                                                                   use_continuation);
+                                          });
             },
             token);
+    }
+
+    template<typename Executor, typename Sender, typename CompletionToken>
+    auto async_read_proc_maps(Executor & executor, std::shared_ptr<Sender> sender, CompletionToken && token)
+    {
+        return async_read_proc_maps(
+            executor,
+            std::move(sender),
+            [](int) { return true; },
+            std::forward<CompletionToken>(token));
     }
 }

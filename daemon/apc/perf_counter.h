@@ -1,5 +1,7 @@
 /* Copyright (C) 2022 by Arm Limited. All rights reserved. */
 
+#pragma once
+
 #include <cstdint>
 
 namespace apc {

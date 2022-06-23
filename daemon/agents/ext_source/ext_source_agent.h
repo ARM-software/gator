@@ -2,11 +2,13 @@
 #pragma once
 
 #include "Logging.h"
+#include "agents/agent_environment.h"
 #include "agents/common/socket_listener.h"
 #include "agents/common/socket_reference.h"
 #include "agents/common/socket_worker.h"
 #include "agents/ext_source/ipc_sink_wrapper.h"
 #include "async/completion_handler.h"
+#include "async/continuations/continuation.h"
 #include "ipc/messages.h"
 #include "ipc/raw_ipc_channel_sink.h"
 #include "ipc/raw_ipc_channel_source.h"
@@ -32,6 +34,8 @@ namespace agents {
      */
     class ext_source_agent_t : public std::enable_shared_from_this<ext_source_agent_t> {
     public:
+        using accepted_message_types = std::tuple<ipc::msg_annotation_send_bytes_t, ipc::msg_annotation_close_conn_t>;
+
         using socket_read_worker_type = socket_read_worker_t<ipc_annotations_sink_adapter_t>;
 
         static constexpr std::string_view annotation_uds_parent_socket_name {"\0streamline-annotate-parent", 27};
@@ -41,20 +45,18 @@ namespace agents {
 
         static std::shared_ptr<ext_source_agent_t> create(boost::asio::io_context & io_context,
                                                           std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink,
-                                                          std::shared_ptr<ipc::raw_ipc_channel_source_t> ipc_source)
+                                                          agent_environment_base_t::terminator terminator)
         {
-            return std::make_shared<ext_source_agent_t>(io_context, std::move(ipc_sink), std::move(ipc_source));
+            return std::make_shared<ext_source_agent_t>(io_context, std::move(ipc_sink), std::move(terminator));
         }
 
         // use create... or make shared your self...
         ext_source_agent_t(boost::asio::io_context & io_context,
                            std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink,
-                           std::shared_ptr<ipc::raw_ipc_channel_source_t> ipc_source)
-            : io_context(io_context),
-              strand(io_context),
-              ipc_sink(std::move(ipc_sink)),
-              ipc_source(std::move(ipc_source))
+                           [[maybe_unused]] agent_environment_base_t::terminator terminator)
+            : io_context(io_context), strand(io_context), ipc_sink(std::move(ipc_sink))
         {
+            // terminator isn't used as failed connections are closed individually, they won't kill the whole capture
         }
 
         /** Add a UDS annotation socket listener */
@@ -124,32 +126,27 @@ namespace agents {
                 });
         }
 
-        /** Start the agent main worker loop */
-        void start()
+        async::continuations::polymorphic_continuation_t<> co_shutdown()
         {
-            // strand is used for synchronizing access to internal structures
-            return boost::asio::post(strand, [st = shared_from_this()]() { st->on_strand_do_started(); });
+            using namespace async::continuations;
+
+            auto self = this->shared_from_this();
+            return start_on(strand) | then([self]() mutable -> polymorphic_continuation_t<> {
+                       if (std::exchange(self->is_shutdown, true)) {
+                           return {};
+                       }
+                       return self->co_shutdown_workers();
+                   });
         }
 
-        /** Shutdown the agent (closes all listeners and workers and then stops receiving new IPC messages) */
-        void shutdown()
+        async::continuations::polymorphic_continuation_t<> co_receive_message(ipc::msg_annotation_send_bytes_t msg)
         {
-            LOG_DEBUG("Shutdown received");
-
-            // strand is used for synchronizing access to internal structures
-            return boost::asio::post(strand, [st = shared_from_this()]() { st->on_strand_do_shutdown(); });
+            return co_send_annotation_bytes(std::move(msg));
         }
 
-        /** Wait for the agent to fully shut down */
-        template<typename CompletionToken>
-        auto async_wait_shutdown(CompletionToken && token)
+        async::continuations::polymorphic_continuation_t<> co_receive_message(ipc::msg_annotation_close_conn_t msg)
         {
-            return boost::asio::async_initiate<CompletionToken, void()>(
-                [st = shared_from_this()](auto && handler) mutable {
-                    using Handler = decltype(handler);
-                    st->do_async_wait_shutdown(std::forward<Handler>(handler));
-                },
-                token);
+            return co_close_worker_by_id(msg.header);
         }
 
     private:
@@ -158,37 +155,101 @@ namespace agents {
         boost::asio::io_context & io_context;
         boost::asio::io_context::strand strand;
         std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink;
-        std::shared_ptr<ipc::raw_ipc_channel_source_t> ipc_source;
         std::vector<std::shared_ptr<socket_listener_base_t>> socket_listeners {};
         std::vector<std::shared_ptr<socket_reference_base_t>> parent_connections {};
-        std::vector<async::completion_handler_ref_t<>> shutdown_handlers {};
         std::map<ipc::annotation_uid_t, std::shared_ptr<socket_read_worker_type>> socket_workers {};
         ipc::annotation_uid_t uid_counter {0};
         bool is_shutdown {false};
 
-        /** The agent is started */
-        void on_strand_do_started()
+        /** Handle the 'send bytes' IPC message variant. Transmit the bytes to the appropriate worker. */
+        async::continuations::polymorphic_continuation_t<> co_send_annotation_bytes(
+            ipc::msg_annotation_send_bytes_t message)
         {
-            // skip 'ready' if already shut down
-            if (is_shutdown) {
-                // now wait to receive messages
-                return on_strand_do_receive_message();
-            }
+            using namespace async::continuations;
 
-            // send the 'ready' IPC message
-            return ipc_sink->async_send_message(
-                ipc::msg_ready_t {},
-                [st = shared_from_this()](auto const & ec, auto const & /*msg*/) {
-                    if (ec) {
-                        LOG_DEBUG("Failed to send ready IPC to host due to %s", ec.message().c_str());
-                    }
-                    else {
-                        LOG_TRACE("Ready message sent");
-                    }
+            auto self = this->shared_from_this();
 
-                    // now wait to receive messages
-                    return boost::asio::post(st->strand, [st]() { st->on_strand_do_receive_message(); });
-                });
+            return start_on(strand)
+                 | then([self, message = std::move(message)]() mutable -> polymorphic_continuation_t<> {
+                       LOG_TRACE("Received %zu bytes for transmission to worker %d",
+                                 message.suffix.size(),
+                                 message.header);
+
+                       auto worker_it = self->socket_workers.find(message.header);
+                       if (worker_it == self->socket_workers.end()) {
+                           LOG_DEBUG("Received bytes for non-existent client %d", message.header);
+                           return {};
+                       }
+
+                       auto worker = worker_it->second;
+                       if (!worker) {
+                           LOG_DEBUG("Received bytes for non-existent client %d", message.header);
+                           return {};
+                       }
+
+                       return worker->async_send_bytes(std::move(message.suffix), use_continuation)
+                            | then(
+                                  [id = message.header, self](const auto & ec) mutable -> polymorphic_continuation_t<> {
+                                      if (ec) {
+                                          LOG_DEBUG("Failed to send bytes to worker %d due to %s",
+                                                    id,
+                                                    ec.message().c_str());
+                                          return self->co_close_worker_by_id(id);
+                                      }
+                                      return {};
+                                  });
+                   });
+        }
+
+        /** Stop listening and close all workers  */
+        async::continuations::polymorphic_continuation_t<> co_shutdown_workers()
+        {
+            using namespace async::continuations;
+
+            auto self = shared_from_this();
+            return start_on(strand)
+                 // first stop listening
+                 | then([self]() mutable {
+                       self->is_shutdown = true;
+
+                       LOG_TRACE("Closing all listeners");
+
+                       // close all listeners so their can be no new inbound connections
+                       for (auto & socket_listener : self->socket_listeners) {
+                           socket_listener->close();
+                       }
+
+                       self->socket_listeners.clear();
+
+                       LOG_TRACE("Closing all workers");
+                   })
+                 // then close all of the workers
+                 | iterate(socket_workers,
+                           [self](auto it) mutable {
+                               auto worker = it->second;
+
+                               LOG_TRACE("Closing worker %d (%p)", it->first, worker.get());
+
+                               // remove from the map
+                               self->socket_workers.erase(it);
+
+                               static_assert(!std::is_const_v<decltype(worker)>);
+                               return worker->async_close(use_continuation);
+                           })
+                 | then([self]() mutable { self->socket_workers.clear(); })
+                 // then close the parent connections
+                 | iterate(parent_connections,
+                           [self](auto it) mutable {
+                               auto parent = *it;
+                               // close the parent connections after writing a single 0-byte to each
+                               parent->with_socket([parent](auto & socket) mutable {
+                                   boost::asio::async_write(
+                                       socket,
+                                       boost::asio::buffer(close_parent_bytes),
+                                       [parent](auto const & /*ec*/, auto /*n*/) mutable { parent->close(); });
+                               });
+                           })
+                 | then([self]() mutable { self->parent_connections.clear(); });
         }
 
         /** Handle an annotations 'parent' connection */
@@ -224,7 +285,8 @@ namespace agents {
                 // create it
                 auto id = ++st->uid_counter;
                 auto socket_read_worker =
-                    socket_read_worker_type::create(ipc_annotations_sink_adapter_t(st->ipc_sink, id),
+                    socket_read_worker_type::create(st->io_context,
+                                                    ipc_annotations_sink_adapter_t(st->ipc_sink, id),
                                                     make_socket_ref(std::move(socket)));
 
                 // store it
@@ -263,274 +325,32 @@ namespace agents {
             worker->start();
         }
 
-        /** Receive the next IPC message from the IPC source */
-        void on_strand_do_receive_message()
+        /** Close a worker given its unique ID */
+        async::continuations::polymorphic_continuation_t<> co_close_worker_by_id(ipc::annotation_uid_t id)
         {
-            // check shutdown state
-            if (is_shutdown && socket_workers.empty() && socket_listeners.empty()) {
-                LOG_DEBUG("Shutdown complete. Notifying handlers.");
+            using namespace async::continuations;
 
-                // notify any handlers
-                for (auto & handler : shutdown_handlers) {
-                    // post each handler
-                    boost::asio::post(io_context, std::move(handler));
-                }
+            auto self = this->shared_from_this();
 
-                // clear the list of handlers as we are done with them now
-                shutdown_handlers.clear();
-                return;
-            }
+            return start_on(strand) | then([self, id]() -> async::continuations::polymorphic_continuation_t<> {
+                       auto worker_it = self->socket_workers.find(id);
+                       if (worker_it == self->socket_workers.end()) {
+                           LOG_DEBUG("Received close request for non-existent client %d", id);
+                           return {};
+                       }
 
-            // receive next message
-            ipc_source->async_recv_message(
-                [st = shared_from_this()](boost::system::error_code const & ec,
-                                          ipc::all_message_types_variant_t && msg_variant) mutable {
-                    if (ec) {
-                        LOG_DEBUG("Failed to receive IPC message due to %s", ec.message().c_str());
-                        return st->shutdown();
-                    }
-                    // strand is used for synchronizing access to internal structures
-                    return boost::asio::post(st->strand, [st, msg_variant = std::move(msg_variant)]() mutable {
-                        std::visit(
-                            [st](auto && message) {
-                                // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
-                                return st->on_strand_do_handle_message(std::move(message));
-                            },
-                            std::move(msg_variant));
-                    });
-                });
-        }
+                       auto worker = worker_it->second;
+                       if (!worker) {
+                           LOG_DEBUG("Received close request for non-existent client %d", id);
+                           return {};
+                       }
 
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(std::monostate const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message std::monostate; ignoring");
-            return on_strand_do_receive_message();
-        }
+                       // remove from the map
+                       self->socket_workers.erase(worker_it);
 
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_annotation_new_conn_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_annotation_new_conn_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_annotation_recv_bytes_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_annotation_recv_bytes_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_capture_configuration_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_capture_ready_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_capture_ready_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_capture_ready_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_apc_frame_data_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_apc_frame_data_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_ready_t const & /*message*/)
-        {
-            LOG_DEBUG("Received ready message.");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_start_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_start_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_exec_target_app_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_exec_target_app_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle one of the IPC variant values */
-        void on_strand_do_handle_message(ipc::msg_cpu_state_change_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_cpu_state_change_t; ignoring");
-            return on_strand_do_receive_message();
-        }
-
-        /** Handle the 'send bytes' IPC message variant. Transmit the bytes to the appropriate worker. */
-        void on_strand_do_handle_message(ipc::msg_annotation_send_bytes_t message)
-        {
-            LOG_TRACE("Received %zu bytes for transmission to worker %d", message.suffix.size(), message.header);
-
-            auto worker_it = socket_workers.find(message.header);
-            if (worker_it == socket_workers.end()) {
-                LOG_DEBUG("Received bytes for non-existant client %d", message.header);
-                return on_strand_do_receive_message();
-            }
-
-            auto worker = worker_it->second;
-            if (!worker) {
-                LOG_DEBUG("Received bytes for non-existant client %d", message.header);
-                return on_strand_do_receive_message();
-            }
-
-            return worker->async_send_bytes(
-                std::move(message.suffix),
-                [id = message.header, st = shared_from_this()](auto const & ec) {
-                    if (ec) {
-                        LOG_DEBUG("Failed to send bytes to worker %d due to %s", id, ec.message().c_str());
-                        // strand is used for synchronizing access to internal structures
-                        return boost::asio::post(st->strand, [id, st]() {
-                            // close the failed connection
-                            st->on_strand_do_close_worker_by_id(id);
-                        });
-                    }
-
-                    // strand is used for synchronizing access to internal structures
-                    return boost::asio::post(st->strand, [st]() { st->on_strand_do_receive_message(); });
-                });
-        }
-
-        /** Handle the 'close connection' IPC message variant. Close the appropriate worker. */
-        void on_strand_do_handle_message(ipc::msg_annotation_close_conn_t const & message)
-        {
-            on_strand_do_close_worker_by_id(message.header);
-        }
-
-        /** Handle the 'shutdown' IPC message variant. Shutdown the agent. */
-        void on_strand_do_handle_message(ipc::msg_shutdown_t const & /*message*/)
-        {
-            LOG_DEBUG("Received shutdown message");
-            return on_strand_do_shutdown();
-        }
-
-        /** Close one worker by its ID */
-        void on_strand_do_close_worker_by_id(ipc::annotation_uid_t id)
-        {
-            auto worker_it = socket_workers.find(id);
-            if (worker_it == socket_workers.end()) {
-                LOG_DEBUG("Received close request for non-existant client %d", id);
-                return on_strand_do_receive_message();
-            }
-
-            auto worker = worker_it->second;
-            if (!worker) {
-                LOG_DEBUG("Received close request for non-existant client %d", id);
-                return on_strand_do_receive_message();
-            }
-
-            // remove from the map
-            socket_workers.erase(worker_it);
-
-            // close it
-            return worker->async_close([st = shared_from_this()]() {
-                // receive the next message
-                return boost::asio::post(st->strand, [st]() { st->on_strand_do_receive_message(); });
-            });
-        }
-
-        /** Do the work to shutdown the agent */
-        void on_strand_do_shutdown()
-        {
-            // mark shutdown
-            if (std::exchange(is_shutdown, true)) {
-                LOG_DEBUG("Ignoring duplicate shutdown call");
-                // was already shutdown. nothing to do
-                return on_strand_do_receive_message();
-            }
-
-            LOG_TRACE("Closing all listeners");
-
-            // close all listeners so their can be no new inbound connections
-            for (auto & socket_listener : socket_listeners) {
-                socket_listener->close();
-            }
-
-            socket_listeners.clear();
-
-            LOG_TRACE("Closing all workers");
-
-            // close each worker
-            return on_strand_close_next_worker();
-        }
-
-        /** Close one worker (called iteratively) until such time as there are no workers left, then notify the IPC mechanism that the agent is shutdown */
-        void on_strand_close_next_worker()
-        {
-            if (socket_workers.empty()) {
-                LOG_TRACE("All workers closed. Sending shutdown message");
-
-                // close the parent connections after writing a single 0-byte to each
-                for (auto & parent : parent_connections) {
-                    parent->with_socket([parent](auto & socket) {
-                        boost::asio::async_write(socket,
-                                                 boost::asio::buffer(close_parent_bytes),
-                                                 [parent](auto const & /*ec*/, auto /*n*/) { parent->close(); });
-                    });
-                }
-                parent_connections.clear();
-
-                // send the 'shutdown' IPC message
-                return ipc_sink->async_send_message(
-                    ipc::msg_shutdown_t {},
-                    [st = shared_from_this()](auto const & ec, auto const & /*msg*/) {
-                        if (ec) {
-                            LOG_DEBUG("Failed to send shutdown IPC to host due to %s", ec.message().c_str());
-                        }
-                        else {
-                            LOG_TRACE("Shutdown message sent");
-                        }
-
-                        // receive the next message (will terminate if the state is fully shutdown)
-                        return boost::asio::post(st->strand, [st]() { st->on_strand_do_receive_message(); });
-                    });
-            }
-
-            // get the next item
-            auto it = socket_workers.begin();
-            auto worker = it->second;
-
-            LOG_TRACE("Closing worker %d (%p)", it->first, worker.get());
-
-            // remove from the map
-            socket_workers.erase(it);
-
-            // close it
-            return worker->async_close([st = shared_from_this()]() {
-                LOG_TRACE("Closed worker");
-                // close the next worker
-                return boost::asio::post(st->strand, [st]() { st->on_strand_close_next_worker(); });
-            });
-        }
-
-        /** Handle the initiated async_wait_shutdown request */
-        template<typename Handler>
-        auto do_async_wait_shutdown(Handler handler)
-        {
-            // strand is used for synchronizing access to internal structures
-            return boost::asio::post(strand, [st = shared_from_this(), handler = std::move(handler)]() mutable {
-                // call directly if already shut down
-                if (st->is_shutdown) {
-                    return handler();
-                }
-
-                // store it for later
-                st->shutdown_handlers.emplace_back(async::make_handler_ref(std::move(handler)));
-            });
+                       // close it
+                       return worker->async_close(async::continuations::use_continuation);
+                   });
         }
     };
 }

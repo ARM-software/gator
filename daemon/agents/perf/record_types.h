@@ -8,16 +8,12 @@
 namespace agents::perf {
 
     struct buffer_config_t {
-        std::size_t page_size;
-        std::size_t data_buffer_size;
-        std::size_t aux_buffer_size;
-    };
-
-    struct perf_buffer_t {
-        void * data_buffer;
-        void * aux_buffer;
-        int fd;
-        int aux_fd;
+        /// must be power of 2
+        size_t page_size;
+        /// must be power of 2 multiple of pageSize
+        size_t data_buffer_size;
+        /// must be power of 2 multiple of pageSize (or 0)
+        size_t aux_buffer_size;
     };
 
     using data_word_t = std::uint64_t;

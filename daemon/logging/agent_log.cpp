@@ -136,17 +136,6 @@ namespace logging {
             return decode_str(const_cast<char *>(s.data()), const_cast<char *>(s.data() + s.size()));
         }
 
-        std::string_view find_end_of_line(std::string_view chars)
-        {
-            for (std::size_t n = 0; n < chars.size(); ++n) {
-                if (chars[n] == '\n') {
-                    return chars.substr(0, n + 1);
-                }
-            }
-
-            return {};
-        }
-
         constexpr std::size_t expected_no_fields = 7;
         constexpr std::size_t field_index_level = 0;
         constexpr std::size_t field_index_tid = 1;
@@ -289,26 +278,21 @@ namespace logging {
         }
     }
 
-    // NOLINTNEXTLINE(misc-no-recursion)
     void agent_log_reader_t::do_async_read()
     {
-        LOG_TRACE("(%p) entered do_async_read", this);
+        using namespace async::continuations;
 
-        // NOLINTNEXTLINE(misc-no-recursion)
-        boost::asio::async_read_until(in, buffer, '\n', [st = shared_from_this()](auto const & ec, auto n) {
-            // handle error
-            if (ec) {
-                LOG_ERROR_IF_NOT_EOF(ec, "(%p) read failed with %s", st.get(), ec.message().c_str());
-                return;
-            }
-
-            // process line of text
-            return st->do_process_next_line(n);
-        });
+        spawn("agent-log-reader",
+              async::async_consume_all_lines(
+                  line_reader,
+                  [st = shared_from_this()](std::string_view line) {
+                      // process line of text
+                      st->do_process_next_line(line);
+                  },
+                  use_continuation));
     }
 
-    // NOLINTNEXTLINE(misc-no-recursion)
-    void agent_log_reader_t::do_process_next_line(std::size_t n)
+    void agent_log_reader_t::do_process_next_line(std::string_view line)
     {
         constexpr std::size_t expected_minimum_size = message_start_marker.size() //
                                                     + 1                           // level (int)
@@ -326,61 +310,49 @@ namespace logging {
                                                     + 0                           // message (str)
                                                     + message_end_marker.size();
 
-        // assumes that data returns a single item
-        static_assert(std::is_same_v<boost::asio::streambuf::const_buffers_type, boost::asio::const_buffers_1>);
-
-        // first find the substr containing up-to the first '\n' marker
-        auto input_area = buffer.data();
-        auto read_area =
-            std::string_view(reinterpret_cast<char const *>(input_area.data()), std::min(n, input_area.size()));
-
-        auto message = find_end_of_line(read_area);
-
         // empty substr means no marker, get more bytes
-        if (message.empty()) {
+        if (line.empty()) {
             LOG_TRACE("(%p) No end of line found", this);
             return do_async_read();
         }
 
-        // the number of bytes to consume
-        auto n_to_consume = message.size();
-
         // remove trailing newline (turn it into a null terminator instead so that it can be used with printf)
-        const_cast<char &>(message.back()) = 0;
-        message.remove_suffix(1);
+        if (line.back() == '\n') {
+            const_cast<char &>(line.back()) = 0;
+            line.remove_suffix(1);
+        }
 
         // ignore empty lines
-        if (message.empty()) {
+        if (line.empty()) {
             LOG_TRACE("(%p) Ignoring empty line", this);
-            buffer.consume(n_to_consume);
             return do_async_read();
         }
 
         // must have a minimum size
-        if (message.size() < expected_minimum_size) {
-            return do_unexpected_message(n_to_consume, message);
+        if (line.size() < expected_minimum_size) {
+            return do_unexpected_message(line);
         }
 
         // does it start with the marker?
-        if (message.substr(0, message_start_marker.size()) != message_start_marker) {
+        if (line.substr(0, message_start_marker.size()) != message_start_marker) {
             // no, just a normal line of text
-            return do_unexpected_message(n_to_consume, message);
+            return do_unexpected_message(line);
         }
 
         // does it end with the marker?
-        if (message.substr(message.size() - message_end_marker.size()) != message_end_marker) {
+        if (line.substr(line.size() - message_end_marker.size()) != message_end_marker) {
             // no, just a normal line of text
-            return do_unexpected_message(n_to_consume, message);
+            return do_unexpected_message(line);
         }
 
         // find the separators and split the fields
-        auto inner = message.substr(message_start_marker.size(),
-                                    message.size() - (message_start_marker.size() + message_end_marker.size()));
+        auto inner = line.substr(message_start_marker.size(),
+                                 line.size() - (message_start_marker.size() + message_end_marker.size()));
 
         auto fields_opt = split_fields(inner);
         if (!fields_opt) {
             // no, just a normal line of text
-            return do_unexpected_message(n_to_consume, message);
+            return do_unexpected_message(line);
         }
 
         // decode the fields
@@ -395,50 +367,28 @@ namespace logging {
 
         // all fields must be valid
         if ((!level_num) || (!tid_num) || (!file) || (!line_num) || (!secs_num) || (!nsec_num) || (!text)) {
-            // safely null terminate before logging
-            LOG_TRACE("(%p) Invalid field encoding (%u, %u, %u, %u,%u, %u, %u) in '%s'",
-                      this,
-                      !!level_num,
-                      !!tid_num,
-                      !!file,
-                      !!line_num,
-                      !!secs_num,
-                      !!nsec_num,
-                      !!text,
-                      message.data());
-            return do_unexpected_message(n_to_consume, message);
+            return do_unexpected_message(line);
         }
 
         // a valid message
-        return do_expected_message(n_to_consume,
-                                   thread_id_t(*tid_num),
+        return do_expected_message(thread_id_t(*tid_num),
                                    log_level_t(*level_num),
                                    log_timestamp_t {*secs_num, *nsec_num},
                                    source_loc_t {*file, unsigned(*line_num)},
                                    *text);
     }
 
-    // NOLINTNEXTLINE(misc-no-recursion)
-    void agent_log_reader_t::do_unexpected_message(std::size_t n_to_consume, std::string_view msg)
+    void agent_log_reader_t::do_unexpected_message(std::string_view msg)
     {
-        do_expected_message(n_to_consume,
-                            thread_id_t {0},
-                            log_level_t::error,
-                            log_timestamp_t {},
-                            source_loc_t {},
-                            msg);
+        do_expected_message(thread_id_t {0}, log_level_t::error, log_timestamp_t {}, source_loc_t {}, msg);
     }
 
-    // NOLINTNEXTLINE(misc-no-recursion)
-    void agent_log_reader_t::do_expected_message(std::size_t n_to_consume,
-                                                 thread_id_t tid,
+    void agent_log_reader_t::do_expected_message(thread_id_t tid,
                                                  log_level_t level,
                                                  log_timestamp_t timestamp,
                                                  source_loc_t location,
                                                  std::string_view message)
     {
         consumer(tid, level, timestamp, location, message);
-        buffer.consume(n_to_consume);
-        do_async_read();
     }
 }

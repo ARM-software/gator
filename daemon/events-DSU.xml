@@ -80,6 +80,20 @@
     <event title="DSU SCU Stash" event="0x0513" name="Stash match, ICN" description="Counts every completed stash transaction originating from the interconnect which is matched by a compatible read request. This includes one caused by a stash to the core, before the stash times out and is allocated into the L3 cache." />
     <!--SCU_STASH_ICN_KILL-->
     <event title="DSU SCU Stash" event="0x0514" name="Stash terminated, ICN" description="Counts every killed stash transaction originating from the interconnect that is terminated due to an incompatible match." />
+    <!-- SCU_STASH_ICN_DROPPED -->
+    <event title="DSU SCU Stash" event="0x0515" name="Stash dropped, ICN" description="Stash dropped, ICN counter. Counter for every dropped stash transaction originating from the interconnect for which a data-pull of read are not used due to a lack of resources."/>
+    <!-- SCU_STASH_ACP_ACCESS -->
+    <event title="DSU SCU Stash" event="0x0520" name="Stash access, ACP" description="Counter for every dataless stash-supported transaction originating from an ACP." />
+    <!-- SCU_STASH_ACP_MISS -->
+    <event title="DSU SCU Stash" event="0x0521" name="Stash data miss, ACP" description="Counter for every dataless transaction originating from ACP where data was read in from outside the cluster." />
+    <!-- SCU_STASH_ACP_HIT -->
+    <event title="DSU SCU Stash" event="0x0522" name="Stash data hit, ACP" description="Counter for every dataless stash transaction originating from the ACP where the stash hit in the cluster." />
+    <!-- SCU_STASH_ACP_MATCH -->
+    <event title="DSU SCU Stash" event="0x0523" name="Stash match, ACP" description="Counter for every completed stash transaction originating from ACP which is matched by a compatible read request, including one caused by a stash to the CPU, before the stash times-out and is allocated into the L3 cache." />
+    <!-- SCU_STASH_ACP_KILL -->
+    <event title="DSU SCU Stash" event="0x0524" name="Stash terminated, ACP" description="Counter for every killed stash transaction originating from the ACP that is terminated due to an incompatible match." />
     <!--SCU_HZD_ADDRESS-->
     <event title="DSU SCU Hazard" event="0x00D0" name="Arbitration hazard, address" description="Counts every flush caused by an address hazard." />
+    <!-- SCU_BIB_ACCESS -->
+    <event title="DSU SCU Filter" event="0x00F3" name="BIB Access" description="Counts for every snoop filter back invalidation." />
 </category>

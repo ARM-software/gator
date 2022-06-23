@@ -6,6 +6,7 @@
 #include "Protocol.h"
 #include "Time.h"
 #include "agents/perf/async_buffer_builder.h"
+#include "agents/perf/events/types.hpp"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
 #include "lib/Span.h"
@@ -60,35 +61,21 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_keys_frame(lib::Span<uint64_t const> ids, lib::Span<int const> keys)
+    [[nodiscard]] inline std::vector<char> make_keys_frame(
+        lib::Span<std::pair<agents::perf::perf_event_id_t, agents::perf::gator_key_t> const> mappings)
     {
-        runtime_assert(ids.size() == keys.size(), "expected equal numbers of ids and keys");
 
         std::vector<char> frame {};
         agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::KEYS, buffer);
 
-        int count = static_cast<int>(ids.size());
+        auto const count = static_cast<int>(mappings.size());
+        runtime_assert((count >= 0) && (mappings.size() == std::size_t(count)), "too many mappings !");
         buffer.packInt(count);
-        for (int i = 0; i < count; ++i) {
-            buffer.packInt64(static_cast<int64_t>(ids[i]));
-            buffer.packInt(keys[i]);
+        for (auto const & mapping : mappings) {
+            buffer.packInt64(static_cast<int64_t>(mapping.first));
+            buffer.packInt(static_cast<int32_t>(mapping.second));
         }
-        buffer.endFrame();
-        return frame;
-    }
-
-    [[nodiscard]] inline std::vector<char> make_old_keys_frame(lib::Span<int const> keys, lib::Span<const char> bytes)
-    {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
-        detail::make_perf_attr_frame_header(CodeType::KEYS_OLD, buffer);
-
-        buffer.packInt(static_cast<int>(keys.size()));
-        for (int const key : keys) {
-            buffer.packInt(key);
-        }
-        buffer.writeBytes(bytes.data(), bytes.size());
         buffer.endFrame();
         return frame;
     }

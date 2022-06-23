@@ -1,9 +1,11 @@
-/* Copyright (C) 2016-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_ASSERT_H
 #define INCLUDE_LIB_ASSERT_H
 
-#if !defined(NDEBUG)
+#include "Config.h"
+
+#if CONFIG_ASSERTIONS
 
 #include <cstdlib>
 #include <string>
@@ -37,7 +39,7 @@ namespace lib {
     } while (0)
 }
 
-#else /* !defined(NDEBUG) */
+#else /* CONFIG_ASSERTIONS */
 
 /** assertion macro */
 #define runtime_assert(test, msg)                                                                                      \
@@ -46,6 +48,6 @@ namespace lib {
         }                                                                                                              \
     } while (0)
 
-#endif /* !defined(NDEBUG) */
+#endif /* CONFIG_ASSERTIONS */
 
 #endif /* INCLUDE_LIB_ASSERT_H */

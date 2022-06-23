@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliHwCntrDriver.h"
 
@@ -66,7 +66,7 @@ namespace mali_userspace {
             const MaliDevice & device = *mDevice.second;
             if (!device.getClockPath().empty()) {
                 mPolledDrivers[mDevice.first] =
-                    std::unique_ptr<PolledDriver>(new MaliGPUClockPolledDriver(device.getClockPath()));
+                    std::unique_ptr<PolledDriver>(new MaliGPUClockPolledDriver(device.getClockPath(), mDevice.first));
             }
             else {
                 LOG_SETUP("Mali GPU counters\nGPU frequency counters not available for GPU # %d.", mDevice.first);

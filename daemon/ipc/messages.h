@@ -6,6 +6,7 @@
 #include "ipc/message_key.h"
 #include "ipc/message_traits.h"
 #include "ipc/proto/generated/capture_configuration.pb.h"
+#include "message_key.h"
 
 #include <string_view>
 #include <variant>
@@ -17,6 +18,21 @@ namespace ipc {
         monotonic_delta_t monotonic_delta;
         int core_no;
         bool online;
+
+        friend constexpr bool operator==(cpu_state_change_t const & a, cpu_state_change_t const & b)
+        {
+            return (a.monotonic_delta == b.monotonic_delta) && (a.core_no == b.core_no) && (a.online == b.online);
+        }
+
+        friend constexpr bool operator!=(cpu_state_change_t const & a, cpu_state_change_t const & b)
+        {
+            return !(a == b);
+        }
+    };
+
+    enum class capture_failed_reason_t : std::uint8_t {
+        /** Capture failed due to command exec failure */
+        command_exec_failed,
     };
 
     /**
@@ -102,6 +118,14 @@ namespace ipc {
     using msg_cpu_state_change_t = message_t<message_key_t::cpu_state_change, cpu_state_change_t, void>;
     DEFINE_NAMED_MESSAGE(msg_cpu_state_change_t);
 
+    /** Sent from perf agent to shell if capture fails for some reason */
+    using msg_capture_failed_t = message_t<message_key_t::capture_failed, capture_failed_reason_t, void>;
+    DEFINE_NAMED_MESSAGE(msg_capture_failed_t);
+
+    /** Sent from perf agent to shell starts capturing data */
+    using msg_capture_started_t = message_t<message_key_t::capture_started, void, void>;
+    DEFINE_NAMED_MESSAGE(msg_capture_started_t);
+
     /** All supported message types */
     using all_message_types_variant_t = std::variant<msg_ready_t,
                                                      msg_shutdown_t,
@@ -115,5 +139,7 @@ namespace ipc {
                                                      msg_apc_frame_data_t,
                                                      msg_exec_target_app_t,
                                                      msg_cpu_state_change_t,
+                                                     msg_capture_failed_t,
+                                                     msg_capture_started_t,
                                                      std::monostate>;
 }

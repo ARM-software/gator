@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXMLParser.h"
 
@@ -154,7 +154,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         const char * const counterSet = (counterSetAttr != nullptr ? counterSetAttr : id); // uses id as default
         const char * const coreName = mxmlElementGetAttr(node, ATTR_CORE_NAME);
         const char * const dtName = mxmlElementGetAttr(node, ATTR_DT_NAME);
-        const char * const speName = mxmlElementGetAttr(node, ATTR_SPE_NAME);
+        const char * speName = mxmlElementGetAttr(node, ATTR_SPE_NAME);
         const char * const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS);
         const char * const profileStr = mxmlElementGetAttr(node, ATTR_PROFILE);
 
@@ -208,6 +208,26 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                   *cpuIds.begin(),
                   ATTR_PMNC_COUNTERS,
                   pmncCounters);
+
+        // Check if SPE name is specified for the given CPU. If so, check to see if the SPE device is configured on the device.
+        if (speName != nullptr)
+        {
+            bool speDeviceFound = false;
+            lib::FsEntryDirectoryIterator it = lib::FsEntry::create(PERF_DEVICES).children();
+            std::optional<lib::FsEntry> child;
+            while (!!(child = it.next())) {
+                if (child->name().find("spe") != std::string::npos) {
+                    // SPE device found in /sys/bus/event_source/devices
+                    speDeviceFound = true;
+                    break;
+                }
+            }
+
+            if (!speDeviceFound)
+            {
+                speName = nullptr;
+            }
+        }
 
         pmuXml.cpus.emplace_back(coreName, id, counterSet, dtName, speName, std::move(cpuIds), pmncCounters, isV8);
     }

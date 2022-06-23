@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Config.h"
 #include "lib/Span.h"
 #include "lib/source_location.h"
 
@@ -12,6 +13,7 @@
 #define LOG_ITEM(level, format, ...)                                                                                   \
     ::logging::detail::do_log_item((level), lib::source_loc_t {__FILE__, __LINE__}, (format), ##__VA_ARGS__)
 
+#if CONFIG_LOG_TRACE
 /** Log a 'trace' level item */
 #define LOG_TRACE(format, ...)                                                                                         \
     do {                                                                                                               \
@@ -19,6 +21,13 @@
             LOG_ITEM(::logging::log_level_t::trace, (format), ##__VA_ARGS__);                                          \
         }                                                                                                              \
     } while (false)
+#else
+/** ignore LOG_TRACE */
+template<typename... Args>
+inline void LOG_TRACE(char const *, Args &&...)
+{
+}
+#endif
 
 /** Log a 'debug' level item */
 #define LOG_DEBUG(format, ...) LOG_ITEM(::logging::log_level_t::debug, (format), ##__VA_ARGS__)
@@ -38,10 +47,31 @@
 /** Log a 'fatal' level item */
 #define LOG_FATAL(format, ...) LOG_ITEM(::logging::log_level_t::fatal, (format), ##__VA_ARGS__)
 
+/** Log a 'child stdout' level item */
+#define LOG_STDOUT(tid, text)                                                                                          \
+    ::logging::detail::do_log_item((tid),                                                                              \
+                                   ::logging::log_level_t::child_stdout,                                               \
+                                   lib::source_loc_t {__FILE__, __LINE__},                                             \
+                                   (text))
+
+/** Log a 'child stderr' level item */
+#define LOG_STDERR(tid, text)                                                                                          \
+    ::logging::detail::do_log_item((tid),                                                                              \
+                                   ::logging::log_level_t::child_stderr,                                               \
+                                   lib::source_loc_t {__FILE__, __LINE__},                                             \
+                                   (text))
+
 /** Log an 'error' if the value of ec is not EOF */
 #define LOG_ERROR_IF_NOT_EOF(ec, format, ...)                                                                          \
     do {                                                                                                               \
         if ((ec) != boost::asio::error::eof) {                                                                         \
+            LOG_ERROR((format), ##__VA_ARGS__);                                                                        \
+        }                                                                                                              \
+    } while (false)
+
+#define LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(ec, format, ...)                                                             \
+    do {                                                                                                               \
+        if (((ec) != boost::asio::error::eof) && ((ec) != boost::asio::error::operation_aborted)) {                    \
             LOG_ERROR((format), ##__VA_ARGS__);                                                                        \
         }                                                                                                              \
     } while (false)
@@ -56,6 +86,8 @@ namespace logging {
         warning,
         error,
         fatal,
+        child_stdout,
+        child_stderr,
     };
 
     // the source location
@@ -105,6 +137,12 @@ namespace logging {
                                                        source_loc_t const & location,
                                                        const char * format,
                                                        ...);
+
+        /** Write out a log item */
+        void do_log_item(log_level_t level, source_loc_t const & location, std::string_view msg);
+
+        /** Write out a log item */
+        void do_log_item(pid_t tid, log_level_t level, source_loc_t const & location, std::string_view msg);
     }
 
     /**
@@ -115,6 +153,16 @@ namespace logging {
      * @param message The log message
      */
     void log_item(log_level_t level, source_loc_t const & location, std::string_view message);
+
+    /**
+     * Store some log item to the log
+     *
+     * @param tid The originating thread ID
+     * @param level The log level
+     * @param location The file/line source location
+     * @param message The log message
+     */
+    void log_item(thread_id_t tid, log_level_t level, source_loc_t const & location, std::string_view message);
 
     /**
      * Store some log item to the log

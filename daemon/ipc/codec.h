@@ -26,6 +26,7 @@
 
 #include "ipc/message_key.h"
 #include "ipc/message_traits.h"
+#include "ipc/responses.h"
 #include "lib/Assert.h"
 #include "lib/Span.h"
 
@@ -41,7 +42,7 @@
 namespace ipc {
 
     /** Helper for simple data types that can be blitted directly from memory into the message without additonal encoding (such as strings, arrays of pods etc) */
-    template<typename T>
+    template<typename T, typename U>
     struct byte_span_blob_codec_t {
         /** The blob type */
         using value_type = T;
@@ -61,12 +62,12 @@ namespace ipc {
         static constexpr std::size_t sg_writer_buffers_count = 2;
 
         /** The size of the length field */
-        static constexpr std::size_t length_size = sizeof(std::size_t);
+        static constexpr std::size_t length_size = sizeof(U);
 
         /** Fill the sg_write_helper_type value */
         static constexpr sg_write_helper_type fill_sg_write_helper_type(value_type const & buffer)
         {
-            using member_type = std::remove_cv<decltype(*buffer.data())>;
+            using member_type = std::decay_t<decltype(*buffer.data())>;
             static_assert(
                 (std::is_array_v<member_type> && is_valid_message_header_v<std::remove_all_extents_t<member_type>>)
                 || std::is_pod_v<member_type> || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
@@ -102,7 +103,7 @@ namespace ipc {
         /** Read the suffix value from bytes (which must be set to the length given by read_suffix_length) */
         static constexpr void read_suffix(lib::Span<char const> const & bytes, value_type & buffer)
         {
-            using member_type = std::remove_cv<decltype(*buffer.data())>;
+            using member_type = std::decay_t<decltype(*buffer.data())>;
             static_assert(
                 (std::is_array_v<member_type> && is_valid_message_header_v<std::remove_all_extents_t<member_type>>)
                 || std::is_pod_v<member_type> || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
@@ -132,7 +133,7 @@ namespace ipc {
         /** Return a mutable buffer to store the suffix for some read operation via scatter-gather read */
         static auto mutable_suffix_buffer(value_type & buffer, sg_read_helper_type & helper)
         {
-            using member_type = std::remove_cv<decltype(*buffer.data())>;
+            using member_type = std::decay_t<decltype(*buffer.data())>;
             static_assert(
                 (std::is_array_v<member_type> && is_valid_message_header_v<std::remove_all_extents_t<member_type>>)
                 || std::is_pod_v<member_type> || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
@@ -152,11 +153,11 @@ namespace ipc {
      * It can be specialized for cases where the suffix must be first encoded into some temporary buffer, or for when
      * it can be blitted directly from memory.
      */
-    template<typename T, typename Enable = void>
+    template<typename T, typename U, typename Enable = void>
     struct blob_codec_t;
 
-    template<>
-    struct blob_codec_t<void> {
+    template<typename U>
+    struct blob_codec_t<void, U> {
         /** The blob type */
         using value_type = void;
 
@@ -210,20 +211,20 @@ namespace ipc {
     };
 
     /** Specialization for vector of integrals */
-    template<typename T>
-    struct blob_codec_t<std::vector<T>, std::enable_if_t<std::is_integral_v<T>>>
-        : byte_span_blob_codec_t<std::vector<T>> {
+    template<typename T, typename U>
+    struct blob_codec_t<std::vector<T>, U, std::enable_if_t<std::is_integral_v<T>>>
+        : byte_span_blob_codec_t<std::vector<T>, U> {
     };
 
     /** Specialization for Span of integrals */
-    template<typename T>
-    struct blob_codec_t<lib::Span<T const>, std::enable_if_t<std::is_integral_v<T>>>
-        : byte_span_blob_codec_t<lib::Span<T const>> {
+    template<typename T, typename U>
+    struct blob_codec_t<lib::Span<T const>, U, std::enable_if_t<std::is_integral_v<T>>>
+        : byte_span_blob_codec_t<lib::Span<T const>, U> {
     };
 
     /** Specialization for protobuf messages */
-    template<typename T>
-    struct blob_codec_t<T, std::enable_if_t<is_protobuf_message_v<T>>> {
+    template<typename T, typename U>
+    struct blob_codec_t<T, U, std::enable_if_t<is_protobuf_message_v<T>>> {
         using value_type = T;
 
         // Unlike byte_span_blob_codec_t, the protobuf classes cannot be their
@@ -292,18 +293,32 @@ namespace ipc {
             return boost::asio::mutable_buffer {reinterpret_cast<char *>(helper.buffer.data()), helper.length};
         }
     };
+    template<typename MessageType>
+    struct key_codec_key_type_t;
+    // specialized for message_t
+    template<message_key_t K, typename H, typename S>
+    struct key_codec_key_type_t<message_t<K, H, S>> {
+        using key_type = message_key_t;
+    };
+    // specialized for response_t
+    template<response_type K, typename P>
+    struct key_codec_key_type_t<response_t<K, P>> {
+        using key_type = response_type;
+    };
 
     /**
      * Codec object for the 'key' value
      *
      * This class provides the means to encode and decode just the `[key]` part of a message.
      */
+    template<typename MessageType>
     struct key_codec_t {
-        /** The message type */
+        /** The message key type */
+        using key_type = typename key_codec_key_type_t<MessageType>::key_type;
         /** The number of buffers required to perform a scatter gather based write of the key */
         static constexpr std::size_t sg_writer_buffers_count = 1;
         /** The total size required to encode/decode the key + header */
-        static constexpr std::size_t key_size = sizeof(message_key_t);
+        static constexpr std::size_t key_size = sizeof(key_type);
 
         /** Fill a scatter-gather buffer list for writing out the key */
         static void fill_sg_buffer(lib::Span<boost::asio::const_buffer> sg_list, message_key_t const & key)
@@ -311,6 +326,11 @@ namespace ipc {
             sg_list[0] = {reinterpret_cast<char const *>(&key), key_size};
         }
 
+        /** Fill a scatter-gather buffer list for writing out the key */
+        static void fill_sg_buffer(lib::Span<boost::asio::const_buffer> sg_list, response_type const & key)
+        {
+            sg_list[0] = {reinterpret_cast<char const *>(&key), key_size};
+        }
         /** Make a mutable buffer out of the key (for reading into) */
         static auto mutable_buffer(message_key_t & key)
         {
@@ -337,6 +357,37 @@ namespace ipc {
      */
     template<typename MessageType>
     struct header_codec_t;
+
+    /** Specialization for message types based on message_t where header_type is response_t which has no header */
+    template<response_type Key, typename Payload>
+    struct header_codec_t<response_t<Key, Payload>> {
+        /** The message type */
+        using message_type = response_t<Key, Payload>;
+
+        /** The number of buffers required to perform a scatter gather based write of the header (which in this case 0 as there is no header) */
+        static constexpr std::size_t sg_writer_buffers_count = 0;
+        /** The total size required to encode/decode the key + header (which in this case is 0 as there is no header) */
+        static constexpr std::size_t header_size = 0;
+
+        //static_assert(Key != message_key_t::unknown);
+        //static_assert(std::is_void_v<header_type>);
+
+        /** Fill a scatter-gather buffer list for writing out the header */
+        static constexpr void fill_sg_buffer(lib::Span<boost::asio::const_buffer> /*sg_list*/,
+                                             message_type const & /*message*/)
+        {
+        }
+
+        /** Make a mutable buffer out of the header (for reading into) */
+        static auto mutable_buffer(message_type & /*message*/) { return boost::asio::mutable_buffer {}; }
+
+        /** Read the header from some byte-span. */
+        static constexpr lib::Span<char const> read_header(lib::Span<char const> const & bytes,
+                                                           message_type & /*message*/)
+        {
+            return bytes;
+        }
+    };
 
     /** Specialization for message types based on message_t */
     template<message_key_t Key, typename HeaderType, typename SuffixType>
@@ -417,6 +468,44 @@ namespace ipc {
     template<typename MessageType>
     struct suffix_codec_t;
 
+    /** Specialization for message types based on response_t */
+    template<response_type Key, typename Payload>
+    struct suffix_codec_t<response_t<Key, Payload>> {
+        /** The message type */
+        using message_type = response_t<Key, Payload>;
+        /** The suffix type */
+        using suffix_type = typename message_type::payload_type;
+        /** The encoder type */
+        using encoder_type = blob_codec_t<suffix_type, std::int32_t>;
+        /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
+        using sg_write_helper_type = typename encoder_type::sg_write_helper_type;
+
+        /** The number of buffers required to perform a scatter gather based write of the length + suffix fields */
+        static constexpr std::size_t sg_writer_buffers_count = encoder_type::sg_writer_buffers_count;
+
+        /** The size of the length field */
+        static constexpr std::size_t length_size = sizeof(std::int32_t);
+
+        /** Fill the sg_write_helper_type value */
+        static constexpr sg_write_helper_type fill_sg_write_helper_type(message_type const & message)
+        {
+            return encoder_type::fill_sg_write_helper_type(message.payload);
+        }
+
+        /** The total size required to store the encoded suffix buffer + length field */
+        static constexpr std::size_t suffix_write_size(sg_write_helper_type const & helper)
+        {
+            return encoder_type::suffix_write_size(helper);
+        }
+
+        /** Fill a scatter-gather buffer list for writing out the header */
+        static constexpr void fill_sg_buffer(lib::Span<boost::asio::const_buffer> sg_list,
+                                             sg_write_helper_type const & helper)
+        {
+            return encoder_type::fill_sg_buffer(sg_list, helper);
+        }
+    };
+
     /** Specialization for message types based on message_t */
     template<message_key_t Key, typename HeaderType, typename SuffixType>
     struct suffix_codec_t<message_t<Key, HeaderType, SuffixType>> {
@@ -425,7 +514,7 @@ namespace ipc {
         /** The suffix type */
         using suffix_type = typename message_type::suffix_type;
         /** The encoder type */
-        using encoder_type = blob_codec_t<suffix_type>;
+        using encoder_type = blob_codec_t<suffix_type, std::size_t>;
         /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
         using sg_write_helper_type = typename encoder_type::sg_write_helper_type;
         /** The scatter-gather helper object used for reading the suffix */
@@ -498,7 +587,7 @@ namespace ipc {
         /** The suffix type */
         using suffix_type = typename message_type::suffix_type;
         /** The encoder type */
-        using encoder_type = blob_codec_t<suffix_type>;
+        using encoder_type = blob_codec_t<suffix_type, std::size_t>;
         /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
         using sg_write_helper_type = typename encoder_type::sg_write_helper_type;
         /** The scatter-gather helper object used for reading the suffix */

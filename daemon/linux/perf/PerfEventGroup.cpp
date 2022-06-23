@@ -5,6 +5,7 @@
 #include "DynBuf.h"
 #include "Logging.h"
 #include "SessionData.h"
+#include "k/perf_event.h"
 #include "lib/Format.h"
 #include "lib/Syscall.h"
 #include "linux/perf/PerfUtils.h"
@@ -13,6 +14,7 @@
 #include <cassert>
 #include <cinttypes>
 #include <climits>
+#include <cstddef>
 #include <iostream>
 #include <optional>
 #include <set>
@@ -23,102 +25,70 @@
 namespace {
     constexpr unsigned long NANO_SECONDS_IN_ONE_SECOND = 1000000000UL;
     constexpr unsigned long NANO_SECONDS_IN_100_MS = 100000000UL;
+    constexpr std::uint32_t MAX_SPE_WATERMARK = 2048U * 1024U;
+    constexpr std::uint32_t MIN_SPE_WATERMARK = 4096U;
 
-    int sys_perf_event_open(struct perf_event_attr * const attr,
-                            const pid_t pid,
-                            const int cpu,
-                            const int group_fd,
-                            const unsigned long flags)
+    /**
+     * Dynamically adjust the aux_matermark value based on the sample frequency so that
+     * we collect data every 1/nth of a second, applying some sensible limits with respect
+     * to data size / processing cost on Streamline side.
+     *
+     * @param mmap_size The size of the aux mmap
+     * @param count The sampling frequency
+     * @return The aux_watermark value
+     */
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    constexpr std::uint32_t calculate_aux_watermark(std::size_t mmap_size, std::uint64_t count)
     {
-        int fd = lib::perf_event_open(attr, pid, cpu, group_fd, flags);
-        if (fd < 0) {
-            return -1;
-        }
-        int fdf = lib::fcntl(fd, F_GETFD);
-        if ((fdf == -1) || (lib::fcntl(fd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-            lib::close(fd);
-            return -1;
-        }
-        return fd;
+        constexpr std::uint64_t fraction_of_second = 10; // 1/10s
+
+        auto const frequency = std::max<std::uint64_t>(NANO_SECONDS_IN_ONE_SECOND / count, 1);
+        auto const bps = (24 * frequency); // assume an average of 24 bytes per sample
+
+        // wake up after ~(1/fraction) seconds worth of data, or 50% of buffer is full
+        auto const pref_watermark = std::min<std::uint64_t>(mmap_size / 2, bps / fraction_of_second);
+
+        // but ensure that the watermark is not too large as may be the case with high sample rate and large buffer
+        // as this can be problematic for Streamline in system-wide mode
+        return std::max<std::uint32_t>(std::min<std::uint64_t>(pref_watermark, MAX_SPE_WATERMARK), MIN_SPE_WATERMARK);
     }
 
-    bool readAndSend(id_to_key_mapping_tracker_t & mapping_tracker,
-                     const struct perf_event_attr & attr,
-                     const int fd,
-                     const int keyCount,
-                     const int * const keys)
+    /**
+     * Decode whether or no to set exclude_kernel (et al)
+     *
+     * @param type The attribute type
+     * @param config The attribute config
+     * @param exclude_requested Whether or not exclude was requested (either by perf_paranoid or by cli argument)
+     * @return The exclude_kernel bit value
+     */
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    constexpr bool should_exclude_kernel(std::uint32_t type, std::uint64_t config, bool exclude_requested)
     {
-        for (int retry = 0; retry < 10; ++retry) {
-            char buf[1024];
-            ssize_t bytes = lib::read(fd, buf, sizeof(buf));
-            if (bytes < 0) {
-                LOG_DEBUG("read failed");
-                return false;
-            }
-
-            if (bytes == 0) {
-                /* pinning failed, retry */
-                usleep(1);
-                continue;
-            }
-
-            mapping_tracker(keyCount, keys, bytes, buf);
-            return true;
+        // don't need to exclude if it wasn't requested
+        if (!exclude_requested) {
+            return false;
         }
 
-        /* not able to pin even, log and return true, data is skipped */
-        LOG_ERROR("Could not pin event %u:0x%llx, skipping", attr.type, attr.config);
+        // but should also not exclude for certain events
+        if (type == PERF_TYPE_SOFTWARE) {
+            return (config != PERF_COUNT_SW_CONTEXT_SWITCHES);
+        }
+
         return true;
-    }
-
-    std::string perfAttrToString(const perf_event_attr & attr,
-                                 const char * typeLabel,
-                                 const char * indentation,
-                                 const char * separator)
-    {
-        return (lib::Format() << indentation << "type: " << attr.type << " ("
-                              << (typeLabel != nullptr ? typeLabel : "<unk>") << ")" << separator              //
-                              << indentation << "config: " << attr.config << separator                         //
-                              << indentation << "config1: " << attr.config1 << separator                       //
-                              << indentation << "config2: " << attr.config2 << separator                       //
-                              << indentation << "sample: " << attr.sample_period << separator << std::hex      //
-                              << indentation << "sample_type: 0x" << attr.sample_type << separator             //
-                              << indentation << "read_format: 0x" << attr.read_format << separator << std::dec //
-                              << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator    //
-                              << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator        //
-                              << indentation << "comm: " << (attr.comm ? "true" : "false") << separator        //
-                              << indentation << "freq: " << (attr.freq ? "true" : "false") << separator        //
-                              << indentation << "task: " << (attr.task ? "true" : "false") << separator        //
-                              << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false")
-                              << separator //
-                              << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")
-                              << separator                                                                    //
-                              << indentation << "inherit: " << (attr.inherit ? "true" : "false") << separator //
-                              << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false")
-                              << separator //
-                              << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator
-                              << std::dec //
-                              << indentation << "aux_watermark: " << attr.aux_watermark << separator);
     }
 }
 
-bool perf_event_group_configurer_t::addEvent(const bool leader,
-                                             attr_to_key_mapping_tracker_t & mapping_tracker,
-                                             const int key,
-                                             const IPerfGroups::Attr & attr,
-                                             bool hasAuxData)
+bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config_t & config,
+                                              perf_event_t & event,
+                                              bool is_header,
+                                              bool requires_leader,
+                                              PerfEventGroupIdentifier::Type type,
+                                              const bool leader,
+                                              attr_to_key_mapping_tracker_t & mapping_tracker,
+                                              const int key,
+                                              const IPerfGroups::Attr & attr,
+                                              bool hasAuxData)
 {
-    if (leader && !state.common.events.empty()) {
-        assert(false && "Cannot set leader for non-empty group");
-        return false;
-    }
-    if (state.common.events.size() >= INT_MAX) {
-        return false;
-    }
-
-    state.common.events.emplace_back();
-    perf_event_t & event = state.common.events.back();
-
     event.attr.size = sizeof(event.attr);
     /* Emit time, read_format below, group leader id, and raw tracepoint info */
     const uint64_t sampleReadMask =
@@ -158,28 +128,32 @@ bool perf_event_group_configurer_t::addEvent(const bool leader,
 #endif
 
     // make sure all new children are counted too
-    const bool use_inherit = (config.perfConfig.is_system_wide ? 0 : 1);
+    const bool use_inherit = !(config.perfConfig.is_system_wide || is_header);
     // group doesn't require a leader (so all events are stand alone)
-    const bool every_attribute_in_own_group = use_inherit || (!requiresLeader());
+    const bool every_attribute_in_own_group = use_inherit || (!requires_leader) || is_header;
     // use READ_FORMAT_GROUP; only when the leader and not a stand alone event
-    const bool use_read_format_group = leader && (!use_inherit) && (!every_attribute_in_own_group);
+    const bool use_read_format_group = leader && (!use_inherit) && (!every_attribute_in_own_group) && (!is_header);
+
+    // filter kernel events?
+    const bool exclude_kernel = should_exclude_kernel(attr.type, attr.config, config.excludeKernelEvents);
 
     // when running in application mode, inherit must always be set, in system wide mode, inherit must always be clear
     event.attr.inherit = use_inherit;
     event.attr.inherit_stat = event.attr.inherit;
     /* Emit emit value in group format */
     // Unfortunately PERF_FORMAT_GROUP is not allowed with inherit
-    event.attr.read_format = PERF_FORMAT_ID | (use_read_format_group ? PERF_FORMAT_GROUP : 0);
+    event.attr.read_format = (use_read_format_group ? PERF_FORMAT_ID | PERF_FORMAT_GROUP //
+                                                    : PERF_FORMAT_ID);
     // Always be on the CPU but only a perf_event_open group leader can be pinned
     // We can only use perf_event_open groups if PERF_FORMAT_GROUP is used to sample group members
     // If the group has no leader, then all members are in separate perf_event_open groups (and hence their own leader)
-    event.attr.pinned = ((leader || every_attribute_in_own_group) ? 1 : 0);
+    event.attr.pinned = ((leader || every_attribute_in_own_group || is_header) ? 1 : 0);
     // group leader must start disabled, all others enabled
     event.attr.disabled = event.attr.pinned;
     /* have a sampling interrupt happen when we cross the wakeup_watermark boundary */
     event.attr.watermark = 1;
     /* Be conservative in flush size as only one buffer set is monitored */
-    event.attr.wakeup_watermark = config.ringbuffer_config.dataBufferSize / 2;
+    event.attr.wakeup_watermark = config.ringbuffer_config.data_buffer_size / 2;
     /* Use the monotonic raw clock if possible */
     event.attr.use_clockid = config.perfConfig.has_attr_clockid_support ? 1 : 0;
     event.attr.clockid = config.perfConfig.has_attr_clockid_support ? CLOCK_MONOTONIC_RAW : 0;
@@ -190,22 +164,27 @@ bool perf_event_group_configurer_t::addEvent(const bool leader,
     event.attr.sample_period = attr.periodOrFreq;
     event.attr.mmap = attr.mmap;
     event.attr.comm = attr.comm;
+    event.attr.comm_exec = attr.comm && config.perfConfig.has_attr_comm_exec;
     event.attr.freq = attr.freq;
     event.attr.task = attr.task;
     /* sample_id_all should always be set (or should always match pinned); it is required for any non-grouped event, for grouped events it is ignored for anything but the leader */
     event.attr.sample_id_all = 1;
     event.attr.context_switch = attr.context_switch;
-    event.attr.exclude_kernel = (config.excludeKernelEvents ? 1 : 0);
-    event.attr.exclude_hv = (config.excludeKernelEvents ? 1 : 0);
-    event.attr.exclude_idle = (config.excludeKernelEvents ? 1 : 0);
-    event.attr.aux_watermark = hasAuxData ? config.ringbuffer_config.auxBufferSize / 2 : 0;
+    event.attr.exclude_kernel = (exclude_kernel ? 1 : 0);
+    event.attr.exclude_hv = (exclude_kernel ? 1 : 0);
+    event.attr.exclude_idle = (exclude_kernel ? 1 : 0);
+    event.attr.exclude_callchain_kernel =
+        (config.excludeKernelEvents && config.perfConfig.has_exclude_callchain_kernel ? 1 : 0);
+    event.attr.aux_watermark = (hasAuxData ? calculate_aux_watermark(config.ringbuffer_config.aux_buffer_size, //
+                                                                     event.attr.sample_period)                 //
+                                           : 0);
     event.key = key;
 
     // [SDDAP-10625] - trace context switch information for SPE attributes.
     // it is required (particularly in system-wide mode) to be able to see
     // the boundarys of SPE data, as it is not guaranteed to get PERF_RECORD_ITRACE_START
     // between two processes if they are sampled by the same SPE attribute.
-    if (identifier.getType() == PerfEventGroupIdentifier::Type::SPE) {
+    if (type == PerfEventGroupIdentifier::Type::SPE) {
         if (!config.perfConfig.has_attr_context_switch) {
             LOG_ERROR("SPE requires context switch information");
             return false;
@@ -217,6 +196,35 @@ bool perf_event_group_configurer_t::addEvent(const bool leader,
     mapping_tracker(key, event.attr);
 
     return true;
+}
+
+bool perf_event_group_configurer_t::addEvent(const bool leader,
+                                             attr_to_key_mapping_tracker_t & mapping_tracker,
+                                             const int key,
+                                             const IPerfGroups::Attr & attr,
+                                             bool hasAuxData)
+{
+    if (leader && !state.events.empty()) {
+        assert(false && "Cannot set leader for non-empty group");
+        return false;
+    }
+    if (state.events.size() >= INT_MAX) {
+        return false;
+    }
+
+    state.events.emplace_back();
+    perf_event_t & event = state.events.back();
+
+    return initEvent(config,
+                     event,
+                     false,
+                     requiresLeader(),
+                     identifier.getType(),
+                     leader,
+                     mapping_tracker,
+                     key,
+                     attr,
+                     hasAuxData);
 }
 
 bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
@@ -283,7 +291,7 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
                     PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
             }
         }
-        else if (!config.excludeKernelEvents) {
+        else if (!config.perfConfig.exclude_kernel) {
             // use context switches as leader. this should give us 'switch-out' events
             attr.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
             attr.periodOrFreq = 1;
@@ -348,493 +356,7 @@ bool perf_event_group_configurer_t::createUncoreGroupLeader(attr_to_key_mapping_
     return addEvent(true, mapping_tracker, nextDummyKey(), attr, false);
 }
 
-int perf_event_group_configurer_t::nextDummyKey()
+int perf_event_group_configurer_t::nextDummyKey(perf_event_group_configurer_config_t & config)
 {
     return config.dummyKeyCounter--;
-}
-
-static const char * selectTypeLabel(const char * groupLabel, std::uint32_t type)
-{
-    switch (type) {
-        case PERF_TYPE_HARDWARE:
-            return "cpu";
-        case PERF_TYPE_BREAKPOINT:
-            return "breakpoint";
-        case PERF_TYPE_HW_CACHE:
-            return "hw-cache";
-        case PERF_TYPE_RAW:
-            return groupLabel;
-        case PERF_TYPE_SOFTWARE:
-            return "software";
-        case PERF_TYPE_TRACEPOINT:
-            return "tracepoint";
-        default:
-            return (type < PERF_TYPE_MAX ? "?" : groupLabel);
-    }
-}
-
-std::pair<OnlineResult, std::string> perf_event_group_activator_t::onlineCPU(
-    int cpu,
-    std::set<int> & tids,
-    OnlineEnabledState enabledState,
-    id_to_key_mapping_tracker_t & mapping_tracker,
-    const std::function<bool(int)> & addToMonitor,
-    const std::function<bool(int, int, bool)> & addToBuffer)
-{
-    if (state.common.events.empty()) {
-        return std::make_pair(OnlineResult::SUCCESS, "");
-    }
-
-    const GatorCpu & cpuCluster = config.clusters[config.clusterIds[cpu]];
-    const GatorCpu * cluster = identifier.getCluster();
-    const UncorePmu * uncorePmu = identifier.getUncorePmu();
-    const std::map<int, int> * cpuNumberToType = identifier.getSpeTypeMap();
-
-    const char * groupLabel = "?";
-    const char * deviceInstance = nullptr;
-    bool perCpu = false;
-
-    // validate cpu
-    uint32_t replaceType = 0;
-    switch (identifier.getType()) {
-        case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
-            groupLabel = cluster->getCoreName();
-            perCpu = true;
-            if (!(*cluster == cpuCluster)) {
-                return std::make_pair(OnlineResult::SUCCESS, "");
-            }
-            break;
-        }
-
-        case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
-            groupLabel = uncorePmu->getCoreName();
-            deviceInstance = uncorePmu->getDeviceInstance();
-            const std::set<int> cpuMask = perf_utils::readCpuMask(uncorePmu->getId());
-            const bool currentCpuNotInMask = ((!cpuMask.empty()) && (cpuMask.count(cpu) == 0));
-            const bool maskIsEmptyAndCpuNotDefault = (cpuMask.empty() && (cpu != 0));
-            if (currentCpuNotInMask || maskIsEmptyAndCpuNotDefault) {
-                // SKIP this core without marking an error
-                return std::make_pair(OnlineResult::SUCCESS, "");
-            }
-            break;
-        }
-
-        case PerfEventGroupIdentifier::Type::SPE: {
-            groupLabel = "SPE";
-            perCpu = true;
-            const auto & type = cpuNumberToType->find(cpu);
-            if (type == cpuNumberToType->end()) {
-                return std::make_pair(OnlineResult::SUCCESS, "");
-            }
-            replaceType = type->second;
-            break;
-        }
-
-        case PerfEventGroupIdentifier::Type::SPECIFIC_CPU: {
-            groupLabel = cpuCluster.getCoreName();
-            perCpu = true;
-            if (cpu != identifier.getCpuNumber()) {
-                return std::make_pair(OnlineResult::SUCCESS, "");
-                ;
-            }
-            break;
-        }
-
-        case PerfEventGroupIdentifier::Type::GLOBAL: {
-            groupLabel = "Global";
-            break;
-        }
-
-        default: {
-            assert(false && "Unexpected group type");
-            return std::make_pair(OnlineResult::OTHER_FAILURE, "Unexpected group type");
-        }
-    }
-
-    const bool enableNow = (enabledState == OnlineEnabledState::ENABLE_NOW);
-    const bool enableOnExec = (enabledState == OnlineEnabledState::ENABLE_ON_EXEC);
-
-    std::map<int, std::map<int, lib::AutoClosingFd>> eventIndexToTidToFdMap;
-
-    const std::size_t numberOfEvents = state.common.events.size();
-    for (std::size_t eventIndex = 0; eventIndex < numberOfEvents; ++eventIndex) {
-        perf_event_t & event = state.common.events[eventIndex];
-
-        if (state.cpuToEventIndexToTidToFdMap[cpu].count(eventIndex) != 0) {
-            std::string message("CPU already online or not correctly cleaned up");
-            return std::make_pair(OnlineResult::FAILURE, message);
-        }
-
-        const char * typeLabel = selectTypeLabel(groupLabel, event.attr.type);
-
-        // Note we are modifying the attr after we have marshalled it
-        // but we are assuming enable_on_exec will be ignored by Streamline
-        event.attr.enable_on_exec = (event.attr.pinned && enableOnExec) ? 1 : 0;
-        if (replaceType > 0) {
-            event.attr.type = replaceType;
-        }
-
-        LOG_DEBUG("Opening attribute:\n"
-                  "    cpu: %i\n"
-                  "    key: %i\n"
-                  "    cluster: %s\n"
-                  "    index: %" PRIuPTR "\n"
-                  "    -------------\n"
-                  "%s",
-                  cpu,
-                  event.key,
-                  (cluster != nullptr ? cluster->getId() : (uncorePmu != nullptr ? uncorePmu->getId() : "<nullptr>")),
-                  eventIndex,
-                  perfAttrToString(event.attr, typeLabel, "    ", "\n").c_str());
-
-        auto open_perf_event =
-            [&event, cpu](const int tid, const int groupLeaderFd, bool excl_kernel, bool excl_hv, bool excl_idle) {
-                event.attr.exclude_kernel = excl_kernel;
-                event.attr.exclude_hv = excl_hv;
-                event.attr.exclude_idle = excl_idle;
-                return sys_perf_event_open(&event.attr,
-                                           tid,
-                                           cpu,
-                                           groupLeaderFd,
-                                           // This is "(broken since Linux 2.6.35)" so can possibly be removed
-                                           // we use PERF_EVENT_IOC_SET_OUTPUT anyway
-                                           PERF_FLAG_FD_OUTPUT);
-            };
-
-        for (auto tidsIterator = tids.begin(); tidsIterator != tids.end();) {
-            const int tid = *tidsIterator;
-
-            // This assumes that group leader is added first
-            const int groupLeaderFd = event.attr.pinned ? -1 : *(eventIndexToTidToFdMap.at(0).at(tid));
-
-            lib::AutoClosingFd fd;
-
-            int peo_errno = 0;
-
-            if (config.excludeKernelEvents) {
-                fd = open_perf_event(tid, groupLeaderFd, true, true, false);
-
-                peo_errno = errno;
-            }
-            else {
-                // try with exclude_kernel clear
-                // open event
-                fd = open_perf_event(tid, groupLeaderFd, false, false, false);
-
-                // take a copy of errno so that logging calls etc don't overwrite it
-                peo_errno = errno;
-
-                // retry with just exclude_kernel set
-                if ((!fd) && (peo_errno == EACCES)) {
-                    LOG_DEBUG("Failed when exclude_kernel == 0, retrying with exclude_kernel = 1");
-
-                    // open event
-                    fd = open_perf_event(tid, groupLeaderFd, true, false, false);
-
-                    // retry with exclude_kernel and all set
-                    if ((!fd) && (peo_errno == EACCES)) {
-                        LOG_DEBUG("Failed when exclude_kernel == 1, exclude_hv == 0, exclude_idle == 0, retrying "
-                                  "with all exclusions enabled");
-
-                        // open event
-                        fd = open_perf_event(tid, groupLeaderFd, true, true, true);
-
-                        // take a new copy of the errno if it failed
-                        peo_errno = errno;
-                    }
-                }
-            }
-
-            LOG_DEBUG("perf_event_open: tid: %i, leader = %i -> fd = %i", tid, groupLeaderFd, *fd);
-
-            if (!fd) {
-                LOG_DEBUG("failed (%d) %s", peo_errno, strerror(peo_errno));
-
-                if (peo_errno == ENODEV) {
-                    // The core is offline
-                    return std::make_pair(OnlineResult::CPU_OFFLINE,
-                                          "The event involves a feature not supported by the current CPU.");
-                }
-                if (peo_errno == ESRCH) {
-                    // thread exited before we had chance to open event
-                    tidsIterator = tids.erase(tidsIterator);
-                    continue;
-                }
-                if ((peo_errno == ENOENT) && (!event.attr.pinned)) {
-                    // This event doesn't apply to this CPU but should apply to a different one, e.g. bigLittle
-                    goto skipOtherTids;
-                }
-                std::ostringstream stringStream;
-
-                stringStream << "perf_event_open failed to online counter for " << typeLabel;
-                if (deviceInstance != nullptr) {
-                    stringStream << " (" << deviceInstance << ")";
-                }
-                stringStream << " with config=0x" << std::hex << event.attr.config << std::dec;
-                if (perCpu) {
-                    stringStream << " on CPU " << cpu;
-                }
-                stringStream << ". Failure given was errno=" << peo_errno << " (" << strerror(peo_errno) << ").";
-
-                if (config.perfConfig.is_system_wide) {
-                    if (peo_errno == EINVAL) {
-                        switch (event.attr.type) {
-                            case PERF_TYPE_BREAKPOINT:
-                            case PERF_TYPE_SOFTWARE:
-                            case PERF_TYPE_TRACEPOINT:
-                                break;
-                            case PERF_TYPE_HARDWARE:
-                            case PERF_TYPE_HW_CACHE:
-                            case PERF_TYPE_RAW:
-                            default:
-                                stringStream
-                                    << "\n\nAnother process may be using the PMU counter, or the combination requested "
-                                       "may not be supported by the hardware. Try removing some events.";
-                                break;
-                        }
-                    }
-                    return std::make_pair(OnlineResult::FAILURE, stringStream.str());
-                }
-                LOG_WARNING("%s", stringStream.str().c_str());
-            }
-            else if (!addToBuffer(*fd, cpu, event.attr.aux_watermark != 0)) {
-                std::string message("PerfBuffer::useFd failed");
-                if (config.perfConfig.is_system_wide) {
-                    return std::make_pair(OnlineResult::FAILURE, message.c_str());
-                }
-                LOG_DEBUG("PerfBuffer::useFd failed");
-            }
-            else if (!addToMonitor(*fd)) {
-                std::string message("Monitor::add failed");
-                return std::make_pair(OnlineResult::FAILURE, message.c_str());
-            }
-            else {
-                eventIndexToTidToFdMap[eventIndex][tid] = std::move(fd);
-            }
-
-            ++tidsIterator;
-        }
-    skipOtherTids:;
-    }
-
-    if (config.perfConfig.has_ioctl_read_id) {
-        bool addedEvents = false;
-        std::vector<int> coreKeys;
-        std::vector<uint64_t> ids;
-
-        for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
-            const int eventIndex = eventIndexToTidToFdPair.first;
-            const perf_event_t & event = state.common.events.at(eventIndex);
-            const int key = event.key;
-
-            for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
-                const auto & fd = tidToFdPair.second;
-
-                // get the id
-                uint64_t id = 0;
-                if (lib::ioctl(*fd, PERF_EVENT_IOC_ID, reinterpret_cast<unsigned long>(&id)) != 0 &&
-                    // Workaround for running 32-bit gatord on 64-bit systems, kernel patch in the works
-                    lib::ioctl(*fd,
-                               (PERF_EVENT_IOC_ID & ~IOCSIZE_MASK) | (8 << _IOC_SIZESHIFT),
-                               reinterpret_cast<unsigned long>(&id))
-                        != 0) {
-                    std::string message("ioctl failed");
-                    LOG_DEBUG("%s", message.c_str());
-                    return std::make_pair(OnlineResult::OTHER_FAILURE, message.c_str());
-                }
-
-                // store it
-                coreKeys.push_back(key);
-                ids.emplace_back(id);
-
-                // log it
-                LOG_DEBUG("Perf id for key : %i, fd : %i  -->  %" PRIu64, key, *fd, id);
-
-                addedEvents = true;
-            }
-        }
-
-        if (!addedEvents) {
-            LOG_DEBUG("no events came online");
-        }
-
-        mapping_tracker(ids.size(), ids.data(), coreKeys.data());
-    }
-    else {
-        std::vector<int> keysInGroup;
-
-        // send the ungrouped attributes, collect keys for grouped attributes
-        for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
-            const int eventIndex = eventIndexToTidToFdPair.first;
-            const perf_event_t & event = state.common.events.at(eventIndex);
-            const bool isLeader = requiresLeader() && (eventIndex == 0);
-
-            if (event.attr.pinned && !isLeader) {
-                for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
-                    const auto & fd = tidToFdPair.second;
-                    if (!readAndSend(mapping_tracker, event.attr, *fd, 1, &event.key)) {
-                        return std::make_pair(OnlineResult::OTHER_FAILURE, "read failed");
-                    }
-                }
-            }
-            else {
-                keysInGroup.push_back(event.key);
-            }
-        }
-
-        assert((requiresLeader() || keysInGroup.empty()) && "Cannot read group items without leader");
-
-        // send the grouped attributes and their keys
-        if (!keysInGroup.empty()) {
-            const auto & event = state.common.events.at(0);
-            const auto & tidToFdMap = eventIndexToTidToFdMap.at(0);
-            for (const auto & tidToFdPair : tidToFdMap) {
-                const auto & fd = tidToFdPair.second;
-                if (!readAndSend(mapping_tracker, event.attr, *fd, keysInGroup.size(), keysInGroup.data())) {
-                    return std::make_pair(OnlineResult::OTHER_FAILURE, "read failed");
-                }
-            }
-        }
-    }
-
-    if (enableNow) {
-        if (!enable(eventIndexToTidToFdMap) || !checkEnabled(eventIndexToTidToFdMap)) {
-            return std::make_pair(OnlineResult::OTHER_FAILURE, "Unable to enable a perf event");
-        }
-    }
-
-    // everything enabled successfully, move into map
-    state.cpuToEventIndexToTidToFdMap[cpu] = std::move(eventIndexToTidToFdMap);
-
-    return std::make_pair(OnlineResult::SUCCESS, "");
-}
-
-bool perf_event_group_activator_t::offlineCPU(int cpu)
-{
-    auto & eventIndexToTidToFdMap = state.cpuToEventIndexToTidToFdMap[cpu];
-
-    // we disable in the opposite order that we enabled for some reason
-    const auto eventIndexToTidToFdRend = eventIndexToTidToFdMap.rend();
-    for (auto eventIndexToTidToFdIt = eventIndexToTidToFdMap.rbegin(); eventIndexToTidToFdIt != eventIndexToTidToFdRend;
-         ++eventIndexToTidToFdIt) {
-        const auto & tidToFdMap = eventIndexToTidToFdIt->second;
-        const auto tidToFdRend = tidToFdMap.rend();
-        for (auto tidToFdIt = tidToFdMap.rbegin(); tidToFdIt != tidToFdRend; ++tidToFdIt) {
-            const auto & fd = tidToFdIt->second;
-            if (lib::ioctl(*fd, PERF_EVENT_IOC_DISABLE, 0) != 0) {
-                LOG_DEBUG("ioctl failed");
-                return false;
-            }
-        }
-    }
-
-    // close all the fds
-    eventIndexToTidToFdMap.clear();
-
-    return true;
-}
-
-bool perf_event_group_activator_t::enable(
-    const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap)
-{
-    // Enable group leaders, others should be enabled by default
-    for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
-        const int eventIndex = eventIndexToTidToFdPair.first;
-        const perf_event_t & event = state.common.events.at(eventIndex);
-
-        for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
-            const auto & fd = tidToFdPair.second;
-
-            if (event.attr.pinned && (lib::ioctl(*fd, PERF_EVENT_IOC_ENABLE, 0) != 0)) {
-                LOG_ERROR("Unable to enable a perf event");
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-bool perf_event_group_activator_t::checkEnabled(
-    const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap)
-{
-    // Try reading from all the group leaders to ensure that the event isn't disabled
-    char buf[1 << 10];
-    int readResultCount = 0;
-
-    // Enable group leaders, others should be enabled by default
-    for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
-        const int eventIndex = eventIndexToTidToFdPair.first;
-        const perf_event_t & event = state.common.events.at(eventIndex);
-
-        for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
-            const auto tid = tidToFdPair.first;
-            const auto & fd = tidToFdPair.second;
-
-            if (event.attr.pinned) {
-                const auto readResult = lib::read(*fd, buf, sizeof(buf));
-                if (readResult < 0) {
-                    LOG_ERROR("Unable to read all perf groups, perhaps too many events were enabled (%d, %s)",
-                              errno,
-                              strerror(errno));
-                    return false;
-                }
-                if (readResult == 0) {
-                    ++readResultCount;
-
-                    LOG_WARNING("Unable to enable a perf group, pinned group marked as in disabled due to conflict "
-                                "or insufficient resources. (%d: tid = %d, fd = %d, attr = \n%s)",
-                                eventIndex,
-                                tid,
-                                *fd,
-                                perfAttrToString(event.attr, nullptr, "    ", "\n").c_str());
-                }
-            }
-        }
-    }
-
-    // log an error message on the console to the user telling them that some items were disabled.
-    if (readResultCount > 0) {
-        LOG_ERROR("Unable to enable %d perf groups due to them being reported as being disabled due to conflict or "
-                  "insufficient resources.\n"
-                  "Another process may be using one or more perf counters.\n"
-                  "Use `lsof|grep perf_event` (if available) to find other processes that may be using perf counters.\n"
-                  "Not all event data may be available in the capture.\n"
-                  "See debug log for more information.",
-                  readResultCount);
-    }
-
-    return true;
-}
-
-void perf_event_group_activator_t::start()
-{
-    // Enable everything before checking to avoid losing data
-    for (const auto & cpuToEventIndexToTidToFdPair : state.cpuToEventIndexToTidToFdMap) {
-        if (!enable(cpuToEventIndexToTidToFdPair.second)) {
-            handleException();
-        }
-    }
-    for (const auto & cpuToEventIndexToTidToFdPair : state.cpuToEventIndexToTidToFdMap) {
-        if (!checkEnabled(cpuToEventIndexToTidToFdPair.second)) {
-            handleException();
-        }
-    }
-}
-
-void perf_event_group_activator_t::stop()
-{
-    for (const auto & cpuToEventIndexToTidToFdPair : state.cpuToEventIndexToTidToFdMap) {
-        const auto & eventIndexToTidToFdMap = cpuToEventIndexToTidToFdPair.second;
-        const auto eventIndexToTidToFdRend = eventIndexToTidToFdMap.rend();
-        for (auto eventIndexToTidToFdIt = eventIndexToTidToFdMap.rbegin();
-             eventIndexToTidToFdIt != eventIndexToTidToFdRend;
-             ++eventIndexToTidToFdIt) {
-            const auto & tidToFdMap = eventIndexToTidToFdIt->second;
-            const auto tidToFdRend = tidToFdMap.rend();
-            for (auto tidToFdIt = tidToFdMap.rbegin(); tidToFdIt != tidToFdRend; ++tidToFdIt) {
-                const auto & fd = tidToFdIt->second;
-                lib::ioctl(*fd, PERF_EVENT_IOC_DISABLE, 0);
-            }
-        }
-    }
 }

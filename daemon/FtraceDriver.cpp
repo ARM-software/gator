@@ -7,10 +7,10 @@
 #include "Logging.h"
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
-#include "Tracepoints.h"
 #include "lib/FileDescriptor.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
+#include "linux/Tracepoints.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
 #include <array>
@@ -280,7 +280,7 @@ namespace {
         }
 
         // Gator runs at a high priority, reset the priority to the default
-        if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
+        if (setpriority(PRIO_PROCESS, lib::gettid(), 0) == -1) {
             LOG_ERROR("setpriority failed");
             handleException();
         }
@@ -435,8 +435,8 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     }
 
     // The perf clock was added in 3.10
-    const int kernelVersion = lib::parseLinuxVersion(utsname);
-    if (kernelVersion < KERNEL_VERSION(3, 10, 0)) {
+    auto const kernelVersion = lib::parseLinuxVersion(utsname);
+    if (kernelVersion < KERNEL_VERSION(3U, 10U, 0U)) {
         mSupported = false;
         LOG_SETUP("Ftrace is disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With "
                   "user space "
@@ -444,10 +444,10 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
                   "available.");
         return;
     }
-    mMonotonicRawSupport = kernelVersion >= KERNEL_VERSION(4, 2, 0);
+    mMonotonicRawSupport = kernelVersion >= KERNEL_VERSION(4U, 2U, 0U);
 
     // Is debugfs or tracefs available?
-    if (access(traceFsConstants.path, R_OK) != 0) {
+    if (::access(traceFsConstants.path, R_OK) != 0) {
         mSupported = false;
         LOG_SETUP("Ftrace is disabled\nUnable to locate the tracing directory");
         return;
@@ -500,7 +500,7 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         }
         if (enable != nullptr) {
             lib::printf_str_t<tracefs_path_buffer_size> buf {"%s/%s/enable", traceFsConstants.path__events, enable};
-            if (access(buf, W_OK) != 0) {
+            if (::access(buf, W_OK) != 0) {
                 LOG_SETUP("%s is disabled\n%s was not found", counter, buf.c_str());
                 continue;
             }
@@ -508,8 +508,8 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
 
         LOG_DEBUG("Using ftrace for %s", counter);
         if (is_cpu_frequency) {
-            bool const has_cpuinfo = (access("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq", R_OK) == 0);
-            bool const has_scaling = (access("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", R_OK) == 0);
+            bool const has_cpuinfo = (::access("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq", R_OK) == 0);
+            bool const has_scaling = (::access("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", R_OK) == 0);
             if (has_cpuinfo || has_scaling) {
                 setCounters(
                     new CpuFrequencyFtraceCounter(getCounters(), traceFsConstants, counter, enable, has_cpuinfo));
@@ -552,7 +552,8 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     {
         int fd;
         // The below call can be slow on loaded high-core count systems.
-        fd = open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC);
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+        fd = ::open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC);
         if (fd < 0) {
             LOG_ERROR("Unable truncate ftrace buffer: %s", strerror(errno));
             handleException();
@@ -571,7 +572,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     // core count systems. The idea is that hopefully only on the first
     // capture, the trace clock needs to be changed. On subsequent captures,
     // the right clock is already being used.
-    int fd = open(traceFsConstants.path__trace_clock, O_RDONLY | O_CLOEXEC);
+    int fd = ::open(traceFsConstants.path__trace_clock, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         LOG_ERROR("Couldn't open %s", traceFsConstants.path__trace_clock);
         handleException();
@@ -598,7 +599,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     }
 
     if (!gSessionData.mFtraceRaw) {
-        const int fd = open(traceFsConstants.path__trace_pipe, O_RDONLY | O_CLOEXEC);
+        const int fd = ::open(traceFsConstants.path__trace_pipe, O_RDONLY | O_CLOEXEC);
         if (fd < 0) {
             LOG_ERROR("Unable to open trace_pipe");
             handleException();
@@ -633,7 +634,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         lib::printf_str_t<tracefs_path_buffer_size> buf {"%s/per_cpu/cpu%zu/trace_pipe_raw",
                                                          traceFsConstants.path,
                                                          cpu};
-        const int tfd = open(buf, O_RDONLY | O_CLOEXEC);
+        const int tfd = ::open(buf, O_RDONLY | O_CLOEXEC);
         (new FtraceReader(&mBarrier, cpu, tfd, pfd[0], pfd[1], pageSize))->start();
         result.first.push_back(pfd[0]);
     }

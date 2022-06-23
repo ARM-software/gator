@@ -1,6 +1,7 @@
 /* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 #include "lib/Utils.h"
 
+#include "ExitStatus.h"
 #include "Logging.h"
 #include "lib/FsEntry.h"
 #include "lib/String.h"
@@ -14,6 +15,7 @@
 #include <limits>
 
 #include <fcntl.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -23,15 +25,60 @@
 #define ANDROID_SHELL_UID 2000
 
 namespace lib {
-    int parseLinuxVersion(struct utsname & utsname)
+    namespace {
+        // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+        bool get_uid_from_stat(const char * const username, const char * const tmpDir, uid_t & uid)
+        {
+            // Lookups may fail when using a different libc or a statically compiled executable
+            constexpr auto tmp_str_length = 32;
+            lib::printf_str_t<tmp_str_length> gatorTemp {"%s/gator_temp", tmpDir};
+
+            const int fd = lib::open(gatorTemp, O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR);
+            if (fd < 0) {
+                return false;
+            }
+            close(fd);
+
+            constexpr auto cmd_str_length = 128;
+            lib::printf_str_t<cmd_str_length> cmd {"chown %s %s || rm -f %s",
+                                                   username,
+                                                   gatorTemp.c_str(),
+                                                   gatorTemp.c_str()};
+
+            const int pid = fork();
+            if (pid < 0) {
+                LOG_ERROR("fork failed");
+                return false;
+            }
+
+            if (pid == 0) {
+                execlp("sh", "sh", "-c", cmd, nullptr);
+                lib::exit(COMMAND_FAILED_EXIT_CODE);
+            }
+
+            while ((waitpid(pid, nullptr, 0) < 0) && (errno == EINTR)) {
+            }
+
+            struct stat st;
+            if (stat(gatorTemp, &st) != 0) {
+                return false;
+            }
+            unlink(gatorTemp);
+            uid = st.st_uid;
+            return true;
+        }
+    }
+
+    kernel_version_no_t parseLinuxVersion(struct utsname & utsname)
     {
-        int version[3] = {0, 0, 0};
+        constexpr unsigned base = 10;
+
+        std::array<unsigned, 3> version {{0, 0, 0}};
 
         int part = 0;
         char * ch = utsname.release;
         while (*ch >= '0' && *ch <= '9' && part < 3) {
-            version[part] = 10 * version[part] + *ch - '0';
-
+            version[part] = (base * version[part]) + (*ch - '0');
             ++ch;
             if (*ch == '.') {
                 ++part;
@@ -216,5 +263,50 @@ namespace lib {
     {
         const uint32_t uid = lib::geteuid();
         return (uid == ROOT_UID || uid == ANDROID_SHELL_UID);
+    }
+
+    std::optional<std::pair<uid_t, gid_t>> resolve_uid_gid(char const * username)
+    {
+        uid_t uid = geteuid();
+        gid_t gid = getegid();
+        // if name is null then just use the current user
+        if (username != nullptr) {
+            // for non root.
+            // Verify root permissions
+            auto is_root = (geteuid() == 0);
+            if (!is_root) {
+                LOG_ERROR("Unable to set user to %s for command because gatord is not running as root", username);
+                return {};
+            }
+
+            // Look up the username
+            // NOLINTNEXTLINE(concurrency-mt-unsafe)
+            struct passwd * const user = getpwnam(username);
+            if (user != nullptr) {
+                uid = user->pw_uid;
+                gid = user->pw_gid;
+            }
+            else {
+                // Unable to get the user without getpwanm, so create a unique uid by adding a fixed number to the pid
+                constexpr auto gid_random_constant = 0x484560f8;
+                gid = gid_random_constant + getpid();
+
+                std::string tmp_dir;
+                if (access("/tmp", W_OK) == 0) {
+                    // We are on Linux
+                    tmp_dir = "/tmp";
+                }
+                else if (access("/data", W_OK) == 0) {
+                    // We are on Android
+                    tmp_dir = "/data";
+                }
+
+                if (tmp_dir.empty() || !get_uid_from_stat(username, tmp_dir.c_str(), uid)) {
+                    LOG_ERROR("Unable to look up the user %s, please double check that the user exists", username);
+                    return {};
+                }
+            }
+        }
+        return {{uid, gid}};
     }
 }

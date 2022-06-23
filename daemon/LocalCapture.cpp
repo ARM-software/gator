@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "LocalCapture.h"
 
@@ -26,14 +26,14 @@ static char * createUniqueDirectory(const char * initialPath, const char * endin
         handleException();
     }
     else if (initialPath[0] != '/') {
-        if (getcwd(path, PATH_MAX) == nullptr) {
+        if (getcwd(path, PATH_MAX - 1) == nullptr) {
             LOG_DEBUG("Unable to retrieve the current working directory");
         }
         strncat(path, "/", PATH_MAX - strlen(path) - 1);
         strncat(path, initialPath, PATH_MAX - strlen(path) - 1);
     }
     else {
-        strncpy(path, initialPath, PATH_MAX);
+        strncpy(path, initialPath, PATH_MAX - 1);
         path[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
     }
 
@@ -96,7 +96,7 @@ namespace local_capture {
         char dstfilename[PATH_MAX];
 
         for (const auto & element : list) {
-            strncpy(dstfilename, gSessionData.mAPCDir, PATH_MAX);
+            strncpy(dstfilename, gSessionData.mAPCDir, PATH_MAX - 1);
             dstfilename[PATH_MAX - 1] = 0; // strncpy does not guarantee a null-terminated string
             if (gSessionData.mAPCDir[strlen(gSessionData.mAPCDir) - 1] != '/') {
                 strncat(dstfilename, "/", PATH_MAX - strlen(dstfilename) - 1);

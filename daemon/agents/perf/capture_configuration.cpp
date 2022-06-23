@@ -3,8 +3,11 @@
 #include "agents/perf/capture_configuration.h"
 
 #include "SessionData.h"
+#include "agents/perf/events/event_configuration.hpp"
+#include "agents/perf/events/types.hpp"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
+#include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 
 #include <memory>
@@ -22,6 +25,7 @@ namespace agents::perf {
             msg.set_sample_rate(session_data.mSampleRate);
             msg.set_one_shot(session_data.mOneShot);
             msg.set_exclude_kernel_events(session_data.mExcludeKernelEvents);
+            msg.set_stop_on_exit(session_data.mStopOnExit);
         }
 
         void add_perf_config(ipc::proto::shell::perf::capture_configuration_t::perf_config_t & msg,
@@ -42,6 +46,7 @@ namespace agents::perf {
             msg.set_has_armv7_pmu_driver(perf_config.has_armv7_pmu_driver);
             msg.set_has_64bit_uname(perf_config.has_64bit_uname);
             msg.set_use_64bit_register_set(perf_config.use_64bit_register_set);
+            msg.set_has_exclude_callchain_kernel(perf_config.has_exclude_callchain_kernel);
         }
 
         template<typename T, typename H, typename R>
@@ -94,7 +99,7 @@ namespace agents::perf {
         void add_cpus(google::protobuf::RepeatedPtrField<
                           ipc::proto::shell::perf::capture_configuration_t::cpu_properties_t> & msg,
                       ICpuInfo const & cpu_info,
-                      std::map<int, int> const & cpu_number_to_spe_type)
+                      std::map<int, std::uint32_t> const & cpu_number_to_spe_type)
         {
             auto clusterIds = cpu_info.getClusterIds();
             auto cpuIds = cpu_info.getCpuIds();
@@ -104,7 +109,7 @@ namespace agents::perf {
                 entry->set_cluster_index(clusterIds[index]);
                 entry->set_cpu_id(cpuIds[index]);
                 auto it = cpu_number_to_spe_type.find(int(index));
-                if (it != cpu_number_to_spe_type.begin()) {
+                if (it != cpu_number_to_spe_type.end()) {
                     entry->set_spe_type(it->second);
                 }
             }
@@ -157,38 +162,6 @@ namespace agents::perf {
             throw std::runtime_error("Matching pmu node not found");
         }
 
-        void add_perf_event_group_identifier(
-            ipc::proto::shell::perf::capture_configuration_t::perf_event_group_identifier_t & msg,
-            PerfEventGroupIdentifier const & identifier,
-            ICpuInfo const & cpu_info,
-            lib::Span<UncorePmu const> uncore_pmus)
-        {
-            switch (identifier.getType()) {
-                case PerfEventGroupIdentifier::Type::GLOBAL: {
-                    msg.set_spe(false);
-                    return;
-                }
-                case PerfEventGroupIdentifier::Type::SPE: {
-                    msg.set_spe(true);
-                    return;
-                }
-                case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
-                    msg.set_per_cluster_cpu(find_pmu_index(cpu_info.getClusters(), identifier.getCluster()));
-                    return;
-                }
-                case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
-                    msg.set_uncore_pmu(find_pmu_index(uncore_pmus, identifier.getUncorePmu()));
-                    return;
-                }
-                case PerfEventGroupIdentifier::Type::SPECIFIC_CPU: {
-                    msg.set_specific_cpu(identifier.getCpuNumber());
-                    return;
-                }
-                default:
-                    throw std::runtime_error("Unexpected type");
-            }
-        }
-
         void add_perf_event_attr(ipc::proto::shell::perf::capture_configuration_t::perf_event_attribute_t & msg,
                                  perf_event_attr const & attr)
         {
@@ -233,7 +206,7 @@ namespace agents::perf {
             msg.set_aux_watermark(attr.aux_watermark);
         }
 
-        void add_perf_event(ipc::proto::shell::perf::capture_configuration_t::perf_event_t & msg,
+        void add_perf_event(ipc::proto::shell::perf::capture_configuration_t::perf_event_definition_t & msg,
                             int key,
                             perf_event_attr const & attr)
         {
@@ -242,40 +215,81 @@ namespace agents::perf {
             add_perf_event_attr(*msg_attr, attr);
         }
 
-        void add_perf_group(ipc::proto::shell::perf::capture_configuration_t::perf_event_group_events_t & msg,
+        ipc::proto::shell::perf::capture_configuration_t_perf_event_definition_list_t &
+        get_perf_event_configuration_event_list(
+            ipc::proto::shell::perf::capture_configuration_t::perf_event_configuration_t & msg,
+            PerfEventGroupIdentifier const & identifier,
+            ICpuInfo const & cpu_info,
+            lib::Span<UncorePmu const> uncore_pmus)
+        {
+            switch (identifier.getType()) {
+                case PerfEventGroupIdentifier::Type::GLOBAL: {
+                    return *msg.mutable_global_events();
+                }
+                case PerfEventGroupIdentifier::Type::SPE: {
+                    return *msg.mutable_spe_events();
+                }
+                case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
+                    auto index = find_pmu_index(cpu_info.getClusters(), identifier.getCluster());
+                    auto * map = msg.mutable_cluster_specific_events();
+                    return (*map)[index];
+                }
+                case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
+                    auto index = find_pmu_index(uncore_pmus, identifier.getUncorePmu());
+                    auto * map = msg.mutable_uncore_specific_events();
+                    return (*map)[index];
+                }
+                case PerfEventGroupIdentifier::Type::SPECIFIC_CPU: {
+                    auto index = static_cast<std::uint32_t>(identifier.getCpuNumber());
+                    auto * map = msg.mutable_cpu_specific_events();
+                    return (*map)[index];
+                }
+                default: {
+                    throw std::runtime_error("Unexpected type");
+                }
+            }
+        }
+
+        void add_perf_group(ipc::proto::shell::perf::capture_configuration_t::perf_event_configuration_t & msg,
                             PerfEventGroupIdentifier const & identifier,
-                            perf_event_group_common_state_t const & state,
+                            perf_event_group_configurer_state_t const & state,
                             ICpuInfo const & cpu_info,
                             lib::Span<UncorePmu const> uncore_pmus)
         {
-            add_perf_event_group_identifier(*msg.mutable_id(), identifier, cpu_info, uncore_pmus);
-            auto * msg_events = msg.mutable_events();
+            auto & list = get_perf_event_configuration_event_list(msg, identifier, cpu_info, uncore_pmus);
+            auto * msg_events = list.mutable_events();
             for (auto const & event : state.events) {
                 auto * msg_entry = msg_events->Add();
                 add_perf_event(*msg_entry, event.key, event.attr);
             }
         }
 
-        void add_perf_groups(ipc::proto::shell::perf::capture_configuration_t::perf_groups_t & msg,
-                             perf_groups_configurer_state_t const & perf_groups,
-                             ICpuInfo const & cpu_info,
-                             lib::Span<UncorePmu const> uncore_pmus)
+        void add_event_configuration(ipc::proto::shell::perf::capture_configuration_t::perf_event_configuration_t & msg,
+                                     perf_groups_configurer_state_t const & perf_groups,
+                                     ICpuInfo const & cpu_info,
+                                     lib::Span<UncorePmu const> uncore_pmus)
         {
-            msg.set_number_of_events_added(perf_groups.numberOfEventsAdded);
+            add_perf_event(*msg.mutable_header_event(), perf_groups.header.key, perf_groups.header.attr);
 
-            auto * msg_groups = msg.mutable_groups();
             for (auto const & groups_entry : perf_groups.perfEventGroupMap) {
-                auto * msg_entry = msg_groups->Add();
-                add_perf_group(*msg_entry, groups_entry.first, groups_entry.second.common, cpu_info, uncore_pmus);
+                add_perf_group(msg, groups_entry.first, groups_entry.second, cpu_info, uncore_pmus);
             }
         }
 
         void add_ringbuffer_config(ipc::proto::shell::perf::capture_configuration_t::perf_ringbuffer_config_t & msg,
-                                   perf_ringbuffer_config_t const & ringbuffer_config)
+                                   agents::perf::buffer_config_t const & ringbuffer_config)
         {
-            msg.set_page_size(ringbuffer_config.pageSize);
-            msg.set_data_size(ringbuffer_config.dataBufferSize);
-            msg.set_aux_size(ringbuffer_config.auxBufferSize);
+            msg.set_page_size(ringbuffer_config.page_size);
+            msg.set_data_size(ringbuffer_config.data_buffer_size);
+            msg.set_aux_size(ringbuffer_config.aux_buffer_size);
+        }
+
+        void add_perf_pmu_type_to_name(google::protobuf::Map<::google::protobuf::uint32, std::string> & msg,
+                                       std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name)
+        {
+            for (auto const & entry : perf_pmu_type_to_name) {
+                msg[entry.first] = entry.second;
+            }
         }
 
         /// ------------------------------ deserializing
@@ -288,6 +302,7 @@ namespace agents::perf {
             session_data.sample_rate = msg.sample_rate();
             session_data.one_shot = msg.one_shot();
             session_data.exclude_kernel_events = msg.exclude_kernel_events();
+            session_data.stop_on_exit = msg.stop_on_exit();
         }
 
         void extract_perf_config(ipc::proto::shell::perf::capture_configuration_t::perf_config_t const & msg,
@@ -308,6 +323,7 @@ namespace agents::perf {
             perf_config.has_armv7_pmu_driver = msg.has_armv7_pmu_driver();
             perf_config.has_64bit_uname = msg.has_64bit_uname();
             perf_config.use_64bit_register_set = msg.use_64bit_register_set();
+            perf_config.has_exclude_callchain_kernel = msg.has_exclude_callchain_kernel();
         }
 
         void extract_clusters(
@@ -333,15 +349,16 @@ namespace agents::perf {
 
         void extract_cpus(google::protobuf::RepeatedPtrField<
                               ipc::proto::shell::perf::capture_configuration_t::cpu_properties_t> const & msg,
-                          std::vector<std::int32_t> per_core_cluster_index,
-                          std::vector<std::int32_t> per_core_cpuids,
-                          std::map<std::int32_t, std::int32_t> per_core_spe_type)
+                          std::vector<std::int32_t> & per_core_cluster_index,
+                          std::vector<std::int32_t> & per_core_cpuids,
+                          std::map<core_no_t, std::uint32_t> & per_core_spe_type)
         {
             std::int32_t index = 0;
-            for (auto cpu : msg) {
+            for (auto const & cpu : msg) {
                 per_core_cluster_index.emplace_back(cpu.cluster_index());
                 per_core_cpuids.emplace_back(cpu.cpu_id());
-                per_core_spe_type[index] = cpu.spe_type();
+                per_core_spe_type[core_no_t(index)] = cpu.spe_type();
+                ++index;
             }
         }
 
@@ -365,35 +382,6 @@ namespace agents::perf {
             for (auto & entry : map) {
                 cpuid_to_core_name.emplace(entry.first, std::move(entry.second));
             }
-        }
-
-        PerfEventGroupIdentifier extract_perf_event_group_identifier(
-            ipc::proto::shell::perf::capture_configuration_t::perf_event_group_identifier_t const & msg,
-            std::vector<perf_capture_configuration_t::gator_cpu_t> const & clusters,
-            std::vector<perf_capture_configuration_t::uncore_pmu_t> const & uncore_pmus,
-            std::map<int, int> const & per_core_spe_type)
-        {
-            if (msg.has_per_cluster_cpu()) {
-                auto index = msg.per_cluster_cpu();
-                runtime_assert(index < clusters.size(), "Invalid cluster index given");
-                return {clusters[std::size_t(index)]};
-            }
-
-            if (msg.has_uncore_pmu()) {
-                auto index = msg.uncore_pmu();
-                runtime_assert(index < uncore_pmus.size(), "Invalid uncore index given");
-                return {uncore_pmus[std::size_t(index)]};
-            }
-
-            if (msg.has_specific_cpu()) {
-                return {msg.specific_cpu()};
-            }
-
-            if (msg.has_spe() && msg.spe()) {
-                return {per_core_spe_type};
-            }
-
-            return {};
         }
 
         template<typename A, typename B, typename C>
@@ -457,62 +445,62 @@ namespace agents::perf {
             return result;
         }
 
-        std::vector<perf_event_t> extract_perf_event_group_events(
-            google::protobuf::RepeatedPtrField<ipc::proto::shell::perf::capture_configuration_t::perf_event_t> const &
-                msg)
+        void extract_event_definition_list(
+            ipc::proto::shell::perf::capture_configuration_t::perf_event_definition_list_t const & msg,
+            std::vector<event_definition_t> & events)
         {
-            std::vector<perf_event_t> result {};
-
-            for (auto const & entry : msg) {
-                result.emplace_back(perf_event_t {
+            for (auto const & entry : msg.events()) {
+                events.emplace_back(event_definition_t {
                     extract_perf_event_attr(entry.attr()),
-                    entry.key(),
+                    gator_key_t(entry.key()),
                 });
             }
-
-            return result;
         }
 
-        void extract_perf_groups_group(
-            ipc::proto::shell::perf::capture_configuration_t::perf_event_group_events_t const & msg,
-            std::map<PerfEventGroupIdentifier, perf_event_group_activator_state_t> & map,
+        void extract_event_configuration(
+            ipc::proto::shell::perf::capture_configuration_t::perf_event_configuration_t const & msg,
+            event_configuration_t & event_configuration,
             std::vector<perf_capture_configuration_t::gator_cpu_t> const & clusters,
             std::vector<perf_capture_configuration_t::uncore_pmu_t> const & uncore_pmus,
-            std::map<int, int> & core_no_to_spe_type)
+            std::size_t num_cores)
         {
-            auto result = map.try_emplace(
-                extract_perf_event_group_identifier(msg.id(), clusters, uncore_pmus, core_no_to_spe_type),
-                perf_event_group_common_state_t {
-                    extract_perf_event_group_events(msg.events()),
-                });
+            runtime_assert(msg.has_header_event(), "missing header_event");
 
-            runtime_assert(result.second, "should have inserted perf event group definition");
-        }
+            auto const & hm = msg.header_event();
+            event_configuration.header_event = event_definition_t {
+                extract_perf_event_attr(hm.attr()),
+                gator_key_t(hm.key()),
+            };
 
-        void extract_perf_groups(ipc::proto::shell::perf::capture_configuration_t::perf_groups_t const & msg,
-                                 perf_capture_configuration_t::perf_groups_t & perf_groups,
-                                 std::vector<perf_capture_configuration_t::gator_cpu_t> const & clusters,
-                                 std::vector<perf_capture_configuration_t::uncore_pmu_t> const & uncore_pmus,
-                                 std::map<int, int> & core_no_to_spe_type)
-        {
-            for (auto const & group : msg.groups()) {
-                extract_perf_groups_group(group,
-                                          perf_groups.perfEventGroupMap,
-                                          clusters,
-                                          uncore_pmus,
-                                          core_no_to_spe_type);
+            extract_event_definition_list(msg.global_events(), event_configuration.global_events);
+            extract_event_definition_list(msg.spe_events(), event_configuration.spe_events);
+
+            for (auto const & entry : msg.cluster_specific_events()) {
+                runtime_assert(entry.first < clusters.size(), "Invalid cluster id received");
+                auto id = cpu_cluster_id_t(entry.first);
+                extract_event_definition_list(entry.second, event_configuration.cluster_specific_events[id]);
             }
 
-            perf_groups.numberOfEventsAdded = msg.number_of_events_added();
+            for (auto const & entry : msg.uncore_specific_events()) {
+                runtime_assert(entry.first < uncore_pmus.size(), "Invalid uncore id received");
+                auto id = uncore_pmu_id_t(entry.first);
+                extract_event_definition_list(entry.second, event_configuration.uncore_specific_events[id]);
+            }
+
+            for (auto const & entry : msg.cpu_specific_events()) {
+                runtime_assert(entry.first < num_cores, "Invalid core no received");
+                auto id = core_no_t(entry.first);
+                extract_event_definition_list(entry.second, event_configuration.cpu_specific_events[id]);
+            }
         }
 
         void extract_ringbuffer_config(
             ipc::proto::shell::perf::capture_configuration_t::perf_ringbuffer_config_t const & msg,
-            perf_ringbuffer_config_t & ringbuffer_config)
+            buffer_config_t & ringbuffer_config)
         {
-            ringbuffer_config.pageSize = msg.page_size();
-            ringbuffer_config.dataBufferSize = msg.data_size();
-            ringbuffer_config.auxBufferSize = msg.aux_size();
+            ringbuffer_config.page_size = msg.page_size();
+            ringbuffer_config.data_buffer_size = msg.data_size();
+            ringbuffer_config.aux_buffer_size = msg.aux_size();
         }
 
         std::vector<std::string> extract_args(google::protobuf::RepeatedPtrField<std::string> && args)
@@ -542,7 +530,7 @@ namespace agents::perf {
             };
         }
 
-        void extract_wait_process(std::string & msg, std::optional<std::string> & wait_process)
+        void extract_wait_process(std::string & msg, std::string & wait_process)
         {
             if (!msg.empty()) {
                 wait_process = msg;
@@ -556,6 +544,14 @@ namespace agents::perf {
                 pids.insert(pid);
             }
         }
+
+        void extract_perf_pmu_type_to_name(google::protobuf::Map<::google::protobuf::uint32, std::string> & msg,
+                                           std::map<std::uint32_t, std::string> & perf_pmu_type_to_name)
+        {
+            for (auto & entry : msg) {
+                perf_pmu_type_to_name.emplace(entry.first, std::move(entry.second));
+            }
+        }
     }
 
     /* create the message */
@@ -563,13 +559,15 @@ namespace agents::perf {
         SessionData const & session_data,
         PerfConfig const & perf_config,
         ICpuInfo const & cpu_info,
-        std::map<int, int> const & cpu_number_to_spe_type,
+        std::map<int, std::uint32_t> const & cpu_number_to_spe_type,
         lib::Span<perf_capture_configuration_t::cpu_freq_properties_t> cluster_keys_for_cpu_frequency_counter,
         lib::Span<UncorePmu const> uncore_pmus,
         lib::Span<GatorCpu const> all_known_cpu_pmus,
         perf_groups_configurer_state_t const & perf_groups,
-        perf_ringbuffer_config_t const & ringbuffer_config,
-        bool enable_on_exec)
+        agents::perf::buffer_config_t const & ringbuffer_config,
+        std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name,
+        bool enable_on_exec,
+        bool stop_pids)
     {
         ipc::msg_capture_configuration_t result {};
 
@@ -579,11 +577,13 @@ namespace agents::perf {
         add_cpus(*result.suffix.mutable_cpus(), cpu_info, cpu_number_to_spe_type);
         add_uncore_pmus(*result.suffix.mutable_uncore_pmus(), uncore_pmus);
         add_cpuid_to_core_name(*result.suffix.mutable_cpuid_to_core_name(), all_known_cpu_pmus);
-        add_perf_groups(*result.suffix.mutable_perf_groups(), perf_groups, cpu_info, uncore_pmus);
+        add_event_configuration(*result.suffix.mutable_event_configuration(), perf_groups, cpu_info, uncore_pmus);
         add_ringbuffer_config(*result.suffix.mutable_ringbuffer_config(), ringbuffer_config);
+        add_perf_pmu_type_to_name(*result.suffix.mutable_perf_pmu_type_to_name(), perf_pmu_type_to_name);
 
         result.suffix.set_num_cpu_cores(cpu_info.getNumberOfCores());
         result.suffix.set_enable_on_exec(enable_on_exec);
+        result.suffix.set_stop_pids(stop_pids);
 
         return result;
     }
@@ -622,9 +622,9 @@ namespace agents::perf {
         }
     }
 
-    std::unique_ptr<perf_capture_configuration_t> parse_capture_configuration_msg(ipc::msg_capture_configuration_t msg)
+    std::shared_ptr<perf_capture_configuration_t> parse_capture_configuration_msg(ipc::msg_capture_configuration_t msg)
     {
-        auto result = std::make_unique<perf_capture_configuration_t>();
+        auto result = std::make_shared<perf_capture_configuration_t>();
 
         extract_session_data(msg.suffix.session_data(), result->session_data);
         extract_perf_config(msg.suffix.perf_config(), result->perf_config);
@@ -637,18 +637,21 @@ namespace agents::perf {
                      result->per_core_spe_type);
         extract_uncore_pmus(*msg.suffix.mutable_uncore_pmus(), result->uncore_pmus);
         extract_cpuid_to_core_name(*msg.suffix.mutable_cpuid_to_core_name(), result->cpuid_to_core_name);
-        extract_perf_groups(msg.suffix.perf_groups(),
-                            result->perf_groups,
-                            result->clusters,
-                            result->uncore_pmus,
-                            result->per_core_spe_type);
+
+        result->num_cpu_cores = msg.suffix.num_cpu_cores();
+        result->enable_on_exec = msg.suffix.enable_on_exec();
+        result->stop_pids = msg.suffix.stop_pids();
+
+        extract_event_configuration(msg.suffix.event_configuration(),
+                                    result->event_configuration,
+                                    result->clusters,
+                                    result->uncore_pmus,
+                                    result->num_cpu_cores);
         extract_ringbuffer_config(msg.suffix.ringbuffer_config(), result->ringbuffer_config);
         extract_command(*msg.suffix.mutable_command(), result->command);
         extract_wait_process(*msg.suffix.mutable_wait_process(), result->wait_process);
         extract_pids(msg.suffix.pids(), result->pids);
-
-        result->num_cpu_cores = msg.suffix.num_cpu_cores();
-        result->enable_on_exec = msg.suffix.enable_on_exec();
+        extract_perf_pmu_type_to_name(*msg.suffix.mutable_perf_pmu_type_to_name(), result->perf_pmu_type_to_name);
 
         return result;
     }

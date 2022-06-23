@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "SessionData.h"
 
@@ -138,14 +138,4 @@ void SessionData::parseSessionXML(char * xmlString)
                   "or disable system-wide mode.");
         handleException();
     }
-}
-
-uint64_t getTime()
-{
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0) {
-        LOG_ERROR("Failed to get uptime");
-        handleException();
-    }
-    return (NS_PER_S * ts.tv_sec + ts.tv_nsec);
 }

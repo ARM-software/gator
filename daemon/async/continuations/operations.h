@@ -15,6 +15,7 @@
 #include "async/continuations/detail/predicate.h"
 #include "async/continuations/detail/start_state.h"
 #include "async/continuations/detail/then.h"
+#include "async/continuations/detail/unpack_tuple.h"
 #include "async/continuations/detail/unpack_variant.h"
 #include "lib/Assert.h"
 #include "lib/exception.h"
@@ -27,7 +28,7 @@
 #include <utility>
 #include <variant>
 
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/error_code.hpp>
 
 /** A helper that provides the 'detach' like operation, but with debug logging for terminal exceptions */
 #define DETACH_LOG_ERROR(name) async::continuations::finally(async::continuations::error_swallower_t {(name)});
@@ -87,6 +88,10 @@ namespace async::continuations {
         template<typename Op>
         struct unpack_variant_co_op_from_t<unpack_variant_detect_type_tag_t, Op> {
             using type = unpack_variant_detected_co_op_t<Op>;
+        };
+
+        struct unpack_tuple_co_op_t {
+            lib::source_loc_t sloc;
         };
 
         template<bool Expected, typename Op>
@@ -329,7 +334,7 @@ namespace async::continuations {
     }
 
     /**
-     * Constructs a 'unpackt std::variant using std::visit' operation that can be chained to some continuation using | so that subsequent operations execute on the supplied executor.
+     * Constructs a 'unpacked std::variant using std::visit' operation that can be chained to some continuation using | so that subsequent operations execute on the supplied executor.
      * @tparam Args A single type being the expected common return type for the next link in the chain. For continuations with multiple arguments pass `continuation_of_t<Args...>`
      * @param op Some callable operation that receives the values produced by the preceeding continuation and will produce some next continuation
      * @return The op wrapper object
@@ -340,6 +345,12 @@ namespace async::continuations {
         using op_type = std::decay_t<Op>;
         return typename detail::unpack_variant_co_op_from_t<Args, op_type>::type {sloc, std::move(op)};
     }
+
+    /**
+     * Constructs a 'unpacked tuple' operation that can be chained to some continuation using | so that subsequent operations execute on the supplied executor.
+     * @return The op wrapper object
+     */
+    constexpr auto unpack_tuple(SLOC_DEFAULT_ARGUMENT) { return detail::unpack_tuple_co_op_t {sloc}; }
 
     /** Bring the config option in */
     using detail::on_executor_mode_t;
@@ -518,6 +529,13 @@ namespace async::continuations {
         using factory_type = typename detail::unpack_variant_factory_from_t<common_return_type>::type;
 
         return factory_type::make_continuation(std::move(continuation), op.sloc, std::move(op.op));
+    }
+
+    template<typename FromInitiator, typename FromTuple>
+    constexpr auto operator|(continuation_t<FromInitiator, FromTuple> && continuation,
+                             detail::unpack_tuple_co_op_t && op)
+    {
+        return detail::unpack_tuple_factory_t::make_continuation(std::move(continuation), op.sloc);
     }
 
     /** Chain a continuation that produces no value, with another continuation */
@@ -804,5 +822,66 @@ namespace async::continuations {
                 SLOC_DEFAULT_ARGUMENT)
     {
         continuation([](Args... /*args*/) {}, exceptionally, sloc);
+    }
+
+    /** Spawn a continuation as a virtual thread, calling the handler with a boolean flag to indicate (true) that an error occured */
+    template<typename StateChain,
+             typename... Args,
+             typename Handler,
+             std::enable_if_t<std::is_invocable_v<Handler, bool>, bool> = false>
+    void spawn(char const * name,
+               continuation_t<StateChain, Args...> && continuation,
+               Handler && handler,
+               SLOC_DEFAULT_ARGUMENT)
+    {
+        continuation(
+            [sloc, h = handler](Args &&... /*args*/) mutable {
+                TRACE_CONTINUATION(sloc, "spawn completing without error");
+                h(false);
+            },
+            [h = handler, name](auto const & e) { h(error_swallower_t::consume(name, e)); },
+            sloc);
+    }
+
+    /** Spawn a continuation as a virtual thread, calling the handler with a boolean flag to indicate (true) that an error occured, with the boost::system::error code extracted as the second argument if the error can be converted to it */
+    template<typename StateChain,
+             typename... Args,
+             typename Handler,
+             std::enable_if_t<std::is_invocable_v<Handler, bool, boost::system::error_code>, bool> = false>
+    void spawn(char const * name,
+               continuation_t<StateChain, Args...> && continuation,
+               Handler && handler,
+               SLOC_DEFAULT_ARGUMENT)
+    {
+        continuation(
+            [sloc, h = handler](Args &&... /*args*/) mutable {
+                TRACE_CONTINUATION(sloc, "spawn completing without error");
+                h(false, boost::system::error_code {});
+            },
+            [h = handler, name](auto const & e) {
+                if (error_swallower_t::consume(name, e)) {
+                    // store the failure
+                    if constexpr (std::is_same_v<boost::system::error_code, std::decay_t<decltype(e)>>) {
+                        h(true, e);
+                    }
+                    else {
+                        h(true, boost::system::error_code {});
+                    }
+                }
+                else {
+                    h(false, boost::system::error_code {});
+                }
+            },
+            sloc);
+    }
+
+    /** Spawn a continuation as a virtual thread */
+    template<typename StateChain, typename... Args>
+    void spawn(char const * name, continuation_t<StateChain, Args...> && continuation, SLOC_DEFAULT_ARGUMENT)
+    {
+        continuation(
+            [sloc](Args &&... /*args*/) mutable { TRACE_CONTINUATION(sloc, "spawn completing without error"); },
+            [name](auto e) { error_swallower_t::consume(name, e); },
+            sloc);
     }
 }

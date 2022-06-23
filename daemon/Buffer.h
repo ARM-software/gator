@@ -56,6 +56,7 @@ public:
     int packInt64(int64_t x) override;
     void writeBytes(const void * data, std::size_t count) override;
     void writeString(std::string_view str) override;
+    void writeRawFrame(lib::Span<const char> frame);
 
     void beginFrame(FrameType frameType) override;
     void abortFrame() override;
