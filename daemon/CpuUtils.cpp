@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils.h"
 
@@ -213,74 +213,97 @@ namespace cpu_utils {
         return hardwareName;
     }
 
-    std::string readCpuInfo(bool ignoreOffline, lib::Span<int> cpuIds)
+    std::string readCpuInfo(bool ignoreOffline, bool wantsHardwareName, lib::Span<int> cpuIds)
     {
-        std::mutex mutex;
-        unsigned identificationThreadCallbackCounter = 0;
-        std::condition_variable cv;
         std::map<unsigned, unsigned> cpuToCluster;
         std::map<unsigned, std::set<unsigned>> clusterToCpuIds;
         std::map<unsigned, unsigned> cpuToCpuIds;
-        std::vector<std::unique_ptr<PerCoreIdentificationThread>> perCoreThreads;
 
-        // wake all cores; this ensures the contents of /proc/cpuinfo reflect the full range of cores in the system.
-        // this works as follows:
-        // - spawn one thread per core that is affined to each core
-        // - once all cores are online and affined, *and* have read the data they are required to read, then they callback here to notify this method to continue
-        // - the threads remain online until this function finishes (they are disposed of / terminated by destructor); this is so as
-        //   to ensure that the cores remain online until cpuinfo is read
+        // first collect the detailed state using the identifier if available
         {
-            for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
-                perCoreThreads.emplace_back(new PerCoreIdentificationThread(
-                    ignoreOffline,
-                    cpu,
-                    [&](unsigned c,
-                        unsigned /*core_id*/,
-                        unsigned physical_package_id,
-                        const std::set<int> & core_siblings,
-                        std::uint64_t midr_el1) -> void {
-                        std::lock_guard<std::mutex> guard {mutex};
+            std::mutex mutex;
+            std::condition_variable cv;
+            std::size_t identificationThreadCallbackCounter = 0;
+            std::map<unsigned, PerCoreIdentificationThread::properties_t> collected_properties {};
+            std::vector<std::unique_ptr<PerCoreIdentificationThread>> perCoreThreads {};
 
-                        // update completed count
-                        identificationThreadCallbackCounter += 1;
-                        cv.notify_one();
+            // wake all cores; this ensures the contents of /proc/cpuinfo reflect the full range of cores in the system.
+            // this works as follows:
+            // - spawn one thread per core that is affined to each core
+            // - once all cores are online and affined, *and* have read the data they are required to read, then they callback here to notify this method to continue
+            // - the threads remain online until this function finishes (they are disposed of / terminated by destructor); this is so as
+            //   to ensure that the cores remain online until cpuinfo is read
+            if (!ignoreOffline) {
+                for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
+                    perCoreThreads.emplace_back(new PerCoreIdentificationThread(
+                        false,
+                        cpu,
+                        [&](unsigned c, PerCoreIdentificationThread::properties_t && properties) -> void {
+                            std::lock_guard<std::mutex> guard {mutex};
 
-                        const unsigned cpuId = makeCpuId(midr_el1);
+                            // store it for later processing
+                            collected_properties.emplace(c, std::move(properties));
 
-                        // store the cluster / core mappings to allow us to fill in any gaps by assuming the same core type per cluster
-                        if (physical_package_id != PerCoreIdentificationThread::INVALID_PACKAGE_ID) {
-                            cpuToCluster[c] = physical_package_id;
+                            // update completed count
+                            identificationThreadCallbackCounter += 1;
+                            cv.notify_one();
+                        }));
+                }
 
-                            // also map cluster to MIDR value if read
-                            if (midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                                clusterToCpuIds[physical_package_id].insert(cpuId);
-                            }
-
-                            for (int sibling : core_siblings) {
-                                const unsigned sibling_cpu = sibling;
-
-                                if (cpuToCluster.count(sibling_cpu) == 0) {
-                                    cpuToCluster[sibling_cpu] = physical_package_id;
-                                }
-                            }
-                        }
-
-                        // map cpu to MIDR value if read
-                        if (midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                            cpuToCpuIds[c] = cpuId;
-                        }
-                    }));
+                // wait until all threads are online
+                std::unique_lock<std::mutex> lock {mutex};
+                auto succeeded = cv.wait_for(lock, std::chrono::seconds(10), [&] {
+                    return identificationThreadCallbackCounter >= cpuIds.size();
+                });
+                if (!succeeded) {
+                    LOG_DEBUG("Could not identify all CPU cores within the timeout period. Activated %zu of %zu",
+                              identificationThreadCallbackCounter,
+                              cpuIds.size());
+                }
+            }
+            //
+            // when we don't care about onlining the cores, just read them directly, one by one, any that are offline will be ignored anyway
+            //
+            else {
+                for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
+                    collected_properties.emplace(cpu, PerCoreIdentificationThread::detectFor(cpu));
+                }
             }
 
-            // wait until all threads are online
-            std::unique_lock<std::mutex> lock {mutex};
-            cv.wait_for(lock, std::chrono::seconds(10), [&] {
-                return identificationThreadCallbackCounter >= cpuIds.size();
-            });
-        }
+            // lock to prevent concurrent access to maps if one of the threads stalls
+            std::lock_guard<std::mutex> lock(mutex);
 
-        // lock to prevent concurrent access to maps
-        std::lock_guard<std::mutex> lock(mutex);
+            // process the collected properties
+            for (auto const & entry : collected_properties) {
+                auto c = entry.first;
+                auto const & properties = entry.second;
+
+                const unsigned cpuId = makeCpuId(properties.midr_el1);
+
+                // store the cluster / core mappings to allow us to fill in any gaps by assuming the same core type per cluster
+                if (properties.physical_package_id != PerCoreIdentificationThread::INVALID_PACKAGE_ID) {
+                    cpuToCluster[c] = properties.physical_package_id;
+
+                    // also map cluster to MIDR value if read
+                    if (properties.midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
+                        clusterToCpuIds[properties.physical_package_id].insert(cpuId);
+                    }
+
+                    for (int sibling : properties.core_siblings) {
+                        const unsigned sibling_cpu = sibling;
+
+                        if (cpuToCluster.count(sibling_cpu) == 0) {
+                            cpuToCluster[sibling_cpu] = properties.physical_package_id;
+                        }
+                    }
+                }
+
+                // map cpu to MIDR value if read
+                if (properties.midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
+                    cpuToCpuIds[c] = cpuId;
+                }
+            }
+        }
 
         // log what we learnt
         for (const auto & pair : cpuToCpuIds) {
@@ -300,7 +323,9 @@ namespace cpu_utils {
         const bool knowAllMidrValues = (cpuToCpuIds.size() == cpuIds.size());
 
         // do we need to read /proc/cpuinfo
-        std::string hardwareName = parseProcCpuInfo(/* justGetHardwareName = */ knowAllMidrValues, cpuIds);
+        std::string hardwareName = (wantsHardwareName || !knowAllMidrValues
+                                        ? parseProcCpuInfo(/* justGetHardwareName = */ knowAllMidrValues, cpuIds)
+                                        : "");
 
         // update/set known items from MIDR map and topology information. This will override anything read from /proc/cpuinfo
         updateCpuIdsFromTopologyInformation(cpuIds, cpuToCpuIds, cpuToCluster, clusterToCpuIds);

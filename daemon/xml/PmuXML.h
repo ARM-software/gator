@@ -1,10 +1,11 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PMUXML_H
 #define PMUXML_H
 
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 class GatorCpu {
@@ -14,9 +15,28 @@ public:
              std::string counterSet,
              const char * dtName,
              const char * speName,
-             const std::set<int> & cpuIds,
+             std::set<int> const & cpuIds,
              int pmncCounters,
              bool isV8);
+
+    GatorCpu(std::string coreName,
+             std::string id,
+             std::string counterSet,
+             std::string dtName,
+             std::string speName,
+             std::vector<int> cpuIds,
+             int pmncCounters,
+             bool isV8)
+        : mCoreName(std::move(coreName)),
+          mId(std::move(id)),
+          mCounterSet(std::move(counterSet)),
+          mDtName(std::move(dtName)),
+          mSpeName(std::move(speName)),
+          mCpuIds(std::move(cpuIds)),
+          mPmncCounters(pmncCounters),
+          mIsV8(isV8)
+    {
+    }
 
     GatorCpu(const GatorCpu & that, const char * speName)
         : mCoreName(that.mCoreName),
@@ -113,8 +133,7 @@ private:
 };
 
 struct PmuXML {
-    static const char * const DEFAULT_XML;
-    static const unsigned DEFAULT_XML_LEN;
+    static const std::string_view DEFAULT_XML;
 
     const GatorCpu * findCpuByName(const char * name) const;
     const GatorCpu * findCpuById(int cpuid) const;

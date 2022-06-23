@@ -1,8 +1,9 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #include "GatorCLIParser.h"
 
 #include "Config.h"
+#include "Logging.h"
 #include "lib/Istream.h"
 #include "lib/Utils.h"
 
@@ -19,7 +20,7 @@ namespace {
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
 }
 
-static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:VX:Z:";
+static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:TVX:Z:";
 
 static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                                 // OF NEW ITEMS.
@@ -53,6 +54,7 @@ static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPH
     WAIT_PROCESS,                                                    //
     {"print", /******************/ required_argument, nullptr, 'R'}, //
     {"system-wide", /************/ required_argument, nullptr, 'S'}, //
+    {"trace", /******************/ no_argument, /***/ nullptr, 'T'}, //
     {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
     {"spe", /********************/ required_argument, nullptr, 'X'}, //
     {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
@@ -740,6 +742,10 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.mAndroidActivity = optarg;
                 break;
             }
+            case 'T': {
+                logging::set_log_enable_trace(true);
+                break;
+            }
         }
     }
     if (indexApp > 0) {
@@ -893,11 +899,13 @@ bool GatorCLIParser::hasDebugFlag(int argc, const char * const argv[])
     //when --app or -A is given as an optional argument. and has option as ls -lrt
     //-lrt get treated as another option for gatord
     //TODO: needs investigation
-    std::string debugArgShort = "-d";
-    std::string debugArgLong = "--debug";
+    constexpr std::string_view debugArgShort = "-d";
+    constexpr std::string_view debugArgLong = "--debug";
+    constexpr std::string_view traceArgShort = "-T";
+    constexpr std::string_view traceArgLong = "--trace";
     for (int j = 1; j < argc; j++) {
-        std::string arg(argv[j]);
-        if (arg == debugArgShort || arg == debugArgLong) {
+        std::string_view arg(argv[j]);
+        if ((arg == debugArgShort) || (arg == debugArgLong) || (arg == traceArgShort) || (arg == traceArgLong)) {
             int appIndex = findIndexOfArg("--app", argc, argv);
             if (appIndex == -1) {
                 appIndex = findIndexOfArg("-A", argc, argv);

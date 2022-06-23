@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2022 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -39,7 +39,7 @@ namespace armnn {
      */
     static AutoClosingFd socket_cloexec(int domain, int type, int protocol)
     {
-        return {::socket_cloexec(domain, type, protocol)};
+        return AutoClosingFd {::socket_cloexec(domain, type, protocol)};
     }
 
     /**
@@ -231,7 +231,7 @@ namespace armnn {
             return std::unique_ptr<SocketIO>(new SocketIO(std::move(acceptFd), host.type));
         }
         // Ignore these error codes
-        if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR) || (errno == EINVAL)) {
             return nullptr;
         }
         LOG_ERROR("Failed to accept socket due to %s (%d)", std::strerror(errno), errno);

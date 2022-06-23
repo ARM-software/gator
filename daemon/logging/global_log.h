@@ -15,7 +15,8 @@ namespace logging {
         /** Toggle whether TRACE/DEBUG/SETUP messages are output to the console */
         void set_debug_enabled(bool enabled) override { output_debug = enabled; }
         /** Store some log item to the log */
-        void log_item(log_level_t level,
+        void log_item(thread_id_t tid,
+                      log_level_t level,
                       log_timestamp_t const & timestamp,
                       source_loc_t const & location,
                       std::string_view message) override;

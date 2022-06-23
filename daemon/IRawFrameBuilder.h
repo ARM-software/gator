@@ -1,11 +1,13 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "Protocol.h"
+#include "Time.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 /**
  * Builds an arbitrary APC frame
@@ -56,7 +58,7 @@ public:
     /**
      * Gets the number of bytes available in the backing buffer
      */
-    virtual int bytesAvailable() const = 0;
+    [[nodiscard]] virtual int bytesAvailable() const = 0;
 
     /**
      * Packs a 32 bit number
@@ -66,11 +68,32 @@ public:
     virtual int packInt(int32_t x) = 0;
 
     /**
+     * Packs a 32 bit number
+     *
+     * Must be required bytes available
+     */
+    int packInt(uint32_t x) { return packInt(int32_t(x)); }
+
+    /**
      * Packs a 64 bit number
      *
      * Must be required bytes available
      */
     virtual int packInt64(int64_t x) = 0;
+
+    /**
+     * Packs a 64 bit number
+     *
+     * Must be required bytes available
+     */
+    int packInt64(uint64_t x) { return packInt64(int64_t(x)); }
+
+    /**
+     * Packs a monotonic_delta_t
+     *
+     * Must be required bytes available
+     */
+    int packMonotonicDelta(monotonic_delta_t x) { return packInt64(uint64_t(x)); }
 
     /**
      * Writes some arbitrary bytes to the frame
@@ -84,7 +107,7 @@ public:
      *
      * Must be required bytes available
      */
-    virtual void writeString(const char * str) = 0;
+    virtual void writeString(std::string_view str) = 0;
 
     // TODO: add some method like this so a read call can write directly to the buffer
     // virtual void getContiguousSpace(function<int /* number used */ (lib::Span<char> /* backing buffer */)> consumer) = 0;
@@ -99,7 +122,7 @@ public:
      * @param bytes Number of bytes to check
      * @return True if it is possible, or false if would always fail
      */
-    virtual bool supportsWriteOfSize(int bytes) const = 0;
+    [[nodiscard]] virtual bool supportsWriteOfSize(int bytes) const = 0;
 };
 
 class IRawFrameBuilderWithDirectAccess : public IRawFrameBuilder {

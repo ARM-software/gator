@@ -1,0 +1,4 @@
+---
+Checks:              '-*,cert-*-c,-cert-dcl*-c' # just cert checks (but not the name ones)
+FormatStyle:         none
+WarningsAsErrors:    '-*'

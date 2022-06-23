@@ -1,9 +1,10 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
 #include "ExternalSource.h"
 
+#include "BlockCounterFrameBuilder.h"
 #include "Buffer.h"
 #include "BufferUtils.h"
 #include "Child.h"
@@ -18,6 +19,7 @@
 #include "lib/AutoClosingFd.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Memory.h"
+#include "lib/Syscall.h"
 
 #include <atomic>
 
@@ -27,7 +29,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-static const char STREAMLINE_ANNOTATE[] = "\0streamline-annotate";
 static const char MALI_GRAPHICS_STARTUP[] = "\0mali_thirdparty_client";
 static const char MALI_GRAPHICS_V1[] = "MALI_GRAPHICS 1\n";
 static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
@@ -36,19 +37,15 @@ static const char FTRACE_V2[] = "FTRACE 2\n";
 
 static constexpr int BUFFER_SIZE = 1 * 1024 * 1024;
 
-class ExternalSource : public Source {
+class ExternalSourceImpl : public ExternalSource {
 public:
-    ExternalSource(sem_t & senderSem, Drivers & mDrivers, std::function<uint64_t()> getMonotonicTime)
+    ExternalSourceImpl(sem_t & senderSem, Drivers & mDrivers, std::function<uint64_t()> getMonotonicTime)
         : mGetMonotonicTime(std::move(getMonotonicTime)),
           mCommitChecker(gSessionData.mLiveRate),
           mBuffer(BUFFER_SIZE, senderSem),
 
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
           mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
-#ifdef TCP_ANNOTATIONS
-          mAnnotate(8083),
-#endif
-          mAnnotateUds(STREAMLINE_ANNOTATE, sizeof(STREAMLINE_ANNOTATE), true),
           mMidgardUds(-1),
           mDrivers(mDrivers)
     {
@@ -133,11 +130,7 @@ public:
     {
         if (!mMonitor.init() || !lib::setNonblock(mMidgardStartupUds.getFd())
             || !mMonitor.add(mMidgardStartupUds.getFd()) || !lib::setNonblock(mUtgardStartupUds.getFd())
-            || !mMonitor.add(mUtgardStartupUds.getFd())
-#ifdef TCP_ANNOTATIONS
-            || !lib::setNonblock(mAnnotate.getFd()) || !mMonitor.add(mAnnotate.getFd())
-#endif
-            || !lib::setNonblock(mAnnotateUds.getFd()) || !mMonitor.add(mAnnotateUds.getFd())) {
+            || !mMonitor.add(mUtgardStartupUds.getFd())) {
             return false;
         }
 
@@ -177,12 +170,66 @@ public:
             LOG_DEBUG("Writing to annotate pipe failed");
         }
 
+        struct counter_value_t {
+            int core;
+            int key;
+            std::int64_t value;
+        };
+
+        std::vector<counter_value_t> collected_values {};
+
         if (mDrivers.getFtraceDriver().isSupported()) {
             mDrivers.getAtraceDriver().start();
             mDrivers.getTtraceDriver().start();
-            mDrivers.getFtraceDriver().start();
+            mDrivers.getFtraceDriver().start([&collected_values](int key, int core, std::int64_t value) {
+                collected_values.emplace_back(counter_value_t {core, key, value});
+            });
         }
 
+        // write the initial counter values
+        {
+            BlockCounterFrameBuilder counter_builder {mBuffer, {}};
+            const auto timestamp = 0ULL; // delta timestamp is set to zero as it is the starting value
+            bool needs_timestamp = true;
+            int last_core = 0;
+            for (auto const & value : collected_values) {
+                bool written = false;
+                while (mSessionIsActive && !written) {
+                    // write the frame header
+                    if (needs_timestamp) {
+                        if (counter_builder.eventHeader(timestamp)) {
+                            last_core = 0;
+                            needs_timestamp = false;
+                        }
+                    }
+                    // if the header is written correctly
+                    if (!needs_timestamp) {
+                        // try to write the core value
+                        if (last_core != value.core) {
+                            if (counter_builder.eventCore(value.core)) {
+                                last_core = value.core;
+                            }
+                        }
+                        // if the core was written/already correct then try to write the value
+                        if (last_core == value.core) {
+                            if (counter_builder.event64(value.key, value.value)) {
+                                written = true;
+                            }
+                        }
+                    }
+                    // flush to make space if required
+                    if (!written) {
+                        if (counter_builder.flush()) {
+                            needs_timestamp = true;
+                        }
+                    }
+                }
+            }
+            // flush any remaining frame
+            counter_builder.flush();
+        }
+
+        // start the capture
         while (mSessionIsActive) {
             struct epoll_event events[16];
             // Clear any pending sem posts
@@ -214,24 +261,13 @@ public:
                     mDrivers.getExternalDriver().disconnect();
                     mDrivers.getExternalDriver().start();
                 }
-#ifdef TCP_ANNOTATIONS
-                else if (fd == mAnnotate.getFd()) {
-                    int client = mAnnotate.acceptConnection();
-                    if (!lib::setNonblock(client) || !mMonitor.add(client)) {
-                        LOG_ERROR("Unable to set socket options on incoming annotation connection");
-                        handleException();
-                    }
-                }
-#endif
-                else if (fd == mAnnotateUds.getFd()) {
-                    int client = mAnnotateUds.acceptConnection();
-                    if (!lib::setNonblock(client) || !mMonitor.add(client)) {
-                        LOG_ERROR("Unable to set socket options on incoming annotation connection");
-                        handleException();
-                    }
-                }
                 else if (fd == *mInterruptRead) {
                     // Means interrupt has been called and mSessionIsActive should be reread
+                    int8_t c = 0;
+                    if (::read(*mInterruptRead, &c, sizeof(c)) != sizeof(c)) {
+                        LOG_ERROR("read failed");
+                        handleException();
+                    }
                 }
                 else {
                     /* This can result in some starvation if there are multiple
@@ -257,6 +293,11 @@ public:
             }
             mDrivers.getTtraceDriver().stop();
             mDrivers.getAtraceDriver().stop();
+        }
+
+        for (auto & pair : external_agent_connections) {
+            LOG_DEBUG("Closing read end %d", pair.first);
+            pair.second.close();
         }
 
         mBuffer.flush();
@@ -316,6 +357,32 @@ public:
         return isDone;
     }
 
+    lib::AutoClosingFd add_agent_pipe() override
+    {
+        std::array<int, 2> pfd {{-1, -1}};
+        if (lib::pipe2(pfd, O_CLOEXEC) < 0) {
+            return {};
+        }
+
+        lib::AutoClosingFd read {pfd[0]};
+        lib::AutoClosingFd write {pfd[1]};
+
+        if (!lib::setNonblock(*read) || !mMonitor.add(*read)) {
+            return {};
+        }
+
+        external_agent_connections[pfd[0]] = std::move(read);
+
+        int8_t c = 0;
+        // Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
+        if (::write(*mInterruptWrite, &c, sizeof(c)) != sizeof(c)) {
+            LOG_ERROR("write failed");
+            handleException();
+        }
+
+        return write;
+    }
+
 private:
     sem_t mBufferSem {};
     std::function<uint64_t()> mGetMonotonicTime;
@@ -324,10 +391,7 @@ private:
     Monitor mMonitor {};
     OlyServerSocket mMidgardStartupUds;
     OlyServerSocket mUtgardStartupUds;
-#ifdef TCP_ANNOTATIONS
-    OlyServerSocket mAnnotate;
-#endif
-    OlyServerSocket mAnnotateUds;
+    std::map<int, lib::AutoClosingFd> external_agent_connections {};
     lib::AutoClosingFd mInterruptRead {};
     lib::AutoClosingFd mInterruptWrite {};
     int mMidgardUds;
@@ -350,9 +414,9 @@ private:
     }
 };
 
-std::unique_ptr<Source> createExternalSource(sem_t & senderSem, Drivers & drivers)
+std::unique_ptr<ExternalSource> createExternalSource(sem_t & senderSem, Drivers & drivers)
 {
-    auto source = lib::make_unique<ExternalSource>(senderSem, drivers, &getTime);
+    auto source = lib::make_unique<ExternalSourceImpl>(senderSem, drivers, &getTime);
     if (!source->prepare()) {
         return {};
     }

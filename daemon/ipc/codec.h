@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 /**
  * Encode/Decode related functions for preparing IPC messages for transmit/receive.
@@ -29,10 +29,14 @@
 #include "lib/Assert.h"
 #include "lib/Span.h"
 
+#include <cstdlib>
 #include <cstring>
+#include <type_traits>
 
 #include <boost/asio/buffer.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/errc.hpp>
+
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 namespace ipc {
 
@@ -42,7 +46,7 @@ namespace ipc {
         /** The blob type */
         using value_type = T;
 
-        /** The scatter-gater helper object which stores the length and buffer so that the length field may be scatter-gathered */
+        /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
         struct sg_write_helper_type {
             char const * data = nullptr;
             std::size_t length = 0;
@@ -148,7 +152,7 @@ namespace ipc {
      * It can be specialized for cases where the suffix must be first encoded into some temporary buffer, or for when
      * it can be blitted directly from memory.
      */
-    template<typename T>
+    template<typename T, typename Enable = void>
     struct blob_codec_t;
 
     template<>
@@ -156,7 +160,7 @@ namespace ipc {
         /** The blob type */
         using value_type = void;
 
-        /** The scatter-gater helper object which stores the length and buffer so that the length field may be scatter-gathered */
+        /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
         struct sg_write_helper_type {
             // no fields
         };
@@ -205,9 +209,88 @@ namespace ipc {
         static auto mutable_suffix_buffer(sg_read_helper_type & /*helper*/) { return boost::asio::mutable_buffer(); }
     };
 
-    /** Specialization for vector of chars */
-    template<>
-    struct blob_codec_t<std::vector<char>> : byte_span_blob_codec_t<std::vector<char>> {
+    /** Specialization for vector of integrals */
+    template<typename T>
+    struct blob_codec_t<std::vector<T>, std::enable_if_t<std::is_integral_v<T>>>
+        : byte_span_blob_codec_t<std::vector<T>> {
+    };
+
+    /** Specialization for Span of integrals */
+    template<typename T>
+    struct blob_codec_t<lib::Span<T const>, std::enable_if_t<std::is_integral_v<T>>>
+        : byte_span_blob_codec_t<lib::Span<T const>> {
+    };
+
+    /** Specialization for protobuf messages */
+    template<typename T>
+    struct blob_codec_t<T, std::enable_if_t<is_protobuf_message_v<T>>> {
+        using value_type = T;
+
+        // Unlike byte_span_blob_codec_t, the protobuf classes cannot be their
+        // own buffers
+        struct sg_write_helper_type {
+            std::size_t length = 0;
+            std::string data;
+        };
+
+        struct sg_read_helper_type {
+            std::size_t length = 0;
+            std::vector<char> buffer;
+        };
+
+        static constexpr std::size_t sg_writer_buffers_count = 2;
+        static constexpr std::size_t length_size = sizeof(std::size_t);
+
+        static constexpr sg_write_helper_type fill_sg_write_helper_type(value_type const & pb)
+        {
+            auto helper = sg_write_helper_type {};
+            pb.SerializeToString(&helper.data);
+            helper.length = helper.data.size();
+            return helper;
+        }
+
+        static constexpr std::size_t suffix_write_size(sg_write_helper_type const & helper)
+        {
+            return length_size + helper.length;
+        }
+
+        static constexpr void fill_sg_buffer(lib::Span<boost::asio::const_buffer> sg_list,
+                                             sg_write_helper_type const & helper)
+        {
+            sg_list[0] = {reinterpret_cast<char const *>(&helper.length), length_size};
+            sg_list[1] = {helper.data.data(), helper.length};
+        }
+
+        static constexpr lib::Span<char const> read_suffix_length(lib::Span<char const> const & bytes,
+                                                                  std::size_t & length)
+        {
+            runtime_assert(bytes.size() >= length_size, "caller must ensure bytes is big enough for length field");
+
+            std::memcpy(&length, bytes.data(), length_size);
+
+            return bytes.subspan(length_size);
+        }
+
+        static auto read_suffix(sg_read_helper_type const & helper, value_type & pb)
+        {
+            auto stream = google::protobuf::io::ArrayInputStream(helper.buffer.data(), helper.buffer.size());
+
+            if (pb.ParseFromZeroCopyStream(&stream)) {
+                return boost::system::error_code {};
+            }
+            return boost::system::errc::make_error_code(boost::system::errc::protocol_error);
+        }
+
+        static auto mutable_length_buffer(sg_read_helper_type & helper)
+        {
+            return boost::asio::mutable_buffer {reinterpret_cast<char *>(&helper.length), length_size};
+        }
+
+        static auto mutable_suffix_buffer(value_type & /*buffer*/, sg_read_helper_type & helper)
+        {
+            helper.buffer.resize(helper.length);
+            return boost::asio::mutable_buffer {reinterpret_cast<char *>(helper.buffer.data()), helper.length};
+        }
     };
 
     /**
@@ -343,7 +426,7 @@ namespace ipc {
         using suffix_type = typename message_type::suffix_type;
         /** The encoder type */
         using encoder_type = blob_codec_t<suffix_type>;
-        /** The scatter-gater helper object which stores the length and buffer so that the length field may be scatter-gathered */
+        /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
         using sg_write_helper_type = typename encoder_type::sg_write_helper_type;
         /** The scatter-gather helper object used for reading the suffix */
         using sg_read_helper_type = typename encoder_type::sg_read_helper_type;
@@ -416,7 +499,7 @@ namespace ipc {
         using suffix_type = typename message_type::suffix_type;
         /** The encoder type */
         using encoder_type = blob_codec_t<suffix_type>;
-        /** The scatter-gater helper object which stores the length and buffer so that the length field may be scatter-gathered */
+        /** The scatter-gather helper object which stores the length and buffer so that the length field may be scatter-gathered */
         using sg_write_helper_type = typename encoder_type::sg_write_helper_type;
         /** The scatter-gather helper object used for reading the suffix */
         using sg_read_helper_type = typename encoder_type::sg_read_helper_type;

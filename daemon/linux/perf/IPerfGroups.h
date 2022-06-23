@@ -1,9 +1,10 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef IPERF_GROUPS_H
 #define IPERF_GROUPS_H
 
 #include "linux/perf/PerfEventGroupIdentifier.h"
+#include "linux/perf/attr_to_key_mapping_tracker.h"
 
 #include <cstdint>
 
@@ -26,13 +27,13 @@ public:
         bool context_switch = false;
     };
 
-    virtual bool add(IPerfAttrsConsumer & attrsConsumer,
+    virtual bool add(attr_to_key_mapping_tracker_t & mapping_tracker,
                      const PerfEventGroupIdentifier & groupIdentifier,
                      int key,
                      const Attr & attr,
                      bool hasAuxData = false) = 0;
 
-    virtual void addGroupLeader(IPerfAttrsConsumer & attrsConsumer,
+    virtual void addGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker,
                                 const PerfEventGroupIdentifier & groupIdentifier) = 0;
 
     virtual ~IPerfGroups() = default;

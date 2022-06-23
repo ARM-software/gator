@@ -1,10 +1,10 @@
-# Copyright (C) 2010-2020 by Arm Limited. All rights reserved.
+# Copyright (C) 2010-2021 by Arm Limited. All rights reserved.
 
 # Save this outside the macro so that development build will retrigger the generation of the source file if this file changes
 SET(CREATE_SRC_MD5_CMAKE_FILE       ${CMAKE_CURRENT_LIST_FILE})
 
 #
-#   Macro to create a source file containing the has of list list of provided files
+#   Macro to create a source file containing the md5 hash of the list of provided files
 #
 MACRO(CREATE_SRC_MD5                CONSTANT_NAME
                                     OUTPUT_FILE

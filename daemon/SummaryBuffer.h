@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef SUMMARY_BUFFER_H
 #define SUMMARY_BUFFER_H
@@ -16,9 +16,9 @@ public:
     void flush() override;
 
     // Summary messages
-    void summary(int64_t timestamp,
-                 int64_t uptime,
-                 int64_t monotonicDelta,
+    void summary(uint64_t timestamp,
+                 uint64_t uptime,
+                 uint64_t monotonicDelta,
                  const char * uname,
                  long pageSize,
                  bool nosync,

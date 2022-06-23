@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_UTILS_H
 #define INCLUDE_LIB_UTILS_H
@@ -6,10 +6,8 @@
 #include <cstdint>
 #include <set>
 
+#include <linux/version.h>
 #include <sys/utsname.h>
-
-// From include/generated/uapi/linux/version.h
-#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
 
 namespace lib {
 
@@ -34,6 +32,11 @@ namespace lib {
     * @returns true if current uid is for Root or Android Shell, false otherwise
     */
     bool isRootOrShell();
+
+    template<typename... T>
+    struct always_false : std::false_type {
+    };
+
 }
 
 #endif // INCLUDE_LIB_UTILS_H

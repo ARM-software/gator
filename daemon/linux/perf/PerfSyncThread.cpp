@@ -1,10 +1,11 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfSyncThread.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
 #include "lib/GenericTimer.h"
+#include "lib/String.h"
 
 #include <cerrno>
 #include <csignal>
@@ -77,15 +78,17 @@ void PerfSyncThread::terminate()
 
 void PerfSyncThread::rename(std::uint64_t currentTime) const
 {
+    static constexpr std::size_t comm_size = 16;
+
     // we need a way to provoke a record to appear in the perf ring buffer that we can correlated back to an action here
     // rename thread which will generate a PERF_RECORD_COMM - encode the monotonic delta in uSeconds into the name
     // this allows us to work out ~ what the start time was relative to the local-clock event
     if (enableSyncThreadMode) {
-        char buffer[16];
+
         const std::uint64_t uSeconds = (currentTime) / NS_TO_US;
         if (uSeconds <= 9999999999ULL) {
-            snprintf(buffer, sizeof(buffer), "gds-%010u-", static_cast<unsigned>(uSeconds));
-            prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&buffer[0]), 0, 0, 0);
+            lib::printf_str_t<comm_size> buffer {"gds-%010u-", static_cast<unsigned>(uSeconds)};
+            prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(buffer.c_str()), 0, 0, 0);
         }
         else {
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("gator-sync-0"), 0, 0, 0);

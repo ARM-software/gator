@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroup.h"
 
@@ -7,7 +7,6 @@
 #include "SessionData.h"
 #include "lib/Format.h"
 #include "lib/Syscall.h"
-#include "linux/perf/IPerfAttrsConsumer.h"
 #include "linux/perf/PerfUtils.h"
 #include "xml/PmuXML.h"
 
@@ -43,7 +42,7 @@ namespace {
         return fd;
     }
 
-    bool readAndSend(IPerfAttrsConsumer & attrsConsumer,
+    bool readAndSend(id_to_key_mapping_tracker_t & mapping_tracker,
                      const struct perf_event_attr & attr,
                      const int fd,
                      const int keyCount,
@@ -63,7 +62,7 @@ namespace {
                 continue;
             }
 
-            attrsConsumer.marshalKeysOld(keyCount, keys, bytes, buf);
+            mapping_tracker(keyCount, keys, bytes, buf);
             return true;
         }
 
@@ -103,66 +102,39 @@ namespace {
     }
 }
 
-PerfEventGroup::PerfEventGroup(const PerfEventGroupIdentifier & groupIdentifier,
-                               PerfEventGroupSharedConfig & sharedConfig)
-    : groupIdentifier(groupIdentifier), sharedConfig(sharedConfig)
+bool perf_event_group_configurer_t::addEvent(const bool leader,
+                                             attr_to_key_mapping_tracker_t & mapping_tracker,
+                                             const int key,
+                                             const IPerfGroups::Attr & attr,
+                                             bool hasAuxData)
 {
-}
-
-bool PerfEventGroup::requiresLeader() const
-{
-    switch (groupIdentifier.getType()) {
-        case PerfEventGroupIdentifier::Type::GLOBAL:
-        case PerfEventGroupIdentifier::Type::SPECIFIC_CPU:
-        case PerfEventGroupIdentifier::Type::SPE:
-            return false;
-        case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU:
-        case PerfEventGroupIdentifier::Type::UNCORE_PMU:
-            return true;
-        default:
-            assert(false && "Unexpected group type");
-            return false;
-    }
-}
-
-bool PerfEventGroup::hasLeader() const
-{
-    return requiresLeader() && (!events.empty());
-}
-
-bool PerfEventGroup::addEvent(const bool leader,
-                              IPerfAttrsConsumer & attrsConsumer,
-                              const int key,
-                              const IPerfGroups::Attr & attr,
-                              bool hasAuxData)
-{
-    if (leader && !events.empty()) {
+    if (leader && !state.common.events.empty()) {
         assert(false && "Cannot set leader for non-empty group");
         return false;
     }
-    if (events.size() >= INT_MAX) {
+    if (state.common.events.size() >= INT_MAX) {
         return false;
     }
 
-    events.emplace_back();
-    PerfEvent & event = events.back();
+    state.common.events.emplace_back();
+    perf_event_t & event = state.common.events.back();
 
     event.attr.size = sizeof(event.attr);
     /* Emit time, read_format below, group leader id, and raw tracepoint info */
     const uint64_t sampleReadMask =
-        (sharedConfig.perfConfig.is_system_wide
+        (config.perfConfig.is_system_wide
              ? 0
              : PERF_SAMPLE_READ); // Unfortunately PERF_SAMPLE_READ is not allowed with inherit
     event.attr.sample_type =
         PERF_SAMPLE_TIME
         | (attr.sampleType & ~sampleReadMask)
         // required fields for reading 'id'
-        | (sharedConfig.perfConfig.has_sample_identifier ? PERF_SAMPLE_IDENTIFIER
-                                                         : PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_ID)
+        | (config.perfConfig.has_sample_identifier ? PERF_SAMPLE_IDENTIFIER
+                                                   : PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_ID)
         // see https://lkml.org/lkml/2012/7/18/355
         | (attr.type == PERF_TYPE_TRACEPOINT ? PERF_SAMPLE_PERIOD : 0)
         // always sample TID for application mode; we use it to attribute counter values to their processes
-        | (sharedConfig.perfConfig.is_system_wide && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
+        | (config.perfConfig.is_system_wide && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
         // must sample PERIOD is used if 'freq' to read the actual period value
         | (attr.freq ? PERF_SAMPLE_PERIOD : 0);
 
@@ -170,7 +142,7 @@ bool PerfEventGroup::addEvent(const bool leader,
     // collect the user mode registers if sampling the callchain
     if (event.attr.sample_type & PERF_SAMPLE_CALLCHAIN) {
         event.attr.sample_type |= PERF_SAMPLE_REGS_USER;
-        if (sharedConfig.perfConfig.use_64bit_register_set) {
+        if (config.perfConfig.use_64bit_register_set) {
             // https://elixir.bootlin.com/linux/latest/source/arch/arm64/include/uapi/asm/perf_regs.h
             // bits 0-32 are set (PC = 2^32)
             event.attr.sample_regs_user = 0x1ffffffffull;
@@ -185,27 +157,32 @@ bool PerfEventGroup::addEvent(const bool leader,
     event.attr.sample_regs_user = 0;
 #endif
 
+    // make sure all new children are counted too
+    const bool use_inherit = (config.perfConfig.is_system_wide ? 0 : 1);
+    // group doesn't require a leader (so all events are stand alone)
+    const bool every_attribute_in_own_group = use_inherit || (!requiresLeader());
+    // use READ_FORMAT_GROUP; only when the leader and not a stand alone event
+    const bool use_read_format_group = leader && (!use_inherit) && (!every_attribute_in_own_group);
+
     // when running in application mode, inherit must always be set, in system wide mode, inherit must always be clear
-    event.attr.inherit = (sharedConfig.perfConfig.is_system_wide ? 0 : 1); // make sure all new children are counted too
+    event.attr.inherit = use_inherit;
     event.attr.inherit_stat = event.attr.inherit;
     /* Emit emit value in group format */
     // Unfortunately PERF_FORMAT_GROUP is not allowed with inherit
-    event.attr.read_format = PERF_FORMAT_ID | (event.attr.inherit ? 0 : PERF_FORMAT_GROUP);
+    event.attr.read_format = PERF_FORMAT_ID | (use_read_format_group ? PERF_FORMAT_GROUP : 0);
     // Always be on the CPU but only a perf_event_open group leader can be pinned
     // We can only use perf_event_open groups if PERF_FORMAT_GROUP is used to sample group members
     // If the group has no leader, then all members are in separate perf_event_open groups (and hence their own leader)
-    const bool isNotInAReadFormatGroup = ((event.attr.read_format & PERF_FORMAT_GROUP) == 0);
-    const bool everyAttributeInGroupIsPinned = (!requiresLeader());
-    event.attr.pinned = ((leader || isNotInAReadFormatGroup || everyAttributeInGroupIsPinned) ? 1 : 0);
+    event.attr.pinned = ((leader || every_attribute_in_own_group) ? 1 : 0);
     // group leader must start disabled, all others enabled
     event.attr.disabled = event.attr.pinned;
     /* have a sampling interrupt happen when we cross the wakeup_watermark boundary */
     event.attr.watermark = 1;
     /* Be conservative in flush size as only one buffer set is monitored */
-    event.attr.wakeup_watermark = sharedConfig.dataBufferLength / 2;
+    event.attr.wakeup_watermark = config.ringbuffer_config.dataBufferSize / 2;
     /* Use the monotonic raw clock if possible */
-    event.attr.use_clockid = sharedConfig.perfConfig.has_attr_clockid_support ? 1 : 0;
-    event.attr.clockid = sharedConfig.perfConfig.has_attr_clockid_support ? CLOCK_MONOTONIC_RAW : 0;
+    event.attr.use_clockid = config.perfConfig.has_attr_clockid_support ? 1 : 0;
+    event.attr.clockid = config.perfConfig.has_attr_clockid_support ? CLOCK_MONOTONIC_RAW : 0;
     event.attr.type = attr.type;
     event.attr.config = attr.config;
     event.attr.config1 = attr.config1;
@@ -218,37 +195,38 @@ bool PerfEventGroup::addEvent(const bool leader,
     /* sample_id_all should always be set (or should always match pinned); it is required for any non-grouped event, for grouped events it is ignored for anything but the leader */
     event.attr.sample_id_all = 1;
     event.attr.context_switch = attr.context_switch;
-    event.attr.exclude_kernel = (sharedConfig.excludeKernelEvents ? 1 : 0);
-    event.attr.exclude_hv = (sharedConfig.excludeKernelEvents ? 1 : 0);
-    event.attr.exclude_idle = (sharedConfig.excludeKernelEvents ? 1 : 0);
-    event.attr.aux_watermark = hasAuxData ? sharedConfig.auxBufferLength / 2 : 0;
+    event.attr.exclude_kernel = (config.excludeKernelEvents ? 1 : 0);
+    event.attr.exclude_hv = (config.excludeKernelEvents ? 1 : 0);
+    event.attr.exclude_idle = (config.excludeKernelEvents ? 1 : 0);
+    event.attr.aux_watermark = hasAuxData ? config.ringbuffer_config.auxBufferSize / 2 : 0;
     event.key = key;
 
     // [SDDAP-10625] - trace context switch information for SPE attributes.
     // it is required (particularly in system-wide mode) to be able to see
     // the boundarys of SPE data, as it is not guaranteed to get PERF_RECORD_ITRACE_START
     // between two processes if they are sampled by the same SPE attribute.
-    if (groupIdentifier.getType() == PerfEventGroupIdentifier::Type::SPE) {
-        if (!sharedConfig.perfConfig.has_attr_context_switch) {
-            assert(false && "SPE requires context switch information");
+    if (identifier.getType() == PerfEventGroupIdentifier::Type::SPE) {
+        if (!config.perfConfig.has_attr_context_switch) {
+            LOG_ERROR("SPE requires context switch information");
             return false;
         }
         event.attr.context_switch = true;
     }
 
-    attrsConsumer.marshalPea(&event.attr, key);
+    // track the mapping from key->attr
+    mapping_tracker(key, event.attr);
 
     return true;
 }
 
-bool PerfEventGroup::createGroupLeader(IPerfAttrsConsumer & attrsConsumer)
+bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
-    switch (groupIdentifier.getType()) {
+    switch (identifier.getType()) {
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU:
-            return createCpuGroupLeader(attrsConsumer);
+            return createCpuGroupLeader(mapping_tracker);
 
         case PerfEventGroupIdentifier::Type::UNCORE_PMU:
-            return createUncoreGroupLeader(attrsConsumer);
+            return createUncoreGroupLeader(mapping_tracker);
 
         case PerfEventGroupIdentifier::Type::SPECIFIC_CPU:
         case PerfEventGroupIdentifier::Type::GLOBAL:
@@ -259,9 +237,9 @@ bool PerfEventGroup::createGroupLeader(IPerfAttrsConsumer & attrsConsumer)
     }
 }
 
-bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
+bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
-    const bool enableCallChain = (sharedConfig.backtraceDepth > 0);
+    const bool enableCallChain = (config.backtraceDepth > 0);
 
     IPerfGroups::Attr attr {};
     attr.sampleType = PERF_SAMPLE_TID | PERF_SAMPLE_READ;
@@ -271,41 +249,41 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
     bool enableTaskClock = false;
 
     // [SDDAP-10028] Do not use sched_switch in app tracing mode as it only triggers on switch-out (even when tracing as root)
-    if (sharedConfig.perfConfig.can_access_tracepoints && sharedConfig.perfConfig.is_system_wide) {
+    if (config.perfConfig.can_access_tracepoints && config.perfConfig.is_system_wide) {
         // Use sched switch to drive the sampling so that event counts are
         // exactly attributed to each thread in system-wide mode
-        if (sharedConfig.schedSwitchId == UNKNOWN_TRACEPOINT_ID) {
+        if (config.schedSwitchId == UNKNOWN_TRACEPOINT_ID) {
             LOG_DEBUG("Unable to read sched_switch id");
             return false;
         }
         attr.type = PERF_TYPE_TRACEPOINT;
-        attr.config = sharedConfig.schedSwitchId;
+        attr.config = config.schedSwitchId;
         attr.periodOrFreq = 1;
         // collect sched switch info from the tracepoint
         attr.sampleType |= PERF_SAMPLE_RAW;
     }
     else {
         attr.type = PERF_TYPE_SOFTWARE;
-        if (sharedConfig.perfConfig.has_attr_context_switch) {
+        if (config.perfConfig.has_attr_context_switch) {
             // collect sched switch info directly from perf
             attr.context_switch = true;
 
             // use dummy as leader if possible
-            if (sharedConfig.perfConfig.has_count_sw_dummy) {
+            if (config.perfConfig.has_count_sw_dummy) {
                 attr.config = PERF_COUNT_SW_DUMMY;
                 attr.periodOrFreq = 0;
             }
             // otherwise use sampling as leader
             else {
                 attr.config = PERF_COUNT_SW_CPU_CLOCK;
-                attr.periodOrFreq = (sharedConfig.sampleRate > 0 && sharedConfig.enablePeriodicSampling
-                                         ? NANO_SECONDS_IN_ONE_SECOND / sharedConfig.sampleRate
+                attr.periodOrFreq = (config.sampleRate > 0 && config.enablePeriodicSampling
+                                         ? NANO_SECONDS_IN_ONE_SECOND / config.sampleRate
                                          : 0);
                 attr.sampleType |=
                     PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
             }
         }
-        else if (!sharedConfig.excludeKernelEvents) {
+        else if (!config.excludeKernelEvents) {
             // use context switches as leader. this should give us 'switch-out' events
             attr.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
             attr.periodOrFreq = 1;
@@ -315,29 +293,28 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
         else {
             // no context switches at all :-(
             attr.config = PERF_COUNT_SW_CPU_CLOCK;
-            attr.periodOrFreq = (sharedConfig.sampleRate > 0 && sharedConfig.enablePeriodicSampling
-                                     ? NANO_SECONDS_IN_ONE_SECOND / sharedConfig.sampleRate
-                                     : 0);
+            attr.periodOrFreq =
+                (config.sampleRate > 0 && config.enablePeriodicSampling ? NANO_SECONDS_IN_ONE_SECOND / config.sampleRate
+                                                                        : 0);
             attr.sampleType |=
                 PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
         }
     }
 
     // Group leader
-    if (!addEvent(true, attrsConsumer, sharedConfig.schedSwitchKey, attr, false)) {
+    if (!addEvent(true, mapping_tracker, config.schedSwitchKey, attr, false)) {
         return false;
     }
 
     // Periodic PC sampling
-    if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && sharedConfig.sampleRate > 0
-        && sharedConfig.enablePeriodicSampling) {
+    if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && config.sampleRate > 0 && config.enablePeriodicSampling) {
         IPerfGroups::Attr pcAttr {};
         pcAttr.type = PERF_TYPE_SOFTWARE;
         pcAttr.config = PERF_COUNT_SW_CPU_CLOCK;
         pcAttr.sampleType =
             PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
-        pcAttr.periodOrFreq = NANO_SECONDS_IN_ONE_SECOND / sharedConfig.sampleRate;
-        if (!addEvent(false, attrsConsumer, nextDummyKey(), pcAttr, false)) {
+        pcAttr.periodOrFreq = NANO_SECONDS_IN_ONE_SECOND / config.sampleRate;
+        if (!addEvent(false, mapping_tracker, nextDummyKey(), pcAttr, false)) {
             return false;
         }
     }
@@ -350,7 +327,7 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
         taskClockAttr.config = PERF_COUNT_SW_TASK_CLOCK;
         taskClockAttr.periodOrFreq = 100000UL; // equivalent to 100us
         taskClockAttr.sampleType = PERF_SAMPLE_TID;
-        if (!addEvent(false, attrsConsumer, nextDummyKey(), taskClockAttr, false)) {
+        if (!addEvent(false, mapping_tracker, nextDummyKey(), taskClockAttr, false)) {
             return false;
         }
     }
@@ -358,7 +335,7 @@ bool PerfEventGroup::createCpuGroupLeader(IPerfAttrsConsumer & attrsConsumer)
     return true;
 }
 
-bool PerfEventGroup::createUncoreGroupLeader(IPerfAttrsConsumer & attrsConsumer)
+bool perf_event_group_configurer_t::createUncoreGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
     IPerfGroups::Attr attr {};
     attr.type = PERF_TYPE_SOFTWARE;
@@ -366,9 +343,14 @@ bool PerfEventGroup::createUncoreGroupLeader(IPerfAttrsConsumer & attrsConsumer)
     attr.sampleType = PERF_SAMPLE_READ;
     // Non-CPU PMUs are sampled every 100ms for Sample Rate: None otherwise they would never be sampled
     attr.periodOrFreq =
-        (sharedConfig.sampleRate > 0 ? NANO_SECONDS_IN_ONE_SECOND / sharedConfig.sampleRate : NANO_SECONDS_IN_100_MS);
+        (config.sampleRate > 0 ? NANO_SECONDS_IN_ONE_SECOND / config.sampleRate : NANO_SECONDS_IN_100_MS);
 
-    return addEvent(true, attrsConsumer, nextDummyKey(), attr, false);
+    return addEvent(true, mapping_tracker, nextDummyKey(), attr, false);
+}
+
+int perf_event_group_configurer_t::nextDummyKey()
+{
+    return config.dummyKeyCounter--;
 }
 
 static const char * selectTypeLabel(const char * groupLabel, std::uint32_t type)
@@ -391,21 +373,22 @@ static const char * selectTypeLabel(const char * groupLabel, std::uint32_t type)
     }
 }
 
-std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
-                                                               std::set<int> & tids,
-                                                               OnlineEnabledState enabledState,
-                                                               IPerfAttrsConsumer & attrsConsumer,
-                                                               const std::function<bool(int)> & addToMonitor,
-                                                               const std::function<bool(int, int, bool)> & addToBuffer)
+std::pair<OnlineResult, std::string> perf_event_group_activator_t::onlineCPU(
+    int cpu,
+    std::set<int> & tids,
+    OnlineEnabledState enabledState,
+    id_to_key_mapping_tracker_t & mapping_tracker,
+    const std::function<bool(int)> & addToMonitor,
+    const std::function<bool(int, int, bool)> & addToBuffer)
 {
-    if (events.empty()) {
+    if (state.common.events.empty()) {
         return std::make_pair(OnlineResult::SUCCESS, "");
     }
 
-    const GatorCpu & cpuCluster = sharedConfig.clusters[sharedConfig.clusterIds[cpu]];
-    const GatorCpu * cluster = groupIdentifier.getCluster();
-    const UncorePmu * uncorePmu = groupIdentifier.getUncorePmu();
-    const std::map<int, int> * cpuNumberToType = groupIdentifier.getSpeTypeMap();
+    const GatorCpu & cpuCluster = config.clusters[config.clusterIds[cpu]];
+    const GatorCpu * cluster = identifier.getCluster();
+    const UncorePmu * uncorePmu = identifier.getUncorePmu();
+    const std::map<int, int> * cpuNumberToType = identifier.getSpeTypeMap();
 
     const char * groupLabel = "?";
     const char * deviceInstance = nullptr;
@@ -413,7 +396,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
     // validate cpu
     uint32_t replaceType = 0;
-    switch (groupIdentifier.getType()) {
+    switch (identifier.getType()) {
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
             groupLabel = cluster->getCoreName();
             perCpu = true;
@@ -450,7 +433,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
         case PerfEventGroupIdentifier::Type::SPECIFIC_CPU: {
             groupLabel = cpuCluster.getCoreName();
             perCpu = true;
-            if (cpu != groupIdentifier.getCpuNumber()) {
+            if (cpu != identifier.getCpuNumber()) {
                 return std::make_pair(OnlineResult::SUCCESS, "");
                 ;
             }
@@ -473,11 +456,11 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
     std::map<int, std::map<int, lib::AutoClosingFd>> eventIndexToTidToFdMap;
 
-    const std::size_t numberOfEvents = events.size();
+    const std::size_t numberOfEvents = state.common.events.size();
     for (std::size_t eventIndex = 0; eventIndex < numberOfEvents; ++eventIndex) {
-        PerfEvent & event = events[eventIndex];
+        perf_event_t & event = state.common.events[eventIndex];
 
-        if (cpuToEventIndexToTidToFdMap[cpu].count(eventIndex) != 0) {
+        if (state.cpuToEventIndexToTidToFdMap[cpu].count(eventIndex) != 0) {
             std::string message("CPU already online or not correctly cleaned up");
             return std::make_pair(OnlineResult::FAILURE, message);
         }
@@ -528,7 +511,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
             int peo_errno = 0;
 
-            if (sharedConfig.excludeKernelEvents) {
+            if (config.excludeKernelEvents) {
                 fd = open_perf_event(tid, groupLeaderFd, true, true, false);
 
                 peo_errno = errno;
@@ -593,7 +576,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
                 }
                 stringStream << ". Failure given was errno=" << peo_errno << " (" << strerror(peo_errno) << ").";
 
-                if (sharedConfig.perfConfig.is_system_wide) {
+                if (config.perfConfig.is_system_wide) {
                     if (peo_errno == EINVAL) {
                         switch (event.attr.type) {
                             case PERF_TYPE_BREAKPOINT:
@@ -616,7 +599,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
             }
             else if (!addToBuffer(*fd, cpu, event.attr.aux_watermark != 0)) {
                 std::string message("PerfBuffer::useFd failed");
-                if (sharedConfig.perfConfig.is_system_wide) {
+                if (config.perfConfig.is_system_wide) {
                     return std::make_pair(OnlineResult::FAILURE, message.c_str());
                 }
                 LOG_DEBUG("PerfBuffer::useFd failed");
@@ -634,14 +617,14 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
     skipOtherTids:;
     }
 
-    if (sharedConfig.perfConfig.has_ioctl_read_id) {
+    if (config.perfConfig.has_ioctl_read_id) {
         bool addedEvents = false;
         std::vector<int> coreKeys;
         std::vector<uint64_t> ids;
 
         for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
             const int eventIndex = eventIndexToTidToFdPair.first;
-            const PerfEvent & event = events.at(eventIndex);
+            const perf_event_t & event = state.common.events.at(eventIndex);
             const int key = event.key;
 
             for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
@@ -675,7 +658,7 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
             LOG_DEBUG("no events came online");
         }
 
-        attrsConsumer.marshalKeys(ids.size(), ids.data(), coreKeys.data());
+        mapping_tracker(ids.size(), ids.data(), coreKeys.data());
     }
     else {
         std::vector<int> keysInGroup;
@@ -683,13 +666,13 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
         // send the ungrouped attributes, collect keys for grouped attributes
         for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
             const int eventIndex = eventIndexToTidToFdPair.first;
-            const PerfEvent & event = events.at(eventIndex);
+            const perf_event_t & event = state.common.events.at(eventIndex);
             const bool isLeader = requiresLeader() && (eventIndex == 0);
 
             if (event.attr.pinned && !isLeader) {
                 for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
                     const auto & fd = tidToFdPair.second;
-                    if (!readAndSend(attrsConsumer, event.attr, *fd, 1, &event.key)) {
+                    if (!readAndSend(mapping_tracker, event.attr, *fd, 1, &event.key)) {
                         return std::make_pair(OnlineResult::OTHER_FAILURE, "read failed");
                     }
                 }
@@ -703,11 +686,11 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
 
         // send the grouped attributes and their keys
         if (!keysInGroup.empty()) {
-            const auto & event = events.at(0);
+            const auto & event = state.common.events.at(0);
             const auto & tidToFdMap = eventIndexToTidToFdMap.at(0);
             for (const auto & tidToFdPair : tidToFdMap) {
                 const auto & fd = tidToFdPair.second;
-                if (!readAndSend(attrsConsumer, event.attr, *fd, keysInGroup.size(), keysInGroup.data())) {
+                if (!readAndSend(mapping_tracker, event.attr, *fd, keysInGroup.size(), keysInGroup.data())) {
                     return std::make_pair(OnlineResult::OTHER_FAILURE, "read failed");
                 }
             }
@@ -721,14 +704,14 @@ std::pair<OnlineResult, std::string> PerfEventGroup::onlineCPU(int cpu,
     }
 
     // everything enabled successfully, move into map
-    cpuToEventIndexToTidToFdMap[cpu] = std::move(eventIndexToTidToFdMap);
+    state.cpuToEventIndexToTidToFdMap[cpu] = std::move(eventIndexToTidToFdMap);
 
     return std::make_pair(OnlineResult::SUCCESS, "");
 }
 
-bool PerfEventGroup::offlineCPU(int cpu)
+bool perf_event_group_activator_t::offlineCPU(int cpu)
 {
-    auto & eventIndexToTidToFdMap = cpuToEventIndexToTidToFdMap[cpu];
+    auto & eventIndexToTidToFdMap = state.cpuToEventIndexToTidToFdMap[cpu];
 
     // we disable in the opposite order that we enabled for some reason
     const auto eventIndexToTidToFdRend = eventIndexToTidToFdMap.rend();
@@ -751,12 +734,13 @@ bool PerfEventGroup::offlineCPU(int cpu)
     return true;
 }
 
-bool PerfEventGroup::enable(const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap)
+bool perf_event_group_activator_t::enable(
+    const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap)
 {
     // Enable group leaders, others should be enabled by default
     for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
         const int eventIndex = eventIndexToTidToFdPair.first;
-        const PerfEvent & event = events.at(eventIndex);
+        const perf_event_t & event = state.common.events.at(eventIndex);
 
         for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
             const auto & fd = tidToFdPair.second;
@@ -770,7 +754,8 @@ bool PerfEventGroup::enable(const std::map<int, std::map<int, lib::AutoClosingFd
     return true;
 }
 
-bool PerfEventGroup::checkEnabled(const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap)
+bool perf_event_group_activator_t::checkEnabled(
+    const std::map<int, std::map<int, lib::AutoClosingFd>> & eventIndexToTidToFdMap)
 {
     // Try reading from all the group leaders to ensure that the event isn't disabled
     char buf[1 << 10];
@@ -779,7 +764,7 @@ bool PerfEventGroup::checkEnabled(const std::map<int, std::map<int, lib::AutoClo
     // Enable group leaders, others should be enabled by default
     for (const auto & eventIndexToTidToFdPair : eventIndexToTidToFdMap) {
         const int eventIndex = eventIndexToTidToFdPair.first;
-        const PerfEvent & event = events.at(eventIndex);
+        const perf_event_t & event = state.common.events.at(eventIndex);
 
         for (const auto & tidToFdPair : eventIndexToTidToFdPair.second) {
             const auto tid = tidToFdPair.first;
@@ -821,24 +806,24 @@ bool PerfEventGroup::checkEnabled(const std::map<int, std::map<int, lib::AutoClo
     return true;
 }
 
-void PerfEventGroup::start()
+void perf_event_group_activator_t::start()
 {
     // Enable everything before checking to avoid losing data
-    for (const auto & cpuToEventIndexToTidToFdPair : cpuToEventIndexToTidToFdMap) {
+    for (const auto & cpuToEventIndexToTidToFdPair : state.cpuToEventIndexToTidToFdMap) {
         if (!enable(cpuToEventIndexToTidToFdPair.second)) {
             handleException();
         }
     }
-    for (const auto & cpuToEventIndexToTidToFdPair : cpuToEventIndexToTidToFdMap) {
+    for (const auto & cpuToEventIndexToTidToFdPair : state.cpuToEventIndexToTidToFdMap) {
         if (!checkEnabled(cpuToEventIndexToTidToFdPair.second)) {
             handleException();
         }
     }
 }
 
-void PerfEventGroup::stop()
+void perf_event_group_activator_t::stop()
 {
-    for (const auto & cpuToEventIndexToTidToFdPair : cpuToEventIndexToTidToFdMap) {
+    for (const auto & cpuToEventIndexToTidToFdPair : state.cpuToEventIndexToTidToFdMap) {
         const auto & eventIndexToTidToFdMap = cpuToEventIndexToTidToFdPair.second;
         const auto eventIndexToTidToFdRend = eventIndexToTidToFdMap.rend();
         for (auto eventIndexToTidToFdIt = eventIndexToTidToFdMap.rbegin();
@@ -852,9 +837,4 @@ void PerfEventGroup::stop()
             }
         }
     }
-}
-
-int PerfEventGroup::nextDummyKey()
-{
-    return sharedConfig.dummyKeyCounter--;
 }

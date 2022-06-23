@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef I_SUMMARY_CONSUMER_H
 #define I_SUMMARY_CONSUMER_H
@@ -12,9 +12,9 @@ public:
     virtual void flush() = 0;
 
     // Summary messages
-    virtual void summary(int64_t timestamp,
-                         int64_t uptime,
-                         int64_t monotonicDelta,
+    virtual void summary(uint64_t timestamp,
+                         uint64_t uptime,
+                         uint64_t monotonicDelta,
                          const char * uname,
                          long pageSize,
                          bool nosync,

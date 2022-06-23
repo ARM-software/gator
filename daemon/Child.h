@@ -1,10 +1,11 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef __CHILD_H__
 #define __CHILD_H__
 
 #include "Configuration.h"
 #include "Source.h"
+#include "agents/agent_workers_process.h"
 #include "lib/AutoClosingFd.h"
 #include "logging/suppliers.h"
 
@@ -34,11 +35,13 @@ public:
         std::set<SpeConfiguration> spes;
     };
 
-    static std::unique_ptr<Child> createLocal(Drivers & drivers,
+    static std::unique_ptr<Child> createLocal(agents::i_agent_spawner_t & spawner,
+                                              Drivers & drivers,
                                               const Config & config,
                                               logging::last_log_error_supplier_t last_error_supplier,
                                               logging::log_setup_supplier_t log_setup_supplier);
-    static std::unique_ptr<Child> createLive(Drivers & drivers,
+    static std::unique_ptr<Child> createLive(agents::i_agent_spawner_t & spawner,
+                                             Drivers & drivers,
                                              OlySocket & sock,
                                              logging::last_log_error_supplier_t last_error_supplier,
                                              logging::log_setup_supplier_t log_setup_supplier);
@@ -51,12 +54,19 @@ public:
     Child(Child &&) = delete;
     Child & operator=(Child &&) = delete;
 
-    void run();
+    /**
+     * @brief Runs the capture process. If notify_pid is set then SIGUSR1 will be sent to
+     * that pid when the capture process is ready for the target app to be started.
+     *
+     * @param notify_pid The pid to signal when the target app should be started. When <= 0 no signal is sent.
+     */
+    void run(int notify_pid);
 
     void endSession(int signum = 0);
 
 private:
     friend void ::handleException();
+    friend class agents::agent_workers_process_manager_t<Child>;
 
     static std::atomic<Child *> gSingleton;
 
@@ -79,8 +89,10 @@ private:
     logging::last_log_error_supplier_t last_error_supplier;
     logging::log_setup_supplier_t log_setup_supplier;
     std::shared_ptr<Command> command {};
+    agents::agent_workers_process_t<Child> agent_workers_process;
 
-    Child(Drivers & drivers,
+    Child(agents::i_agent_spawner_t & spawner,
+          Drivers & drivers,
           OlySocket * sock,
           Config config,
           logging::last_log_error_supplier_t last_error_supplier,
@@ -90,7 +102,11 @@ private:
      * Adds to sources if non empty
      * return true if not empty
      */
-    bool addSource(std::unique_ptr<Source> source);
+    template<typename S>
+    bool addSource(std::unique_ptr<S> source);
+
+    template<typename S, typename Callback>
+    bool addSource(std::unique_ptr<S> source, Callback callback);
 
     void cleanupException();
     void durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd);
@@ -104,6 +120,10 @@ private:
     bool sendAllSources();
     void watchPidsThreadEntryPoint(std::set<int> &, const lib::Waiter & waiter);
     void doEndSession();
+
+    // for agent_workers_process_t
+    void on_terminal_signal(int signo);
+    void on_agent_thread_terminated();
 };
 
 #endif //__CHILD_H__

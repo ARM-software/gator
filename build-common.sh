@@ -84,9 +84,11 @@ checkout_vcpkg() {
         git submodule update --init
     # checkout manually?
     elif [ ! -d "${root}/vcpkg/.git" ]; then
-        echo "Cloning vcpkg git repo"
+        echo "Cloning vcpkg git repo into '${root}/vcpkg/'"
         git clone https://github.com/microsoft/vcpkg.git "${root}/vcpkg/"
-        git --git-dir="${root}/vcpkg/.git" reset --hard "${vcpkg_commit}"
+        echo "Switching to correct commit"
+        git -C "${root}/vcpkg/" clean -ffxd
+        git -C "${root}/vcpkg/" reset --hard "${vcpkg_commit}"
     fi
     # Now bootstrap it?
     if [ ! -f "${exe_path}" ] || [ ! -r "${exe_path}" ] || [ ! -x "${exe_path}" ]; then
@@ -95,7 +97,7 @@ checkout_vcpkg() {
             export VCPKG_FORCE_SYSTEM_BINARIES=1
         fi
         "${root}/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-        last_result = $?
+        last_result=$?
         if [[ $last_result -ne 0 ]]; then
             echo "Bootstrapping of vcpkg failed. Build cannot continue."
             exit $last_result

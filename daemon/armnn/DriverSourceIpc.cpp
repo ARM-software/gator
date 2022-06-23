@@ -81,7 +81,7 @@ namespace armnn {
             LOG_ERROR("Could not create pipe for armnn, errcode from pipe(fds): %d", result);
             handleException();
         }
-        return Pipe {fds[0], fds[1]};
+        return Pipe {lib::AutoClosingFd {fds[0]}, lib::AutoClosingFd {fds[1]}};
     }
 
     // Possible message types that can be sent over the pipes

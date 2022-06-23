@@ -47,8 +47,8 @@
  */
 
 #define HAVE_SNPRINTF 1
-#define HAVE_VASPRINTF 1
 #define HAVE_VSNPRINTF 1
+#undef HAVE_VASPRINTF
 
 
 /*

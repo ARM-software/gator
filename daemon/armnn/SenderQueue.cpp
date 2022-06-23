@@ -29,8 +29,11 @@ namespace armnn {
     void SenderQueue::sendLoop()
     {
         // send packets from the queue as and when they become available.
-        while (!mSendFinished) {
+        while (true) {
             std::unique_lock<std::mutex> queueLock {mQueueMutex};
+            if (mSendFinished) {
+                break;
+            }
 
             // Wait for something to be put in the queue
             if (mQueue.empty()) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
@@ -8,7 +8,9 @@
 #include <memory>
 #include <system_error>
 
-namespace gator::capture {
+namespace capture {
+
+    enum class OsType { Linux, Android };
 
     class CaptureEnvironment {
     public:
@@ -26,6 +28,7 @@ namespace gator::capture {
         virtual ~LinuxEnvironmentConfig() noexcept;
     };
 
+    OsType detectOs();
     std::unique_ptr<CaptureEnvironment> prepareCaptureEnvironment(SessionData & sessionData);
 
 }

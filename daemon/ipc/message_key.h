@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -15,13 +15,22 @@ namespace ipc {
         unknown = 0,
 
         // general
+        ready,
         shutdown,
+        start,
 
         // external annotations
         annotation_new_conn,
         annotation_recv_bytes,
         annotation_send_bytes,
         annotation_close_conn,
+
+        // perf
+        perf_capture_configuration,
+        capture_ready,
+        apc_frame_data,
+        exec_target_app,
+        cpu_state_change,
     };
 
     /** The wire-size of the message key */

@@ -1,8 +1,9 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "HwmonDriver.h"
 
 #include "Logging.h"
+#include "lib/String.h"
 #include "libsensors/sensors.h"
 
 #include <memory>
@@ -33,7 +34,10 @@ static sensors_subfeature_type getInput(const sensors_feature_type type)
 
 class HwmonCounter : public DriverCounter {
 public:
-    HwmonCounter(DriverCounter * next, char * name, const sensors_chip_name * chip, const sensors_feature * feature);
+    HwmonCounter(DriverCounter * next,
+                 char const * name,
+                 const sensors_chip_name * chip,
+                 const sensors_feature * feature);
     ~HwmonCounter() override;
 
     // Intentionally unimplemented
@@ -68,7 +72,7 @@ private:
 };
 
 HwmonCounter::HwmonCounter(DriverCounter * next,
-                           char * const name,
+                           char const * const name,
                            const sensors_chip_name * const chip,
                            const sensors_feature * feature)
     : DriverCounter(next, name),
@@ -224,11 +228,9 @@ void HwmonDriver::readEvents(mxml_node_t * const /*unused*/)
             int len = sensors_snprintf_chip_name(nullptr, 0, chip) + 1;
             const std::unique_ptr<char[]> chip_name {new char[len]};
             sensors_snprintf_chip_name(chip_name.get(), len, chip);
-            len = snprintf(nullptr, 0, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number) + 1;
-            const std::unique_ptr<char[]> name {new char[len]};
-            snprintf(name.get(), len, "hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number);
 
-            setCounters(new HwmonCounter(getCounters(), name.get(), chip, feature));
+            lib::dyn_printf_str_t name {"hwmon_%s_%d_%d", chip_name.get(), chip_nr, feature->number};
+            setCounters(new HwmonCounter(getCounters(), name, chip, feature));
         }
     }
 }

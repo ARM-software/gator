@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2022 by Arm Limited. All rights reserved. -->
 
   <category name="Ftrace">
     <!--
@@ -23,4 +23,7 @@
     <event counter="ftrace_block_block_rq_complete" title="Block" name="block_rq_complete" regex="^block_rq_complete: " tracepoint="block/block_rq_complete" class="incident" description="Number of block IO operations completed by device driver"/>
     <event counter="ftrace_block_block_rq_issue" title="Block" name="block_rq_issue" regex="^block_rq_issue: " tracepoint="block/block_rq_issue" class="incident" description="Number of block IO operations issued to device driver"/>
     <event counter="ftrace_power_cpu_idle" title="Power" name="cpu_idle" regex="^cpu_idle: " tracepoint="power/cpu_idle" class="incident" description="Number of times cpu_idle is entered or exited"/>
+
+    <!-- Specially handled events -->
+    <event counter="ftrace_power_cpu_frequency" tracepoint="power/cpu_frequency" title="Clock" name="Frequency" per_cpu="yes" class="absolute" units="Hz" series_composition="overlay" average_cores="yes" description="Frequency setting of the CPU" proc="no" />
   </category>

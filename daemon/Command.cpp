@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #include "Command.h"
 
@@ -6,6 +6,7 @@
 #include "Logging.h"
 #include "SessionData.h"
 #include "lib/FileDescriptor.h"
+#include "lib/String.h"
 
 #include <cstdio>
 
@@ -24,8 +25,7 @@
 static bool getUid(const char * const name, const char * const tmpDir, uid_t * const uid)
 {
     // Lookups may fail when using a different libc or a statically compiled executable
-    char gatorTemp[32];
-    snprintf(gatorTemp, sizeof(gatorTemp), "%s/gator_temp", tmpDir);
+    lib::printf_str_t<32> gatorTemp {"%s/gator_temp", tmpDir};
 
     const int fd = open(gatorTemp, O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR);
     if (fd < 0) {
@@ -33,8 +33,7 @@ static bool getUid(const char * const name, const char * const tmpDir, uid_t * c
     }
     close(fd);
 
-    char cmd[128];
-    snprintf(cmd, sizeof(cmd), "chown %s %s || rm -f %s", name, gatorTemp, gatorTemp);
+    lib::printf_str_t<128> cmd {"chown %s %s || rm -f %s", name, gatorTemp.c_str(), gatorTemp.c_str()};
 
     const int pid = fork();
     if (pid < 0) {
@@ -165,6 +164,8 @@ void Command::cancel()
 
 Command Command::run(const std::function<void()> & terminationCallback)
 {
+    constexpr size_t buffer_size = 1 << 8;
+
     uid_t uid = geteuid();
     gid_t gid = getegid();
     const char * const name = gSessionData.mCaptureUser;
@@ -190,7 +191,6 @@ Command Command::run(const std::function<void()> & terminationCallback)
     auto & state = sharedData->state;
     auto & start = sharedData->start;
 
-    constexpr size_t bufSize = 1 << 8;
     int pipefd[2];
     if (lib::pipe_cloexec(pipefd) != 0) {
         LOG_ERROR("pipe failed");
@@ -205,6 +205,7 @@ Command Command::run(const std::function<void()> & terminationCallback)
 
     if (pid == 0) {
         // child
+        lib::printf_str_t<buffer_size> buf {};
 
         // Reset signal handlers while waiting for exec
         signal(SIGINT, SIG_DFL);
@@ -223,8 +224,6 @@ Command Command::run(const std::function<void()> & terminationCallback)
 
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
 
-        char buf[bufSize];
-        buf[0] = '\0';
         close(pipefd[0]);
 
         std::vector<char *> cmd_str {};
@@ -236,32 +235,21 @@ Command Command::run(const std::function<void()> & terminationCallback)
 
         // Gator runs at a high priority, reset the priority to the default
         if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
-            snprintf(buf, sizeof(buf), "setpriority failed");
+            buf.printf("setpriority failed");
             goto fail_exit;
         }
 
         if (name != nullptr) {
             if (setgroups(1, &gid) != 0) {
-                snprintf(buf,
-                         sizeof(buf),
-                         "setgroups failed for user: %s, please check if the user is part of group",
-                         name);
+                buf.printf("setgroups failed for user: %s, please check if the user is part of group", name);
                 goto fail_exit;
             }
             if (setresgid(gid, gid, gid) != 0) {
-                snprintf(buf,
-                         sizeof(buf),
-                         "setresgid failed for user: %s, please check if the user is part of GID %d",
-                         name,
-                         gid);
+                buf.printf("setresgid failed for user: %s, please check if the user is part of GID %d", name, gid);
                 goto fail_exit;
             }
             if (setresuid(uid, uid, uid) != 0) {
-                snprintf(buf,
-                         sizeof(buf),
-                         "setresuid failed for user: %s, please check if the user is part of UID %d",
-                         name,
-                         uid);
+                buf.printf("setresuid failed for user: %s, please check if the user is part of UID %d", name, uid);
                 goto fail_exit;
             }
         }
@@ -270,11 +258,9 @@ Command Command::run(const std::function<void()> & terminationCallback)
             const char * const path =
                 gSessionData.mCaptureWorkingDir == nullptr ? "/" : gSessionData.mCaptureWorkingDir;
             if (chdir(path) != 0) {
-                snprintf(buf,
-                         sizeof(buf),
-                         "Unable to cd to %s, please verify the directory exists and is accessible to %s",
-                         path,
-                         name != nullptr ? name : "the current user");
+                buf.printf("Unable to cd to %s, please verify the directory exists and is accessible to %s",
+                           path,
+                           name != nullptr ? name : "the current user");
                 goto fail_exit;
             }
         }
@@ -282,11 +268,11 @@ Command Command::run(const std::function<void()> & terminationCallback)
 
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(commands[0]), 0, 0, 0);
         execvp(commands[0], commands);
-        snprintf(buf, sizeof(buf), "Failed to run command %s\nexecvp failed: %s", commands[0], strerror(errno));
+        buf.printf("Failed to run command %s\nexecvp failed: %s", commands[0], strerror(errno));
 
     fail_exit:
-        if (buf[0] != '\0') {
-            const ssize_t bytes = write(pipefd[1], buf, sizeof(buf));
+        if (buf.size() > 0) {
+            const ssize_t bytes = write(pipefd[1], buf.c_str(), buf.size());
             // Can't do anything if this fails
             (void) bytes;
         }
@@ -301,10 +287,10 @@ Command Command::run(const std::function<void()> & terminationCallback)
         return {pid,
                 std::thread {[pipefd, pid, terminationCallback, &state]() {
                     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command-reader"), 0, 0, 0);
-                    char buf[bufSize];
+                    std::array<char, buffer_size> buf {};
                     ssize_t bytesRead = 0;
                     while (true) {
-                        const ssize_t bytes = read(pipefd[0], buf + bytesRead, sizeof(buf) - bytesRead);
+                        const ssize_t bytes = read(pipefd[0], buf.data() + bytesRead, buf.size() - bytesRead);
                         if (bytes > 0) {
                             bytesRead += bytes;
                         }
@@ -321,7 +307,7 @@ Command Command::run(const std::function<void()> & terminationCallback)
                     close(pipefd[0]);
 
                     if (bytesRead > 0) {
-                        LOG_ERROR("%s", buf);
+                        LOG_ERROR("%s", buf.data());
                         handleException();
                     }
                     else {

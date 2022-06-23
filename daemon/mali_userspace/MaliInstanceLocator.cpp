@@ -1,10 +1,11 @@
-/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
 
 #include "DynBuf.h"
 #include "Logging.h"
 #include "lib/FsEntry.h"
+#include "lib/String.h"
 #include "mali_userspace/MaliDeviceApi.h"
 
 #include <cstddef>
@@ -81,8 +82,7 @@ namespace mali_userspace {
         // first scan for '/dev/mali#' files
         for (unsigned int i = 0; i < MAX_DEV_MALI_TOO_SCAN_FOR; ++i) {
             // construct the path
-            char pathBuffer[16];
-            snprintf(pathBuffer, sizeof(pathBuffer), "/dev/mali%u", i);
+            lib::printf_str_t<16> pathBuffer {"/dev/mali%u", i};
             // attempt to open device
             std::unique_ptr<IMaliDeviceApi> device = IMaliDeviceApi::probe(pathBuffer);
             if (device) {

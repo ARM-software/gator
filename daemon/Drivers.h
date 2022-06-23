@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVERS_H
 #define DRIVERS_H
@@ -65,6 +65,7 @@ private:
     ExternalDriver mExternalDriver {};
     CCNDriver mCcnDriver {};
     armnn::Driver mArmnnDriver {};
+    // gator::android::ThermalDriver mThermalDriver{};
     FtraceDriver mFtraceDriver;
     AtraceDriver mAtraceDriver;
     TtraceDriver mTtraceDriver;

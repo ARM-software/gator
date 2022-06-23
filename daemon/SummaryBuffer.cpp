@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 #define BUFFER_USE_SESSION_DATA
 
 #include "SummaryBuffer.h"
@@ -6,6 +6,7 @@
 #include "BufferUtils.h"
 #include "Logging.h"
 #include "SessionData.h"
+#include "lib/String.h"
 
 #include <cstring>
 
@@ -34,9 +35,9 @@ void SummaryBuffer::flush()
     buffer.beginFrame(FrameType::SUMMARY);
 }
 
-void SummaryBuffer::summary(const int64_t timestamp,
-                            const int64_t uptime,
-                            const int64_t monotonicDelta,
+void SummaryBuffer::summary(const uint64_t timestamp,
+                            const uint64_t uptime,
+                            const uint64_t monotonicDelta,
                             const char * const uname,
                             const long pageSize,
                             const bool nosync,
@@ -52,8 +53,7 @@ void SummaryBuffer::summary(const int64_t timestamp,
     buffer.writeString("uname");
     buffer.writeString(uname);
     buffer.writeString("PAGESIZE");
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%li", pageSize);
+    lib::printf_str_t<32> buf {"%li", pageSize};
     buffer.writeString(buf);
     if (nosync) {
         buffer.writeString("nosync");

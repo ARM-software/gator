@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
 #define INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
@@ -15,14 +15,22 @@ public:
     static constexpr unsigned INVALID_PACKAGE_ID = ~0U;
     static constexpr std::uint64_t INVALID_MIDR_EL1 = ~0ULL;
 
+    struct properties_t {
+        unsigned core_id;
+        unsigned physical_package_id;
+        std::set<int> core_siblings;
+        std::uint64_t midr_el1;
+    };
+
     /**
      * Consumer function that takes sync event data:
      */
-    using ConsumerFunction = std::function<void(unsigned /* cpu */,
-                                                unsigned /* core_id */,
-                                                unsigned /* physical_package_id */,
-                                                const std::set<int> & /* core_siblings */,
-                                                std::uint64_t /* midr_el1 */)>;
+    using ConsumerFunction = std::function<void(unsigned /* cpu_no */, properties_t && /* properties */)>;
+
+    /**
+     * Just read and return the detected properties for the specified core, without any attempt to turn on
+     */
+    static properties_t detectFor(unsigned cpu);
 
     /**
      * Constructor

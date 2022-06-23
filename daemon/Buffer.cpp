@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "Buffer.h"
 
@@ -9,6 +9,7 @@
 #include "lib/Assert.h"
 
 #include <cstring>
+#include <limits>
 
 #define mask (mSize - 1)
 #define FRAME_HEADER_SIZE 1 // single byte of FrameType
@@ -169,11 +170,15 @@ void Buffer::writeBytes(const void * const data, std::size_t count)
     mWritePos = (mWritePos + i) & mask;
 }
 
-void Buffer::writeString(const char * const str)
+void Buffer::writeString(std::string_view str)
 {
-    const int len = strlen(str);
-    packInt(len);
-    writeBytes(str, len);
+    auto len = str.size();
+    if (len > std::numeric_limits<int>::max()) {
+        len = std::numeric_limits<int>::max();
+    }
+
+    packInt(static_cast<int32_t>(len));
+    writeBytes(str.data(), len);
 }
 
 void Buffer::beginFrame(FrameType frameType)

@@ -6,6 +6,8 @@
     "boost-asio",
     "boost-lexical-cast",
     "boost-filesystem",
-    "boost-process"
+    "boost-mp11",
+    "boost-process",
+    "protobuf"
   ]
 }

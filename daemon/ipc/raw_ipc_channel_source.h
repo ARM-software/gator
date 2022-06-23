@@ -1,8 +1,9 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "Logging.h"
+#include "async/completion_handler.h"
 #include "ipc/codec.h"
 #include "ipc/message_key.h"
 #include "ipc/message_traits.h"
@@ -12,6 +13,7 @@
 
 #include <cerrno>
 #include <memory>
+#include <tuple>
 #include <utility>
 #include <variant>
 
@@ -23,11 +25,12 @@
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/read.hpp>
-#include <boost/system/detail/errc.hpp>
-#include <boost/system/detail/error_code.hpp>
-#include <boost/system/detail/system_category.hpp>
+#include <boost/mp11/algorithm.hpp>
+#include <boost/system/error_code.hpp>
+#include <boost/system/system_category.hpp>
 
 namespace ipc {
+
     namespace detail {
         /** Helper wrapper to store the message and encoding buffer */
         template<typename MessageType, typename ReadBufferType>
@@ -167,15 +170,15 @@ namespace ipc {
             LOG_TRACE("(%p) New receive request received", this);
 
             // run on strand to serialize access
-            boost::asio::dispatch(strand,
-                                  [st = shared_from_this(), handler = std::forward<handler_type>(handler)]() mutable {
-                                      st->do_async_recv_message_on_strand(std::forward<handler_type>(handler));
-                                  });
+            boost::asio::post(strand,
+                              [st = shared_from_this(), handler = std::forward<handler_type>(handler)]() mutable {
+                                  st->strand_do_async_recv_message(std::forward<handler_type>(handler));
+                              });
         }
 
         /** Perform the receive action from the strand */
         template<typename Handler>
-        void do_async_recv_message_on_strand(Handler && handler)
+        void strand_do_async_recv_message(Handler && handler)
         {
             using handler_type = std::decay_t<Handler>;
             using handler_wrapper_type = handler_wrapper_t<handler_type>;
@@ -451,4 +454,75 @@ namespace ipc {
             handler(recv_in_progress, ec, std::move(message));
         }
     };
+
+    /**
+     * An async operation that receives from the source channel until one of the requested
+     * message types arrives. Any unrequested message types are logged and discarded.
+     */
+    template<typename CompletionHandler, typename... MessageTypes>
+    class receive_one_of_op {
+        using type_tuple = std::tuple<MessageTypes...>;
+
+    public:
+        explicit receive_one_of_op(std::shared_ptr<raw_ipc_channel_source_t> channel, CompletionHandler && handler)
+            : handler {std::forward<CompletionHandler>(handler)}, channel(std::move(channel))
+        {
+        }
+
+        void operator()(const boost::system::error_code & ec, all_message_types_variant_t && msg_variant)
+        {
+            if (ec) {
+                handler(ec, std::variant<MessageTypes...> {});
+                return;
+            }
+
+            std::visit([this](auto && msg) { this->try_message_filter(std::forward<decltype(msg)>(msg)); },
+                       msg_variant);
+        }
+
+    private:
+        using handler_type =
+            async::completion_handler_ref_t<const boost::system::error_code &, std::variant<MessageTypes...>>;
+        handler_type handler;
+        std::shared_ptr<raw_ipc_channel_source_t> channel;
+
+        template<typename MessageType>
+        void try_message_filter(MessageType && msg)
+        {
+            using T = std::decay_t<MessageType>;
+            if constexpr (boost::mp11::mp_contains<type_tuple, T>::value) {
+                handler({}, std::variant<MessageTypes...>(std::forward<MessageType>(msg)));
+            }
+            else {
+                LOG_DEBUG("Unexpected message [%s]", ipc::named_message_t<T>::name.data());
+
+                channel->async_recv_message(std::move(*this));
+            }
+        }
+    };
+
+    /**
+     * Receive one of a subset of message types from a raw_ipc_channel_source_t. Will continuously
+     * receive from the channel, logging and discarding any unwanted messages, util one of the
+     * desired types arrives. The completion handler should expect to receive a variant that could
+     * also contain std::monostate.
+     *
+     * @tparam MessageTypes The subset of messages to receive.
+     * @tparam CompletionToken The asio completion token for this async op.
+     */
+    template<typename... MessageTypes, typename CompletionToken>
+    auto async_receive_one_of(std::shared_ptr<raw_ipc_channel_source_t> source, CompletionToken && token)
+    {
+        return boost::asio::async_initiate<CompletionToken,
+                                           void(boost::system::error_code,
+                                                std::variant<std::monostate, MessageTypes...>)>(
+            [src = std::move(source)](auto && handler) {
+                using HandlerType = decltype(handler);
+                auto op = receive_one_of_op<HandlerType, std::monostate, MessageTypes...> {
+                    src,
+                    std::forward<HandlerType>(handler)};
+                src->async_recv_message(std::move(op));
+            },
+            token);
+    }
 }

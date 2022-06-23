@@ -1,9 +1,10 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXMLProcessor.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/String.h"
 #include "xml/PmuXML.h"
 
 #include <cstring>
@@ -458,8 +459,7 @@ namespace events_xml {
                 for (const GatorCpu & cluster : clusters) {
                     mxml_node_t * n = mxmlNewElement(mxmlGetParent(node), TAG_EVENT);
                     copyMxmlElementAttrs(n, node, NOP_ATTR_MODIFICATION_FUNCTION);
-                    char buf[1 << 7];
-                    snprintf(buf, sizeof(buf), "%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1);
+                    lib::printf_str_t<1 << 7> buf {"%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1};
                     mxmlElementSetAttr(n, ATTR_COUNTER, buf);
                 }
                 mxmlDelete(node);

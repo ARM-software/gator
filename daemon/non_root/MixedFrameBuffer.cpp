@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #include "non_root/MixedFrameBuffer.h"
 
@@ -6,8 +6,10 @@
 #include "IRawFrameBuilder.h"
 #include "Logging.h"
 #include "Sender.h"
+#include "lib/String.h"
 
 #include <cstring>
+#include <string_view>
 
 namespace non_root {
     MixedFrameBuffer::Frame::Frame(IRawFrameBuilder & parent_, FrameType frameType)
@@ -65,24 +67,19 @@ namespace non_root {
         }
     }
 
-    void MixedFrameBuffer::Frame::writeString(const char * value)
+    void MixedFrameBuffer::Frame::writeString(std::string_view value)
     {
-        const int length = std::strlen(value);
-        const int size = buffer_utils::sizeOfPackInt(length) + length;
+        auto len = value.size();
+        if (len > std::numeric_limits<int>::max()) {
+            len = std::numeric_limits<int>::max();
+        }
+
+        auto ilen = static_cast<int32_t>(len);
+
+        const int size = buffer_utils::sizeOfPackInt(ilen) + ilen;
 
         if (checkSize(size)) {
             parent.writeString(value);
-        }
-    }
-
-    void MixedFrameBuffer::Frame::writeString(const std::string & value)
-    {
-        const int length = value.length();
-        const int size = buffer_utils::sizeOfPackInt(length) + length;
-
-        if (checkSize(size)) {
-            parent.packInt(length);
-            parent.writeBytes(value.data(), length);
         }
     }
 
@@ -213,8 +210,7 @@ namespace non_root {
         frame.writeString("uname");
         frame.writeString(uname);
         frame.writeString("PAGESIZE");
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%li", pageSize);
+        lib::printf_str_t<32> buf {"%li", pageSize};
         frame.writeString(buf);
         if (nosync) {
             frame.writeString("nosync");

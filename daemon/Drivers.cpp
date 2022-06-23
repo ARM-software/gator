@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "Drivers.h"
 
@@ -44,6 +44,7 @@ Drivers::Drivers(bool systemWide,
 
       mFtraceDriver {traceFsConstants,
                      !mPrimarySourceProvider->supportsTracepointCapture(),
+                     mPrimarySourceProvider->useFtraceDriverForCpuFrequency(),
                      mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
       mAtraceDriver {mFtraceDriver},
       mTtraceDriver {mFtraceDriver}

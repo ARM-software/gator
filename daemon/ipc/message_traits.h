@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -14,6 +14,8 @@
 
 #include <boost/asio/buffer.hpp>
 
+#include <google/protobuf/message_lite.h>
+
 namespace ipc {
     /** Check if the message header type is valid fixed size type */
     template<typename T>
@@ -23,6 +25,18 @@ namespace ipc {
         || std::is_integral_v<T> //
         || std::is_enum_v<T>     //
         || (std::is_array_v<T> && is_valid_message_header_v<std::remove_all_extents_t<T>>);
+
+    /** True if @a T is a Protobuf message. */
+    template<typename T>
+    constexpr bool is_protobuf_message_v = std::is_base_of_v<google::protobuf::MessageLite, T>;
+
+    /** Helper for testing equality of pb messages (since we cannot use MessageDifferencer with MessageLite). 
+     * This method serializes the message and then compares the strings. It is primarily intended for unit testing. */
+    template<typename T>
+    constexpr bool same_pb_message(T const & a, T const & b)
+    {
+        return (a.SerializeAsString() == b.SerializeAsString());
+    }
 
     /** Basic message type */
     template<message_key_t Key, typename HeaderType, typename SuffixType>
@@ -40,7 +54,13 @@ namespace ipc {
 
         friend constexpr bool operator==(message_t const & a, message_t const & b)
         {
-            return (a.header == b.header) && (a.suffix == b.suffix);
+            const auto header_match = a.header == b.header;
+            if constexpr (is_protobuf_message_v<suffix_type>) {
+                return header_match && same_pb_message(a.suffix, b.suffix);
+            }
+            else {
+                return header_match && (a.suffix == b.suffix);
+            }
         }
 
         friend constexpr bool operator!=(message_t const & a, message_t const & b) { return !(a == b); }
@@ -56,9 +76,9 @@ namespace ipc {
 
         static constexpr message_key_t key = Key;
 
-        friend constexpr bool operator==(message_t const & a, message_t const & b) { return true; }
+        friend constexpr bool operator==(message_t const & /*a*/, message_t const & /*b*/) { return true; }
 
-        friend constexpr bool operator!=(message_t const & a, message_t const & b) { return false; }
+        friend constexpr bool operator!=(message_t const & /*a*/, message_t const & /*b*/) { return false; }
     };
 
     /** Basic message type where the key & header are the only part of the message */
@@ -91,7 +111,15 @@ namespace ipc {
 
         suffix_type suffix;
 
-        friend constexpr bool operator==(message_t const & a, message_t const & b) { return (a.suffix == b.suffix); }
+        friend constexpr bool operator==(message_t const & a, message_t const & b)
+        {
+            if constexpr (is_protobuf_message_v<suffix_type>) {
+                return same_pb_message(a.suffix, b.suffix);
+            }
+            else {
+                return a.suffix == b.suffix;
+            }
+        }
 
         friend constexpr bool operator!=(message_t const & a, message_t const & b) { return !(a == b); }
     };

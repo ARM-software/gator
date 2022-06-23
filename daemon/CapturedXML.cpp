@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "CapturedXML.h"
 
@@ -10,6 +10,7 @@
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
 #include "lib/FsEntry.h"
+#include "lib/String.h"
 #include "xml/MxmlUtils.h"
 
 #include <algorithm>
@@ -225,12 +226,11 @@ namespace captured_xml {
                const PrimarySourceProvider & primarySourceProvider,
                const std::map<unsigned, unsigned> & maliGpuIds)
     {
-        char file[PATH_MAX];
         // Set full path
-        snprintf(file, PATH_MAX, "%s/captured.xml", path);
+        lib::printf_str_t<PATH_MAX> file {"%s/captured.xml", path};
 
         if (writeToDisk(file, getXML(true, spes, primarySourceProvider, maliGpuIds).get()) < 0) {
-            LOG_ERROR("Error writing %s\nPlease verify the path.", file);
+            LOG_ERROR("Error writing %s\nPlease verify the path.", file.c_str());
             handleException();
         }
     }

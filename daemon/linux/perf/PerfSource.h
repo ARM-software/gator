@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PERFSOURCE_H
 #define PERFSOURCE_H
@@ -17,20 +17,29 @@
 
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <set>
 
 #include <semaphore.h>
 
-class PerfDriver;
 class ISender;
 class FtraceDriver;
 class ICpuInfo;
 
+static constexpr auto MEGABYTES = 1024 * 1024;
+
 class PerfSource : public PrimarySource {
 public:
-    PerfSource(PerfDriver & driver,
+    static perf_ringbuffer_config_t createPerfBufferConfig();
+
+    PerfSource(perf_event_group_activator_config_t const & configuration,
+               perf_groups_activator_state_t && state,
+               std::unique_ptr<PerfAttrsBuffer> && attrs_buffer,
                sem_t & senderSem,
                std::function<void()> profilingStartedCallback,
+               std::function<std::optional<uint64_t>(ISummaryConsumer &, std::function<uint64_t()>)> sendSummaryFn,
+               std::function<void(ISummaryConsumer &, int)> coreNameFn,
+               std::function<void(IPerfAttrsConsumer &, int)> readCountersFn,
                std::set<int> appTids,
                FtraceDriver & ftraceDriver,
                bool enableOnCommandExec,
@@ -49,19 +58,23 @@ public:
     bool write(ISender & sender) override;
 
 private:
+    PerfConfig const & mConfig;
     SummaryBuffer mSummary;
     Buffer mMemoryBuffer;
     PerfToMemoryBuffer mPerfToMemoryBuffer;
     PerfBuffer mCountersBuf;
-    PerfGroups mCountersGroup;
+    perf_groups_activator_state_t mCountersGroupState;
+    perf_groups_activator_t mCountersGroup;
     Monitor mMonitor {};
     UEvent mUEvent {};
     std::set<int> mAppTids;
-    PerfDriver & mDriver;
-    std::unique_ptr<PerfAttrsBuffer> mAttrsBuffer {};
-    std::unique_ptr<PerfAttrsBuffer> mProcBuffer {};
     sem_t & mSenderSem;
+    std::unique_ptr<PerfAttrsBuffer> mAttrsBuffer;
+    PerfAttrsBuffer mProcBuffer;
     std::function<void()> mProfilingStartedCallback;
+    std::function<std::optional<uint64_t>(ISummaryConsumer &, std::function<uint64_t()>)> mSendSummaryFn;
+    std::function<void(ISummaryConsumer &, int)> mCoreNameFn;
+    std::function<void(IPerfAttrsConsumer &, int)> mReadCountersFn;
     lib::AutoClosingFd mInterruptRead {};
     lib::AutoClosingFd mInterruptWrite {};
     std::atomic_bool mIsDone {false};

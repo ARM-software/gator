@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright (C) 2016-2021 by Arm Limited. All rights reserved. -->
-
 <pmus version="2">
     <!--
       pmu element: Identifies a CPU PMU
@@ -95,10 +94,11 @@
     <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu"/>
 
     <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu"/>
-    <pmu id="ARMv8_Cortex_X2" cpuid="0x41d4c" core_name="Cortex-X2" dt_name="arm,cortex-x2" pmnc_counters="6" profile="8a" spe="arm_cortex_x2_spe_pmu"/>
+    <pmu id="ARMv8_Cortex_X1C" cpuid="0x41d4c" core_name="Cortex-X1C" dt_name="arm,cortex-x1c" pmnc_counters="6" profile="8a" counter_set="ARMv8_Cortex_X1" spe="arm_cortex_x1_spe_pmu"/>
+    <pmu id="ARMv8_Cortex_X2" cpuid="0x41d48" core_name="Cortex-X2" dt_name="arm,cortex-x2" pmnc_counters="6" profile="8a"/>
 
     <pmu id="ARMv8_Cortex_A510" cpuid="0x41d46" core_name="Cortex-A510" dt_name="arm,cortex-a510" pmnc_counters="6" profile="8a"/>
-    <pmu id="ARMv8_Cortex_A710" cpuid="0x41d47" core_name="Cortex-A710" dt_name="arm,cortex-a710" pmnc_counters="6" profile="8a" />
+    <pmu id="ARMv8_Cortex_A710" cpuid="0x41d47" core_name="Cortex-A710" dt_name="arm,cortex-a710" pmnc_counters="6" profile="8a"/>
 
     <!-- Arm China -->
     <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>

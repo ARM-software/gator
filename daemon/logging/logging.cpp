@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
@@ -13,9 +13,36 @@
 #include <cstdlib>
 #include <memory>
 
+#include <google/protobuf/stubs/logging.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
 namespace logging {
     namespace {
-        static std::shared_ptr<log_sink_t> current_log_sink {};
+        std::shared_ptr<log_sink_t> current_log_sink {};
+
+        void protobuf_log_handler(google::protobuf::LogLevel level,
+                                  const char * filename,
+                                  int line,
+                                  const std::string & message)
+        {
+            auto remapped_level = log_level_t::info;
+            switch (level) {
+                case google::protobuf::LOGLEVEL_WARNING:
+                    remapped_level = log_level_t::warning;
+                    break;
+                case google::protobuf::LOGLEVEL_ERROR:
+                    remapped_level = log_level_t::error;
+                    break;
+                case google::protobuf::LOGLEVEL_FATAL:
+                    remapped_level = log_level_t::fatal;
+                    break; //
+                default:
+                    break;
+            }
+
+            log_item(remapped_level, {filename, static_cast<unsigned>(line)}, message);
+        }
     }
 
     namespace detail {
@@ -53,9 +80,28 @@ namespace logging {
             struct timespec t;
             clock_gettime(CLOCK_MONOTONIC, &t);
 
-            sink->log_item(level, {t.tv_sec, t.tv_nsec}, location, message);
+            sink->log_item(thread_id_t(syscall(SYS_gettid)), level, {t.tv_sec, t.tv_nsec}, location, message);
         }
     }
 
-    void set_log_sink(std::shared_ptr<log_sink_t> sink) { current_log_sink = std::move(sink); }
+    void log_item(thread_id_t tid,
+                  log_level_t level,
+                  log_timestamp_t timestamp,
+                  source_loc_t const & location,
+                  std::string_view message)
+    {
+        std::shared_ptr<log_sink_t> sink = current_log_sink;
+
+        if (sink != nullptr) {
+
+            sink->log_item(tid, level, timestamp, location, message);
+        }
+    }
+
+    void set_log_sink(std::shared_ptr<log_sink_t> sink)
+    {
+        current_log_sink = std::move(sink);
+
+        google::protobuf::SetLogHandler(current_log_sink ? protobuf_log_handler : nullptr);
+    }
 }

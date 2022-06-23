@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2022 by Arm Limited. All rights reserved. */
 
 #include "BlockCounterFrameBuilder.h"
 
@@ -80,7 +80,7 @@ bool BlockCounterFrameBuilder::event64(int key, int64_t value)
 
 bool BlockCounterFrameBuilder::check(const uint64_t time)
 {
-    if ((*flushIsNeeded)(time, rawBuilder.needsFlush())) {
+    if ((flushIsNeeded != nullptr) && ((*flushIsNeeded)(time, rawBuilder.needsFlush()))) {
         return flush();
     }
     return false;

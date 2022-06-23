@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "GatorMain.h"
 
@@ -8,6 +8,7 @@
 #include "GatorCLIParser.h"
 #include "GatorException.h"
 #include "ICpuInfo.h"
+#include "ParserResult.h"
 #include "SessionData.h"
 #include "android/AndroidActivityManager.h"
 #include "android/AppGatorRunner.h"
@@ -18,6 +19,7 @@
 #include "lib/FileDescriptor.h"
 #include "lib/Popen.h"
 #include "lib/Process.h"
+#include "lib/String.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
 #include "logging/global_log.h"
@@ -60,6 +62,7 @@ namespace {
     //Gator ready messages
     constexpr std::string_view gator_shell_ready = "Gator ready";
     constexpr std::string_view gator_agent_ready = "Gator agent ready";
+    constexpr std::string_view start_app_msg = "start app\n";
     constexpr int AGENT_STD_OUT_UNEXPECTED_MESSAGE_LIMIT = 32;
     constexpr unsigned int VERSION_STRING_CHAR_SIZE = 256;
 }
@@ -245,9 +248,24 @@ int startAppGator(int argc, char ** argv)
     // Handle child exit codes
     signal(SIGCHLD, handler);
 
-    gator::capture::beginCaptureProcess(result, drivers, signalPipe, last_log_error_supplier, log_setup_supplier, []() {
-        std::cout << gator_agent_ready.data() << std::endl;
-    });
+    // an event handler that waits for capture events and forwards the notifications
+    // to the parent process via this process' stdout pipe
+    class local_event_handler_t : public capture::capture_process_event_listener_t {
+    public:
+        ~local_event_handler_t() override = default;
+
+        void process_initialised() override { std::cout << gator_agent_ready.data() << std::endl; }
+
+        void waiting_for_target() override { std::cout << start_app_msg.data() << std::endl; }
+
+    } event_handler {};
+
+    capture::beginCaptureProcess(result,
+                                 drivers,
+                                 signalPipe,
+                                 last_log_error_supplier,
+                                 log_setup_supplier,
+                                 event_handler);
     return 0;
 }
 
@@ -267,7 +285,7 @@ int waitForAppAgentToExit(const std::string & packageName,
 {
     std::string match(gator_agent_ready.data());
     match.append("\n");
-    std::string matchStartAppMessage("start app\n");
+    std::string matchStartAppMessage(start_app_msg.data());
 
     StateAndPid agentState {false, 0};
     bool isStdOutReadFinished = false;
@@ -330,6 +348,8 @@ int waitForAppAgentToExit(const std::string & packageName,
                                 // send a signal to the child process so that it can exit cleanly.
                                 // we'll get a SIGCHLD when it exits.
                                 runner.sendSignalsToAppGator(SIGTERM);
+                                //handling exception here to make sure the unused APC directory is deleted.
+                                handleException();
                             }
                         }
                         else {
@@ -488,6 +508,74 @@ int startShellGator(const ParserResult & result)
     return exitCode;
 }
 
+int gator_local_capture(const ParserResult & result,
+                        const logging::last_log_error_supplier_t & last_log_error_supplier,
+                        const logging::log_setup_supplier_t & log_setup_supplier)
+{
+    // Call before setting up the SIGCHLD handler, as system() spawns child processes
+    Drivers drivers {result.mSystemWide,
+                     readPmuXml(result.pmuPath),
+                     result.mDisableCpuOnlining,
+                     result.mDisableKernelAnnotations,
+                     TraceFsConstants::detect()};
+
+    // Handle child exit codes
+    signal(SIGCHLD, handler);
+
+    class local_event_handler_t : public capture::capture_process_event_listener_t {
+    public:
+        local_event_handler_t()
+        {
+            if (gSessionData.mAndroidPackage != nullptr && gSessionData.mAndroidActivity != nullptr) {
+                activity_manager =
+                    create_android_activity_manager(gSessionData.mAndroidPackage, gSessionData.mAndroidActivity);
+            }
+        }
+
+        ~local_event_handler_t() override
+        {
+            if (activity_manager) {
+                static_cast<void>(activity_manager->stop());
+            }
+        }
+
+        void process_initialised() override
+        {
+            // This line has to be printed because Streamline needs to detect when
+            // gator is ready to listen and accept socket connections via adb forwarding.  Without this
+            // print out there is a chance that Streamline establishes a connection to the adb forwarder,
+            // but the forwarder cannot establish a connection to a gator, because gator is not up and listening
+            // for sockets yet.  If the adb forwarder cannot establish a connection to gator, what streamline
+            // experiences is a successful socket connection, but when it attempts to read from the socket
+            // it reads an empty line when attempting to read the gator protocol header, and terminates the
+            // connection.
+            std::cout << gator_shell_ready.data() << std::endl;
+        }
+
+        void waiting_for_target() override
+        {
+            if (activity_manager) {
+                LOG_DEBUG("Starting the target application now...");
+                if (!activity_manager->start()) {
+                    LOG_ERROR("The target application could not be started automatically. Please start it manually.");
+                }
+            }
+        }
+
+    private:
+        std::unique_ptr<IAndroidActivityManager> activity_manager;
+
+    } event_handler {};
+
+    // we're starting gator in legacy mode - run the loop as normal
+    return capture::beginCaptureProcess(result,
+                                        drivers,
+                                        signalPipe,
+                                        last_log_error_supplier,
+                                        log_setup_supplier,
+                                        event_handler);
+}
+
 // Gator data flow: collector -> collector fifo -> sender
 int gator_main(int argc, char ** argv)
 {
@@ -517,6 +605,7 @@ int gator_main(int argc, char ** argv)
     signal(SIGTERM, handler);
     signal(SIGABRT, handler);
     signal(SIGHUP, handler);
+    signal(SIGUSR1, handler);
     gator::process::set_parent_death_signal(SIGHUP);
 
     // check for the special command line arg to see if we're being asked to
@@ -527,7 +616,7 @@ int gator_main(int argc, char ** argv)
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);
 
-    std::array<char, VERSION_STRING_CHAR_SIZE> versionString;
+    lib::printf_str_t<VERSION_STRING_CHAR_SIZE> versionString;
     {
         const int baseProtocolVersion =
             (PROTOCOL_VERSION >= 0 ? PROTOCOL_VERSION : -(PROTOCOL_VERSION % PROTOCOL_VERSION_DEV_MULTIPLIER));
@@ -539,18 +628,13 @@ int gator_main(int argc, char ** argv)
             (PROTOCOL_VERSION >= 0 ? (revisionVersion == 0 ? "Streamline gatord version %d (Streamline v%d.%d)"
                                                            : "Streamline gatord version %d (Streamline v%d.%d.%d)")
                                    : "Streamline gatord development version %d (Streamline v%d.%d.%d), tag %d");
-        snprintf(versionString.data(),
-                 versionString.size(),
-                 formatString,
-                 PROTOCOL_VERSION,
-                 majorVersion,
-                 minorVersion,
-                 revisionVersion,
-                 protocolDevTag);
+
+        versionString
+            .printf(formatString, PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion, protocolDevTag);
     }
     // Parse the command line parameters
     GatorCLIParser parser;
-    parser.parseCLIArguments(argc, argv, versionString.data(), MAX_PERFORMANCE_COUNTERS, gSrcMd5);
+    parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5);
     const ParserResult & result = parser.result;
     if (result.mode == ParserResult::ExecutionMode::EXIT) {
         handleException();
@@ -560,14 +644,11 @@ int gator_main(int argc, char ** argv)
 
     // configure any environment settings we'll need to start sampling
     // e.g. perf security settings.
-    auto environment = gator::capture::prepareCaptureEnvironment(gSessionData);
+    auto environment = capture::prepareCaptureEnvironment(gSessionData);
 
-    if (gSessionData.mAndroidPackage != nullptr) {
-        if (gSessionData.mSystemWide) {
-            LOG_ERROR("System-wide capture in combination with an Android package is not "
-                      "currently supported. Please specify one or the other.");
-            return EXCEPTION_EXIT_CODE;
-        }
+    // if we're not being asked to do a system-wide capture then start the gator agent in the
+    // context of the target android app
+    if (!gSessionData.mSystemWide && gSessionData.mAndroidPackage != nullptr) {
         return startShellGator(result);
     }
 
@@ -575,35 +656,7 @@ int gator_main(int argc, char ** argv)
         dumpCounterDetails(result, log_setup_supplier);
     }
     else {
-        // Call before setting up the SIGCHLD handler, as system() spawns child processes
-        Drivers drivers {result.mSystemWide,
-                         readPmuXml(result.pmuPath),
-                         result.mDisableCpuOnlining,
-                         result.mDisableKernelAnnotations,
-                         TraceFsConstants::detect()};
-
-        // Handle child exit codes
-        signal(SIGCHLD, handler);
-
-        // we're starting gator in legacy mode - run the loop as normal
-        return gator::capture::beginCaptureProcess(
-            result,
-            drivers,
-            signalPipe,
-            last_log_error_supplier,
-            log_setup_supplier,
-            []() {
-                // This line has to be printed because Streamline needs to detect when
-                // gator is ready to listen and accept socket connections via adb forwarding.  Without this
-                // print out there is a chance that Streamline establishes a connection to the adb forwarder,
-                // but the forwarder cannot establish a connection to a gator, because gator is not up and listening
-                // for sockets yet.  If the adb forwarder cannot establish a connection to gator, what streamline
-                // experiences is a successful socket connection, but when it attempts to read from the socket
-                // it reads an empty line when attempting to read the gator protocol header, and terminates the
-                // connection.
-                std::cout << gator_shell_ready.data() << std::endl;
-                std::cout.flush();
-            });
+        return gator_local_capture(result, last_log_error_supplier, log_setup_supplier);
     }
 
     return 0;

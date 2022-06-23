@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "android/Utils.h"
 
@@ -89,9 +89,9 @@ namespace android_utils {
         }
         auto destination = origApcDir.parent() ? origApcDir.parent().value().path() : "/data/local/tmp";
         //unzip tar
-        auto unzipResult =
-            gator::process::runCommandAndRedirectOutput("tar -xf " + targetTarFile + " -C " + destination,
-                                                        std::nullopt);
+        auto unzipResult = gator::process::runCommandAndRedirectOutput("tar --no-same-owner -xf " + targetTarFile
+                                                                           + " -C " + destination,
+                                                                       std::nullopt);
         if (unzipResult != 0) {
             LOG_DEBUG("Unzipping tar file '%s' to '%s' failed ", targetTarFile.c_str(), destination.c_str());
         }

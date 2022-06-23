@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2021 by Arm Limited. All rights reserved.
+# Copyright (C) 2010-2022 by Arm Limited. All rights reserved.
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16 FATAL_ERROR)
 
 OPTION(ENABLE_VCPKG "Pull in dependencies using vcpkg" ON)
@@ -34,30 +34,8 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/create-src-md5.cmake)
 # Include the strip/split-debug rules
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/split-strip.cmake)
 
-# Use ExternalProject to build the native gatord-xml-escape exe
-INCLUDE(ExternalProject)
-
-# Native compiler configuration options (for gatord-xml-escape tool)
-SET(CMAKE_NATIVE_GENERATOR      "${CMAKE_GENERATOR}"
-                                CACHE STRING "Native generator configuration")
-IF(CMAKE_CROSSCOMPILING)
-    IF(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-    SET(CMAKE_NATIVE_C_COMPILER     "clang"
-                                CACHE STRING "Native GCC compiler to use")
-    SET(CMAKE_NATIVE_CXX_COMPILER   "clang++"
-                                CACHE STRING "Native GCC C++ compiler to use")
-    ELSE()
-    SET(CMAKE_NATIVE_C_COMPILER     "gcc"
-                                CACHE STRING "Native GCC compiler to use")
-    SET(CMAKE_NATIVE_CXX_COMPILER   "g++"
-                                CACHE STRING "Native GCC C++ compiler to use")
-    ENDIF()
-ELSE()
-    SET(CMAKE_NATIVE_C_COMPILER     "${CMAKE_C_COMPILER}"
-                                CACHE STRING "Native GCC compiler to use")
-    SET(CMAKE_NATIVE_CXX_COMPILER   "${CMAKE_CXX_COMPILER}"
-                                CACHE STRING "Native GCC C++ compiler to use")
-ENDIF()
+# Include the escaper
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/escape.cmake)
 
 # Configure target flags
 SET(GATORD_C_CXX_FLAGS          "-fvisibility=hidden")
@@ -82,6 +60,8 @@ IF (NOT CONFIG_ASSUME_PERF_HIGH_PARANOIA)
 SET(GATORD_C_CXX_FLAGS      "${GATORD_C_CXX_FLAGS} -DCONFIG_ASSUME_PERF_HIGH_PARANOIA=0")
 ENDIF()
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler-flags.cmake)
+
+ADD_SUBDIRECTORY(ipc/proto)
 
 # Find the external dependencies
 FIND_PACKAGE(mxml CONFIG REQUIRED)
@@ -236,6 +216,7 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetupLoop.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/Time.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/Tracepoints.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/Tracepoints.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.cpp
@@ -244,6 +225,41 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/UEvent.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/UserSpaceSource.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/UserSpaceSource.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_worker_base.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_worker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_workers_process.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/apc/intermediate_buffer_consumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/coalescing_cpu_monitor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/nl_cpu_monitor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/polling_cpu_monitor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/socket_listener.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/socket_reference.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/socket_worker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_main.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_main.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_worker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ipc_sink_wrapper.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/apc_encoders.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/apc_encoders.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/async_buffer_builder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/capture_configuration.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/capture_configuration.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/cpufreq_counter.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/cpufreq_counter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/detail/perf_buffer_consumer_detail.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/detail/perf_buffer_consumer_detail.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/frame_encoder.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_buffer_consumer.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_buffer_consumer.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_capture.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_driver_summary.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/perf_driver_summary.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/record_types.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/sync_generator.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/tracepoint_formats.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/spawn_agent.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/agents/spawn_agent.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/AndroidActivityManager.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/AndroidActivityManager.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/AppGatorRunner.cpp
@@ -255,8 +271,14 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/Spawn.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/Spawn.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/ThermalDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/android/ThermalDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/Utils.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/android/Utils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/apc/misc_apc_frame_ipc_sender.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/apc/perf_apc_frame_utils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/apc/perf_counter.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/apc/summary_apc_frame_utils.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNDriver.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNSource.cpp
@@ -319,6 +341,44 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ThreadManagementServer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/TimestampCorrector.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/armnn/TimestampCorrector.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/asio_traits.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/completion_handler.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/async_initiate.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/continuation.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/continuation_of.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/continuation_traits.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/cont_if.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/cont_if_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/continuation_factory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/do_if.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/do_if_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/initiation_chain.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/loop.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/loop_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/map_error.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/map_error_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/on_executor.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/on_executor_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/polymorphic_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/predicate.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/predicate_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/start_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/state_chain.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/then.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/then_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/trace.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/unpack_variant.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/unpack_variant_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/detail/use_continuation_state.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/nop_receiver.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/operations.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/continuations/use_continuation.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/netlink/nl_protocol.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/netlink/uevents.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_proc_poller.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_read_proc_maps.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_read_proc_sys_dependencies.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_wait_for_process.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/CaptureProcess.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/CaptureProcess.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.cpp
@@ -334,6 +394,7 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Assert.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/AutoClosingFd.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/EnumUtils.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/exception.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/File.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.h
@@ -345,6 +406,8 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/GenericTimer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Istream.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Memory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/memory_pool.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/memory_pool.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/PmuCommonEvents.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Popen.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Popen.h
@@ -353,6 +416,7 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Resource.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Resource.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/SharedMemory.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/lib/source_location.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/Span.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/StaticVector.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/lib/String.h
@@ -371,6 +435,8 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/CoreOnliner.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/PerCoreIdentificationThread.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/PerCoreIdentificationThread.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/attr_to_key_mapping_tracker.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/id_to_key_mapping_tracker.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfAttrsConsumer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfBufferConsumer.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/IPerfGroups.h
@@ -384,6 +450,7 @@ SET(GATORD_SRC_FILES        ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverConfiguration.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverConfiguration.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriver.cpp
+                            ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriverCreateSource.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfDriver.h
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroup.cpp
                             ${CMAKE_CURRENT_SOURCE_DIR}/linux/perf/PerfEventGroup.h
@@ -498,7 +565,7 @@ SET(FILES_TO_HASH           ${FILES_TO_HASH}
                             ${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml
                             ${CMAKE_CURRENT_SOURCE_DIR}/pmus.xml
                             ${CMAKE_CURRENT_SOURCE_DIR}/defaults.xml)
-LIST(FILTER                 FILES_TO_HASH EXCLUDE REGEX "SrcMd5\\.cpp|_xml\\.h|events\\.xml")
+LIST(FILTER                 FILES_TO_HASH EXCLUDE REGEX "/ipc/proto/generated/|SrcMd5\\.cpp|_xml\\.h|events\\.xml")
 CREATE_SRC_MD5(             "gSrcMd5"
                             ${GENERATED_MD5_SOURCE} ${GENERATED_MD5_FILE}
                             ${FILES_TO_HASH})
@@ -527,49 +594,27 @@ ADD_CUSTOM_COMMAND(OUTPUT   ${CONCATENATED_EVENTS_XML}
                             ${EVENTS_XML_FILES}
                             ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake)
 
-# Build the gatord-xml-escape using the native compiler
-SET(GATORD_XML_ESCAPE_TOOL  ${CMAKE_CURRENT_BINARY_DIR}/escape/gatord-xml-escape)
-
-ExternalProject_Add(gatord-xml-escape
-    DOWNLOAD_COMMAND        ""
-    SOURCE_DIR              "${CMAKE_CURRENT_SOURCE_DIR}/escape"
-    CONFIGURE_COMMAND       ${CMAKE_COMMAND} -G "${CMAKE_NATIVE_GENERATOR}" "${CMAKE_CURRENT_SOURCE_DIR}/escape"
-                                             -DCMAKE_C_COMPILER=${CMAKE_NATIVE_C_COMPILER}
-                                             -DCMAKE_CXX_COMPILER=${CMAKE_NATIVE_CXX_COMPILER}
-                                             -DCMAKE_C_FLAGS=
-                                             -DCMAKE_CXX_FLAGS=
-    INSTALL_COMMAND         ""
-    BINARY_DIR              ${CMAKE_CURRENT_BINARY_DIR}/escape
-)
-
-ADD_CUSTOM_COMMAND(OUTPUT   ${GATORD_XML_ESCAPE_TOOL}
-                   DEPENDS  gatord-xml-escape)
-
 # Macro to aid generation of xml->header files
 SET(ALL_XML_HEADERS         )
 MACRO(CREATE_XML_HEADER     CONSTANT_NAME
                             SOURCE_XML_FILE
                             OUTPUT_HEADER_FILE)
-    ADD_CUSTOM_COMMAND(OUTPUT   ${OUTPUT_HEADER_FILE}
-                       COMMAND  ${GATORD_XML_ESCAPE_TOOL} ${CONSTANT_NAME} ${SOURCE_XML_FILE} ${OUTPUT_HEADER_FILE}
-                       DEPENDS  gatord-xml-escape
-                                ${GATORD_XML_ESCAPE_TOOL}
-                                ${SOURCE_XML_FILE})
+    ESCAPE_FILE_TO_C_STRING("${CONSTANT_NAME}" "${SOURCE_XML_FILE}" "${OUTPUT_HEADER_FILE}")
     LIST(APPEND ALL_XML_HEADERS ${OUTPUT_HEADER_FILE})
 ENDMACRO()
 
 # Target to generate defaults_xml.h
-CREATE_XML_HEADER(          defaults.xml
+CREATE_XML_HEADER(          DEFAULTS_XML
                             ${CMAKE_CURRENT_SOURCE_DIR}/defaults.xml
                             ${CMAKE_CURRENT_BINARY_DIR}/defaults_xml.h)
 
 # Target to generate pmus_xml.h
-CREATE_XML_HEADER(          pmus.xml
+CREATE_XML_HEADER(          PmuXML::DEFAULT_XML
                             ${CMAKE_CURRENT_SOURCE_DIR}/pmus.xml
                             ${CMAKE_CURRENT_BINARY_DIR}/pmus_xml.h)
 
 # Target to generate events.h
-CREATE_XML_HEADER(          events.xml
+CREATE_XML_HEADER(          DEFAULT_EVENTS_XML
                             ${CONCATENATED_EVENTS_XML}
                             ${CMAKE_CURRENT_BINARY_DIR}/events_xml.h)
 
@@ -618,6 +663,8 @@ TARGET_LINK_LIBRARIES(gatord
     PRIVATE mxml
     PRIVATE Boost::boost
     PRIVATE Boost::filesystem
+    PRIVATE ipcproto
+    PRIVATE dl
 )
 IF(NOT ANDROID)
     TARGET_LINK_LIBRARIES(gatord
@@ -651,4 +698,3 @@ INSTALL(TARGETS             gatord
 
 INSTALL(FILES       ${CMAKE_CURRENT_SOURCE_DIR}/COPYING
         DESTINATION ${GATORD_INSTALL_DIR})
-

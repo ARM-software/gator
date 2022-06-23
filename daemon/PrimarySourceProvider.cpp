@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #include "PrimarySourceProvider.h"
 
@@ -15,6 +15,8 @@
 #include "lib/FsEntry.h"
 #include "lib/Utils.h"
 #include "xml/PmuXML.h"
+
+#include <android/ThermalDriver.h>
 #if CONFIG_SUPPORT_PERF
 #include "linux/perf/PerfDriver.h"
 #include "linux/perf/PerfDriverConfiguration.h"
@@ -36,18 +38,18 @@ namespace {
     /// array for cpuIds and clusterIds
     class Ids {
     public:
-        Ids(unsigned int maxCoreNumber) : maxCoreNumber(maxCoreNumber)
+        explicit Ids(unsigned int maxCoreNumber) : maxCoreNumber(maxCoreNumber)
         {
             for (unsigned int i = 0; i < maxCoreNumber * 2; ++i) {
                 ids.get()[i] = -1; // Unknown
             }
         }
 
-        lib::Span<int> getCpuIds() { return {ids.get(), maxCoreNumber}; }
+        [[nodiscard]] lib::Span<int> getCpuIds() { return {ids.get(), maxCoreNumber}; }
 
         [[nodiscard]] lib::Span<const int> getCpuIds() const { return {ids.get(), maxCoreNumber}; }
 
-        lib::Span<int> getClusterIds() { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
+        [[nodiscard]] lib::Span<int> getClusterIds() { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
 
         [[nodiscard]] lib::Span<const int> getClusterIds() const { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
 
@@ -74,34 +76,12 @@ namespace {
 
         [[nodiscard]] lib::Span<const int> getClusterIds() const override { return ids.getClusterIds(); }
 
-        void updateIds(bool ignoreOffline) override
-        {
-            cpu_utils::readCpuInfo(disableCpuOnlining || ignoreOffline, ids.getCpuIds());
-            updateClusterIds();
-        }
-
         [[nodiscard]] const char * getModelName() const override { return modelName.c_str(); }
 
-        void updateClusterIds()
+        void updateIds(bool ignoreOffline) override
         {
-            int lastClusterId = 0;
-            for (size_t i = 0; i < ids.getCpuIds().size(); ++i) {
-                int clusterId = -1;
-                for (size_t j = 0; j < clusters.size(); ++j) {
-                    if (clusters[j].hasCpuId(ids.getCpuIds()[i])) {
-                        clusterId = j;
-                    }
-                }
-                if (clusterId == -1) {
-                    // No corresponding cluster found for this CPU, most likely this is a big LITTLE system without multi-PMU support
-                    // assume it belongs to the last cluster seen
-                    ids.getClusterIds()[i] = lastClusterId;
-                }
-                else {
-                    ids.getClusterIds()[i] = clusterId;
-                    lastClusterId = clusterId;
-                }
-            }
+            cpu_utils::readCpuInfo(disableCpuOnlining || ignoreOffline, false, ids.getCpuIds());
+            updateClusterIds();
         }
 
     private:
@@ -109,6 +89,8 @@ namespace {
         std::vector<GatorCpu> clusters;
         std::string modelName;
         bool disableCpuOnlining;
+
+        void updateClusterIds() { ICpuInfo::updateClusterIds(ids.getCpuIds(), clusters, ids.getClusterIds()); }
     };
 
 #if CONFIG_SUPPORT_PERF
@@ -163,6 +145,11 @@ namespace {
 
         [[nodiscard]] bool supportsTracepointCapture() const override { return true; }
 
+        [[nodiscard]] bool useFtraceDriverForCpuFrequency() const override
+        {
+            return driver.getConfig().use_ftrace_for_cpu_frequency;
+        }
+
         [[nodiscard]] bool supportsMultiEbs() const override { return true; }
 
         [[nodiscard]] const char * getPrepareFailedMessage() const override
@@ -188,24 +175,23 @@ namespace {
                                                            FtraceDriver & ftraceDriver,
                                                            bool enableOnCommandExec) override
         {
-            auto source = std::make_unique<PerfSource>(driver,
-                                                       senderSem,
-                                                       profilingStartedCallback,
-                                                       appTids,
-                                                       ftraceDriver,
-                                                       enableOnCommandExec,
-                                                       cpuInfo);
-            if (!source->prepare()) {
-                return {};
-            }
-            return source;
+            return driver.create_source(senderSem,
+                                        profilingStartedCallback,
+                                        appTids,
+                                        ftraceDriver,
+                                        enableOnCommandExec,
+                                        cpuInfo);
         }
 
     private:
         static std::vector<PolledDriver *> createPolledDrivers()
         {
-            return std::vector<PolledDriver *> {
-                {new HwmonDriver(), new FSDriver(), new DiskIODriver(), new MemInfoDriver(), new NetDriver()}};
+            return std::vector<PolledDriver *> {{new HwmonDriver(),
+                                                 new FSDriver(),
+                                                 new DiskIODriver(),
+                                                 new MemInfoDriver(),
+                                                 new NetDriver(),
+                                                 new gator::android::ThermalDriver}};
         }
 
         PerfPrimarySource(PerfDriverConfiguration && configuration,
@@ -288,7 +274,9 @@ namespace {
 
         [[nodiscard]] const char * getBacktraceProcessingMode() const override { return "none"; }
 
-        [[nodiscard]] bool supportsTracepointCapture() const override { return true; }
+        [[nodiscard]] bool supportsTracepointCapture() const override { return false; }
+
+        [[nodiscard]] bool useFtraceDriverForCpuFrequency() const override { return true; }
 
         [[nodiscard]] bool supportsMultiEbs() const override { return false; }
 
@@ -363,7 +351,7 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
 {
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
-    const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, ids.getCpuIds());
+    const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, true, ids.getCpuIds());
     const char * modelNameToUse = !modelName.empty()    ? modelName.c_str()
                                 : !hardwareName.empty() ? hardwareName.c_str()
                                                         : CORE_NAME_UNKNOWN;

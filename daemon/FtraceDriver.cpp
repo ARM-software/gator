@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #include "FtraceDriver.h"
 
@@ -9,9 +9,11 @@
 #include "SessionData.h"
 #include "Tracepoints.h"
 #include "lib/FileDescriptor.h"
+#include "lib/String.h"
 #include "lib/Utils.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -65,154 +67,192 @@ void Barrier::wait()
     pthread_mutex_unlock(&mMutex);
 }
 
-class FtraceCounter : public DriverCounter {
-public:
-    FtraceCounter(DriverCounter * next,
-                  const TraceFsConstants & traceFsConstants,
-                  const char * name,
-                  const char * enable);
-    ~FtraceCounter() override;
+namespace {
+    // arbitrary large buffer size for printf_str_t bufffers containing tracefs paths
+    constexpr std::size_t tracefs_path_buffer_size = 2048;
 
-    // Intentionally unimplemented
-    FtraceCounter(const FtraceCounter &) = delete;
-    FtraceCounter & operator=(const FtraceCounter &) = delete;
-    FtraceCounter(FtraceCounter &&) = delete;
-    FtraceCounter & operator=(FtraceCounter &&) = delete;
+    class FtraceCounter : public DriverCounter {
+    public:
+        FtraceCounter(DriverCounter * next,
+                      const TraceFsConstants & traceFsConstants,
+                      const char * name,
+                      const char * enable);
+        ~FtraceCounter() override;
 
-    bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer);
+        // Intentionally unimplemented
+        FtraceCounter(const FtraceCounter &) = delete;
+        FtraceCounter & operator=(const FtraceCounter &) = delete;
+        FtraceCounter(FtraceCounter &&) = delete;
+        FtraceCounter & operator=(FtraceCounter &&) = delete;
 
-    void prepare();
-    void stop();
+        bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer);
 
-private:
-    const TraceFsConstants & traceFsConstants;
-    char * const mEnable;
-    int mWasEnabled;
-};
+        virtual void prepare();
+        virtual void stop();
 
-FtraceCounter::FtraceCounter(DriverCounter * next,
-                             const TraceFsConstants & traceFsConstants,
-                             const char * name,
-                             const char * enable)
-    : DriverCounter(next, name),
-      traceFsConstants(traceFsConstants),
-      mEnable(enable == nullptr ? nullptr : strdup(enable)),
-      mWasEnabled(0)
-{
-}
+        virtual void readInitial(size_t /*cpu*/, std::function<void(int, int, std::int64_t)> const & /*consumer*/) {}
 
-FtraceCounter::~FtraceCounter()
-{
-    if (mEnable != nullptr) {
-        free(mEnable);
+    private:
+        const TraceFsConstants & traceFsConstants;
+        char * const mEnable;
+        int mWasEnabled;
+    };
+
+    class CpuFrequencyFtraceCounter : public FtraceCounter {
+    public:
+        CpuFrequencyFtraceCounter(DriverCounter * next,
+                                  const TraceFsConstants & traceFsConstants,
+                                  const char * name,
+                                  const char * enable,
+                                  bool use_cpuinfo)
+            : FtraceCounter(next, traceFsConstants, name, enable), use_cpuinfo(use_cpuinfo)
+        {
+        }
+
+        void readInitial(size_t cpu, std::function<void(int, int, std::int64_t)> const & consumer) override
+        {
+            constexpr std::size_t buffer_size = 128;
+            constexpr std::int64_t freq_multiplier = 1000;
+
+            char const * const pattern = (use_cpuinfo ? "/sys/devices/system/cpu/cpu%zu/cpufreq/cpuinfo_cur_freq"
+                                                      : "/sys/devices/system/cpu/cpu%zu/cpufreq/scaling_cur_freq");
+
+            lib::printf_str_t<buffer_size> buf {pattern, cpu};
+            std::int64_t freq;
+            if (lib::readInt64FromFile(buf, freq) != 0) {
+                freq = 0;
+            }
+            consumer(getKey(), int(cpu), freq_multiplier * freq);
+        }
+
+    private:
+        bool use_cpuinfo;
+    };
+
+    FtraceCounter::FtraceCounter(DriverCounter * next,
+                                 const TraceFsConstants & traceFsConstants,
+                                 const char * name,
+                                 const char * enable)
+        : DriverCounter(next, name),
+          traceFsConstants(traceFsConstants),
+          mEnable(enable == nullptr ? nullptr : strdup(enable)),
+          mWasEnabled(0)
+    {
     }
-}
 
-void FtraceCounter::prepare()
-{
-    if (mEnable == nullptr) {
-        if (gSessionData.mFtraceRaw) {
-            LOG_ERROR("The ftrace counter %s is not compatible with the more efficient ftrace collection as it is "
-                      "missing the enable attribute. Please either add the enable attribute to the counter in "
-                      "events XML or disable the counter in counter configuration.",
-                      getName());
+    FtraceCounter::~FtraceCounter()
+    {
+        if (mEnable != nullptr) {
+            free(mEnable);
+        }
+    }
+
+    void FtraceCounter::prepare()
+    {
+        if (mEnable == nullptr) {
+            if (gSessionData.mFtraceRaw) {
+                LOG_ERROR("The ftrace counter %s is not compatible with the more efficient ftrace collection as it is "
+                          "missing the enable attribute. Please either add the enable attribute to the counter in "
+                          "events XML or disable the counter in counter configuration.",
+                          getName());
+                handleException();
+            }
+            return;
+        }
+
+        lib::printf_str_t<tracefs_path_buffer_size> buf {"%s/%s/enable", traceFsConstants.path__events, mEnable};
+        if ((lib::readIntFromFile(buf, mWasEnabled) != 0) || (lib::writeIntToFile(buf, 1) != 0)) {
+            LOG_ERROR("Unable to read or write to %s", buf.c_str());
             handleException();
         }
-        return;
     }
 
-    char buf[1 << 10];
-    snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, mEnable);
-    if ((lib::readIntFromFile(buf, mWasEnabled) != 0) || (lib::writeIntToFile(buf, 1) != 0)) {
-        LOG_ERROR("Unable to read or write to %s", buf);
-        handleException();
-    }
-}
-
-void FtraceCounter::stop()
-{
-    if (mEnable == nullptr) {
-        return;
-    }
-
-    char buf[1 << 10];
-    snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, mEnable);
-    lib::writeIntToFile(buf, mWasEnabled);
-}
-
-bool FtraceCounter::readTracepointFormat(IPerfAttrsConsumer & attrsConsumer)
-{
-    return ::readTracepointFormat(attrsConsumer, traceFsConstants.path__events, mEnable);
-}
-
-static void handlerUsr1(int signum)
-{
-    (void) signum;
-
-    // Although this signal handler does nothing, SIG_IGN doesn't interrupt splice in all cases
-}
-
-static ssize_t pageSize;
-
-class FtraceReader {
-public:
-    FtraceReader(Barrier * const barrier, int cpu, int tfd, int pfd0, int pfd1)
-        : mNext(mHead), mBarrier(barrier), mThread(), mCpu(cpu), mTfd(tfd), mPfd0(pfd0), mPfd1(pfd1)
+    void FtraceCounter::stop()
     {
-        mHead = this;
+        if (mEnable == nullptr) {
+            return;
+        }
+
+        lib::printf_str_t<tracefs_path_buffer_size> buf {"%s/%s/enable", traceFsConstants.path__events, mEnable};
+        lib::writeIntToFile(buf, mWasEnabled);
     }
 
-    void start();
-    bool interrupt();
-    [[nodiscard]] bool join() const;
-
-    static FtraceReader * getHead() { return mHead; }
-    [[nodiscard]] FtraceReader * getNext() const { return mNext; }
-    [[nodiscard]] int getPfd0() const { return mPfd0; }
-
-private:
-    static constexpr auto FTRACE_TIMEOUT = std::chrono::seconds {2};
-    static FtraceReader * mHead;
-    FtraceReader * const mNext;
-    Barrier * const mBarrier;
-    pthread_t mThread;
-    const int mCpu;
-    const int mTfd;
-    const int mPfd0;
-    const int mPfd1;
-    std::atomic_bool mSessionIsActive {true};
-
-    static void * runStatic(void * arg);
-    void run();
-};
-
-FtraceReader * FtraceReader::mHead;
-
-void FtraceReader::start()
-{
-    if (pthread_create(&mThread, nullptr, runStatic, this) != 0) {
-        LOG_ERROR("Unable to start the ftraceReader thread");
-        handleException();
+    bool FtraceCounter::readTracepointFormat(IPerfAttrsConsumer & attrsConsumer)
+    {
+        return ::readTracepointFormat(attrsConsumer, traceFsConstants.path__events, mEnable);
     }
-}
 
-bool FtraceReader::interrupt()
-{
-    mSessionIsActive = false;
-    return pthread_kill(mThread, SIGUSR1) == 0;
-}
+    void handlerUsr1(int signum)
+    {
+        (void) signum;
 
-bool FtraceReader::join() const
-{
-    return pthread_join(mThread, nullptr) == 0;
-}
+        // Although this signal handler does nothing, SIG_IGN doesn't interrupt splice in all cases
+    }
 
-void * FtraceReader::runStatic(void * arg)
-{
-    auto * const ftraceReader = static_cast<FtraceReader *>(arg);
-    ftraceReader->run();
-    return nullptr;
-}
+    class FtraceReader {
+    public:
+        FtraceReader(Barrier * const barrier, int cpu, int tfd, int pfd0, int pfd1, ssize_t pageSize)
+            : mNext(mHead),
+              mBarrier(barrier),
+              mThread(),
+              mCpu(cpu),
+              mTfd(tfd),
+              mPfd0(pfd0),
+              mPfd1(pfd1),
+              pageSize(pageSize)
+        {
+            mHead = this;
+        }
+
+        void start();
+        bool interrupt();
+        [[nodiscard]] bool join() const;
+
+        static FtraceReader * getHead() { return mHead; }
+        [[nodiscard]] FtraceReader * getNext() const { return mNext; }
+        [[nodiscard]] int getPfd0() const { return mPfd0; }
+
+    private:
+        static constexpr auto FTRACE_TIMEOUT = std::chrono::seconds {2};
+        static FtraceReader * mHead;
+        FtraceReader * const mNext;
+        Barrier * const mBarrier;
+        pthread_t mThread;
+        const int mCpu;
+        const int mTfd;
+        const int mPfd0;
+        const int mPfd1;
+        std::atomic_bool mSessionIsActive {true};
+        ssize_t pageSize;
+
+        static void * runStatic(void * arg);
+        void run();
+    };
+
+    FtraceReader * FtraceReader::mHead;
+
+    void FtraceReader::start()
+    {
+        if (pthread_create(&mThread, nullptr, runStatic, this) != 0) {
+            LOG_ERROR("Unable to start the ftraceReader thread");
+            handleException();
+        }
+    }
+
+    bool FtraceReader::interrupt()
+    {
+        mSessionIsActive = false;
+        return pthread_kill(mThread, SIGUSR1) == 0;
+    }
+
+    bool FtraceReader::join() const { return pthread_join(mThread, nullptr) == 0; }
+
+    void * FtraceReader::runStatic(void * arg)
+    {
+        auto * const ftraceReader = static_cast<FtraceReader *>(arg);
+        ftraceReader->run();
+        return nullptr;
+    }
 
 #ifndef SPLICE_F_MOVE
 
@@ -221,136 +261,166 @@ void * FtraceReader::runStatic(void * arg)
 // Pre Android-21 does not define splice
 #define SPLICE_F_MOVE 1
 
-static ssize_t sys_splice(int fd_in, loff_t * off_in, int fd_out, loff_t * off_out, size_t len, unsigned int flags)
-{
-    return syscall(__NR_splice, fd_in, off_in, fd_out, off_out, len, flags);
-}
+    static ssize_t sys_splice(int fd_in, loff_t * off_in, int fd_out, loff_t * off_out, size_t len, unsigned int flags)
+    {
+        return syscall(__NR_splice, fd_in, off_in, fd_out, off_out, len, flags);
+    }
 
 #define splice(fd_in, off_in, fd_out, off_out, len, flags) sys_splice(fd_in, off_in, fd_out, off_out, len, flags)
 
 #endif
 
-void FtraceReader::run()
-{
+    //NOLINTNEXTLINE(readability-function-cognitive-complexity)
+    void FtraceReader::run()
     {
-        char buf[16];
-        snprintf(buf, sizeof(buf), "gatord-reader%02i", mCpu);
-        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&buf), 0, 0, 0);
-    }
+        {
+            constexpr std::size_t comm_length = 16;
+            lib::printf_str_t<comm_length> buf {"gatord-reader%02i", mCpu};
+            prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&buf), 0, 0, 0);
+        }
 
-    // Gator runs at a high priority, reset the priority to the default
-    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
-        LOG_ERROR("setpriority failed");
-        handleException();
-    }
-
-    mBarrier->wait();
-
-    while (mSessionIsActive) {
-        const ssize_t bytes = splice(mTfd, nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
-        if (bytes == 0) {
-            LOG_ERROR("ftrace splice unexpectedly returned 0");
+        // Gator runs at a high priority, reset the priority to the default
+        if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), 0) == -1) {
+            LOG_ERROR("setpriority failed");
             handleException();
         }
-        else if (bytes < 0) {
-            if (errno != EINTR) {
-                LOG_ERROR("splice failed");
+
+        mBarrier->wait();
+
+        // Use a secondary internal pipe here to break a lock dependency between the reader and writer ends.
+        //
+        // The splice syscall holds a lock on the output pipe (mPfd0/1) which prevents ExternalSource from
+        // processing the read end. If the splice syscall sleeps while holding the lock (e.g. waiting to fill
+        // a page but the capture has ended) gator-child will deadlock. The secondary pipe avoids this.
+
+        std::array<int, 2> internal_pipe;
+        if (pipe2(internal_pipe.data(), O_CLOEXEC) < 0) {
+            LOG_ERROR("Failed to open a pipe to allow splicing from the ftrace buffer. Errno %d", errno);
+            handleException();
+        }
+
+        while (mSessionIsActive) {
+            const ssize_t bytes = splice(mTfd, nullptr, internal_pipe[1], nullptr, pageSize, SPLICE_F_MOVE);
+            if (bytes == 0) {
+                LOG_ERROR("ftrace splice unexpectedly returned 0");
                 handleException();
             }
+            else if (bytes < 0) {
+                if (errno != EINTR) {
+                    LOG_ERROR("splice failed");
+                    handleException();
+                }
+            }
+            else {
+                // Can there be a short splice read?
+                if (bytes != pageSize) {
+                    LOG_ERROR("splice short read");
+                    handleException();
+                }
+                // Will be read by gatord-external
+                auto sent = splice(internal_pipe[0], nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
+                if (sent != bytes) {
+                    LOG_ERROR("splice failed when sending data to the external event reader");
+                    handleException();
+                }
+            }
         }
-        else {
+
+        if (!lib::setNonblock(mTfd)) {
+            LOG_ERROR("lib::setNonblock failed");
+            handleException();
+        }
+
+        // Starting timer to interrupt thread if it's hanging
+        std::shared_ptr<std::atomic<bool>> isStuck = std::make_shared<std::atomic<bool>>(true);
+        std::thread timeoutThread([&, isStuck]() {
+            std::this_thread::sleep_for(FtraceReader::FTRACE_TIMEOUT);
+            if (*isStuck) {
+                LOG_DEBUG("ftrace reader is hanging. Interrupting reader thread");
+                close(internal_pipe[0]);
+                close(internal_pipe[1]);
+                close(mTfd);
+                close(mPfd1);
+                pthread_kill(mThread, SIGKILL);
+            }
+        });
+        timeoutThread.detach();
+
+        for (;;) {
+            const ssize_t bytes = splice(mTfd, nullptr, internal_pipe[1], nullptr, pageSize, SPLICE_F_MOVE);
+            if (bytes <= 0) {
+                break;
+            }
             // Can there be a short splice read?
             if (bytes != pageSize) {
                 LOG_ERROR("splice short read");
                 handleException();
             }
             // Will be read by gatord-external
-        }
-    }
-
-    if (!lib::setNonblock(mTfd)) {
-        LOG_ERROR("lib::setNonblock failed");
-        handleException();
-    }
-
-    // Starting timer to interrupt thread if it's hanging
-    std::shared_ptr<std::atomic<bool>> isStuck = std::make_shared<std::atomic<bool>>(true);
-    std::thread timeoutThread([&, isStuck]() {
-        std::this_thread::sleep_for(FtraceReader::FTRACE_TIMEOUT);
-        if (*isStuck) {
-            LOG_DEBUG("ftrace reader is hanging. Interrupting reader thread");
-            close(mTfd);
-            close(mPfd1);
-            pthread_kill(mThread, SIGKILL);
-        }
-    });
-    timeoutThread.detach();
-
-    for (;;) {
-        ssize_t bytes;
-
-        bytes = splice(mTfd, nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
-        if (bytes <= 0) {
-            break;
-        }
-        // Can there be a short splice read?
-        if (bytes != pageSize) {
-            LOG_ERROR("splice short read");
-            handleException();
-        }
-        // Will be read by gatord-external
-    }
-
-    {
-        // Read any slop
-        ssize_t bytes;
-        size_t size;
-        char buf[1 << 16];
-
-        if (sizeof(buf) < static_cast<size_t>(pageSize)) {
-            LOG_ERROR("ftrace slop buffer is too small");
-            handleException();
-        }
-        for (;;) {
-            bytes = read(mTfd, buf, sizeof(buf));
-            if (bytes == 0) {
-                LOG_ERROR("ftrace read unexpectedly returned 0");
+            auto sent = splice(internal_pipe[0], nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
+            if (sent != bytes) {
+                LOG_ERROR("splice failed when sending data to the external event reader");
                 handleException();
             }
-            else if (bytes < 0) {
-                if (errno != EAGAIN) {
-                    LOG_ERROR("reading slop from ftrace failed");
+        }
+
+        {
+            // Read any slop
+            std::array<char, 65536> buf {};
+            ssize_t bytes;
+            size_t size;
+
+            if (buf.size() < static_cast<size_t>(pageSize)) {
+                LOG_ERROR("ftrace slop buffer is too small");
+                handleException();
+            }
+            for (;;) {
+                bytes = read(mTfd, buf.data(), buf.size());
+                if (bytes == 0) {
+                    LOG_ERROR("ftrace read unexpectedly returned 0");
                     handleException();
                 }
-                break;
-            }
-            else {
-                size = bytes;
-                bytes = write(mPfd1, buf, size);
-                if (bytes != static_cast<ssize_t>(size)) {
-                    LOG_ERROR("writing slop to ftrace pipe failed");
-                    handleException();
+                else if (bytes < 0) {
+                    if (errno != EAGAIN) {
+                        LOG_ERROR("reading slop from ftrace failed");
+                        handleException();
+                    }
+                    break;
+                }
+                else {
+                    size = bytes;
+                    bytes = write(mPfd1, buf.data(), size);
+                    if (bytes != static_cast<ssize_t>(size)) {
+                        LOG_ERROR("writing slop to ftrace pipe failed");
+                        handleException();
+                    }
                 }
             }
         }
+
+        // Disabling the timeout thread
+        *isStuck = false;
+
+        close(internal_pipe[0]);
+        close(internal_pipe[1]);
+        close(mTfd);
+        close(mPfd1);
+        // Intentionally don't close mPfd0 as it is used after this thread is exited to read the slop
     }
-
-    // Disabling the timeout thread
-    *isStuck = false;
-
-    close(mTfd);
-    close(mPfd1);
-    // Intentionally don't close mPfd0 as it is used after this thread is exited to read the slop
 }
 
-FtraceDriver::FtraceDriver(const TraceFsConstants & traceFsConstants, bool useForTracepoints, size_t numberOfCores)
+FtraceDriver::FtraceDriver(const TraceFsConstants & traceFsConstants,
+                           bool use_for_general_tracepoints,
+                           bool use_ftrace_for_cpu_frequency,
+                           size_t numberOfCores)
     : SimpleDriver("Ftrace"),
       traceFsConstants(traceFsConstants),
       mBarrier(),
       mTracingOn(0),
       mSupported(false),
       mMonotonicRawSupport(false),
-      mUseForTracepoints(useForTracepoints),
+      mUseForGeneralTracepoints(use_for_general_tracepoints),
+      mUseForCpuFrequency(use_ftrace_for_cpu_frequency),
       mNumberOfCores(numberOfCores)
 {
 }
@@ -368,9 +438,10 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     const int kernelVersion = lib::parseLinuxVersion(utsname);
     if (kernelVersion < KERNEL_VERSION(3, 10, 0)) {
         mSupported = false;
-        LOG_SETUP(
-            "Ftrace is disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With user space "
-            "gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be available.");
+        LOG_SETUP("Ftrace is disabled\nFor full ftrace functionality please upgrade to Linux 3.10 or later. With "
+                  "user space "
+                  "gator and Linux prior to 3.10, ftrace counters with the tracepoint and arg attributes will be "
+                  "available.");
         return;
     }
     mMonotonicRawSupport = kernelVersion >= KERNEL_VERSION(4, 2, 0);
@@ -406,31 +477,47 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
         }
 
         const char * regex = mxmlElementGetAttr(node, "regex");
-        if (regex == nullptr) {
-            LOG_ERROR("The regex counter %s is missing the required regex attribute", counter);
-            handleException();
-        }
-
         const char * tracepoint = mxmlElementGetAttr(node, "tracepoint");
         const char * enable = mxmlElementGetAttr(node, "enable");
         if (enable == nullptr) {
             enable = tracepoint;
         }
-        if (!mUseForTracepoints && tracepoint != nullptr) {
+        const bool is_cpu_frequency = ((tracepoint != nullptr) && (strcmp(tracepoint, "power/cpu_frequency") == 0)
+                                       && (strcmp(counter, "ftrace_power_cpu_frequency") == 0));
+
+        if ((regex == nullptr) && !is_cpu_frequency) {
+            LOG_ERROR("The regex counter %s is missing the required regex attribute", counter);
+            handleException();
+        }
+
+        if ((!mUseForGeneralTracepoints) && (tracepoint != nullptr) && !is_cpu_frequency) {
+            LOG_DEBUG("Not using ftrace for counter %s", counter);
+            continue;
+        }
+        if ((!mUseForCpuFrequency) && is_cpu_frequency) {
             LOG_DEBUG("Not using ftrace for counter %s", counter);
             continue;
         }
         if (enable != nullptr) {
-            char buf[1 << 10];
-            snprintf(buf, sizeof(buf), "%s/%s/enable", traceFsConstants.path__events, enable);
+            lib::printf_str_t<tracefs_path_buffer_size> buf {"%s/%s/enable", traceFsConstants.path__events, enable};
             if (access(buf, W_OK) != 0) {
-                LOG_SETUP("%s is disabled\n%s was not found", counter, buf);
+                LOG_SETUP("%s is disabled\n%s was not found", counter, buf.c_str());
                 continue;
             }
         }
 
         LOG_DEBUG("Using ftrace for %s", counter);
-        setCounters(new FtraceCounter(getCounters(), traceFsConstants, counter, enable));
+        if (is_cpu_frequency) {
+            bool const has_cpuinfo = (access("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq", R_OK) == 0);
+            bool const has_scaling = (access("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", R_OK) == 0);
+            if (has_cpuinfo || has_scaling) {
+                setCounters(
+                    new CpuFrequencyFtraceCounter(getCounters(), traceFsConstants, counter, enable, has_cpuinfo));
+            }
+        }
+        else {
+            setCounters(new FtraceCounter(getCounters(), traceFsConstants, counter, enable));
+        }
     }
 }
 
@@ -527,7 +614,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         handleException();
     }
 
-    pageSize = sysconf(_SC_PAGESIZE);
+    auto pageSize = sysconf(_SC_PAGESIZE);
     if (pageSize <= 0) {
         LOG_ERROR("sysconf PAGESIZE failed");
         handleException();
@@ -543,21 +630,32 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
             handleException();
         }
 
-        char buf[64];
-        snprintf(buf, sizeof(buf), "%s/per_cpu/cpu%zu/trace_pipe_raw", traceFsConstants.path, cpu);
+        lib::printf_str_t<tracefs_path_buffer_size> buf {"%s/per_cpu/cpu%zu/trace_pipe_raw",
+                                                         traceFsConstants.path,
+                                                         cpu};
         const int tfd = open(buf, O_RDONLY | O_CLOEXEC);
-        (new FtraceReader(&mBarrier, cpu, tfd, pfd[0], pfd[1]))->start();
+        (new FtraceReader(&mBarrier, cpu, tfd, pfd[0], pfd[1], pageSize))->start();
         result.first.push_back(pfd[0]);
     }
 
     return result;
 }
 
-void FtraceDriver::start()
+void FtraceDriver::start(std::function<void(int, int, std::int64_t)> initialValuesConsumer)
 {
     if (lib::writeCStringToFile(traceFsConstants.path__tracing_on, "1") != 0) {
         LOG_ERROR("Unable to turn ftrace on");
         handleException();
+    }
+
+    for (auto * counter = static_cast<FtraceCounter *>(getCounters()); counter != nullptr;
+         counter = static_cast<FtraceCounter *>(counter->getNext())) {
+        if (!counter->isEnabled()) {
+            continue;
+        }
+        for (size_t cpu = 0; cpu < mNumberOfCores; ++cpu) {
+            counter->readInitial(cpu, initialValuesConsumer);
+        }
     }
 
     if (gSessionData.mFtraceRaw) {

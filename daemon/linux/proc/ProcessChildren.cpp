@@ -1,6 +1,8 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessChildren.h"
+
+#include "lib/String.h"
 
 #include <cstring>
 #include <fstream>
@@ -16,10 +18,8 @@ namespace lnx {
             return; // we've already added this and its children
         }
 
-        char filename[50];
-
         // try to get all children (forked processes), available since Linux 3.5
-        snprintf(filename, sizeof(filename), "/proc/%d/task/%d/children", tid, tid);
+        lib::printf_str_t<64> filename {"/proc/%d/task/%d/children", tid, tid};
         std::ifstream children {filename, std::ios_base::in};
         if (children) {
             int child;
@@ -32,7 +32,7 @@ namespace lnx {
         // If 'children' is not found then new processes won't be counted on onlined cpu.
         // We could read /proc/[pid]/stat for every process and create a map in reverse
         // but that would likely be time consuming
-        snprintf(filename, sizeof(filename), "/proc/%d/task", tid);
+        filename.printf("/proc/%d/task", tid);
         const std::unique_ptr<DIR, int (*)(DIR *)> taskDir {opendir(filename), &closedir};
         if (taskDir != nullptr) {
             const dirent * taskEntry;

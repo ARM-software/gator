@@ -1,10 +1,11 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
 #include "Logging.h"
 #include "PerfUtils.h"
 #include "SessionData.h"
+#include "capture/Environment.h"
 #include "k/perf_event.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Format.h"
@@ -22,7 +23,6 @@
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
 
-static const std::string debugPerfEventMlockKbPropString = "debug.perf_event_mlock_kb";
 static const std::string securityPerfHardenPropString = "security.perf_harden";
 
 using lib::FsEntry;
@@ -72,45 +72,6 @@ static void setProp(const std::string & prop, const std::string & value)
 static void setPerfHarden(bool on)
 {
     setProp(securityPerfHardenPropString, on ? "1" : "0");
-}
-
-static bool setPerfEventMlockKb(int newValue)
-{
-    std::optional<std::int64_t> fileValue = perf_utils::readPerfEventMlockKb();
-
-    if (fileValue && (*fileValue == newValue)) {
-        return true;
-    }
-
-    LOG_DEBUG("setting property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
-    setProp(debugPerfEventMlockKbPropString, std::to_string(newValue));
-
-    // Trigger debug property update
-    setPerfHarden(false);
-
-    // Give time for the debug property update to finish
-    sleep(1);
-
-    fileValue = perf_utils::readPerfEventMlockKb();
-    const bool result = (fileValue && (*fileValue == newValue));
-
-    if (!result) {
-        LOG_DEBUG("failed to set property %s to %d", debugPerfEventMlockKbPropString.c_str(), newValue);
-    }
-
-    return result;
-}
-
-static void setSuitablePerfEventMlockKbValue(int numCpus)
-{
-    // This function needs further consideration because "largeBufferSize" might be less than the default
-    const int largeBufferSize = (1 + numCpus * 64) * (gSessionData.mPageSize / 1024);
-
-    if (!setPerfEventMlockKb(largeBufferSize)) {
-        const int smallerBufferSize = 129 * (gSessionData.mPageSize / 1024);
-
-        setPerfEventMlockKb(smallerBufferSize);
-    }
 }
 
 /**
@@ -187,9 +148,12 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         return nullptr;
     }
 
+    const auto os_type = capture::detectOs();
+    const bool is_android = (os_type == capture::OsType::Android);
+
     const bool isRoot = (lib::geteuid() == 0);
 
-    if (!isRoot && !disablePerfHarden()) {
+    if (is_android && !isRoot && !disablePerfHarden()) {
         LOG_SETUP("Failed to disable property %s\n" //
                   "Try 'adb shell setprop %s 0'",
                   securityPerfHardenPropString.c_str(),
@@ -293,6 +257,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         return nullptr;
     }
 
+    // prefer ftrace on android, or when perf cannot read the raw values
+    const bool use_ftrace_for_cpu_frequency = (!can_access_raw_tracepoints) || is_android;
+
     // create the configuration object, from this point on perf is supported
     std::unique_ptr<PerfDriverConfiguration> configuration {new PerfDriverConfiguration()};
 
@@ -314,6 +281,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
 
     configuration->config.has_64bit_uname = has_64bit_uname;
     configuration->config.use_64bit_register_set = use_64bit_register_set;
+
+    configuration->config.use_ftrace_for_cpu_frequency = use_ftrace_for_cpu_frequency;
 
     // detect the PMUs
     std::set<const GatorCpu *> cpusDetectedViaSysFs;
@@ -506,8 +475,6 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
             "The system may not support perf hardware counters. Check CONFIG_HW_PERF_EVENTS is set and that the PMU is "
             "configured in the target device tree.");
     }
-
-    setSuitablePerfEventMlockKbValue(cpuIds.size());
 
     return configuration;
 }

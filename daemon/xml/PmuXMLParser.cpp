@@ -321,7 +321,7 @@ PmuXML readPmuXml(const char * const path)
     PmuXML pmuXml {};
 
     {
-        if (!parseXml(PmuXML::DEFAULT_XML, pmuXml)) {
+        if (!parseXml(PmuXML::DEFAULT_XML.data(), pmuXml)) {
             handleException();
         }
     }

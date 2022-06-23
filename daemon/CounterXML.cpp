@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "CounterXML.h"
 
@@ -7,6 +7,7 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
+#include "lib/String.h"
 #include "logging/global_log.h"
 #include "mxml/mxml.h"
 #include "xml/MxmlUtils.h"
@@ -79,13 +80,11 @@ namespace counters_xml {
                const ICpuInfo & cpuInfo,
                logging::log_setup_supplier_t log_setup_supplier)
     {
-        char file[PATH_MAX];
-
         // Set full path
-        snprintf(file, PATH_MAX, "%s/counters.xml", path);
+        lib::printf_str_t<PATH_MAX> file {"%s/counters.xml", path};
 
         if (writeToDisk(file, getXML(supportsMultiEbs, drivers, cpuInfo, std::move(log_setup_supplier)).get()) < 0) {
-            LOG_ERROR("Error writing %s\nPlease verify the path.", file);
+            LOG_ERROR("Error writing %s\nPlease verify the path.", file.c_str());
             handleException();
         }
     }

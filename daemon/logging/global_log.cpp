@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "logging/global_log.h"
 
@@ -10,6 +10,7 @@ namespace logging {
     namespace {
         inline void output_item(bool verbose,
                                 char const * level,
+                                thread_id_t tid,
                                 log_timestamp_t const & timestamp,
                                 source_loc_t const & location,
                                 std::string_view const & message)
@@ -23,13 +24,15 @@ namespace logging {
             else {
                 auto now_ns = double(timestamp.seconds) + (to_ns * double(timestamp.nanos));
 
-                std::cerr << std::fixed << std::setprecision(pref_precision) << "[" << now_ns << "] " << level << " ("
-                          << location.file << ":" << location.line << "): " << message << std::endl;
+                std::cerr << std::fixed << std::setprecision(pref_precision) << "[" << now_ns << "] " << level << " #"
+                          << pid_t(tid) << " (" << location.file_name() << ":" << location.line_no() << "): " << message
+                          << std::endl;
             }
         }
     }
 
-    void global_log_sink_t::log_item(log_level_t level,
+    void global_log_sink_t::log_item(thread_id_t tid,
+                                     log_level_t level,
                                      log_timestamp_t const & timestamp,
                                      source_loc_t const & location,
                                      std::string_view message)
@@ -41,36 +44,36 @@ namespace logging {
         switch (level) {
             case log_level_t::trace:
                 if (output_debug) {
-                    output_item(true, "TRACE:", timestamp, location, message);
+                    output_item(true, "TRACE:", tid, timestamp, location, message);
                 }
                 break;
             case log_level_t::debug:
                 if (output_debug) {
-                    output_item(true, "DEBUG:", timestamp, location, message);
+                    output_item(true, "DEBUG:", tid, timestamp, location, message);
                 }
                 break;
             case log_level_t::info:
-                output_item(output_debug, "INFO: ", timestamp, location, message);
+                output_item(output_debug, "INFO: ", tid, timestamp, location, message);
                 break;
             case log_level_t::warning:
-                output_item(output_debug, "WARN: ", timestamp, location, message);
+                output_item(output_debug, "WARN: ", tid, timestamp, location, message);
                 break;
             case log_level_t::setup:
                 // append it to the setup log
                 setup_messages.append(message).append("|");
                 if (output_debug) {
-                    output_item(true, "SETUP:", timestamp, location, message);
+                    output_item(true, "SETUP:", tid, timestamp, location, message);
                 }
                 break;
             case log_level_t::error:
                 // store the last error message
                 last_error = std::string(message);
-                output_item(output_debug, "ERROR:", timestamp, location, message);
+                output_item(output_debug, "ERROR:", tid, timestamp, location, message);
                 break;
             case log_level_t::fatal:
                 // store the last error message
                 last_error = std::string(message);
-                output_item(output_debug, "FATAL:", timestamp, location, message);
+                output_item(output_debug, "FATAL:", tid, timestamp, location, message);
                 break;
         }
     }

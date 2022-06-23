@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "Child.h"
 
@@ -69,22 +69,24 @@ void handleException()
     _exit(EXCEPTION_EXIT_CODE);
 }
 
-std::unique_ptr<Child> Child::createLocal(Drivers & drivers,
+std::unique_ptr<Child> Child::createLocal(agents::i_agent_spawner_t & spawner,
+                                          Drivers & drivers,
                                           const Child::Config & config,
                                           logging::last_log_error_supplier_t last_error_supplier,
                                           logging::log_setup_supplier_t log_setup_supplier)
 {
     return std::unique_ptr<Child>(
-        new Child(drivers, nullptr, config, std::move(last_error_supplier), std::move(log_setup_supplier)));
+        new Child(spawner, drivers, nullptr, config, std::move(last_error_supplier), std::move(log_setup_supplier)));
 }
 
-std::unique_ptr<Child> Child::createLive(Drivers & drivers,
+std::unique_ptr<Child> Child::createLive(agents::i_agent_spawner_t & spawner,
+                                         Drivers & drivers,
                                          OlySocket & sock,
                                          logging::last_log_error_supplier_t last_error_supplier,
                                          logging::log_setup_supplier_t log_setup_supplier)
 {
     return std::unique_ptr<Child>(
-        new Child(drivers, &sock, {}, std::move(last_error_supplier), std::move(log_setup_supplier)));
+        new Child(spawner, drivers, &sock, {}, std::move(last_error_supplier), std::move(log_setup_supplier)));
 }
 
 Child * Child::getSingleton()
@@ -104,7 +106,8 @@ void Child::signalHandler(int signum)
     singleton->endSession(signum);
 }
 
-Child::Child(Drivers & drivers,
+Child::Child(agents::i_agent_spawner_t & spawner,
+             Drivers & drivers,
              OlySocket * sock,
              Child::Config config,
              logging::last_log_error_supplier_t last_error_supplier,
@@ -118,7 +121,8 @@ Child::Child(Drivers & drivers,
       sessionEnded(),
       config(std::move(config)),
       last_error_supplier(std::move(last_error_supplier)),
-      log_setup_supplier(std::move(log_setup_supplier))
+      log_setup_supplier(std::move(log_setup_supplier)),
+      agent_workers_process(*this, spawner)
 {
     const int fd = eventfd(0, EFD_CLOEXEC);
     if (fd == -1) {
@@ -131,13 +135,6 @@ Child::Child(Drivers & drivers,
     // update singleton
     const Child * const prevSingleton = gSingleton.exchange(this, std::memory_order_acq_rel);
     runtime_assert(prevSingleton == nullptr, "Two Child instances active concurrently");
-
-    // Set up different handlers for signals
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
-    signal(SIGABRT, signalHandler);
-    // we will wait on children outside of signal handler
-    signal(SIGCHLD, SIG_DFL);
 
     // Initialize semaphores
     sem_init(&senderSem, 0, 0);
@@ -152,9 +149,12 @@ Child::~Child()
     runtime_assert(prevSingleton == this, "Exchanged Child::gSingleton with something other than this");
 }
 
-void Child::run()
+void Child::run(int notify_pid)
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
+
+    // TODO: better place for this
+    agent_workers_process.start();
 
     // Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
     mxmlSetWrapMargin(0);
@@ -287,17 +287,20 @@ void Child::run()
     // setup phase below takes a long time.
     std::thread stopThread {[this]() { stopThreadEntryPoint(); }};
 
+    // tell the controller that we're ready for the app to start
+    if (notify_pid > 0) {
+        LOG_DEBUG("Telling notify_pid (%d) to start the target app", notify_pid);
+        kill(notify_pid, SIGUSR1);
+    }
+
     if (gSessionData.mWaitForProcessCommand != nullptr) {
         LOG_DEBUG("Waiting for pids for command '%s'", gSessionData.mWaitForProcessCommand);
-
-        std::cout << "start app" << std::endl;
 
         WaitForProcessPoller poller {gSessionData.mWaitForProcessCommand};
 
         while ((!poller.poll(appPids)) && !sessionEnded) {
             usleep(1000);
         }
-
         LOG_DEBUG("Got pids for command '%s'", gSessionData.mWaitForProcessCommand);
     }
 
@@ -308,6 +311,7 @@ void Child::run()
     appPids.insert(gSessionData.mPids.begin(), gSessionData.mPids.end());
 
     lib::Waiter waitTillStart;
+    lib::Waiter waitForAgents;
 
     auto startedCallback = [&]() {
         waitTillStart.disable();
@@ -332,9 +336,26 @@ void Child::run()
     // Initialize ftrace source before child as it's slow and depends on nothing else
     // If initialized later, us gator with ftrace has time sync issues
     // Must be initialized before senderThread is started as senderThread checks externalSource
-    if (!addSource(createExternalSource(senderSem, drivers))) {
+    if (!addSource(createExternalSource(senderSem, drivers), [this, &waitForAgents](auto & source) {
+            this->agent_workers_process.async_add_external_source(source, [&waitForAgents](bool success) {
+                waitForAgents.disable();
+                if (!success) {
+                    handleException();
+                }
+                else {
+                    LOG_DEBUG("Started ext_source agent");
+                }
+            });
+        })) {
         LOG_ERROR("Unable to prepare external source for capture");
         handleException();
+    }
+
+    // wait for the ext agent to start
+    if (!sessionEnded) {
+        LOG_DEBUG("Waiting for agent to start");
+        waitForAgents.wait();
+        LOG_DEBUG("Waiting for agent complete");
     }
 
     // initialize midgard hardware counters
@@ -422,6 +443,9 @@ void Child::run()
 
     LOG_DEBUG("Profiling ended.");
 
+    // must happen before sources is cleared
+    agent_workers_process.join();
+
     sources.clear();
     sender.reset();
 
@@ -432,13 +456,21 @@ void Child::run()
     }
 }
 
-bool Child::addSource(std::unique_ptr<Source> source)
+template<typename S>
+bool Child::addSource(std::unique_ptr<S> source)
+{
+    return addSource(std::move(source), [](auto const & /*source*/) {});
+}
+
+template<typename S, typename Callback>
+bool Child::addSource(std::unique_ptr<S> source, Callback callback)
 {
     if (!source) {
         return false;
     }
     std::lock_guard<std::mutex> lock {sessionEndedMutex};
     if (!sessionEnded) {
+        callback(*source);
         sources.push_back(std::move(source));
     }
     return true;
@@ -687,4 +719,14 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & 
     LOG_DEBUG("Ending session because all watched processes have exited");
     endSession();
     LOG_DEBUG("Exit watch pids thread");
+}
+
+void Child::on_terminal_signal(int signo)
+{
+    endSession(signo);
+}
+
+void Child::on_agent_thread_terminated()
+{
+    endSession();
 }

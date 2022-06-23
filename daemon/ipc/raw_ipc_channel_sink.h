@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -19,7 +19,7 @@
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/error_code.hpp>
 
 namespace ipc {
     /**
@@ -148,21 +148,22 @@ namespace ipc {
             LOG_TRACE("(%p) New send request received with key %zu", this, std::size_t(message_type::key));
 
             // run on the strand to serialize access to the queue
-            boost::asio::dispatch(
+            boost::asio::post(
                 strand,
                 [st = shared_from_this(),
                  queue_item = std::make_shared<queue_item_t>(std::forward<message_type>(message),
                                                              std::forward<handler_type>(handler))]() mutable {
-                    st->do_async_send_message_on_strand(message_type::key, std::move(queue_item));
+                    st->strand_do_async_send_message(message_type::key, std::move(queue_item));
                 });
         }
 
         /** Insert the message and handler into the send queue */
-        void do_async_send_message_on_strand(message_key_t key, std::shared_ptr<message_queue_item_base_t> queue_item)
+        void strand_do_async_send_message(message_key_t key, std::shared_ptr<message_queue_item_base_t> queue_item)
         {
             // fast path for case that queue is already empty and consumer is waiting
-            if (send_queue.empty() && !consume_in_progress) {
-                return do_consume_item(std::move(queue_item));
+            const auto cip = is_consume_in_progress();
+            if (send_queue.empty() && !cip) {
+                return strand_do_consume_item(std::move(queue_item));
             }
 
             LOG_TRACE("(%p) Queueing new request %p with key %zu (empty=%u, busy=%u)",
@@ -170,28 +171,27 @@ namespace ipc {
                       queue_item.get(),
                       std::size_t(key),
                       send_queue.empty(),
-                      consume_in_progress);
+                      cip);
 
             // stick it in the queue, the consumer will pick it up when its ready
             send_queue.emplace_back(std::move(queue_item));
         }
 
         /** Consume data from the buffer and write to stream */
-        void do_consume_item(std::shared_ptr<message_queue_item_base_t> && queue_item)
+        void strand_do_consume_item(std::shared_ptr<message_queue_item_base_t> && queue_item)
         {
             // NB: must already be on the strand
+            runtime_assert(queue_item != nullptr, "Invalid queue item");
 
+            // mark busy to prevent another send request from enqueueing up in parallel
+            const auto cip = set_consume_in_progress(true);
             LOG_TRACE("(%p) Consuming queue item %p (empty=%u, busy=%u)",
                       this,
                       queue_item.get(),
                       send_queue.empty(),
-                      consume_in_progress);
+                      cip);
 
-            runtime_assert(!consume_in_progress, "Invalid state");
-            runtime_assert(queue_item != nullptr, "Invalid queue item");
-
-            // mark busy to prevent another send request from enqueueing up in parallel
-            consume_in_progress = true;
+            runtime_assert(!cip, "Invalid state");
 
             // call the do_send method, which will then invoke the do_send_item with one or more buffers to actually send
             queue_item->do_send(*this, queue_item);
@@ -207,19 +207,17 @@ namespace ipc {
             LOG_TRACE("(%p) Sending queue item %p (n_buffers=%zu)", this, queue_item.get(), N);
 
             // perform the actual write
-            boost::asio::async_write(
-                out,
-                buffers,
-                [st = shared_from_this(), queue_item = std::move(queue_item)](boost::system::error_code const & ec,
-                                                                              std::size_t n) mutable {
-                    st->do_send_item_from_strand(std::move(queue_item), ec, n);
-                });
+            boost::asio::async_write(out,
+                                     buffers,
+                                     [st = shared_from_this(), queue_item = std::move(queue_item)](
+                                         boost::system::error_code const & ec,
+                                         std::size_t n) mutable { st->on_sent_result(std::move(queue_item), ec, n); });
         }
 
         /** Handle the send result */
-        void do_send_item_from_strand(std::shared_ptr<message_queue_item_base_t> queue_item,
-                                      boost::system::error_code const & ec,
-                                      std::size_t n)
+        void on_sent_result(std::shared_ptr<message_queue_item_base_t> queue_item,
+                            boost::system::error_code const & ec,
+                            std::size_t n)
         {
             //  error
             if (ec) {
@@ -228,7 +226,7 @@ namespace ipc {
                           queue_item.get(),
                           ec.message().c_str());
                 // notify the handler (but post so it happens asynchronously)
-                return boost::asio::post(strand,
+                return boost::asio::post(strand.context(),
                                          [ec, queue_item = std::move(queue_item)]() { queue_item->call_handler(ec); });
             }
 
@@ -236,34 +234,27 @@ namespace ipc {
             if (n != queue_item->expected_size()) {
                 LOG_DEBUG("(%p) Sending queue item %p failed with short write %zu", this, queue_item.get(), n);
                 // notify the handler (but post so it happens asynchronously)
-                return boost::asio::post(strand, [queue_item = std::move(queue_item)]() {
+                return boost::asio::post(strand.context(), [queue_item = std::move(queue_item)]() {
                     queue_item->call_handler(boost::asio::error::make_error_code(boost::asio::error::misc_errors::eof));
                 });
             }
 
-            // send is complete
-            consume_in_progress = false;
+            // notify the handler
+            boost::asio::post(strand.context(),
+                              [queue_item = std::move(queue_item)]() { queue_item->call_handler({}); });
 
-            // notify the handler (but post so it happens asynchronously)
-            boost::asio::post(strand, [queue_item = std::move(queue_item)]() { queue_item->call_handler({}); });
-
-            // consume the next item
-            do_consume_next();
-        }
-
-        /** Consume the next item */
-        void do_consume_next()
-        {
-            LOG_TRACE("(%p) Request to process next queue item", this);
-
-            // run on the strand to serialize access to the queue
-            boost::asio::dispatch(strand, [st = shared_from_this()]() { st->do_consume_next_from_strand(); });
+            // consume the next item (but from the stand as it will modify state)
+            return boost::asio::post(strand, [st = shared_from_this()]() { st->strand_do_consume_next(); });
         }
 
         /** Consume the next item (running on the strand) */
-        void do_consume_next_from_strand()
+        void strand_do_consume_next()
         {
-            runtime_assert(!consume_in_progress, "Invalid state");
+            LOG_TRACE("(%p) Request to process next queue item", this);
+
+            // send is complete
+            auto cip = set_consume_in_progress(false);
+            runtime_assert(cip, "Invalid state");
 
             // nothing to do?
             if (send_queue.empty()) {
@@ -272,11 +263,16 @@ namespace ipc {
             }
 
             // remove the head of the senq queue
-            auto queue_item = std::move(send_queue.front());
+            auto next_item = std::move(send_queue.front());
             send_queue.pop_front();
 
             // and send it
-            do_consume_item(std::move(queue_item));
+            return strand_do_consume_item(std::move(next_item));
         }
+
+        /** Check if consume in progress */
+        bool is_consume_in_progress() const { return consume_in_progress; }
+        /** Change consume in progress flag */
+        bool set_consume_in_progress(bool cip) { return std::exchange(consume_in_progress, cip); }
     };
 }

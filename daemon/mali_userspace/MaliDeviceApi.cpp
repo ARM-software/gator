@@ -181,7 +181,7 @@ namespace mali_userspace {
                 }
 
                 // we have a handle to the reader fd
-                return setup_args.fd;
+                return lib::AutoClosingFd {setup_args.fd};
             }
 
             [[nodiscard]] uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }
@@ -480,7 +480,7 @@ namespace mali_userspace {
                     failedDueToBufferCount = true;
                     return {};
                 }
-                return hwcntReaderFd;
+                return lib::AutoClosingFd {hwcntReaderFd};
             }
 
             [[nodiscard]] uint64_t getShaderCoreAvailabilityMask() const override { return shaderCoreAvailabilityMask; }

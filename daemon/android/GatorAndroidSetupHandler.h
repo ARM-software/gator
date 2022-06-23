@@ -13,7 +13,7 @@ namespace gator::android {
      * This class is responsible for managing gatord security settings
      */
 
-    class GatorAndroidSetupHandler : public gator::capture::LinuxEnvironmentConfig {
+    class GatorAndroidSetupHandler : public capture::LinuxEnvironmentConfig {
     public:
         enum class UserClassification {
             root,
@@ -39,7 +39,6 @@ namespace gator::android {
     private:
         std::map<std::string_view, std::string> initialPropertyMap {};
     };
-
 }
 
 #endif /* ANDROID_GATORANDROIDSETUPHANDLER_H_ */

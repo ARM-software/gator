@@ -16,11 +16,11 @@ namespace lib {
     class AutoClosingFd {
     public:
         /** Constructor, invalid fd */
-        inline AutoClosingFd() : fd(-1) {}
+        constexpr AutoClosingFd() : fd(-1) {}
         /** Constructor, take ownership of fd */
-        inline AutoClosingFd(int fd) : fd(fd) {}
+        explicit constexpr AutoClosingFd(int fd) : fd(fd) {}
         /** Constructor, move operation */
-        inline AutoClosingFd(AutoClosingFd && that) noexcept : fd(-1) { std::swap(fd, that.fd); }
+        AutoClosingFd(AutoClosingFd && that) noexcept : fd(-1) { std::swap(fd, that.fd); }
         /** Move assignment */
         inline AutoClosingFd & operator=(AutoClosingFd && that) noexcept
         {
@@ -36,10 +36,10 @@ namespace lib {
         AutoClosingFd & operator=(const AutoClosingFd &) = delete;
 
         /** Destructor */
-        inline ~AutoClosingFd() { close(); }
+        ~AutoClosingFd() { close(); }
 
         /** Explicitly close the fd */
-        inline void close()
+        void close()
         {
             int fd = -1;
             std::swap(this->fd, fd);
@@ -49,21 +49,21 @@ namespace lib {
         }
 
         /** Take ownership of new fd */
-        inline void reset(int fd)
+        void reset(int fd)
         {
             AutoClosingFd that {fd};
             std::swap(this->fd, that.fd);
         }
 
         /** Take ownership of new fd */
-        inline AutoClosingFd & operator=(int fd)
+        AutoClosingFd & operator=(int fd)
         {
             reset(fd);
             return *this;
         }
 
         /** Release ownership of the fd */
-        inline int release()
+        [[nodiscard]] int release()
         {
             int fd = -1;
             std::swap(this->fd, fd);
@@ -71,13 +71,13 @@ namespace lib {
         }
 
         /** Get the fd value */
-        inline int operator*() const { return fd; }
+        [[nodiscard]] int operator*() const { return fd; }
 
         /** Get the fd value */
-        inline int get() const { return fd; }
+        [[nodiscard]] int get() const { return fd; }
 
         /** Indicates contains valid fd (where valid means not -1) */
-        inline operator bool() const { return fd != -1; }
+        [[nodiscard]] explicit operator bool() const { return fd != -1; }
 
     private:
         int fd;

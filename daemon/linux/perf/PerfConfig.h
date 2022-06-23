@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PERFCONFIG_H
 #define PERFCONFIG_H
@@ -25,6 +25,9 @@ struct PerfConfig {
     // which register sets are available
     bool has_64bit_uname = false;
     bool use_64bit_register_set = false;
+
+    // who is responsible for the cpu_frequency tracepoint event
+    bool use_ftrace_for_cpu_frequency = false;
 };
 
 #endif // PERFCONFIG_H

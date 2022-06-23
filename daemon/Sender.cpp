@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "Sender.h"
 
@@ -7,6 +7,7 @@
 #include "OlySocket.h"
 #include "SessionData.h"
 #include "lib/File.h"
+#include "lib/String.h"
 
 #include <algorithm>
 #include <climits>
@@ -33,8 +34,7 @@ Sender::Sender(OlySocket * socket)
         }
 
         // Send magic sequence - must be done first, after which error messages can be sent
-        char magic[32];
-        snprintf(magic, 32, "GATOR %i\n", PROTOCOL_VERSION);
+        lib::printf_str_t<32> magic {"GATOR %i\n", PROTOCOL_VERSION};
         mDataSocket->send(magic, strlen(magic));
 
         gSessionData.mWaitingOnCommand = true;

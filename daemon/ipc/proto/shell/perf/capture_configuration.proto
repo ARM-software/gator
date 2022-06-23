@@ -1,0 +1,198 @@
+/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+
+syntax = "proto3";
+
+package ipc.proto.shell.perf;
+
+option optimize_for = LITE_RUNTIME;
+
+/* Capture configuration for the perf agent. */
+message capture_configuration_t {
+    /** Select parts of SessionData */
+    message session_data_t {
+        uint64 live_rate = 1;                   // Equivalent to SessionData::mLiveRate
+        int32 total_buffer_size = 2;            // Equivalent to SessionData::mTotalBufferSize, in MBs
+        int32 sample_rate = 3;                  // Equivalent to SessionData::mSampleRate
+        bool one_shot = 4;                      // Equivalent to SessionData::mOneShot
+        bool exclude_kernel_events = 5;         // Equivalent to SessionData::mExcludeKernelEvents
+    }
+
+    /** Equivalent to PerfConfig */
+    message perf_config_t {
+        bool has_fd_cloexec = 1;
+        bool has_count_sw_dummy = 2;
+        bool has_sample_identifier = 3;
+        bool has_attr_comm_exec = 4;
+        bool has_attr_mmap2 = 5;
+        bool has_attr_clockid_support = 6;
+        bool has_attr_context_switch = 7;
+        bool has_ioctl_read_id = 8;
+        bool has_aux_support = 9;
+
+        bool is_system_wide = 10;
+        bool exclude_kernel = 11;
+        bool can_access_tracepoints = 12;
+
+        bool has_armv7_pmu_driver = 13;
+        bool has_64bit_uname = 14;
+        bool use_64bit_register_set = 15;
+    }
+
+    /** Equivalent to perf_ringbuffer_config_t */
+    message perf_ringbuffer_config_t {
+        uint64 page_size = 1;
+        uint64 data_size = 2;
+        uint64 aux_size = 3;
+    }
+
+    /** For --pids */
+    message pid_array_t {
+        repeated int32 pids = 1;
+    }
+
+    /** For --allow-command / --app mode */
+    message command_t {
+        string command = 1;
+        repeated string args = 2;
+        string cwd = 3;
+        uint32 uid = 4;
+        uint32 gid = 5;
+    }
+
+    /** Equivalent to GatorCpu */
+    message gator_cpu_t {
+        string core_name = 1;
+        string id = 2;
+        string counter_set = 3;
+        string dt_name = 4;
+        string spe_name = 5;
+        repeated uint32 cpu_ids = 6;
+        uint32 pmnc_counters = 7;
+        bool is_v8 = 8;
+    }
+
+    /** Per-cluster state */
+    message cpu_cluster_t {
+        gator_cpu_t properties = 1;
+        int32 keys_for_cpu_frequency_counter = 2;
+        bool cpu_frequency_counter_uses_cpu_info = 3;
+    }
+
+    /** Per-core state */
+    message cpu_properties_t {
+        int32 cluster_index = 1;
+        int32 cpu_id = 2;
+        int32 spe_type = 3;
+    }
+
+    /** Equivalent to UncorePmu */
+    message uncore_pmu_t {
+        string core_name = 1;
+        string id = 2;
+        string counter_set = 3;
+        string device_instance = 4;
+        uint32 pmnc_counters = 5;
+        bool has_cycles_counter = 6;
+    }
+
+    /** Equivalent to PerfEventGroupIdentifier.
+     *
+     * Because pointers do not work between forks, the types (and therefore meaning)
+     * have changed:
+     * - cluster                capture_configuration_t.clusters index
+     * - pmu                    capture_configuration_t.uncore_pmus index
+     * - specific_cpu           the specific cpu_number
+     * - spe                    if true then type == SPE, when false type == GLOBAL
+     * - <none set>             type == GLOBAL
+     */
+    message perf_event_group_identifier_t {
+        oneof type {
+            uint64 per_cluster_cpu = 1; // Type::PER_CLUSTER_CPU
+            uint64 uncore_pmu = 2;      // Type::UNCORE_PMU
+            int32 specific_cpu = 3;     // Type::SPECIFIC_CPU
+            bool spe = 4;               // Type::SPE (when true), Type::GLOBAL (when false, or no other type field set)
+        }
+    }
+
+    /** Equivalent to perf_event_attr */
+    message perf_event_attribute_t {
+        enum precise_ip_t {
+            ARBITRARY_SKID = 0;
+            CONSTANT_SKID = 1;
+            REQUEST_0_SKID = 2;
+            REQUIRE_0_SKID = 3;
+        }
+        uint32 type = 1;
+        uint64 config = 2;
+        uint64 sample_period_or_freq = 3;
+        uint64 sample_type = 4;
+        uint64 read_format = 5;
+        bool disabled = 6;
+        bool inherit = 7;
+        bool pinned = 8;
+        bool exclusive = 9;
+        bool exclude_user = 10;
+        bool exclude_kernel = 11;
+        bool exclude_hv = 12;
+        bool exclude_idle = 13;
+        bool mmap = 14;
+        bool comm = 15;
+        bool freq = 16;
+        bool inherit_stat = 17;
+        bool enable_on_exec = 18;
+        bool task = 19;
+        bool watermark = 20;
+        precise_ip_t precise_ip = 21;
+        bool mmap_data = 22;
+        bool sample_id_all = 23;
+        bool exclude_host = 24;
+        bool exclude_guest = 25;
+        bool exclude_callchain_kernel = 26;
+        bool exclude_callchain_user = 27;
+        bool mmap2 = 28;
+        bool comm_exec = 29;
+        bool use_clockid = 30;
+        bool context_switch = 31;
+        uint32 wakeup_events_or_watermark = 32;
+        uint64 config1 = 33;
+        uint64 config2 = 34;
+        uint64 sample_regs_user = 35;
+        uint32 sample_stack_user = 36;
+        int32 clockid = 37;
+        uint32 aux_watermark = 38;
+    }
+
+    /** Equivalent to perf_event_t */
+    message perf_event_t {
+        perf_event_attribute_t attr = 1;
+        int32 key = 2;
+    }
+
+    /** A tuple of identifier + list of events representing one event group */
+    message perf_event_group_events_t {
+        perf_event_group_identifier_t id = 1;
+        repeated perf_event_t events = 2;
+    }
+
+    /** A subset of perf_groups_state_t required for the activator */
+    message perf_groups_t {
+        repeated perf_event_group_events_t groups = 1;
+        uint64 number_of_events_added = 2;
+    }
+
+    // -------------------------------------------
+
+    session_data_t session_data = 1;
+    perf_config_t perf_config = 2;
+    repeated cpu_cluster_t clusters = 3;
+    repeated uncore_pmu_t uncore_pmus = 4;
+    repeated cpu_properties_t cpus = 5;
+    perf_groups_t perf_groups = 6;
+    perf_ringbuffer_config_t ringbuffer_config = 7;
+    command_t command = 8;
+    string wait_process = 9;
+    pid_array_t pids = 10;
+    uint32 num_cpu_cores = 11;
+    bool enable_on_exec = 12;
+    map<uint32, string> cpuid_to_core_name = 13;
+}

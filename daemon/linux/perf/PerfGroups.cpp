@@ -1,8 +1,9 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfGroups.h"
 
 #include "Logging.h"
+#include "linux/perf/PerfEventGroup.h"
 
 #include <cassert>
 #include <cerrno>
@@ -15,107 +16,36 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-static unsigned int getMaxFileDescriptors()
+perf_event_group_configurer_t perf_groups_configurer_t::getGroup(attr_to_key_mapping_tracker_t & mapping_tracker,
+                                                                 const PerfEventGroupIdentifier & groupIdentifier)
 {
-    // Get the maximum amount of file descriptors that can be opened.
-    struct rlimit rlim;
-    if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-        LOG_ERROR("getrlimit failed: %s", strerror(errno));
-        handleException();
-    }
+    auto it_inserted = state.perfEventGroupMap.try_emplace(groupIdentifier);
+    auto & it = it_inserted.first;
 
-    const rlim_t numberOfFdsReservedForGatord = 150;
-    // rlim_cur should've been set to rlim_max in main.cpp
-    if (rlim.rlim_cur < numberOfFdsReservedForGatord) {
-        LOG_ERROR("Not enough file descriptors to run gatord. Must have a minimum of %" PRIuMAX
-                  " (currently the limit is %" PRIuMAX ").",
-                  static_cast<uintmax_t>(numberOfFdsReservedForGatord),
-                  static_cast<uintmax_t>(rlim.rlim_cur));
-        handleException();
-    }
-    return static_cast<unsigned int>(rlim.rlim_cur - numberOfFdsReservedForGatord);
-}
+    perf_event_group_configurer_t eventGroup {configuration, it->first, it->second};
 
-PerfGroups::PerfGroups(const PerfConfig & perfConfig,
-                       size_t dataBufferLength,
-                       size_t auxBufferLength,
-                       int backtraceDepth,
-                       int sampleRate,
-                       bool enablePeriodicSampling,
-                       bool excludeKernelEvents,
-                       lib::Span<const GatorCpu> clusters,
-                       lib::Span<const int> clusterIds,
-                       int64_t schedSwitchId)
-    : PerfGroups(perfConfig,
-                 dataBufferLength,
-                 auxBufferLength,
-                 backtraceDepth,
-                 sampleRate,
-                 enablePeriodicSampling,
-                 excludeKernelEvents,
-                 clusters,
-                 clusterIds,
-                 schedSwitchId,
-                 getMaxFileDescriptors())
-{
-}
-
-PerfGroups::PerfGroups(const PerfConfig & perfConfig,
-                       size_t dataBufferLength,
-                       size_t auxBufferLength,
-                       int backtraceDepth,
-                       int sampleRate,
-                       bool enablePeriodicSampling,
-                       bool excludeKernelEvents,
-                       lib::Span<const GatorCpu> clusters,
-                       lib::Span<const int> clusterIds,
-                       int64_t schedSwitchId,
-                       unsigned int maxFiles)
-    : sharedConfig(perfConfig,
-                   dataBufferLength,
-                   auxBufferLength,
-                   backtraceDepth,
-                   sampleRate,
-                   enablePeriodicSampling,
-                   excludeKernelEvents,
-                   clusters,
-                   clusterIds,
-                   schedSwitchId),
-
-      maxFiles(maxFiles)
-{
-}
-
-PerfEventGroup & PerfGroups::getGroup(IPerfAttrsConsumer & attrsConsumer,
-                                      const PerfEventGroupIdentifier & groupIdentifier)
-{
-    // find the actual group object
-    std::unique_ptr<PerfEventGroup> & eventGroupPtr = perfEventGroupMap[groupIdentifier];
-    if (!eventGroupPtr) {
-        eventGroupPtr = std::make_unique<PerfEventGroup>(groupIdentifier, sharedConfig);
-    }
-    PerfEventGroup & eventGroup = *eventGroupPtr;
     // Does a group exist for this already?
     if (eventGroup.requiresLeader() && !eventGroup.hasLeader()) {
         LOG_DEBUG("    Adding group leader");
-        if (!eventGroup.createGroupLeader(attrsConsumer)) {
+        if (!eventGroup.createGroupLeader(mapping_tracker)) {
             LOG_DEBUG("    Group leader not created");
         }
         else {
-            numberOfEventsAdded++;
+            state.numberOfEventsAdded += it->second.common.events.size();
         }
     }
+
     return eventGroup;
 }
 
-bool PerfGroups::add(IPerfAttrsConsumer & attrsConsumer,
-                     const PerfEventGroupIdentifier & groupIdentifier,
-                     const int key,
-                     const IPerfGroups::Attr & attr,
-                     bool hasAuxData)
+bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_tracker,
+                                   const PerfEventGroupIdentifier & groupIdentifier,
+                                   const int key,
+                                   const IPerfGroups::Attr & attr,
+                                   bool hasAuxData)
 {
 
-    PerfEventGroup & eventGroup = getGroup(attrsConsumer, groupIdentifier);
+    auto eventGroup = getGroup(mapping_tracker, groupIdentifier);
     LOG_DEBUG("Adding event: group='%s', key=%i, type=%" PRIu32 ", config=%" PRIu64 ", config1=%" PRIu64
               ", config2=%" PRIu64 ", period=%" PRIu64 ", sampleType=0x%" PRIx64
               ", mmap=%d, comm=%d, freq=%d, task=%d, context_switch=%d, hasAuxData=%d",
@@ -139,42 +69,76 @@ bool PerfGroups::add(IPerfAttrsConsumer & attrsConsumer,
     // Collect EBS samples
     if (attr.periodOrFreq != 0) {
         newAttr.sampleType |=
-            PERF_SAMPLE_TID | PERF_SAMPLE_IP | (sharedConfig.backtraceDepth > 0 ? PERF_SAMPLE_CALLCHAIN : 0);
+            PERF_SAMPLE_TID | PERF_SAMPLE_IP | (configuration.backtraceDepth > 0 ? PERF_SAMPLE_CALLCHAIN : 0);
     }
 
     // If we are not system wide the group leader can't read counters for us
     // so we need to add sample them individually periodically
-    if (((!sharedConfig.perfConfig.is_system_wide) || (!eventGroup.requiresLeader())) && (attr.periodOrFreq == 0)) {
+    if (((!configuration.perfConfig.is_system_wide) || (!eventGroup.requiresLeader())) && (attr.periodOrFreq == 0)) {
         LOG_DEBUG("    Forcing as freq counter");
         newAttr.periodOrFreq =
-            sharedConfig.sampleRate > 0 && sharedConfig.enablePeriodicSampling ? sharedConfig.sampleRate : 10UL;
+            configuration.sampleRate > 0 && configuration.enablePeriodicSampling ? configuration.sampleRate : 10UL;
         newAttr.sampleType |= PERF_SAMPLE_PERIOD;
         newAttr.freq = true;
     }
 
-    numberOfEventsAdded++;
+    state.numberOfEventsAdded++;
 
     LOG_DEBUG("    Adding event");
 
-    return eventGroup.addEvent(false, attrsConsumer, key, newAttr, hasAuxData);
+    return eventGroup.addEvent(false, mapping_tracker, key, newAttr, hasAuxData);
 }
 
-std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(int cpu,
-                                                           const std::set<int> & appPids,
-                                                           OnlineEnabledState enabledState,
-                                                           IPerfAttrsConsumer & attrsConsumer,
-                                                           const std::function<bool(int)> & addToMonitor,
-                                                           const std::function<bool(int, int, bool)> & addToBuffer,
-                                                           const std::function<std::set<int>(int)> & childTids)
+bool perf_groups_activator_t::hasSPE() const
+{
+    for (const auto & pair : state.perfEventGroupMap) {
+        if (pair.first.getType() == PerfEventGroupIdentifier::Type::SPE) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::size_t perf_groups_activator_t::getMaxFileDescriptors()
+{
+    // Get the maximum amount of file descriptors that can be opened.
+    struct rlimit rlim;
+    if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+        LOG_ERROR("getrlimit failed: %s", strerror(errno));
+        handleException();
+    }
+
+    const rlim_t numberOfFdsReservedForGatord = 150;
+    // rlim_cur should've been set to rlim_max in main.cpp
+    if (rlim.rlim_cur < numberOfFdsReservedForGatord) {
+        LOG_ERROR("Not enough file descriptors to run gatord. Must have a minimum of %" PRIuMAX
+                  " (currently the limit is %" PRIuMAX ").",
+                  static_cast<uintmax_t>(numberOfFdsReservedForGatord),
+                  static_cast<uintmax_t>(rlim.rlim_cur));
+        handleException();
+    }
+
+    return std::size_t(rlim.rlim_cur - numberOfFdsReservedForGatord);
+}
+
+std::pair<OnlineResult, std::string> perf_groups_activator_t::onlineCPU(
+    int cpu,
+    const std::set<int> & appPids,
+    OnlineEnabledState enabledState,
+    id_to_key_mapping_tracker_t & mapping_tracker,
+    const std::function<bool(int)> & addToMonitor,
+    const std::function<bool(int, int, bool)> & addToBuffer,
+    const std::function<std::set<int>(int)> & childTids)
 {
     LOG_DEBUG("Onlining cpu %i", cpu);
-    if (!sharedConfig.perfConfig.is_system_wide && appPids.empty()) {
+    if (!configuration.perfConfig.is_system_wide && appPids.empty()) {
         std::string message("No task given for non-system-wide");
         return std::make_pair(OnlineResult::FAILURE, message.c_str());
     }
 
     std::set<int> tids {};
-    if (sharedConfig.perfConfig.is_system_wide) {
+    if (configuration.perfConfig.is_system_wide) {
         tids.insert(-1);
     }
     else {
@@ -187,7 +151,7 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(int cpu,
 
     // Check to see if there are too many events/ not enough fds
     // This is an over estimation because not every event will be opened.
-    const unsigned int amountOfEventsAboutToOpen = tids.size() * numberOfEventsAdded;
+    const unsigned int amountOfEventsAboutToOpen = tids.size() * state.numberOfEventsAdded;
     eventsOpenedPerCpu[cpu] = amountOfEventsAboutToOpen;
     const unsigned int currentAmountOfEvents = std::accumulate(
         std::begin(eventsOpenedPerCpu),
@@ -200,8 +164,9 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(int cpu,
         handleException();
     }
 
-    for (auto & pair : perfEventGroupMap) {
-        const auto result = pair.second->onlineCPU(cpu, tids, enabledState, attrsConsumer, addToMonitor, addToBuffer);
+    for (auto & pair : state.perfEventGroupMap) {
+        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
+        const auto result = activator.onlineCPU(cpu, tids, enabledState, mapping_tracker, addToMonitor, addToBuffer);
         if (result.first != OnlineResult::SUCCESS) {
             return result;
         }
@@ -209,12 +174,13 @@ std::pair<OnlineResult, std::string> PerfGroups::onlineCPU(int cpu,
     return std::make_pair(OnlineResult::SUCCESS, "");
 }
 
-bool PerfGroups::offlineCPU(int cpu, const std::function<void(int)> & removeFromBuffer)
+bool perf_groups_activator_t::offlineCPU(int cpu, const std::function<void(int)> & removeFromBuffer)
 {
     LOG_DEBUG("Offlining cpu %i", cpu);
 
-    for (auto & pair : perfEventGroupMap) {
-        if (!pair.second->offlineCPU(cpu)) {
+    for (auto & pair : state.perfEventGroupMap) {
+        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
+        if (!activator.offlineCPU(cpu)) {
             return false;
         }
     }
@@ -227,27 +193,18 @@ bool PerfGroups::offlineCPU(int cpu, const std::function<void(int)> & removeFrom
     return true;
 }
 
-void PerfGroups::start()
+void perf_groups_activator_t::start()
 {
-    for (auto & pair : perfEventGroupMap) {
-        pair.second->start();
+    for (auto & pair : state.perfEventGroupMap) {
+        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
+        activator.start();
     }
 }
 
-void PerfGroups::stop()
+void perf_groups_activator_t::stop()
 {
-    for (auto & pair : perfEventGroupMap) {
-        pair.second->stop();
+    for (auto & pair : state.perfEventGroupMap) {
+        perf_event_group_activator_t activator {configuration, pair.first, pair.second};
+        activator.stop();
     }
-}
-
-bool PerfGroups::hasSPE() const
-{
-    for (const auto & pair : perfEventGroupMap) {
-        if (pair.first.getType() == PerfEventGroupIdentifier::Type::SPE) {
-            return true;
-        }
-    }
-
-    return false;
 }

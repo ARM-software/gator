@@ -1,8 +1,9 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 #include "lib/Utils.h"
 
 #include "Logging.h"
 #include "lib/FsEntry.h"
+#include "lib/String.h"
 #include "lib/Syscall.h"
 
 #include <cerrno>
@@ -89,15 +90,15 @@ namespace lib {
 
     int writeIntToFile(const char * path, int value)
     {
-        char data[40]; // Sufficiently large to hold any integer
-        snprintf(data, sizeof(data), "%d", value);
+        constexpr std::size_t buffer_size = 64; // Sufficiently large to hold any integer
+        lib::printf_str_t<buffer_size> data {"%d", value};
         return writeCStringToFile(path, data);
     }
 
     int writeInt64ToFile(const char * path, int64_t value)
     {
-        char data[40]; // Sufficiently large to hold any integer
-        snprintf(data, sizeof(data), "%" PRIi64, value);
+        constexpr std::size_t buffer_size = 64; // Sufficiently large to hold any integer
+        lib::printf_str_t<buffer_size> data {"%" PRIi64, value};
         return writeCStringToFile(path, data);
     }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXML.h"
 
@@ -11,6 +11,7 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 #include "lib/Format.h"
+#include "lib/String.h"
 #include "xml/EventsXML.h"
 #include "xml/MxmlUtils.h"
 
@@ -39,6 +40,10 @@ static void appendError(std::ostream & error, const std::string & possibleError)
 }
 
 namespace configuration_xml {
+
+    namespace {
+#include "defaults_xml.h"
+    }
 
     static bool addCounter(const char * counterName,
                            const EventCode & event,
@@ -165,11 +170,8 @@ namespace configuration_xml {
 
     std::unique_ptr<char, void (*)(void *)> getDefaultConfigurationXml(lib::Span<const GatorCpu> clusters)
     {
-#include "defaults_xml.h" // defines and initializes char defaults_xml[] and int defaults_xml_len
-        (void) defaults_xml_len;
-
         // Resolve ${cluster}
-        mxml_node_t * xml = mxmlLoadString(nullptr, reinterpret_cast<const char *>(defaults_xml), MXML_NO_CALLBACK);
+        mxml_node_t * xml = mxmlLoadString(nullptr, DEFAULTS_XML.data(), MXML_NO_CALLBACK);
         for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND),
                          *next = mxmlFindElement(node, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND);
              node != nullptr;
@@ -179,8 +181,7 @@ namespace configuration_xml {
                 for (const GatorCpu & cluster : clusters) {
                     mxml_node_t * n = mxmlNewElement(mxmlGetParent(node), TAG_CONFIGURATION);
                     copyMxmlElementAttrs(n, node);
-                    char buf[1 << 7];
-                    snprintf(buf, sizeof(buf), "%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1);
+                    lib::printf_str_t<1 << 7> buf {"%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1};
                     mxmlElementSetAttr(n, ATTR_COUNTER, buf);
                 }
                 mxmlDelete(node);

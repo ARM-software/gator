@@ -1,9 +1,10 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/PerCoreIdentificationThread.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/String.h"
 #include "lib/Utils.h"
 #include "linux/CoreOnliner.h"
 
@@ -78,19 +79,11 @@ bool PerCoreIdentificationThread::configureAffinity()
 void PerCoreIdentificationThread::run() noexcept
 {
     std::optional<CoreOnliner> coreOnliner;
-    bool core_id_valid = false;
-    bool physical_package_id_valid = false;
-    bool midr_el1_valid = false;
-    int core_id = 0;
-    int physical_package_id = 0;
-    int64_t midr_el1 = 0;
-    std::set<int> core_siblings;
 
     // rename thread
     {
-        char buffer[16];
-        snprintf(buffer, sizeof(buffer), "gatord-cid-%d", cpu);
-        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(buffer), 0, 0, 0);
+        lib::printf_str_t<16> buffer {"gatord-cid-%d", cpu};
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(buffer.c_str()), 0, 0, 0);
     }
 
     if (!ignoreOffline) {
@@ -100,31 +93,9 @@ void PerCoreIdentificationThread::run() noexcept
         configureAffinity();
     }
 
-    // attempt to read topology and identification information
-    {
-        // read topology information from sysfs if available
-        char buffer[128];
-        snprintf(buffer, sizeof(buffer), "/sys/devices/system/cpu/cpu%u/topology/core_id", cpu);
-        core_id_valid = (lib::readIntFromFile(buffer, core_id) == 0);
-
-        snprintf(buffer, sizeof(buffer), "/sys/devices/system/cpu/cpu%u/topology/physical_package_id", cpu);
-        physical_package_id_valid = (lib::readIntFromFile(buffer, physical_package_id) == 0);
-
-        snprintf(buffer, sizeof(buffer), "/sys/devices/system/cpu/cpu%u/topology/core_siblings_list", cpu);
-        core_siblings = lib::readCpuMaskFromFile(buffer);
-
-        // read MIDR value if available
-        snprintf(buffer, sizeof(buffer), "/sys/devices/system/cpu/cpu%u/regs/identification/midr_el1", cpu);
-        midr_el1_valid = (lib::readInt64FromFile(buffer, midr_el1) == 0);
-    }
-
     // inform callback (this is done regardless of whether or not configureAffinity succeeded
     // so that the function using these threads will be notified when each per-core thread has completed its work
-    consumerFunction(cpu,
-                     (core_id_valid ? core_id : INVALID_CORE_ID),
-                     (physical_package_id_valid ? physical_package_id : INVALID_PACKAGE_ID),
-                     core_siblings,
-                     (midr_el1_valid ? midr_el1 : INVALID_MIDR_EL1));
+    consumerFunction(cpu, detectFor(cpu));
 
     // reading MIDR_EL1 is supported via emulation from 4.11 on arm64 only
     // reading MIDR_EL1 is supported via sysfs from 4.8 on arm64 only and the sysfs filesystem is not always available (e.g. on Android)
@@ -133,4 +104,39 @@ void PerCoreIdentificationThread::run() noexcept
     while (!terminatedFlag) {
         sched_yield();
     }
+}
+
+PerCoreIdentificationThread::properties_t PerCoreIdentificationThread::detectFor(unsigned cpu)
+{
+    bool core_id_valid = false;
+    bool physical_package_id_valid = false;
+    bool midr_el1_valid = false;
+    int core_id = 0;
+    int physical_package_id = 0;
+    int64_t midr_el1 = 0;
+    std::set<int> core_siblings;
+
+    // attempt to read topology and identification information
+    {
+        // read topology information from sysfs if available
+        lib::printf_str_t<128> buffer {"/sys/devices/system/cpu/cpu%u/topology/core_id", cpu};
+        core_id_valid = (lib::readIntFromFile(buffer, core_id) == 0);
+
+        buffer.printf("/sys/devices/system/cpu/cpu%u/topology/physical_package_id", cpu);
+        physical_package_id_valid = (lib::readIntFromFile(buffer, physical_package_id) == 0);
+
+        buffer.printf("/sys/devices/system/cpu/cpu%u/topology/core_siblings_list", cpu);
+        core_siblings = lib::readCpuMaskFromFile(buffer);
+
+        // read MIDR value if available
+        buffer.printf("/sys/devices/system/cpu/cpu%u/regs/identification/midr_el1", cpu);
+        midr_el1_valid = (lib::readInt64FromFile(buffer, midr_el1) == 0);
+    }
+
+    return {
+        (core_id_valid ? core_id : INVALID_CORE_ID),
+        (physical_package_id_valid ? physical_package_id : INVALID_PACKAGE_ID),
+        std::move(core_siblings),
+        (midr_el1_valid ? midr_el1 : INVALID_MIDR_EL1),
+    };
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 #define BUFFER_USE_SESSION_DATA
 
 #include "non_root/NonRootSource.h"
@@ -10,6 +10,7 @@
 #include "Logging.h"
 #include "Protocol.h"
 #include "SessionData.h"
+#include "lib/String.h"
 #include "lib/Time.h"
 #include "non_root/GlobalPoller.h"
 #include "non_root/GlobalStateChangeHandler.h"
@@ -123,15 +124,12 @@ namespace non_root {
             return {};
         }
 
-        char buf[512];
-        snprintf(buf,
-                 sizeof(buf),
-                 "%s %s %s %s %s GNU/Linux",
-                 utsname.sysname,
-                 utsname.nodename,
-                 utsname.release,
-                 utsname.version,
-                 utsname.machine);
+        lib::printf_str_t<512> buf {"%s %s %s %s %s GNU/Linux",
+                                    utsname.sysname,
+                                    utsname.nodename,
+                                    utsname.release,
+                                    utsname.version,
+                                    utsname.machine};
 
         long pageSize = sysconf(_SC_PAGESIZE);
         if (pageSize < 0) {
@@ -167,7 +165,7 @@ namespace non_root {
                 miscBuffer.summaryFrameCoreNameMessage(currTime, cpu, cpuId, gatorCpu->getCoreName());
             }
             else {
-                snprintf(buf, sizeof(buf), "Unknown (0x%.3x)", cpuId);
+                buf.printf("Unknown (0x%.3x)", cpuId);
                 miscBuffer.summaryFrameCoreNameMessage(currTime, cpu, cpuId, buf);
             }
         }

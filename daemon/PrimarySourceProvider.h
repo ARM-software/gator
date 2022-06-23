@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
@@ -51,43 +51,47 @@ public:
     virtual ~PrimarySourceProvider();
 
     /** Return the attribute value for captured.xml type attribute */
-    virtual const char * getCaptureXmlTypeValue() const = 0;
+    [[nodiscard]] virtual const char * getCaptureXmlTypeValue() const = 0;
 
     /** Return the backtrace_processing mode for captured.xml attribute */
-    virtual const char * getBacktraceProcessingMode() const = 0;
+    [[nodiscard]] virtual const char * getBacktraceProcessingMode() const = 0;
 
     /** Return true if the primary source is responsible for capturing tracepoints */
-    virtual bool supportsTracepointCapture() const = 0;
+    [[nodiscard]] virtual bool supportsTracepointCapture() const = 0;
+
+    /** Return true if the FtraceDriver is responsible for capturing the cpu_frequency tracepoint */
+    [[nodiscard]] virtual bool useFtraceDriverForCpuFrequency() const = 0;
 
     /** Return true if the source supports setting more than one EBS counter */
-    virtual bool supportsMultiEbs() const = 0;
+    [[nodiscard]] virtual bool supportsMultiEbs() const = 0;
 
     /** Return list of additional polled drivers required for source */
-    virtual const std::vector<PolledDriver *> & getAdditionalPolledDrivers() const;
+    [[nodiscard]] virtual const std::vector<PolledDriver *> & getAdditionalPolledDrivers() const;
 
     /** Some driver specific message to show if prepare failed */
-    virtual const char * getPrepareFailedMessage() const = 0;
+    [[nodiscard]] virtual const char * getPrepareFailedMessage() const = 0;
 
     /** Return the primary driver object */
-    virtual const Driver & getPrimaryDriver() const = 0;
+    [[nodiscard]] virtual const Driver & getPrimaryDriver() const = 0;
 
     /** Return the primary driver object */
-    virtual Driver & getPrimaryDriver() = 0;
+    [[nodiscard]] virtual Driver & getPrimaryDriver() = 0;
 
     /** Create the primary Source instance */
-    virtual std::unique_ptr<PrimarySource> createPrimarySource(sem_t & senderSem,
-                                                               std::function<void()> profilingStartedCallback,
-                                                               const std::set<int> & appTids,
-                                                               FtraceDriver & ftraceDriver,
-                                                               bool enableOnCommandExec) = 0;
+    [[nodiscard]] virtual std::unique_ptr<PrimarySource> createPrimarySource(
+        sem_t & senderSem,
+        std::function<void()> profilingStartedCallback,
+        const std::set<int> & appTids,
+        FtraceDriver & ftraceDriver,
+        bool enableOnCommandExec) = 0;
 
-    virtual const ICpuInfo & getCpuInfo() const = 0;
-    virtual ICpuInfo & getCpuInfo() = 0;
+    [[nodiscard]] virtual const ICpuInfo & getCpuInfo() const = 0;
+    [[nodiscard]] virtual ICpuInfo & getCpuInfo() = 0;
 
-    virtual lib::Span<const UncorePmu> getDetectedUncorePmus() const = 0;
+    [[nodiscard]] virtual lib::Span<const UncorePmu> getDetectedUncorePmus() const = 0;
 
 protected:
-    PrimarySourceProvider(std::vector<PolledDriver *> polledDrivers);
+    explicit PrimarySourceProvider(std::vector<PolledDriver *> polledDrivers);
 
 private:
     std::vector<PolledDriver *> polledDrivers;

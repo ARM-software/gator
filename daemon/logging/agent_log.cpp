@@ -1,20 +1,26 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "logging/agent_log.h"
 
 #include "Logging.h"
+#include "lib/AutoClosingFd.h"
+#include "lib/Format.h"
+#include "lib/FsEntry.h"
 #include "lib/Span.h"
+#include "lib/String.h"
 #include "lib/Time.h"
 
 #include <cinttypes>
 #include <cstdio>
+#include <cstdlib>
 #include <optional>
 #include <string_view>
 
 #include <boost/asio/buffer.hpp>
-#include <boost/asio/dispatch.hpp>
 #include <boost/asio/read_until.hpp>
-#include <boost/lexical_cast/try_lexical_convert.hpp>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 namespace logging {
     namespace {
@@ -35,6 +41,7 @@ namespace logging {
 
         void write(int file_descriptor, std::uint32_t n) { dprintf(file_descriptor, "%" PRIu32, n); }
         void write(int file_descriptor, std::int64_t n) { dprintf(file_descriptor, "%" PRId64, n); }
+        void write(int file_descriptor, thread_id_t t) { dprintf(file_descriptor, "%" PRIi32, pid_t(t)); }
         void write(int file_descriptor, log_level_t l) { write(file_descriptor, std::uint32_t(l)); }
         void write(int file_descriptor, std::string_view str)
         {
@@ -70,18 +77,9 @@ namespace logging {
 
         constexpr bool is_octal(char c) { return (c >= '0') && (c < '8'); }
 
-        std::optional<std::int64_t> decode_num(std::string_view s)
-        {
-            std::int64_t value = 0;
+        std::optional<std::int64_t> decode_num(std::string_view s) { return lib::try_to_int<std::int64_t>(s); }
 
-            if (!boost::conversion::try_lexical_convert(s, value)) {
-                return {};
-            }
-
-            return value;
-        }
-
-        std::optional<std::string_view> decode_str(char * start, char * end)
+        std::optional<std::string_view> decode_str(char * start, char const * end)
         {
             constexpr std::uint8_t octal_base = 8;
 
@@ -149,61 +147,70 @@ namespace logging {
             return {};
         }
 
-        constexpr std::size_t expected_no_fields = 6;
+        constexpr std::size_t expected_no_fields = 7;
         constexpr std::size_t field_index_level = 0;
-        constexpr std::size_t field_index_file = 1;
-        constexpr std::size_t field_index_line = 2;
-        constexpr std::size_t field_index_secs = 3;
-        constexpr std::size_t field_index_nsec = 4;
-        constexpr std::size_t field_index_text = 5;
+        constexpr std::size_t field_index_tid = 1;
+        constexpr std::size_t field_index_file = 2;
+        constexpr std::size_t field_index_line = 3;
+        constexpr std::size_t field_index_secs = 4;
+        constexpr std::size_t field_index_nsec = 5;
+        constexpr std::size_t field_index_text = 6;
 
         std::optional<std::array<std::string_view, expected_no_fields>> split_fields(std::string_view inner)
         {
-            // between level and file
+            // between level and tid
             auto from_1 = 0;
             auto sep_1 = inner.find(separator, from_1);
             if (sep_1 == std::string_view::npos) {
                 return {};
             }
-            // between file and line
+            // between tid and file
             auto from_2 = sep_1 + separator.size();
             auto sep_2 = inner.find(separator, from_2);
             if (sep_2 == std::string_view::npos) {
                 return {};
             }
-            // between line and seconds
+            // between file and line
             auto from_3 = sep_2 + separator.size();
             auto sep_3 = inner.find(separator, from_3);
             if (sep_3 == std::string_view::npos) {
                 return {};
             }
-            // between seconds and nsecs
+            // between line and seconds
             auto from_4 = sep_3 + separator.size();
             auto sep_4 = inner.find(separator, from_4);
             if (sep_4 == std::string_view::npos) {
                 return {};
             }
-            // between nsecs and message
+            // between seconds and nsecs
             auto from_5 = sep_4 + separator.size();
             auto sep_5 = inner.find(separator, from_5);
             if (sep_5 == std::string_view::npos) {
                 return {};
             }
+            // between nsecs and message
+            auto from_6 = sep_5 + separator.size();
+            auto sep_6 = inner.find(separator, from_6);
+            if (sep_6 == std::string_view::npos) {
+                return {};
+            }
 
             // extract the fields
             auto level_str = inner.substr(from_1, sep_1 - from_1);
-            auto file_str = inner.substr(from_2, sep_2 - from_2);
-            auto line_str = inner.substr(from_3, sep_3 - from_3);
-            auto secs_str = inner.substr(from_4, sep_4 - from_4);
-            auto nsec_str = inner.substr(from_5, sep_5 - from_5);
-            auto text_str = inner.substr(sep_5 + separator.size());
+            auto tid_str = inner.substr(from_2, sep_2 - from_2);
+            auto file_str = inner.substr(from_3, sep_3 - from_3);
+            auto line_str = inner.substr(from_4, sep_4 - from_4);
+            auto secs_str = inner.substr(from_5, sep_5 - from_5);
+            auto nsec_str = inner.substr(from_6, sep_6 - from_6);
+            auto text_str = inner.substr(sep_6 + separator.size());
 
-            if (level_str.empty() || line_str.empty() || secs_str.empty() || nsec_str.empty()) {
+            if (level_str.empty() || tid_str.empty() || line_str.empty() || secs_str.empty() || nsec_str.empty()) {
                 return {};
             }
 
             return {{
                 level_str,
+                tid_str,
                 file_str,
                 line_str,
                 secs_str,
@@ -214,7 +221,27 @@ namespace logging {
 
     }
 
-    void agent_log_sink_t::log_item(log_level_t level,
+    lib::AutoClosingFd agent_log_sink_t::get_log_file_fd()
+    {
+        //NOLINTNEXTLINE(concurrency-mt-unsafe)
+        auto const * lfp = getenv("GATORD_LOG_FILE_PATH");
+        if (lfp == nullptr) {
+            return {};
+        }
+        auto path = lib::FsEntry::create(lfp);
+        if (!path.exists()) {
+            return {};
+        }
+        auto file = lib::FsEntry::create(path, lib::Format() << "gatord-" << getpid() << ".log");
+        return lib::AutoClosingFd {open(file.path().c_str(),
+                                        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+                                        O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC,
+                                        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+                                        S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)};
+    }
+
+    void agent_log_sink_t::log_item(thread_id_t tid,
+                                    log_level_t level,
                                     log_timestamp_t const & timestamp,
                                     source_loc_t const & location,
                                     std::string_view message)
@@ -226,45 +253,67 @@ namespace logging {
         // The encoding leaves the message largely human readable, whilst ensuring it fits on a single line and is recognizable
         // If any other (e.g. library, stl) code happens to printf to stderr, then it will not corrupt the output
         // and the receiver should be able to pick up the log entries + any random output (which will be considered error logging)
-        write_bytes(file_descriptor, message_start_marker);
-        write(file_descriptor, level);
-        write_bytes(file_descriptor, separator);
-        write(file_descriptor, location.file);
-        write_bytes(file_descriptor, separator);
-        write(file_descriptor, location.line);
-        write_bytes(file_descriptor, separator);
-        write(file_descriptor, timestamp.seconds);
-        write_bytes(file_descriptor, separator);
-        write(file_descriptor, timestamp.nanos);
-        write_bytes(file_descriptor, separator);
-        write(file_descriptor, message);
-        write_bytes(file_descriptor, message_end_marker);
-        write_bytes(file_descriptor, "\n");
+        write_bytes(pipe_fd, message_start_marker);
+        write(pipe_fd, level);
+        write_bytes(pipe_fd, separator);
+        write(pipe_fd, tid);
+        write_bytes(pipe_fd, separator);
+        write(pipe_fd, location.file_name());
+        write_bytes(pipe_fd, separator);
+        write(pipe_fd, location.line_no());
+        write_bytes(pipe_fd, separator);
+        write(pipe_fd, timestamp.seconds);
+        write_bytes(pipe_fd, separator);
+        write(pipe_fd, timestamp.nanos);
+        write_bytes(pipe_fd, separator);
+        write(pipe_fd, message);
+        write_bytes(pipe_fd, message_end_marker);
+        write_bytes(pipe_fd, "\n");
+
+        // optional human readable TSV formatted log file
+        if (log_file_descriptor) {
+            write(*log_file_descriptor, level);
+            write_bytes(*log_file_descriptor, "\t");
+            write(*log_file_descriptor, tid);
+            write_bytes(*log_file_descriptor, "\t");
+            write(*log_file_descriptor, location.file_name());
+            write_bytes(*log_file_descriptor, "\t");
+            write(*log_file_descriptor, location.line_no());
+            write_bytes(*log_file_descriptor, "\t");
+            write(*log_file_descriptor, timestamp.seconds);
+            write_bytes(*log_file_descriptor, "\t");
+            write(*log_file_descriptor, timestamp.nanos);
+            write_bytes(*log_file_descriptor, "\t");
+            write(*log_file_descriptor, message);
+            write_bytes(*log_file_descriptor, "\n");
+        }
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion)
     void agent_log_reader_t::do_async_read()
     {
         LOG_TRACE("(%p) entered do_async_read", this);
 
-        boost::asio::dispatch(in.get_executor(), [st = shared_from_this()]() {
-            LOG_TRACE("(%p) clearing buffer", st.get());
-            boost::asio::async_read_until(st->in, st->buffer, '\n', [st](auto const & ec, auto n) {
-                // handle error
-                if (ec) {
-                    LOG_ERROR("(%p) read failed with %s", st.get(), ec.message().c_str());
-                    return;
-                }
+        // NOLINTNEXTLINE(misc-no-recursion)
+        boost::asio::async_read_until(in, buffer, '\n', [st = shared_from_this()](auto const & ec, auto n) {
+            // handle error
+            if (ec) {
+                LOG_ERROR_IF_NOT_EOF(ec, "(%p) read failed with %s", st.get(), ec.message().c_str());
+                return;
+            }
 
-                // process line of text
-                return st->do_process_next_line(n);
-            });
+            // process line of text
+            return st->do_process_next_line(n);
         });
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion)
     void agent_log_reader_t::do_process_next_line(std::size_t n)
     {
         constexpr std::size_t expected_minimum_size = message_start_marker.size() //
                                                     + 1                           // level (int)
+                                                    + separator.size()            //
+                                                    + 1                           // tid (int)
                                                     + separator.size()            //
                                                     + 0                           // file (str)
                                                     + separator.size()            //
@@ -337,6 +386,7 @@ namespace logging {
         // decode the fields
         auto & fields = *fields_opt;
         auto level_num = decode_num(fields[field_index_level]);
+        auto tid_num = decode_num(fields[field_index_tid]);
         auto file = decode_str(fields[field_index_file]);
         auto line_num = decode_num(fields[field_index_line]);
         auto secs_num = decode_num(fields[field_index_secs]);
@@ -344,11 +394,12 @@ namespace logging {
         auto text = decode_str(fields[field_index_text]);
 
         // all fields must be valid
-        if ((!level_num) || (!file) || (!line_num) || (!secs_num) || (!nsec_num) || (!text)) {
+        if ((!level_num) || (!tid_num) || (!file) || (!line_num) || (!secs_num) || (!nsec_num) || (!text)) {
             // safely null terminate before logging
-            LOG_TRACE("(%p) Invalid field encoding (%u, %u, %u,%u, %u, %u) in '%s'",
+            LOG_TRACE("(%p) Invalid field encoding (%u, %u, %u, %u,%u, %u, %u) in '%s'",
                       this,
                       !!level_num,
+                      !!tid_num,
                       !!file,
                       !!line_num,
                       !!secs_num,
@@ -360,24 +411,33 @@ namespace logging {
 
         // a valid message
         return do_expected_message(n_to_consume,
+                                   thread_id_t(*tid_num),
                                    log_level_t(*level_num),
                                    log_timestamp_t {*secs_num, *nsec_num},
                                    source_loc_t {*file, unsigned(*line_num)},
                                    *text);
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion)
     void agent_log_reader_t::do_unexpected_message(std::size_t n_to_consume, std::string_view msg)
     {
-        do_expected_message(n_to_consume, log_level_t::error, log_timestamp_t {}, source_loc_t {}, msg);
+        do_expected_message(n_to_consume,
+                            thread_id_t {0},
+                            log_level_t::error,
+                            log_timestamp_t {},
+                            source_loc_t {},
+                            msg);
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion)
     void agent_log_reader_t::do_expected_message(std::size_t n_to_consume,
+                                                 thread_id_t tid,
                                                  log_level_t level,
                                                  log_timestamp_t timestamp,
                                                  source_loc_t location,
                                                  std::string_view message)
     {
-        consumer(level, timestamp, location, message);
+        consumer(tid, level, timestamp, location, message);
         buffer.consume(n_to_consume);
         do_async_read();
     }

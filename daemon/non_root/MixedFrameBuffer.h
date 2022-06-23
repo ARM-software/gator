@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 class IRawFrameBuilder;
 class Sender;
@@ -23,8 +24,7 @@ namespace non_root {
 
             void packInt(std::int32_t);
             void packInt64(std::int64_t);
-            void writeString(const char *);
-            void writeString(const std::string &);
+            void writeString(std::string_view);
             bool isValid() const;
 
         private:

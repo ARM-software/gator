@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "AppGatorRunner.h"
 
@@ -6,6 +6,7 @@
 #include "android/Spawn.h"
 #include "android/Utils.h"
 #include "lib/Popen.h"
+#include "lib/String.h"
 #include "lib/Syscall.h"
 
 #include <array>
@@ -114,14 +115,13 @@ namespace gator::android {
 
         auto pid_str = std::to_string(popenRunAsResult->pid);
 
-        std::array<char, 8> sig_buf {0};
-        std::snprintf(sig_buf.data(), sig_buf.size(), "-%d", signum);
+        lib::printf_str_t<8> sig_buf {"-%d", signum};
 
         std::vector<const char *> argumentsToSendSignal;
         argumentsToSendSignal.push_back(RUN_AS.data());
         argumentsToSendSignal.push_back(appName.c_str());
         argumentsToSendSignal.push_back(KILL.data());
-        argumentsToSendSignal.push_back(sig_buf.data());
+        argumentsToSendSignal.push_back(sig_buf);
         argumentsToSendSignal.push_back(pid_str.c_str());
         argumentsToSendSignal.push_back(nullptr);
 
@@ -137,7 +137,7 @@ namespace gator::android {
                       RUN_AS.data(),
                       appName.c_str(), //
                       KILL.data(),
-                      sig_buf.data(),
+                      sig_buf.c_str(),
                       pid_str.c_str());
             return false;
         }
@@ -148,7 +148,7 @@ namespace gator::android {
                       RUN_AS.data(),
                       appName.c_str(), //
                       KILL.data(),
-                      sig_buf.data(),
+                      sig_buf.c_str(),
                       pid_str.c_str(),
                       exitCode);
             return false;

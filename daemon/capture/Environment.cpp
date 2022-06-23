@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 #include "capture/Environment.h"
 
 #include "GatorException.h"
@@ -17,36 +17,13 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-using namespace gator::capture;
+using namespace capture;
 
 namespace {
 
     constexpr int MIN_PAGE_SIZE = 1024;
     constexpr int DEFAULT_MMAP_SIZE_PAGES = 128;
     constexpr rlim_t DEFAULT_MIN_RLIM_CUR = rlim_t(1) << 15;
-
-    enum class OsType { Linux, Android };
-
-    OsType detectOs()
-    {
-        // maybe musl libc statically linked gatord: probe the filesystem
-        lib::FsEntry app_process = lib::FsEntry::create("/system/bin/app_process");
-        if (app_process.exists()) {
-            return OsType::Android;
-        }
-
-        app_process = lib::FsEntry::create("/system/bin/app_process32");
-        if (app_process.exists()) {
-            return OsType::Android;
-        }
-
-        app_process = lib::FsEntry::create("/system/bin/app_process64");
-        if (app_process.exists()) {
-            return OsType::Android;
-        }
-
-        return OsType::Linux;
-    }
 
     auto classifyUser()
     {
@@ -149,14 +126,40 @@ LinuxEnvironmentConfig::~LinuxEnvironmentConfig() noexcept
 {
 }
 
-std::unique_ptr<CaptureEnvironment> gator::capture::prepareCaptureEnvironment(SessionData & sessionData)
+OsType capture::detectOs()
+{
+#ifdef __ANDROID__
+    return OsType::Android;
+#else
+    // maybe musl libc statically linked gatord: probe the filesystem
+    lib::FsEntry app_process = lib::FsEntry::create("/system/bin/app_process");
+    if (app_process.exists()) {
+        return OsType::Android;
+    }
+
+    app_process = lib::FsEntry::create("/system/bin/app_process32");
+    if (app_process.exists()) {
+        return OsType::Android;
+    }
+
+    app_process = lib::FsEntry::create("/system/bin/app_process64");
+    if (app_process.exists()) {
+        return OsType::Android;
+    }
+
+    return OsType::Linux;
+#endif
+}
+
+std::unique_ptr<CaptureEnvironment> capture::prepareCaptureEnvironment(SessionData & sessionData)
+
 {
     switch (detectOs()) {
         case OsType::Android: {
             return std::make_unique<gator::android::GatorAndroidSetupHandler>(sessionData, classifyUser());
         }
         case OsType::Linux:
-            return std::make_unique<gator::capture::LinuxEnvironmentConfig>(sessionData);
+            return std::make_unique<capture::LinuxEnvironmentConfig>(sessionData);
     }
     throw GatorException("Invalid capture environment");
 }

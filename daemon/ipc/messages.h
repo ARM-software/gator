@@ -1,37 +1,119 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
+#include "Time.h"
 #include "ipc/message_key.h"
 #include "ipc/message_traits.h"
+#include "ipc/proto/generated/capture_configuration.pb.h"
 
+#include <string_view>
 #include <variant>
 
 namespace ipc {
     using annotation_uid_t = int;
 
-    /** Sent from shell->agent to tell it to shut down */
+    struct [[gnu::packed]] cpu_state_change_t {
+        monotonic_delta_t monotonic_delta;
+        int core_no;
+        bool online;
+    };
+
+    /**
+     * Helper template that associates a type name with a type so that it can be used at
+     * runtime - e.g. to aid troubleshooting with log messages.
+     */
+    template<typename T>
+    struct named_message_t;
+
+    template<>
+    struct named_message_t<std::monostate> {
+        static constexpr std::string_view name {"unknown"};
+    };
+
+#define DEFINE_NAMED_MESSAGE(class)                                                                                    \
+    template<>                                                                                                         \
+    struct named_message_t<class> {                                                                                    \
+        static constexpr std::string_view name {#class};                                                               \
+    };
+
+    /**
+     * Sent from agent->shell to tell when the agent is ready.
+     * Sent from shell->agent to start the capture.
+     */
+    using msg_ready_t = message_t<message_key_t::ready, void, void>;
+    DEFINE_NAMED_MESSAGE(msg_ready_t);
+
+    /** Sent from shell->agent or vice-versa to tell it to shut down */
     using msg_shutdown_t = message_t<message_key_t::shutdown, void, void>;
+    DEFINE_NAMED_MESSAGE(msg_shutdown_t);
+
+    /** Sent from shell->agent carrying the monotonic_raw start value and indicating that capture should start */
+    using msg_start_t = message_t<message_key_t::start, std::uint64_t, void>;
+    DEFINE_NAMED_MESSAGE(msg_start_t);
 
     /** Sent from the annotation agent to the shell when a new annotation connection is received */
     using msg_annotation_new_conn_t = message_t<message_key_t::annotation_new_conn, annotation_uid_t, void>;
+    DEFINE_NAMED_MESSAGE(msg_annotation_new_conn_t);
 
     /** Sent from the annotation agent to the shell when some data is received from an annotations connection */
     using msg_annotation_close_conn_t = message_t<message_key_t::annotation_close_conn, annotation_uid_t, void>;
+    DEFINE_NAMED_MESSAGE(msg_annotation_close_conn_t);
 
     /** Sent from the shell to the annotation agent when some data is to be sent to the annotation connection */
     using msg_annotation_recv_bytes_t =
         message_t<message_key_t::annotation_recv_bytes, annotation_uid_t, std::vector<char>>;
+    DEFINE_NAMED_MESSAGE(msg_annotation_recv_bytes_t);
 
     /** Sent by the agent or shell to close a connection */
     using msg_annotation_send_bytes_t =
         message_t<message_key_t::annotation_send_bytes, annotation_uid_t, std::vector<char>>;
+    DEFINE_NAMED_MESSAGE(msg_annotation_send_bytes_t);
+
+    /** Sent by the shell to configure the perf capture */
+    using msg_capture_configuration_t =
+        message_t<message_key_t::perf_capture_configuration, void, proto::shell::perf::capture_configuration_t>;
+    DEFINE_NAMED_MESSAGE(msg_capture_configuration_t);
+
+    /**
+     * Sent by the perf agent when the prepare step is ready and the agent is able to start.
+     * Contains the list of polled or forked child processes.
+     */
+    using msg_capture_ready_t = message_t<message_key_t::capture_ready, void, std::vector<pid_t>>;
+    DEFINE_NAMED_MESSAGE(msg_capture_ready_t);
+
+    /** Raw APC frame data sent by the perf agent.
+     *
+     * The APC data must not have the response type or length header fields,
+     * these will be added by the receiver.
+     */
+    using msg_apc_frame_data_t = message_t<message_key_t::apc_frame_data, void, std::vector<char>>;
+    DEFINE_NAMED_MESSAGE(msg_apc_frame_data_t);
+
+    // this version is R/O send only object allowing send from span owned externally
+    using msg_apc_frame_data_from_span_t = message_t<message_key_t::apc_frame_data, void, lib::Span<char const>>;
+    DEFINE_NAMED_MESSAGE(msg_apc_frame_data_from_span_t);
+
+    /** Sent by the perf agent to the shell once it is ready to capture the newly exec-d process */
+    using msg_exec_target_app_t = message_t<message_key_t::exec_target_app, void, void>;
+    DEFINE_NAMED_MESSAGE(msg_exec_target_app_t);
+
+    /** Sent from perf agent to the shell one it detects a core online/offline state change */
+    using msg_cpu_state_change_t = message_t<message_key_t::cpu_state_change, cpu_state_change_t, void>;
+    DEFINE_NAMED_MESSAGE(msg_cpu_state_change_t);
 
     /** All supported message types */
-    using all_message_types_variant_t = std::variant<msg_shutdown_t,
+    using all_message_types_variant_t = std::variant<msg_ready_t,
+                                                     msg_shutdown_t,
+                                                     msg_start_t,
                                                      msg_annotation_new_conn_t,
                                                      msg_annotation_close_conn_t,
                                                      msg_annotation_recv_bytes_t,
                                                      msg_annotation_send_bytes_t,
+                                                     msg_capture_configuration_t,
+                                                     msg_capture_ready_t,
+                                                     msg_apc_frame_data_t,
+                                                     msg_exec_target_app_t,
+                                                     msg_cpu_state_change_t,
                                                      std::monostate>;
 }

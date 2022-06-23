@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #ifndef FTRACEDRIVER_H
 #define FTRACEDRIVER_H
@@ -6,6 +6,7 @@
 #include "SimpleDriver.h"
 #include "Tracepoints.h"
 
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -31,7 +32,10 @@ private:
 
 class FtraceDriver : public SimpleDriver {
 public:
-    FtraceDriver(const TraceFsConstants & traceFsConstants, bool useForTracepoint, size_t numberOfCores);
+    FtraceDriver(const TraceFsConstants & traceFsConstants,
+                 bool use_for_general_tracepoints,
+                 bool use_ftrace_for_cpu_frequency,
+                 size_t numberOfCores);
 
     // Intentionally unimplemented
     FtraceDriver(const FtraceDriver &) = delete;
@@ -42,7 +46,7 @@ public:
     void readEvents(mxml_node_t * xml) override;
 
     std::pair<std::vector<int>, bool> prepare();
-    void start();
+    void start(std::function<void(int, int, std::int64_t)> initialValuesConsumer);
     std::vector<int> stop();
     bool readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * printb, DynBuf * b);
 
@@ -52,7 +56,7 @@ private:
     const TraceFsConstants & traceFsConstants;
     Barrier mBarrier;
     int mTracingOn;
-    bool mSupported, mMonotonicRawSupport, mUseForTracepoints;
+    bool mSupported, mMonotonicRawSupport, mUseForGeneralTracepoints, mUseForCpuFrequency;
     size_t mNumberOfCores;
 };
 

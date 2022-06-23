@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_BUFFER
 #define PERF_BUFFER
@@ -11,18 +11,18 @@
 #include <set>
 #include <vector>
 
+struct perf_ringbuffer_config_t {
+    /// must be power of 2
+    size_t pageSize;
+    /// must be power of 2 multiple of pageSize
+    size_t dataBufferSize;
+    /// must be power of 2 multiple of pageSize (or 0)
+    size_t auxBufferSize;
+};
+
 class PerfBuffer {
 public:
-    struct Config {
-        /// must be power of 2
-        size_t pageSize;
-        /// must be power of 2 multiple of pageSize
-        size_t dataBufferSize;
-        /// must be power of 2 multiple of pageSize (or 0)
-        size_t auxBufferSize;
-    };
-
-    PerfBuffer(Config config);
+    explicit PerfBuffer(perf_ringbuffer_config_t config);
     ~PerfBuffer();
 
     // Intentionally undefined
@@ -40,7 +40,7 @@ public:
     std::size_t getAuxBufferLength() const;
 
 private:
-    Config mConfig;
+    perf_ringbuffer_config_t mConfig;
 
     struct Buffer {
         void * data_buffer;
@@ -57,6 +57,6 @@ private:
 /**
  * Validates that config has allowable values and throws exception if not.
  */
-void validate(const PerfBuffer::Config & config);
+void validate(perf_ringbuffer_config_t const & config);
 
 #endif // PERF_BUFFER

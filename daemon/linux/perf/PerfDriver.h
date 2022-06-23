@@ -1,12 +1,14 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_H
 #define PERFDRIVER_H
 
 #include "IPerfGroups.h"
 #include "SimpleDriver.h"
+#include "agents/perf/capture_configuration.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfDriverConfiguration.h"
+#include "linux/perf/PerfSource.h"
 
 #include <cstdint>
 #include <functional>
@@ -30,6 +32,7 @@ class PerfTracepoint;
 class UncorePmu;
 class ICpuInfo;
 struct TraceFsConstants;
+class PerfSource;
 
 static const char * MALI_MMU_IN_USE = "Mali: MMU address space in use";
 static const char * MALI_PM_STATUS = "Mali: PM Status";
@@ -69,11 +72,18 @@ public:
     void coreName(ISummaryConsumer & consumer, int cpu);
     void setupCounter(Counter & counter) override;
     std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
-    bool enable(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer) const;
+    bool enable(IPerfGroups & group, attr_to_key_mapping_tracker_t & mapping_tracker) const;
     void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
     bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);
 
     const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
+
+    std::unique_ptr<PerfSource> create_source(sem_t & senderSem,
+                                              std::function<void()> profilingStartedCallback,
+                                              std::set<int> appTids,
+                                              FtraceDriver & ftraceDriver,
+                                              bool enableOnCommandExec,
+                                              ICpuInfo & cpuInfo);
 
 private:
     const TraceFsConstants & traceFsConstants;
@@ -86,7 +96,12 @@ private:
     void addCpuCounters(const PerfCpu & cpu);
     void addUncoreCounters(const PerfUncore & uncore);
     void addMidgardHwTracepoints(const char * maliFamilyName);
-    bool enableGatorTracePoint(IPerfGroups & group, IPerfAttrsConsumer & attrsConsumer, long long id) const;
+    bool enableGatorTracePoint(IPerfGroups & group,
+                               attr_to_key_mapping_tracker_t & mapping_tracker,
+                               long long id) const;
+
+    std::vector<agents::perf::perf_capture_configuration_t::cpu_freq_properties_t>
+    get_cpu_cluster_keys_for_cpu_frequency_counter();
 };
 
 #endif // PERFDRIVER_H

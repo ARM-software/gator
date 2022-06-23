@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "capture/CaptureProcess.h"
 
@@ -19,6 +19,7 @@
 #include "xml/CurrentConfigXML.h"
 #include "xml/PmuXMLParser.h"
 
+#include <memory>
 #include <sstream>
 #include <thread>
 
@@ -30,6 +31,7 @@
 #include <unistd.h>
 
 namespace {
+    constexpr int high_priority = -19;
 
     enum class State {
         IDLE,
@@ -53,15 +55,15 @@ namespace {
     constexpr std::array<const char, sizeof("\0streamline-data")> NO_TCP_PIPE = {"\0streamline-data"};
 
     Monitor monitor;
-    gator::capture::internal::UdpListener udpListener;
-    AnnotateListener annotateListener;
+    capture::internal::UdpListener udpListener;
+    std::unique_ptr<AnnotateListener> annotateListenerPtr;
 
     StateAndPid handleSigchld(StateAndPid currentStateAndChildPid, Drivers & drivers)
     {
         int status;
         int pid = waitpid(currentStateAndChildPid.pid, &status, WNOHANG);
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        if (pid == -1 || !(WIFEXITED(status) || WIFSIGNALED(status))) {
+        if (pid < 1 || !(WIFEXITED(status) || WIFSIGNALED(status))) {
             // wasn't gator-child  or it was but just a stop/continue
             // so just ignore it
             return currentStateAndChildPid;
@@ -233,6 +235,8 @@ namespace {
         for (const auto & driver : drivers.getAll()) {
             driver->preChildFork();
         }
+
+        int parent_pid = getpid();
         int pid = fork();
         if (pid < 0) {
             // Error
@@ -254,10 +258,14 @@ namespace {
 
             udpListener.close();
             monitor.close();
-            annotateListener.close();
+            annotateListenerPtr.reset();
 
-            auto child = Child::createLive(drivers, client, last_log_error_supplier, std::move(log_setup_supplier));
-            child->run();
+            // TODO: android spawner
+            agents::simple_agent_spawner_t spawner {};
+
+            auto child =
+                Child::createLive(spawner, drivers, client, last_log_error_supplier, std::move(log_setup_supplier));
+            child->run(parent_pid);
             child.reset();
             exit(0);
         }
@@ -279,6 +287,7 @@ namespace {
         for (const auto & driver : drivers.getAll()) {
             driver->preChildFork();
         }
+        int parent_pid = getpid();
         int pid = fork();
         if (pid < 0) {
             // Error
@@ -292,11 +301,17 @@ namespace {
                 driver->postChildForkInChild();
             }
             monitor.close();
-            annotateListener.close();
+            annotateListenerPtr.reset();
 
-            auto child =
-                Child::createLocal(drivers, config, std::move(last_log_error_supplier), std::move(log_setup_supplier));
-            child->run();
+            // TODO: android spawner
+            agents::simple_agent_spawner_t spawner {};
+
+            auto child = Child::createLocal(spawner,
+                                            drivers,
+                                            config,
+                                            std::move(last_log_error_supplier),
+                                            std::move(log_setup_supplier));
+            child->run(parent_pid);
             LOG_DEBUG("gator-child finished running");
             child.reset();
 
@@ -313,15 +328,15 @@ namespace {
     }
 }
 
-int gator::capture::beginCaptureProcess(const ParserResult & result,
-                                        Drivers & drivers,
-                                        std::array<int, 2> signalPipe,
-                                        logging::last_log_error_supplier_t last_log_error_supplier,
-                                        logging::log_setup_supplier_t log_setup_supplier,
-                                        const gator::capture::GatorReadyCallback & gatorReady)
+int capture::beginCaptureProcess(const ParserResult & result,
+                                 Drivers & drivers,
+                                 std::array<int, 2> signalPipe,
+                                 const logging::last_log_error_supplier_t & last_log_error_supplier,
+                                 const logging::log_setup_supplier_t & log_setup_supplier,
+                                 capture::capture_process_event_listener_t & event_listener)
 {
     // Set to high priority
-    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), -19) == -1) {
+    if (setpriority(PRIO_PROCESS, syscall(__NR_gettid), high_priority) == -1) {
         LOG_DEBUG("setpriority() failed");
     }
 
@@ -329,11 +344,18 @@ int gator::capture::beginCaptureProcess(const ParserResult & result,
     // Handling the error at the send function call is much easier than trying to do anything intelligent in the sig handler
     signal(SIGPIPE, SIG_IGN);
 
+    // only enable when running in system-wide mode
+    bool enable_annotation_listener = result.mSystemWide;
+
     try {
         std::unique_ptr<OlyServerSocket> socketUds;
         std::unique_ptr<OlyServerSocket> socketTcp;
 
-        annotateListener.setup();
+        if (enable_annotation_listener) {
+            annotateListenerPtr = std::make_unique<AnnotateListener>();
+            annotateListenerPtr->setup();
+        }
+
         int pipefd[2];
         if (lib::pipe_cloexec(pipefd) != 0) {
             throw GatorException("Unable to set up annotate pipe");
@@ -341,9 +363,10 @@ int gator::capture::beginCaptureProcess(const ParserResult & result,
         gSessionData.mAnnotateStart = pipefd[1];
         if (!monitor.init()
 #ifdef TCP_ANNOTATIONS
-            || !monitor.add(annotateListener.getSockFd())
+            || ((annotateListenerPtr != nullptr) && !monitor.add(annotateListenerPtr->getSockFd()))
 #endif
-            || !monitor.add(annotateListener.getUdsFd()) || !monitor.add(pipefd[0]) || !monitor.add(signalPipe[0])) {
+            || ((annotateListenerPtr != nullptr) && !monitor.add(annotateListenerPtr->getUdsFd()))
+            || !monitor.add(pipefd[0]) || !monitor.add(signalPipe[0])) {
             throw GatorException("Monitor setup failed");
         }
 
@@ -381,7 +404,7 @@ int gator::capture::beginCaptureProcess(const ParserResult & result,
             }
         }
 
-        gatorReady();
+        event_listener.process_initialised();
 
         // Forever loop, can be exited via a signal or exception
         while (stateAndChildPid.state != State::EXIT) {
@@ -412,19 +435,21 @@ int gator::capture::beginCaptureProcess(const ParserResult & result,
                     udpListener.handle();
                 }
 #ifdef TCP_ANNOTATIONS
-                else if (events[i].data.fd == annotateListener.getSockFd()) {
-                    annotateListener.handleSock();
+                else if ((annotateListenerPtr != nullptr) && (events[i].data.fd == annotateListenerPtr->getSockFd())) {
+                    annotateListenerPtr->handleSock();
                 }
 #endif
-                else if (events[i].data.fd == annotateListener.getUdsFd()) {
-                    annotateListener.handleUds();
+                else if ((annotateListenerPtr != nullptr) && (events[i].data.fd == annotateListenerPtr->getUdsFd())) {
+                    annotateListenerPtr->handleUds();
                 }
                 else if (events[i].data.fd == pipefd[0]) {
                     uint64_t val;
                     if (read(pipefd[0], &val, sizeof(val)) != sizeof(val)) {
                         LOG_DEBUG("Reading annotate pipe failed");
                     }
-                    annotateListener.signal();
+                    if (annotateListenerPtr != nullptr) {
+                        annotateListenerPtr->signal();
+                    }
                 }
                 else if (events[i].data.fd == signalPipe[0]) {
                     int signum;
@@ -434,7 +459,20 @@ int gator::capture::beginCaptureProcess(const ParserResult & result,
                         ss << errno << ") " << strerror(errno);
                         throw GatorException(ss.str());
                     }
-                    stateAndChildPid = handleSignal(stateAndChildPid, drivers, signum);
+
+                    /* this is a horrible hack so that we don't have to implement an IPC mechanism between
+                     * Child.cpp (which is going to be removed soon) and the capture controller. We have
+                     * the child process send us a SIGUSR1 when the target app needs to be started so that
+                     * we can tell the controller process - which has the correct privileges - to do that
+                     * for us.
+                     */
+                    if (signum == SIGUSR1) {
+                        LOG_DEBUG("Got SIGUSR1 from Child. Notifying event listener.");
+                        event_listener.waiting_for_target();
+                    }
+                    else {
+                        stateAndChildPid = handleSignal(stateAndChildPid, drivers, signum);
+                    }
                 }
                 else {
                     // shouldn't really happen unless we forgot to handle a new item

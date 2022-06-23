@@ -1,4 +1,5 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+
 #define BUFFER_USE_SESSION_DATA
 
 #include "linux/perf/PerfSource.h"
@@ -19,7 +20,9 @@
 #include "linux/perf/PerfCpuOnlineMonitor.h"
 #include "linux/perf/PerfDriver.h"
 #include "linux/perf/PerfSyncThreadBuffer.h"
+#include "linux/perf/id_to_key_mapping_tracker.h"
 #include "linux/proc/ProcessChildren.h"
+#include "xml/PmuXML.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -37,54 +40,50 @@
 #define SCHED_RESET_ON_FORK 0x40000000
 #endif
 
-static constexpr auto MEGABYTES = 1024 * 1024;
-
-static PerfBuffer::Config createPerfBufferConfig()
+perf_ringbuffer_config_t PerfSource::createPerfBufferConfig()
 {
     return {
         static_cast<size_t>(gSessionData.mPageSize),
         static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0
                                 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
-                                : gSessionData.mTotalBufferSize * 1024 * 1024),
+                                : gSessionData.mTotalBufferSize * MEGABYTES),
         static_cast<size_t>(gSessionData.mPerfMmapSizeInPages > 0
                                 ? gSessionData.mPageSize * gSessionData.mPerfMmapSizeInPages
-                                : gSessionData.mTotalBufferSize * 1024 * 1024 * 64),
+                                : gSessionData.mTotalBufferSize * MEGABYTES * 64),
     };
 }
 
-PerfSource::PerfSource(PerfDriver & driver,
-                       sem_t & senderSem,
-                       std::function<void()> profilingStartedCallback,
-                       std::set<int> appTids,
-                       FtraceDriver & ftraceDriver,
-                       bool enableOnCommandExec,
-                       ICpuInfo & cpuInfo)
-    : mSummary(1024 * 1024, senderSem),
-      mMemoryBuffer(16 * 1024 * 1024, senderSem),
+PerfSource::PerfSource(
+    perf_event_group_activator_config_t const & configuration,
+    perf_groups_activator_state_t && state,
+    std::unique_ptr<PerfAttrsBuffer> && attrs_buffer,
+    sem_t & senderSem,
+    std::function<void()> profilingStartedCallback,
+    std::function<std::optional<uint64_t>(ISummaryConsumer &, std::function<uint64_t()>)> sendSummaryFn,
+    std::function<void(ISummaryConsumer &, int)> coreNameFn,
+    std::function<void(IPerfAttrsConsumer &, int)> readCountersFn,
+    std::set<int> appTids,
+    FtraceDriver & ftraceDriver,
+    bool enableOnCommandExec,
+    ICpuInfo & cpuInfo)
+    : mConfig(configuration.perfConfig),
+      mSummary(MEGABYTES, senderSem),
+      mMemoryBuffer(16 * MEGABYTES, senderSem),
       mPerfToMemoryBuffer(mMemoryBuffer, gSessionData.mOneShot),
       mCountersBuf(createPerfBufferConfig()),
-      mCountersGroup(driver.getConfig(),
-                     mCountersBuf.getDataBufferLength(),
-                     mCountersBuf.getAuxBufferLength(),
-                     // We disable periodic sampling if we have at least one EBS counter
-                     // it should probably be independent of EBS though
-                     gSessionData.mBacktraceDepth,
-                     gSessionData.mSampleRate,
-                     !gSessionData.mIsEBS,
-                     driver.getConfig().exclude_kernel || gSessionData.mExcludeKernelEvents,
-                     cpuInfo.getClusters(),
-                     cpuInfo.getClusterIds(),
-                     getTracepointId(driver.getTraceFsConstants(), SCHED_SWITCH)),
-
+      mCountersGroupState(std::move(state)),
+      mCountersGroup(configuration, mCountersGroupState),
       mAppTids(std::move(appTids)),
-      mDriver(driver),
       mSenderSem(senderSem),
+      mAttrsBuffer(std::move(attrs_buffer)),
+      mProcBuffer(gSessionData.mTotalBufferSize * MEGABYTES, mSenderSem),
       mProfilingStartedCallback(std::move(profilingStartedCallback)),
+      mSendSummaryFn(std::move(sendSummaryFn)),
+      mCoreNameFn(std::move(coreNameFn)),
+      mReadCountersFn(std::move(readCountersFn)),
       mFtraceDriver(ftraceDriver),
       mCpuInfo(cpuInfo)
 {
-    const PerfConfig & mConfig = mDriver.getConfig();
-
     if ((!mConfig.is_system_wide) && (!mConfig.has_attr_clockid_support)) {
         LOG_DEBUG("Tracing gatord as well as target application as no clock_id support");
         mAppTids.insert(getpid());
@@ -111,13 +110,6 @@ PerfSource::PerfSource(PerfDriver & driver,
 
 bool PerfSource::prepare()
 {
-    const PerfConfig & mConfig = mDriver.getConfig();
-
-    mAttrsBuffer = std::make_unique<PerfAttrsBuffer>(gSessionData.mTotalBufferSize * MEGABYTES, mSenderSem);
-    mProcBuffer = std::make_unique<PerfAttrsBuffer>(gSessionData.mTotalBufferSize * MEGABYTES, mSenderSem);
-
-    // Reread cpuinfo since cores may have changed since startup
-    mCpuInfo.updateIds(false);
 
     if (!mMonitor.init()) {
         LOG_DEBUG("monitor setup failed");
@@ -143,19 +135,8 @@ bool PerfSource::prepare()
         return false;
     }
 
-    if (mConfig.can_access_tracepoints && !mDriver.sendTracepointFormats(*mAttrsBuffer)) {
-        LOG_DEBUG("could not send tracepoint formats");
-        return false;
-    }
-
-    if (!mDriver.enable(mCountersGroup, *mAttrsBuffer)) {
-        LOG_DEBUG("perf setup failed, are you running Linux 3.4 or later?");
-        return false;
-    }
-
     // must do this after mDriver::enable because of the SPE check
-    mSyncThread =
-        PerfSyncThreadBuffer::create(mDriver.getConfig().has_attr_clockid_support, mCountersGroup.hasSPE(), mSenderSem);
+    mSyncThread = PerfSyncThreadBuffer::create(mConfig.has_attr_clockid_support, mCountersGroup.hasSPE(), mSenderSem);
 
     // online them later
     const OnlineEnabledState onlineEnabledState =
@@ -164,11 +145,12 @@ bool PerfSource::prepare()
 
     for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
         using Result = OnlineResult;
+        id_to_key_mapping_tracker_t wrapper {*mAttrsBuffer};
         const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
             cpu,
             mAppTids,
             onlineEnabledState,
-            *mAttrsBuffer, //
+            wrapper, //
             [this](int fd) -> bool { return mMonitor.add(fd); },
             [this](int fd, int cpu, bool hasAux) -> bool { return mCountersBuf.useFd(fd, cpu, hasAux); },
             &lnx::getChildTids);
@@ -199,7 +181,7 @@ bool PerfSource::prepare()
 std::optional<uint64_t> PerfSource::sendSummary()
 {
     // Send the summary right before the start so that the monotonic delta is close to the start time
-    auto montonicStart = mDriver.summary(mSummary, &getTime);
+    auto montonicStart = mSendSummaryFn(mSummary, &getTime);
     if (!montonicStart) {
         LOG_ERROR("PerfDriver::summary failed");
         handleException();
@@ -264,12 +246,12 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         // which is true at the time of writing (just the cpu freq)
         mAttrsBuffer->perfCounterHeader(currTime, mCpuInfo.getNumberOfCores());
         for (size_t cpu = 0; cpu < mCpuInfo.getNumberOfCores(); ++cpu) {
-            mDriver.read(*mAttrsBuffer, cpu);
+            mReadCountersFn(*mAttrsBuffer, cpu);
         }
         mAttrsBuffer->perfCounterFooter();
 
         if (!readProcSysDependencies(*mAttrsBuffer, &printb, &b1, mFtraceDriver)) {
-            if (mDriver.getConfig().is_system_wide) {
+            if (mConfig.is_system_wide) {
                 LOG_ERROR("readProcSysDependencies failed");
                 handleException();
             }
@@ -280,7 +262,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         mAttrsBuffer->flush();
 
         // Postpone reading kallsyms as on android adb gets too backed up and data is lost
-        procThreadArgs.mProcBuffer = mProcBuffer.get();
+        procThreadArgs.mProcBuffer = &mProcBuffer;
         procThreadArgs.mIsDone = false;
         if (pthread_create(&procThread, nullptr, procFunc, &procThreadArgs) != 0) {
             LOG_ERROR("pthread_create failed");
@@ -377,7 +359,7 @@ void PerfSource::run(std::uint64_t monotonicStart, std::function<void()> endSess
         if (!complete) {
             if (gSessionData.mOneShot
                 && ((mSummary.bytesAvailable() <= 0) || (mAttrsBuffer->bytesAvailable() <= 0)
-                    || (mProcBuffer->bytesAvailable() <= 0) || mPerfToMemoryBuffer.isFull())) {
+                    || (mProcBuffer.bytesAvailable() <= 0) || mPerfToMemoryBuffer.isFull())) {
                 LOG_DEBUG("One shot (perf)");
                 endSession();
             }
@@ -467,14 +449,17 @@ bool PerfSource::handleUEvent(const uint64_t currTime)
 
 bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
 {
+    bool ret;
+
     mAttrsBuffer->onlineCPU(currTime, cpu);
 
-    bool ret;
+    id_to_key_mapping_tracker_t wrapper {*mAttrsBuffer};
+
     const std::pair<OnlineResult, std::string> result = mCountersGroup.onlineCPU(
         cpu,
         mAppTids,
         OnlineEnabledState::ENABLE_NOW,
-        *mAttrsBuffer, //
+        wrapper, //
         [this](int fd) -> bool { return mMonitor.add(fd); },
         [this](int fd, int cpu, bool hasAux) -> bool { return mCountersBuf.useFd(fd, cpu, hasAux); },
         &lnx::getChildTids);
@@ -484,7 +469,7 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
             // This a bit fragile, we are assuming the driver will only write one counter per CPU
             // which is true at the time of writing (just the cpu freq)
             mAttrsBuffer->perfCounterHeader(currTime, 1);
-            mDriver.read(*mAttrsBuffer, cpu);
+            mReadCountersFn(*mAttrsBuffer, cpu);
             mAttrsBuffer->perfCounterFooter();
             // fall through
             /* no break */
@@ -499,7 +484,7 @@ bool PerfSource::handleCpuOnline(uint64_t currTime, unsigned cpu)
     mAttrsBuffer->flush();
 
     mCpuInfo.updateIds(true);
-    mDriver.coreName(mSummary, cpu);
+    mCoreNameFn(mSummary, cpu);
     mSummary.flush();
     return ret;
 }
@@ -529,7 +514,7 @@ bool PerfSource::write(ISender & sender)
 
     mSummary.write(sender);
     mAttrsBuffer->write(sender);
-    mProcBuffer->write(sender);
+    mProcBuffer.write(sender);
     mPerfToMemoryBuffer.write(sender);
 
     // This is racey, unless we assume no one posts reader sem before profiling started

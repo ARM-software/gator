@@ -1,16 +1,18 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "IBufferControl.h"
-#include "IRawFrameBuilder.h"
 #ifdef BUFFER_USE_SESSION_DATA
 #include "SessionData.h"
 #endif
 
+#include "IBufferControl.h"
+#include "IRawFrameBuilder.h"
+
 #include <atomic>
 #include <cstdint>
+#include <string_view>
 
 #include <semaphore.h>
 
@@ -32,24 +34,28 @@ public:
 
     bool write(ISender & sender) override;
 
-    int bytesAvailable() const override;
-    bool isFull() const override { return bytesAvailable() <= 0; }
-    int contiguousSpaceAvailable() const;
-    int size() const { return mSize; }
+    [[nodiscard]] int bytesAvailable() const override;
+    [[nodiscard]] bool isFull() const override { return bytesAvailable() <= 0; }
+    [[nodiscard]] int contiguousSpaceAvailable() const;
+    [[nodiscard]] int size() const { return mSize; }
 
     void setDone() override;
 
     // Prefer a new member to using these functions if possible
-    char * getWritePos() { return mBuf + mWritePos; }
+    [[nodiscard]] char * getWritePos() { return mBuf + mWritePos; }
 
-    int getWriteIndex() const override;
+    [[nodiscard]] int getWriteIndex() const override;
     void advanceWrite(int bytes) override;
     void writeDirect(int index, const void * data, std::size_t count) override;
+
+    // bring in the unsigned aliases
+    using IRawFrameBuilder::packInt;
+    using IRawFrameBuilder::packInt64;
 
     int packInt(int32_t x) override;
     int packInt64(int64_t x) override;
     void writeBytes(const void * data, std::size_t count) override;
-    void writeString(const char * str) override;
+    void writeString(std::string_view str) override;
 
     void beginFrame(FrameType frameType) override;
     void abortFrame() override;
@@ -59,7 +65,7 @@ public:
     void flush() override;
 
     void waitForSpace(int bytes) override;
-    bool supportsWriteOfSize(int bytes) const override;
+    [[nodiscard]] bool supportsWriteOfSize(int bytes) const override;
 
 private:
     char * const mBuf;

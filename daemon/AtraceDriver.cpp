@@ -1,10 +1,11 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #include "AtraceDriver.h"
 
 #include "FtraceDriver.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "lib/String.h"
 
 #include <unistd.h>
 
@@ -93,13 +94,10 @@ void AtraceDriver::setAtrace(const int flags)
         handleException();
     }
     else if (pid == 0) {
-        char buf[1 << 10];
-        snprintf(buf,
-                 sizeof(buf),
-                 "setprop debug.atrace.tags.enableflags %i; "
-                 "CLASSPATH=%s app_process /system/bin Notify",
-                 flags,
-                 mNotifyPath);
+        lib::printf_str_t<1 << 10> buf {"setprop debug.atrace.tags.enableflags %i; "
+                                        "CLASSPATH=%s app_process /system/bin Notify",
+                                        flags,
+                                        mNotifyPath};
         execlp("sh", "sh", "-c", buf, nullptr);
         exit(0);
     }

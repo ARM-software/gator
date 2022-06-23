@@ -1,17 +1,22 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfBuffer.h"
 
 #include "BufferUtils.h"
 #include "ISender.h"
 #include "Logging.h"
+#include "PerfUtils.h"
 #include "Protocol.h"
 #include "k/perf_event.h"
+#include "lib/String.h"
 #include "lib/Syscall.h"
+#include "lib/Utils.h"
 
+#include <array>
 #include <cerrno>
 #include <cinttypes>
 #include <climits>
+#include <cstdio>
 #include <cstring>
 
 #include <sys/ioctl.h>
@@ -24,36 +29,38 @@ static T readOnceAtomicRelaxed(const T & val)
     return __atomic_load_n(static_cast<const volatile T *>(&val), __ATOMIC_RELAXED);
 }
 
-void validate(const PerfBuffer::Config & config)
+void validate(const perf_ringbuffer_config_t & config)
 {
     if (((config.pageSize - 1) & config.pageSize) != 0) {
-        LOG_ERROR("PerfBuffer::Config.pageSize (%zu) must be a power of 2", config.pageSize);
+        LOG_ERROR("perf_ringbuffer_config_t.pageSize (%zu) must be a power of 2", config.pageSize);
         handleException();
     }
     if (((config.dataBufferSize - 1) & config.dataBufferSize) != 0) {
-        LOG_ERROR("PerfBuffer::Config.dataBufferSize (%zu) must be a power of 2", config.dataBufferSize);
+        LOG_ERROR("perf_ringbuffer_config_t.dataBufferSize (%zu) must be a power of 2", config.dataBufferSize);
         handleException();
     }
     if (config.dataBufferSize < config.pageSize) {
-        LOG_ERROR("PerfBuffer::Config.dataBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)",
+        LOG_ERROR("perf_ringbuffer_config_t.dataBufferSize (%zu) must be a multiple of "
+                  "perf_ringbuffer_config_t.pageSize (%zu)",
                   config.dataBufferSize,
                   config.pageSize);
         handleException();
     }
 
     if (((config.auxBufferSize - 1) & config.auxBufferSize) != 0) {
-        LOG_ERROR("PerfBuffer::Config.auxBufferSize (%zu) must be a power of 2", config.auxBufferSize);
+        LOG_ERROR("perf_ringbuffer_config_t.auxBufferSize (%zu) must be a power of 2", config.auxBufferSize);
         handleException();
     }
     if ((config.auxBufferSize < config.pageSize) && (config.auxBufferSize != 0)) {
-        LOG_ERROR("PerfBuffer::Config.auxBufferSize (%zu) must be a multiple of PerfBuffer::Config.pageSize (%zu)",
+        LOG_ERROR("perf_ringbuffer_config_t.auxBufferSize (%zu) must be a multiple of "
+                  "perf_ringbuffer_config_t.pageSize (%zu)",
                   config.auxBufferSize,
                   config.pageSize);
         handleException();
     }
 }
 
-static std::size_t getDataMMapLength(const PerfBuffer::Config & config)
+static std::size_t getDataMMapLength(const perf_ringbuffer_config_t & config)
 {
     return config.pageSize + config.dataBufferSize;
 }
@@ -68,7 +75,7 @@ std::size_t PerfBuffer::getAuxBufferLength() const
     return mConfig.auxBufferSize;
 }
 
-PerfBuffer::PerfBuffer(PerfBuffer::Config config) : mConfig(config)
+PerfBuffer::PerfBuffer(perf_ringbuffer_config_t config) : mConfig(config)
 {
     validate(mConfig);
 }
@@ -83,6 +90,8 @@ PerfBuffer::~PerfBuffer()
     }
 }
 
+//TODO remove additional debug logging
+//NOLINTNEXTLINE( readability-function-cognitive-complexity)
 bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
 {
     auto mmap = [this, cpu](size_t length, size_t offset, int fd) {
@@ -96,6 +105,7 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
                       length,
                       offset);
             if ((errno == ENOMEM) || ((errno == EPERM) && (geteuid() != 0))) {
+                //NOLINTNEXTLINE(concurrency-mt-unsafe)
                 LOG_ERROR("Could not mmap perf buffer on cpu %d, '%s' (errno: %d) returned.\n"
                           "This may be caused by too small limit in /proc/sys/kernel/perf_event_mlock_kb\n"
                           "Try again with a smaller value of --mmap-pages\n"
@@ -105,7 +115,26 @@ bool PerfBuffer::useFd(const int fd, int cpu, bool collectAuxTrace)
                           strerror(errno),
                           errno,
                           mConfig.dataBufferSize / mConfig.pageSize);
+                const std::size_t max_size = 128;
+                lib::printf_str_t<max_size> buffer {"/sys/devices/system/cpu/cpu%u/online", cpu};
+                int64_t online_status = 0;
+                lib::readInt64FromFile(buffer, online_status);
+                LOG_DEBUG("Online status for cpu%d is %" PRId64, cpu, online_status);
+
+                std::optional<std::int64_t> fileValue = perf_utils::readPerfEventMlockKb();
+                if (fileValue.has_value()) {
+                    LOG_DEBUG(" Perf MlockKb Value is %" PRId64, fileValue.value());
+                }
+                else {
+                    LOG_DEBUG("reading Perf MlockKb returned null");
+                }
             }
+            else {
+                LOG_DEBUG("mmap failed  for a different reason");
+            }
+        }
+        else {
+            LOG_DEBUG("mmap passed for fd %i (mmapLength=%zu, offset=%zu)", fd, length, offset);
         }
         return buf;
     };

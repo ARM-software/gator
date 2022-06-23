@@ -15,7 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
-namespace gator::capture::internal {
+namespace capture::internal {
 
     constexpr int UDP_REQ_PORT = 30001;
 
@@ -130,4 +130,4 @@ namespace gator::capture::internal {
         int mReq;
     };
 
-} // namespace gator::capture::internal
+} // namespace capture::internal

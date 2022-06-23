@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXML.h"
 
@@ -8,19 +8,21 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 #include "lib/File.h"
+#include "lib/String.h"
 #include "xml/EventsXMLProcessor.h"
 #include "xml/PmuXML.h"
 
+#include <string_view>
+
 namespace events_xml {
+    namespace {
+#include "events_xml.h"
+    }
 
     std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getStaticTree(lib::Span<const GatorCpu> clusters,
                                                                         lib::Span<const UncorePmu> uncores)
     {
-#include "events_xml.h" // defines and initializes char events_xml[] and int events_xml_len
         mxml_unique_ptr mainXml = makeMxmlUniquePtr(nullptr);
-
-        // Avoid unused variable warning
-        (void) events_xml_len;
 
         // Load the provided or default events xml
         if (gSessionData.mEventsXMLPath != nullptr) {
@@ -35,8 +37,7 @@ namespace events_xml {
         }
         if (mainXml == nullptr) {
             LOG_DEBUG("Unable to locate events.xml, using default");
-            mainXml = makeMxmlUniquePtr(
-                mxmlLoadString(nullptr, reinterpret_cast<const char *>(events_xml), MXML_NO_CALLBACK));
+            mainXml = makeMxmlUniquePtr(mxmlLoadString(nullptr, DEFAULT_EVENTS_XML.data(), MXML_NO_CALLBACK));
         }
 
         // Append additional events XML
@@ -128,13 +129,11 @@ namespace events_xml {
                lib::Span<const GatorCpu> clusters,
                lib::Span<const UncorePmu> uncores)
     {
-        char file[PATH_MAX];
-
         // Set full path
-        snprintf(file, PATH_MAX, "%s/events.xml", path);
+        lib::printf_str_t<PATH_MAX> file {"%s/events.xml", path};
 
         if (writeToDisk(file, getDynamicXML(drivers, clusters, uncores).get()) < 0) {
-            LOG_ERROR("Error writing %s\nPlease verify the path.", file);
+            LOG_ERROR("Error writing %s\nPlease verify the path.", file.c_str());
             handleException();
         }
     }

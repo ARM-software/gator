@@ -53,7 +53,7 @@ namespace {
 
     template<std::size_t ARR_SIZE>
     bool executeCommand(const std::array<const char *, ARR_SIZE> & cmd,
-                        const std::function<void(int,int)> & readFunction)
+                        const std::function<void(int, int)> & readFunction)
     {
         const lib::PopenResult result = lib::popen(cmd);
 
@@ -76,20 +76,25 @@ namespace {
     bool executeCommandAndReadOutput(const std::array<const char *, ARR_SIZE> & cmd,
                                      std::array<char, BUF_SIZE> & output)
     {
-        return executeCommand(cmd, [&]([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) { lib::readAll(outfd, output.data(), BUF_SIZE); });
+        return executeCommand(cmd, [&]([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) {
+            lib::readAll(outfd, output.data(), BUF_SIZE);
+        });
     }
 
     template<std::size_t ARR_SIZE, std::size_t BUF_SIZE>
     bool executeCommandAndReadErrors(const std::array<const char *, ARR_SIZE> & cmd,
                                      std::array<char, BUF_SIZE> & output)
     {
-        return executeCommand(cmd, [&]([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) { lib::readAll(errfd, output.data(), BUF_SIZE); });
+        return executeCommand(cmd, [&]([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) {
+            lib::readAll(errfd, output.data(), BUF_SIZE);
+        });
     }
 
     template<std::size_t ARR_SIZE>
     bool executeCommandSuccessfully(const std::array<const char *, ARR_SIZE> & cmd)
     {
-        return executeCommand(cmd, []([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) { }); // Do nothing for the read action
+        return executeCommand(cmd, []([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) {
+        }); // Do nothing for the read action
     }
 
     bool hasPackage(const std::string & pkg)
@@ -140,16 +145,16 @@ bool AndroidActivityManager::start()
     std::string pkgActName = pkgName + "/" + actName;
     std::array<const char *, 4> cmd = {AM.data(), START_ACT.data(), pkgActName.c_str(), nullptr};
 
-    std::array<char, STARTACT_ERR_BUF_SIZE> errorBuffer{};
+    std::array<char, STARTACT_ERR_BUF_SIZE> errorBuffer {};
     auto success = executeCommandAndReadErrors(cmd, errorBuffer);
     errorBuffer[STARTACT_ERR_BUF_SIZE - 1] = '\0';
 
     // am start-activity always exits with a 0 exit code.
     // "Error type 3" is the way am tells eclipse that the app couldn't be started so check for this string instead.
-    if (strstr(errorBuffer.data(), "Error type 3") != nullptr)
-    {
+    if (strstr(errorBuffer.data(), "Error type 3") != nullptr) {
         LOG_ERROR("Error starting the specified application(%s). "
-            "Make sure the --android-pkg and --android-activity arguments are correct.", pkgActName.c_str());
+                  "Make sure the --android-pkg and --android-activity arguments are correct.",
+                  pkgActName.c_str());
         return false;
     }
     return success;
