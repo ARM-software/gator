@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "DynBuf.h"
 
@@ -30,6 +30,14 @@ int DynBuf::resize(const size_t minCapacity)
         return -errno;
     }
 
+    return 0;
+}
+
+int DynBuf::ensureCapacity(size_t minCapacity)
+{
+    if (capacity < minCapacity) {
+        return resize(minCapacity);
+    }
     return 0;
 }
 

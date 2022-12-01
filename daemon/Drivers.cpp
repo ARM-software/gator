@@ -47,8 +47,8 @@ Drivers::Drivers(bool systemWide,
                      mPrimarySourceProvider->useFtraceDriverForCpuFrequency(),
                      mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
       mAtraceDriver {mFtraceDriver},
-      mTtraceDriver {mFtraceDriver}
-
+      mTtraceDriver {mFtraceDriver},
+      mPerfettoDriver {mMaliHwCntrs.getSupportedDeviceFamilyName()}
 {
     all.push_back(&mPrimarySourceProvider->getPrimaryDriver());
     for (PolledDriver * driver : mPrimarySourceProvider->getAdditionalPolledDrivers()) {
@@ -68,6 +68,7 @@ Drivers::Drivers(bool systemWide,
     all.push_back(&mExternalDriver);
     all.push_back(&mCcnDriver);
     all.push_back(&mArmnnDriver);
+    all.push_back(&mPerfettoDriver);
 
     auto staticEventsXml = events_xml::getStaticTree(mPrimarySourceProvider->getCpuInfo().getClusters(),
                                                      mPrimarySourceProvider->getDetectedUncorePmus());

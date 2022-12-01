@@ -24,6 +24,9 @@ namespace agents {
     /** ID string used to identify the external annotation agent */
     constexpr std::string_view agent_id_perf {"agent-perf"};
 
+    /** ID string used to identify the perfetto agent */
+    constexpr std::string_view agent_id_perfetto {"agent-perfetto"};
+
     /**
      * An interface for some class that will spawn a gatord agent process
      */

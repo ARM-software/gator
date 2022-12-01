@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "ISender.h"
 #include "Protocol.h"
 #include "Time.h"
 #include "agents/perf/events/types.hpp"
@@ -16,6 +17,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -24,6 +26,16 @@
 #include <sys/types.h>
 
 namespace apc {
+
+    namespace detail {
+        inline std::string_view trim_to_max(std::string_view str)
+        {
+            constexpr std::size_t space_for_header = 64U;
+            str = str.substr(0, ISender::MAX_RESPONSE_LENGTH - space_for_header);
+            str = str.substr(0, str.rfind('\n'));
+            return str;
+        }
+    }
 
     class misc_apc_frame_ipc_sender_t {
     public:
@@ -82,6 +94,13 @@ namespace apc {
         {
             using namespace async::continuations;
 
+            runtime_assert(maps.size() <= ISender::MAX_RESPONSE_LENGTH, "too large maps file received");
+
+            // limit size
+            if (maps.size() >= ISender::MAX_RESPONSE_LENGTH) {
+                maps = detail::trim_to_max(maps);
+            }
+
             return async_initiate_explicit<void(boost::system::error_code)>(
                 [ipc_sink = ipc_sink, bytes = apc::make_maps_frame(pid, tid, maps)](auto && sc) mutable {
                     submit(ipc_sink->async_send_message(ipc::msg_apc_frame_data_t {std::move(bytes)},
@@ -131,6 +150,13 @@ namespace apc {
         auto async_send_kallsyms_frame(std::string_view kallsyms, CompletionToken && token)
         {
             using namespace async::continuations;
+
+            runtime_assert(kallsyms.size() <= ISender::MAX_RESPONSE_LENGTH, "too large kallsyms received");
+
+            // limit size
+            if (kallsyms.size() >= ISender::MAX_RESPONSE_LENGTH) {
+                kallsyms = detail::trim_to_max(kallsyms);
+            }
 
             return async_initiate_explicit<void(boost::system::error_code)>(
                 [ipc_sink = ipc_sink, bytes = apc::make_kallsyms_frame(kallsyms)](auto && sc) mutable {

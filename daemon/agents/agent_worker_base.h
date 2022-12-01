@@ -157,6 +157,22 @@ namespace agents {
             }
         }
 
+        virtual void async_send_message(
+            ipc::all_message_types_variant_t message,
+            boost::asio::io_context & io_context,
+            async::continuations::stored_continuation_t<boost::system::error_code> sc) override
+        {
+            std::visit(
+                [&](auto && msg) {
+                    sink().async_send_message( //
+                        std::move(msg),
+                        [&io_context, sc = std::move(sc)](const auto & ec, const auto & /*msg*/) mutable {
+                            resume_continuation(io_context, std::move(sc), ec);
+                        });
+                },
+                std::move(message));
+        }
+
     private:
         using launched_notification_t = async::continuations::stored_continuation_t<bool>;
 

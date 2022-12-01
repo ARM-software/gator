@@ -14,6 +14,7 @@
 #include "SessionData.h"
 #include "StreamlineSetupLoop.h"
 #include "agents/spawn_agent.h"
+#include "android/AndroidActivityManager.h"
 #include "capture/internal/UdpListener.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Process.h"
@@ -218,6 +219,30 @@ namespace {
         client.closeSocket();
     }
 
+    std::array<std::unique_ptr<agents::i_agent_spawner_t>, 2> create_spawners()
+    {
+        auto high_privilege_spawner = std::make_unique<agents::simple_agent_spawner_t>();
+        std::unique_ptr<agents::i_agent_spawner_t> low_privilege_spawner {};
+
+        // If running as root, never use run-as, just fork directly
+        const auto is_root = lib::geteuid() == 0;
+        if (!is_root && !gSessionData.mSystemWide && (gSessionData.mAndroidPackage != nullptr)) {
+            low_privilege_spawner = std::make_unique<agents::android_pkg_agent_spawner_t>(gSessionData.mAndroidPackage);
+        }
+        else {
+            // If a package has been specified, check that it exists (error logging comes from AndroidActivityManager).
+            // This is done as a part of android_pkg_agent_spawner_t's construction so doesn't need to be specified
+            // above
+            if (!gSessionData.mSystemWide && (gSessionData.mAndroidPackage != nullptr)
+                && !AndroidActivityManager::has_package(gSessionData.mAndroidPackage)) {
+                handleException();
+            }
+            low_privilege_spawner = std::make_unique<agents::simple_agent_spawner_t>();
+        }
+
+        return {std::move(high_privilege_spawner), std::move(low_privilege_spawner)};
+    }
+
     StateAndPid handleClient(StateAndPid currentStateAndChildPid,
                              Drivers & drivers,
                              OlyServerSocket & sock,
@@ -263,17 +288,11 @@ namespace {
             monitor.close();
             annotateListenerPtr.reset();
 
-            // create the agent process spawner
-            std::unique_ptr<agents::i_agent_spawner_t> spawner {};
+            // create the agent process spawners
+            auto [high_privilege_spawner, low_privilege_spawner] = create_spawners();
 
-            if ((!gSessionData.mSystemWide) && (gSessionData.mAndroidPackage != nullptr)) {
-                spawner = std::make_unique<agents::android_pkg_agent_spawner_t>(gSessionData.mAndroidPackage);
-            }
-            else {
-                spawner = std::make_unique<agents::simple_agent_spawner_t>();
-            }
-
-            auto child = Child::createLive(*spawner,
+            auto child = Child::createLive(*high_privilege_spawner,
+                                           *low_privilege_spawner,
                                            drivers,
                                            client,
                                            event_listener,
@@ -281,8 +300,10 @@ namespace {
                                            std::move(log_setup_supplier));
             child->run();
             child.reset();
-            spawner.reset(); // the dtor may perform some necessary cleanup
+            low_privilege_spawner.reset(); // the dtor may perform some necessary cleanup
+            high_privilege_spawner.reset();
 
+            // NOLINTNEXTLINE(concurrency-mt-unsafe)
             exit(0);
         }
         else {
@@ -319,17 +340,11 @@ namespace {
             monitor.close();
             annotateListenerPtr.reset();
 
-            // create the agent process spawner
-            std::unique_ptr<agents::i_agent_spawner_t> spawner {};
+            // create the agent process spawners
+            auto [high_privilege_spawner, low_privilege_spawner] = create_spawners();
 
-            if ((!gSessionData.mSystemWide) && (gSessionData.mAndroidPackage != nullptr)) {
-                spawner = std::make_unique<agents::android_pkg_agent_spawner_t>(gSessionData.mAndroidPackage);
-            }
-            else {
-                spawner = std::make_unique<agents::simple_agent_spawner_t>();
-            }
-
-            auto child = Child::createLocal(*spawner,
+            auto child = Child::createLocal(*high_privilege_spawner,
+                                            *low_privilege_spawner,
                                             drivers,
                                             config,
                                             event_listener,
@@ -339,7 +354,12 @@ namespace {
             LOG_DEBUG("gator-child finished running");
             child.reset();
 
+            low_privilege_spawner.reset(); // the dtor may perform some necessary cleanup
+            high_privilege_spawner.reset();
+
             LOG_DEBUG("gator-child exiting");
+
+            // NOLINTNEXTLINE(concurrency-mt-unsafe)
             exit(0);
         }
         else {

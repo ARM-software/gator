@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -44,7 +44,13 @@ public:
      */
     static std::unique_ptr<IAndroidActivityManager> create(const std::string & pkg, const std::string & activity);
 
-    virtual ~AndroidActivityManager() = default;
+    /**
+     * Returns true if @a pkg is installed on the target device.
+     *
+     * @param pkg Package name to query
+     * @return True if installed
+     */
+    static bool has_package(const std::string & pkg);
 
     /**
      * Starts the activity (non-blocking)

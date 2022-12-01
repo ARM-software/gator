@@ -239,13 +239,19 @@ std::unique_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
     auto source = std::make_unique<agents::perf::perf_source_adapter_t>(
         senderSem,
         sender,
-        [wait_state](bool success) {
+        [wait_state, &agent_workers_process](bool success, std::vector<pid_t> monitored_pids) {
             LOG_DEBUG("Received agent-ready notification, success=%u", success);
             {
                 auto lock = std::unique_lock(wait_state->ready_mutex);
                 wait_state->ready_agent = success;
             }
             wait_state->condition.notify_one();
+
+            if (success) {
+                agent_workers_process.async_broadcast_when_ready(ipc::msg_monitored_pids_t {std::move(monitored_pids)},
+                                                                 async::continuations::use_continuation) //
+                    | DETACH_LOG_ERROR("Monitored PID broadcast");
+            }
         },
         std::move(exec_target_app_callback),
         std::move(profiling_started_callback));

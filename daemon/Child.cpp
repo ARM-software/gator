@@ -21,12 +21,16 @@
 #include "SessionData.h"
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
+#include "agents/perfetto/perfetto_driver.h"
+#include "agents/spawn_agent.h"
 #include "armnn/ArmNNSource.h"
 #include "capture/CaptureProcess.h"
+#include "capture/Environment.h"
 #include "lib/Assert.h"
 #include "lib/FsUtils.h"
 #include "lib/WaitForProcessPoller.h"
 #include "lib/Waiter.h"
+#include "lib/perfetto_utils.h"
 #include "logging/global_log.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 #include "xml/EventsXML.h"
@@ -37,6 +41,8 @@
 #include <iostream>
 #include <thread>
 #include <utility>
+
+#include <boost/asio/detached.hpp>
 
 #include <sys/eventfd.h>
 #include <sys/prctl.h>
@@ -69,14 +75,16 @@ void handleException()
     _exit(EXCEPTION_EXIT_CODE);
 }
 
-std::unique_ptr<Child> Child::createLocal(agents::i_agent_spawner_t & spawner,
+std::unique_ptr<Child> Child::createLocal(agents::i_agent_spawner_t & hi_priv_spawner,
+                                          agents::i_agent_spawner_t & lo_priv_spawner,
                                           Drivers & drivers,
                                           const Child::Config & config,
                                           capture::capture_process_event_listener_t & event_listener,
                                           logging::last_log_error_supplier_t last_error_supplier,
                                           logging::log_setup_supplier_t log_setup_supplier)
 {
-    return std::unique_ptr<Child>(new Child(spawner,
+    return std::unique_ptr<Child>(new Child(hi_priv_spawner,
+                                            lo_priv_spawner,
                                             drivers,
                                             nullptr,
                                             config,
@@ -85,14 +93,16 @@ std::unique_ptr<Child> Child::createLocal(agents::i_agent_spawner_t & spawner,
                                             std::move(log_setup_supplier)));
 }
 
-std::unique_ptr<Child> Child::createLive(agents::i_agent_spawner_t & spawner,
+std::unique_ptr<Child> Child::createLive(agents::i_agent_spawner_t & hi_priv_spawner,
+                                         agents::i_agent_spawner_t & lo_priv_spawner,
                                          Drivers & drivers,
                                          OlySocket & sock,
                                          capture::capture_process_event_listener_t & event_listener,
                                          logging::last_log_error_supplier_t last_error_supplier,
                                          logging::log_setup_supplier_t log_setup_supplier)
 {
-    return std::unique_ptr<Child>(new Child(spawner,
+    return std::unique_ptr<Child>(new Child(hi_priv_spawner,
+                                            lo_priv_spawner,
                                             drivers,
                                             &sock,
                                             {},
@@ -118,7 +128,8 @@ void Child::signalHandler(int signum)
     singleton->endSession(signum);
 }
 
-Child::Child(agents::i_agent_spawner_t & spawner,
+Child::Child(agents::i_agent_spawner_t & hi_priv_spawner,
+             agents::i_agent_spawner_t & lo_priv_spawner,
              Drivers & drivers,
              OlySocket * sock,
              Child::Config config,
@@ -136,7 +147,7 @@ Child::Child(agents::i_agent_spawner_t & spawner,
       config(std::move(config)),
       last_error_supplier(std::move(last_error_supplier)),
       log_setup_supplier(std::move(log_setup_supplier)),
-      agent_workers_process(*this, spawner)
+      agent_workers_process(*this, hi_priv_spawner, lo_priv_spawner)
 {
     const int fd = eventfd(0, EFD_CLOEXEC);
     if (fd == -1) {
@@ -226,6 +237,7 @@ void Child::run()
             counter.getDriver()->setupCounter(counter);
         }
     }
+
     std::vector<CapturedSpe> capturedSpes;
     for (const auto & speConfig : speConfigs) {
         bool claimed = false;
@@ -285,13 +297,68 @@ void Child::run()
     };
 
     lib::Waiter waitTillStart;
-    lib::Waiter waitForAgents;
+    lib::Waiter waitForExternalSourceAgent;
+    lib::Waiter waitForPerfettoAgent;
 
     auto startedCallback = [&]() {
         LOG_DEBUG("Received start capture callback");
         waitTillStart.disable();
     };
 
+    bool enablePerfettoAgent = drivers.getPerfettoDriver().perfettoEnabled();
+
+    // Initialize ftrace source before child as it's slow and depends on nothing else
+    // If initialized later, us gator with ftrace has time sync issues
+    // Must be initialized before senderThread is started as senderThread checks externalSource
+    if (!addSource(createExternalSource(senderSem, drivers),
+                   [this, &waitForExternalSourceAgent, &waitForPerfettoAgent, enablePerfettoAgent](auto & source) {
+                       this->agent_workers_process.async_add_external_source(
+                           source,
+                           [&waitForExternalSourceAgent](bool success) {
+                               waitForExternalSourceAgent.disable();
+                               if (!success) {
+                                   handleException();
+                               }
+                               else {
+                                   LOG_DEBUG("Started ext_source agent");
+                               }
+                           });
+#if defined(ANDROID) || defined(__ANDROID__)
+                       if (enablePerfettoAgent) {
+                           this->agent_workers_process.async_add_perfetto_source(
+                               source,
+                               [&waitForPerfettoAgent](bool success) {
+                                   waitForPerfettoAgent.disable();
+                                   if (!success) {
+                                       LOG_ERROR("Failed to start perfetto agent");
+                                       handleException();
+                                   }
+                                   else {
+                                       LOG_DEBUG("Started perfetto agent");
+                                   }
+                               });
+                       }
+                       else {
+                           waitForPerfettoAgent.disable();
+                       }
+#else
+                       (void) enablePerfettoAgent;
+                       waitForPerfettoAgent.disable();
+#endif
+                   })) {
+        LOG_ERROR("Unable to prepare external source for capture");
+        handleException();
+    }
+
+    // wait for the ext agent to start
+    if (!sessionEnded) {
+        LOG_DEBUG("Waiting for agents to start");
+        waitForExternalSourceAgent.wait();
+        waitForPerfettoAgent.wait();
+        LOG_DEBUG("Waiting for agents complete");
+    }
+
+    // create the primary source last as it will launch the process, which may lead to a race receiving external messages
     auto newPrimarySource = primarySourceProvider.createPrimarySource(
         senderSem,
         *sender,
@@ -309,31 +376,6 @@ void Child::run()
 
     auto & primarySource = *newPrimarySource;
     addSource(std::move(newPrimarySource));
-
-    // Initialize ftrace source before child as it's slow and depends on nothing else
-    // If initialized later, us gator with ftrace has time sync issues
-    // Must be initialized before senderThread is started as senderThread checks externalSource
-    if (!addSource(createExternalSource(senderSem, drivers), [this, &waitForAgents](auto & source) {
-            this->agent_workers_process.async_add_external_source(source, [&waitForAgents](bool success) {
-                waitForAgents.disable();
-                if (!success) {
-                    handleException();
-                }
-                else {
-                    LOG_DEBUG("Started ext_source agent");
-                }
-            });
-        })) {
-        LOG_ERROR("Unable to prepare external source for capture");
-        handleException();
-    }
-
-    // wait for the ext agent to start
-    if (!sessionEnded) {
-        LOG_DEBUG("Waiting for agent to start");
-        waitForAgents.wait();
-        LOG_DEBUG("Waiting for agent complete");
-    }
 
     // initialize midgard hardware counters
     if (drivers.getMaliHwCntrs().countersEnabled()) {
@@ -518,9 +560,9 @@ void Child::durationThreadEntryPoint(const lib::Waiter & waitTillStart, const li
 namespace {
     class StreamlineCommandHandler : public IStreamlineCommandHandler {
     public:
-        StreamlineCommandHandler(Sender & sender) : sender(sender) {}
+        explicit StreamlineCommandHandler(Sender & sender) : sender(sender) {}
 
-        State handleRequest(char *) override
+        State handleRequest(char * /* unused */) override
         {
             LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
             return State::PROCESS_COMMANDS;

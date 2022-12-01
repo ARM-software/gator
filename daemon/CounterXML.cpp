@@ -44,6 +44,17 @@ static mxml_node_t * getTree(bool supportsMultiEbs,
     auto setup_message = log_setup_supplier();
     mxml_node_t * setup = mxmlNewElement(counters, "setup_warnings");
     mxmlNewText(setup, 0, setup_message.c_str());
+    {
+        std::ostringstream buffer {};
+        for (auto const * driver : drivers) {
+            auto warnings = driver->get_other_warnings();
+            for (auto const & warning : warnings) {
+                buffer << warning << "|" << std::endl;
+            }
+        }
+        auto * warning_element = mxmlNewElement(counters, "other_warnings");
+        mxmlNewText(warning_element, 0, buffer.str().c_str());
+    }
 
     // always send the cluster information; even on devices where not all the information is available.
     for (size_t cluster = 0; cluster < cpuInfo.getClusters().size(); ++cluster) {

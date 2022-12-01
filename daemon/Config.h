@@ -23,10 +23,6 @@
 #define CONFIG_SUPPORT_PERF 1
 #endif
 
-#ifndef GATORD_BUILD_ID
-#define GATORD_BUILD_ID "oss"
-#endif
-
 #ifndef GATOR_SELF_PROFILE
 #define GATOR_SELF_PROFILE 0
 #endif

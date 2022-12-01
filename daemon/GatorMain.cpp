@@ -9,6 +9,7 @@
 #include "GatorException.h"
 #include "ICpuInfo.h"
 #include "ParserResult.h"
+#include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "android/AndroidActivityManager.h"
 #include "android/AppGatorRunner.h"
@@ -304,7 +305,7 @@ int gator_main(int argc, char ** argv)
     }
     // Parse the command line parameters
     GatorCLIParser parser;
-    parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5);
+    parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5, gBuildId);
     const ParserResult & result = parser.result;
     if (result.mode == ParserResult::ExecutionMode::EXIT) {
         handleException();

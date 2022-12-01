@@ -14,6 +14,10 @@
 #include "lib/String.h"
 #include "lib/Syscall.h"
 
+#if defined(ANDROID) || defined(__ANDROID__)
+#include "agents/perfetto/perfetto_agent_worker.h"
+#endif
+
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -31,6 +35,13 @@
 #include <sys/prctl.h>
 
 namespace agents {
+
+    /**
+     * An enumeration that shows whether an agent process needs to be executed in a high
+     * privilege session (shell), or a low privilege session (Android app user).
+     */
+    enum class agent_privilege_level_t { high, low };
+
     /**
      * The io_context, worker threads and signal_set for the agent worker processes manager. Decoupled to allow the worker process manager to be unit tested.
      *
@@ -42,8 +53,10 @@ namespace agents {
     public:
         static constexpr std::size_t n_threads = 2;
 
-        agent_workers_process_context_t(Parent & parent, i_agent_spawner_t & spawner)
-            : worker_manager(io_context, parent, spawner)
+        agent_workers_process_context_t(Parent & parent,
+                                        i_agent_spawner_t & hi_priv_spawner,
+                                        i_agent_spawner_t & lo_priv_spawner)
+            : worker_manager(io_context, parent, hi_priv_spawner, lo_priv_spawner)
         {
             signal_set.add(SIGHUP);
             signal_set.add(SIGINT);
@@ -96,18 +109,54 @@ namespace agents {
         {
             return worker_manager.template async_add_agent<ext_source_agent_worker_t<ExternalSource>>(
                 process_monitor,
+                agent_privilege_level_t::low,
                 std::forward<CompletionToken>(token),
                 std::ref(external_souce));
         }
+#if defined(ANDROID) || defined(__ANDROID__)
+        /**
+         * Add the 'perfetto' agent worker
+         *
+         * @param perfetto_souce A reference to the Perfetto class which receives data from the agent process
+         * @param token Some completion token, called asynchronously once the agent is ready
+         * @return depends on completion token type
+         */
+        template<typename Perfetto, typename CompletionToken>
+        auto async_add_perfetto_source(Perfetto & perfetto_souce, CompletionToken && token)
+        {
+            return worker_manager.template async_add_agent<perfetto_agent_worker_t<Perfetto>>(
+                process_monitor,
+                agent_privilege_level_t::high,
+                std::forward<CompletionToken>(token),
+                std::ref(perfetto_souce));
+        }
+#endif
 
         template<typename EventHandler, typename ConfigMsg, typename CompletionToken>
         auto async_add_perf_source(EventHandler & event_handler, ConfigMsg && msg, CompletionToken && token)
         {
             return worker_manager.template async_add_agent<agents::perf::perf_agent_worker_t<EventHandler>>(
                 process_monitor,
+                agent_privilege_level_t::low,
                 std::forward<CompletionToken>(token),
                 std::ref(event_handler),
                 std::forward<ConfigMsg>(msg));
+        }
+
+        /** Broadcast a message to all agents, once they are ready.
+         *
+         * This will cache messages for not-ready agents, and send them when
+         * they become ready.
+         * @tparam MessageType IPC message type
+         * @tparam CompletionToken Continuation or callback to handle the result
+         * @param message Message to send
+         * @param token Completion token instance
+         * @return Continuation or void if the CompletionToken is a callback
+         */
+        template<typename MessageType, typename CompletionToken>
+        auto async_broadcast_when_ready(MessageType message, CompletionToken && token)
+        {
+            return worker_manager.async_broadcast_when_ready(message, token);
         }
 
     private:
@@ -173,12 +222,14 @@ namespace agents {
          *
          * @param io_context A reference to the io_context to use
          * @param parent A reference to the owning object that is to receive certain notifications
-         * @param spawner A reference to the agent spawner object, that will launch gatord binary as agent processes
+         * @param hi_priv_spawner A reference to the agent spawner object that will launch an agent process with a high privilege level.
+         * @param lo_priv_spawner A reference to the agent spawner object that will launch an agent process with a low privilege level.
          */
         agent_workers_process_manager_t(boost::asio::io_context & io_context,
                                         Parent & parent,
-                                        i_agent_spawner_t & spawner)
-            : parent(parent), spawner(spawner), io_context(io_context)
+                                        i_agent_spawner_t & hi_priv_spawner,
+                                        i_agent_spawner_t & lo_priv_spawner)
+            : parent(parent), hi_priv_spawner(hi_priv_spawner), lo_priv_spawner(lo_priv_spawner), io_context(io_context)
         {
         }
 
@@ -212,7 +263,7 @@ namespace agents {
                             else {
                                 LOG_DEBUG("Requesting all agents to shut down");
                                 for (auto & agent : agent_workers) {
-                                    agent.second->shutdown();
+                                    agent.second.worker->shutdown();
                                 }
                             }
                         }));
@@ -222,26 +273,34 @@ namespace agents {
          * Construct a new worker object for some newly spawned agent and add it to the set of workers
          *
          * @tparam WorkerType The type for the worker class that owns the shell-side of the IPC relationship
+         * @param privilege_level The privilege level under which to execute the agent process.
          * @param token The async completion token
          * @param args Any additional arguments that may be passed to the constructor of the worker type (any references must be wrapped in a std::reference_wrapper or similar)
          * @return Depends on the completion token type
          */
         template<typename WorkerType, typename ProcessMonitor, typename CompletionToken, typename... Args>
-        auto async_add_agent(ProcessMonitor & process_monitor, CompletionToken && token, Args &&... args)
+        auto async_add_agent(ProcessMonitor & process_monitor,
+                             agent_privilege_level_t privilege_level,
+                             CompletionToken && token,
+                             Args &&... args)
         {
             using namespace async::continuations;
 
             return async_initiate(
-                [this, &process_monitor](auto &&... args) mutable {
-                    LOG_DEBUG("Creating ext_source agent process");
+                [this, &process_monitor, privilege_level](auto &&... args) mutable {
+                    LOG_DEBUG("Creating agent process");
 
                     return start_with(std::move(args)...) //
                          | post_on(strand)                //
-                         | then([this, &process_monitor](auto &&... args) -> polymorphic_continuation_t<bool> {
+                         | then([this, &process_monitor, privilege_level](
+                                    auto &&... args) -> polymorphic_continuation_t<bool> {
                                // do nothing if already terminated
                                if (terminated) {
                                    return start_with(false);
                                }
+
+                               auto & spawner =
+                                   privilege_level == agent_privilege_level_t::high ? hi_priv_spawner : lo_priv_spawner;
 
                                // start the process, returning the wrapper instance
                                return async_spawn_agent_worker<WorkerType>(io_context,
@@ -271,7 +330,60 @@ namespace agents {
                 std::forward<Args>(args)...);
         }
 
+        /** Broadcast a message to all agents, once they are ready.
+         *
+         * This will cache messages for not-ready agents, and send them when
+         * they become ready.
+         * @tparam MessageType IPC message type
+         * @tparam CompletionToken Continuation or callback to handle the result
+         * @param message Message to send
+         * @param token Completion token instance
+         * @return Continuation or void if the CompletionToken is a callback
+         */
+        template<typename MessageType, typename CompletionToken>
+        auto async_broadcast_when_ready(MessageType message, CompletionToken && token)
+        {
+            using namespace async::continuations;
+            using message_type = std::decay_t<MessageType>;
+            static_assert(ipc::is_ipc_message_type_v<message_type>);
+
+            return async_initiate(
+                [this, message = std::move(message)]() {
+                    return start_on(strand) //
+                         | iterate(agent_workers,
+                                   [this, message = std::move(message)](auto it) -> polymorphic_continuation_t<> {
+                                       auto & agent = it->second;
+                                       if (agent.is_ready) {
+                                           LOG_DEBUG("Sending broadcast message (%s) to agent process %d",
+                                                     ipc::get_message_name(message).data(),
+                                                     it->first);
+                                           return agent.worker->async_send_message(message,
+                                                                                   strand.context(),
+                                                                                   use_continuation)
+                                                | map_error();
+                                       }
+
+                                       LOG_DEBUG(
+                                           "Agent process %d was not ready. Broadcast message [%s] will be cached",
+                                           it->first,
+                                           ipc::get_message_name(message).data());
+                                       agent.cached_messages.push_back(message);
+                                       return {};
+                                   });
+                },
+                std::forward<CompletionToken>(token));
+        }
+
+
     private:
+        struct agent_worker_state_t {
+            agent_worker_state_t(std::shared_ptr<i_agent_worker_t> w) : worker {std::move(w)}, is_ready {false} {}
+
+            std::shared_ptr<i_agent_worker_t> worker;
+            std::deque<ipc::all_message_types_variant_t> cached_messages;
+            bool is_ready;
+        };
+
         /** Monitor the agent process for termination */
         template<typename ProcessMonitor>
         static void observe_agent_pid(ProcessMonitor & process_monitor,
@@ -327,10 +439,12 @@ namespace agents {
         }
 
         Parent & parent;
-        i_agent_spawner_t & spawner;
+        i_agent_spawner_t & hi_priv_spawner;
+        i_agent_spawner_t & lo_priv_spawner;
         boost::asio::io_context & io_context;
         boost::asio::io_context::strand strand {io_context};
-        std::map<pid_t, std::shared_ptr<i_agent_worker_t>> agent_workers {};
+        std::map<pid_t, agent_worker_state_t> agent_workers {};
+        std::deque<ipc::all_message_types_variant_t> delayed_broadcasts {};
 
         bool created_any = false;
         bool terminated = false;
@@ -370,6 +484,96 @@ namespace agents {
                                     agent_workers.erase(pid);
                                     // stop if no more agents
                                     on_strand_check_terminated();
+                                }));
+                }
+                else if (new_state == i_agent_worker_t::state_t::ready) {
+                    spawn("Handle agent ready notification operation",
+                          start_on(strand) //
+                              | then([this, pid]() -> polymorphic_continuation_t<> {
+                                    auto it = agent_workers.find(pid);
+                                    if (it == agent_workers.end()) {
+                                        LOG_DEBUG("Unknown agent PID: %d", pid);
+                                        return {};
+                                    }
+
+                                    auto & agent = it->second;
+                                    agent.is_ready = true;
+
+                                    // Send all the cached messages asynchronously, stopping when they're
+                                    // all sent or when the agent is terminated
+                                    return start_with(false, pid) //
+                                         | loop(
+                                               [this](auto cheap_exit, auto pid) -> //
+                                               polymorphic_continuation_t<bool, bool, pid_t> {
+                                                   if (cheap_exit) {
+                                                       return start_with(false, false, pid);
+                                                   }
+
+                                                   return start_on(strand) //
+                                                        | then([this, pid]() {
+                                                              LOG_DEBUG("Looking for pid %d", pid);
+                                                              auto it = agent_workers.find(pid);
+                                                              if (it == agent_workers.end()) {
+                                                                  LOG_DEBUG("pid not found");
+                                                                  return start_with(it != agent_workers.end(),
+                                                                                    false,
+                                                                                    pid);
+                                                              }
+
+                                                              LOG_DEBUG("Cached messages empty: %d",
+                                                                        it->second.cached_messages.empty());
+                                                              return start_with(!it->second.cached_messages.empty(),
+                                                                                false,
+                                                                                pid);
+                                                          });
+                                               },
+                                               [this](auto /*cheap_exit*/, auto pid) {
+                                                   return start_on(strand)      //
+                                                        | then([this, pid]() -> //
+                                                               polymorphic_continuation_t<bool, pid_t> {
+                                                                   auto it = agent_workers.find(pid);
+                                                                   if (it == agent_workers.end()) {
+                                                                       LOG_DEBUG("Not sending cached message: agent "
+                                                                                 "was terminated");
+                                                                       // Agent has been terminated and won't be coming
+                                                                       // back, so skip the map lookup in the predicate
+                                                                       return start_with(true, pid);
+                                                                   }
+
+                                                                   auto & agent = it->second;
+                                                                   if (agent.cached_messages.empty()) {
+                                                                       // Now that the agent is marked as ready, new
+                                                                       // messages will be sent immediately, so we
+                                                                       // can use the cheap exit as cached_messages
+                                                                       // won't be used again
+                                                                       return start_with(true, pid);
+                                                                   }
+
+                                                                   auto message =
+                                                                       std::move(agent.cached_messages.front());
+                                                                   agent.cached_messages.pop_front();
+
+                                                                   return std::visit(
+                                                                       [&](auto msg)
+                                                                           -> polymorphic_continuation_t<bool, pid_t> {
+                                                                           LOG_DEBUG("Sending cached broadcast message "
+                                                                                     "(%s) to agent process %d",
+                                                                                     ipc::get_message_name(msg).data(),
+                                                                                     pid);
+
+                                                                           return agent.worker->async_send_message(
+                                                                                      std::move(msg),
+                                                                                      strand.context(),
+                                                                                      use_continuation)
+                                                                                | map_error() //
+                                                                                | then([pid]() {
+                                                                                      return start_with(false, pid);
+                                                                                  });
+                                                                       },
+                                                                       message);
+                                                               });
+                                               })
+                                         | then([](auto...) {}); // Consume the loop output
                                 }));
                 }
             };

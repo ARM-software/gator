@@ -22,7 +22,7 @@ namespace agents::perf {
     public:
         explicit perf_source_adapter_t(sem_t & sender_sem,
                                        ISender & sender,
-                                       std::function<void(bool)> agent_started_callback,
+                                       std::function<void(bool, std::vector<pid_t>)> agent_started_callback,
                                        std::function<void()> exec_target_app_callback,
                                        std::function<void()> profiling_started_callback);
 
@@ -58,8 +58,10 @@ namespace agents::perf {
          * Called by the agent worker once the agent ready message has been received.
          *
          * CALLED FROM THE ASIO THREAD POOL
+         * @param monitored_pids A list of PIDs being monitored by the worker,
+         * only the primary source (i.e. the perf agent) will provide these
          */
-        void on_capture_ready();
+        void on_capture_ready(std::vector<pid_t> monitored_pids = {});
 
         /**
          * Called by the agent worker once the start message has been sent successfully.
@@ -106,7 +108,7 @@ namespace agents::perf {
 
         // variables that are guarded by the event_mutex
         std::mutex event_mutex;
-        std::function<void(bool)> agent_started_callback;
+        std::function<void(bool, std::vector<pid_t>)> agent_started_callback;
         std::function<void()> exec_target_app_callback;
         std::function<void()> profiling_started_callback;
         std::unique_ptr<perf_capture_controller_t> capture_controller;

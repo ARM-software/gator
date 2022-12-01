@@ -11,6 +11,8 @@
 #include <string_view>
 #include <variant>
 
+#include <boost/mp11/list.hpp>
+
 namespace ipc {
     using annotation_uid_t = int;
 
@@ -54,8 +56,22 @@ namespace ipc {
     };
 
     /**
+     * Helper function to return the message type name from a message instance.
+     *
+     * @param message Message to return the name of
+     * @return Message name
+     */
+    template<typename MessageType>
+    [[nodiscard]] constexpr std::string_view get_message_name(MessageType && message) noexcept
+    {
+        using message_type = std::decay_t<decltype(message)>;
+
+        static_assert(is_ipc_message_type_v<message_type>, "MessageType must be an IPC type");
+        return named_message_t<message_type>::name;
+    }
+
+    /**
      * Sent from agent->shell to tell when the agent is ready.
-     * Sent from shell->agent to start the capture.
      */
     using msg_ready_t = message_t<message_key_t::ready, void, void>;
     DEFINE_NAMED_MESSAGE(msg_ready_t);
@@ -68,23 +84,39 @@ namespace ipc {
     using msg_start_t = message_t<message_key_t::start, std::uint64_t, void>;
     DEFINE_NAMED_MESSAGE(msg_start_t);
 
+    /** Sent from the shell to all agents notifying them of the monitored PIDs */
+    using msg_monitored_pids_t = message_t<message_key_t::monitored_pids, void, std::vector<pid_t>>;
+    DEFINE_NAMED_MESSAGE(msg_monitored_pids_t);
+
     /** Sent from the annotation agent to the shell when a new annotation connection is received */
     using msg_annotation_new_conn_t = message_t<message_key_t::annotation_new_conn, annotation_uid_t, void>;
     DEFINE_NAMED_MESSAGE(msg_annotation_new_conn_t);
 
-    /** Sent from the annotation agent to the shell when some data is received from an annotations connection */
+    /** Sent by the agent or shell to close a connection */
     using msg_annotation_close_conn_t = message_t<message_key_t::annotation_close_conn, annotation_uid_t, void>;
     DEFINE_NAMED_MESSAGE(msg_annotation_close_conn_t);
 
-    /** Sent from the shell to the annotation agent when some data is to be sent to the annotation connection */
+    /** Sent from the annotation agent to the shell when some data is received from an annotations connection */
     using msg_annotation_recv_bytes_t =
         message_t<message_key_t::annotation_recv_bytes, annotation_uid_t, std::vector<char>>;
     DEFINE_NAMED_MESSAGE(msg_annotation_recv_bytes_t);
 
-    /** Sent by the agent or shell to close a connection */
+    /** Sent from the shell to the annotation agent when some data is to be sent to the annotation connection */
     using msg_annotation_send_bytes_t =
         message_t<message_key_t::annotation_send_bytes, annotation_uid_t, std::vector<char>>;
     DEFINE_NAMED_MESSAGE(msg_annotation_send_bytes_t);
+
+    /** Sent from shell to perfetto agent to create a new connection */
+    using msg_perfetto_new_conn_t = message_t<message_key_t::perfetto_new_conn, void, void>;
+    DEFINE_NAMED_MESSAGE(msg_perfetto_new_conn_t);
+
+    /** Sent from shell to perfetto agent to close a connection */
+    using msg_perfetto_close_conn_t = message_t<message_key_t::perfetto_close_conn, void, void>;
+    DEFINE_NAMED_MESSAGE(msg_perfetto_close_conn_t);
+
+    /** Sent from the Perfetto agent to the shell when some data is received from the Perfetto connection */
+    using msg_perfetto_recv_bytes_t = message_t<message_key_t::perfetto_recv_bytes, void, std::vector<char>>;
+    DEFINE_NAMED_MESSAGE(msg_perfetto_recv_bytes_t);
 
     /** Sent by the shell to configure the perf capture */
     using msg_capture_configuration_t =
@@ -130,16 +162,19 @@ namespace ipc {
     using all_message_types_variant_t = std::variant<msg_ready_t,
                                                      msg_shutdown_t,
                                                      msg_start_t,
+                                                     msg_monitored_pids_t,
                                                      msg_annotation_new_conn_t,
                                                      msg_annotation_close_conn_t,
                                                      msg_annotation_recv_bytes_t,
                                                      msg_annotation_send_bytes_t,
+                                                     msg_perfetto_new_conn_t,
+                                                     msg_perfetto_close_conn_t,
+                                                     msg_perfetto_recv_bytes_t,
                                                      msg_capture_configuration_t,
                                                      msg_capture_ready_t,
                                                      msg_apc_frame_data_t,
                                                      msg_exec_target_app_t,
                                                      msg_cpu_state_change_t,
                                                      msg_capture_failed_t,
-                                                     msg_capture_started_t,
-                                                     std::monostate>;
+                                                     msg_capture_started_t>;
 }

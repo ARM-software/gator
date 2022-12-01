@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
 
 #include "android/AndroidActivityManager.h"
 
@@ -96,22 +96,6 @@ namespace {
         return executeCommand(cmd, []([[maybe_unused]] int outfd, [[maybe_unused]] int errfd) {
         }); // Do nothing for the read action
     }
-
-    bool hasPackage(const std::string & pkg)
-    {
-        std::array<const char *, LIST_CMD_LEN> cmd = {PM.data(), LIST.data(), PKGS.data(), pkg.c_str(), nullptr};
-        std::array<char, CMD_BUF_SIZE> output;
-
-        if (!executeCommandAndReadOutput(cmd, output)) {
-            return false;
-        }
-
-        if (strstr(output.data(), pkg.c_str()) == nullptr) {
-            LOG_ERROR("The specified package(%s) is not installed.", pkg.c_str());
-            return false;
-        }
-        return true;
-    }
 }
 
 std::unique_ptr<IAndroidActivityManager> create_android_activity_manager(const std::string & package_name,
@@ -128,11 +112,27 @@ std::unique_ptr<IAndroidActivityManager> AndroidActivityManager::create(const st
         return nullptr;
     }
 
-    if (!hasPackage(pkg)) {
+    if (!has_package(pkg)) {
         return nullptr;
     }
 
     return std::make_unique<AndroidActivityManager>(pkg, activity);
+}
+
+bool AndroidActivityManager::has_package(const std::string & pkg)
+{
+    std::array<const char *, LIST_CMD_LEN> cmd = {PM.data(), LIST.data(), PKGS.data(), pkg.c_str(), nullptr};
+    std::array<char, CMD_BUF_SIZE> output;
+
+    if (!executeCommandAndReadOutput(cmd, output)) {
+        return false;
+    }
+
+    if (strstr(output.data(), pkg.c_str()) == nullptr) {
+        LOG_ERROR("The specified package (%s) is not installed.", pkg.c_str());
+        return false;
+    }
+    return true;
 }
 
 AndroidActivityManager::AndroidActivityManager(std::string pkg, std::string activity)

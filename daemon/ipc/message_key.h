@@ -18,12 +18,19 @@ namespace ipc {
         ready,
         shutdown,
         start,
+        monitored_pids,
 
         // external annotations
         annotation_new_conn,
         annotation_recv_bytes,
         annotation_send_bytes,
         annotation_close_conn,
+
+        //Perfetto
+        perfetto_new_conn,
+        perfetto_recv_bytes,
+        perfetto_send_bytes,
+        perfetto_close_conn,
 
         // perf
         perf_capture_configuration,

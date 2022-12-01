@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 #include <sys/mman.h>
 #include <unistd.h>

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef __ISENDER_H__
 #define __ISENDER_H__
@@ -35,7 +35,7 @@ public:
 
     virtual ~ISender() = default;
 
-    static constexpr int MAX_RESPONSE_LENGTH = 16 * 1024 * 1024;
+    static constexpr int MAX_RESPONSE_LENGTH = 256 * 1024 * 1024;
 };
 
 #endif //__ISENDER_H__

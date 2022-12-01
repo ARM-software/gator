@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef DYNBUF_H
 #define DYNBUF_H
@@ -38,6 +38,7 @@ public:
     size_t getLength() const { return length; }
     const char * getBuf() const { return buf; }
     char * getBuf() { return buf; }
+    int ensureCapacity(size_t minCapacity);
 
 private:
     int resize(size_t minCapacity);

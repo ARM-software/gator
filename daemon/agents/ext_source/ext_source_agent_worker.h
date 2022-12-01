@@ -105,60 +105,6 @@ namespace agents {
                    });
         }
 
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(std::monostate const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message std::monostate; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_capture_configuration_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_capture_ready_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_capture_ready_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_capture_ready_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_apc_frame_data_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_apc_frame_data_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_start_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_start_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_exec_target_app_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_exec_target_app_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_cpu_state_change_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_cpu_state_change_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_capture_failed_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_capture_failed_t; ignoring");
-        }
-
-        /** Handle one of the IPC variant values */
-        static void cont_on_recv_message(ipc::msg_capture_started_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_capture_started_t; ignoring");
-        }
-
         /** Handle the 'ready' IPC message variant. The agent is ready. */
         void cont_on_recv_message(ipc::msg_ready_t const & /*message*/)
         {
@@ -217,7 +163,7 @@ namespace agents {
             auto uid = message.header;
             auto it = external_source_pipes.find(uid);
             if (it == external_source_pipes.end()) {
-                LOG_ERROR("Received data for external source but no pipe found");
+                LOG_DEBUG("Received data for external source but no pipe found");
                 return {};
             }
 
@@ -232,7 +178,7 @@ namespace agents {
                  | then([buffer_ptr, uid, st = this->shared_from_this()](auto const & ec,
                                                                          auto n) -> polymorphic_continuation_t<> {
                        if (ec) {
-                           LOG_ERROR("Forwarding external bytes failed due to %s", ec.message().c_str());
+                           LOG_DEBUG("Forwarding external bytes failed due to %s", ec.message().c_str());
                            return st->cont_close_annotation_uid(uid);
                        }
                        if (n != buffer_ptr->size()) {
@@ -242,12 +188,6 @@ namespace agents {
                        LOG_DEBUG("Write complete");
                        return {};
                    });
-        }
-
-        /** Handle the 'send' IPC message variant. The agent received data from a connection. */
-        static void cont_on_recv_message(ipc::msg_annotation_send_bytes_t const & /*message*/)
-        {
-            LOG_DEBUG("Unexpected message ipc::msg_annotation_send_bytes_t; ignoring");
         }
 
         /** Handle the 'close conn' IPC message variant. The agent closed a connection. */
@@ -284,9 +224,14 @@ namespace agents {
                     return true;
                 },
                 [st]() {
-                    return st->source().async_recv_message(use_continuation) //
-                         | map_error()                                       //
-                         | post_on(st->strand)                               //
+                    return ipc::async_receive_one_of<ipc::msg_ready_t,
+                                                     ipc::msg_shutdown_t,
+                                                     ipc::msg_annotation_new_conn_t,
+                                                     ipc::msg_annotation_recv_bytes_t,
+                                                     ipc::msg_annotation_close_conn_t>(st->source_shared(),
+                                                                                       use_continuation) //
+                         | map_error()                                                                   //
+                         | post_on(st->strand)                                                           //
                          | unpack_variant([st](auto && message) {
                                // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
                                return st->cont_on_recv_message(std::move(message));

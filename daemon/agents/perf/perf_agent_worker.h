@@ -162,11 +162,6 @@ namespace agents::perf {
                    });
         }
 
-        static auto co_receive_message(const std::monostate & /*msg*/)
-        {
-            LOG_ERROR("Unexpected monostate message received in perf worker.");
-        }
-
         /**
          * Handle the 'ready' message - the agent has started and is waiting to be configured.
          */
@@ -195,10 +190,10 @@ namespace agents::perf {
          * Handle the 'capture ready' message - the agent has been configured and is prepared to
          * start the capture.
          */
-        auto co_receive_message(const ipc::msg_capture_ready_t & /*msg*/)
+        auto co_receive_message(ipc::msg_capture_ready_t && msg)
         {
             LOG_DEBUG("Perf agent is prepared for capture");
-            observer.on_capture_ready();
+            observer.on_capture_ready(std::move(msg.suffix));
         }
 
         /**

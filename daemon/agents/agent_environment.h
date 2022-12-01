@@ -80,8 +80,6 @@ namespace agents {
         LifecycleReceiver & lifecycle_receiver;
         Receiver & receiver;
 
-        void co_receive_message(std::monostate /*msg*/) { LOG_DEBUG("Unexpected monostate IPC message received."); }
-
         auto co_receive_message(ipc::msg_shutdown_t msg) { return lifecycle_receiver.co_receive_message(msg); }
 
         template<typename MessageType>
@@ -183,7 +181,8 @@ namespace agents {
                   start_on(strand) //
                       | then([self = this->shared_from_this()]() mutable -> polymorphic_continuation_t<> {
                             if (std::exchange(self->is_shutdown, true)) {
-                                LOG_DEBUG("Shutdown requested by agent, but shutdown already in progress");
+                                LOG_DEBUG("[%s] Shutdown requested by agent, but shutdown already in progress",
+                                          self->instance_name.c_str());
                                 return {};
                             }
                             return self->co_init_shutdown();
@@ -229,12 +228,12 @@ namespace agents {
             using namespace async::continuations;
 
             if (agent) {
-                LOG_ERROR("Start message received but agent is already running");
+                LOG_ERROR("[%s] Start message received but agent is already running", instance_name.c_str());
                 return;
             }
 
             if (is_shutdown) {
-                LOG_ERROR("Start called after environment has shut down");
+                LOG_ERROR("[%s] Start called after environment has shut down", instance_name.c_str());
                 return;
             }
 
@@ -288,10 +287,11 @@ namespace agents {
             using namespace async::continuations;
 
             if (std::exchange(is_shutdown, true)) {
-                LOG_DEBUG("Shutdown message received, but shutdown already in progress");
+                LOG_DEBUG("[%s] Shutdown message received, but shutdown already in progress", instance_name.c_str());
                 return {};
             }
 
+            LOG_TRACE("[%s] Shutdown message received - scheduling shutdown continuation", instance_name.c_str());
             // ask the agent to shutdown first, then clean up the environment
             return start_on(strand) | co_init_shutdown();
         }
@@ -320,7 +320,7 @@ namespace agents {
                            LOG_DEBUG("Failed to send shutdown IPC to host due to %s", ec.message().c_str());
                        }
                        else {
-                           LOG_TRACE("Shutdown message sent");
+                           LOG_TRACE("[%s] Shutdown message sent", self->instance_name.c_str());
                        }
                        self->call_shutdown_handlers();
                    });

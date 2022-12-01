@@ -22,6 +22,7 @@
 #include "lib/Syscall.h"
 
 #include <atomic>
+#include <mutex>
 
 #include <fcntl.h>
 #include <sys/prctl.h>
@@ -326,7 +327,14 @@ public:
             mBuffer.endFrame();
             // Always force-flush the buffer as this frame don't work like others
             checkFlush(monotonicStart, true);
-            close(fd);
+
+            // remove the closed fd from the monitor and potentially from the external_agent_connections map as well
+            // [SDDAP-11662] - lock this to prevent async creating another pipe with the same fd
+            std::lock_guard<std::mutex> lock {external_agent_connections_mutex};
+            mMonitor.remove(fd);
+            external_agent_connections.erase(fd);
+            LOG_DEBUG("Closed external source pipe %d", fd);
+
             return false;
         }
 
@@ -359,10 +367,14 @@ public:
 
     lib::AutoClosingFd add_agent_pipe() override
     {
+        std::lock_guard<std::mutex> lock {external_agent_connections_mutex};
+
         std::array<int, 2> pfd {{-1, -1}};
         if (lib::pipe2(pfd, O_CLOEXEC) < 0) {
             return {};
         }
+
+        LOG_DEBUG("Created new external source pipe (es=%d, ag=%d)", pfd[0], pfd[1]);
 
         lib::AutoClosingFd read {pfd[0]};
         lib::AutoClosingFd write {pfd[1]};
@@ -391,6 +403,7 @@ private:
     Monitor mMonitor {};
     OlyServerSocket mMidgardStartupUds;
     OlyServerSocket mUtgardStartupUds;
+    std::mutex external_agent_connections_mutex {};
     std::map<int, lib::AutoClosingFd> external_agent_connections {};
     lib::AutoClosingFd mInterruptRead {};
     lib::AutoClosingFd mInterruptWrite {};

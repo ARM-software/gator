@@ -112,13 +112,19 @@ namespace non_root {
         mSwitchBuffers.setDone();
     }
 
-    void NonRootSource::interrupt() { interrupted.store(true, std::memory_order_seq_cst); }
+    void NonRootSource::interrupt()
+    {
+        interrupted.store(true, std::memory_order_seq_cst);
+    }
 
     bool NonRootSource::write(ISender & sender)
     {
-        // bitwise & no short-circuit
-        return mGlobalCounterBuffer.write(sender) & mProcessCounterBuffer.write(sender) & mMiscBuffer.write(sender)
-             & mSwitchBuffers.write(sender);
+        auto const gcbw = mGlobalCounterBuffer.write(sender);
+        auto const pcbw = mProcessCounterBuffer.write(sender);
+        auto const mbw = mMiscBuffer.write(sender);
+        auto const sbw = mSwitchBuffers.write(sender);
+
+        return gcbw && pcbw && mbw && sbw;
     }
 
     std::optional<std::uint64_t> NonRootSource::sendSummary()

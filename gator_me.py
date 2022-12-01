@@ -138,6 +138,8 @@ full name, provided that the prefix uniquely identifies a single device.
 # Early imports for a basic Python 2.7 compat check
 from __future__ import print_function
 
+import sys
+
 try:
     import argparse as ap
     import atexit
@@ -147,7 +149,6 @@ try:
     import shlex
     import shutil
     import subprocess as sp
-    import sys
     import tarfile
     import tempfile
     import time
@@ -324,10 +325,13 @@ def get_device_model(device):
         device: The device instance.
 
     Returns:
-        The device model.
+        The device model or None if the call failed.
     """
-    logFile = device.adb("shell", "getprop", "ro.product.model")
-    return logFile.strip()
+    try:
+        logFile = device.adb("shell", "getprop", "ro.product.model")
+        return logFile.strip()
+    except sp.CalledProcessError:
+        return None
 
 
 def get_connected_devices():
@@ -345,10 +349,13 @@ def get_connected_devices():
     try:
         adb = Device()
         logFile = adb.adb("devices")
+
         for line in logFile.splitlines():
             line = line.rstrip()
 
-            # Match devices that are available for adb
+            # Match devices that are available for adb. Note devices may be
+            # flagged as not available if get_device_model() fails, which can
+            # happen with dev boards accessed over wired Ethernet.
             if line.endswith("device"):
                 deviceName = line.split()[0]
                 model = get_device_model(Device(deviceName))

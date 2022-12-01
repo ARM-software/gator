@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVER_H
 #define DRIVER_H
@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <optional>
 #include <set>
+#include <string>
+#include <vector>
 
 class Counter;
 struct SpeConfiguration;
@@ -59,6 +61,8 @@ public:
     virtual void postChildForkInChild() {}
     /// Called in the parent after the gator-child process exits
     virtual void postChildExitInParent() {}
+    //Any warning messages to be displayed in Streamline post analysis of a capture.
+    virtual std::vector<std::string> get_other_warnings() const { return {}; }
 
     // name pointer is not owned by this so should just be copied
     Driver(const Driver &) = default;

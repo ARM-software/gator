@@ -9,9 +9,38 @@
 #include "lib/error_code_or.hpp"
 #include "lib/forked_process.h"
 
+#include <algorithm>
+#include <string>
+
 #include <boost/system/errc.hpp>
 
 namespace agents {
+    namespace {
+
+        bool check_agent_env_variable(const std::string & var_prefix, const std::string & agent_name)
+        {
+            std::string debug_token = var_prefix + agent_name;
+            std::replace(debug_token.begin(), debug_token.end(), '-', '_');
+            std::transform(debug_token.begin(), debug_token.end(), debug_token.begin(), [](unsigned char chr) {
+                return std::toupper(chr);
+            });
+
+            LOG_TRACE("Checking for agent env var [%s]", debug_token.c_str());
+            // NOLINTNEXTLINE(concurrency-mt-unsafe)
+            return std::getenv(debug_token.c_str()) != nullptr;
+        }
+
+        bool should_debug_this_agent(const std::string & agent_name)
+        {
+            return check_agent_env_variable("DEBUG_", agent_name);
+        }
+
+        bool should_trace_this_agent(const std::string & agent_name)
+        {
+            return check_agent_env_variable("TRACE_", agent_name);
+        }
+    }
+
     /** Simple agent spawner */
     lib::error_code_or_t<lib::forked_process_t> simple_agent_spawner_t::spawn_agent_process(char const * agent_name)
     {
@@ -30,14 +59,24 @@ namespace agents {
             return *error;
         }
 
-        std::vector<std::string> arguments {agent_name};
+        std::string exe_name = gatord_exe->path();
+        std::vector<std::string> arguments {};
 
-        if (::logging::is_log_enable_trace()) {
+        if (should_debug_this_agent(agent_name)) {
+            LOG_DEBUG("Enabling debug for agent [%s]", agent_name);
+            arguments.emplace_back(":5001");
+            arguments.emplace_back(exe_name);
+            exe_name = "./gdbserver";
+        }
+
+        arguments.emplace_back(agent_name);
+
+        if (should_trace_this_agent(agent_name)) {
             arguments.emplace_back("--trace");
         }
 
         return lib::forked_process_t::fork_process(true,
-                                                   gatord_exe->path(),
+                                                   exe_name,
                                                    arguments,
                                                    {},
                                                    {},
@@ -55,12 +94,6 @@ namespace agents {
     lib::error_code_or_t<lib::forked_process_t> android_pkg_agent_spawner_t::spawn_agent_process(
         char const * agent_name)
     {
-#ifdef APP_GATOR_GDB_SERVER
-        constexpr std::size_t extra_args = 2;
-#else
-        constexpr std::size_t extra_args = 0;
-#endif
-
         runtime_assert(agent_name != nullptr, "agent_name is required");
 
         if (!remote_exe_path) {
@@ -75,15 +108,19 @@ namespace agents {
             return *error;
         }
 
-        std::array<std::string, 3 + extra_args> arguments {{
-            package_name,
-#ifdef APP_GATOR_GDB_SERVER
-            "./gdbserver",
-            ":5001",
-#endif
-            *remote_exe_path,
-            agent_name,
-        }};
+        std::vector<std::string> arguments;
+        arguments.push_back(package_name);
+        if (should_debug_this_agent(agent_name)) {
+            LOG_DEBUG("Enabling debug for agent [%s]", agent_name);
+            arguments.emplace_back("./gdbserver");
+            arguments.emplace_back(":5001");
+        }
+        arguments.push_back(*remote_exe_path);
+        arguments.emplace_back(agent_name);
+
+        if (should_trace_this_agent(agent_name)) {
+            arguments.emplace_back("--trace");
+        }
 
         return lib::forked_process_t::fork_process(true,
                                                    "run-as",

@@ -8,7 +8,6 @@
 #include "Constant.h"
 #include "Counter.h"
 #include "GatorCLIFlags.h"
-#include "ProtocolVersion.h"
 #include "Time.h"
 #include "lib/SharedMemory.h"
 #include "mxml/mxml.h"
@@ -102,6 +101,7 @@ public:
 
 extern SessionData gSessionData;
 extern const char * const gSrcMd5;
+extern const char * const gBuildId;
 
 void logCpuNotFound();
 

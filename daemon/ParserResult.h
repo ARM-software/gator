@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PARSERRESULT_H_
 #define PARSERRESULT_H_

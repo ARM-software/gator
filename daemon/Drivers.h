@@ -10,6 +10,7 @@
 #include "MidgardDriver.h"
 #include "PrimarySourceProvider.h"
 #include "TtraceDriver.h"
+#include "agents/perfetto/perfetto_driver.h"
 #include "armnn/ArmNNDriver.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfDriver.h"
@@ -44,6 +45,8 @@ public:
 
     ExternalDriver & getExternalDriver() { return mExternalDriver; }
 
+    agents::perfetto::perfetto_driver_t & getPerfettoDriver() { return mPerfettoDriver; }
+
     const PrimarySourceProvider & getPrimarySourceProvider() const { return *mPrimarySourceProvider; }
 
     PrimarySourceProvider & getPrimarySourceProvider() { return *mPrimarySourceProvider; }
@@ -69,6 +72,7 @@ private:
     FtraceDriver mFtraceDriver;
     AtraceDriver mAtraceDriver;
     TtraceDriver mTtraceDriver;
+    agents::perfetto::perfetto_driver_t mPerfettoDriver;
     std::vector<Driver *> all {};
     std::vector<PolledDriver *> allPolled {};
 };

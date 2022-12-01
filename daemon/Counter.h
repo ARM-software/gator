@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef COUNTER_H
 #define COUNTER_H
@@ -43,6 +43,8 @@ public:
     int getCores() const { return mCores; }
     int getKey() const { return mKey; }
     Driver * getDriver() const { return mDriver; }
+    void setExcludeFromCapturedXml() { mExcludeFromCapturedXml = true; }
+    bool excludeFromCapturedXml() const { return mExcludeFromCapturedXml; }
 
 private:
     std::string mType {};
@@ -52,6 +54,7 @@ private:
     int mCores {-1};
     int mKey {0};
     Driver * mDriver {nullptr};
+    bool mExcludeFromCapturedXml = false;
 };
 
 #endif // COUNTER_H

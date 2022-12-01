@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessPollerBase.h"
 
@@ -50,28 +50,46 @@ namespace lnx {
             }
             return std::optional<lib::FsEntry> {};
         }
+
+        std::optional<lib::FsEntry> checkExePathForAndroidAppProcess(const lib::FsEntry & proc_dir,
+                                                                     std::optional<lib::FsEntry> && exe_realpath)
+        {
+            if (exe_realpath && exe_realpath->is_absolute()) {
+                // check android paths
+                auto name = exe_realpath->name();
+                if ((name == "app_process") || (name == "app_process32") || (name == "app_process64")) {
+                    // use the command line instead
+                    auto cmdline_exe = getProcessCmdlineExePath(proc_dir);
+                    if (cmdline_exe) {
+                        return cmdline_exe;
+                    }
+                }
+
+                // use provided path
+                return std::move(exe_realpath);
+            }
+
+            return {};
+        }
     }
 
     std::optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry)
     {
         auto proc_pid_exe = lib::FsEntry::create(entry, "exe");
 
+        // try realpath on 'exe'.. most of the time this will resolve to the canonical exe path
         {
-            auto exe_realpath = proc_pid_exe.realpath();
-
+            auto exe_realpath = checkExePathForAndroidAppProcess(entry, proc_pid_exe.realpath());
             if (exe_realpath) {
-                // check android paths
-                auto name = exe_realpath->name();
-                if ((name == "app_process") || (name == "app_process32") || (name == "app_process64")) {
-                    // use the command line instead
-                    auto cmdline_exe = getProcessCmdlineExePath(entry);
-                    if (cmdline_exe) {
-                        return cmdline_exe;
-                    }
-                }
-
-                // use realpath(/proc/pid/exe)
                 return exe_realpath;
+            }
+        }
+
+        // realpath failed, possibly because the canonical name is invalid (e.g. inaccessible file path); try the readlink value
+        {
+            auto exe_readlink = checkExePathForAndroidAppProcess(entry, proc_pid_exe.readlink());
+            if (exe_readlink) {
+                return exe_readlink;
             }
         }
 
@@ -83,7 +101,7 @@ namespace lnx {
         }
 
         // resolve the cmdline string to a real path
-        if (cmdline_exe->path().front() == '/') {
+        if (cmdline_exe->is_absolute()) {
             // already an absolute path, so just resolve it to its realpath
             auto cmldine_exe_realpath = cmdline_exe->realpath();
             if (cmldine_exe_realpath) {
@@ -139,7 +157,9 @@ namespace lnx {
     {
     }
 
-    ProcessPollerBase::ProcessPollerBase() : procDir(lib::FsEntry::create("/proc")) {}
+    ProcessPollerBase::ProcessPollerBase() : procDir(lib::FsEntry::create("/proc"))
+    {
+    }
 
     void ProcessPollerBase::poll(bool wantThreads, bool wantStats, IProcessPollerReceiver & receiver)
     {

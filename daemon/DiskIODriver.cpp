@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
@@ -57,6 +57,11 @@ void DiskIODriver::doRead()
 {
     if (!countersEnabled()) {
         return;
+    }
+
+    constexpr size_t initialMinimum = (1 << 14) + 1;
+    if (mBuf.ensureCapacity(initialMinimum) != 0) {
+        LOG_DEBUG("Failed to ensure initial minimum size of %zu bytes for diskstats buffer", initialMinimum);
     }
 
     if (!mBuf.read("/proc/diskstats")) {

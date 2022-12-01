@@ -151,6 +151,8 @@ namespace agents {
             // run the main work loop
             io_context.run();
 
+            threads.join();
+
             LOG_DEBUG("Terminating [%s] agent successfully.", env->name());
         }
         catch (std::exception const & ex) {

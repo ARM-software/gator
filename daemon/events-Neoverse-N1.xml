@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2019-2021 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2019-2022 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Neoverse_N1_cnt"/>
 <category counter_set="ARMv8_Neoverse_N1_cnt" name="Neoverse-N1" per_cpu="yes" supports_event_based_sampling="yes">

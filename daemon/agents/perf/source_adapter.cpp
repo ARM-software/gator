@@ -13,7 +13,7 @@
 namespace agents::perf {
     perf_source_adapter_t::perf_source_adapter_t(sem_t & sender_sem,
                                                  ISender & sender,
-                                                 std::function<void(bool)> agent_started_callback,
+                                                 std::function<void(bool, std::vector<pid_t>)> agent_started_callback,
                                                  std::function<void()> exec_target_app_callback,
                                                  std::function<void()> profiling_started_callback)
         : sender_sem(sender_sem),
@@ -25,7 +25,10 @@ namespace agents::perf {
     {
     }
 
-    std::optional<std::uint64_t> perf_source_adapter_t::sendSummary() { return {getTime()}; }
+    std::optional<std::uint64_t> perf_source_adapter_t::sendSummary()
+    {
+        return {getTime()};
+    }
 
     void perf_source_adapter_t::run(std::uint64_t monotonicStart, std::function<void()> endSession)
     {
@@ -50,7 +53,7 @@ namespace agents::perf {
         perf_capture_controller_t * capture_controller = nullptr;
 
         {
-            auto l = std::unique_lock(event_mutex);
+            auto lock = std::unique_lock(event_mutex);
             shutdown_initiated_from_shell = true;
             capture_controller = this->capture_controller.get();
         }
@@ -61,7 +64,10 @@ namespace agents::perf {
         }
     }
 
-    bool perf_source_adapter_t::write(ISender & /*sender*/) { return capture_ended.load(std::memory_order_relaxed); }
+    bool perf_source_adapter_t::write(ISender & /*sender*/)
+    {
+        return capture_ended.load(std::memory_order_relaxed);
+    }
 
     void perf_source_adapter_t::set_controller(std::unique_ptr<perf_capture_controller_t> controller)
     {
@@ -69,15 +75,15 @@ namespace agents::perf {
         capture_controller = std::move(controller);
     }
 
-    void perf_source_adapter_t::on_capture_ready()
+    void perf_source_adapter_t::on_capture_ready(std::vector<pid_t> monitored_pids)
     {
-        std::function<void(bool)> f;
+        std::function<void(bool, std::vector<pid_t>)> f;
         {
             auto lock = std::unique_lock(event_mutex);
-            f = std::move(agent_started_callback);
+            f = std::exchange(agent_started_callback, std::function<void(bool, std::vector<pid_t>)>());
         }
         if (f) {
-            f(true);
+            f(true, std::move(monitored_pids));
         }
     }
 
@@ -86,7 +92,7 @@ namespace agents::perf {
         std::function<void()> f;
         {
             auto lock = std::unique_lock(event_mutex);
-            f = profiling_started_callback;
+            f = std::exchange(profiling_started_callback, std::function<void()>());
 
             runtime_assert(!agent_started_callback, "on_capture_ready was not called");
         }
@@ -99,19 +105,19 @@ namespace agents::perf {
     {
         capture_ended.store(true, std::memory_order_relaxed);
 
-        std::function<void(bool)> local_agent_started;
+        std::function<void(bool, std::vector<pid_t>)> local_agent_started;
         std::function<void()> local_end_session;
 
         {
             auto lock = std::unique_lock(event_mutex);
-            local_agent_started = std::move(agent_started_callback);
+            local_agent_started = std::exchange(agent_started_callback, std::function<void(bool, std::vector<pid_t>)>());
             if (!shutdown_initiated_from_shell) {
-                local_end_session = std::move(end_session);
+                local_end_session = std::exchange(end_session, std::function<void()>());
             }
         }
 
         if (local_agent_started) {
-            local_agent_started(false);
+            local_agent_started(false, std::vector<pid_t> {});
         }
 
         if (local_end_session) {
@@ -125,6 +131,7 @@ namespace agents::perf {
     void perf_source_adapter_t::on_apc_frame_received(const std::vector<char> & frame)
     {
         auto const length = frame.size();
+
         runtime_assert(length <= ISender::MAX_RESPONSE_LENGTH, "too large apc_frame msg received");
 
         sender.writeData(frame.data(), static_cast<int>(length), ResponseType::APC_DATA);
@@ -148,5 +155,8 @@ namespace agents::perf {
         }
     }
 
-    void perf_source_adapter_t::exec_target_app() { exec_target_app_callback(); }
+    void perf_source_adapter_t::exec_target_app()
+    {
+        exec_target_app_callback();
+    }
 }

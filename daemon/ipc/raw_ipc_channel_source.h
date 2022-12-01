@@ -70,9 +70,9 @@ namespace ipc {
         template<typename... MessageTypes>
         struct message_types_trait_finder_t;
 
-        // the terminator must be std::monostate
+        // Terminator
         template<>
-        struct message_types_trait_finder_t<std::monostate> {
+        struct message_types_trait_finder_t<> {
             template<typename T, typename R, typename E>
             static constexpr void visit(message_key_t key, T & host, sc_wrapper_t<R, E> && scw)
             {
@@ -460,8 +460,8 @@ namespace ipc {
 
         template<typename... AllowedTypes>
         struct try_message_filter_t {
-            using type_tuple = std::tuple<std::monostate, std::decay_t<AllowedTypes>...>;
-            using variant_type = std::variant<std::monostate, std::decay_t<AllowedTypes>...>;
+            using type_tuple = std::tuple<std::decay_t<AllowedTypes>...>;
+            using variant_type = std::variant<std::decay_t<AllowedTypes>...>;
             using pair_type = std::pair<boost::system::error_code, variant_type>;
 
             template<typename ReceivedType>
@@ -484,8 +484,7 @@ namespace ipc {
     /**
      * Receive one of a subset of message types from a raw_ipc_channel_source_t. Will continuously
      * receive from the channel, logging and discarding any unwanted messages, util one of the
-     * desired types arrives. The completion handler should expect to receive a variant that could
-     * also contain std::monostate.
+     * desired types arrives.
      *
      * @tparam MessageTypes The subset of messages to receive.
      * @tparam CompletionToken The asio completion token for this async op.
@@ -499,7 +498,7 @@ namespace ipc {
         using optional_pair_type = std::optional<typename filter_type::pair_type>;
         using variant_type = typename filter_type::variant_type;
 
-        return async_initiate_explicit<void(boost::system::error_code, std::variant<std::monostate, MessageTypes...>)>(
+        return async_initiate_explicit<void(boost::system::error_code, std::variant<MessageTypes...>)>(
             [src = std::move(source)](auto && sc) {
                 submit(
                     start_with(optional_pair_type {}) //

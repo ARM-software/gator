@@ -5,6 +5,7 @@
 #include "BufferUtils.h"
 #include "Logging.h"
 #include "OlySocket.h"
+#include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "lib/File.h"
 #include "lib/String.h"

@@ -230,9 +230,6 @@ namespace agents {
 
                                LOG_TRACE("Closing worker %d (%p)", it->first, worker.get());
 
-                               // remove from the map
-                               self->socket_workers.erase(it);
-
                                static_assert(!std::is_const_v<decltype(worker)>);
                                return worker->async_close(use_continuation);
                            })
@@ -329,6 +326,12 @@ namespace agents {
         async::continuations::polymorphic_continuation_t<> co_close_worker_by_id(ipc::annotation_uid_t id)
         {
             using namespace async::continuations;
+            if (is_shutdown) {
+                LOG_DEBUG("Ignoring connection close request for ID [%d] since this agent is shutting down and all "
+                          "connections will be closed.",
+                          id);
+                return {};
+            }
 
             auto self = this->shared_from_this();
 

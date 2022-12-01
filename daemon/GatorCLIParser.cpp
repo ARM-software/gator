@@ -4,7 +4,7 @@
 
 #include "Config.h"
 #include "Logging.h"
-#include "lib/Istream.h"
+#include "lib/String.h"
 #include "lib/Utils.h"
 
 #include <algorithm>
@@ -302,7 +302,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                                        char * argv[],
                                        const char * version_string,
                                        int maxPerformanceCounter,
-                                       const char * gSrcMd5)
+                                       const char * gSrcMd5,
+                                       const char * gBuildId)
 {
     LOG_ERROR("%s", version_string);
     const int indexApp = findAndUpdateCmndLineCmnd(argc, argv);
@@ -473,15 +474,14 @@ void GatorCLIParser::parseCLIArguments(int argc,
             } break;
             case 'i': // pid
             {
-                std::stringstream stream {optarg};
-                std::vector<int> pids = lib::parseCommaSeparatedNumbers<int>(stream);
-                if (stream.fail() || !stream.eof()) {
+                auto const pids = lib::parseCommaSeparatedNumbers<int>(optarg);
+                if (!pids) {
                     LOG_ERROR("Invalid value for --pid (%s), comma separated and numeric list expected.", optarg);
                     result.parsingFailed();
                     return;
                 }
 
-                result.mPids.insert(pids.begin(), pids.end());
+                result.mPids.insert(pids->begin(), pids->end());
                 break;
             }
             case 'h':
@@ -653,7 +653,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.parsingFailed();
                 return;
             case 'V':
-                LOG_ERROR("%s\nSRC_MD5: %s\nBUILD_ID: %s", version_string, gSrcMd5, STRIFY(GATORD_BUILD_ID));
+                LOG_ERROR("%s\nSRC_MD5: %s\nBUILD_ID: %s", version_string, gSrcMd5, gBuildId);
                 result.parsingFailed();
                 return;
             case 'O':

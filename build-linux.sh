@@ -6,7 +6,7 @@ show_help() {
     echo "Usage:"
     echo "    $0 [-n <ndk>] [-a <api>] [-t <target>] [-g <generator>] [-o <path>] [-c <cmake>] [-l <mode>] [-d] [-s]"
     echo "Where:"
-    echo "    -p <profile>      - Specify the predefined provile to build. Defaults to "
+    echo "    -p <profile>      - Specify the predefined profile to build. Defaults to "
     echo "                        'native-gcc' if not specified. Must be one of "
     echo "                        'native-gcc', 'native-clang', 'arm-glibc', 'arm-musl', "
     echo "                        'arm64-glibc' or 'arm64-musl'."

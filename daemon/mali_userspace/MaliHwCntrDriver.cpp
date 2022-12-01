@@ -6,6 +6,9 @@
 #include "Logging.h"
 #include "MaliGPUClockPolledDriver.h"
 #include "MaliHwCntr.h"
+#include "SessionData.h"
+#include "capture/Environment.h"
+#include "lib/perfetto_utils.h"
 #include "mali_userspace/MaliInstanceLocator.h"
 
 #include <algorithm>
@@ -148,4 +151,5 @@ namespace mali_userspace {
         }
         return result;
     }
+
 }

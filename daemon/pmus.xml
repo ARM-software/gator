@@ -100,6 +100,9 @@
     <pmu id="ARMv8_Cortex_A510" cpuid="0x41d46" core_name="Cortex-A510" dt_name="arm,cortex-a510" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A710" cpuid="0x41d47" core_name="Cortex-A710" dt_name="arm,cortex-a710" pmnc_counters="6" profile="8a"/>
 
+    <pmu id="ARMv9_Cortex_X3" cpuid="0x41d4e" core_name="Cortex-X3" dt_name="arm,cortex-x3" pmnc_counters="6" profile="9a"/>
+    <pmu id="ARMv9_Cortex_A715" cpuid="0x41d4d" core_name="Cortex-A715" dt_name="arm,cortex-a715" pmnc_counters="6" profile="9a"/>
+
     <!-- Arm China -->
     <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIPARSER_H_
 #define GATORCLIPARSER_H_
@@ -42,7 +42,8 @@ public:
                            char * argv[],
                            const char * version_string,
                            int maxPerformanceCounter,
-                           const char * gSrcMd5);
+                           const char * gSrcMd5,
+                           const char * gBuildId);
     struct cmdline_t getGatorSetting();
 
 private:

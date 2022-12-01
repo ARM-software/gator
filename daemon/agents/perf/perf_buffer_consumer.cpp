@@ -58,6 +58,8 @@ namespace agents::perf {
             }
         }
 
+        runtime_assert(buffer.size() <= ISender::MAX_RESPONSE_LENGTH, "Too large APC frame created");
+
         // send the message
         return st->ipc_sink->async_send_message(ipc::msg_apc_frame_data_t {std::move(buffer)}, use_continuation) //
              | then([head, tail](auto ec, auto /*msg*/) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FSENTRY_H
 #define INCLUDE_LIB_FSENTRY_H
@@ -70,8 +70,13 @@ namespace lib {
         /** @return True if is the root entry (e.g. '/') */
         bool is_root() const;
 
+        /** @return True if is absolute (e.g. starts with '/') */
+        bool is_absolute() const;
+
         /** @return An iterator object for enumerating the children of a directory entry */
         FsEntryDirectoryIterator children() const;
+        /** @return The contents of a link */
+        std::optional<FsEntry> readlink() const;
         /** @return The absolute, cannonical path, or nothing if it was not possible to resolve the read path */
         std::optional<FsEntry> realpath() const;
 
@@ -190,14 +195,20 @@ namespace lib {
      * @param entry The file entry to read
      * @return  The contents of that file
      */
-    inline std::string readFileContents(const FsEntry & entry) { return entry.readFileContents(); }
+    inline std::string readFileContents(const FsEntry & entry)
+    {
+        return entry.readFileContents();
+    }
 
     /**
      * Write the contents of a file
      * @param entry The file entry to write
      * @return  true if successful
      */
-    inline bool writeFileContents(const FsEntry & entry, const char * data) { return entry.writeFileContents(data); }
+    inline bool writeFileContents(const FsEntry & entry, const char * data)
+    {
+        return entry.writeFileContents(data);
+    }
 }
 
 #endif /* INCLUDE_LIB_FSENTRY_H */

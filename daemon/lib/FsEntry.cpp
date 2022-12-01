@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #include "lib/FsEntry.h"
 
@@ -18,6 +18,7 @@
 
 #include <boost/filesystem.hpp>
 
+#include <linux/limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -77,9 +78,13 @@ namespace lib {
         return {};
     }
 
-    FsEntry::Stats::Stats() : Stats(Type::UNKNOWN, false, false) {}
+    FsEntry::Stats::Stats() : Stats(Type::UNKNOWN, false, false)
+    {
+    }
 
-    FsEntry::Stats::Stats(Type t, bool e, bool s) : type_(t), exists_(e), symlink_(s) {}
+    FsEntry::Stats::Stats(Type t, bool e, bool s) : type_(t), exists_(e), symlink_(s)
+    {
+    }
 
     FsEntry::FsEntry(std::string p) : path_(std::move(p)), name_offset(std::string::npos)
     {
@@ -109,7 +114,9 @@ namespace lib {
         name_offset = path_.rfind('/');
     }
 
-    FsEntry::FsEntry(const FsEntry & p, const std::string & n) : FsEntry(p.path().append("/").append(n)) {}
+    FsEntry::FsEntry(const FsEntry & p, const std::string & n) : FsEntry(p.path().append("/").append(n))
+    {
+    }
 
     std::optional<FsEntry> FsEntry::parent() const
     {
@@ -120,13 +127,51 @@ namespace lib {
         return std::optional<FsEntry>();
     }
 
-    std::string FsEntry::name() const { return path_.substr(name_offset + 1); }
+    std::string FsEntry::name() const
+    {
+        return path_.substr(name_offset + 1);
+    }
 
-    std::string FsEntry::path() const { return path_; }
+    std::string FsEntry::path() const
+    {
+        return path_;
+    }
 
-    bool FsEntry::is_root() const { return path_.length() == 1; }
+    bool FsEntry::is_root() const
+    {
+        return path_.length() == 1;
+    }
 
-    FsEntryDirectoryIterator FsEntry::children() const { return FsEntryDirectoryIterator(*this); }
+    bool FsEntry::is_absolute() const
+    {
+        return (!path_.empty()) && (path_.front() == '/');
+    }
+
+    FsEntryDirectoryIterator FsEntry::children() const
+    {
+        return FsEntryDirectoryIterator(*this);
+    }
+
+    std::optional<FsEntry> FsEntry::readlink() const
+    {
+        struct stat lstat_data;
+        if (lstat(path_.c_str(), &lstat_data) != 0) {
+            return {};
+        }
+
+        auto const length = (lstat_data.st_size > 0 ? lstat_data.st_size : PATH_MAX);
+
+        std::string result(std::size_t(length), '\0');
+
+        auto const n = ::readlink(path_.c_str(), result.data(), result.size());
+
+        // empty string and error are ignored
+        if (n <= 0) {
+            return {};
+        }
+
+        return FsEntry(result.substr(0, n));
+    }
 
     std::optional<FsEntry> FsEntry::realpath() const
     {
@@ -139,9 +184,15 @@ namespace lib {
         return std::optional<FsEntry>();
     }
 
-    bool FsEntry::operator==(const FsEntry & that) const { return (path_ == that.path_); }
+    bool FsEntry::operator==(const FsEntry & that) const
+    {
+        return (path_ == that.path_);
+    }
 
-    bool FsEntry::operator<(const FsEntry & that) const { return (path_ < that.path_); }
+    bool FsEntry::operator<(const FsEntry & that) const
+    {
+        return (path_ < that.path_);
+    }
 
     FsEntry::Stats FsEntry::read_stats() const
     {

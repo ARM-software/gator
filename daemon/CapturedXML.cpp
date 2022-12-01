@@ -8,6 +8,7 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "PrimarySourceProvider.h"
+#include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "lib/FsEntry.h"
 #include "lib/String.h"
@@ -20,6 +21,7 @@
 #include <set>
 
 #include <dirent.h>
+#include <mxml/mxml.h>
 
 /* Basic target OS detection */
 #undef GATOR_TARGET_OS
@@ -108,6 +110,11 @@ static mxml_node_t * getTree(bool includeTime,
         }
     }
 
+    if (gSessionData.mWaitForProcessCommand != nullptr) {
+        mxml_node_t * const process_data = mxmlNewElement(captured, "process");
+        mxmlElementSetAttrf(process_data, "process_name", "%s", gSessionData.mWaitForProcessCommand);
+    }
+
     auto * const target = mxmlNewElement(captured, "target");
     mxmlElementSetAttrf(target, "sample_rate", "%d", gSessionData.mSampleRate);
     const auto & cpuInfo = primarySourceProvider.getCpuInfo();
@@ -119,14 +126,14 @@ static mxml_node_t * getTree(bool includeTime,
     //gatord src md5
     mxmlElementSetAttrf(target, "gatord_src_md5sum", "%s", gSrcMd5);
     //gatord build commit id
-    mxmlElementSetAttrf(target, "gatord_build_id", "%s", STRIFY(GATORD_BUILD_ID));
+    mxmlElementSetAttrf(target, "gatord_build_id", "%s", gBuildId);
 
     assert(cpuIds.size() > 0); // gatord should've died earlier if there were no cpus
     mxmlElementSetAttrf(target, "cpuid", "0x%x", *std::max_element(std::begin(cpuIds), std::end(cpuIds)));
 
     /* SDDAP-10049: Removed `&& (gSessionData.mSampleRate > 0)` - this allows sample rate: none
-     * to work with live mode, at the risk that live display is 'jittery' as data sending is dependent
-     * on CPU's being active and doing some context switching. */
+         * to work with live mode, at the risk that live display is 'jittery' as data sending is dependent
+         * on CPU's being active and doing some context switching. */
     if (!gSessionData.mOneShot) {
         mxmlElementSetAttr(target, "supports_live", "yes");
     }
@@ -161,6 +168,10 @@ static mxml_node_t * getTree(bool includeTime,
 
     mxml_node_t * counters = nullptr;
     for (const auto & counter : gSessionData.mCounters) {
+        if(counter.excludeFromCapturedXml()) {
+            continue;
+        }
+
         if (counter.isEnabled()) {
             if (counters == nullptr) {
                 counters = mxmlNewElement(captured, "counters");
