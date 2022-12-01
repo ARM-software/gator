@@ -105,6 +105,24 @@ checkout_vcpkg() {
     fi
 }
 
+# Fetch perfetto
+checkout_perfetto() {
+    local perfetto_commit="7e8d6801dbf73936a916dbcd8ed06a758c8d989e" # v25.0
+    local root="${1}"
+    # is gator git repo from github?
+    if [ -d "${root}/.git" ]; then
+        echo "Fetching perfetto git submodule"
+        git submodule update --init
+    # checkout manually?
+    elif [ ! -d "${root}/ext/perfetto/.git" ]; then
+        echo "Cloning perfetto git repo into '${root}/ext/perfetto/'"
+        git clone https://github.com/google/perfetto.git "${root}/ext/perfetto/"
+        echo "Switching to correct commit"
+        git -C "${root}/ext/perfetto/" clean -ffxd
+        git -C "${root}/ext/perfetto/" reset --hard "${perfetto_commit}"
+    fi
+}
+
 # source root
 gator_dir=`dirname "$0"`
 gator_dir=`realpath "${gator_dir}"`

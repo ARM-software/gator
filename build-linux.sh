@@ -107,6 +107,8 @@ fi
 
 # Bootstrap vcpkg
 checkout_vcpkg "${gator_dir}" "${use_system_binaries}"
+# and perfetto
+checkout_perfetto "${gator_dir}"
 
 # check cmake exe
 cmake_exe=$(validate_and_return_cmake_exe "${cmake_exe}")
