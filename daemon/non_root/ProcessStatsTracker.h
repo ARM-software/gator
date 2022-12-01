@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATSTRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATSTRACKER_H
@@ -53,7 +53,7 @@ namespace non_root {
                        bool sendFakeSchedulingEvents);
         void updateFromProcPidStatFileRecord(const lnx::ProcPidStatFileRecord & record);
         void updateFromProcPidStatmFileRecord(const lnx::ProcPidStatmFileRecord & record);
-        void updateExe(const lib::FsEntry & exe);
+        void updateExe(const std::string & exe);
 
     private:
         AbsoluteCounter<std::string> comm {};

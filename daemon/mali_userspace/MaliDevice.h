@@ -1,16 +1,23 @@
-/* Copyright (C) 2016-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 
 #include "Constant.h"
 #include "IBlockCounterFrameBuilder.h"
+#include "Logging.h"
+#include "device/handle.hpp"
+#include "device/hwcnt/block_metadata.hpp"
+#include "device/hwcnt/sample.hpp"
+#include "device/instance.hpp"
+#include "device/product_id.hpp"
 #include "lib/AutoClosingFd.h"
-#include "mali_userspace/MaliDeviceApi.h"
+#include "lib/Span.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -18,9 +25,17 @@
 
 namespace mali_userspace {
     /* forward declarations */
-    struct MaliProductVersion;
     class MaliDevice;
     enum class MaliCounterBlockName : uint32_t;
+
+    struct MaliProductVersion {
+        hwcpipe::device::product_id product_id;
+        const char * mName;
+        const char * mProductFamilyName;
+        const char * const * mCounterNames;
+        uint32_t mNumCounterNames;
+        bool mLegacyLayout;
+    };
 
     /**
      * Interface implemented by counter value receiver; the object that is passed data by MaliDevice::dumpAllCounters
@@ -79,10 +94,15 @@ namespace mali_userspace {
             return countersList[index];
         }
 
+        lib::Span<const Address> operator[](hwcpipe::device::hwcnt::block_type type) const;
+
     private:
+        using counters_by_block_map_t = std::map<hwcpipe::device::hwcnt::block_type, std::vector<Address>>;
+
         size_t countersListLength;
         size_t countersListValid;
         Address * countersList;
+        counters_by_block_map_t counters_by_block;
 
         /* It can call enable */
         friend class MaliDevice;
@@ -98,15 +118,11 @@ namespace mali_userspace {
      */
     class MaliDevice {
     public:
-        enum {
-            /** The number of counters with a block */
-            NUM_COUNTERS_PER_BLOCK = 64,
-            /** The number of counters that grouped under the same flag within an enable block */
-            NUM_COUNTERS_PER_ENABLE_GROUP = 4,
-            /** The number of counter enable groups with a block */
-            NUM_ENABLE_GROUPS = NUM_COUNTERS_PER_BLOCK / NUM_COUNTERS_PER_ENABLE_GROUP,
-            /** The counter index of the enable bits with a block */
-            BLOCK_ENABLE_BITS_COUNTER_INDEX = 2
+        struct block_metadata_t {
+            std::size_t num_counters_per_block;
+            unsigned int num_counters_per_enable_group;
+            unsigned int num_enable_groups;
+            static constexpr unsigned int block_enable_bits_counter_index = 2;
         };
 
         /**
@@ -115,12 +131,14 @@ namespace mali_userspace {
          * @param clockPath (Which may be empty meaning no clock)
          * @return The MaliDevice object, or nullptr on failure
          */
-        static std::unique_ptr<MaliDevice> create(std::unique_ptr<IMaliDeviceApi> deviceApi, std::string clockPath);
+        static std::unique_ptr<MaliDevice> create(hwcpipe::device::handle::handle_ptr handle, std::string clockPath);
 
         MaliDevice(const MaliDevice &) = delete;
         MaliDevice & operator=(const MaliDevice &) = delete;
         MaliDevice(MaliDevice &&) = delete;
         MaliDevice & operator=(MaliDevice &&) = delete;
+
+        hwcpipe::device::instance & get_device_instance() const { return *instance; }
 
         /**
          * @return The path to the clock file
@@ -147,7 +165,7 @@ namespace mali_userspace {
          */
         inline uint32_t getNameBlockCount() const
         {
-            return 4; // currently this is always 4
+            return static_cast<std::uint32_t>(hwcpipe::device::hwcnt::block_type::num_block_types);
         }
 
         /**
@@ -177,44 +195,62 @@ namespace mali_userspace {
         /**
          * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
          */
-        void dumpAllCounters(uint32_t hardwareVersion,
-                             const MaliDeviceCounterList & counterList,
-                             const uint32_t * buffer,
-                             size_t bufferLength,
-                             IBlockCounterFrameBuilder & bufferData,
-                             IMaliDeviceCounterDumpCallback & callback) const;
-
-        /**
-         * Create an HWCNT reader handle (which is a file-descriptor, for use by MaliHwCntrReader)
-         *
-         * @param failedDueToBufferCount [OUT] indicates the the creation likely failed due to buffer
-         *          count being invalid
-         * @return The handle, or invalid handle if failed
-         */
-        lib::AutoClosingFd createHwCntReaderFd(std::size_t bufferCount,
-                                               std::uint32_t jmBitmask,
-                                               std::uint32_t shaderBitmask,
-                                               std::uint32_t tilerBitmask,
-                                               std::uint32_t mmuL2Bitmask,
-                                               bool & failedDueToBufferCount) const;
+        void dumpCounters(const MaliDeviceCounterList & counter_list,
+                          const hwcpipe::device::hwcnt::sample & sample,
+                          bool has_block_state_feature,
+                          IBlockCounterFrameBuilder & buffer_data,
+                          IMaliDeviceCounterDumpCallback & callback) const;
 
         static void insertConstants(std::set<Constant> & dest);
 
         std::map<CounterKey, int64_t> getConstantValues() const;
 
+        block_metadata_t get_block_metadata() const { return block_metadata; }
+
+        std::size_t get_num_counters_per_block() const { return block_metadata.num_counters_per_block; }
+
     private:
+        struct AccumulatedCounter {
+            uint64_t sum;
+            uint32_t count;
+
+            AccumulatedCounter() : sum(0), count(0) {}
+
+            AccumulatedCounter & operator+=(uint64_t delta)
+            {
+                sum += delta;
+                count += 1;
+
+                return *this;
+            }
+
+            bool isValid() const { return count > 0; }
+
+            uint64_t average() const { return sum / count; }
+        };
+
+        using counter_delta_writer_t = std::function<void(const MaliDeviceCounterList &,
+                                                          const hwcpipe::device::hwcnt::block_metadata &,
+                                                          IBlockCounterFrameBuilder &,
+                                                          IMaliDeviceCounterDumpCallback &)>;
+
+        using counter_accumulator_t = std::function<void(const MaliDeviceCounterList &,
+                                                         const hwcpipe::device::hwcnt::block_metadata &,
+                                                         lib::Span<AccumulatedCounter>)>;
+
         /** Init a block in the enable list */
-        static void initCounterList(uint32_t gpuId,
-                                    IMaliDeviceCounterDumpCallback & callback,
-                                    MaliDeviceCounterList & list,
-                                    MaliCounterBlockName block,
-                                    uint32_t repeatCount);
+        void initCounterList(uint32_t gpuId,
+                             IMaliDeviceCounterDumpCallback & callback,
+                             MaliDeviceCounterList & list,
+                             MaliCounterBlockName block,
+                             uint32_t repeatCount) const;
 
         /** Internal product version counter information */
         const MaliProductVersion & mProductVersion;
 
-        /** The path to the /dev/mali device */
-        const std::unique_ptr<IMaliDeviceApi> deviceApi;
+        /** The hwcpipe device handles */
+        const hwcpipe::device::handle::handle_ptr handle;
+        const hwcpipe::device::instance::instance_ptr instance;
 
         /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
         const std::string clockPath;
@@ -225,27 +261,56 @@ namespace mali_userspace {
         /** The shader core max block count */
         std::uint32_t shaderCoreMaxCount;
 
+        block_metadata_t block_metadata;
+
+        counter_delta_writer_t delta_writer;
+        counter_accumulator_t counter_accumulator;
+
         MaliDevice(const MaliProductVersion & productVersion,
-                   std::unique_ptr<IMaliDeviceApi> deviceApi,
+                   hwcpipe::device::handle::handle_ptr handle,
+                   hwcpipe::device::instance::instance_ptr instance,
                    std::string clockPath);
 
-        /**
-         * Dump all the counter data on V4 layout
-         */
-        void dumpAllCounters_V4(const MaliDeviceCounterList & counterList,
-                                const uint32_t * buffer,
-                                size_t bufferLength,
-                                IBlockCounterFrameBuilder & bufferData,
-                                IMaliDeviceCounterDumpCallback & callback) const;
+        template<typename CounterType>
+        void dump_delta_counters(const MaliDeviceCounterList & counter_list,
+                                 const hwcpipe::device::hwcnt::block_metadata & block,
+                                 IBlockCounterFrameBuilder & buffer_data,
+                                 IMaliDeviceCounterDumpCallback & callback)
+        {
+            auto active_counters = counter_list[block.type];
+            auto counter_values = reinterpret_cast<const CounterType *>(block.values);
 
-        /**
-         * Dump all the counter data encoded in the provided sample buffer, passing it to the callback object
-         */
-        void dumpAllCounters_V56(const MaliDeviceCounterList & counterList,
-                                 const uint32_t * buffer,
-                                 size_t bufferLength,
-                                 IBlockCounterFrameBuilder & bufferData,
-                                 IMaliDeviceCounterDumpCallback & callback) const;
+            for (const auto & address : active_counters) {
+                const std::uint32_t counter_index =
+                    address.groupIndex * block_metadata.num_counters_per_enable_group + address.wordIndex;
+                auto delta = counter_values[counter_index];
+
+                callback.nextCounterValue(static_cast<std::uint32_t>(block.type),
+                                          counter_index,
+                                          delta,
+                                          static_cast<std::uint32_t>(mProductVersion.product_id),
+                                          buffer_data);
+            }
+        }
+
+        template<typename CounterType>
+        void accumulate_counters(const MaliDeviceCounterList & counter_list,
+                                 const hwcpipe::device::hwcnt::block_metadata & block,
+                                 lib::Span<AccumulatedCounter> counters)
+        {
+            auto active_counters = counter_list[block.type];
+            if (active_counters.empty()) {
+                return;
+            }
+
+            auto counter_values = reinterpret_cast<const CounterType *>(block.values);
+            for (const auto & address : active_counters) {
+                const std::uint32_t counter_index =
+                    address.groupIndex * block_metadata.num_counters_per_enable_group + address.wordIndex;
+                auto delta = counter_values[counter_index];
+                counters[counter_index] += delta;
+            }
+        }
     };
 
     /**

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
 #define INCLUDE_NON_ROOT_PROCESSSTATETRACKER_H
@@ -49,7 +49,7 @@ namespace non_root {
                             int tid,
                             const lnx::ProcPidStatFileRecord & statRecord,
                             const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                            const std::optional<lib::FsEntry> & exe);
+                            const std::optional<std::string> & exe);
 
         private:
             /** Only ProcessStateTracker can construct */
@@ -127,7 +127,7 @@ namespace non_root {
                                       unsigned long clktck,
                                       const lnx::ProcPidStatFileRecord & statRecord,
                                       const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                      const std::optional<lib::FsEntry> & exe);
+                                      const std::optional<std::string> & exe);
             void sendStats(unsigned long long timestampNS,
                            ProcessStateChangeHandler & handler,
                            bool sendFakeSchedulingEvents);
@@ -171,7 +171,7 @@ namespace non_root {
                                int tid,
                                const lnx::ProcPidStatFileRecord & statRecord,
                                const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                               const std::optional<lib::FsEntry> & exe);
+                               const std::optional<std::string> & exe);
 
         /** Called when active scan is destructed to mutate state */
         void endScan(const ActiveScan & activeScan,

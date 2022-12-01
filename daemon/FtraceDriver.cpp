@@ -29,6 +29,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+using namespace std::chrono_literals;
+
+static constexpr auto FTRACE_SLOP_READ_TIMEOUT_DURATION = 2s;
+
 Barrier::Barrier() : mMutex(), mCond(), mCount(0)
 {
     pthread_mutex_init(&mMutex, nullptr);
@@ -95,7 +99,7 @@ namespace {
     private:
         const TraceFsConstants & traceFsConstants;
         char * const mEnable;
-        int mWasEnabled;
+        int mWasEnabled {};
     };
 
     class CpuFrequencyFtraceCounter : public FtraceCounter {
@@ -135,8 +139,7 @@ namespace {
                                  const char * enable)
         : DriverCounter(next, name),
           traceFsConstants(traceFsConstants),
-          mEnable(enable == nullptr ? nullptr : strdup(enable)),
-          mWasEnabled(0)
+          mEnable(enable == nullptr ? nullptr : strdup(enable))
     {
     }
 
@@ -191,15 +194,9 @@ namespace {
 
     class FtraceReader {
     public:
+        //NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
         FtraceReader(Barrier * const barrier, int cpu, int tfd, int pfd0, int pfd1, ssize_t pageSize)
-            : mNext(mHead),
-              mBarrier(barrier),
-              mThread(),
-              mCpu(cpu),
-              mTfd(tfd),
-              mPfd0(pfd0),
-              mPfd1(pfd1),
-              pageSize(pageSize)
+            : mNext(mHead), mBarrier(barrier), mCpu(cpu), mTfd(tfd), mPfd0(pfd0), mPfd1(pfd1), pageSize(pageSize)
         {
             mHead = this;
         }
@@ -213,11 +210,10 @@ namespace {
         [[nodiscard]] int getPfd0() const { return mPfd0; }
 
     private:
-        static constexpr auto FTRACE_TIMEOUT = std::chrono::seconds {2};
         static FtraceReader * mHead;
         FtraceReader * const mNext;
         Barrier * const mBarrier;
-        pthread_t mThread;
+        pthread_t mThread {};
         const int mCpu;
         const int mTfd;
         const int mPfd0;
@@ -331,75 +327,31 @@ namespace {
             handleException();
         }
 
-        // Starting timer to interrupt thread if it's hanging
-        std::shared_ptr<std::atomic<bool>> isStuck = std::make_shared<std::atomic<bool>>(true);
-        std::thread timeoutThread([&, isStuck]() {
-            std::this_thread::sleep_for(FtraceReader::FTRACE_TIMEOUT);
-            if (*isStuck) {
-                LOG_DEBUG("ftrace reader is hanging. Interrupting reader thread");
-                close(internal_pipe[0]);
-                close(internal_pipe[1]);
-                close(mTfd);
-                close(mPfd1);
-                pthread_kill(mThread, SIGKILL);
-            }
-        });
-        timeoutThread.detach();
-
-        for (;;) {
-            const ssize_t bytes = splice(mTfd, nullptr, internal_pipe[1], nullptr, pageSize, SPLICE_F_MOVE);
-            if (bytes <= 0) {
-                break;
-            }
-            // Can there be a short splice read?
-            if (bytes != pageSize) {
-                LOG_ERROR("splice short read");
-                handleException();
-            }
-            // Will be read by gatord-external
-            auto sent = splice(internal_pipe[0], nullptr, mPfd1, nullptr, pageSize, SPLICE_F_MOVE);
-            if (sent != bytes) {
-                LOG_ERROR("splice failed when sending data to the external event reader");
-                handleException();
-            }
-        }
-
         {
             // Read any slop
             std::array<char, 65536> buf {};
             ssize_t bytes;
             size_t size;
 
-            if (buf.size() < static_cast<size_t>(pageSize)) {
-                LOG_ERROR("ftrace slop buffer is too small");
-                handleException();
-            }
-            for (;;) {
+            const auto end_time = std::chrono::steady_clock::now() + FTRACE_SLOP_READ_TIMEOUT_DURATION;
+            while (std::chrono::steady_clock::now() < end_time) {
                 bytes = read(mTfd, buf.data(), buf.size());
-                if (bytes == 0) {
-                    LOG_ERROR("ftrace read unexpectedly returned 0");
-                    handleException();
-                }
-                else if (bytes < 0) {
-                    if (errno != EAGAIN) {
-                        LOG_ERROR("reading slop from ftrace failed");
-                        handleException();
-                    }
+                if (bytes <= 0) {
+                    LOG_TRACE("ftrace read finished with result [%zd]", bytes);
                     break;
                 }
-                else {
-                    size = bytes;
-                    bytes = write(mPfd1, buf.data(), size);
-                    if (bytes != static_cast<ssize_t>(size)) {
-                        LOG_ERROR("writing slop to ftrace pipe failed");
-                        handleException();
+
+                size = bytes;
+                bytes = write(mPfd1, buf.data(), size);
+                if (bytes != static_cast<ssize_t>(size)) {
+                    LOG_ERROR("Writing to ftrace pipe failed: fd:%d, size: %zu, bytes: %zd", mPfd1, size, bytes);
+                    if (bytes == -1) {
+                        LOG_ERROR("ftrace write errno: %d", errno);
                     }
+                    handleException();
                 }
             }
         }
-
-        // Disabling the timeout thread
-        *isStuck = false;
 
         close(internal_pipe[0]);
         close(internal_pipe[1]);
@@ -550,7 +502,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     }
 
     {
-        int fd;
+        int fd {};
         // The below call can be slow on loaded high-core count systems.
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
         fd = ::open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC);
@@ -622,11 +574,11 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     }
 
     mBarrier.init(mNumberOfCores + 1);
-
     std::pair<std::vector<int>, bool> result {{}, false};
     for (size_t cpu = 0; cpu < mNumberOfCores; ++cpu) {
-        int pfd[2];
-        if (pipe2(pfd, O_CLOEXEC) != 0) {
+        std::array<int, 2> pfd;
+        if (pipe2(pfd.data(), O_CLOEXEC) != 0) {
+            // NOLINTNEXTLINE(concurrency-mt-unsafe)
             LOG_ERROR("pipe2 failed, %s (%i)", strerror(errno), errno);
             handleException();
         }
@@ -664,7 +616,7 @@ void FtraceDriver::start(std::function<void(int, int, std::int64_t)> initialValu
     }
 }
 
-std::vector<int> FtraceDriver::stop()
+std::vector<int> FtraceDriver::requestStop()
 {
     lib::writeIntToFile(traceFsConstants.path__tracing_on, mTracingOn);
 
@@ -682,13 +634,20 @@ std::vector<int> FtraceDriver::stop()
             reader->interrupt();
             fds.push_back(reader->getPfd0());
         }
+    }
+    return fds;
+}
+
+//NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+void FtraceDriver::stop()
+{
+    if (gSessionData.mFtraceRaw) {
         for (FtraceReader * reader = FtraceReader::getHead(); reader != nullptr; reader = reader->getNext()) {
             if (!reader->join()) {
                 LOG_WARNING("Failed to wait for FtraceReader to finish. It's possible the thread has already ended.");
             }
         }
     }
-    return fds;
 }
 
 bool FtraceDriver::readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * const printb, DynBuf * const b)

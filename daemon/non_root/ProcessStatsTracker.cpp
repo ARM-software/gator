@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStatsTracker.h"
 
@@ -78,7 +78,10 @@ namespace non_root {
         statm_data.update(record.getData() * pageSize);
     }
 
-    void ProcessStatsTracker::updateExe(const lib::FsEntry & exe) { exe_path.update(exe.path()); }
+    void ProcessStatsTracker::updateExe(const std::string & exe)
+    {
+        exe_path.update(exe);
+    }
 
     template<typename T>
     void ProcessStatsTracker::writeCounter(unsigned long long timestampNS,

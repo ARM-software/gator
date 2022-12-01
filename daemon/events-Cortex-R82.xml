@@ -98,14 +98,14 @@
     <event event="0x322" title="LLPP" name="Access (Read)" description="LLPP access, read, counts for every unique read request sent to the LLPP read address channel."/>
     <event event="0x323" title="LLPP" name="Access (Write)" description="LLPP access, write, counts for every unique write request sent to the LLPP write address channel."/>
     <event event="0x324" title="LLPP" name="Access" description="Counts accesses made on the LLPP. This event is a sum of LLPP_ACCESS_WR and LLPP_ACCESS_RD."/>
-    <event event="0x325" title="Main Master" name="Access (Read)" description="Main master access, read, counts for every unique read request sent to the main master channel between the core and the L2. "/>
-    <event event="0x326" title="Main Master" name="Access (Write)" description="Main master access, write, counts for every unique write request sent to the main master channel between the core and the L2."/>
-    <event event="0x327" title="Main Master" name="Access" description="Counts accesses made on the main master channel between the core and the L2. This event is a sum of MM_ACCESS_WR and MM_ACCESS_RD."/>
-    <event event="0x328" title="LLRAM" name="Access (Read)" description="LLRAM master access, read, counts for every unique read request sent to the main master channel between the core and the LLRAM coherency unit targeting the LLRAM port."/>
-    <event event="0x329" title="LLRAM" name="Access (Write)" description="LLRAM master access, write, counts for every unique write request sent to the main master channel between the core and the LLRAM coherency unit targeting the LLRAM port."/>
+    <event event="0x325" title="Main Manager" name="Access (Read)" description="Main manager access, read, counts for every unique read request sent to the main read data channel between the core and the L2. "/>
+    <event event="0x326" title="Main Manager" name="Access (Write)" description="Main manager access, write, counts for every unique write request sent to the main write data channel between the core and the L2."/>
+    <event event="0x327" title="Main Manager" name="Access" description="Counts accesses made on the main data channel between the core and the L2. This event is a sum of MM_ACCESS_WR and MM_ACCESS_RD."/>
+    <event event="0x328" title="LLRAM" name="Access (Read)" description="Low-latency RAM access, read, counts for every unique read request sent to the main data channel between the core and the LLRAM coherency unit targeting the LLRAM port."/>
+    <event event="0x329" title="LLRAM" name="Access (Write)" description="Low-latency RAM access, write, counts for every unique write request sent to the main data channel between the core and the LLRAM coherency unit targeting the LLRAM port."/>
     <event event="0x32a" title="LLRAM" name="Access" description="Counts accesses made between the core and the LLRAM coherency unit targeting the LLRAM port. This event is a sum of LLRAM_ACCESS_WR and LLRAM_ACCESS_RD."/>
-    <event event="0x32b" title="SPP" name="Access (Read)" description="SPP master access, read, counts for every unique read request sent to the master channel between the core and the LLRAM coherency unit targeting the SPP port."/>
-    <event event="0x32c" title="SPP" name="Access (Write)" description="SPP master access, write, counts for every unique write request sent to the master channel between the core and the LLRAM coherency unit targeting the SPP port."/>
+    <event event="0x32b" title="SPP" name="Access (Read)" description="Shared peripheral port access, read, counts for every unique read request sent to the data channel between the core and the LLRAM coherency unit targeting the SPP port."/>
+    <event event="0x32c" title="SPP" name="Access (Write)" description="Shared peripheral port access, write, counts for every unique write request sent to the data channel between the core and the LLRAM coherency unit targeting the SPP port."/>
     <event event="0x32d" title="SPP" name="Access" description="Counts accesses made between the core and the LLRAM coherency unit targeting the SPP port. This event is a sum of SPP_ACCESS_WR and SPP_ACCESS_RD."/>
     <event event="0x330" title="TCMs" name="Access (Read)" description="ACELS access to TCMs, read, counts for every unique read request sent to the TCMs from the ACELS port to this core."/>
     <event event="0x331" title="TCMs" name="Access (Write)" description="ACELS access to TCMs, write, counts for every unique write request sent to the TCMs from the ACELS port to this core."/>
@@ -114,16 +114,16 @@
     <event event="0x334" title="Snoops (L2)" name="Access" description="Counts every unique snoop request received by the core from the L2. This includes snoops received from the own core, another core or from outside the cluster in the CHI configuration." units="requests"/>
     <event event="0x335" title="Snoops (LLRAM Coherency Unit)" name="Access" description="Counts every unique snoop request received by the core from the LLRAM coherency unit. This includes snoops received from the own core or another core." units="requests"/>
     <event event="0x336" title="Snoops" name="Access" description="Counts every unique snoop request received by the core. This event is a sum of MM_SNP_ACCESS and LLRAM_SNP_ACCESS." units="requests"/>
-    <event event="0x350" title="L1 Instruction Cache (MM Region)" name="Refill" description="Level 1 instruction cache refill for an address to the main master region. Counts any instruction fetch which misses in the cache. Cache maintenance instructions are not counted. Non- cacheable accesses are not counted."/>
-    <event event="0x351" title="L1 Instruction Cache (MM Port)" name="Access" description="Level 1 instruction cache access targeting the main master port."/>
-    <event event="0x352" title="L1 Data Cache (MM Port)" name="Refill (Read)" description="Level 1 data cache refill, read from the main master port."/>
-    <event event="0x353" title="L1 Data Cache (MM Port)" name="Refill (Write)" description="Level 1 data cache refill, write from the main master port."/>
-    <event event="0x354" title="L1 Data Cache (MM Port)" name="Refill" description="Level 1 data cache refill for the main master port. This event counts the sum of MM_L1D_CACHE_REFILL_RD and MM_L1D_CACHE_REFILL_WR."/>
-    <event event="0x355" title="L1 Data Cache (MM Region)" name="Access (Read)" description="Level 1 data cache access, read targeting the main master address region."/>
-    <event event="0x356" title="L1 Data Cache (MM Region)" name="Access (Write)" description="Level 1 data cache access, write targeting the main master address region."/>
-    <event event="0x357" title="L1 Data Cache (MM Port)" name="Access" description="Level 1 data cache access targeting the main master port. This event counts the sum of MM_L1D_CACHE_RD and MM_L1D_CACHE_WR."/>
-    <event event="0x358" title="L1 Instruction Cache (LLRAM)" name="Refill" description="Level 1 instruction cache refill for an address to the LLRAM region. Counts any instruction fetch which misses in the cache. Cache maintenance instructions are not counted. Non- cacheable accesses are not counted."/>
-    <event event="0x359" title="L1 Instruction Cache (LLRAM)" name="Access" description="Level 1 instruction cache access targeting the main master port."/>
+    <event event="0x350" title="L1 Instruction Cache (MM Region)" name="Refill" description="Level 1 instruction cache refill for an address to the main manager region. Counts any instruction fetch which misses in the cache. Cache maintenance instructions are not counted. Non- cacheable accesses are not counted."/>
+    <event event="0x351" title="L1 Instruction Cache (MM Port)" name="Access" description="Level 1 instruction cache access targeting the main manager port."/>
+    <event event="0x352" title="L1 Data Cache (MM Port)" name="Refill (Read)" description="Level 1 data cache refill, read from the main manager port."/>
+    <event event="0x353" title="L1 Data Cache (MM Port)" name="Refill (Write)" description="Level 1 data cache refill, write from the main manager port."/>
+    <event event="0x354" title="L1 Data Cache (MM Port)" name="Refill" description="Level 1 data cache refill for the main manager port. This event counts the sum of MM_L1D_CACHE_REFILL_RD and MM_L1D_CACHE_REFILL_WR."/>
+    <event event="0x355" title="L1 Data Cache (MM Region)" name="Access (Read)" description="Level 1 data cache access, read targeting the main manager address region."/>
+    <event event="0x356" title="L1 Data Cache (MM Region)" name="Access (Write)" description="Level 1 data cache access, write targeting the main manager address region."/>
+    <event event="0x357" title="L1 Data Cache (MM Port)" name="Access" description="Level 1 data cache access targeting the main manager port. This event counts the sum of MM_L1D_CACHE_RD and MM_L1D_CACHE_WR."/>
+    <event event="0x358" title="L1 Instruction Cache (LLRAM)" name="Refill" description="Level 1 instruction cache refill for an address to the LLRAM region. Counts any instruction fetch which misses in the cache. Cache maintenance instructions are not counted. Non-cacheable accesses are not counted."/>
+    <event event="0x359" title="L1 Instruction Cache (LLRAM)" name="Access" description="Level 1 instruction cache access targeting the low-latency RAM region."/>
     <event event="0x360" title="L1 Data Cache (LLRAM)" name="Refill (Read)" description="Level 1 data cache refill, read from the LLRAM port."/>
     <event event="0x361" title="L1 Data Cache (LLRAM)" name="Refill (Write)" description="Level 1 data cache refill, write from the LLRAM port."/>
     <event event="0x362" title="L1 Data Cache (LLRAM)" name="Refill" description="Level 1 data cache refill from the LLRAM port. This event counts the sum of LLRAM_L1D_CACHE_REFILL_RD and LLRAM_L1D_CACHE_REFILL_WR."/>
@@ -134,7 +134,7 @@
     <event event="0x371" title="TCMs" name="Access (from Data Side for Write)" description="I or D TCM accessed from the data side for a write operation."/>
     <event event="0x372" title="ITCM (Instruction Pipe)" name="Access" description="ITCM accessed from the instruction pipe."/>
     <event event="0x373" title="Stalls (Router)" name="Contention" description="More than one router packet needs arbitrating introducing contention." units="cycles"/>
-    <event event="0x374" title="STB Slots (MM)" name="Full" description="Counts every time the main master STB slots are full."/>
+    <event event="0x374" title="STB Slots (MM)" name="Full" description="Counts every time the main manager STB slots are full."/>
     <event event="0x375" title="STB slots (LLRAM)" name="Full" description="Counts every time the LLRAM STB slots are full. This event also covers accesses to the SPP region."/>
     <event event="0x376" title="STB slots (LLPP)" name="Full" description="Counts every time the LLPP STB slots are full."/>
     <event event="0x377" title="STB Slots (TCMs)" name="Full" description="Counts every time the TC STB slots are full."/>
@@ -146,9 +146,9 @@
     <event event="0x391" title="Instructions (Executed)" name="Data Full Barrier" description="Instruction architecturally executed, condition code check pass for data full barrier instruction." units="instructions"/>
     <event event="0x392" title="EL2" name="Entered (Excluding Reset)" description="Exception taken to EL2 (hyp mode entry), excluding reset." units="exceptions"/>
     <event event="0x393" title="Instruction Pipeline (LLRAM)" name="Access (Timed Out)" description="An event to indicate that the instruction pipeline has timed out on a access to the LLRAM region."/>
-    <event event="0x394" title="Instruction Pipeline (MM Region)" name="Access (Timed Out)" description="An event to indicate that the instruction pipeline has timed out on a access to the main master region."/>
+    <event event="0x394" title="Instruction Pipeline (MM Region)" name="Access (Timed Out)" description="An event to indicate that the instruction pipeline has timed out on a access to the main manager region."/>
     <event event="0x395" title="Load/Store Pipeline (LLRAM)" name="Access (Timed Out)" description="An event to indicate that the load/store pipeline has timed out on a access to the LLRAM region."/>
-    <event event="0x396" title="Load/Store Pipeline (MM Region)" name="Access (Timed Out)" description="An event to indicate that the load/store pipeline has timed out on a access to the main master region."/>
+    <event event="0x396" title="Load/Store Pipeline (MM Region)" name="Access (Timed Out)" description="An event to indicate that the load/store pipeline has timed out on a access to the main manager region."/>
     <event event="0x397" title="Load/Store Pipeline (LLPP)" name="Access (Timed Out)" description="An event to indicate that the load/store pipeline has timed out on a access to the LLPP region."/>
     <event event="0x398" title="Load/Store Pipeline (SPP)" name="Access (Timed Out)" description="An event to indicate that the load/store pipeline has timed out on a access to the SPP region."/>
     <event event="0x399" title="L1 Data TLB (Prefetcher)" name="Refill" description="Level 1 TLB refill used by the data side prefetcher. Counts any refill of the data L1-TLB from the L2 TLB. This includes refills which result in a translation fault. This event counts regardless of whether the MMU is enabled."/>

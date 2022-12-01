@@ -1,13 +1,16 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIHWCNTRTASK_H_
 #define MALI_USERSPACE_MALIHWCNTRTASK_H_
 
 #include "Child.h"
-#include "IMaliHwCntrReader.h"
 #include "MaliDevice.h"
+#include "device/hwcnt/reader.hpp"
 
+#include <array>
 #include <functional>
+#include <memory>
+#include <system_error>
 
 class IBufferControl;
 class IBlockCounterFrameBuilder;
@@ -24,8 +27,8 @@ namespace mali_userspace {
                        std::unique_ptr<IBlockCounterFrameBuilder> frameBuilder,
                        std::int32_t deviceNumber,
                        IMaliDeviceCounterDumpCallback & callback,
-                       IMaliHwCntrReader & reader,
-                       const std::map<CounterKey, int64_t> & constants);
+                       const MaliDevice & device,
+                       std::map<CounterKey, int64_t> constants);
 
         // Intentionally unimplemented
         MaliHwCntrTask(const MaliHwCntrTask &) = delete;
@@ -39,13 +42,20 @@ namespace mali_userspace {
                      const std::function<void()> & endSession);
         bool write(ISender & sender);
 
+        void interrupt();
+
     private:
         std::unique_ptr<IBufferControl> mBuffer;
         std::unique_ptr<IBlockCounterFrameBuilder> mFrameBuilder;
         IMaliDeviceCounterDumpCallback & mCallback;
-        IMaliHwCntrReader & mReader;
+        const MaliDevice & mDevice;
         std::int32_t deviceNumber;
         const std::map<CounterKey, int64_t> mConstantValues;
+        std::array<int, 2> interrupt_fd;
+
+        std::error_code write_sample(const MaliDeviceCounterList & counter_list,
+                                     hwcpipe::device::hwcnt::reader & reader,
+                                     std::uint64_t monotonic_start);
 
         bool writeConstants();
     };

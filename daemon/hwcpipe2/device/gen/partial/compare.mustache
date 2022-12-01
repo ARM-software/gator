@@ -1,0 +1,24 @@
+{{#is_compound}}
+{{#items}}
+{{> compare}}
+{{/items}}
+{{#is_struct}}
+{{^has_union_field}}
+bool operator==(const {{full_name_cxx}} &lhs, const {{full_name_cxx}} &rhs) {
+    return true //
+        {{#fields}}
+            {{^meta.padding}}
+            {{#type.is_array}}
+            && std::equal(std::begin(lhs.{{name}}), std::end(lhs.{{name}}), std::begin(rhs.{{name}})) //
+            {{/type.is_array}}
+            {{^type.is_array}}
+            && lhs.{{name}} == rhs.{{name}} //
+            {{/type.is_array}}
+            {{/meta.padding}}
+        {{/fields}}
+        ;
+}
+
+{{/has_union_field}}
+{{/is_struct}}
+{{/is_compound}}

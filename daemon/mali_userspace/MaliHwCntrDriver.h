@@ -6,7 +6,7 @@
 #include "PolledDriver.h"
 #include "SessionData.h"
 #include "SimpleDriver.h"
-#include "mali_userspace/MaliHwCntrReader.h"
+#include "mali_userspace/MaliDevice.h"
 
 #include <map>
 #include <memory>
@@ -34,26 +34,31 @@ namespace mali_userspace {
         void setupCounter(Counter & counter) override;
         bool start();
 
-        inline const std::map<unsigned, std::unique_ptr<PolledDriver>> & getPolledDrivers() const
+        [[nodiscard]] inline const std::map<unsigned, std::unique_ptr<PolledDriver>> & getPolledDrivers() const noexcept
         {
             return mPolledDrivers;
         }
 
-        inline const std::map<unsigned, std::unique_ptr<MaliDevice>> & getDevices() const { return mDevices; }
+        [[nodiscard]] inline const std::map<unsigned, std::unique_ptr<MaliDevice>> & getDevices() const noexcept
+        {
+            return mDevices;
+        }
 
         void insertConstants(std::set<Constant> & dest) override;
-        int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const;
+        [[nodiscard]] int getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const;
 
-        const char * getSupportedDeviceFamilyName() const;
+        [[nodiscard]] const char * getSupportedDeviceFamilyName() const;
 
         /** @return map from device number to gpu id */
-        std::map<unsigned, unsigned> getDeviceGpuIds() const;
+        [[nodiscard]] std::map<unsigned, unsigned> getDeviceGpuIds() const;
 
     private:
         /** For each possible counter index, contains the counter key, or 0 if not enabled
          * Mapped to the GPUID not device number as counters are common across all devices with the same type.
          */
-        std::map<unsigned, std::unique_ptr<int[]>> mEnabledCounterKeysByGpuId {};
+        std::map<unsigned, std::vector<int>> mEnabledCounterKeysByGpuId {};
+        /** store per-gpu block sizes */
+        std::map<unsigned, MaliDevice::block_metadata_t> metadata_by_gpu_id {};
         /** Map of the GPU device number and Polling driver for GPU clock etc. */
         std::map<unsigned, std::unique_ptr<PolledDriver>> mPolledDrivers {};
         //Map between the device number and the mali devices .

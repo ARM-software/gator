@@ -1,0 +1,22 @@
+{{> copyright}}
+
+#pragma once
+
+#include "commands.hpp"
+
+#include <ostream>
+
+namespace hwcpipe {
+namespace device {
+namespace ioctl {
+namespace {{name}} {
+
+{{#items}}
+{{> print_declaration}}
+{{/items}}
+std::ostream &operator<<(std::ostream &os, command::command_type cmd);
+
+} // namespace {{name}}
+} // namespace ioctl
+} // namespace device
+} // namespace hwcpipe

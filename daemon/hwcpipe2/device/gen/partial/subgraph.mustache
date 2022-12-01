@@ -1,0 +1,36 @@
+{{#is_compound}}
+subgraph cluster_{{full_name_c}} {
+    label="{{keyword}} {{name}}"
+    graph [style=bold]
+
+    // Invisible node to connect other fields with this type.
+    compound_{{full_name_c}} [style=invis];
+
+    // Inner types defined in this {{keyword}}.
+    {{#items}}
+    {{> subgraph}}
+    {{/items}}
+
+    subgraph cluster_fields_{{full_name_c}}
+    {
+        label="Fields";
+        {{#fields}}
+        {{#type.is_array}}
+        {{full_name_c}} [label="{{type.element_type.name}} {{name}}[{{type.array_size}}]"];
+        {{/type.is_array}}
+        {{#type.is_pointer64}}
+        {{full_name_c}} [label="pointer64<{{type.value_type.full_name_cxx}}> {{name}}"];
+        {{/type.is_pointer64}}
+        {{#type.is_offset_pointer}}
+        {{full_name_c}} [label="offset_pointer<{{type.value_type.full_name_cxx}}, {{type.representation_type.name}}> {{name}}"];
+        {{/type.is_offset_pointer}}
+        {{^type.is_anonimous}}
+        {{full_name_c}} [label="{{type.name}} {{name}}"];
+        {{/type.is_anonimous}}
+        {{/fields}}
+    }
+}
+{{/is_compound}}
+{{#is_enum_or_bitmask}}
+enum_{{full_name_c}} [label="enum {{name}}"];
+{{/is_enum_or_bitmask}}

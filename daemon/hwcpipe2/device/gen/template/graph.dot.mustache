@@ -1,0 +1,35 @@
+digraph G {
+    compound=true;
+    label="{{name}}";
+    node [shape=box];
+    rankdir=LR;
+
+    subgraph cluster_commands {
+        node [shape=box, style=filled, fillcolor=lightgrey];
+
+        label="{{name}} commands."
+        {{#commands}}
+        command_{{name}} [label={{name}}];
+        {{/commands}}
+    }
+
+    {{#items}}
+    {{> subgraph}}
+    {{/items}}
+
+    {{#items}}
+    {{> subgraph_edges}}
+    {{/items}}
+
+    {{#commands}}
+    {{#arg_type.is_builtin}}
+    command_{{name}} -> {{arg_type.name}};
+    {{/arg_type.is_builtin}}
+    {{#arg_type.is_compound}}
+    command_{{name}} -> compound_{{arg_type.full_name_c}} [lhead=cluster_{{arg_type.full_name_c}}];
+    {{/arg_type.is_compound}}
+    {{#arg_type.is_enum_or_bitmask}}
+    command_{{name}} -> enum_{{arg_type.full_name_c}};
+    {{/arg_type.is_enum_or_bitmask}}
+    {{/commands}}
+}

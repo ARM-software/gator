@@ -92,6 +92,7 @@
     <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu"/>
     <pmu id="ARMv8_Neoverse_N2" cpuid="0x41d49" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu"/>
     <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu"/>
+    <pmu id="ARMv9_Neoverse_V2" cpuid="0x41d4f" core_name="Neoverse-V2" dt_name="arm,neoverse-v2" pmnc_counters="6" profile="9a" spe="arm_neoverse_v2_spe_pmu"/>
 
     <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu"/>
     <pmu id="ARMv8_Cortex_X1C" cpuid="0x41d4c" core_name="Cortex-X1C" dt_name="arm,cortex-x1c" pmnc_counters="6" profile="8a" counter_set="ARMv8_Cortex_X1" spe="arm_cortex_x1_spe_pmu"/>
@@ -152,13 +153,21 @@
     <uncore_pmu id="CCI_400_r1" core_name="CCI_400_r1" pmnc_counters="4"/>
     <uncore_pmu id="CCI_500" core_name="CCI_500" pmnc_counters="8" has_cycles_counter="no"/>
     <uncore_pmu id="ccn" core_name="ARM_CCN_5XX" pmnc_counters="8"/>
-    <uncore_pmu id="arm_cmn" counter_set="CMN_600" core_name="CMN-600" pmnc_counters="8"/>
+    <uncore_pmu id="arm_cmn_%d" counter_set="CMN_600" core_name="CMN-600" pmnc_counters="8"/>
     <uncore_pmu id="l2c_310" core_name="L2C-310" pmnc_counters="2" has_cycles_counter="no"/>
     <uncore_pmu id="arm_dsu_%d" core_name="DSU" pmnc_counters="6" />
-    <uncore_pmu id="smmuv3_pmcg_%s" core_name="System MMU v3" counter_set="SMMUv3" pmnc_counters="64" has_cycles_counter="no" />
 
     <!-- Ampere -->
     <uncore_pmu id="l3c%d" core_name="L3C" pmnc_counters="4" has_cycles_counter="yes"/>
     <uncore_pmu id="mc%d" core_name="MCU" pmnc_counters="4" has_cycles_counter="yes"/>
     <uncore_pmu id="mcb%d" core_name="MCB" pmnc_counters="4" has_cycles_counter="yes"/>
+
+    <!-- ============================ SMMUs ============================ -->
+    <smmuv3 id="SMMUv3_TBU" core_name="System MMU v3 (TBU)" pmnc_counters="64" />
+    <smmuv3 id="SMMUv3_TCU" core_name="System MMU v3 (TCU)" pmnc_counters="64" />
+    <smmuv3 id="SMMUv3_TBU_484_43b" core_name="CoreLink MMU-600 (TBU)" counter_set="CoreLinkMMU600_TBU" pmnc_counters="64" />
+    <smmuv3 id="SMMUv3_TCU_483_43b" core_name="CoreLink MMU-600 (TCU)" counter_set="CoreLinkMMU600_TCU" pmnc_counters="64" />
+    <smmuv3 id="SMMUv3_TBU_488_43b" core_name="CoreLink MMU-700 (TBU)" counter_set="CoreLinkMMU700_TBU" pmnc_counters="64" />
+    <smmuv3 id="SMMUv3_TCU_487_43b" core_name="CoreLink MMU-700 (TCU)" counter_set="CoreLinkMMU700_TCU" pmnc_counters="64" />
+
 </pmus>

@@ -286,19 +286,29 @@ public:
         }
 
         if (mDrivers.getFtraceDriver().isSupported()) {
-            const auto ftraceFds = mDrivers.getFtraceDriver().stop();
+            const auto ftraceFds = mDrivers.getFtraceDriver().requestStop();
             // Read any slop
             for (int fd : ftraceFds) {
-                transfer(monotonicStart, fd, endSession);
+                if (!lib::setBlocking(fd)) {
+                    LOG_WARNING("Failed to change ftrace pipe to blocking reads. Ftrace data may be truncated");
+                }
+
+                while (transfer(monotonicStart, fd, endSession)) {
+                }
+
                 close(fd);
             }
+            mDrivers.getFtraceDriver().stop();
             mDrivers.getTtraceDriver().stop();
             mDrivers.getAtraceDriver().stop();
         }
 
         for (auto & pair : external_agent_connections) {
             LOG_DEBUG("Closing read end %d", pair.first);
-            pair.second.close();
+            // ask the agent to close the connection
+            pair.second.first->close();
+            // now close the read end of the pipe
+            pair.second.second.close();
         }
 
         mBuffer.flush();
@@ -342,8 +352,7 @@ public:
         mBuffer.endFrame();
         checkFlush(monotonicStart, isBufferOverFull(mBuffer.contiguousSpaceAvailable()));
 
-        // Short reads also mean nothing is left to read
-        return bytes >= contiguous;
+        return true;
     }
 
     void interrupt() override
@@ -365,7 +374,7 @@ public:
         return isDone;
     }
 
-    lib::AutoClosingFd add_agent_pipe() override
+    lib::AutoClosingFd add_agent_pipe(std::unique_ptr<agents::ext_source_connection_t> connection) override
     {
         std::lock_guard<std::mutex> lock {external_agent_connections_mutex};
 
@@ -383,7 +392,7 @@ public:
             return {};
         }
 
-        external_agent_connections[pfd[0]] = std::move(read);
+        external_agent_connections[pfd[0]] = {std::move(connection), std::move(read)};
 
         int8_t c = 0;
         // Write to the pipe to wake the monitor which will cause mSessionIsActive to be reread
@@ -396,6 +405,8 @@ public:
     }
 
 private:
+    using agent_connection_t = std::pair<std::unique_ptr<agents::ext_source_connection_t>, lib::AutoClosingFd>;
+
     sem_t mBufferSem {};
     std::function<uint64_t()> mGetMonotonicTime;
     CommitTimeChecker mCommitChecker;
@@ -404,10 +415,10 @@ private:
     OlyServerSocket mMidgardStartupUds;
     OlyServerSocket mUtgardStartupUds;
     std::mutex external_agent_connections_mutex {};
-    std::map<int, lib::AutoClosingFd> external_agent_connections {};
+    std::map<int, agent_connection_t> external_agent_connections {};
     lib::AutoClosingFd mInterruptRead {};
     lib::AutoClosingFd mInterruptWrite {};
-    int mMidgardUds;
+    int mMidgardUds {};
     Drivers & mDrivers;
     std::atomic_bool mSessionIsActive {true};
 

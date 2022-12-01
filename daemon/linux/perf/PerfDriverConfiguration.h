@@ -1,10 +1,11 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_CONFIGURATION_H
 #define PERFDRIVER_CONFIGURATION_H
 
 #include "lib/Span.h"
 #include "linux/perf/PerfConfig.h"
+#include "linux/smmu_identifier.h"
 #include "xml/PmuXML.h"
 
 #include <map>
@@ -33,10 +34,12 @@ struct PerfDriverConfiguration {
     std::map<int, int> cpuNumberToSpeType {};
     PerfConfig config {};
 
-    static std::unique_ptr<PerfDriverConfiguration> detect(bool systemWide,
-                                                           const char * tracefsEventsPath,
-                                                           lib::Span<const int> cpuIds,
-                                                           const PmuXML & pmuXml);
+    static std::unique_ptr<PerfDriverConfiguration> detect(
+        bool systemWide,
+        const char * tracefsEventsPath,
+        lib::Span<const int> cpuIds,
+        const gator::smmuv3::default_identifiers_t & smmu_identifiers,
+        const PmuXML & pmuXml);
 
     static constexpr int UNKNOWN_CPUID = 0xfffff;
     static constexpr char ARMV82_SPE[] = "armv8.2_spe";

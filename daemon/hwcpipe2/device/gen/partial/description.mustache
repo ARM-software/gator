@@ -1,0 +1,15 @@
+{{#description.is_multiline}}
+/**
+{{#description.lines}}
+{{#content}}
+ * {{{content}}}
+{{/content}}
+{{^content}}
+ *
+{{/content}}
+{{/description.lines}}
+ */
+{{/description.is_multiline}}
+{{^description.is_multiline}}
+/** {{{description}}} */
+{{/description.is_multiline}}

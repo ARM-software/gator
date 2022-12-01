@@ -1,0 +1,59 @@
+<!-- Copyright (c) 2021, Arm Limited -->
+<counter_set name="CoreLinkMMU700_TCU_cnt" count="8"/>
+<category name="MMU-700 TCU" counter_set="CoreLinkMMU700_TCU_cnt" per_cpu="no">
+    <!-- Architecturally defined SMMUv3 events -->
+    <event event="0x00" title="MMU-700 (Clock)" name="Cycles" description="Counts clock cycles. Cycles where the clock is gated after a clock QChannel handshake are not counted." units="cycles" />
+    <event event="0x01" title="MMU-700 (Transactions/Requests)" name="All" description="Counts translation requests that originate from a DTI-TBU or DTI-ATS manager." />
+    <event event="0x02" title="MMU-700 (Transactions/Requests)" name="TLB Misses" description="Counts translation requests where the translation walks new translation table entries." />
+    <event event="0x03" title="MMU-700 (Transactions/Requests)" name="Config Cache Misses" description="Counts translation requests where the translation walks new configuration table entries." />
+    <event event="0x04" title="MMU-700 (External Accesses)" name="Translation Table Walk" description="Counts translation table walk accesses." />
+    <event event="0x05" title="MMU-700 (External Accesses)" name="Configuration Structure" description="Counts configuration table walk accesses." />
+    <event event="0x06" title="MMU-700 (PCIe ATS)" name="Translation Requests Received" description="Counts translation requests that originate from a DTI-ATS manager." />
+
+    <!-- Implementation specific events -->
+    <event event="0x80" title="MMU-700 (Transactions/Requests)" name="S1L0WC Lookups" description="Counts translation requests that access the S1L0WC walk cache." />
+    <event event="0x81" title="MMU-700 (Transactions/Requests)" name="S1L0WC Misses" description="Counts translation requests that access the S1L0WC walk cache and do not result in a hit." />
+    <event event="0x82" title="MMU-700 (Transactions/Requests)" name="S1L1WC Lookups" description="Counts translation requests that access the S1L1WC walk cache." />
+    <event event="0x83" title="MMU-700 (Transactions/Requests)" name="S1L1WC Misses" description="Counts translation requests that access the S1L1WC walk cache and do not result in a hit." />
+    <event event="0x84" title="MMU-700 (Transactions/Requests)" name="S1L2WC Lookups" description="Counts translation requests that access the S1L2WC walk cache." />
+    <event event="0x85" title="MMU-700 (Transactions/Requests)" name="S1L2WC Misses" description="Counts translation requests that access the S1L2WC walk cache and do not result in a hit." />
+    <event event="0x86" title="MMU-700 (Transactions/Requests)" name="S1L3WC Lookups" description="Counts translation requests that access the S1L3WC walk cache." />
+    <event event="0x87" title="MMU-700 (Transactions/Requests)" name="S1L3WC Misses" description="Counts translation requests that access the S1L3WC walk cache and do not result in a hit." />
+    <event event="0x88" title="MMU-700 (Transactions/Requests)" name="S2L0WC Lookups" description="Counts translation requests that access the S2L0WC walk cache." />
+    <event event="0x89" title="MMU-700 (Transactions/Requests)" name="S2L0WC Misses" description="Counts translation requests that access the S2L0WC walk cache and do not result in a hit." />
+    <event event="0x8A" title="MMU-700 (Transactions/Requests)" name="S2L1WC Lookups" description="Counts translation requests that access the S2L1WC walk cache." />
+    <event event="0x8B" title="MMU-700 (Transactions/Requests)" name="S2L1WC Misses" description="Counts translation requests that access the S2L1WC walk cache and do not result in a hit." />
+    <event event="0x8C" title="MMU-700 (Transactions/Requests)" name="S2L2WC Lookups" description="Counts translation requests that access the S2L2WC walk cache." />
+    <event event="0x8D" title="MMU-700 (Transactions/Requests)" name="S2L2WC Misses" description="Counts translation requests that access the S2L2WC walk cache and do not result in a hit." />
+    <event event="0x8E" title="MMU-700 (Transactions/Requests)" name="S2L3WC Lookups" description="Counts translation requests that access the S2L3WC walk cache." />
+    <event event="0x8F" title="MMU-700 (Transactions/Requests)" name="S2L3WC Misses" description="Counts translation requests that access the S2L3WC walk cache and do not result in a hit." />
+    <event event="0x90" title="MMU-700 (Transactions/Requests)" name="Walk Cache Reads" description="Counts reads from the walk cache RAMs, excluding reads that are caused by invalidation requests." />
+    <event event="0x91" title="MMU-700 (Transactions/Requests)" name="Buffered Translation" description="Counts translations that are written to the translation request buffer because either all the configuration table walk slots or all the page table walk slots are occupied." />
+    <event event="0x92" title="MMU-700 (Transactions/Requests)" name="Configuration Cache Lookups" description="Counts lookups into the configuration cache." />
+    <event event="0x93" title="MMU-700 (Transactions/Requests)" name="Configuration Cache Reads" description="Counts reads from the configuration cache RAMs, excluding reads that are caused by invalidation requests." />
+    <event event="0x94" title="MMU-700 (Transactions/Requests)" name="Configuration Cache Misses" description="Counts lookups into the configuration cache that result in a miss." />
+    <event event="0xA0" title="MMU-700 (Transactions/Requests)" name="Speculative Translation" description="Counts translation requests that are marked as speculative." />
+</category>
+
+<counter_set name="CoreLinkMMU700_TBU_cnt" count="8"/>
+<category name="MMU-700 TBU" counter_set="CoreLinkMMU700_TBU_cnt" per_cpu="no">
+    <!-- Architecturally defined SMMUv3 events -->
+    <event event="0x00" title="MMU-700 (Clock)" name="Cycles" description="Counts clock cycles. Cycles where the clock is gated after a clock QChannel handshake are not counted." units="cycles" />
+    <event event="0x01" title="MMU-700 (Transactions/Requests)" name="All" description="Counts transactions that are issued on the TBM interface." />
+    <event event="0x02" title="MMU-700 (Transactions/Requests)" name="TLB Misses" description="Counts non-speculative translation requests that are issued to the TCU." />
+    <event event="0x07" title="MMU-700 (PCIe ATS)" name="Translated Transactions passed through SMMU" description="Counts ATS-translated transactions that are issued on the TBM interface." />
+
+    <!-- Implementation specific events -->
+    <event event="0x80" title="MMU-700 (Transactions/Requests)" name="Main TLB Lookups" description="Counts Main TLB lookups." />
+    <event event="0x81" title="MMU-700 (Transactions/Requests)" name="Main TLB Misses" description="Counts translation requests that miss in the Main TLB." />
+    <event event="0x82" title="MMU-700 (Transactions/Requests)" name="Main TLB Reads" description="Counts once per access to the Main TLB RAMs, excluding reads that invalidation requests cause." />
+    <event event="0x83" title="MMU-700 (Transactions/Requests)" name="Micro TLB Lookups" description="Counts micro TLB lookups." />
+    <event event="0x84" title="MMU-700 (Transactions/Requests)" name="Micro TLB Misses" description="Counts translation requests that miss in the micro TLB." />
+    <event event="0x85" title="MMU-700 (Transactions/Requests)" name="Slots Full" description="Counts once per cycle when all slots are occupied and not ready to issue transactions downstream. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0x86" title="MMU-700 (Transactions/Requests)" name="Out Of Translation Tokens" description="Counts once per cycle when a translation request cannot be issued because all translation tokens are in use. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0x87" title="MMU-700 (Transactions/Requests)" name="Write Data Buffer Full" description="Counts once per cycle when a transaction is blocked because the write data buffer is full. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0x8B" title="MMU-700 (Transactions/Requests)" name="DCMO Downgrade" description="For the ACE-Lite TBU, counts when either a MakeInvalid transaction on the TBS interface is output as CleanInvalid on the TBM interface, or a ReadOnceMakeInvalid transaction on the TBS interface is output as ReadOnceCleanInvalid on the TBM interface.  For the LTI TBU, counts once per cycle when an LTI DCMO or R-DCMO transaction on the LA channel is responded to with a downgrade on the LR channel." />
+    <event event="0x8C" title="MMU-700 (Transactions/Requests)" name="Stash Fail" description="For the ACE-Lite TBU, counts when either a WriteUniquePtlStash or WriteUniqueFullStash transaction on TBS is output as a WriteNoSnoop or WriteUnique transaction on the TBM interface, or a StashOnceShared or StashOnceUnique transaction on the TBS interface has a valid translation, but is terminated in the TBU. For the LTI TBU, counts once whenever either an LTI WDCP transaction on the LA channel is downgraded as W on the LR channel, or an LTI DCP transaction on the LA channel that is responded to as FaultRAZWI on the LR channel is counted (this can be because of memory attributes or DCP, R, W, or X permission check failure in the Translation Lookaside Buffer Unit (TLBU), or DTI fault response with Non-Abort). The transaction that is responded to with FaultAbort because of DTI StreamDisable or GlobalDisable is not counted." />
+    <event event="0xD0" title="MMU-700 (Transactions/Requests)" name="LTI Port Slots Full" description="LTI port event (0xD0 + N) corresponds to LTI port N. Counts once per cycle when the slots that are allocated to the LTI port are all occupied and not ready to issue downstream." />
+    <event event="0xE0" title="MMU-700 (Transactions/Requests)" name="LTI Port Out Of Translation Tokens" description="LTI port event (0xD0 + N) corresponds to LTI port N. Counts once per cycle when a translation request cannot be issued for an LTI port because all its allocated translation tokens are in use." />
+</category>

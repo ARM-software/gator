@@ -1,0 +1,495 @@
+digraph G {
+    compound=true;
+    label="kinstr_prfcnt";
+    node [shape=box];
+    rankdir=LR;
+
+    subgraph cluster_commands {
+        node [shape=box, style=filled, fillcolor=lightgrey];
+
+        label="kinstr_prfcnt commands."
+        command_issue_command [label=issue_command];
+        command_get_sample [label=get_sample];
+        command_put_sample [label=put_sample];
+    }
+
+    enum_block_type [label="enum block_type"];
+    enum_prfcnt_set [label="enum prfcnt_set"];
+    subgraph cluster_enum_item {
+        label="struct enum_item"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_enum_item [style=invis];
+
+        // Inner types defined in this struct.
+        enum_enum_item_item_type [label="enum item_type"];
+        subgraph cluster_enum_item_header {
+            label="struct header"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_enum_item_header [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_enum_item_header
+            {
+                label="Fields";
+                enum_item_header_type [label="item_type type"];
+                enum_item_header_item_version [label="uint16_t item_version"];
+            }
+        }
+        subgraph cluster_enum_item_enum_block_counter {
+            label="struct enum_block_counter"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_enum_item_enum_block_counter [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_enum_item_enum_block_counter
+            {
+                label="Fields";
+                enum_item_enum_block_counter_type [label="block_type type"];
+                enum_item_enum_block_counter_set [label="prfcnt_set set"];
+                enum_item_enum_block_counter_pad [label="uint8_t pad[2]"];
+                enum_item_enum_block_counter_num_instances [label="uint16_t num_instances"];
+                enum_item_enum_block_counter_num_values [label="uint16_t num_values"];
+                enum_item_enum_block_counter_counter_mask [label="uint64_t counter_mask[2]"];
+            }
+        }
+        subgraph cluster_enum_item_enum_request {
+            label="struct enum_request"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_enum_item_enum_request [style=invis];
+
+            // Inner types defined in this struct.
+            enum_enum_item_enum_request_request_type [label="enum request_type"];
+
+            subgraph cluster_fields_enum_item_enum_request
+            {
+                label="Fields";
+                enum_item_enum_request_request_item_type [label="request_type request_item_type"];
+                enum_item_enum_request_pad [label="uint16_t pad"];
+                enum_item_enum_request_versions_mask [label="uint32_t versions_mask"];
+            }
+        }
+        subgraph cluster_enum_item_enum_sample_info {
+            label="struct enum_sample_info"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_enum_item_enum_sample_info [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_enum_item_enum_sample_info
+            {
+                label="Fields";
+                enum_item_enum_sample_info_num_clock_domains [label="uint32_t num_clock_domains"];
+                enum_item_enum_sample_info_pad [label="uint32_t pad"];
+            }
+        }
+        subgraph cluster_enum_item_enum_union {
+            label="union enum_union"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_enum_item_enum_union [style=invis];
+
+            // Inner types defined in this union.
+
+            subgraph cluster_fields_enum_item_enum_union
+            {
+                label="Fields";
+                enum_item_enum_union_block_counter [label="enum_block_counter block_counter"];
+                enum_item_enum_union_request [label="enum_request request"];
+                enum_item_enum_union_sample_info [label="enum_sample_info sample_info"];
+            }
+        }
+
+        subgraph cluster_fields_enum_item
+        {
+            label="Fields";
+            enum_item_hdr [label="header hdr"];
+            enum_item_padding [label="uint8_t padding[4]"];
+            enum_item_u [label="enum_union u"];
+        }
+    }
+    subgraph cluster_metadata_item {
+        label="struct metadata_item"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_metadata_item [style=invis];
+
+        // Inner types defined in this struct.
+        enum_metadata_item_item_type [label="enum item_type"];
+        subgraph cluster_metadata_item_header {
+            label="struct header"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_metadata_item_header [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_metadata_item_header
+            {
+                label="Fields";
+                metadata_item_header_type [label="item_type type"];
+                metadata_item_header_item_version [label="uint16_t item_version"];
+            }
+        }
+        subgraph cluster_metadata_item_block_metadata {
+            label="struct block_metadata"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_metadata_item_block_metadata [style=invis];
+
+            // Inner types defined in this struct.
+            enum_metadata_item_block_metadata_block_state_type [label="enum block_state_type"];
+
+            subgraph cluster_fields_metadata_item_block_metadata
+            {
+                label="Fields";
+                metadata_item_block_metadata_type [label="block_type type"];
+                metadata_item_block_metadata_block_idx [label="uint8_t block_idx"];
+                metadata_item_block_metadata_set [label="prfcnt_set set"];
+                metadata_item_block_metadata_pad_u8 [label="uint8_t pad_u8"];
+                metadata_item_block_metadata_block_state [label="block_state_type block_state"];
+                metadata_item_block_metadata_values_offset [label="uint32_t values_offset"];
+                metadata_item_block_metadata_pad_u32 [label="uint32_t pad_u32"];
+            }
+        }
+        subgraph cluster_metadata_item_clock_metadata {
+            label="struct clock_metadata"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_metadata_item_clock_metadata [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_metadata_item_clock_metadata
+            {
+                label="Fields";
+                metadata_item_clock_metadata_num_domains [label="uint32_t num_domains"];
+                metadata_item_clock_metadata_pad [label="uint32_t pad"];
+                metadata_item_clock_metadata_cycles [label="uint64_t cycles[max_reported_domains]"];
+            }
+        }
+        subgraph cluster_metadata_item_sample_metadata {
+            label="struct sample_metadata"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_metadata_item_sample_metadata [style=invis];
+
+            // Inner types defined in this struct.
+            enum_metadata_item_sample_metadata_sample_flag [label="enum sample_flag"];
+
+            subgraph cluster_fields_metadata_item_sample_metadata
+            {
+                label="Fields";
+                metadata_item_sample_metadata_timestamp_start [label="uint64_t timestamp_start"];
+                metadata_item_sample_metadata_timestamp_stop [label="uint64_t timestamp_stop"];
+                metadata_item_sample_metadata_seq [label="uint64_t seq"];
+                metadata_item_sample_metadata_user_data [label="uint64_t user_data"];
+                metadata_item_sample_metadata_flags [label="sample_flag flags"];
+                metadata_item_sample_metadata_pad [label="uint32_t pad"];
+            }
+        }
+        subgraph cluster_metadata_item_metadata_union {
+            label="union metadata_union"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_metadata_item_metadata_union [style=invis];
+
+            // Inner types defined in this union.
+
+            subgraph cluster_fields_metadata_item_metadata_union
+            {
+                label="Fields";
+                metadata_item_metadata_union_sample_md [label="sample_metadata sample_md"];
+                metadata_item_metadata_union_clock_md [label="clock_metadata clock_md"];
+                metadata_item_metadata_union_block_md [label="block_metadata block_md"];
+            }
+        }
+
+        subgraph cluster_fields_metadata_item
+        {
+            label="Fields";
+            metadata_item_hdr [label="header hdr"];
+            metadata_item_padding [label="uint8_t padding[4]"];
+            metadata_item_u [label="metadata_union u"];
+        }
+    }
+    subgraph cluster_control_cmd {
+        label="struct control_cmd"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_control_cmd [style=invis];
+
+        // Inner types defined in this struct.
+        enum_control_cmd_control_cmd_code [label="enum control_cmd_code"];
+
+        subgraph cluster_fields_control_cmd
+        {
+            label="Fields";
+            control_cmd_cmd [label="control_cmd_code cmd"];
+            control_cmd_pad [label="uint16_t pad[3]"];
+            control_cmd_user_data [label="uint64_t user_data"];
+        }
+    }
+    subgraph cluster_request_item {
+        label="struct request_item"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_request_item [style=invis];
+
+        // Inner types defined in this struct.
+        enum_request_item_item_type [label="enum item_type"];
+        subgraph cluster_request_item_header {
+            label="struct header"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_request_item_header [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_request_item_header
+            {
+                label="Fields";
+                request_item_header_type [label="item_type type"];
+                request_item_header_item_version [label="uint16_t item_version"];
+            }
+        }
+        subgraph cluster_request_item_request_mode {
+            label="struct request_mode"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_request_item_request_mode [style=invis];
+
+            // Inner types defined in this struct.
+            enum_request_item_request_mode_sampling_mode [label="enum sampling_mode"];
+            subgraph cluster_request_item_request_mode_periodic_type {
+                label="struct periodic_type"
+                graph [style=bold]
+
+                // Invisible node to connect other fields with this type.
+                compound_request_item_request_mode_periodic_type [style=invis];
+
+                // Inner types defined in this struct.
+
+                subgraph cluster_fields_request_item_request_mode_periodic_type
+                {
+                    label="Fields";
+                    request_item_request_mode_periodic_type_period_ns [label="uint64_t period_ns"];
+                }
+            }
+            subgraph cluster_request_item_request_mode_mode_config_union {
+                label="union mode_config_union"
+                graph [style=bold]
+
+                // Invisible node to connect other fields with this type.
+                compound_request_item_request_mode_mode_config_union [style=invis];
+
+                // Inner types defined in this union.
+
+                subgraph cluster_fields_request_item_request_mode_mode_config_union
+                {
+                    label="Fields";
+                    request_item_request_mode_mode_config_union_periodic [label="periodic_type periodic"];
+                }
+            }
+
+            subgraph cluster_fields_request_item_request_mode
+            {
+                label="Fields";
+                request_item_request_mode_mode [label="sampling_mode mode"];
+                request_item_request_mode_pad [label="uint8_t pad[7]"];
+                request_item_request_mode_mode_config [label="mode_config_union mode_config"];
+            }
+        }
+        subgraph cluster_request_item_request_enable {
+            label="struct request_enable"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_request_item_request_enable [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_request_item_request_enable
+            {
+                label="Fields";
+                request_item_request_enable_type [label="block_type type"];
+                request_item_request_enable_set [label="prfcnt_set set"];
+                request_item_request_enable_pad [label="uint8_t pad[6]"];
+                request_item_request_enable_enable_mask [label="uint64_t enable_mask[2]"];
+            }
+        }
+        subgraph cluster_request_item_request_scope {
+            label="struct request_scope"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_request_item_request_scope [style=invis];
+
+            // Inner types defined in this struct.
+            enum_request_item_request_scope_counters_scope [label="enum counters_scope"];
+
+            subgraph cluster_fields_request_item_request_scope
+            {
+                label="Fields";
+                request_item_request_scope_scope [label="counters_scope scope"];
+                request_item_request_scope_pad [label="uint8_t pad[7]"];
+            }
+        }
+        subgraph cluster_request_item_request_union {
+            label="union request_union"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_request_item_request_union [style=invis];
+
+            // Inner types defined in this union.
+
+            subgraph cluster_fields_request_item_request_union
+            {
+                label="Fields";
+                request_item_request_union_req_mode [label="request_mode req_mode"];
+                request_item_request_union_req_enable [label="request_enable req_enable"];
+                request_item_request_union_req_scope [label="request_scope req_scope"];
+            }
+        }
+
+        subgraph cluster_fields_request_item
+        {
+            label="Fields";
+            request_item_hdr [label="header hdr"];
+            request_item_padding [label="uint8_t padding[4]"];
+            request_item_u [label="request_union u"];
+        }
+    }
+    subgraph cluster_sample_access {
+        label="struct sample_access"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_sample_access [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_sample_access
+        {
+            label="Fields";
+            sample_access_sequence [label="uint64_t sequence"];
+            sample_access_sample_metadata_ptr [label="offset_pointer<metadata_item, uint64_t> sample_metadata_ptr"];
+        }
+    }
+
+    // Edges for enum_item
+    enum_item_hdr -> compound_enum_item_header [lhead=cluster_enum_item_header];
+    enum_item_padding -> uint8_t;
+    enum_item_u -> compound_enum_item_enum_union [lhead=cluster_enum_item_enum_union];
+    // Edges for enum_item_header
+    enum_item_header_type -> enum_enum_item_item_type;
+    enum_item_header_item_version -> uint16_t;
+    // Edges for enum_item_enum_block_counter
+    enum_item_enum_block_counter_type -> enum_block_type;
+    enum_item_enum_block_counter_set -> enum_prfcnt_set;
+    enum_item_enum_block_counter_pad -> uint8_t;
+    enum_item_enum_block_counter_num_instances -> uint16_t;
+    enum_item_enum_block_counter_num_values -> uint16_t;
+    enum_item_enum_block_counter_counter_mask -> uint64_t;
+    // Edges for enum_item_enum_request
+    enum_item_enum_request_request_item_type -> enum_enum_item_enum_request_request_type;
+    enum_item_enum_request_pad -> uint16_t;
+    enum_item_enum_request_versions_mask -> uint32_t;
+    // Edges for enum_item_enum_sample_info
+    enum_item_enum_sample_info_num_clock_domains -> uint32_t;
+    enum_item_enum_sample_info_pad -> uint32_t;
+    // Edges for enum_item_enum_union
+    enum_item_enum_union_block_counter -> compound_enum_item_enum_block_counter [lhead=cluster_enum_item_enum_block_counter];
+    enum_item_enum_union_request -> compound_enum_item_enum_request [lhead=cluster_enum_item_enum_request];
+    enum_item_enum_union_sample_info -> compound_enum_item_enum_sample_info [lhead=cluster_enum_item_enum_sample_info];
+    // Edges for metadata_item
+    metadata_item_hdr -> compound_metadata_item_header [lhead=cluster_metadata_item_header];
+    metadata_item_padding -> uint8_t;
+    metadata_item_u -> compound_metadata_item_metadata_union [lhead=cluster_metadata_item_metadata_union];
+    // Edges for metadata_item_header
+    metadata_item_header_type -> enum_metadata_item_item_type;
+    metadata_item_header_item_version -> uint16_t;
+    // Edges for metadata_item_block_metadata
+    metadata_item_block_metadata_type -> enum_block_type;
+    metadata_item_block_metadata_block_idx -> uint8_t;
+    metadata_item_block_metadata_set -> enum_prfcnt_set;
+    metadata_item_block_metadata_pad_u8 -> uint8_t;
+    metadata_item_block_metadata_block_state -> enum_metadata_item_block_metadata_block_state_type;
+    metadata_item_block_metadata_values_offset -> uint32_t;
+    metadata_item_block_metadata_pad_u32 -> uint32_t;
+    // Edges for metadata_item_clock_metadata
+    metadata_item_clock_metadata_num_domains -> uint32_t;
+    metadata_item_clock_metadata_pad -> uint32_t;
+    metadata_item_clock_metadata_cycles -> uint64_t;
+    // Edges for metadata_item_sample_metadata
+    metadata_item_sample_metadata_timestamp_start -> uint64_t;
+    metadata_item_sample_metadata_timestamp_stop -> uint64_t;
+    metadata_item_sample_metadata_seq -> uint64_t;
+    metadata_item_sample_metadata_user_data -> uint64_t;
+    metadata_item_sample_metadata_flags -> enum_metadata_item_sample_metadata_sample_flag;
+    metadata_item_sample_metadata_pad -> uint32_t;
+    // Edges for metadata_item_metadata_union
+    metadata_item_metadata_union_sample_md -> compound_metadata_item_sample_metadata [lhead=cluster_metadata_item_sample_metadata];
+    metadata_item_metadata_union_clock_md -> compound_metadata_item_clock_metadata [lhead=cluster_metadata_item_clock_metadata];
+    metadata_item_metadata_union_block_md -> compound_metadata_item_block_metadata [lhead=cluster_metadata_item_block_metadata];
+    // Edges for control_cmd
+    control_cmd_cmd -> enum_control_cmd_control_cmd_code;
+    control_cmd_pad -> uint16_t;
+    control_cmd_user_data -> uint64_t;
+    // Edges for request_item
+    request_item_hdr -> compound_request_item_header [lhead=cluster_request_item_header];
+    request_item_padding -> uint8_t;
+    request_item_u -> compound_request_item_request_union [lhead=cluster_request_item_request_union];
+    // Edges for request_item_header
+    request_item_header_type -> enum_request_item_item_type;
+    request_item_header_item_version -> uint16_t;
+    // Edges for request_item_request_mode
+    request_item_request_mode_mode -> enum_request_item_request_mode_sampling_mode;
+    request_item_request_mode_pad -> uint8_t;
+    request_item_request_mode_mode_config -> compound_request_item_request_mode_mode_config_union [lhead=cluster_request_item_request_mode_mode_config_union];
+    // Edges for request_item_request_mode_periodic_type
+    request_item_request_mode_periodic_type_period_ns -> uint64_t;
+    // Edges for request_item_request_mode_mode_config_union
+    request_item_request_mode_mode_config_union_periodic -> compound_request_item_request_mode_periodic_type [lhead=cluster_request_item_request_mode_periodic_type];
+    // Edges for request_item_request_enable
+    request_item_request_enable_type -> enum_block_type;
+    request_item_request_enable_set -> enum_prfcnt_set;
+    request_item_request_enable_pad -> uint8_t;
+    request_item_request_enable_enable_mask -> uint64_t;
+    // Edges for request_item_request_scope
+    request_item_request_scope_scope -> enum_request_item_request_scope_counters_scope;
+    request_item_request_scope_pad -> uint8_t;
+    // Edges for request_item_request_union
+    request_item_request_union_req_mode -> compound_request_item_request_mode [lhead=cluster_request_item_request_mode];
+    request_item_request_union_req_enable -> compound_request_item_request_enable [lhead=cluster_request_item_request_enable];
+    request_item_request_union_req_scope -> compound_request_item_request_scope [lhead=cluster_request_item_request_scope];
+    // Edges for sample_access
+    sample_access_sequence -> uint64_t;
+
+    command_issue_command -> compound_control_cmd [lhead=cluster_control_cmd];
+    command_get_sample -> compound_sample_access [lhead=cluster_sample_access];
+    command_put_sample -> compound_sample_access [lhead=cluster_sample_access];
+}

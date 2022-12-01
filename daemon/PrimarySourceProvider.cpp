@@ -113,7 +113,11 @@ namespace {
                                                                 bool disableKernelAnnotations)
         {
             std::unique_ptr<PerfDriverConfiguration> configuration =
-                PerfDriverConfiguration::detect(systemWide, traceFsConstants.path__events, ids.getCpuIds(), pmuXml);
+                PerfDriverConfiguration::detect(systemWide,
+                                                traceFsConstants.path__events,
+                                                ids.getCpuIds(),
+                                                gSessionData.smmu_identifiers,
+                                                pmuXml);
             if (configuration != nullptr) {
                 // build the cpuinfo
                 std::vector<GatorCpu> clusters;

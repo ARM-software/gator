@@ -1,0 +1,36 @@
+{{> copyright}}
+
+#pragma once
+
+#include "types.hpp"
+
+#include <linux/ioctl.h>
+
+namespace hwcpipe {
+namespace device {
+namespace ioctl {
+namespace {{name}} {
+
+/** Interface {{name}} number. */
+constexpr auto iface_number = {{number.hex}};
+
+namespace command {
+
+/** Commands describing {{name}} ioctl interface. */
+enum command_type {
+{{#commands}}
+    {{> description}}
+    {{#arg_type.is_builtin}}
+    {{name}} = {{command_type}}(iface_number, {{number.hex}}, {{arg_type.name}}),
+    {{/arg_type.is_builtin}}
+    {{^arg_type.is_builtin}}
+    {{name}} = {{command_type}}(iface_number, {{number.hex}}, ::hwcpipe::device::ioctl::{{parent.name}}::{{arg_type.full_name_cxx}}),
+    {{/arg_type.is_builtin}}
+{{/commands}}
+};
+
+} // namespace command
+} // namespace {{name}}
+} // namespace ioctl
+} // namespace device
+} // namespace hwcpipe

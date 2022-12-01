@@ -124,6 +124,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mSpeSampleRate = result.mSpeSampleRate;
     gSessionData.mAndroidPackage = result.mAndroidPackage;
     gSessionData.mAndroidActivity = result.mAndroidActivity;
+    gSessionData.smmu_identifiers = result.smmu_identifiers;
 
     // when profiling an android package, use the package name as the '--wait-process' value
     if ((gSessionData.mAndroidPackage != nullptr) && (gSessionData.mWaitForProcessCommand == nullptr)) {
@@ -278,11 +279,11 @@ int gator_main(int argc, char ** argv)
         handleException();
     }
 
-    signal(SIGINT, handler);
-    signal(SIGTERM, handler);
-    signal(SIGABRT, handler);
-    signal(SIGHUP, handler);
-    signal(SIGUSR1, handler);
+    (void) signal(SIGINT, handler);
+    (void) signal(SIGTERM, handler);
+    (void) signal(SIGABRT, handler);
+    (void) signal(SIGHUP, handler);
+    (void) signal(SIGUSR1, handler);
     gator::process::set_parent_death_signal(SIGKILL);
 
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);

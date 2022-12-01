@@ -3,6 +3,9 @@
 #ifndef PMUXML_H
 #define PMUXML_H
 
+#include "linux/smmu_identifier.h"
+
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -132,6 +135,39 @@ private:
     bool mHasCyclesCounter;
 };
 
+class smmu_v3_pmu_t {
+public:
+    smmu_v3_pmu_t(std::string core_name,
+                  std::string id,
+                  std::string counter_set,
+                  int pmnc_counters,
+                  std::optional<gator::smmuv3::iidr_t> iidr)
+        : core_name(std::move(core_name)),
+          id(std::move(id)),
+          counter_set(std::move(counter_set)),
+          pmnc_counters(pmnc_counters),
+          iidr(std::move(iidr))
+    {
+    }
+
+    [[nodiscard]] const char * get_core_name() const { return core_name.c_str(); }
+
+    [[nodiscard]] const std::string & get_id() const { return id; }
+
+    [[nodiscard]] const char * get_counter_set() const { return counter_set.c_str(); }
+
+    [[nodiscard]] int get_pmnc_counters() const { return pmnc_counters; }
+
+    [[nodiscard]] const std::optional<gator::smmuv3::iidr_t> & get_iidr() const { return iidr; }
+
+private:
+    std::string core_name;
+    std::string id;
+    std::string counter_set;
+    int pmnc_counters;
+    std::optional<gator::smmuv3::iidr_t> iidr;
+};
+
 struct PmuXML {
     static const std::string_view DEFAULT_XML;
 
@@ -141,6 +177,7 @@ struct PmuXML {
 
     std::vector<GatorCpu> cpus;
     std::vector<UncorePmu> uncores;
+    std::vector<smmu_v3_pmu_t> smmu_pmus;
 };
 
 #endif // PMUXML_H

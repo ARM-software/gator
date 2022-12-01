@@ -37,11 +37,12 @@ namespace mali_userspace {
                 const uint32_t numNameBlocks = t_device.getNameBlockCount();
 
                 // allocate the enable map
-                const uint32_t enabledMapLength = (numNameBlocks * MaliDevice::NUM_COUNTERS_PER_BLOCK);
-                std::unique_ptr<int[]> mEnabledCounterKeys(new int[enabledMapLength] {});
+                const auto enabledMapLength = (numNameBlocks * t_device.get_num_counters_per_block());
+                auto mEnabledCounterKeys = std::vector<int>(enabledMapLength);
 
                 for (uint32_t nameBlockIndex = 0; nameBlockIndex < numNameBlocks; ++nameBlockIndex) {
-                    for (uint32_t counterIndex = 0; counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK; ++counterIndex) {
+                    for (uint32_t counterIndex = 0; counterIndex < t_device.get_num_counters_per_block();
+                         ++counterIndex) {
                         // get the next counter name
                         const char * counterName = t_device.getCounterName(nameBlockIndex, counterIndex);
                         if (counterName == nullptr) {
@@ -55,11 +56,17 @@ namespace mali_userspace {
                         }
 
                         LOG_DEBUG("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
-                        setCounters(new MaliHwCntr(getCounters(), name, nameBlockIndex, counterIndex, gpuId));
+                        setCounters(new MaliHwCntr(getCounters(),
+                                                   name,
+                                                   static_cast<std::int32_t>(nameBlockIndex),
+                                                   static_cast<std::int32_t>(counterIndex),
+                                                   gpuId,
+                                                   t_device.get_num_counters_per_block()));
                         ::free(name);
                     }
                 }
                 mEnabledCounterKeysByGpuId[gpuId] = std::move(mEnabledCounterKeys);
+                metadata_by_gpu_id[gpuId] = t_device.get_block_metadata();
                 addedGpuIds.push_back(gpuId);
             }
         }
@@ -77,7 +84,11 @@ namespace mali_userspace {
         }
     }
 
-    bool MaliHwCntrDriver::start() { return true; }
+    // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+    bool MaliHwCntrDriver::start()
+    {
+        return true;
+    }
 
     bool MaliHwCntrDriver::claimCounter(Counter & counter) const
     {
@@ -90,13 +101,9 @@ namespace mali_userspace {
 
     void MaliHwCntrDriver::resetCounters()
     {
-        for (auto const & device : mDevices) {
-            const uint32_t numNameBlocks = device.second->getNameBlockCount();
-            const uint32_t enabledMapLength = (numNameBlocks * MaliDevice::NUM_COUNTERS_PER_BLOCK);
-            for (auto & counterKeys : mEnabledCounterKeysByGpuId) {
-                std::unique_ptr<int[]> & counterKey = counterKeys.second;
-                std::fill(counterKey.get(), counterKey.get() + enabledMapLength, 0);
-            }
+        for (auto & [gpu_id, counterKeys] : mEnabledCounterKeysByGpuId) {
+            (void) gpu_id; // Ignore unused variable warning in gcc7
+            std::fill(counterKeys.begin(), counterKeys.end(), 0);
         }
         super::resetCounters();
     }
@@ -108,9 +115,9 @@ namespace mali_userspace {
             counter.setEnabled(false);
             return;
         }
-        uint32_t gpuId = malihwcCounter->getGpuId();
-        const int32_t index = (malihwcCounter->getNameBlockIndex() * MaliDevice::NUM_COUNTERS_PER_BLOCK
-                               + malihwcCounter->getCounterIndex());
+        const uint32_t gpuId = malihwcCounter->getGpuId();
+        const auto index = (malihwcCounter->getNameBlockIndex() * malihwcCounter->get_num_counters_per_block()
+                            + malihwcCounter->getCounterIndex());
         if (mEnabledCounterKeysByGpuId.find(gpuId) != mEnabledCounterKeysByGpuId.end()) {
             mEnabledCounterKeysByGpuId.find(gpuId)->second[index] = malihwcCounter->getKey();
         }
@@ -118,12 +125,22 @@ namespace mali_userspace {
         counter.setKey(malihwcCounter->getKey());
     }
 
-    void MaliHwCntrDriver::insertConstants(std::set<Constant> & dest) { MaliDevice::insertConstants(dest); }
+    void MaliHwCntrDriver::insertConstants(std::set<Constant> & dest)
+    {
+        MaliDevice::insertConstants(dest);
+    }
 
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     int MaliHwCntrDriver::getCounterKey(uint32_t nameBlockIndex, uint32_t counterIndex, uint32_t gpuId) const
     {
-        if (counterIndex < MaliDevice::NUM_COUNTERS_PER_BLOCK) {
-            const uint32_t index = (nameBlockIndex * MaliDevice::NUM_COUNTERS_PER_BLOCK + counterIndex);
+        const auto block_it = metadata_by_gpu_id.find(gpuId);
+        if (block_it == metadata_by_gpu_id.end()) {
+            return 0;
+        }
+
+        const auto counters_per_block = block_it->second.num_counters_per_block;
+        if (counterIndex < counters_per_block) {
+            const auto index = (nameBlockIndex * counters_per_block + counterIndex);
             const auto it = mEnabledCounterKeysByGpuId.find(gpuId);
             if (it == mEnabledCounterKeysByGpuId.end()) {
                 return 0;

@@ -10,12 +10,14 @@
 #include "GatorCLIFlags.h"
 #include "Time.h"
 #include "lib/SharedMemory.h"
+#include "linux/smmu_identifier.h"
 #include "mxml/mxml.h"
 
 #include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -94,6 +96,8 @@ public:
     bool mFtraceRaw {false};
     bool mSystemWide {false};
     bool mExcludeKernelEvents {false};
+
+    gator::smmuv3::default_identifiers_t smmu_identifiers;
 
     // PMU Counters
     Counter mCounters[MAX_PERFORMANCE_COUNTERS];

@@ -13,6 +13,7 @@
 #include "lib/Popen.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
+#include "linux/smmu_support.h"
 
 #include <algorithm>
 #include <set>
@@ -23,13 +24,14 @@
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
 
-static const std::string securityPerfHardenPropString = "security.perf_harden";
+static constexpr std::string_view securityPerfHardenPropString = "security.perf_harden";
 
+using namespace gator::smmuv3;
 using lib::FsEntry;
 
 static bool getPerfHarden()
 {
-    const char * const command[] = {"getprop", securityPerfHardenPropString.c_str(), nullptr};
+    const char * const command[] = {"getprop", securityPerfHardenPropString.data(), nullptr};
     const lib::PopenResult getprop = lib::popen(command);
     if (getprop.pid < 0) {
         LOG_DEBUG("lib::popen(%s %s) failed: %s. Probably not android", command[0], command[1], strerror(-getprop.pid));
@@ -42,9 +44,9 @@ static bool getPerfHarden()
     return value == '1';
 }
 
-static void setProp(const std::string & prop, const std::string & value)
+static void setProp(std::string_view prop, const std::string & value)
 {
-    const char * const command[] = {"setprop", prop.c_str(), value.c_str(), nullptr};
+    const char * const command[] = {"setprop", prop.data(), value.c_str(), nullptr};
 
     const lib::PopenResult setPropResult = lib::popen(command);
     //setprop not found, probably not Android.
@@ -83,7 +85,7 @@ static bool disablePerfHarden()
         return true;
     }
 
-    LOG_WARNING("disabling property %s", securityPerfHardenPropString.c_str());
+    LOG_WARNING("disabling property %s", securityPerfHardenPropString.data());
 
     setPerfHarden(false);
 
@@ -111,9 +113,11 @@ void logCpuNotFound()
 #endif
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool systemWide,
                                                                          const char * tracefsEventsPath,
                                                                          lib::Span<const int> cpuIds,
+                                                                         const default_identifiers_t & smmu_identifiers,
                                                                          const PmuXML & pmuXml)
 {
     struct utsname utsname;
@@ -156,12 +160,12 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     if (is_android && !isRoot && !disablePerfHarden()) {
         LOG_SETUP("Failed to disable property %s\n" //
                   "Try 'adb shell setprop %s 0'",
-                  securityPerfHardenPropString.c_str(),
-                  securityPerfHardenPropString.c_str());
+                  securityPerfHardenPropString.data(),
+                  securityPerfHardenPropString.data());
         LOG_ERROR("Failed to disable property %s\n" //
                   "Try 'setprop %s 0' as the shell or root user.",
-                  securityPerfHardenPropString.c_str(),
-                  securityPerfHardenPropString.c_str());
+                  securityPerfHardenPropString.data(),
+                  securityPerfHardenPropString.data());
         return nullptr;
     }
 
@@ -323,6 +327,11 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                     configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
                     continue;
                 }
+            }
+
+            if (gator::smmuv3::detect_smmuv3_pmus(pmuXml, smmu_identifiers, *configuration, name)) {
+                LOG_DEBUG("    ... is SMMUv3 PMU");
+                continue;
             }
 
             // handle generic pmu.

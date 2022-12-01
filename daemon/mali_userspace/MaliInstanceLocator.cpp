@@ -4,9 +4,8 @@
 
 #include "DynBuf.h"
 #include "Logging.h"
+#include "device/handle.hpp"
 #include "lib/FsEntry.h"
-#include "lib/String.h"
-#include "mali_userspace/MaliDeviceApi.h"
 
 #include <cstddef>
 #include <cstdio>
@@ -73,20 +72,18 @@ namespace mali_userspace {
 
     std::map<unsigned int, std::unique_ptr<MaliDevice>> enumerateAllMaliHwCntrDrivers()
     {
+        using namespace hwcpipe::device;
         static constexpr unsigned int MAX_DEV_MALI_TOO_SCAN_FOR = 16;
 
-        std::map<unsigned int, std::unique_ptr<IMaliDeviceApi>> detectedDevices;
+        std::map<unsigned int, handle::handle_ptr> detectedDevices;
         std::map<unsigned int, std::string> gpuClockPaths;
         std::map<unsigned int, std::unique_ptr<MaliDevice>> coreDriverMap;
 
         // first scan for '/dev/mali#' files
         for (unsigned int i = 0; i < MAX_DEV_MALI_TOO_SCAN_FOR; ++i) {
-            // construct the path
-            lib::printf_str_t<16> pathBuffer {"/dev/mali%u", i};
-            // attempt to open device
-            std::unique_ptr<IMaliDeviceApi> device = IMaliDeviceApi::probe(pathBuffer);
-            if (device) {
-                detectedDevices[i] = std::move(device);
+            auto probed_handle = hwcpipe::device::handle::create(i);
+            if (probed_handle) {
+                detectedDevices[i] = std::move(probed_handle);
             }
         }
 
@@ -95,14 +92,11 @@ namespace mali_userspace {
             enumerateMaliGpuClockPaths(lib::FsEntry::create("/sys"), gpuClockPaths);
 
             // populate result
-            for (auto & detectedDevice : detectedDevices) {
-                const unsigned int id = detectedDevice.first;
+            for (auto & [id, device] : detectedDevices) {
 
-                std::unique_ptr<MaliDevice> device =
-                    MaliDevice::create(std::move(detectedDevice.second), std::move(gpuClockPaths[id]));
-
-                if (device) {
-                    coreDriverMap[id] = std::move(device);
+                auto mali_device = MaliDevice::create(std::move(device), std::move(gpuClockPaths[id]));
+                if (mali_device) {
+                    coreDriverMap[id] = std::move(mali_device);
                 }
             }
         }

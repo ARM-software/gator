@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) 2016-2020 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2022 by Arm Limited. All rights reserved. -->
 
 <configurations revision="3">
   <configuration counter="ARM_ARM11_ccnt" event="0xff"/>
@@ -268,8 +268,7 @@
   <configuration counter="${cluster}_freq"/>
   <configuration counter="${cluster}_system"/>
   <configuration counter="${cluster}_user"/>
-  <configuration counter="ARM_Mali-4xx_fragment"/>
-  <configuration counter="ARM_Mali-4xx_vertex"/>
+  <configuration counter="MaliTimeline_Perfetto"/>
   <configuration counter="ARM_Mali-Midgard_fragment" cores="1"/>
   <configuration counter="ARM_Mali-Midgard_vertex" cores="1"/>
   <configuration counter="ARM_Mali-Midgard_opencl" cores="1"/>

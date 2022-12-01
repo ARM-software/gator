@@ -99,10 +99,10 @@
     <event event="0x1609" option_set="RN-I_Region" title="CCN-504" name="WRT full" description="WRT full."/>
     <event event="0x160A" option_set="RN-I_Region" title="CCN-504" name="Replayed TXREQ Flits" description="Replayed TXREQ Flits."/>
     <option_set name="SBAS_Region">
-      <option event_delta="0x810000" name="SBAS 1" description="ACE master to CHI protocol bridge 1"/>
-      <option event_delta="0x890000" name="SBAS 9" description="ACE master to CHI protocol bridge 9"/>
-      <option event_delta="0x8B0000" name="SBAS 11" description="ACE master to CHI protocol bridge 11"/>
-      <option event_delta="0x930000" name="SBAS 19" description="ACE master to CHI protocol bridge 19"/>
+      <option event_delta="0x810000" name="SBAS 1" description="ACE manager to CHI protocol bridge 1"/>
+      <option event_delta="0x890000" name="SBAS 9" description="ACE manager to CHI protocol bridge 9"/>
+      <option event_delta="0x8B0000" name="SBAS 11" description="ACE manager to CHI protocol bridge 11"/>
+      <option event_delta="0x930000" name="SBAS 19" description="ACE manager to CHI protocol bridge 19"/>
     </option_set>
     <event event="0x1001" option_set="SBAS_Region" title="CCN-504" name="S0 RDataBeats" description="S0 RDataBeats."/>
     <event event="0x1004" option_set="SBAS_Region" title="CCN-504" name="RXDAT Flits received" description="RXDAT Flits received."/>

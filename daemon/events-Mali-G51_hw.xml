@@ -75,9 +75,9 @@
 	<event counter="ARM_Mali-TSIx_BEATS_RD_TEX" description="The number of read beats received by the texture unit." name="Texture L2 read beats" title="Mali Core L2 Reads" units="beats"/>
 	<event counter="ARM_Mali-TSIx_BEATS_RD_TEX_EXT" description="The number of read beats received by the texture unit that required an external memory access due to an L2 cache miss." name="Texture external read beats" title="Mali Core External Reads" units="beats"/>
 	<event advanced="yes" counter="ARM_Mali-TSIx_BEATS_RD_OTHER" description="The number of read beats received by a unit that is not specifically identified." name="Other L2 read beats" title="Mali Core L2 Reads" units="beats"/>
-	<event counter="ARM_Mali-TSIx_BEATS_WR_LSC_OTHER" description="The number of write beats by the load/store unit that are due to any reason other than writeback." name="Load/store other write beats" title="Mali Core Writes" units="beats"/>
-	<event counter="ARM_Mali-TSIx_BEATS_WR_TIB" description="The number of write beats sent by the tile buffer writeback unit." name="Tile buffer write beats" title="Mali Core Writes" units="beats"/>
-	<event counter="ARM_Mali-TSIx_BEATS_WR_LSC_WB" description="The number of write beats by the load/store unit that are due to writeback." name="Load/store writeback write beats" title="Mali Core Writes" units="beats"/>
+	<event counter="ARM_Mali-TSIx_BEATS_WR_LSC_OTHER" description="The number of write beats by the load/store unit that are due to any reason other than write-back." name="Load/store other write beats" title="Mali Core Writes" units="beats"/>
+	<event counter="ARM_Mali-TSIx_BEATS_WR_TIB" description="The number of write beats sent by the tile buffer write-back unit." name="Tile buffer write beats" title="Mali Core Writes" units="beats"/>
+	<event counter="ARM_Mali-TSIx_BEATS_WR_LSC_WB" description="The number of write beats by the load/store unit that are due to write-back." name="Load/store write-back write beats" title="Mali Core Writes" units="beats"/>
 </category>
 <category name="Mali Memory System" per_cpu="no">
 	<event advanced="yes" counter="ARM_Mali-TSIx_MMU_REQUESTS" description="The number of main MMU address translations performed." name="MMU lookups" title="Mali MMU Stage 1 Translations" units="requests"/>

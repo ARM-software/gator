@@ -3,211 +3,354 @@
   <counter_set name="CMN_600_cnt" count="8"/>
   <category name="CMN-600" counter_set="CMN_600_cnt" per_cpu="no">
     <event counter="CMN_600_ccnt" event="0x30068" title="CMN-600 Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
+    <!--
+        Customising CMN-600 events
+        ===========================
+        The CMN-600 PMU supports collecting events for specific nodes and devices within the mesh. This is achieved by modifying the perf event to include the (x,y,port) coordinates of the device. Streamline will make use of
+        the option_sets for each node type to allow selection of the coordinates when adding events to be captured.
+
+        In general, the format of the perf event (the perf_event_attr.config value) is as follows:
+
+          Bits  | Description
+         =======+================================================================
+          0-15  | Node type ID
+          16-26 | Event number for that node
+          27-30 | Occupancy ID (if required for the event)
+          31    | BYNODEID bit - set to enable use of node coordinate selection
+          32-47 | Node ID (the node coordinate)
+
+
+        NOTE: Encoding of the node ID differs depending on the dimensions of the mesh.
+              For a mesh with both dimensions of at most 4 nodes:
+
+                  Bits  | Description
+                 =======+================================================
+                   0-1  | Device ID on the port (for nodes with a CAL)
+                   2    | Port number
+                   3-4  | Y-coordinate
+                   5-6  | X-coordinate
+
+              For a mesh with at least one dimension greater than 4 nodes:
+
+                  Bits  | Description
+                 =======+================================================
+                   0-1  | Device ID on the port (for nodes with a CAL)
+                   2    | Port number
+                   3-5  | Y-coordinate
+                   6-8  | X-coordinate
+
+              See TRM section 2.4 for details.
+
+        WARNING: The option_set definitions in this file use the encoding for a mesh size of at
+                 most 4x4 nodes. If support for larger meshes is required then the option values
+                 will need to be modified to use the larger node ID encoding.
+
+
+        Mesh topolgy can be examined by `cat`ing the contents of the /sys/kernel/debug/arm-cmn/map[_%d] files in debugfs.
+    -->
+
     <!-- Porter2 CCIX (Neoverse N1) -->
     <!-- HN-F events -->
     <option_set name="HN-F_Region">
-      <option event_delta="0x24" name="HN-F 0" description="Fully-coherent Home Node 0"/>
-      <option event_delta="0x28" name="HN-F 1" description="Fully-coherent Home Node 1"/>
-      <option event_delta="0x44" name="HN-F 2" description="Fully-coherent Home Node 2"/>
-      <option event_delta="0x48" name="HN-F 3" description="Fully-coherent Home Node 3"/>
+      <option event_delta="0x00" name="HN-F All" description="Fully-coherent Home Node (All)"/>
+      <option event_delta="0x000080000000" name="HN-F (0,0,p0)" description="Fully-coherent Home Node (0,0,p0)" />
+      <option event_delta="0x000480000000" name="HN-F (0,0,p1)" description="Fully-coherent Home Node (0,0,p1)" />
+      <option event_delta="0x000880000000" name="HN-F (0,1,p0)" description="Fully-coherent Home Node (0,1,p0)" />
+      <option event_delta="0x000c80000000" name="HN-F (0,1,p1)" description="Fully-coherent Home Node (0,1,p1)" />
+      <option event_delta="0x001080000000" name="HN-F (0,2,p0)" description="Fully-coherent Home Node (0,2,p0)" />
+      <option event_delta="0x001480000000" name="HN-F (0,2,p1)" description="Fully-coherent Home Node (0,2,p1)" />
+      <option event_delta="0x001880000000" name="HN-F (0,3,p0)" description="Fully-coherent Home Node (0,3,p0)" />
+      <option event_delta="0x001c80000000" name="HN-F (0,3,p1)" description="Fully-coherent Home Node (0,3,p1)" />
+      <option event_delta="0x002080000000" name="HN-F (1,0,p0)" description="Fully-coherent Home Node (1,0,p0)" />
+      <option event_delta="0x002480000000" name="HN-F (1,0,p1)" description="Fully-coherent Home Node (1,0,p1)" />
+      <option event_delta="0x002880000000" name="HN-F (1,1,p0)" description="Fully-coherent Home Node (1,1,p0)" />
+      <option event_delta="0x002c80000000" name="HN-F (1,1,p1)" description="Fully-coherent Home Node (1,1,p1)" />
+      <option event_delta="0x003080000000" name="HN-F (1,2,p0)" description="Fully-coherent Home Node (1,2,p0)" />
+      <option event_delta="0x003480000000" name="HN-F (1,2,p1)" description="Fully-coherent Home Node (1,2,p1)" />
+      <option event_delta="0x003880000000" name="HN-F (1,3,p0)" description="Fully-coherent Home Node (1,3,p0)" />
+      <option event_delta="0x003c80000000" name="HN-F (1,3,p1)" description="Fully-coherent Home Node (1,3,p1)" />
+      <option event_delta="0x004080000000" name="HN-F (2,0,p0)" description="Fully-coherent Home Node (2,0,p0)" />
+      <option event_delta="0x004480000000" name="HN-F (2,0,p1)" description="Fully-coherent Home Node (2,0,p1)" />
+      <option event_delta="0x004880000000" name="HN-F (2,1,p0)" description="Fully-coherent Home Node (2,1,p0)" />
+      <option event_delta="0x004c80000000" name="HN-F (2,1,p1)" description="Fully-coherent Home Node (2,1,p1)" />
+      <option event_delta="0x005080000000" name="HN-F (2,2,p0)" description="Fully-coherent Home Node (2,2,p0)" />
+      <option event_delta="0x005480000000" name="HN-F (2,2,p1)" description="Fully-coherent Home Node (2,2,p1)" />
+      <option event_delta="0x005880000000" name="HN-F (2,3,p0)" description="Fully-coherent Home Node (2,3,p0)" />
+      <option event_delta="0x005c80000000" name="HN-F (2,3,p1)" description="Fully-coherent Home Node (2,3,p1)" />
+      <option event_delta="0x006080000000" name="HN-F (3,0,p0)" description="Fully-coherent Home Node (3,0,p0)" />
+      <option event_delta="0x006480000000" name="HN-F (3,0,p1)" description="Fully-coherent Home Node (3,0,p1)" />
+      <option event_delta="0x006880000000" name="HN-F (3,1,p0)" description="Fully-coherent Home Node (3,1,p0)" />
+      <option event_delta="0x006c80000000" name="HN-F (3,1,p1)" description="Fully-coherent Home Node (3,1,p1)" />
+      <option event_delta="0x007080000000" name="HN-F (3,2,p0)" description="Fully-coherent Home Node (3,2,p0)" />
+      <option event_delta="0x007480000000" name="HN-F (3,2,p1)" description="Fully-coherent Home Node (3,2,p1)" />
+      <option event_delta="0x007880000000" name="HN-F (3,3,p0)" description="Fully-coherent Home Node (3,3,p0)" />
+      <option event_delta="0x007c80000000" name="HN-F (3,3,p1)" description="Fully-coherent Home Node (3,3,p1)" />
     </option_set>
-    <event event="0x00100050000" option_set="HN-F_Region" title="CMN-600" name="Cache Miss" description="Counts the total cache misses. This is the first time lookup result, and is high priority."/>
-    <event event="0x00200050000" option_set="HN-F_Region" title="CMN-600" name="SLC SF Cache Access" description="Counts the number of cache accesses. This is the first time access, and is high priority."/>
-    <event event="0x00300050000" option_set="HN-F_Region" title="CMN-600" name="Cache Fill" description="Counts the total allocations in the HN SLC (all cache line allocations to the SLC)."/>
-    <event event="0x00400050000" option_set="HN-F_Region" title="CMN-600" name="POCQ Retry" description="Counts the number of requests that have been retried."/>
-    <event event="0x00500050000" option_set="HN-F_Region" title="CMN-600" name="POCQ Reqs Recvd" description="Counts the number of requests received by HN."/>
-    <event event="0x00600050000" option_set="HN-F_Region" title="CMN-600" name="SF Hit" description="Counts the number of snoop filter hits."/>
-    <event event="0x00700050000" option_set="HN-F_Region" title="CMN-600" name="SF Evictions" description="Counts the number of snoop filter evictions cache invalidations are initiated."/>
-    <event event="0x00800050000" option_set="HN-F_Region" title="CMN-600" name="Snoops Sent" description="Counts the number of snoops sent (not including SF invalidation)."/>
-    <event event="0x00900050000" option_set="HN-F_Region" title="CMN-600" name="Snoops Broadcast" description="Counts the number of multicast snoops sent (not including SF back invalidation)."/>
-    <event event="0x00a00050000" option_set="HN-F_Region" title="CMN-600" name="SLC Eviction" description="Counts the number of SLC evictions (dirty only)."/>
-    <event event="0x00b00050000" option_set="HN-F_Region" title="CMN-600" name="SLC Fill Invalid Way" description="Counts the number of SLC fills to an invalid way."/>
-    <event event="0x00c00050000" option_set="HN-F_Region" title="CMN-600" name="MC Retries" description="Counts the number of transactions retried by the memory controller."/>
-    <event event="0x00d00050000" option_set="HN-F_Region" title="CMN-600" name="MC Reqs" description="Counts the number of requests to the memory controller."/>
-    <event event="0x00e00050000" option_set="HN-F_Region" title="CMN-600" name="QOS HH Retry" description="Counts the number of times a highest-priority QoS class was retried at the HN-F."/>
-    <event event="0x00f00050000" option_set="HN-F_Region" title="CMN-600" name="POCQ OCCUPANCY_EVENT_ALL" description="Counts all POCQ occupancy requests in HN-F."/>
-    <event event="0x10f00050000" option_set="HN-F_Region" title="CMN-600" name="POCQ_OCCUPANCY_EVENT_READ" description="Counts read POCQ occupancy requests in HN-F."/>
-    <event event="0x20f00050000" option_set="HN-F_Region" title="CMN-600" name="POCQ_OCCUPANCY_EVENT_WRITE" description="Counts write POCQ occupancy in HN-F."/>
-    <event event="0x30f00050000" option_set="HN-F_Region" title="CMN-600" name="POCQ_OCCUPANCY_EVENT_ATOMIC" description="Counts atomic operation POCQ occupancy requests in HN-F."/>
-    <event event="0x40f00050000" option_set="HN-F_Region" title="CMN-600" name="POCQ_OCCUPANCY_EVENT_ATOMIC" description="Counts stash operation POCQ occupancy requests in HN-F."/>
-    <event event="0x01000050000" option_set="HN-F_Region" title="CMN-600" name="POCQ_ADDRHAZ_EVENT" description="Counts number of Point of Coherency Queue address hazards upon allocation"/>
-    <event event="0x01100050000" option_set="HN-F_Region" title="CMN-600" name="POCQ_ATOMICS_ADDRHAZ_EVENT" description="Counts number of POCQ address hazards upon allocation for atomic operations"/>
-    <event event="0x01200050000" option_set="HN-F_Region" title="CMN-600" name="LD_ST_SWP_ADQ_FULL_EVENT" description="Counts number of times ADQ is full for Ld/St/SWP type atomic operations while POCQ has pending operations"/>
-    <event event="0x01300050000" option_set="HN-F_Region" title="CMN-600" name="CMP_ADQ_FULL_EVENT" description="Counts number of times ADQ is full for CMP type atomic operations while POCQ has pending operations"/>
-    <event event="0x01400050000" option_set="HN-F_Region" title="CMN-600" name="TXDAT_STALL_EVENT" description="Counts number of times HN-F has a pending TXDAT flit but no credits to upload"/>
-    <event event="0x01500050000" option_set="HN-F_Region" title="CMN-600" name="TXRSP_STALL_EVENT" description="Counts number of times HN-F has a pending TXRSP flit but no credits to upload"/>
-    <event event="0x01600050000" option_set="HN-F_Region" title="CMN-600" name="SEQ_FULL_EVENT" description="Counts number of times requests are replayed in SLC pipe due to SEQ being full"/>
-    <event event="0x01700050000" option_set="HN-F_Region" title="CMN-600" name="SEQ_HIT_EVENT" description="Counts number of times a request in SLC hit a pending SF eviction in SEQ"/>
-    <event event="0x01800050000" option_set="HN-F_Region" title="CMN-600" name="SNP_SENT_EVENT" description="Counts number of snoops sent including directed, multicast, and SF back invalidation"/>
-    <event event="0x01900050000" option_set="HN-F_Region" title="CMN-600" name="SFBI_DIR_SNP_SENT_EVENT" description="Counts number of times directed snoops were sent due to SF back invalidation"/>
-    <event event="0x01a00050000" option_set="HN-F_Region" title="CMN-600" name="SFBI_BRD_SNP_SENT_EVENT" description="Counts number of times multicast snoops were sent due to SF back invalidation"/>
-    <event event="0x01b00050000" option_set="HN-F_Region" title="CMN-600" name="SNP_SENT_UNTRK_EVENT" description="Counts number of times snooped were sent due to untracked RNF's"/>
-    <event event="0x01c00050000" option_set="HN-F_Region" title="CMN-600" name="INTV_DIRTY_EVENT" description="Counts number of times SF back invalidation resulted in dirty line intervention from the RN"/>
-    <event event="0x01d00050000" option_set="HN-F_Region" title="CMN-600" name="STASH_SNP_SENT_EVENT" description="Counts number of times stash snoops were sent"/>
-    <event event="0x01e00050000" option_set="HN-F_Region" title="CMN-600" name="STASH_DATA_PULL_EVENT" description="Counts number of times stash snoops resulted in data pull from the RN"/>
-    <event event="0x01f00050000" option_set="HN-F_Region" title="CMN-600" name="SNP_FWDED_EVENT" description="Counts number of times data forward snoops were sent"/>
+
+    <event event="0x0010005" option_set="HN-F_Region" title="CMN-600" name="HN-F Cache Miss" description="Counts the total cache misses. This is the first time lookup result, and is high priority."/>
+    <event event="0x0020005" option_set="HN-F_Region" title="CMN-600" name="HN-F SLC SF Cache Access" description="Counts the number of cache accesses. This is the first time access, and is high priority."/>
+    <event event="0x0030005" option_set="HN-F_Region" title="CMN-600" name="HN-F Cache Fill" description="Counts the total allocations in the HN SLC (all cache line allocations to the SLC)."/>
+    <event event="0x0040005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ Retry" description="Counts the number of requests that have been retried."/>
+    <event event="0x0050005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ Reqs Recvd" description="Counts the number of requests received by HN."/>
+    <event event="0x0060005" option_set="HN-F_Region" title="CMN-600" name="HN-F SF Hit" description="Counts the number of snoop filter hits."/>
+    <event event="0x0070005" option_set="HN-F_Region" title="CMN-600" name="HN-F SF Evictions" description="Counts the number of snoop filter evictions cache invalidations are initiated."/>
+    <event event="0x0080005" option_set="HN-F_Region" title="CMN-600" name="HN-F Snoops Sent" description="Counts the number of snoops sent (not including SF invalidation)."/>
+    <event event="0x0090005" option_set="HN-F_Region" title="CMN-600" name="HN-F Snoops Broadcast" description="Counts the number of multicast snoops sent (not including SF back invalidation)."/>
+    <event event="0x00a0005" option_set="HN-F_Region" title="CMN-600" name="HN-F SLC Eviction" description="Counts the number of SLC evictions (dirty only)."/>
+    <event event="0x00b0005" option_set="HN-F_Region" title="CMN-600" name="HN-F SLC Fill Invalid Way" description="Counts the number of SLC fills to an invalid way."/>
+    <event event="0x00c0005" option_set="HN-F_Region" title="CMN-600" name="HN-F MC Retries" description="Counts the number of transactions retried by the memory controller."/>
+    <event event="0x00d0005" option_set="HN-F_Region" title="CMN-600" name="HN-F MC Reqs" description="Counts the number of requests to the memory controller."/>
+    <event event="0x00e0005" option_set="HN-F_Region" title="CMN-600" name="HN-F QOS HH Retry" description="Counts the number of times a highest-priority QoS class was retried at the HN-F."/>
+    <event event="0x00f0005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ OCCUPANCY_EVENT_ALL" description="Counts all POCQ occupancy requests in HN-F."/>
+    <event event="0x10f0005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ_OCCUPANCY_EVENT_READ" description="Counts read POCQ occupancy requests in HN-F."/>
+    <event event="0x20f0005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ_OCCUPANCY_EVENT_WRITE" description="Counts write POCQ occupancy in HN-F."/>
+    <event event="0x30f0005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ_OCCUPANCY_EVENT_ATOMIC" description="Counts atomic operation POCQ occupancy requests in HN-F."/>
+    <event event="0x40f0005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ_OCCUPANCY_EVENT_ATOMIC" description="Counts stash operation POCQ occupancy requests in HN-F."/>
+    <event event="0x0100005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ_ADDRHAZ_EVENT" description="Counts number of Point of Coherency Queue address hazards upon allocation"/>
+    <event event="0x0110005" option_set="HN-F_Region" title="CMN-600" name="HN-F POCQ_ATOMICS_ADDRHAZ_EVENT" description="Counts number of POCQ address hazards upon allocation for atomic operations"/>
+    <event event="0x0120005" option_set="HN-F_Region" title="CMN-600" name="HN-F LD_ST_SWP_ADQ_FULL_EVENT" description="Counts number of times ADQ is full for Ld/St/SWP type atomic operations while POCQ has pending operations"/>
+    <event event="0x0130005" option_set="HN-F_Region" title="CMN-600" name="HN-F CMP_ADQ_FULL_EVENT" description="Counts number of times ADQ is full for CMP type atomic operations while POCQ has pending operations"/>
+    <event event="0x0140005" option_set="HN-F_Region" title="CMN-600" name="HN-F TXDAT_STALL_EVENT" description="Counts number of times HN-F has a pending TXDAT flit but no credits to upload"/>
+    <event event="0x0150005" option_set="HN-F_Region" title="CMN-600" name="HN-F TXRSP_STALL_EVENT" description="Counts number of times HN-F has a pending TXRSP flit but no credits to upload"/>
+    <event event="0x0160005" option_set="HN-F_Region" title="CMN-600" name="HN-F SEQ_FULL_EVENT" description="Counts number of times requests are replayed in SLC pipe due to SEQ being full"/>
+    <event event="0x0170005" option_set="HN-F_Region" title="CMN-600" name="HN-F SEQ_HIT_EVENT" description="Counts number of times a request in SLC hit a pending SF eviction in SEQ"/>
+    <event event="0x0180005" option_set="HN-F_Region" title="CMN-600" name="HN-F SNP_SENT_EVENT" description="Counts number of snoops sent including directed, multicast, and SF back invalidation"/>
+    <event event="0x0190005" option_set="HN-F_Region" title="CMN-600" name="HN-F SFBI_DIR_SNP_SENT_EVENT" description="Counts number of times directed snoops were sent due to SF back invalidation"/>
+    <event event="0x01a0005" option_set="HN-F_Region" title="CMN-600" name="HN-F SFBI_BRD_SNP_SENT_EVENT" description="Counts number of times multicast snoops were sent due to SF back invalidation"/>
+    <event event="0x01b0005" option_set="HN-F_Region" title="CMN-600" name="HN-F SNP_SENT_UNTRK_EVENT" description="Counts number of times snooped were sent due to untracked RNF's"/>
+    <event event="0x01c0005" option_set="HN-F_Region" title="CMN-600" name="HN-F INTV_DIRTY_EVENT" description="Counts number of times SF back invalidation resulted in dirty line intervention from the RN"/>
+    <event event="0x01d0005" option_set="HN-F_Region" title="CMN-600" name="HN-F STASH_SNP_SENT_EVENT" description="Counts number of times stash snoops were sent"/>
+    <event event="0x01e0005" option_set="HN-F_Region" title="CMN-600" name="HN-F STASH_DATA_PULL_EVENT" description="Counts number of times stash snoops resulted in data pull from the RN"/>
+    <event event="0x01f0005" option_set="HN-F_Region" title="CMN-600" name="HN-F SNP_FWDED_EVENT" description="Counts number of times data forward snoops were sent"/>
     <!-- HN-I events -->
     <option_set name="HN-I_Region">
-      <option event_delta="0x24" name="HN-I 0" description="I/O non-coherent Home Node 0"/>
-      <option event_delta="0x28" name="HN-I 1" description="I/O non-coherent Home Node 1"/>
-      <option event_delta="0x44" name="HN-I 2" description="I/O non-coherent Home Node 2"/>
-      <option event_delta="0x48" name="HN-I 3" description="I/O non-coherent Home Node 3"/>
+      <option event_delta="0x00" name="HN-I All" description="I/O non-coherent Home Node (All)"/>
+      <option event_delta="0x000080000000" name="HN-I (0,0,p0)" description="I/O non-coherent Home Node (0,0,p0)" />
+      <option event_delta="0x000480000000" name="HN-I (0,0,p1)" description="I/O non-coherent Home Node (0,0,p1)" />
+      <option event_delta="0x000880000000" name="HN-I (0,1,p0)" description="I/O non-coherent Home Node (0,1,p0)" />
+      <option event_delta="0x000c80000000" name="HN-I (0,1,p1)" description="I/O non-coherent Home Node (0,1,p1)" />
+      <option event_delta="0x001080000000" name="HN-I (0,2,p0)" description="I/O non-coherent Home Node (0,2,p0)" />
+      <option event_delta="0x001480000000" name="HN-I (0,2,p1)" description="I/O non-coherent Home Node (0,2,p1)" />
+      <option event_delta="0x001880000000" name="HN-I (0,3,p0)" description="I/O non-coherent Home Node (0,3,p0)" />
+      <option event_delta="0x001c80000000" name="HN-I (0,3,p1)" description="I/O non-coherent Home Node (0,3,p1)" />
+      <option event_delta="0x002080000000" name="HN-I (1,0,p0)" description="I/O non-coherent Home Node (1,0,p0)" />
+      <option event_delta="0x002480000000" name="HN-I (1,0,p1)" description="I/O non-coherent Home Node (1,0,p1)" />
+      <option event_delta="0x002880000000" name="HN-I (1,1,p0)" description="I/O non-coherent Home Node (1,1,p0)" />
+      <option event_delta="0x002c80000000" name="HN-I (1,1,p1)" description="I/O non-coherent Home Node (1,1,p1)" />
+      <option event_delta="0x003080000000" name="HN-I (1,2,p0)" description="I/O non-coherent Home Node (1,2,p0)" />
+      <option event_delta="0x003480000000" name="HN-I (1,2,p1)" description="I/O non-coherent Home Node (1,2,p1)" />
+      <option event_delta="0x003880000000" name="HN-I (1,3,p0)" description="I/O non-coherent Home Node (1,3,p0)" />
+      <option event_delta="0x003c80000000" name="HN-I (1,3,p1)" description="I/O non-coherent Home Node (1,3,p1)" />
+      <option event_delta="0x004080000000" name="HN-I (2,0,p0)" description="I/O non-coherent Home Node (2,0,p0)" />
+      <option event_delta="0x004480000000" name="HN-I (2,0,p1)" description="I/O non-coherent Home Node (2,0,p1)" />
+      <option event_delta="0x004880000000" name="HN-I (2,1,p0)" description="I/O non-coherent Home Node (2,1,p0)" />
+      <option event_delta="0x004c80000000" name="HN-I (2,1,p1)" description="I/O non-coherent Home Node (2,1,p1)" />
+      <option event_delta="0x005080000000" name="HN-I (2,2,p0)" description="I/O non-coherent Home Node (2,2,p0)" />
+      <option event_delta="0x005480000000" name="HN-I (2,2,p1)" description="I/O non-coherent Home Node (2,2,p1)" />
+      <option event_delta="0x005880000000" name="HN-I (2,3,p0)" description="I/O non-coherent Home Node (2,3,p0)" />
+      <option event_delta="0x005c80000000" name="HN-I (2,3,p1)" description="I/O non-coherent Home Node (2,3,p1)" />
+      <option event_delta="0x006080000000" name="HN-I (3,0,p0)" description="I/O non-coherent Home Node (3,0,p0)" />
+      <option event_delta="0x006480000000" name="HN-I (3,0,p1)" description="I/O non-coherent Home Node (3,0,p1)" />
+      <option event_delta="0x006880000000" name="HN-I (3,1,p0)" description="I/O non-coherent Home Node (3,1,p0)" />
+      <option event_delta="0x006c80000000" name="HN-I (3,1,p1)" description="I/O non-coherent Home Node (3,1,p1)" />
+      <option event_delta="0x007080000000" name="HN-I (3,2,p0)" description="I/O non-coherent Home Node (3,2,p0)" />
+      <option event_delta="0x007480000000" name="HN-I (3,2,p1)" description="I/O non-coherent Home Node (3,2,p1)" />
+      <option event_delta="0x007880000000" name="HN-I (3,3,p0)" description="I/O non-coherent Home Node (3,3,p0)" />
+      <option event_delta="0x007c80000000" name="HN-I (3,3,p1)" description="I/O non-coherent Home Node (3,3,p1)" />
     </option_set>
-    <event event="0x02000040000" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_rd_occ_cnt_ovfl" description="RRT read occupancy count overflow."/>
-    <event event="0x02100040000" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_wr_occ_cnt_ovfl" description="RRT write occupancy count overflow"/>
-    <event event="0x02200040000" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_rd_occ_cnt_ovfl" description="RDT read occupancy count overflow"/>
-    <event event="0x02300040000" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_wr_occ_cnt_ovfl" description="RDT write occupancy count overflow"/>
-    <event event="0x02400040000" option_set="HN-I_Region" title="CMN-600" name="hni_wdb_occ_cnt_ovfl" description="WDB occupancy count overflow"/>
-    <event event="0x02500040000" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_rd_alloc" description="RRT read allocation"/>
-    <event event="0x02600040000" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_wr_alloc" description="RRT write allocation"/>
-    <event event="0x02700040000" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_rd_alloc" description="RDT read allocation"/>
-    <event event="0x02800040000" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_wr_alloc" description="RDT write allocation"/>
-    <event event="0x02900040000" option_set="HN-I_Region" title="CMN-600" name="hni_wdb_alloc" description="WDB allocation"/>
-    <event event="0x02a00040000" option_set="HN-I_Region" title="CMN-600" name="hni_txrsp_retryack" description="RETRYACK TXRSP flit sent"/>
-    <event event="0x02b00040000" option_set="HN-I_Region" title="CMN-600" name="hni_arvalid_no_arready" description="ARVALID set without ARREADY event"/>
-    <event event="0x02c00040000" option_set="HN-I_Region" title="CMN-600" name="hni_arready_no_arvalid" description="ARREADY set without ARVALID event"/>
-    <event event="0x02d00040000" option_set="HN-I_Region" title="CMN-600" name="hni_awvalid_no_awready" description="AWVALID set without AWREADY event"/>
-    <event event="0x02e00040000" option_set="HN-I_Region" title="CMN-600" name="hni_awready_no_awvalid" description="AWREADY set without AWVALID event"/>
-    <event event="0x02f00040000" option_set="HN-I_Region" title="CMN-600" name="hni_wvalid_no_wready" description="WVALID set without WREADY event"/>
-    <event event="0x03000040000" option_set="HN-I_Region" title="CMN-600" name="hni_txdat_stall" description="TXDAT stall (TXDAT valid but no link credit available)"/>
-    <event event="0x03100040000" option_set="HN-I_Region" title="CMN-600" name="hni_nonpcie_serialization" description="Non-PCIe serialization event"/>
-    <event event="0x03200040000" option_set="HN-I_Region" title="CMN-600" name="hni_pcie_serialization" description="PCIe serialization event"/>
+    <event event="0x0200004" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_rd_occ_cnt_ovfl" description="RRT read occupancy count overflow."/>
+    <event event="0x0210004" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_wr_occ_cnt_ovfl" description="RRT write occupancy count overflow"/>
+    <event event="0x0220004" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_rd_occ_cnt_ovfl" description="RDT read occupancy count overflow"/>
+    <event event="0x0230004" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_wr_occ_cnt_ovfl" description="RDT write occupancy count overflow"/>
+    <event event="0x0240004" option_set="HN-I_Region" title="CMN-600" name="hni_wdb_occ_cnt_ovfl" description="WDB occupancy count overflow"/>
+    <event event="0x0250004" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_rd_alloc" description="RRT read allocation"/>
+    <event event="0x0260004" option_set="HN-I_Region" title="CMN-600" name="hni_rrt_wr_alloc" description="RRT write allocation"/>
+    <event event="0x0270004" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_rd_alloc" description="RDT read allocation"/>
+    <event event="0x0280004" option_set="HN-I_Region" title="CMN-600" name="hni_rdt_wr_alloc" description="RDT write allocation"/>
+    <event event="0x0290004" option_set="HN-I_Region" title="CMN-600" name="hni_wdb_alloc" description="WDB allocation"/>
+    <event event="0x02a0004" option_set="HN-I_Region" title="CMN-600" name="hni_txrsp_retryack" description="RETRYACK TXRSP flit sent"/>
+    <event event="0x02b0004" option_set="HN-I_Region" title="CMN-600" name="hni_arvalid_no_arready" description="ARVALID set without ARREADY event"/>
+    <event event="0x02c0004" option_set="HN-I_Region" title="CMN-600" name="hni_arready_no_arvalid" description="ARREADY set without ARVALID event"/>
+    <event event="0x02d0004" option_set="HN-I_Region" title="CMN-600" name="hni_awvalid_no_awready" description="AWVALID set without AWREADY event"/>
+    <event event="0x02e0004" option_set="HN-I_Region" title="CMN-600" name="hni_awready_no_awvalid" description="AWREADY set without AWVALID event"/>
+    <event event="0x02f0004" option_set="HN-I_Region" title="CMN-600" name="hni_wvalid_no_wready" description="WVALID set without WREADY event"/>
+    <event event="0x0300004" option_set="HN-I_Region" title="CMN-600" name="hni_txdat_stall" description="TXDAT stall (TXDAT valid but no link credit available)"/>
+    <event event="0x0310004" option_set="HN-I_Region" title="CMN-600" name="hni_nonpcie_serialization" description="Non-PCIe serialization event"/>
+    <event event="0x0320004" option_set="HN-I_Region" title="CMN-600" name="hni_pcie_serialization" description="PCIe serialization event"/>
     <!-- RN-I events -->
     <option_set name="RN-I_Region">
-      <option event_delta="0x40" name="RN-I 0" description="I/O non-caching Requesting Node 0"/>
-      <option event_delta="0x04" name="RN-I 1" description="I/O non-caching Requesting Node 1"/>
-      <option event_delta="0x2c" name="RN-I 2" description="I/O non-caching Requesting Node 2"/>
-      <option event_delta="0x08" name="RN-I 3" description="I/O non-caching Requesting Node 3"/>
-      <option event_delta="0x0c" name="RN-I 4" description="I/O non-caching Requesting Node 4"/>
+      <option event_delta="0x00" name="RN-I All" description="I/O non-caching Requesting Node (All)"/>
+      <option event_delta="0x000080000000" name="RN-I (0,0,p0)" description="I/O non-caching Requesting Node (0,0,p0)" />
+      <option event_delta="0x000480000000" name="RN-I (0,0,p1)" description="I/O non-caching Requesting Node (0,0,p1)" />
+      <option event_delta="0x000880000000" name="RN-I (0,1,p0)" description="I/O non-caching Requesting Node (0,1,p0)" />
+      <option event_delta="0x000c80000000" name="RN-I (0,1,p1)" description="I/O non-caching Requesting Node (0,1,p1)" />
+      <option event_delta="0x001080000000" name="RN-I (0,2,p0)" description="I/O non-caching Requesting Node (0,2,p0)" />
+      <option event_delta="0x001480000000" name="RN-I (0,2,p1)" description="I/O non-caching Requesting Node (0,2,p1)" />
+      <option event_delta="0x001880000000" name="RN-I (0,3,p0)" description="I/O non-caching Requesting Node (0,3,p0)" />
+      <option event_delta="0x001c80000000" name="RN-I (0,3,p1)" description="I/O non-caching Requesting Node (0,3,p1)" />
+      <option event_delta="0x002080000000" name="RN-I (1,0,p0)" description="I/O non-caching Requesting Node (1,0,p0)" />
+      <option event_delta="0x002480000000" name="RN-I (1,0,p1)" description="I/O non-caching Requesting Node (1,0,p1)" />
+      <option event_delta="0x002880000000" name="RN-I (1,1,p0)" description="I/O non-caching Requesting Node (1,1,p0)" />
+      <option event_delta="0x002c80000000" name="RN-I (1,1,p1)" description="I/O non-caching Requesting Node (1,1,p1)" />
+      <option event_delta="0x003080000000" name="RN-I (1,2,p0)" description="I/O non-caching Requesting Node (1,2,p0)" />
+      <option event_delta="0x003480000000" name="RN-I (1,2,p1)" description="I/O non-caching Requesting Node (1,2,p1)" />
+      <option event_delta="0x003880000000" name="RN-I (1,3,p0)" description="I/O non-caching Requesting Node (1,3,p0)" />
+      <option event_delta="0x003c80000000" name="RN-I (1,3,p1)" description="I/O non-caching Requesting Node (1,3,p1)" />
+      <option event_delta="0x004080000000" name="RN-I (2,0,p0)" description="I/O non-caching Requesting Node (2,0,p0)" />
+      <option event_delta="0x004480000000" name="RN-I (2,0,p1)" description="I/O non-caching Requesting Node (2,0,p1)" />
+      <option event_delta="0x004880000000" name="RN-I (2,1,p0)" description="I/O non-caching Requesting Node (2,1,p0)" />
+      <option event_delta="0x004c80000000" name="RN-I (2,1,p1)" description="I/O non-caching Requesting Node (2,1,p1)" />
+      <option event_delta="0x005080000000" name="RN-I (2,2,p0)" description="I/O non-caching Requesting Node (2,2,p0)" />
+      <option event_delta="0x005480000000" name="RN-I (2,2,p1)" description="I/O non-caching Requesting Node (2,2,p1)" />
+      <option event_delta="0x005880000000" name="RN-I (2,3,p0)" description="I/O non-caching Requesting Node (2,3,p0)" />
+      <option event_delta="0x005c80000000" name="RN-I (2,3,p1)" description="I/O non-caching Requesting Node (2,3,p1)" />
+      <option event_delta="0x006080000000" name="RN-I (3,0,p0)" description="I/O non-caching Requesting Node (3,0,p0)" />
+      <option event_delta="0x006480000000" name="RN-I (3,0,p1)" description="I/O non-caching Requesting Node (3,0,p1)" />
+      <option event_delta="0x006880000000" name="RN-I (3,1,p0)" description="I/O non-caching Requesting Node (3,1,p0)" />
+      <option event_delta="0x006c80000000" name="RN-I (3,1,p1)" description="I/O non-caching Requesting Node (3,1,p1)" />
+      <option event_delta="0x007080000000" name="RN-I (3,2,p0)" description="I/O non-caching Requesting Node (3,2,p0)" />
+      <option event_delta="0x007480000000" name="RN-I (3,2,p1)" description="I/O non-caching Requesting Node (3,2,p1)" />
+      <option event_delta="0x007880000000" name="RN-I (3,3,p0)" description="I/O non-caching Requesting Node (3,3,p0)" />
+      <option event_delta="0x007c80000000" name="RN-I (3,3,p1)" description="I/O non-caching Requesting Node (3,3,p1)" />
     </option_set>
-    <event event="0x001000a0000" option_set="RN-I_Region" title="CMN-600" name="S0 RDataBeats" description="Number of RData beats, RVALID and RREADY, dispatched on port 0. This is a measure of the read bandwidth, including CMO responses."/>
-    <event event="0x002000a0000" option_set="RN-I_Region" title="CMN-600" name="S1 RDataBeats" description="Number of RData beats, RVALID and RREADY, dispatched on port 1. This is a measure of the read bandwidth, including CMO responses."/>
-    <event event="0x003000a0000" option_set="RN-I_Region" title="CMN-600" name="S2 RDataBeats" description="Number of RData beats, RVALID and RREADY, dispatched on port 2. This is a measure of the read bandwidth, including CMO responses."/>
-    <event event="0x004000a0000" option_set="RN-I_Region" title="CMN-600" name="RXDAT Flits received" description="Number of RXDAT flits received. This is a measure of the true read data bandwidth, excluding CMOs."/>
-    <event event="0x005000a0000" option_set="RN-I_Region" title="CMN-600" name="TXDAT Flits sent" description="Number of TXDAT flits dispatched. This is a measure of the write bandwidth."/>
-    <event event="0x006000a0000" option_set="RN-I_Region" title="CMN-600" name="Total TXREQ Flits sent" description="Number of TXREQ flits dispatched. This is a measure of the total request bandwidth."/>
-    <event event="0x007000a0000" option_set="RN-I_Region" title="CMN-600" name="Retried TXREQ Flits sent" description="Number of retried TXREQ flits dispatched. This is a measure of the retry rate."/>
-    <event event="0x008000a0000" option_set="RN-I_Region" title="CMN-600" name="RRT full" description="All entries in the read request tracker are occupied. This is a measure of oversubscription in the read request tracker."/>
-    <event event="0x009000a0000" option_set="RN-I_Region" title="CMN-600" name="WRT full" description="All entries in the write request tracker are occupied. This is a measure of oversubscription in the write request tracker."/>
-    <event event="0x00a000a0000" option_set="RN-I_Region" title="CMN-600" name="Replayed TXREQ Flits" description="Number of replayed TXREQ flits. This is the measure of replay rate."/>
-    <event event="0x00b000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WRCANCEL_SENT" description="Number of write data cancels sent. This is the measure of write cancel rate"/>
-    <event event="0x00c000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WDATABEAT_P0" description="Number of WData beats, WVALID and WREADY , dispatched on port 0. This is a measure of write bandwidth on AXI port 0."/>
-    <event event="0x00d000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WDATABEAT_P1" description="Number of WData beats, WVALID and WREADY , dispatched on port 1. This is a measure of write bandwidth on AXI port 1."/>
-    <event event="0x00e000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WDATABEAT_P2" description="Number of WData beats, WVALID and WREADY , dispatched on port 2. This is a measure of write bandwidth on AXI port 2."/>
-    <event event="0x00f000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RRTALLOC" description="Number of allocations in the read request tracker. This is a measure of read transaction count"/>
-    <event event="0x010000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WRTALLOC" description="Number of allocations in the write request tracker. This is a measure of write transaction count"/>
-    <event event="0x011000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_UNORD" description="Number of cycles for which Read Data Buffer state machine is in Unordered Mode."/>
-    <event event="0x012000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_REPLAY" description="Number of cycles for which Read Data Buffer state machine is in Replay mode"/>
-    <event event="0x013000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_HYBRID" description="Number of cycles for which Read Data Buffer state machine is in hybrid mode.
-Hybrid mode is where there is mix of ordered/unordered traffic."/>
-    <event event="0x014000a0000" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_ORD" description="Number of cycles for which Read Data Buffer state machine is in ordered Mode."/>
+    <event event="0x001000a" option_set="RN-I_Region" title="CMN-600" name="S0 RDataBeats" description="Number of RData beats, RVALID and RREADY, dispatched on port 0. This is a measure of the read bandwidth, including CMO responses."/>
+    <event event="0x002000a" option_set="RN-I_Region" title="CMN-600" name="S1 RDataBeats" description="Number of RData beats, RVALID and RREADY, dispatched on port 1. This is a measure of the read bandwidth, including CMO responses."/>
+    <event event="0x003000a" option_set="RN-I_Region" title="CMN-600" name="S2 RDataBeats" description="Number of RData beats, RVALID and RREADY, dispatched on port 2. This is a measure of the read bandwidth, including CMO responses."/>
+    <event event="0x004000a" option_set="RN-I_Region" title="CMN-600" name="RXDAT Flits received" description="Number of RXDAT flits received. This is a measure of the true read data bandwidth, excluding CMOs."/>
+    <event event="0x005000a" option_set="RN-I_Region" title="CMN-600" name="TXDAT Flits sent" description="Number of TXDAT flits dispatched. This is a measure of the write bandwidth."/>
+    <event event="0x006000a" option_set="RN-I_Region" title="CMN-600" name="Total TXREQ Flits sent" description="Number of TXREQ flits dispatched. This is a measure of the total request bandwidth."/>
+    <event event="0x007000a" option_set="RN-I_Region" title="CMN-600" name="Retried TXREQ Flits sent" description="Number of retried TXREQ flits dispatched. This is a measure of the retry rate."/>
+    <event event="0x008000a" option_set="RN-I_Region" title="CMN-600" name="RRT full" description="All entries in the read request tracker are occupied. This is a measure of oversubscription in the read request tracker."/>
+    <event event="0x009000a" option_set="RN-I_Region" title="CMN-600" name="WRT full" description="All entries in the write request tracker are occupied. This is a measure of oversubscription in the write request tracker."/>
+    <event event="0x00a000a" option_set="RN-I_Region" title="CMN-600" name="Replayed TXREQ Flits" description="Number of replayed TXREQ flits. This is the measure of replay rate."/>
+    <event event="0x00b000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WRCANCEL_SENT" description="Number of write data cancels sent. This is the measure of write cancel rate"/>
+    <event event="0x00c000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WDATABEAT_P0" description="Number of WData beats, WVALID and WREADY , dispatched on port 0. This is a measure of write bandwidth on AXI port 0."/>
+    <event event="0x00d000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WDATABEAT_P1" description="Number of WData beats, WVALID and WREADY , dispatched on port 1. This is a measure of write bandwidth on AXI port 1."/>
+    <event event="0x00e000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WDATABEAT_P2" description="Number of WData beats, WVALID and WREADY , dispatched on port 2. This is a measure of write bandwidth on AXI port 2."/>
+    <event event="0x00f000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RRTALLOC" description="Number of allocations in the read request tracker. This is a measure of read transaction count"/>
+    <event event="0x010000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_WRTALLOC" description="Number of allocations in the write request tracker. This is a measure of write transaction count"/>
+    <event event="0x011000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_UNORD" description="Number of cycles for which Read Data Buffer state machine is in Unordered Mode."/>
+    <event event="0x012000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_REPLAY" description="Number of cycles for which Read Data Buffer state machine is in Replay mode"/>
+    <event event="0x013000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_HYBRID" description="Number of cycles for which Read Data Buffer state machine is in hybrid mode.
+Hybrid mode is where there ix of ordered/unordered traffic."/>
+    <event event="0x014000a" option_set="RN-I_Region" title="CMN-600" name="PMU_RNI_RDB_ORD" description="Number of cycles for which Read Data Buffer state machine is in ordered Mode."/>
+
     <!-- DN (DVM [Distributed Virtual Memory] Node) events -->
-    <event event="0x00100010068" title="CMN-600" name="PMU_DN_RXREQ_DVMOP" description="Number of DVMOP requests received."/>
-    <event event="0x00200010068" title="CMN-600" name="PMU_DN_RXREQ_DVMSYNC" description="Number of DVM Sync requests received."/>
-    <event event="0x00300010068" title="CMN-600" name="PMU_DN_RXREQ_DVMOP_VMID_FILTERED" description="Number of incoming DVMOP requests that are subject to VMID based filtering."/>
-    <event event="0x00400010068" title="CMN-600" name="PMU_DN_RXREQ_RETRIED" description="Number of incoming requests that are retried. This is a measure of the retry rate."/>
-    <event event="0x00500010068" title="CMN-600" name="PMU_DN_TRK_OCCUPANCY_ALL" description="Counts all the tracker occupancy in DN."/>
-    <event event="0x10500010068" title="CMN-600" name="PMU_DN_TRK_OCCUPANCY_DVMOP" description="Counts the DVM Ops tracker occupancy in DN."/>
-    <event event="0x20500010068" title="CMN-600" name="PMU_DN_TRK_OCCUPANCY_DVNSYNC" description="Counts the DVM Syncs tracker occupancy in DN."/>
+    <event event="0x00010001" title="CMN-600" name="PMU_DN_RXREQ_DVMOP" description="Number of DVMOP requests received."/>
+    <event event="0x00020001" title="CMN-600" name="PMU_DN_RXREQ_DVMSYNC" description="Number of DVM Sync requests received."/>
+    <event event="0x00030001" title="CMN-600" name="PMU_DN_RXREQ_DVMOP_VMID_FILTERED" description="Number of incoming DVMOP requests that are subject to VMID based filtering."/>
+    <event event="0x00040001" title="CMN-600" name="PMU_DN_RXREQ_RETRIED" description="Number of incoming requests that are retried. This is a measure of the retry rate."/>
+    <event event="0x00050001" title="CMN-600" name="PMU_DN_TRK_OCCUPANCY_ALL" description="Counts all the tracker occupancy in DN."/>
+    <event event="0x08050001" title="CMN-600" name="PMU_DN_TRK_OCCUPANCY_DVMOP" description="Counts the DVM Ops tracker occupancy in DN."/>
+    <event event="0x10050001" title="CMN-600" name="PMU_DN_TRK_OCCUPANCY_DVNSYNC" description="Counts the DVM Syncs tracker occupancy in DN."/>
+
     <!-- SBSX (CHI to AXI bridge) events -->
-    <event event="0x00100070064" title="CMN-600" name="sbsx_rd_req" description="Read request"/>
-    <event event="0x00200070064" title="CMN-600" name="sbsx_wr_req" description="Write request"/>
-    <event event="0x00300070064" title="CMN-600" name="sbsx_cmo_req" description="CMO request"/>
-    <event event="0x00400070064" title="CMN-600" name="sbsx_txrsp_retryack" description="RETRYACK TXRSP flit sent"/>
-    <event event="0x00500070064" title="CMN-600" name="sbsx_txdat_flitv" description="TXDAT flit seen"/>
-    <event event="0x00600070064" title="CMN-600" name="sbsx_txrsp_flitv" description="TXRSP flit seen"/>
-    <event event="0x01100070064" title="CMN-600" name="sbsx_rd_req_trkr_occ_cnt_ovfl" description="Read request tracker occupancy count overflow"/>
-    <event event="0x01200070064" title="CMN-600" name="sbsx_wr_req_trkr_occ_cnt_ovfl" description="Write request tracker occupancy count overflow"/>
-    <event event="0x01300070064" title="CMN-600" name="sbsx_cmo_req_trkr_occ_cnt_ovfl" description="CMO request tracker occupancy count overflow"/>
-    <event event="0x01400070064" title="CMN-600" name="sbsx_wdb_occ_cnt_ovfl" description="WDB occupancy count overflow"/>
-    <event event="0x01500070064" title="CMN-600" name="sbsx_rd_axi_trkr_occ_cnt_ovfl" description="Read AXI pending tracker occupancy count overflow"/>
-    <event event="0x01600070064" title="CMN-600" name="sbsx_cmo_axi_trkr_occ_cnt_ovfl" description="CMO AXI pending tracker occupancy count overflow"/>
-    <event event="0x02100070064" title="CMN-600" name="sbsx_arvalid_no_arready" description="ARVALID set without ARREADY"/>
-    <event event="0x02200070064" title="CMN-600" name="sbsx_awvalid_no_awready" description="AWVALID set without AWREADY"/>
-    <event event="0x02300070064" title="CMN-600" name="sbsx_wvalid_no_wready" description="WVALID set without WREADY"/>
-    <event event="0x02400070064" title="CMN-600" name="sbsx_txdat_stall" description="TXDAT stall (TXDAT valid but no link credit available)"/>
-    <event event="0x02500070064" title="CMN-600" name="sbsx_txrsp_stall" description="TXRSP stall (TXRSP valid but no link credit available)"/>
+    <event event="0x0010007" title="CMN-600" name="sbsx_rd_req" description="Read request"/>
+    <event event="0x0020007" title="CMN-600" name="sbsx_wr_req" description="Write request"/>
+    <event event="0x0030007" title="CMN-600" name="sbsx_cmo_req" description="CMO request"/>
+    <event event="0x0040007" title="CMN-600" name="sbsx_txrsp_retryack" description="RETRYACK TXRSP flit sent"/>
+    <event event="0x0050007" title="CMN-600" name="sbsx_txdat_flitv" description="TXDAT flit seen"/>
+    <event event="0x0060007" title="CMN-600" name="sbsx_txrsp_flitv" description="TXRSP flit seen"/>
+    <event event="0x0110007" title="CMN-600" name="sbsx_rd_req_trkr_occ_cnt_ovfl" description="Read request tracker occupancy count overflow"/>
+    <event event="0x0120007" title="CMN-600" name="sbsx_wr_req_trkr_occ_cnt_ovfl" description="Write request tracker occupancy count overflow"/>
+    <event event="0x0130007" title="CMN-600" name="sbsx_cmo_req_trkr_occ_cnt_ovfl" description="CMO request tracker occupancy count overflow"/>
+    <event event="0x0140007" title="CMN-600" name="sbsx_wdb_occ_cnt_ovfl" description="WDB occupancy count overflow"/>
+    <event event="0x0150007" title="CMN-600" name="sbsx_rd_axi_trkr_occ_cnt_ovfl" description="Read AXI pending tracker occupancy count overflow"/>
+    <event event="0x0160007" title="CMN-600" name="sbsx_cmo_axi_trkr_occ_cnt_ovfl" description="CMO AXI pending tracker occupancy count overflow"/>
+    <event event="0x0210007" title="CMN-600" name="sbsx_arvalid_no_arready" description="ARVALID set without ARREADY"/>
+    <event event="0x0220007" title="CMN-600" name="sbsx_awvalid_no_awready" description="AWVALID set without AWREADY"/>
+    <event event="0x0230007" title="CMN-600" name="sbsx_wvalid_no_wready" description="WVALID set without WREADY"/>
+    <event event="0x0240007" title="CMN-600" name="sbsx_txdat_stall" description="TXDAT stall (TXDAT valid but no link credit available)"/>
+    <event event="0x0250007" title="CMN-600" name="sbsx_txrsp_stall" description="TXRSP stall (TXRSP valid but no link credit available)"/>
     <!-- MXP (Mesh Interconnection) events -->
     <option_set name="XP_Region">
-      <option event_delta="0x00" name="XP 0" description="Crosspoint (0,0)"/>
-      <option event_delta="0x20" name="XP 1" description="Crosspoint (1,0)"/>
-      <option event_delta="0x40" name="XP 2" description="Crosspoint (2,0)"/>
-      <option event_delta="0x60" name="XP 3" description="Crosspoint (3,0)"/>
-      <option event_delta="0x10" name="XP 4" description="Crosspoint (1,1)"/>
-      <option event_delta="0x30" name="XP 5" description="Crosspoint (2,1)"/>
-      <option event_delta="0x50" name="XP 6" description="Crosspoint (3,1)"/>
-      <option event_delta="0x70" name="XP 7" description="Crosspoint (4,1)"/>
+      <option event_delta="0x000080000000" name="XP (0,0)" description="Crosspoint (0,0)" />
+      <option event_delta="0x000880000000" name="XP (0,1)" description="Crosspoint (0,1)" />
+      <option event_delta="0x001080000000" name="XP (0,2)" description="Crosspoint (0,2)" />
+      <option event_delta="0x001880000000" name="XP (0,3)" description="Crosspoint (0,3)" />
+      <option event_delta="0x002080000000" name="XP (1,0)" description="Crosspoint (1,0)" />
+      <option event_delta="0x002880000000" name="XP (1,1)" description="Crosspoint (1,1)" />
+      <option event_delta="0x003080000000" name="XP (1,2)" description="Crosspoint (1,2)" />
+      <option event_delta="0x003880000000" name="XP (1,3)" description="Crosspoint (1,3)" />
+      <option event_delta="0x004080000000" name="XP (2,0)" description="Crosspoint (2,0)" />
+      <option event_delta="0x004880000000" name="XP (2,1)" description="Crosspoint (2,1)" />
+      <option event_delta="0x005080000000" name="XP (2,2)" description="Crosspoint (2,2)" />
+      <option event_delta="0x005880000000" name="XP (2,3)" description="Crosspoint (2,3)" />
+      <option event_delta="0x006080000000" name="XP (3,0)" description="Crosspoint (3,0)" />
+      <option event_delta="0x006880000000" name="XP (3,1)" description="Crosspoint (3,1)" />
+      <option event_delta="0x007080000000" name="XP (3,2)" description="Crosspoint (3,2)" />
+      <option event_delta="0x007880000000" name="XP (3,3)" description="Crosspoint (3,3)" />
     </option_set>
-    <event event="0x00100060000" option_set="XP_Region" title="CMN-600" name="mxp_e_req_txflit_valid" description="[Port E, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x00200060000" option_set="XP_Region" title="CMN-600" name="mxp_e_req_txflit_stall" description="[Port E, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x00300060000" option_set="XP_Region" title="CMN-600" name="mxp_e_req_partial_dat_flit" description="[Port E, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x02100060000" option_set="XP_Region" title="CMN-600" name="mxp_e_rsp_txflit_valid" description="[Port E, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x02200060000" option_set="XP_Region" title="CMN-600" name="mxp_e_rsp_txflit_stall" description="[Port E, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x02300060000" option_set="XP_Region" title="CMN-600" name="mxp_e_rsp_partial_dat_flit" description="[Port E, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x04100060000" option_set="XP_Region" title="CMN-600" name="mxp_e_snp_txflit_valid" description="[Port E, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x04200060000" option_set="XP_Region" title="CMN-600" name="mxp_e_snp_txflit_stall" description="[Port E, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x04300060000" option_set="XP_Region" title="CMN-600" name="mxp_e_snp_partial_dat_flit" description="[Port E, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-   <event event="0x06100060000" option_set="XP_Region" title="CMN-600" name="mxp_e_dat_txflit_valid" description="[Port E, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x06200060000" option_set="XP_Region" title="CMN-600" name="mxp_e_dat_txflit_stall" description="[Port E, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x06300060000" option_set="XP_Region" title="CMN-600" name="mxp_e_dat_partial_dat_flit" description="[Port E, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x00500060000" option_set="XP_Region" title="CMN-600" name="mxp_w_req_txflit_valid" description="[Port W, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x00600060000" option_set="XP_Region" title="CMN-600" name="mxp_w_req_txflit_stall" description="[Port W, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x00700060000" option_set="XP_Region" title="CMN-600" name="mxp_w_req_partial_dat_flit" description="[Port W, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x02500060000" option_set="XP_Region" title="CMN-600" name="mxp_w_rsp_txflit_valid" description="[Port W, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x02600060000" option_set="XP_Region" title="CMN-600" name="mxp_w_rsp_txflit_stall" description="[Port W, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x02700060000" option_set="XP_Region" title="CMN-600" name="mxp_w_rsp_partial_dat_flit" description="[Port W, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x04500060000" option_set="XP_Region" title="CMN-600" name="mxp_w_snp_txflit_valid" description="[Port W, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x04600060000" option_set="XP_Region" title="CMN-600" name="mxp_w_snp_txflit_stall" description="[Port W, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x04700060000" option_set="XP_Region" title="CMN-600" name="mxp_w_snp_partial_dat_flit" description="[Port W, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-   <event event="0x06500060000" option_set="XP_Region" title="CMN-600" name="mxp_w_dat_txflit_valid" description="[Port W, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x06600060000" option_set="XP_Region" title="CMN-600" name="mxp_w_dat_txflit_stall" description="[Port W, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x06700060000" option_set="XP_Region" title="CMN-600" name="mxp_w_dat_partial_dat_flit" description="[Port W, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x00900060000" option_set="XP_Region" title="CMN-600" name="mxp_n_req_txflit_valid" description="[Port N, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x00a00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_req_txflit_stall" description="[Port N, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x00b00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_req_partial_dat_flit" description="[Port N, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x02900060000" option_set="XP_Region" title="CMN-600" name="mxp_n_rsp_txflit_valid" description="[Port N, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x02a00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_rsp_txflit_stall" description="[Port N, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x02b00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_rsp_partial_dat_flit" description="[Port N, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x04900060000" option_set="XP_Region" title="CMN-600" name="mxp_n_snp_txflit_valid" description="[Port N, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x04a00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_snp_txflit_stall" description="[Port N, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x04b00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_snp_partial_dat_flit" description="[Port N, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-   <event event="0x06900060000" option_set="XP_Region" title="CMN-600" name="mxp_n_dat_txflit_valid" description="[Port N, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x06a00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_dat_txflit_stall" description="[Port N, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x06b00060000" option_set="XP_Region" title="CMN-600" name="mxp_n_dat_partial_dat_flit" description="[Port N, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x00d00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_req_txflit_valid" description="[Port S, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x00e00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_req_txflit_stall" description="[Port S, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x00f00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_req_partial_dat_flit" description="[Port S, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x02d00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_rsp_txflit_valid" description="[Port S, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x02e00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_rsp_txflit_stall" description="[Port S, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x02f00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_rsp_partial_dat_flit" description="[Port S, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x04d00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_snp_txflit_valid" description="[Port S, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x04e00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_snp_txflit_stall" description="[Port S, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x04f00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_snp_partial_dat_flit" description="[Port S, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-   <event event="0x06d00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_dat_txflit_valid" description="[Port S, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x06e00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_dat_txflit_stall" description="[Port S, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x06f00060000" option_set="XP_Region" title="CMN-600" name="mxp_s_dat_partial_dat_flit" description="[Port S, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x01100060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_req_txflit_valid" description="[Port 0, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x01200060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_req_txflit_stall" description="[Port 0, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x01300060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_req_partial_dat_flit" description="[Port 0, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x03100060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_rsp_txflit_valid" description="[Port 0, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x03200060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_rsp_txflit_stall" description="[Port 0, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x03300060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_rsp_partial_dat_flit" description="[Port 0, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x05100060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_snp_txflit_valid" description="[Port 0, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x05200060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_snp_txflit_stall" description="[Port 0, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x05300060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_snp_partial_dat_flit" description="[Port 0, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-   <event event="0x07100060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_dat_txflit_valid" description="[Port 0, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x07200060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_dat_txflit_stall" description="[Port 0, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x07300060000" option_set="XP_Region" title="CMN-600" name="mxp_p0_dat_partial_dat_flit" description="[Port 0, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x01500060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_req_txflit_valid" description="[Port 1, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x01600060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_req_txflit_stall" description="[Port 1, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x01700060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_req_partial_dat_flit" description="[Port 1, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x03500060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_rsp_txflit_valid" description="[Port 1, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x03600060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_rsp_txflit_stall" description="[Port 1, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x03700060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_rsp_partial_dat_flit" description="[Port 1, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-    <event event="0x05500060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_snp_txflit_valid" description="[Port 1, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x05600060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_snp_txflit_stall" description="[Port 1, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x05700060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_snp_partial_dat_flit" description="[Port 1, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
-   <event event="0x07500060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_dat_txflit_valid" description="[Port 1, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
-    <event event="0x07600060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_dat_txflit_stall" description="[Port 1, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
-    <event event="0x07700060000" option_set="XP_Region" title="CMN-600" name="mxp_p1_dat_partial_dat_flit" description="[Port 1, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0010006" option_set="XP_Region" title="CMN-600" name="mxp_e_req_txflit_valid" description="[Port E, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0020006" option_set="XP_Region" title="CMN-600" name="mxp_e_req_txflit_stall" description="[Port E, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0030006" option_set="XP_Region" title="CMN-600" name="mxp_e_req_partial_dat_flit" description="[Port E, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0210006" option_set="XP_Region" title="CMN-600" name="mxp_e_rsp_txflit_valid" description="[Port E, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0220006" option_set="XP_Region" title="CMN-600" name="mxp_e_rsp_txflit_stall" description="[Port E, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0230006" option_set="XP_Region" title="CMN-600" name="mxp_e_rsp_partial_dat_flit" description="[Port E, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0410006" option_set="XP_Region" title="CMN-600" name="mxp_e_snp_txflit_valid" description="[Port E, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0420006" option_set="XP_Region" title="CMN-600" name="mxp_e_snp_txflit_stall" description="[Port E, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0430006" option_set="XP_Region" title="CMN-600" name="mxp_e_snp_partial_dat_flit" description="[Port E, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0610006" option_set="XP_Region" title="CMN-600" name="mxp_e_dat_txflit_valid" description="[Port E, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0620006" option_set="XP_Region" title="CMN-600" name="mxp_e_dat_txflit_stall" description="[Port E, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0630006" option_set="XP_Region" title="CMN-600" name="mxp_e_dat_partial_dat_flit" description="[Port E, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0050006" option_set="XP_Region" title="CMN-600" name="mxp_w_req_txflit_valid" description="[Port W, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0060006" option_set="XP_Region" title="CMN-600" name="mxp_w_req_txflit_stall" description="[Port W, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0070006" option_set="XP_Region" title="CMN-600" name="mxp_w_req_partial_dat_flit" description="[Port W, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0250006" option_set="XP_Region" title="CMN-600" name="mxp_w_rsp_txflit_valid" description="[Port W, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0260006" option_set="XP_Region" title="CMN-600" name="mxp_w_rsp_txflit_stall" description="[Port W, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0270006" option_set="XP_Region" title="CMN-600" name="mxp_w_rsp_partial_dat_flit" description="[Port W, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0450006" option_set="XP_Region" title="CMN-600" name="mxp_w_snp_txflit_valid" description="[Port W, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0460006" option_set="XP_Region" title="CMN-600" name="mxp_w_snp_txflit_stall" description="[Port W, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0470006" option_set="XP_Region" title="CMN-600" name="mxp_w_snp_partial_dat_flit" description="[Port W, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0650006" option_set="XP_Region" title="CMN-600" name="mxp_w_dat_txflit_valid" description="[Port W, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0660006" option_set="XP_Region" title="CMN-600" name="mxp_w_dat_txflit_stall" description="[Port W, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0670006" option_set="XP_Region" title="CMN-600" name="mxp_w_dat_partial_dat_flit" description="[Port W, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0090006" option_set="XP_Region" title="CMN-600" name="mxp_n_req_txflit_valid" description="[Port N, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x00a0006" option_set="XP_Region" title="CMN-600" name="mxp_n_req_txflit_stall" description="[Port N, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x00b0006" option_set="XP_Region" title="CMN-600" name="mxp_n_req_partial_dat_flit" description="[Port N, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0290006" option_set="XP_Region" title="CMN-600" name="mxp_n_rsp_txflit_valid" description="[Port N, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x02a0006" option_set="XP_Region" title="CMN-600" name="mxp_n_rsp_txflit_stall" description="[Port N, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x02b0006" option_set="XP_Region" title="CMN-600" name="mxp_n_rsp_partial_dat_flit" description="[Port N, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0490006" option_set="XP_Region" title="CMN-600" name="mxp_n_snp_txflit_valid" description="[Port N, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x04a0006" option_set="XP_Region" title="CMN-600" name="mxp_n_snp_txflit_stall" description="[Port N, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x04b0006" option_set="XP_Region" title="CMN-600" name="mxp_n_snp_partial_dat_flit" description="[Port N, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0690006" option_set="XP_Region" title="CMN-600" name="mxp_n_dat_txflit_valid" description="[Port N, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x06a0006" option_set="XP_Region" title="CMN-600" name="mxp_n_dat_txflit_stall" description="[Port N, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x06b0006" option_set="XP_Region" title="CMN-600" name="mxp_n_dat_partial_dat_flit" description="[Port N, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x00d0006" option_set="XP_Region" title="CMN-600" name="mxp_s_req_txflit_valid" description="[Port S, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x00e0006" option_set="XP_Region" title="CMN-600" name="mxp_s_req_txflit_stall" description="[Port S, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x00f0006" option_set="XP_Region" title="CMN-600" name="mxp_s_req_partial_dat_flit" description="[Port S, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x02d0006" option_set="XP_Region" title="CMN-600" name="mxp_s_rsp_txflit_valid" description="[Port S, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x02e0006" option_set="XP_Region" title="CMN-600" name="mxp_s_rsp_txflit_stall" description="[Port S, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x02f0006" option_set="XP_Region" title="CMN-600" name="mxp_s_rsp_partial_dat_flit" description="[Port S, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x04d0006" option_set="XP_Region" title="CMN-600" name="mxp_s_snp_txflit_valid" description="[Port S, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x04e0006" option_set="XP_Region" title="CMN-600" name="mxp_s_snp_txflit_stall" description="[Port S, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x04f0006" option_set="XP_Region" title="CMN-600" name="mxp_s_snp_partial_dat_flit" description="[Port S, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x06d0006" option_set="XP_Region" title="CMN-600" name="mxp_s_dat_txflit_valid" description="[Port S, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x06e0006" option_set="XP_Region" title="CMN-600" name="mxp_s_dat_txflit_stall" description="[Port S, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x06f0006" option_set="XP_Region" title="CMN-600" name="mxp_s_dat_partial_dat_flit" description="[Port S, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0110006" option_set="XP_Region" title="CMN-600" name="mxp_p0_req_txflit_valid" description="[Port 0, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0120006" option_set="XP_Region" title="CMN-600" name="mxp_p0_req_txflit_stall" description="[Port 0, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0130006" option_set="XP_Region" title="CMN-600" name="mxp_p0_req_partial_dat_flit" description="[Port 0, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0310006" option_set="XP_Region" title="CMN-600" name="mxp_p0_rsp_txflit_valid" description="[Port 0, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0320006" option_set="XP_Region" title="CMN-600" name="mxp_p0_rsp_txflit_stall" description="[Port 0, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0330006" option_set="XP_Region" title="CMN-600" name="mxp_p0_rsp_partial_dat_flit" description="[Port 0, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0510006" option_set="XP_Region" title="CMN-600" name="mxp_p0_snp_txflit_valid" description="[Port 0, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0520006" option_set="XP_Region" title="CMN-600" name="mxp_p0_snp_txflit_stall" description="[Port 0, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0530006" option_set="XP_Region" title="CMN-600" name="mxp_p0_snp_partial_dat_flit" description="[Port 0, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0710006" option_set="XP_Region" title="CMN-600" name="mxp_p0_dat_txflit_valid" description="[Port 0, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0720006" option_set="XP_Region" title="CMN-600" name="mxp_p0_dat_txflit_stall" description="[Port 0, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0730006" option_set="XP_Region" title="CMN-600" name="mxp_p0_dat_partial_dat_flit" description="[Port 0, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0150006" option_set="XP_Region" title="CMN-600" name="mxp_p1_req_txflit_valid" description="[Port 1, channel REQ] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0160006" option_set="XP_Region" title="CMN-600" name="mxp_p1_req_txflit_stall" description="[Port 1, channel REQ] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0170006" option_set="XP_Region" title="CMN-600" name="mxp_p1_req_partial_dat_flit" description="[Port 1, channel REQ] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0350006" option_set="XP_Region" title="CMN-600" name="mxp_p1_rsp_txflit_valid" description="[Port 1, channel RSP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0360006" option_set="XP_Region" title="CMN-600" name="mxp_p1_rsp_txflit_stall" description="[Port 1, channel RSP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0370006" option_set="XP_Region" title="CMN-600" name="mxp_p1_rsp_partial_dat_flit" description="[Port 1, channel RSP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0550006" option_set="XP_Region" title="CMN-600" name="mxp_p1_snp_txflit_valid" description="[Port 1, channel SNP] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0560006" option_set="XP_Region" title="CMN-600" name="mxp_p1_snp_txflit_stall" description="[Port 1, channel SNP] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0570006" option_set="XP_Region" title="CMN-600" name="mxp_p1_snp_partial_dat_flit" description="[Port 1, channel SNP] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
+    <event event="0x0750006" option_set="XP_Region" title="CMN-600" name="mxp_p1_dat_txflit_valid" description="[Port 1, channel DAT] Number of flits transmitted on a specified port and CHI channel. This is a measure of the flit transfer bandwidth from an XP."/>
+    <event event="0x0760006" option_set="XP_Region" title="CMN-600" name="mxp_p1_dat_txflit_stall" description="[Port 1, channel DAT] Number of cycles when a flit is stalled at an XP waiting for link credits at a specified port and CHI channel. This is a measure of the flit traffic congestion on the mesh and at the flit download ports."/>
+    <event event="0x0770006" option_set="XP_Region" title="CMN-600" name="mxp_p1_dat_partial_dat_flit" description="[Port 1, channel DAT] Number of times when a partial DAT flit is uploaded on to the mesh from a RN-F_CHIA port."/>
   </category>

@@ -1,0 +1,22 @@
+#!/bin/sh
+if ! whoami > /dev/null 2>&1; then
+  UID=$(id -u)
+  GID=$(id -g)
+  mkdir -p ${HOME}
+  if [ -w /etc/passwd ]; then
+    # Create passwd entry for user
+    echo "${USER}:x:${UID}:0:${USER} user:${HOME}:/sbin/nologin" >> /etc/passwd
+  fi
+  if [ -w /etc/group ]; then
+    # Add user to sudo
+    sed "s/^\(sudo:.*\)/\1${USER}/" /etc/group > /tmp/group
+    # Create group entry for user
+    echo "${USER}:x:${UID}:" >> /tmp/group
+    if [ "${GID}" -gt 999 ] && [ "${GID}" -ne 65534 ] && [ "${GID}" -ne "${UID}" ] ; then
+      # Create group entry
+      echo "defgroup:x:$(id -g):" >> /tmp/group
+    fi
+    cp /tmp/group /etc/group
+  fi
+fi
+exec "$@"

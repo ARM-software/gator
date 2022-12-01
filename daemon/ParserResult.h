@@ -5,6 +5,7 @@
 
 #include "Configuration.h"
 #include "ParserResult.h"
+#include "linux/smmu_identifier.h"
 
 #include <map>
 #include <optional>
@@ -51,6 +52,7 @@ public:
     const char * pmuPath {nullptr};
     const char * mAndroidPackage {nullptr};
     const char * mAndroidActivity {nullptr};
+    gator::smmuv3::default_identifiers_t smmu_identifiers;
 
     int mBacktraceDepth {0};
     int mSampleRate {0};
@@ -72,11 +74,6 @@ public:
      * @return - a list of argument-value pairs
      */
     const std::vector<std::pair<std::string, std::optional<std::string>>> & getArgValuePairs() const;
-
-    /**
-     * Clears the list of argument-value pairs
-     */
-    void clearArgValuePairs();
 
     /**
      * Add a new argument value pair to the list of argument-value pairs

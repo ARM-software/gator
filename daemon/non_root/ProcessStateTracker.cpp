@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStateTracker.h"
 
@@ -26,13 +26,16 @@ namespace non_root {
     {
     }
 
-    ProcessStateTracker::ActiveScan::~ActiveScan() { parent.endScan(*this, accumulatedTimePerCore); }
+    ProcessStateTracker::ActiveScan::~ActiveScan()
+    {
+        parent.endScan(*this, accumulatedTimePerCore);
+    }
 
     void ProcessStateTracker::ActiveScan::addProcess(int pid,
                                                      int tid,
                                                      const lnx::ProcPidStatFileRecord & statRecord,
                                                      const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                                     const std::optional<lib::FsEntry> & exe)
+                                                     const std::optional<std::string> & exe)
     {
         // forward to parent
         const unsigned long long processTimeDelta = parent.add(timestampNS, pid, tid, statRecord, statmRecord, exe);
@@ -99,7 +102,7 @@ namespace non_root {
         unsigned long clktck,
         const lnx::ProcPidStatFileRecord & statRecord,
         const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-        const std::optional<lib::FsEntry> & exe)
+        const std::optional<std::string> & exe)
     {
         if (isNew()) {
             // pull out parent pid
@@ -191,7 +194,7 @@ namespace non_root {
                                                 int tid,
                                                 const lnx::ProcPidStatFileRecord & statRecord,
                                                 const std::optional<lnx::ProcPidStatmFileRecord> & statmRecord,
-                                                const std::optional<lib::FsEntry> & exe)
+                                                const std::optional<std::string> & exe)
     {
         runtime_assert(statRecord.getPid() == tid, "Record does not match tid");
 

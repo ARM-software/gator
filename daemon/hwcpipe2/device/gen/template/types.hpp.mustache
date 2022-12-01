@@ -1,0 +1,44 @@
+{{> copyright}}
+
+#pragma once
+
+#include <device/ioctl/offset_pointer.hpp>
+#include <device/ioctl/pointer64.hpp>
+
+#include <cstddef>
+#include <cstdint>
+
+namespace hwcpipe {
+namespace device {
+namespace ioctl {
+
+{{#namespaces}}
+{{> description}}
+namespace {{name}} {
+{{#forward_declarations}}
+{{> description}}
+{{keyword}} {{name}};
+
+{{/forward_declarations}}
+} // namespace {{name}}
+
+{{/namespaces}}
+{{> description}}
+namespace {{name}} {
+{{#code}}
+{{{code}}}
+
+{{/code}}
+{{#items}}
+{{> types}}
+
+{{/items}}
+// clang-format off
+{{#items}}
+{{> bitmask_operators}}
+{{/items}}
+// clang-format on
+} // namespace {{name}}
+} // namespace ioctl
+} // namespace device
+} // namespace hwcpipe

@@ -60,7 +60,7 @@
     <event event="0x55" title="Instruction" name="Linefill initiated" description="PLD instruction that initiates a linefill."/>
     <event event="0x56" title="Instruction" name="Linefill not initiated" description="PLD instruction that did not initiate a linefill because of a resource shortage."/>
 
-    <event event="0x57" title="Bus" name="Non-cachable access" description="Non-cacheable access on AXI master bus."/>
+    <event event="0x57" title="Bus" name="Non-cachable access" description="Non-cacheable access on AXI manager bus."/>
     <event event="0x58" title="Cache" name="Instruction cache access" description="Instruction cache access. This is an analog to event 0x04 (Data / Cache Access)"/>
 
     <event event="0x59" title="Cache" name="Two slots data" description="Store buffer operation has detected that two slots have data in same cache line but with different attributes."/>
@@ -83,8 +83,8 @@
 
     <event event="0x6a" title="TCM" name="Load/Store error" description="TCM correctable ECC error reported by load/store unit."/>
     <event event="0x6b" title="TCM" name="Prefetch error" description="TCM correctable ECC error reported by prefetch unit."/>
-    <event event="0x6c" title="TCM" name="AXI slave fatal error" description="TCM fatal ECC error reported by AXI slave interface."/>
-    <event event="0x6d" title="TCM" name="AXI slave error" description="TCM correctable ECC error reported by AXI slave interface."/>
+    <event event="0x6c" title="TCM" name="AXI subordinate fatal error" description="TCM fatal ECC error reported by AXI subordinate interface."/>
+    <event event="0x6d" title="TCM" name="AXI subordinate error" description="TCM correctable ECC error reported by AXI subordinate interface."/>
 
     <event event="0x6e" title="All Events" name="Correctable" description="All correctable events"/>
     <event event="0x6f" title="All Events" name="Fatal" description="All fatal events"/>

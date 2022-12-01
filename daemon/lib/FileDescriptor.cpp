@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
@@ -37,7 +37,27 @@ namespace lib {
             return false;
         }
 
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
         if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
+            LOG_DEBUG("fcntl setfl failed");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool setBlocking(const int fd)
+    {
+        int flags;
+
+        flags = fcntl(fd, F_GETFL);
+        if (flags < 0) {
+            LOG_DEBUG("fcntl getfl failed");
+            return false;
+        }
+
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+        if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) != 0) {
             LOG_DEBUG("fcntl setfl failed");
             return false;
         }

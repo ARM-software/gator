@@ -1,3 +1,11 @@
+# Gator 8.3
+
+Adds support for Neoverse V2, Mali-G615 and Immortalis-G715 GPUs, Corelink MMU-700 (and improved support for MMU-600).
+
+# Gator 8.2
+
+This release adds support for Mali GPU Timeline visualization, using GPU Renderstages data from Perfetto.
+
 # Gator 8.1
 
 This release completes the preparatory work needed to support accessing data from Perfetto (traced) on the target.

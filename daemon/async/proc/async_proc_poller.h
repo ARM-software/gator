@@ -27,12 +27,18 @@ namespace async {
          *
          * @return True if criteria are met, false otherwise
          */
-        bool is_pid_directory(const lib::FsEntry & entry);
+        inline bool is_pid_directory(const lib::FsEntry & entry)
+        {
+            return lnx::isPidDirectory(entry);
+        }
 
         /** @return The process exe path (or some estimation of it). Empty if the thread is a kernel thread, otherwise
          * contains 'something'
          */
-        std::optional<lib::FsEntry> get_process_exe_path(const lib::FsEntry & entry);
+        inline std::optional<std::string> get_process_exe_path(const lib::FsEntry & entry)
+        {
+            return lnx::getProcessExePath(entry);
+        }
 
         /** Helper for iterating some directory asynchronously */
         template<typename Executor, typename Op>
@@ -114,7 +120,7 @@ namespace async {
                                                     int,
                                                     const lnx::ProcPidStatFileRecord &,
                                                     const std::optional<lnx::ProcPidStatmFileRecord> &,
-                                                    const std::optional<lib::FsEntry> &)>;
+                                                    const std::optional<std::string> &)>;
 
         explicit async_proc_poller_t(Executor const & executor)
             : executor {executor}, procDir {lib::FsEntry::create("/proc")}
@@ -285,7 +291,7 @@ namespace async {
         template<bool WantStats>
         static error_code_continuation_t process_tid_directory(int pid,
                                                                lib::FsEntry entry,
-                                                               std::optional<lib::FsEntry> exe,
+                                                               std::optional<std::string> exe,
                                                                std::shared_ptr<callbacks_t> callbacks)
         {
             using namespace async::continuations;

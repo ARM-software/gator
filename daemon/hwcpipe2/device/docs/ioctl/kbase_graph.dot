@@ -1,0 +1,261 @@
+digraph G {
+    compound=true;
+    label="kbase";
+    node [shape=box];
+    rankdir=LR;
+
+    subgraph cluster_commands {
+        node [shape=box, style=filled, fillcolor=lightgrey];
+
+        label="kbase commands."
+        command_version_check_jm [label=version_check_jm];
+        command_version_check_csf [label=version_check_csf];
+        command_set_flags [label=set_flags];
+        command_get_gpuprops [label=get_gpuprops];
+        command_cs_get_glb_iface [label=cs_get_glb_iface];
+        command_hwcnt_reader_setup [label=hwcnt_reader_setup];
+        command_kinstr_prfcnt_enum_info [label=kinstr_prfcnt_enum_info];
+        command_kinstr_prfcnt_setup [label=kinstr_prfcnt_setup];
+    }
+
+    subgraph cluster_version_check {
+        label="struct version_check"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_version_check [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_version_check
+        {
+            label="Fields";
+            version_check_major [label="uint16_t major"];
+            version_check_minor [label="uint16_t minor"];
+        }
+    }
+    subgraph cluster_set_flags {
+        label="struct set_flags"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_set_flags [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_set_flags
+        {
+            label="Fields";
+            set_flags_create_flags [label="uint32_t create_flags"];
+        }
+    }
+    subgraph cluster_get_gpuprops {
+        label="struct get_gpuprops"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_get_gpuprops [style=invis];
+
+        // Inner types defined in this struct.
+        enum_get_gpuprops_gpuprop_size [label="enum gpuprop_size"];
+        enum_get_gpuprops_gpuprop_code [label="enum gpuprop_code"];
+
+        subgraph cluster_fields_get_gpuprops
+        {
+            label="Fields";
+            get_gpuprops_buffer [label="pointer64<uint8_t> buffer"];
+            get_gpuprops_size [label="uint32_t size"];
+            get_gpuprops_flags [label="uint32_t flags"];
+        }
+    }
+    subgraph cluster_cs_get_glb_iface {
+        label="union cs_get_glb_iface"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_cs_get_glb_iface [style=invis];
+
+        // Inner types defined in this union.
+        subgraph cluster_cs_get_glb_iface_in_type {
+            label="struct in_type"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_cs_get_glb_iface_in_type [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_cs_get_glb_iface_in_type
+            {
+                label="Fields";
+                cs_get_glb_iface_in_type_max_group_num [label="uint32_t max_group_num"];
+                cs_get_glb_iface_in_type_max_total_stream_num [label="uint32_t max_total_stream_num"];
+                cs_get_glb_iface_in_type_groups_ptr [label="uint64_t groups_ptr"];
+                cs_get_glb_iface_in_type_streams_ptr [label="uint64_t streams_ptr"];
+            }
+        }
+        subgraph cluster_cs_get_glb_iface_out_type {
+            label="struct out_type"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_cs_get_glb_iface_out_type [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_cs_get_glb_iface_out_type
+            {
+                label="Fields";
+                cs_get_glb_iface_out_type_glb_version [label="uint32_t glb_version"];
+                cs_get_glb_iface_out_type_features [label="uint32_t features"];
+                cs_get_glb_iface_out_type_group_num [label="uint32_t group_num"];
+                cs_get_glb_iface_out_type_prfcnt_size [label="uint32_t prfcnt_size"];
+                cs_get_glb_iface_out_type_total_stream_num [label="uint32_t total_stream_num"];
+                cs_get_glb_iface_out_type_instr_features [label="uint32_t instr_features"];
+            }
+        }
+
+        subgraph cluster_fields_cs_get_glb_iface
+        {
+            label="Fields";
+            cs_get_glb_iface_in [label="in_type in"];
+            cs_get_glb_iface_out [label="out_type out"];
+        }
+    }
+    subgraph cluster_hwcnt_reader_setup {
+        label="struct hwcnt_reader_setup"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_hwcnt_reader_setup [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_hwcnt_reader_setup
+        {
+            label="Fields";
+            hwcnt_reader_setup_buffer_count [label="uint32_t buffer_count"];
+            hwcnt_reader_setup_fe_bm [label="uint32_t fe_bm"];
+            hwcnt_reader_setup_shader_bm [label="uint32_t shader_bm"];
+            hwcnt_reader_setup_tiler_bm [label="uint32_t tiler_bm"];
+            hwcnt_reader_setup_mmu_l2_bm [label="uint32_t mmu_l2_bm"];
+        }
+    }
+    subgraph cluster_kinstr_prfcnt_enum_info {
+        label="struct kinstr_prfcnt_enum_info"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_kinstr_prfcnt_enum_info [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_kinstr_prfcnt_enum_info
+        {
+            label="Fields";
+            kinstr_prfcnt_enum_info_info_item_size [label="uint32_t info_item_size"];
+            kinstr_prfcnt_enum_info_info_item_count [label="uint32_t info_item_count"];
+            kinstr_prfcnt_enum_info_info_list_ptr [label="pointer64<kinstr_prfcnt::enum_item> info_list_ptr"];
+        }
+    }
+    subgraph cluster_kinstr_prfcnt_setup {
+        label="union kinstr_prfcnt_setup"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_kinstr_prfcnt_setup [style=invis];
+
+        // Inner types defined in this union.
+        subgraph cluster_kinstr_prfcnt_setup_in_type {
+            label="struct in_type"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_kinstr_prfcnt_setup_in_type [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_kinstr_prfcnt_setup_in_type
+            {
+                label="Fields";
+                kinstr_prfcnt_setup_in_type_request_item_count [label="uint32_t request_item_count"];
+                kinstr_prfcnt_setup_in_type_request_item_size [label="uint32_t request_item_size"];
+                kinstr_prfcnt_setup_in_type_requests_ptr [label="pointer64<kinstr_prfcnt::request_item> requests_ptr"];
+            }
+        }
+        subgraph cluster_kinstr_prfcnt_setup_out_type {
+            label="struct out_type"
+            graph [style=bold]
+
+            // Invisible node to connect other fields with this type.
+            compound_kinstr_prfcnt_setup_out_type [style=invis];
+
+            // Inner types defined in this struct.
+
+            subgraph cluster_fields_kinstr_prfcnt_setup_out_type
+            {
+                label="Fields";
+                kinstr_prfcnt_setup_out_type_prfcnt_metadata_item_size [label="uint32_t prfcnt_metadata_item_size"];
+                kinstr_prfcnt_setup_out_type_prfcnt_mmap_size_bytes [label="uint32_t prfcnt_mmap_size_bytes"];
+            }
+        }
+
+        subgraph cluster_fields_kinstr_prfcnt_setup
+        {
+            label="Fields";
+            kinstr_prfcnt_setup_in [label="in_type in"];
+            kinstr_prfcnt_setup_out [label="out_type out"];
+        }
+    }
+
+    // Edges for version_check
+    version_check_major -> uint16_t;
+    version_check_minor -> uint16_t;
+    // Edges for set_flags
+    set_flags_create_flags -> uint32_t;
+    // Edges for get_gpuprops
+    get_gpuprops_size -> uint32_t;
+    get_gpuprops_flags -> uint32_t;
+    // Edges for cs_get_glb_iface
+    cs_get_glb_iface_in -> compound_cs_get_glb_iface_in_type [lhead=cluster_cs_get_glb_iface_in_type];
+    cs_get_glb_iface_out -> compound_cs_get_glb_iface_out_type [lhead=cluster_cs_get_glb_iface_out_type];
+    // Edges for cs_get_glb_iface_in_type
+    cs_get_glb_iface_in_type_max_group_num -> uint32_t;
+    cs_get_glb_iface_in_type_max_total_stream_num -> uint32_t;
+    cs_get_glb_iface_in_type_groups_ptr -> uint64_t;
+    cs_get_glb_iface_in_type_streams_ptr -> uint64_t;
+    // Edges for cs_get_glb_iface_out_type
+    cs_get_glb_iface_out_type_glb_version -> uint32_t;
+    cs_get_glb_iface_out_type_features -> uint32_t;
+    cs_get_glb_iface_out_type_group_num -> uint32_t;
+    cs_get_glb_iface_out_type_prfcnt_size -> uint32_t;
+    cs_get_glb_iface_out_type_total_stream_num -> uint32_t;
+    cs_get_glb_iface_out_type_instr_features -> uint32_t;
+    // Edges for hwcnt_reader_setup
+    hwcnt_reader_setup_buffer_count -> uint32_t;
+    hwcnt_reader_setup_fe_bm -> uint32_t;
+    hwcnt_reader_setup_shader_bm -> uint32_t;
+    hwcnt_reader_setup_tiler_bm -> uint32_t;
+    hwcnt_reader_setup_mmu_l2_bm -> uint32_t;
+    // Edges for kinstr_prfcnt_enum_info
+    kinstr_prfcnt_enum_info_info_item_size -> uint32_t;
+    kinstr_prfcnt_enum_info_info_item_count -> uint32_t;
+    // Edges for kinstr_prfcnt_setup
+    kinstr_prfcnt_setup_in -> compound_kinstr_prfcnt_setup_in_type [lhead=cluster_kinstr_prfcnt_setup_in_type];
+    kinstr_prfcnt_setup_out -> compound_kinstr_prfcnt_setup_out_type [lhead=cluster_kinstr_prfcnt_setup_out_type];
+    // Edges for kinstr_prfcnt_setup_in_type
+    kinstr_prfcnt_setup_in_type_request_item_count -> uint32_t;
+    kinstr_prfcnt_setup_in_type_request_item_size -> uint32_t;
+    // Edges for kinstr_prfcnt_setup_out_type
+    kinstr_prfcnt_setup_out_type_prfcnt_metadata_item_size -> uint32_t;
+    kinstr_prfcnt_setup_out_type_prfcnt_mmap_size_bytes -> uint32_t;
+
+    command_version_check_jm -> compound_version_check [lhead=cluster_version_check];
+    command_version_check_csf -> compound_version_check [lhead=cluster_version_check];
+    command_set_flags -> compound_set_flags [lhead=cluster_set_flags];
+    command_get_gpuprops -> compound_get_gpuprops [lhead=cluster_get_gpuprops];
+    command_cs_get_glb_iface -> compound_cs_get_glb_iface [lhead=cluster_cs_get_glb_iface];
+    command_hwcnt_reader_setup -> compound_hwcnt_reader_setup [lhead=cluster_hwcnt_reader_setup];
+    command_kinstr_prfcnt_enum_info -> compound_kinstr_prfcnt_enum_info [lhead=cluster_kinstr_prfcnt_enum_info];
+    command_kinstr_prfcnt_setup -> compound_kinstr_prfcnt_setup [lhead=cluster_kinstr_prfcnt_setup];
+}

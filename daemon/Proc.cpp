@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
 
 #include "Proc.h"
 
@@ -36,9 +36,9 @@ namespace {
                              int tid,
                              const lnx::ProcPidStatFileRecord & statRecord,
                              const std::optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
-                             const std::optional<lib::FsEntry> & exe) override
+                             const std::optional<std::string> & exe) override
         {
-            buffer.marshalComm(pid, tid, (exe ? exe->path().c_str() : ""), statRecord.getComm().c_str());
+            buffer.marshalComm(pid, tid, (exe ? exe->c_str() : ""), statRecord.getComm().c_str());
         }
     };
 

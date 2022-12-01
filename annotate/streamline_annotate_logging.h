@@ -16,7 +16,7 @@ enum log_levels {
     LOG_SILENT
 };
 
-/* ANDRIOD IMPLEMENTATION */
+/* ANDROID IMPLEMENTATION */
 #if defined(ANDROID) || defined(__ANDROID__)
 #include <android/log.h>
 

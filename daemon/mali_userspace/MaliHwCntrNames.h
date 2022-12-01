@@ -2134,7 +2134,6 @@ namespace mali_userspace {
         "T88x_L2_TAG_HAZARD",
         "T88x_L2_SNOOP_FULL",
         "T88x_L2_REPLAY_FULL"};
-
 }
 
 #endif /* NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIHWCNTRNAMES_H_ */

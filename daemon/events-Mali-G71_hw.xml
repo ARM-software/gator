@@ -76,7 +76,7 @@
 	<event counter="ARM_Mali-TMIx_BEATS_RD_TEX_EXT" description="The number of read beats received by the texture unit that required an external memory access due to an L2 cache miss." name="Texture external read beats" title="Mali Core External Reads" units="beats"/>
 	<event advanced="yes" counter="ARM_Mali-TMIx_BEATS_RD_OTHER" description="The number of read beats received by a unit that is not specifically identified." name="Other L2 read beats" title="Mali Core L2 Reads" units="beats"/>
 	<event counter="ARM_Mali-TMIx_BEATS_WR_LSC" description="The number of write beats sent by the load/store unit." name="Load/store write beats" title="Mali Core Writes" units="beats"/>
-	<event counter="ARM_Mali-TMIx_BEATS_WR_TIB" description="The number of write beats sent by the tile buffer writeback unit." name="Tile buffer write beats" title="Mali Core Writes" units="beats"/>
+	<event counter="ARM_Mali-TMIx_BEATS_WR_TIB" description="The number of write beats sent by the tile buffer write-back unit." name="Tile buffer write beats" title="Mali Core Writes" units="beats"/>
 	<event advanced="yes" counter="ARM_Mali-TMIx_BEATS_WR_OTHER" description="The number of write beats sent by any unit that is not specifically identified." name="Other write beats" title="Mali Core Writes" units="beats"/>
 </category>
 <category name="Mali Memory System" per_cpu="no">

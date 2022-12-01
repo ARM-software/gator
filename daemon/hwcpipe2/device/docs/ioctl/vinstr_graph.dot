@@ -1,0 +1,121 @@
+digraph G {
+    compound=true;
+    label="vinstr";
+    node [shape=box];
+    rankdir=LR;
+
+    subgraph cluster_commands {
+        node [shape=box, style=filled, fillcolor=lightgrey];
+
+        label="vinstr commands."
+        command_get_hwver [label=get_hwver];
+        command_get_buffer_size [label=get_buffer_size];
+        command_dump [label=dump];
+        command_clear [label=clear];
+        command_get_buffer [label=get_buffer];
+        command_get_buffer_with_cycles [label=get_buffer_with_cycles];
+        command_put_buffer [label=put_buffer];
+        command_put_buffer_with_cycles [label=put_buffer_with_cycles];
+        command_set_interval [label=set_interval];
+        command_enable_event [label=enable_event];
+        command_disable_event [label=disable_event];
+        command_get_api_version [label=get_api_version];
+        command_get_api_version_with_features [label=get_api_version_with_features];
+    }
+
+    enum_reader_event [label="enum reader_event"];
+    enum_reader_features [label="enum reader_features"];
+    subgraph cluster_reader_metadata_cycles {
+        label="struct reader_metadata_cycles"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_reader_metadata_cycles [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_reader_metadata_cycles
+        {
+            label="Fields";
+            reader_metadata_cycles_top [label="uint64_t top"];
+            reader_metadata_cycles_shader_cores [label="uint64_t shader_cores"];
+        }
+    }
+    subgraph cluster_reader_metadata {
+        label="struct reader_metadata"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_reader_metadata [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_reader_metadata
+        {
+            label="Fields";
+            reader_metadata_timestamp [label="uint64_t timestamp"];
+            reader_metadata_event_id [label="reader_event event_id"];
+            reader_metadata_buffer_idx [label="uint32_t buffer_idx"];
+        }
+    }
+    subgraph cluster_reader_metadata_with_cycles {
+        label="struct reader_metadata_with_cycles"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_reader_metadata_with_cycles [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_reader_metadata_with_cycles
+        {
+            label="Fields";
+            reader_metadata_with_cycles_metadata [label="reader_metadata metadata"];
+            reader_metadata_with_cycles_cycles [label="reader_metadata_cycles cycles"];
+        }
+    }
+    subgraph cluster_reader_api_version {
+        label="struct reader_api_version"
+        graph [style=bold]
+
+        // Invisible node to connect other fields with this type.
+        compound_reader_api_version [style=invis];
+
+        // Inner types defined in this struct.
+
+        subgraph cluster_fields_reader_api_version
+        {
+            label="Fields";
+            reader_api_version_version [label="uint32_t version"];
+            reader_api_version_features [label="reader_features features"];
+        }
+    }
+
+    // Edges for reader_metadata_cycles
+    reader_metadata_cycles_top -> uint64_t;
+    reader_metadata_cycles_shader_cores -> uint64_t;
+    // Edges for reader_metadata
+    reader_metadata_timestamp -> uint64_t;
+    reader_metadata_event_id -> enum_reader_event;
+    reader_metadata_buffer_idx -> uint32_t;
+    // Edges for reader_metadata_with_cycles
+    reader_metadata_with_cycles_metadata -> compound_reader_metadata [lhead=cluster_reader_metadata];
+    reader_metadata_with_cycles_cycles -> compound_reader_metadata_cycles [lhead=cluster_reader_metadata_cycles];
+    // Edges for reader_api_version
+    reader_api_version_version -> uint32_t;
+    reader_api_version_features -> enum_reader_features;
+
+    command_get_hwver -> uint32_t;
+    command_get_buffer_size -> uint32_t;
+    command_dump -> uint32_t;
+    command_clear -> uint32_t;
+    command_get_buffer -> compound_reader_metadata [lhead=cluster_reader_metadata];
+    command_get_buffer_with_cycles -> compound_reader_metadata_with_cycles [lhead=cluster_reader_metadata_with_cycles];
+    command_put_buffer -> compound_reader_metadata [lhead=cluster_reader_metadata];
+    command_put_buffer_with_cycles -> compound_reader_metadata_with_cycles [lhead=cluster_reader_metadata_with_cycles];
+    command_set_interval -> uint32_t;
+    command_enable_event -> enum_reader_event;
+    command_disable_event -> enum_reader_event;
+    command_get_api_version -> uint32_t;
+    command_get_api_version_with_features -> compound_reader_api_version [lhead=cluster_reader_api_version];
+}

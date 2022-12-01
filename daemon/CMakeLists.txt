@@ -37,6 +37,16 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/split-strip.cmake)
 # Include the escaper
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/escape.cmake)
 
+# Include hwcpipe2
+SET(HWCPIPE_ENABLE_TESTS OFF CACHE BOOL "")
+SET(HWCPIPE_ENABLE_EXCEPTIONS ON CACHE BOOL "")
+SET(HWCPIPE_ENABLE_SYMBOLS_VISIBILITY OFF CACHE BOOL "")
+SET(HWCPIPE_ENABLE_RTTI OFF CACHE BOOL "")
+SET(HWCPIPE_WERROR OFF CACHE BOOL "")
+SET(HWCPIPE_WALL OFF CACHE BOOL "")
+SET(HWCPIPE_ENABLE_END_TO_END_TESTS OFF CACHE BOOL "")
+ADD_SUBDIRECTORY(hwcpipe2)
+
 # Configure target flags
 IF(("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") AND(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "7.4.0"))
     SET(GATORD_C_CXX_FLAGS "-fvisibility=default")
@@ -81,6 +91,7 @@ FIND_PACKAGE(Threads REQUIRED)
 SET(Boost_USE_MULTITHREADED ON)
 FIND_PACKAGE(Boost 1.75 REQUIRED COMPONENTS
     filesystem
+    regex
 )
 ADD_DEFINITIONS(-DBOOST_FILESYSTEM_NO_DEPRECATED)
 
@@ -219,6 +230,10 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.h
     ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/linux/smmu_identifier.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/linux/smmu_identifier.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/linux/smmu_support.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/linux/smmu_support.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Source.h
     ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetup.h
@@ -409,7 +424,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_exec.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_process.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_process.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_proc_poller.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_proc_poller.h
     ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_read_proc_maps.h
     ${CMAKE_CURRENT_SOURCE_DIR}/async/proc/async_read_proc_sys_dependencies.h
@@ -521,10 +535,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/logging.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/IMaliHwCntrReader.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDeviceApi.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDeviceApi_DdkDefines.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDeviceApi.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h
@@ -535,8 +545,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntr.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNames.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNamesBifrost.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrReader.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrReader.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrTask.cpp
@@ -678,9 +686,11 @@ TARGET_LINK_LIBRARIES(gatord
     PRIVATE gatord-tpip
     PRIVATE Threads::Threads
     PRIVATE atomic
+    PRIVATE device
     PRIVATE mxml
     PRIVATE Boost::boost
     PRIVATE Boost::filesystem
+    PRIVATE Boost::regex
     PRIVATE ipcproto
     PRIVATE dl
 )

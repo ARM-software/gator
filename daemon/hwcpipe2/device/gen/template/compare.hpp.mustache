@@ -1,0 +1,20 @@
+{{> copyright}}
+
+#pragma once
+
+#include "commands.hpp"
+
+namespace hwcpipe {
+namespace device {
+namespace ioctl {
+namespace {{name}} {
+
+// clang-format off
+{{#items}}
+{{> compare_declaration}}
+{{/items}}
+// clang-format on
+} // namespace {{name}}
+} // namespace ioctl
+} // namespace device
+} // namespace hwcpipe

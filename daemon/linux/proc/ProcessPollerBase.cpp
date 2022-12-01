@@ -2,7 +2,10 @@
 
 #include "linux/proc/ProcessPollerBase.h"
 
+#include "Logging.h"
 #include "lib/Format.h"
+#include "lib/FsEntry.h"
+#include "lib/String.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -10,49 +13,39 @@
 
 namespace lnx {
     namespace {
-        /**
-         * Checks the name of the FsEntry to see if it is a number, and checks the type
-         * to see if it is a directory.
-         *
-         * @return True if criteria are met, false otherwise
-         */
-        bool isPidDirectory(const lib::FsEntry & entry)
+        /** Remove any trailing nl or other invalid char */
+        std::string trimInvalid(std::string str)
         {
-            // type must be directory
-            const lib::FsEntry::Stats stats = entry.read_stats();
-            if (stats.type() != lib::FsEntry::Type::DIR) {
-                return false;
+            std::string_view sv {str};
+
+            while ((!sv.empty()) && (sv.back() < ' ')) {
+                sv.remove_suffix(1);
             }
 
-            // name must be only digits
-            const std::string name = entry.name();
-            for (char chr : name) {
-                if (std::isdigit(chr) == 0) {
-                    return false;
-                }
-            }
+            str.resize(sv.size());
 
-            return true;
+            return str;
         }
 
         /**
          * Get the exe path for a process by reading /proc/[PID]/cmdline
          */
-        std::optional<lib::FsEntry> getProcessCmdlineExePath(const lib::FsEntry & entry)
+        std::optional<std::string> getProcessCmdlineExePath(const lib::FsEntry & entry)
         {
             const lib::FsEntry cmdline_file = lib::FsEntry::create(entry, "cmdline");
             const std::string cmdline_contents = lib::readFileContents(cmdline_file);
             // need to extract just the first part of cmdline_contents (as it is an packed sequence of c-strings)
             // so use .c_str() to extract the first string (which is the exe path) and create a new string from it
-            const std::string cmdline_exe = cmdline_contents.c_str(); // NOLINT(readability-redundant-string-cstr)
-            if ((!cmdline_exe.empty()) && (cmdline_exe.at(0) != '\n') && (cmdline_exe.at(0) != '\r')) {
-                return lib::FsEntry::create(cmdline_exe);
+            const std::string cmdline_exe =
+                trimInvalid(cmdline_contents.c_str()); // NOLINT(readability-redundant-string-cstr)
+            if (!cmdline_exe.empty()) {
+                return cmdline_exe;
             }
-            return std::optional<lib::FsEntry> {};
+            return std::nullopt;
         }
 
-        std::optional<lib::FsEntry> checkExePathForAndroidAppProcess(const lib::FsEntry & proc_dir,
-                                                                     std::optional<lib::FsEntry> && exe_realpath)
+        std::optional<std::string> checkExePathForAndroidAppProcess(const lib::FsEntry & proc_dir,
+                                                                    std::optional<lib::FsEntry> && exe_realpath)
         {
             if (exe_realpath && exe_realpath->is_absolute()) {
                 // check android paths
@@ -66,21 +59,42 @@ namespace lnx {
                 }
 
                 // use provided path
-                return std::move(exe_realpath);
+                return exe_realpath->path();
             }
 
             return {};
         }
     }
 
-    std::optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry)
+    bool isPidDirectory(const lib::FsEntry & entry)
     {
+        // type must be directory
+        const lib::FsEntry::Stats stats = entry.read_stats();
+        if (stats.type() != lib::FsEntry::Type::DIR) {
+            return false;
+        }
+
+        // name must be only digits
+        const std::string name = entry.name();
+        for (char chr : name) {
+            if (std::isdigit(chr) == 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    std::optional<std::string> getProcessExePath(const lib::FsEntry & entry)
+    {
+        auto const pid_str = entry.name();
         auto proc_pid_exe = lib::FsEntry::create(entry, "exe");
 
         // try realpath on 'exe'.. most of the time this will resolve to the canonical exe path
         {
             auto exe_realpath = checkExePathForAndroidAppProcess(entry, proc_pid_exe.realpath());
             if (exe_realpath) {
+                LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), exe_realpath->c_str());
                 return exe_realpath;
             }
         }
@@ -89,6 +103,7 @@ namespace lnx {
         {
             auto exe_readlink = checkExePathForAndroidAppProcess(entry, proc_pid_exe.readlink());
             if (exe_readlink) {
+                LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), exe_readlink->c_str());
                 return exe_readlink;
             }
         }
@@ -96,27 +111,39 @@ namespace lnx {
         // exe was linked to nothing, try getting from cmdline (but it must be for a real file)
         auto cmdline_exe = getProcessCmdlineExePath(entry);
         if (!cmdline_exe) {
+            LOG_TRACE("[%s] Detected is kernel thread", pid_str.c_str());
             // no cmdline, must be a kernel thread
             return {};
         }
 
         // resolve the cmdline string to a real path
-        if (cmdline_exe->is_absolute()) {
+        if (cmdline_exe->front() == '/') {
             // already an absolute path, so just resolve it to its realpath
-            auto cmldine_exe_realpath = cmdline_exe->realpath();
+            auto cmdline_exe_path = lib::FsEntry::create(*cmdline_exe);
+            auto cmldine_exe_realpath = cmdline_exe_path.realpath();
             if (cmldine_exe_realpath) {
-                return cmldine_exe_realpath;
+                auto path = cmldine_exe_realpath->path();
+                LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), path.c_str());
+                return path;
+            }
+            // on android, realpath may fail due to permissions, but exists should succeed
+            // so check that here
+            if (cmdline_exe_path.exists()) {
+                LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), cmdline_exe->c_str());
+                return cmdline_exe;
             }
         }
         else {
             // try relative to process cwd first
             auto cwd_file = lib::FsEntry::create(entry, "cwd");
-            auto rel_exe_file = lib::FsEntry::create(cwd_file, cmdline_exe->path());
+            auto rel_exe_file = lib::FsEntry::create(cwd_file, *cmdline_exe);
             auto abs_exe_file = rel_exe_file.realpath();
 
             if (abs_exe_file) {
                 // great, use that
-                return abs_exe_file;
+                auto path = abs_exe_file->path();
+                LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), path.c_str());
+                return path;
             }
         }
 
@@ -124,18 +151,30 @@ namespace lnx {
         // Since the exe_path value *must* contain something for any non-kernel PID,
         // then prefer to send 'comm' (so long as it is not an empty string)
         auto comm_file = lib::FsEntry::create(entry, "comm");
-        auto comm_file_contents = lib::readFileContents(comm_file);
+        auto comm_file_contents = trimInvalid(lib::readFileContents(comm_file));
         if (!comm_file_contents.empty()) {
-            return lib::FsEntry::create(comm_file_contents);
+            constexpr std::size_t max_comm_length = 15;
+            // is it a package name?
+            if ((comm_file_contents.size() >= max_comm_length) && (cmdline_exe->front() != '/')
+                && lib::ends_with(*cmdline_exe, comm_file_contents)) {
+                LOG_TRACE("[%s] Detected exe '%s' (from %s)",
+                          pid_str.c_str(),
+                          cmdline_exe->c_str(),
+                          comm_file_contents.c_str());
+                return cmdline_exe;
+            }
+            LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), comm_file_contents.c_str());
+            return comm_file_contents;
         }
 
         // comm was empty, so fall back to whatever the commandline was
         if (cmdline_exe) {
+            LOG_TRACE("[%s] Detected exe '%s'", pid_str.c_str(), cmdline_exe->c_str());
             return cmdline_exe;
         }
 
         // worst case just send /proc/<pid>/exe
-        return proc_pid_exe;
+        return proc_pid_exe.path();
     }
 
     void ProcessPollerBase::IProcessPollerReceiver::onProcessDirectory(int /*unused*/, const lib::FsEntry & /*unused*/)
@@ -153,7 +192,7 @@ namespace lnx {
         int /*unused*/,
         const ProcPidStatFileRecord & /*unused*/,
         const std::optional<ProcPidStatmFileRecord> & /*unused*/,
-        const std::optional<lib::FsEntry> & /*unused*/)
+        const std::optional<std::string> & /*unused*/)
     {
     }
 
@@ -178,8 +217,8 @@ namespace lnx {
                                                 IProcessPollerReceiver & receiver,
                                                 const lib::FsEntry & entry)
     {
-        const std::string name = entry.name();
-        std::optional<lib::FsEntry> exe_path = getProcessExePath(entry);
+        const auto name = entry.name();
+        const auto exe_path = getProcessExePath(entry);
 
         // read the pid
         const long pid = std::strtol(name.c_str(), nullptr, 0);
@@ -216,7 +255,7 @@ namespace lnx {
                                                 IProcessPollerReceiver & receiver,
                                                 const int pid,
                                                 const lib::FsEntry & entry,
-                                                const std::optional<lib::FsEntry> & exe)
+                                                const std::optional<std::string> & exe)
     {
         const long tid = std::strtol(entry.name().c_str(), nullptr, 0);
 

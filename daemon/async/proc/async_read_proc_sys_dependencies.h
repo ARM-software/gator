@@ -42,14 +42,14 @@ namespace async {
                                               int tid,
                                               const lnx::ProcPidStatFileRecord & statRecord,
                                               const std::optional<lnx::ProcPidStatmFileRecord> & /*statmRecord*/,
-                                              const std::optional<lib::FsEntry> & exe) -> poly_return_type {
+                                              const std::optional<std::string> & exe) -> poly_return_type {
                                               // filter the pid/tid
                                               if (!filter(pid, tid)) {
                                                   return start_with(boost::system::error_code {});
                                               }
                                               return sender->async_send_comm_frame(pid,
                                                                                    tid,
-                                                                                   exe ? exe->path() : "",
+                                                                                   exe ? *exe : "",
                                                                                    statRecord.getComm(),
                                                                                    use_continuation);
                                           });

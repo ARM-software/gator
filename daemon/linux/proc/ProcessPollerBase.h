@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PROC_PROCESSPOLLERBASE_H
 #define INCLUDE_LINUX_PROC_PROCESSPOLLERBASE_H
@@ -37,7 +37,7 @@ namespace lnx {
                                          int tid,
                                          const ProcPidStatFileRecord & statRecord,
                                          const std::optional<ProcPidStatmFileRecord> & statmRecord,
-                                         const std::optional<lib::FsEntry> & exe);
+                                         const std::optional<std::string> & exe);
         };
 
         ProcessPollerBase();
@@ -57,11 +57,19 @@ namespace lnx {
                                         IProcessPollerReceiver & receiver,
                                         int pid,
                                         const lib::FsEntry & entry,
-                                        const std::optional<lib::FsEntry> & exe);
+                                        const std::optional<std::string> & exe);
     };
 
+    /**
+     * Checks the name of the FsEntry to see if it is a number, and checks the type
+     * to see if it is a directory.
+     *
+     * @return True if criteria are met, false otherwise
+     */
+    bool isPidDirectory(const lib::FsEntry & entry);
+
     /** @return The process exe path (or some estimation of it). Empty if the thread is a kernel thread, otherwise contains 'something' */
-    std::optional<lib::FsEntry> getProcessExePath(const lib::FsEntry & entry);
+    std::optional<std::string> getProcessExePath(const lib::FsEntry & entry);
 }
 
 #endif /* INCLUDE_LINUX_PROC_PROCESSPOLLERBASE_H */

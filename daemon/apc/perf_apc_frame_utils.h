@@ -31,7 +31,7 @@ namespace apc {
                                       agents::perf::apc_buffer_builder_t<std::vector<char>> & buffer)
         {
             buffer.writeBytes(sv.data(), sv.size());
-            bool string_is_not_null_terminated = !(sv.back() == 0);
+            bool string_is_not_null_terminated = sv.empty() || !(sv.back() == 0);
             if (string_is_not_null_terminated) {
                 buffer.packInt(0);
             }

@@ -1,0 +1,9 @@
+{{#is_compound}}
+{{#items}}
+{{> compare_declaration}}
+{{/items}}
+{{#is_struct}}
+bool operator==(const {{full_name_cxx}} &lhs, const {{full_name_cxx}} &rhs);
+inline bool operator!=(const {{full_name_cxx}} &lhs, const {{full_name_cxx}} &rhs) { return !(lhs == rhs); }
+{{/is_struct}}
+{{/is_compound}}

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "agents/agent_worker_base.h"
+#include "agents/ext_source/ext_source_connection.h"
 #include "agents/spawn_agent.h"
 #include "async/continuations/continuation.h"
 #include "async/continuations/operations.h"
@@ -14,13 +15,39 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/io_context_strand.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
+#include <boost/asio/use_future.hpp>
 #include <boost/system/error_code.hpp>
+
 namespace agents {
 
     template<typename PerfettoSource>
     class perfetto_agent_worker_t : public agent_worker_base_t,
                                     public std::enable_shared_from_this<perfetto_agent_worker_t<PerfettoSource>> {
     private:
+        using weak_ptr_t = std::weak_ptr<perfetto_agent_worker_t<PerfettoSource>>;
+
+        class connection_impl_t : public ext_source_connection_t {
+        public:
+            explicit connection_impl_t(weak_ptr_t agent_worker) : agent_worker(std::move(agent_worker)) {}
+
+            ~connection_impl_t() override = default;
+
+            void close() override
+            {
+                using namespace async::continuations;
+                if (auto ptr = agent_worker.lock()) {
+                    LOG_TRACE("Asking ext source agent to close connection");
+                    auto fut = async_initiate([ptr]() { return ptr->cont_shutdown(); }, boost::asio::use_future);
+                    fut.get();
+                }
+            }
+
+        private:
+            weak_ptr_t agent_worker;
+        };
+
+        friend class connection_impl_t;
+
         boost::asio::io_context::strand strand;
         PerfettoSource & perfetto_source;
         std::optional<boost::asio::posix::stream_descriptor> perfetto_source_pipe {};
@@ -65,7 +92,7 @@ namespace agents {
                  | then([self = this->shared_from_this(),
                          msg = std::move(msg)](const auto & err, auto n) -> polymorphic_continuation_t<> {
                        if (err) {
-                           LOG_DEBUG("Error while forwarding perfetto source bytes: %s", err.message().c_str());
+                           LOG_ERROR("Error while forwarding perfetto source bytes: %s", err.message().c_str());
                            return self->cont_shutdown();
                        }
                        if (n != msg.suffix.size()) {
@@ -86,7 +113,8 @@ namespace agents {
                 return;
             }
 
-            auto pipe = perfetto_source.add_agent_pipe();
+            auto con = std::make_unique<connection_impl_t>(this->weak_from_this());
+            auto pipe = perfetto_source.add_agent_pipe(std::move(con));
 
             if (!pipe) {
                 LOG_ERROR("Failed to create perfetto data pipe");

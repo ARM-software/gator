@@ -55,7 +55,7 @@ namespace lib {
 
         [[gnu::format(printf, 2, 0)]] inline void vprintf(char const * format, va_list args)
         {
-            auto n = vsnprintf(buffer.data(), buffer.size() - 1, format, args);
+            auto n = vsnprintf(buffer.data(), buffer.size(), format, args);
 
             // make sure to terminate
             length = (n > 0 ? (std::size_t(n) < buffer.size() ? n : N - 1) : 0);
@@ -172,7 +172,19 @@ namespace lib {
     }
 
     /** Does a string_view start with some prefix */
-    inline bool starts_with(std::string_view str, std::string_view prefix) { return (str.rfind(prefix, 0) == 0); }
+    inline bool starts_with(std::string_view str, std::string_view prefix)
+    {
+        return (str.rfind(prefix, 0) == 0);
+    }
+
+    /** Does a string_view start with some prefix */
+    inline bool ends_with(std::string_view str, std::string_view prefix)
+    {
+        if (str.size() < prefix.size()) {
+            return false;
+        }
+        return str.substr(str.size() - prefix.size()) == prefix;
+    }
 
     /**
      * Extracts comma separated numbers from a string.

@@ -1,0 +1,70 @@
+<!-- Copyright (c) 2022, Arm Limited -->
+<counter_set name="CoreLinkMMU600_TCU_cnt" count="4"/>
+<category name="MMU-600 TCU" counter_set="CoreLinkMMU600_TCU_cnt" per_cpu="no">
+    <!-- Architecturally defined SMMUv3 events -->
+    <event event="0x00" title="MMU-600 (Clock)" name="Cycles" description="Counts clock cycles. Cycles where the clock is gated after a clock QChannel handshake are not counted." units="cycles" />
+    <event event="0x01" title="MMU-600 (Transactions/Requests)" name="All" description="Counts translation requests that originate from a DTI-TBU or DTI-ATS manager." />
+    <event event="0x02" title="MMU-600 (Transactions/Requests)" name="TLB Misses" description="Counts translation requests where the translation walks new translation table entries." />
+    <event event="0x03" title="MMU-600 (Transactions/Requests)" name="Config Cache Misses" description="Counts translation requests where the translation walks new configuration table entries." />
+    <event event="0x04" title="MMU-600 (External Accesses)" name="Translation Table Walk" description="Counts translation table walk accesses." />
+    <event event="0x05" title="MMU-600 (External Accesses)" name="Configuration Structure" description="Counts configuration table walk accesses." />
+    <event event="0x06" title="MMU-600 (PCIe ATS)" name="Translation Requests Received" description="Counts translation requests that originate from a DTI-ATS manager." />
+
+    <!-- Implementation specific events -->
+    <event event="0x80" title="MMU-600 (Transactions/Requests)" name="S1L0WC Lookups" description="Counts translation requests that access the S1L0WC walk cache." />
+    <event event="0x81" title="MMU-600 (Transactions/Requests)" name="S1L0WC Misses" description="Counts translation requests that access the S1L0WC walk cache and do not result in a hit." />
+    <event event="0x82" title="MMU-600 (Transactions/Requests)" name="S1L1WC Lookups" description="Counts translation requests that access the S1L1WC walk cache." />
+    <event event="0x83" title="MMU-600 (Transactions/Requests)" name="S1L1WC Misses" description="Counts translation requests that access the S1L1WC walk cache and do not result in a hit." />
+    <event event="0x84" title="MMU-600 (Transactions/Requests)" name="S1L2WC Lookups" description="Counts translation requests that access the S1L2WC walk cache." />
+    <event event="0x85" title="MMU-600 (Transactions/Requests)" name="S1L2WC Misses" description="Counts translation requests that access the S1L2WC walk cache and do not result in a hit." />
+    <event event="0x86" title="MMU-600 (Transactions/Requests)" name="S1L3WC Lookups" description="Counts translation requests that access the S1L3WC walk cache." />
+    <event event="0x87" title="MMU-600 (Transactions/Requests)" name="S1L3WC Misses" description="Counts translation requests that access the S1L3WC walk cache and do not result in a hit." />
+    <event event="0x88" title="MMU-600 (Transactions/Requests)" name="S2L0WC Lookups" description="Counts translation requests that access the S2L0WC walk cache." />
+    <event event="0x89" title="MMU-600 (Transactions/Requests)" name="S2L0WC Misses" description="Counts translation requests that access the S2L0WC walk cache and do not result in a hit." />
+    <event event="0x8A" title="MMU-600 (Transactions/Requests)" name="S2L1WC Lookups" description="Counts translation requests that access the S2L1WC walk cache." />
+    <event event="0x8B" title="MMU-600 (Transactions/Requests)" name="S2L1WC Misses" description="Counts translation requests that access the S2L1WC walk cache and do not result in a hit." />
+    <event event="0x8C" title="MMU-600 (Transactions/Requests)" name="S2L2WC Lookups" description="Counts translation requests that access the S2L2WC walk cache." />
+    <event event="0x8D" title="MMU-600 (Transactions/Requests)" name="S2L2WC Misses" description="Counts translation requests that access the S2L2WC walk cache and do not result in a hit." />
+    <event event="0x8E" title="MMU-600 (Transactions/Requests)" name="S2L3WC Lookups" description="Counts translation requests that access the S2L3WC walk cache." />
+    <event event="0x8F" title="MMU-600 (Transactions/Requests)" name="S2L3WC Misses" description="Counts translation requests that access the S2L3WC walk cache and do not result in a hit." />
+    <event event="0x90" title="MMU-600 (Transactions/Requests)" name="Walk Cache Reads" description="Counts reads from the walk cache RAMs, excluding reads that are caused by invalidation requests." />
+    <event event="0x91" title="MMU-600 (Transactions/Requests)" name="Buffered Translation" description="Counts translations written to the translation request buffer because all translation slots are full." />
+    <event event="0x92" title="MMU-600 (Transactions/Requests)" name="Configuration Cache Lookups" description="Counts lookups into the configuration cache." />
+    <event event="0x93" title="MMU-600 (Transactions/Requests)" name="Configuration Cache Reads" description="Counts reads from the configuration cache RAMs, excluding reads that are caused by invalidation requests." />
+    <event event="0x94" title="MMU-600 (Transactions/Requests)" name="Configuration Cache Misses" description="Counts lookups into the configuration cache that result in a miss." />
+    <event event="0xA0" title="MMU-600 (Transactions/Requests)" name="Speculative Translation" description="Counts translation requests that are marked as speculative." />
+    <event event="0xC0" title="MMU-600 (Transactions/Requests)" name="S1L0WC Error" description="RAS corrected error in S1L0 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC1" title="MMU-600 (Transactions/Requests)" name="S1L1WC Error" description="RAS corrected error in S1L1 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC2" title="MMU-600 (Transactions/Requests)" name="S1L2WC Error" description="RAS corrected error in S1L2 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC3" title="MMU-600 (Transactions/Requests)" name="S1L3WC Error" description="RAS corrected error in S1L3 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC4" title="MMU-600 (Transactions/Requests)" name="S2L0WC Error" description="RAS corrected error in S2L0 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC5" title="MMU-600 (Transactions/Requests)" name="S2L1WC Error" description="RAS corrected error in S2L1 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC6" title="MMU-600 (Transactions/Requests)" name="S2L2WC Error" description="RAS corrected error in S2L2 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC7" title="MMU-600 (Transactions/Requests)" name="S2L3WC Error" description="RAS corrected error in S2L3 walk cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0xC8" title="MMU-600 (Transactions/Requests)" name="Configuration Cache Error" description="RAS corrected error in configuration cache. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+</category>
+
+<counter_set name="CoreLinkMMU600_TBU_cnt" count="4"/>
+<category name="MMU-600 TBU" counter_set="CoreLinkMMU600_TBU_cnt" per_cpu="no">
+    <!-- Architecturally defined SMMUv3 events -->
+    <event event="0x00" title="MMU-600 (Clock)" name="Cycles" description="Counts clock cycles. Cycles where the clock is gated after a clock QChannel handshake are not counted." units="cycles" />
+    <event event="0x01" title="MMU-600 (Transactions/Requests)" name="All" description="Counts transactions that are issued on the TBM interface." />
+    <event event="0x02" title="MMU-600 (Transactions/Requests)" name="TLB Misses" description="Counts non-speculative translation requests that are issued to the TCU." />
+    <event event="0x07" title="MMU-600 (PCIe ATS)" name="Translated Transactions passed through SMMU" description="Counts ATS-translated transactions that are issued on the TBM interface." />
+
+    <!-- Implementation specific events -->
+    <event event="0x80" title="MMU-600 (Transactions/Requests)" name="Main TLB Lookups" description="Counts Main TLB lookups." />
+    <event event="0x81" title="MMU-600 (Transactions/Requests)" name="Main TLB Misses" description="Counts translation requests that miss in the Main TLB." />
+    <event event="0x82" title="MMU-600 (Transactions/Requests)" name="Main TLB Reads" description="Counts once per access to the Main TLB RAMs, excluding reads that invalidation requests cause." />
+    <event event="0x83" title="MMU-600 (Transactions/Requests)" name="Micro TLB Lookups" description="Counts micro TLB lookups." />
+    <event event="0x84" title="MMU-600 (Transactions/Requests)" name="Micro TLB Misses" description="Counts translation requests that miss in the micro TLB." />
+    <event event="0x85" title="MMU-600 (Transactions/Requests)" name="Slots Full" description="Counts once per cycle when all slots are occupied and not ready to issue transactions downstream. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0x86" title="MMU-600 (Transactions/Requests)" name="Out Of Translation Tokens" description="Counts once per cycle when a translation request cannot be issued because all translation tokens are in use. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0x87" title="MMU-600 (Transactions/Requests)" name="Write Data Buffer Full" description="Counts once per cycle when a transaction is blocked because the write data buffer is full. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+    <event event="0x88" title="MMU-600 (Transactions/Requests)" name="Translation Request" description="Counts translation requests, including both speculative and non-speculative requests." />
+    <event event="0x89" title="MMU-600 (Transactions/Requests)" name="Write Data Uses Write Data Buffer" description="Counts transactions with write data that is stored in the write data buffer." />
+    <event event="0x8A" title="MMU-600 (Transactions/Requests)" name="Write Data Bypasses Write Data Buffer" description="Counts transactions with write data that bypasses the write data buffer." />
+    <event event="0x8B" title="MMU-600 (Transactions/Requests)" name="MakeInvalid Downgrade" description="Counts when either a MakeInvalid transaction on the TBS interface is output as CleanInvalid on the TBM interface, or a ReadOnceMakeInvalid transaction on the TBS interface is output as ReadOnceCleanInvalid on the TBM interface." />
+    <event event="0x8C" title="MMU-600 (Transactions/Requests)" name="Stash Fail" description="Counts when either a WriteUniquePtlStash or WriteUniqueFullStash transaction on TBS is output as a WriteNoSnoop or WriteUnique transaction on the TBM interface, or a StashOnceShared or StashOnceUnique transaction on the TBS interface has a valid translation, but is terminated in the TBU." />
+    <event event="0xC0" title="MMU-600 (Transactions/Requests)" name="Main TLB Error" description="RAS corrected error in Main TLB. This Secure event is visible only when the SMMU_PMCG_SCR.SO bit is set to 1." />
+</category>

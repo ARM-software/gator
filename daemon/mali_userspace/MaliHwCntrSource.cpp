@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #define __STDC_FORMAT_MACROS
 #define BUFFER_USE_SESSION_DATA
@@ -15,10 +15,9 @@
 #include "SessionData.h"
 #include "Source.h"
 #include "lib/Memory.h"
-#include "mali_userspace/IMaliHwCntrReader.h"
 #include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
-#include "mali_userspace/MaliHwCntrReader.h"
+#include "mali_userspace/MaliHwCntrTask.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -41,33 +40,21 @@ namespace mali_userspace {
         void createTasks(sem_t & mSenderSem)
         {
             for (const auto & pair : mDriver.getDevices()) {
-                const int32_t deviceNumber = pair.first;
+                const auto deviceNumber = static_cast<std::int32_t>(pair.first);
                 const MaliDevice & device = *pair.second;
 
-                std::unique_ptr<MaliHwCntrReader> reader = MaliHwCntrReader::createReader(device);
-                if (!reader) {
-                    LOG_ERROR(
-                        "Failed to create reader for mali GPU # %d. Please try again, and if this happens repeatedly "
-                        "please try rebooting your device.",
-                        deviceNumber);
-                    handleException();
-                }
-                else {
-                    MaliHwCntrReader & readerRef = *reader;
-                    mReaders[deviceNumber] = std::move(reader);
-                    std::unique_ptr<Buffer> taskBuffer(
-                        new Buffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
+                // NOLINTNEXTLINE(readability-magic-numbers)
+                std::unique_ptr<Buffer> taskBuffer(new Buffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
 
-                    std::unique_ptr<BlockCounterFrameBuilder> frameBuilder(
-                        new BlockCounterFrameBuilder(*taskBuffer, gSessionData.mLiveRate));
-                    std::unique_ptr<MaliHwCntrTask> task(new MaliHwCntrTask(std::move(taskBuffer),
-                                                                            std::move(frameBuilder),
-                                                                            deviceNumber,
-                                                                            *this,
-                                                                            readerRef,
-                                                                            device.getConstantValues()));
-                    tasks.push_back(std::move(task));
-                }
+                std::unique_ptr<BlockCounterFrameBuilder> frameBuilder(
+                    new BlockCounterFrameBuilder(*taskBuffer, gSessionData.mLiveRate));
+                std::unique_ptr<MaliHwCntrTask> task(new MaliHwCntrTask(std::move(taskBuffer),
+                                                                        std::move(frameBuilder),
+                                                                        deviceNumber,
+                                                                        *this,
+                                                                        device,
+                                                                        device.getConstantValues()));
+                tasks.push_back(std::move(task));
             }
         }
 
@@ -91,8 +78,8 @@ namespace mali_userspace {
 
         void interrupt() override
         {
-            for (auto & reader : mReaders) {
-                reader.second->interrupt();
+            for (auto & task : tasks) {
+                task->interrupt();
             }
         }
 
@@ -128,7 +115,6 @@ namespace mali_userspace {
 
     private:
         MaliHwCntrDriver & mDriver;
-        std::map<unsigned, std::unique_ptr<MaliHwCntrReader>> mReaders {};
         std::vector<std::unique_ptr<MaliHwCntrTask>> tasks {};
     };
 

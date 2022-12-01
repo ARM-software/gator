@@ -47,7 +47,8 @@ public:
 
     std::pair<std::vector<int>, bool> prepare();
     void start(std::function<void(int, int, std::int64_t)> initialValuesConsumer);
-    std::vector<int> stop();
+    std::vector<int> requestStop();
+    void stop();
     bool readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * printb, DynBuf * b);
 
     bool isSupported() const { return mSupported; }

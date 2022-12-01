@@ -1,0 +1,50 @@
+{{#is_compound}}
+{{#items}}
+{{> bitmask_operators}}
+{{/items}}
+{{/is_compound}}
+{{#is_bitmask}}
+inline {{full_name_cxx}} operator~({{full_name_cxx}} val) {
+    const auto val_raw = static_cast<{{underlying_type.name}}>(val);
+    return static_cast<{{full_name_cxx}}>(~val_raw);
+}
+
+inline bool operator!({{full_name_cxx}} val) {
+    const auto val_raw = static_cast<{{underlying_type.name}}>(val);
+    return val_raw == 0;
+}
+
+inline {{full_name_cxx}} operator|({{full_name_cxx}} lhs, {{full_name_cxx}} rhs) {
+    const auto lhs_raw = static_cast<{{underlying_type.name}}>(lhs);
+    const auto rhs_raw = static_cast<{{underlying_type.name}}>(rhs);
+    return static_cast<{{full_name_cxx}}>(lhs_raw | rhs_raw);
+}
+
+inline {{full_name_cxx}} operator&({{full_name_cxx}} lhs, {{full_name_cxx}} rhs) {
+    const auto lhs_raw = static_cast<{{underlying_type.name}}>(lhs);
+    const auto rhs_raw = static_cast<{{underlying_type.name}}>(rhs);
+    return static_cast<{{full_name_cxx}}>(lhs_raw & rhs_raw);
+}
+
+inline {{full_name_cxx}} operator^({{full_name_cxx}} lhs, {{full_name_cxx}} rhs) {
+    const auto lhs_raw = static_cast<{{underlying_type.name}}>(lhs);
+    const auto rhs_raw = static_cast<{{underlying_type.name}}>(rhs);
+    return static_cast<{{full_name_cxx}}>(lhs_raw ^ rhs_raw);
+}
+
+inline {{full_name_cxx}} &operator|=({{full_name_cxx}} &lhs, {{full_name_cxx}} rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline {{full_name_cxx}} &operator&=({{full_name_cxx}} &lhs, {{full_name_cxx}} rhs) {
+    lhs = lhs & rhs;
+    return lhs;
+}
+
+inline {{full_name_cxx}} &operator^=({{full_name_cxx}} &lhs, {{full_name_cxx}} rhs) {
+    lhs = lhs ^ rhs;
+    return lhs;
+}
+
+{{/is_bitmask}}

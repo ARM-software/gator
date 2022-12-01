@@ -1,0 +1,481 @@
+---
+!ioctl-iface
+name: kbase_pre_r21
+description: Kbase Pre R21 ioctl interface.
+number: 0x80
+items:
+  - !enum &header_id
+    name: header_id
+    description: Related to mali0 ioctl interface
+    underlying_type: !builtin uint32_t
+    values:
+      - name: version_check
+        description: Version check.
+        value: 0x0
+      - name: create_kernel_flags
+        description: Base Context Create Kernel Flags.
+        value: 0x2
+      - name: uk_func_id
+        description: Kbase Func UK Func ID.
+        value: 512
+      - name: hwcnt_reader_setup
+        description: Kbase Func Hwcnt Reader Setup.
+        value: uk_func_id + 36
+      - name: dump
+        description: Kbase Func Dump.
+        value: uk_func_id + 11
+      - name: clear
+        description: Kbase Func Clear.
+        value: uk_func_id + 12
+      - name: get_props
+        description: Kbase Func Get Props.
+        value: uk_func_id + 14
+      - name: set_flags
+        description: Kbase Func Set Flags.
+        value: uk_func_id + 18
+
+  - !union &uk_header
+    name: uk_header
+    description: Message header.
+    fields:
+      - name: id
+        description: 32-bit number identifying the UK function to be called.
+        type: *header_id
+      - name: ret
+        description: The int return code returned by the called UK function.
+        type: !builtin uint32_t
+      - name: sizer
+        description: Used to ensure 64-bit alignment of this union. Do not remove.
+        type: !builtin uint64_t
+
+  - !struct &version_check_args
+    name: version_check_args
+    description: Check version compatibility between kernel and userspace.
+    fields:
+      - name: header
+        description: Header.
+        type: *uk_header
+      - name: major
+        description: Major version number.
+        type: !builtin uint16_t
+      - name: minor
+        description: Minor version number
+        type: !builtin uint16_t
+
+  - !struct &set_flags_args
+    name: set_flags_args
+    description: IOCTL parameters to set flags
+    fields:
+      - name: header
+        description: Header.
+        type: *uk_header
+      - name: create_flags
+        description: Create Flags.
+        type: !builtin uint32_t
+      - name: padding
+        description: Padding.
+        type: !builtin uint32_t
+        meta:
+          padding: yes
+
+  - !constant
+    name: base_gpu_num_texture_features_registers
+    description: Base GPU Num Texture Features Registers.
+    type: !builtin uint32_t
+    value: 3
+
+  - !constant
+    name: base_max_coherent_groups
+    description: Base Max Coherent Groups.
+    type: !builtin uint32_t
+    value: 16
+
+  - !constant
+    name: gpu_max_job_slots
+    description: GPU Max Job Slots.
+    type: !builtin uint32_t
+    value: 16
+
+  - !struct &uk_gpuprops
+    name: uk_gpuprops
+    description: Kbase UK GPU props.
+    items:
+      - !struct &gpu_props
+        name: gpu_props
+        description: |
+          IOCTL parameters to probe GPU properties
+
+          NOTE: the raw_props member in this data structure contains the register
+          values from which the value of the other members are derived. The derived
+          members exist to allow for efficient access and/or shielding the details
+          of the layout of the registers.
+        items:
+          - !struct &core
+            name: core
+            description: Core.
+            fields:
+              - name: product_id
+                description: Product specific value.
+                type: !builtin uint32_t
+              - name: version_status
+                description: |-
+                  Status of the GPU release.
+                  No defined values, but starts at 0 and increases by one for each
+                  release status (alpha, beta, EAC, etc.).
+                  4 bit values (0-15).
+                type: !builtin uint16_t
+              - name: minor_revision
+                description: |-
+                  Minor release number of the GPU. "P" part of an "RnPn" release number.
+                  8 bit values (0-255).
+                type: !builtin uint16_t
+              - name: major_revision
+                description: |-
+                  Major release number of the GPU. "R" part of an "RnPn" release number.
+                  4 bit values (0-15).
+                type: !builtin uint16_t
+              - name: padding
+                description: Padding.
+                type: !builtin uint16_t
+                meta:
+                  padding: yes
+              - name: gpu_speed_mhz
+                description: |-
+                  This property is deprecated since it has not contained the real current
+                  value of GPU clock speed. It is kept here only for backwards compatibility.
+                  For the new ioctl interface, it is ignored and is treated as a padding
+                  to keep the structure of the same size and retain the placement of its
+                  members.
+                type: !builtin uint32_t
+              - name: gpu_freq_khz_max
+                description: |-
+                  @usecase GPU clock max speed is required for computing best case
+                  in tasks as job scheduling ant irq_throttling. (It is not specified in the
+                  Midgard Architecture).
+                  Also, GPU clock max speed is used for OpenCL's clGetDeviceInfo() function.
+                type: !builtin uint32_t
+              - name: gpu_freq_khz_min
+                description: |-
+                  @usecase GPU clock min speed is required for computing worst case
+                  in tasks as job scheduling ant irq_throttling. (It is not specified in the
+                  Midgard Architecture).
+                type: !builtin uint32_t
+              - name: log2_program_counter_size
+                description: Size of the shader program counter, in bits.
+                type: !builtin uint32_t
+              - name: texture_features
+                description: |-
+                  TEXTURE_FEATURES_x registers, as exposed by the GPU. This is a
+                  bitpattern where a set bit indicates that the format is supported.
+
+                  Before using a texture format, it is recommended that the corresponding
+                  bit be checked.
+                type: !array { element_type: !builtin uint32_t, array_size: base_gpu_num_texture_features_registers }
+              - name: gpu_available_memory_size
+                description: |-
+                  Theoretical maximum memory available to the GPU. It is unlikely that a
+                  client will be able to allocate all of this memory for their own
+                  purposes, but this at least provides an upper bound on the memory
+                  available to the GPU.
+
+                  This is required for OpenCL's clGetDeviceInfo() call when
+                  CL_DEVICE_GLOBAL_MEM_SIZE is requested, for OpenCL GPU devices. The
+                  client will not be expecting to allocate anywhere near this value.
+                type: !builtin uint64_t
+
+          - !struct &l2_cache
+            name: l2_cache
+            description: |-
+              More information is possible - but associativity and bus width are not
+              required by upper-level apis.
+            fields:
+              - name: log2_line_size
+                description: Log2 Line Size.
+                type: !builtin uint8_t
+              - name: log2_cache_size
+                description: Log2 Cache Size.
+                type: !builtin uint8_t
+              - name: num_l2_slices
+                description: Num L2 Slices.
+                type: !builtin uint8_t
+              - name: padding
+                description: Padding bytes.
+                type: !array { element_type: !builtin uint8_t, array_size: 5 }
+                meta:
+                  padding: yes
+
+          - !struct &tiler
+            name: tiler
+            description: Tiler.
+            fields:
+              - name: bin_size_bytes
+                description: Max is 4*2^15
+                type: !builtin uint32_t
+              - name: max_active_levels
+                description: Max is 2^15
+                type: !builtin uint32_t
+
+          - !struct &thread
+            name: thread
+            description: GPU threading system details.
+            fields:
+              - name: max_threads
+                description: Max. number of threads per core
+                type: !builtin uint32_t
+              - name: max_workgroup_size
+                description: Max. number of threads per workgroup
+                type: !builtin uint32_t
+              - name: max_barrier_size
+                description: Max. number of threads that can synchronize on a simple barrier
+                type: !builtin uint32_t
+              - name: max_registers
+                description: Total size [1..65535] of the register file available per core.
+                type: !builtin uint16_t
+              - name: max_task_queue
+                description: Max. tasks [1..255] which may be sent to a core before it becomes blocked.
+                type: !builtin uint8_t
+              - name: max_thread_group_split
+                description: Max. allowed value [1..15] of the Thread Group Split field.
+                type: !builtin uint8_t
+              - name: impl_tech
+                description: 0 = Not specified, 1 = Silicon, 2 = FPGA, 3 = SW Model/Emulation
+                type: !builtin uint8_t
+              - name: padding
+                description: Padding bytes.
+                type: !array { element_type: !builtin uint8_t, array_size: 7 }
+                meta:
+                  padding: yes
+
+          - !struct &raw
+            name: raw
+            description: |-
+              A complete description of the GPU's Hardware Configuration Discovery
+              registers.
+
+              The information is presented inefficiently for access. For frequent access,
+              the values should be better expressed in an unpacked form in the
+              base_gpu_props structure.
+
+              @usecase The raw properties in @ref gpu_raw_gpu_props are necessary to
+              allow a user of the Mali Tools (e.g. PAT) to determine "Why is this device
+              behaving differently?". In this case, all information about the
+              by the driver</b>. Instead, the raw registers can be processed by the Mali
+              Tools software on the host PC.
+            fields:
+              - name: shader_present
+                description: Shader Present.
+                type: !builtin uint64_t
+              - name: tiler_present
+                description: Tiler Present.
+                type: !builtin uint64_t
+              - name: l2_present
+                description: L2 Present.
+                type: !builtin uint64_t
+              - name: unused_1
+                description: Unused 1.
+                type: !builtin uint64_t
+
+              - name: l2_features
+                description: L2 Features.
+                type: !builtin uint32_t
+              - name: suspend_size
+                description: Suspend Size.
+                type: !builtin uint32_t
+              - name: mem_features
+                description: Mem Features.
+                type: !builtin uint32_t
+              - name: mmu_features
+                description: Mmu Features.
+                type: !builtin uint32_t
+
+              - name: as_present
+                description: As Present.
+                type: !builtin uint32_t
+
+              - name: js_present
+                description: Js Present.
+                type: !builtin uint32_t
+              - name: js_features
+                description: Js Features.
+                type: !array { element_type: !builtin uint32_t, array_size: gpu_max_job_slots }
+              - name: tiler_features
+                description: Tiler Features.
+                type: !builtin uint32_t
+              - name: texture_features
+                description: Texture Features.
+                type: !array { element_type: !builtin uint32_t, array_size: 3 }
+
+              - name: gpu_id
+                description: GPU ID.
+                type: !builtin uint32_t
+
+              - name: thread_max_threads
+                description: Thread Max Threads.
+                type: !builtin uint32_t
+              - name: thread_max_workgroup_size
+                description: Thread Max Workgroup Size.
+                type: !builtin uint32_t
+              - name: thread_max_barrier_size
+                description: Thread Max Barrier Size.
+                type: !builtin uint32_t
+              - name: thread_features
+                description: Thread Features.
+                type: !builtin uint32_t
+
+              - name: coherency_mode
+                description: |-
+                  Coherency Mode.
+                  Note: This is the _selected_ coherency mode rather than the
+                  available modes as exposed in the coherency_features register.
+                type: !builtin uint32_t
+
+          - !struct &coherent_group_info
+            name: coherent_group_info
+            description: |-
+              Coherency group information
+
+              Note that the sizes of the members could be reduced. However, the \c group
+              member might be 8-byte aligned to ensure the u64 core_mask is 8-byte
+              aligned, thus leading to wastage if the other members sizes were reduced.
+
+              The groups are sorted by core mask. The core masks are non-repeating and do
+              not intersect.
+            items:
+              - !struct &coherent_group
+                name: coherent_group
+                description: |-
+                  descriptor for a coherent group
+
+                  \c core_mask exposes all cores in that coherent group, and \c num_cores
+                  provides a cached population-count for that mask.
+
+                  @note Whilst all cores are exposed in the mask, not all may be available to
+                  the application, depending on the Kernel Power policy.
+
+                  @note if u64s must be 8-byte aligned, then this structure has 32-bits of wastage.
+                fields:
+                  - name: core_mask
+                    description: Core restriction mask required for the group
+                    type: !builtin uint64_t
+                  - name: num_cores
+                    description: Number of cores in the group
+                    type: !builtin uint16_t
+                  - name: padding
+                    description: Padding bytes.
+                    type: !array { element_type: !builtin uint16_t, array_size: 3 }
+                    meta:
+                      padding: yes
+            fields:
+              - name: num_groups
+                description: Num Groups.
+                type: !builtin uint32_t
+              - name: num_core_groups
+                description:
+                  Number of core groups (coherent or not) in the GPU. Equivalent to the number of L2 Caches.
+
+                  The GPU Counter dumping writes 2048 bytes per core group, regardless of
+                  whether the core groups are coherent or not. Hence this member is needed
+                  to calculate how much memory is required for dumping.
+
+                  @note Do not use it to work out how many valid elements are in the
+                  group[] member. Use num_groups instead.
+                type: !builtin uint32_t
+              - name: coherency
+                description: Coherency features of the memory, accessed by @ref gpu_mem_features methods.
+                type: !builtin uint32_t
+              - name: padding
+                description: Padding.
+                type: !builtin uint32_t
+                meta:
+                  padding: yes
+              - name: group
+                description: Descriptors of coherent groups
+                type: !array { element_type: *coherent_group, array_size: base_max_coherent_groups }
+
+        fields:
+          - name: core_props
+            description: Core Props.
+            type: *core
+          - name: l2_props
+            description: L2 Props.
+            type: *l2_cache
+          - name: unused
+            description: Unused to keep for backwards compatibility.
+            type: !builtin uint64_t
+          - name: tiler_props
+            description: Tiler Props.
+            type: *tiler
+          - name: thread_props
+            description: Thread Props.
+            type: *thread
+          - name: raw_props
+            description: This member is large, likely to be 128 bytes.
+            type: *raw
+          - name: coherency_info
+            description: This must be last member of the structure.
+            type: *coherent_group_info
+
+    fields:
+      - name: header
+        description: Header.
+        type: *uk_header
+      - name: props
+        description: Props.
+        type: *gpu_props
+
+
+  - !struct &uk_hwcnt_reader_setup
+    name: uk_hwcnt_reader_setup
+    description: Kbase UK hardware counter reader setup.
+    fields:
+      - name: header
+        description: UK structure header.
+        type: *uk_header
+      - name: buffer_count
+        description: Requested number of dumping buffers.
+        type: !builtin uint32_t
+      - name: jm_bm
+        description: counters selection bitmask (JM)
+        type: !builtin uint32_t
+      - name: shader_bm
+        description: counters selection bitmask (Shader)
+        type: !builtin uint32_t
+      - name: tiler_bm
+        description: counters selection bitmask (Tiler)
+        type: !builtin uint32_t
+      - name: mmu_l2_bm
+        description: counters selection bitmask (MMU_L2)
+        type: !builtin uint32_t
+      - name: fd
+        description: dumping notification file descriptor
+        type: !builtin int32_t
+
+commands:
+  - !ioctl-command
+    name: version_check
+    description: Check version compatibility between JM kernel and userspace.
+    number: 0
+    command_type: _IOWR
+    arg_type: *version_check_args
+
+  - !ioctl-command
+    name: set_flags
+    description: Set kernel context creation flags.
+    number: 530
+    command_type: _IOWR
+    arg_type: *set_flags_args
+
+  - !ioctl-command
+    name: get_gpuprops
+    description: Get GPU properties.
+    number: 526
+    command_type: _IOWR
+    arg_type: *uk_gpuprops
+
+  - !ioctl-command
+    name: hwcnt_reader_setup
+    description: Hardware counter reader setup.
+    number: 548
+    command_type: _IOWR
+    arg_type: *uk_hwcnt_reader_setup
+...

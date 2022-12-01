@@ -636,9 +636,18 @@ namespace agents::perf {
             // observe for errors; will be notified when the FD is closed by the kernel on process exit.
             spawn("perf buffer monitor for event fd close handler",
                   stream_descriptor->async_wait(boost::asio::posix::stream_descriptor::wait_error, use_continuation),
-                  [stream_descriptor, nh](bool f) {
-                      LOG_TRACE("Received close notification for %d was %u", nh, f);
-                      stream_descriptor->close();
+                  [st, stream_descriptor, nh](bool f) {
+                      // spawn this on the strand so that it's serialized with respect to the reader.
+                      spawn("perf buffer monitor stream close",
+                            start_on(st->strand) | then([stream_descriptor, nh, f]() {
+                                LOG_TRACE("Received close notification for %d was %u", nh, f);
+                                if (stream_descriptor->is_open()) {
+                                    stream_descriptor->close();
+                                }
+                                else {
+                                    LOG_TRACE("Stream descriptor already closed");
+                                }
+                            }));
                   });
         }
 

@@ -8,6 +8,7 @@
     "boost-filesystem",
     "boost-mp11",
     "boost-process",
+    "boost-regex",
     "protobuf"
   ]
 }

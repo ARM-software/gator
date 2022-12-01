@@ -3,12 +3,15 @@
 #include "GatorCLIParser.h"
 
 #include "Config.h"
+#include "GatorCLIFlags.h"
 #include "Logging.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
+#include "linux/smmu_identifier.h"
 
 #include <algorithm>
 #include <sstream>
+#include <string_view>
 
 namespace {
     constexpr int DECIMAL_BASE = 10;
@@ -18,62 +21,63 @@ namespace {
     constexpr int GATOR_ANNOTATION_PORT1 = 8082;
     constexpr int GATOR_ANNOTATION_PORT2 = 8083;
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
+
+    constexpr std::string_view OPTSTRING_SHORT = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:TVX:Z:";
+
+    const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
+                                             // OF NEW ITEMS.
+        {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
+        {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
+        {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
+        {"events-xml", /*************/ required_argument, nullptr, 'e'}, //
+        {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'}, //
+        {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
+        {"pid", /********************/ required_argument, nullptr, 'i'}, //
+        {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
+        ANDROID_PACKAGE,                                                 //
+        ANDROID_ACTIVITY,                                                //
+        {"output", /*****************/ required_argument, nullptr, 'o'}, //
+        {"port", /*******************/ required_argument, nullptr, 'p'}, //
+        {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
+        {"session-xml", /************/ required_argument, nullptr, 's'}, //
+        {"max-duration", /***********/ required_argument, nullptr, 't'}, //
+        {"call-stack-unwinding", /***/ required_argument, nullptr, 'u'}, //
+        {"version", /****************/ required_argument, nullptr, 'v'}, //
+        {"app-cwd", /****************/ required_argument, nullptr, 'w'}, //
+        {"stop-on-exit", /***********/ required_argument, nullptr, 'x'}, //
+        {"smmuv3-model", /***********/ required_argument, nullptr, 'z'}, //
+        APP,                                                             //
+        {"counters", /***************/ required_argument, nullptr, 'C'}, //
+        {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
+        {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
+        {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
+        /********************************************************* 'N' ***/
+        {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
+        {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
+        WAIT_PROCESS,                                                    //
+        {"print", /******************/ required_argument, nullptr, 'R'}, //
+        {"system-wide", /************/ required_argument, nullptr, 'S'}, //
+        {"trace", /******************/ no_argument, /***/ nullptr, 'T'}, //
+        {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
+        {"spe", /********************/ required_argument, nullptr, 'X'}, //
+        {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
+        {nullptr, 0, nullptr, 0}};
+
+    const char PRINTABLE_SEPARATOR = ',';
+
+    const char * LOAD_OPS = "LD";
+    const char * STORE_OPS = "ST";
+    const char * BRANCH_OPS = "B";
+    // SPE
+    const char SPES_KEY_VALUE_DELIMITER = ',';
+    const char SPE_DATA_DELIMITER = ':';
+    const char SPE_KEY_VALUE_DELIMITER = '=';
+    const char * SPE_MIN_LATENCY_KEY = "min_latency";
+    const char * SPE_EVENTS_KEY = "events";
+    const char * SPE_OPS_KEY = "ops";
 }
 
-static const char OPTSTRING_SHORT[] = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:TVX:Z:";
-
-static const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
-                                                // OF NEW ITEMS.
-    {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
-    {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
-    {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
-    {"events-xml", /*************/ required_argument, nullptr, 'e'}, //
-    {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'}, //
-    {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
-    {"pid", /********************/ required_argument, nullptr, 'i'}, //
-    {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
-    ANDROID_PACKAGE,                                                 //
-    ANDROID_ACTIVITY,                                                //
-    {"output", /*****************/ required_argument, nullptr, 'o'}, //
-    {"port", /*******************/ required_argument, nullptr, 'p'}, //
-    {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
-    {"session-xml", /************/ required_argument, nullptr, 's'}, //
-    {"max-duration", /***********/ required_argument, nullptr, 't'}, //
-    {"call-stack-unwinding", /***/ required_argument, nullptr, 'u'}, //
-    {"version", /****************/ required_argument, nullptr, 'v'}, //
-    {"app-cwd", /****************/ required_argument, nullptr, 'w'}, //
-    {"stop-on-exit", /***********/ required_argument, nullptr, 'x'}, //
-    APP,                                                             //
-    {"counters", /***************/ required_argument, nullptr, 'C'}, //
-    {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
-    {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
-    {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
-    /********************************************************* 'N' ***/
-    {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
-    {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
-    WAIT_PROCESS,                                                    //
-    {"print", /******************/ required_argument, nullptr, 'R'}, //
-    {"system-wide", /************/ required_argument, nullptr, 'S'}, //
-    {"trace", /******************/ no_argument, /***/ nullptr, 'T'}, //
-    {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
-    {"spe", /********************/ required_argument, nullptr, 'X'}, //
-    {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
-    {nullptr, 0, nullptr, 0}};
-
-static const char PRINTABLE_SEPARATOR = ',';
-
 using ExecutionMode = ParserResult::ExecutionMode;
-
-static const char * LOAD_OPS = "LD";
-static const char * STORE_OPS = "ST";
-static const char * BRANCH_OPS = "B";
-// SPE
-static const char SPES_KEY_VALUE_DELIMITER = ',';
-static const char SPE_DATA_DELIMITER = ':';
-static const char SPE_KEY_VALUE_DELIMITER = '=';
-static const char * SPE_MIN_LATENCY_KEY = "min_latency";
-static const char * SPE_EVENTS_KEY = "events";
-static const char * SPE_OPS_KEY = "ops";
 
 SampleRate getSampleRate(const std::string & value)
 {
@@ -314,7 +318,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
     optind = 1;
     opterr = 1;
     int c;
-    while ((c = getopt_long(argc, argv, OPTSTRING_SHORT, OPTSTRING_LONG, nullptr)) != -1) {
+    while ((c = getopt_long(argc, argv, OPTSTRING_SHORT.data(), OPTSTRING_LONG, nullptr)) != -1) {
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
         SampleRate sampleRate;
         std::string value;
@@ -445,6 +449,25 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 }
                 result.mStopGator = optionInt == 1;
                 break;
+            case 'z':
+                if (optarg != nullptr) {
+                    auto args = std::string_view(optarg);
+                    auto split_pos = args.find(',');
+
+                    result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_SMMU_MODEL;
+
+                    if (split_pos != std::string::npos && split_pos < args.size() - 1) {
+                        result.smmu_identifiers.set_tcu_identifier(
+                            gator::smmuv3::smmuv3_identifier_t(args.substr(0, split_pos)));
+                        result.smmu_identifiers.set_tbu_identifier(
+                            gator::smmuv3::smmuv3_identifier_t(args.substr(split_pos + 1)));
+                    }
+                    else {
+                        result.smmu_identifiers.set_tcu_identifier(gator::smmuv3::smmuv3_identifier_t(args));
+                        result.smmu_identifiers.set_tbu_identifier(gator::smmuv3::smmuv3_identifier_t(args));
+                    }
+                }
+                break;
             case 'C': //counter
             {
                 int startpos = -1;
@@ -572,6 +595,13 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        Values below this threshold are ignored\n"
                     "                                        and the hardware minimum is used\n"
                     "                                        instead.\n"
+                    "  --smmuv3-model <model_id>|<iidr>      Specify the SMMUv3 model.\n"
+                    "                                        The user can specify the model ID\n"
+                    "                                        string directly (e.g., mmu-600) or\n"
+                    "                                        the hex value representation for the\n"
+                    "                                        model's IIDR number  either\n"
+                    "                                        fully (e.g., 4832243b) or\n"
+                    "                                        partially (e.g., 483_43b).\n"
                     "\n"
                     "* Arguments available only on Android targets:\n"
                     "\n"
