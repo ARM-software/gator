@@ -284,7 +284,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         //Check whether the pmu is v8, needed when hardware is 64 bit but kernel is 32 bit.
         bool isV8 = false;
         if (profileStr != nullptr) {
-            if (profileStr[0] == '8') {
+            if ((profileStr[0] == '8') || (profileStr[0] == '9')) {
                 isV8 = true;
             }
         }
