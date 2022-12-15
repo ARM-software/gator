@@ -6,7 +6,7 @@
 #include "EventCode.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 #include <map>
 #include <memory>

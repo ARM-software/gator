@@ -41,7 +41,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${CMAKE_SOURCE_DI
 install(
     TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Export
-    PUBLIC_HEADER DESTINATION include/${PROJECT_NAME}
+    PUBLIC_HEADER DESTINATION include
 )
 
 # Generate and install package cmake file, so it can be found with

@@ -3,7 +3,7 @@
 #ifndef SESSION_XML_H
 #define SESSION_XML_H
 
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 struct ImageLinkList;
 

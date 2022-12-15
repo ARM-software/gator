@@ -7,7 +7,7 @@
 #include "Logging.h"
 #include "MaliGPUClockPolledDriverCounter.h"
 #include "PolledDriver.h"
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 #include <cstdint>
 #include <cstdlib>

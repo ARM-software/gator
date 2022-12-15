@@ -3,7 +3,7 @@
 #ifndef MXML_UTILS_H
 #define MXML_UTILS_H
 
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 #include <memory>
 #include <string>

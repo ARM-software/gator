@@ -9,7 +9,7 @@
 #include "lib/FsEntry.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 #include <algorithm>
 #include <cstring>

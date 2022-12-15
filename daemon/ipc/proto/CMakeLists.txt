@@ -1,6 +1,6 @@
 # Copyright (C) 2022 by Arm Limited. All rights reserved.
 
-find_package(Protobuf REQUIRED CONFIG)
+find_package(Protobuf REQUIRED)
 
 set(GENERATED_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 file(MAKE_DIRECTORY ${GENERATED_DIR})
