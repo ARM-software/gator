@@ -759,7 +759,7 @@ ENDIF()
 
 IF(EXISTS ${CLANG_TIDY})
     # ## CMAKE_xxx_CLANG_TIDY need to be before the ADD_EXECUTABLE
-    OPTION(ENABLE_CLANG_TIDY_DURING_BUILD "Compile and tidy at the same time" ON)
+    OPTION(ENABLE_CLANG_TIDY_DURING_BUILD "Compile and tidy at the same time" OFF)
 
     IF(ENABLE_CLANG_TIDY_DURING_BUILD)
         SET(CMAKE_C_CLANG_TIDY )
