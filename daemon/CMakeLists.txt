@@ -86,7 +86,16 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler-flags.cmake)
 ADD_SUBDIRECTORY(ipc/proto)
 
 # Find the external dependencies
-FIND_PACKAGE(mxml CONFIG REQUIRED)
+IF (ENABLE_VCPKG)
+    FIND_PACKAGE(mxml CONFIG REQUIRED)
+    SET(MXML_TARGET mxml)
+ELSE()
+    INCLUDE(FindPkgConfig)
+    pkg_search_module(PKG_MXML REQUIRED IMPORTED_TARGET "mxml>=3")
+    SET(MXML_TARGET PkgConfig::PKG_MXML)
+    INCLUDE_DIRECTORIES(SYSTEM ${PKG_MXML_INCLUDE_DIRS} ${PKG_MXML_INCLUDEDIR})
+ENDIF()
+
 FIND_PACKAGE(Threads REQUIRED)
 SET(Boost_USE_MULTITHREADED ON)
 FIND_PACKAGE(Boost 1.75 REQUIRED COMPONENTS
@@ -687,7 +696,7 @@ TARGET_LINK_LIBRARIES(gatord
     PRIVATE Threads::Threads
     PRIVATE atomic
     PRIVATE device
-    PRIVATE mxml
+    PRIVATE ${MXML_TARGET}
     PRIVATE Boost::boost
     PRIVATE Boost::filesystem
     PRIVATE Boost::regex
@@ -750,7 +759,7 @@ ENDIF()
 
 IF(EXISTS ${CLANG_TIDY})
     # ## CMAKE_xxx_CLANG_TIDY need to be before the ADD_EXECUTABLE
-    OPTION(ENABLE_CLANG_TIDY_DURING_BUILD "Compile and tidy at the same time" ON)
+    OPTION(ENABLE_CLANG_TIDY_DURING_BUILD "Compile and tidy at the same time" OFF)
 
     IF(ENABLE_CLANG_TIDY_DURING_BUILD)
         SET(CMAKE_C_CLANG_TIDY )

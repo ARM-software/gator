@@ -21,7 +21,7 @@
 #include <set>
 
 #include <dirent.h>
-#include <mxml/mxml.h>
+#include <mxml.h>
 
 /* Basic target OS detection */
 #undef GATOR_TARGET_OS

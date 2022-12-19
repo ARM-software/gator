@@ -6,7 +6,7 @@
 #include "Configuration.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 #include <regex>
 #include <string>

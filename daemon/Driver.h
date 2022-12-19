@@ -5,7 +5,7 @@
 
 #include "CapturedSpe.h"
 #include "Constant.h"
-#include "mxml/mxml.h"
+#include <mxml.h>
 
 #include <cstdint>
 #include <optional>
