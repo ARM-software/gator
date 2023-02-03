@@ -1,6 +1,7 @@
 /* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
 #pragma once
 
+#include <cstdint>
 #include <set>
 #include <string>
 
