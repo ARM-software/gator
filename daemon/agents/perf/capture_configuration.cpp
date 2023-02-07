@@ -50,7 +50,7 @@ namespace agents::perf {
         }
 
         template<typename T, typename H, typename R>
-        constexpr void set_if_not_null(T const * ptr, H & host, R (H::*fn)(T const *))
+        constexpr void set_if_not_null(T const * ptr, H & host, R (H::*fn)(const std::string &))
         {
             if (ptr != nullptr) {
                 (host.*fn)(ptr);
