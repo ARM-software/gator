@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -12,5 +12,5 @@ class Child;
 class Source;
 namespace armnn {
     class ICaptureController;
-    std::unique_ptr<::Source> createSource(ICaptureController & captureController, sem_t & readerSem);
+    std::shared_ptr<::Source> createSource(ICaptureController & captureController, sem_t & readerSem);
 }

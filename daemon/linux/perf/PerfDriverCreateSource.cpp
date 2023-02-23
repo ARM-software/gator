@@ -77,7 +77,7 @@ namespace {
 
 /// this method is extracted so that it can be excluded from the unit tests as it brings deps on PerfSource...
 
-std::unique_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
+std::shared_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
                                                          ISender & sender,
                                                          std::function<bool()> session_ended_callback,
                                                          std::function<void()> exec_target_app_callback,
@@ -171,7 +171,7 @@ std::unique_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
     return (!ready_agent);
 }
 
-std::unique_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_adapter(
+std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_adapter(
     agents::agent_workers_process_t<Child> & agent_workers_process,
     sem_t & senderSem,
     ISender & sender,
@@ -236,7 +236,7 @@ std::unique_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
 
     auto wait_state = std::make_shared<wait_state_t>();
 
-    auto source = std::make_unique<agents::perf::perf_source_adapter_t>(
+    auto source = std::make_shared<agents::perf::perf_source_adapter_t>(
         senderSem,
         sender,
         [wait_state, &agent_workers_process](bool success, std::vector<pid_t> monitored_pids) {
@@ -256,7 +256,7 @@ std::unique_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
         std::move(exec_target_app_callback),
         std::move(profiling_started_callback));
 
-    agent_workers_process.async_add_perf_source(*source, std::move(config_msg), [wait_state](bool success) {
+    agent_workers_process.async_add_perf_source(source, std::move(config_msg), [wait_state](bool success) {
         LOG_DEBUG("Received worker-ready notification, success=%u", success);
         {
             auto lock = std::unique_lock(wait_state->ready_mutex);

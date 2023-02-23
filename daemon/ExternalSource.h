@@ -19,4 +19,4 @@ public:
 };
 
 /// Counters from external sources like graphics drivers and annotations
-std::unique_ptr<ExternalSource> createExternalSource(sem_t & senderSem, Drivers & drivers);
+std::shared_ptr<ExternalSource> createExternalSource(sem_t & senderSem, Drivers & drivers);

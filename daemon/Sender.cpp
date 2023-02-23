@@ -109,7 +109,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
     // Send data over the socket connection
     if (mDataSocket != nullptr) {
         // Start alarm
-        const int alarmDuration = 8;
+        const int alarmDuration = 1;
         alarm(alarmDuration);
 
         // Send data over the socket, sending the type and size first
@@ -121,9 +121,13 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
             mDataSocket->send(header, sizeof(header));
         }
 
-        // 100Kbits/sec * alarmDuration sec / 8 bits/byte
-        const int chunkSize = 100 * 1000 * alarmDuration / 8;
+        auto const startTime = getTime();
+        auto totalSize = 0ULL;
+
+        // 1MiB/sec * alarmDuration sec
+        const int chunkSize = 1024 * 1024 * alarmDuration;
         for (const auto & data : dataParts) {
+            totalSize += data.size();
             int pos = 0;
             while (true) {
                 mDataSocket->send(data.data() + pos, std::min(data.size() - pos, chunkSize));
@@ -140,6 +144,12 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
 
         // Stop alarm
         alarm(0);
+
+        auto const endTime = getTime();
+        auto const duration = endTime - startTime;
+        auto const bandwidth = (totalSize * 1000000000ULL) / duration;
+
+        LOG_DEBUG("Sender bandwidth %lluB/s", static_cast<unsigned long long>(bandwidth));
     }
 
     // Write data to disk as long as it is not meta data
@@ -159,9 +169,19 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
             writeData(header);
         }
 
+        auto const startTime = getTime();
+        auto totalSize = 0ULL;
+
         for (const auto & data : dataParts) {
+            totalSize += data.size();
             writeData(data);
         }
+
+        auto const endTime = getTime();
+        auto const duration = endTime - startTime;
+        auto const bandwidth = (totalSize * 1000000000ULL) / duration;
+
+        LOG_DEBUG("Disk write bandwidth %lluB/s", static_cast<unsigned long long>(bandwidth));
     }
 
     if (pthread_mutex_unlock(&mSendMutex) != 0) {

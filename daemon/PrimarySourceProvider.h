@@ -80,7 +80,7 @@ public:
     [[nodiscard]] virtual Driver & getPrimaryDriver() = 0;
 
     /** Create the primary Source instance */
-    [[nodiscard]] virtual std::unique_ptr<PrimarySource> createPrimarySource(
+    [[nodiscard]] virtual std::shared_ptr<PrimarySource> createPrimarySource(
         sem_t & senderSem,
         ISender & sender,
         std::function<bool()> session_ended_callback,

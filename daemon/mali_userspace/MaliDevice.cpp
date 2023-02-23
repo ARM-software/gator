@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <vector>
 
 namespace mali_userspace {
@@ -287,6 +288,38 @@ namespace mali_userspace {
             LOG_ERROR("Unsupported counter values type: %" PRIu8, static_cast<std::uint8_t>(counter_type));
             handleException();
         }
+
+        //Log Mali GPU information
+        const auto * product_record = findMaliProductRecordFromId(constants.gpu_id);
+
+        std::ostringstream log_output;
+
+        log_output << "Mali GPU Counters\nSuccessfully probed Mali Device";
+
+        if (product_record->mName != nullptr) {
+            log_output << " as Mali-" << product_record->mName << " (0x" << std::hex << constants.gpu_id << std::dec
+                       << ")";
+        }
+        else {
+            log_output << "but it is not recognised (id: 0x" << std::hex << constants.gpu_id;
+        }
+
+        log_output << ", " << constants.num_l2_slices << " L2 Slices, ";
+        log_output << constants.axi_bus_width << "-bit Bus, ";
+        log_output << constants.num_shader_cores << " Shader Cores";
+
+        if (constants.shader_core_mask != ((1ULL << constants.num_shader_cores) - 1)) {
+            log_output << " (sparse layout, mask is 0x" << std::hex << constants.shader_core_mask << std::dec << ")";
+        }
+
+        if (product_record->mName != nullptr) {
+            log_output << ".";
+        }
+        else {
+            log_output << "). Please try updating your verson of gatord.";
+        }
+
+        LOG_SETUP(log_output.str());
     }
 
     uint32_t MaliDevice::getGpuId() const

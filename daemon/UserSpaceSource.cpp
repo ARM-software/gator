@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #define __STDC_FORMAT_MACROS
 #define BUFFER_USE_SESSION_DATA
@@ -95,7 +95,7 @@ bool shouldStartUserSpaceSource(lib::Span<const PolledDriver * const> drivers)
     return false;
 }
 
-std::unique_ptr<Source> createUserSpaceSource(sem_t & senderSem, lib::Span<PolledDriver * const> drivers)
+std::shared_ptr<Source> createUserSpaceSource(sem_t & senderSem, lib::Span<PolledDriver * const> drivers)
 {
-    return lib::make_unique<UserSpaceSource>(senderSem, drivers);
+    return std::make_shared<UserSpaceSource>(senderSem, drivers);
 }

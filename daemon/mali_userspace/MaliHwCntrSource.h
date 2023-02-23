@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -9,5 +9,5 @@ class Source;
 
 namespace mali_userspace {
     class MaliHwCntrDriver;
-    std::unique_ptr<Source> createMaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver);
+    std::shared_ptr<Source> createMaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver);
 }

@@ -174,7 +174,7 @@ namespace {
 
         [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return uncorePmus; }
 
-        std::unique_ptr<PrimarySource> createPrimarySource(
+        std::shared_ptr<PrimarySource> createPrimarySource(
             sem_t & senderSem,
             ISender & sender,
             std::function<bool()> session_ended_callback,

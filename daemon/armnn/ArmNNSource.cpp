@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2022 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
@@ -9,7 +9,7 @@
 #include "armnn/FrameBuilderFactory.h"
 #include "armnn/ICaptureController.h"
 #include "armnn/TimestampCorrector.h"
-#include "lib/Memory.h"
+#include <memory>
 
 #include <utility>
 
@@ -41,8 +41,8 @@ namespace armnn {
         Buffer buffer;
     };
 
-    std::unique_ptr<::Source> createSource(ICaptureController & captureController, sem_t & readerSem)
+    std::shared_ptr<::Source> createSource(ICaptureController & captureController, sem_t & readerSem)
     {
-        return lib::make_unique<Source>(captureController, readerSem);
+        return std::make_shared<Source>(captureController, readerSem);
     }
 }

@@ -36,14 +36,15 @@ static const char MALI_UTGARD_STARTUP[] = "\0mali-utgard-startup";
 static const char FTRACE_V1[] = "FTRACE 1\n";
 static const char FTRACE_V2[] = "FTRACE 2\n";
 
-static constexpr int BUFFER_SIZE = 1 * 1024 * 1024;
+static constexpr int MEGABYTE = 1024 * 1024;
 
 class ExternalSourceImpl : public ExternalSource {
 public:
     ExternalSourceImpl(sem_t & senderSem, Drivers & mDrivers, std::function<uint64_t()> getMonotonicTime)
         : mGetMonotonicTime(std::move(getMonotonicTime)),
           mCommitChecker(gSessionData.mLiveRate),
-          mBuffer(BUFFER_SIZE, senderSem),
+          mBufferSize(gSessionData.mTotalBufferSize * MEGABYTE),
+          mBuffer(mBufferSize, senderSem),
 
           mMidgardStartupUds(MALI_GRAPHICS_STARTUP, sizeof(MALI_GRAPHICS_STARTUP)),
           mUtgardStartupUds(MALI_UTGARD_STARTUP, sizeof(MALI_UTGARD_STARTUP)),
@@ -410,6 +411,7 @@ private:
     sem_t mBufferSem {};
     std::function<uint64_t()> mGetMonotonicTime;
     CommitTimeChecker mCommitChecker;
+    const int mBufferSize;
     Buffer mBuffer;
     Monitor mMonitor {};
     OlyServerSocket mMidgardStartupUds;
@@ -431,16 +433,16 @@ private:
         }
     }
 
-    static bool isBufferOverFull(int sizeAvailable)
+    [[nodiscard]] bool isBufferOverFull(int sizeAvailable) const
     {
         // if less than a quarter left
-        return (sizeAvailable < (BUFFER_SIZE / 4));
+        return (sizeAvailable < (mBufferSize / 4));
     }
 };
 
-std::unique_ptr<ExternalSource> createExternalSource(sem_t & senderSem, Drivers & drivers)
+std::shared_ptr<ExternalSource> createExternalSource(sem_t & senderSem, Drivers & drivers)
 {
-    auto source = lib::make_unique<ExternalSourceImpl>(senderSem, drivers, &getTime);
+    auto source = std::make_shared<ExternalSourceImpl>(senderSem, drivers, &getTime);
     if (!source->prepare()) {
         return {};
     }

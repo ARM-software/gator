@@ -462,13 +462,13 @@ void Child::run()
 }
 
 template<typename S>
-bool Child::addSource(std::unique_ptr<S> source)
+bool Child::addSource(std::shared_ptr<S> source)
 {
     return addSource(std::move(source), [](auto const & /*source*/) {});
 }
 
 template<typename S, typename Callback>
-bool Child::addSource(std::unique_ptr<S> source, Callback callback)
+bool Child::addSource(std::shared_ptr<S> source, Callback callback)
 {
     if (!source) {
         return false;

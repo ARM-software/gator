@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) 2016-2021 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2022 by Arm Limited. All rights reserved. -->
 <pmus version="2">
     <!--
       pmu element: Identifies a CPU PMU
@@ -22,6 +22,7 @@
                         6a      ARMv6 (not ARMv6-M)
                         7a      ARMv7-A
                         8a      ARMv8-A
+                        9a      ARMv9-A
       spe           The name of the SPE events descriptor associated with the PMU. By default armv8.2_spe (the Arm V8.2 architectural events only) is used if
                     SPE is detected on the target. Specifying something else here allows for more detailed set of properties to be used instead.
 
@@ -92,7 +93,7 @@
     <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu"/>
     <pmu id="ARMv8_Neoverse_N2" cpuid="0x41d49" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu"/>
     <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu"/>
-    <pmu id="ARMv9_Neoverse_V2" cpuid="0x41d4f" core_name="Neoverse-V2" dt_name="arm,neoverse-v2" pmnc_counters="6" profile="8a" spe="arm_neoverse_v2_spe_pmu"/>
+    <pmu id="ARMv9_Neoverse_V2" cpuid="0x41d4f" core_name="Neoverse-V2" dt_name="arm,neoverse-v2" pmnc_counters="6" profile="9a" spe="arm_neoverse_v2_spe_pmu"/>
 
     <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu"/>
     <pmu id="ARMv8_Cortex_X1C" cpuid="0x41d4c" core_name="Cortex-X1C" dt_name="arm,cortex-x1c" pmnc_counters="6" profile="8a" counter_set="ARMv8_Cortex_X1" spe="arm_cortex_x1_spe_pmu"/>
@@ -101,8 +102,8 @@
     <pmu id="ARMv8_Cortex_A510" cpuid="0x41d46" core_name="Cortex-A510" dt_name="arm,cortex-a510" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A710" cpuid="0x41d47" core_name="Cortex-A710" dt_name="arm,cortex-a710" pmnc_counters="6" profile="8a"/>
 
-    <pmu id="ARMv9_Cortex_X3" cpuid="0x41d4e" core_name="Cortex-X3" dt_name="arm,cortex-x3" pmnc_counters="6" profile="8a"/>
-    <pmu id="ARMv9_Cortex_A715" cpuid="0x41d4d" core_name="Cortex-A715" dt_name="arm,cortex-a715" pmnc_counters="6" profile="8a"/>
+    <pmu id="ARMv9_Cortex_X3" cpuid="0x41d4e" core_name="Cortex-X3" dt_name="arm,cortex-x3" pmnc_counters="6" profile="9a"/>
+    <pmu id="ARMv9_Cortex_A715" cpuid="0x41d4d" core_name="Cortex-A715" dt_name="arm,cortex-a715" pmnc_counters="6" profile="9a"/>
 
     <!-- Arm China -->
     <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>

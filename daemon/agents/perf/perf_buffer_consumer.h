@@ -216,8 +216,15 @@ namespace agents::perf {
         /** Is the output data full wrt one-shot mode */
         [[nodiscard]] bool is_one_shot_full() const
         {
-            return ((one_shot_mode_limit > 0)
-                    && (cumulative_bytes_sent_apc_frames.load(std::memory_order_acquire) >= one_shot_mode_limit));
+            bool result = (one_shot_mode_limit > 0)
+                       && (cumulative_bytes_sent_apc_frames.load(std::memory_order_acquire) >= one_shot_mode_limit);
+
+            if (result) {
+                LOG_DEBUG("Cumulative bytes sent:%zu, One shot mode limit:%zu",
+                          cumulative_bytes_sent_apc_frames.load(std::memory_order_acquire),
+                          one_shot_mode_limit);
+            }
+            return result;
         }
 
         /** Manually trigger the one-shot-mode callback */

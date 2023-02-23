@@ -479,7 +479,7 @@ def get_package_name(device, pkgName, interactive):
             be the full name (case-sensitive), or None (auto-select).
         interactive: Is this an interactive session which can use menu prompts?
     """
-    allPkg = get_package_list(device, showDebuggableOnly=False)
+    allPkg = get_package_list(device, showDebuggableOnly=False, showMainIntentOnly=False)
 
     # In non-interactive mode or with a user-specified package, then check it
     if not interactive or pkgName:
@@ -501,14 +501,14 @@ def get_package_name(device, pkgName, interactive):
     print("\nSearching for debuggable packages:")
     pleaseWait = "    Please wait for search to complete..."
     print(pleaseWait, end="\r")
-    goodPkg = get_package_list(device, showDebuggableOnly=True)
+    goodPkg = get_package_list(device, showDebuggableOnly=True, showMainIntentOnly=True)
     plural = "s" if len(goodPkg) != 1 else ""
     message = "    %u debuggable package%s found" % (len(goodPkg), plural)
     template = "\r%%-%us" % len(pleaseWait)
     print(template % message)
 
     if len(goodPkg) < 1:
-        print("\nERROR: No debuggable packages found")
+        print("\nERROR: No debuggable packages with MAIN activities found")
         return None
 
     pkgIndex = select_from_menu("debuggable packages", goodPkg)
@@ -538,7 +538,7 @@ def is_package_debuggable(device, package):
         return False
 
 
-def get_package_list(device, showDebuggableOnly):
+def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
     """
     Fetch the list of packages on the target device.
 
@@ -546,17 +546,24 @@ def get_package_list(device, showDebuggableOnly):
         device: The device instance.
         showDebuggableOnly: whether the list should show only
             debuggable packages.
+        showMainIntentOnly: whether the list should show only
+            packages with a MAIN activity.
 
     Returns:
         The list of packages, or an empty list on error.
     """
     opt = "-3" if showDebuggableOnly else ""
-    command = "pm list packages %s | sed 's/^package://'" % opt
+    command = "pm list packages -e %s | sed 's/^package://'" % opt
 
     if showDebuggableOnly:
         # Test if the package is debuggable on the device
-        subCmd = "if run-as $0 true ; then echo $0 ; fi"
-        command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd
+        subCmd0 = "if run-as $0 true ; then echo $0 ; fi"
+        command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd0
+
+    if showMainIntentOnly:
+        # Test if the package has a MAIN activity
+        subCmd1 = "dumpsys package $0 | if grep -q \"android.intent.action.MAIN\" ; then echo $0 ; fi"
+        command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd1
 
     try:
         logFile = device.adb("shell", command)

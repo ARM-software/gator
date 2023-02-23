@@ -349,6 +349,8 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
                                     -1,
                                     0,
                                     0));
+        setCounters(
+            new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "Linux_cpu_wait_io", TYPE_DERIVED, -1, 0, 0));
         for (const auto & perfCpu : mConfig.cpus) {
             lib::printf_str_t<buffer_size> buf {"%s_system", perfCpu.gator_cpu.getId()};
             setCounters(new PerfCounter(getCounters(),

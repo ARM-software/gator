@@ -95,16 +95,16 @@ void SessionData::parseSessionXML(char * xmlString)
     mOneShot = true;
     if (strcmp(session.parameters.buffer_mode, "streaming") == 0) {
         mOneShot = false;
-        mTotalBufferSize = 1;
+        mTotalBufferSize = 1; //NOLINT(readability-magic-numbers)
     }
     else if (strcmp(session.parameters.buffer_mode, "small") == 0) {
-        mTotalBufferSize = 1;
+        mTotalBufferSize = 16; //NOLINT(readability-magic-numbers)
     }
     else if (strcmp(session.parameters.buffer_mode, "normal") == 0) {
-        mTotalBufferSize = 4;
+        mTotalBufferSize = 64; //NOLINT(readability-magic-numbers)
     }
     else if (strcmp(session.parameters.buffer_mode, "large") == 0) {
-        mTotalBufferSize = 16;
+        mTotalBufferSize = 256; //NOLINT(readability-magic-numbers)
     }
     else {
         LOG_ERROR("Invalid value for buffer mode in session xml.");

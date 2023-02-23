@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "Drivers.h"
 
@@ -61,7 +61,6 @@ Drivers::Drivers(bool systemWide,
     }
     all.push_back(&mMaliHwCntrs);
     all.push_back(&mMidgard);
-    all.push_back(&mFtraceDriver);
     all.push_back(&mFtraceDriver);
     all.push_back(&mAtraceDriver);
     all.push_back(&mTtraceDriver);

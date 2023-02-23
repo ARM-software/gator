@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATIONXMLPARSER_H_
 #define CONFIGURATIONXMLPARSER_H_

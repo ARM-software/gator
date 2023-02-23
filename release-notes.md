@@ -1,3 +1,7 @@
+# Gator 8.4
+
+Updated Mali events files for recent GPUs and various minor fixes
+
 # Gator 8.3
 
 Adds support for Neoverse V2, Mali-G615 and Immortalis-G715 GPUs, Corelink MMU-700 (and improved support for MMU-600).

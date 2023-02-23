@@ -63,6 +63,7 @@ namespace agents {
             signal_set.add(SIGTERM);
             signal_set.add(SIGABRT);
             signal_set.add(SIGCHLD);
+            signal_set.add(SIGALRM);
         }
 
         /** Start the worker. Agents must be spawned separately once the worker has started */
@@ -133,7 +134,7 @@ namespace agents {
 #endif
 
         template<typename EventHandler, typename ConfigMsg, typename CompletionToken>
-        auto async_add_perf_source(EventHandler & event_handler, ConfigMsg && msg, CompletionToken && token)
+        auto async_add_perf_source(std::shared_ptr<EventHandler> event_handler, ConfigMsg && msg, CompletionToken && token)
         {
             return worker_manager.template async_add_agent<agents::perf::perf_agent_worker_t<EventHandler>>(
                 process_monitor,
@@ -242,6 +243,15 @@ namespace agents {
             if ((signo == SIGHUP) || (signo == SIGINT) || (signo == SIGTERM) || (signo == SIGABRT)) {
                 LOG_DEBUG("Received signal %d", signo);
                 parent.on_terminal_signal(signo);
+            }
+            else if (signo == SIGALRM) {
+                if (sigalarm_counter == 0) {
+                    LOG_WARNING("alarm received, sender running slowly, possible bottleneck in transmission path");
+                }
+                else {
+                    LOG_DEBUG("alarm received again (#%zu)", sigalarm_counter);
+                }
+                sigalarm_counter += 1;
             }
             else {
                 LOG_DEBUG("Unexpected signal # %d", signo);
@@ -445,6 +455,8 @@ namespace agents {
         boost::asio::io_context::strand strand {io_context};
         std::map<pid_t, agent_worker_state_t> agent_workers {};
         std::deque<ipc::all_message_types_variant_t> delayed_broadcasts {};
+
+        std::size_t sigalarm_counter = 0;
 
         bool created_any = false;
         bool terminated = false;

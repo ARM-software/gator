@@ -81,7 +81,7 @@ public:
 
     const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
 
-    std::unique_ptr<PrimarySource> create_source(sem_t & senderSem,
+    std::shared_ptr<PrimarySource> create_source(sem_t & senderSem,
                                                  ISender & sender,
                                                  std::function<bool()> session_ended_callback,
                                                  std::function<void()> exec_target_app_callback,
@@ -111,7 +111,7 @@ private:
     std::vector<agents::perf::perf_capture_configuration_t::cpu_freq_properties_t>
     get_cpu_cluster_keys_for_cpu_frequency_counter();
 
-    std::unique_ptr<agents::perf::perf_source_adapter_t> create_source_adapter(
+    std::shared_ptr<agents::perf::perf_source_adapter_t> create_source_adapter(
         agents::agent_workers_process_t<Child> & agent_workers_process,
         sem_t & senderSem,
         ISender & sender,

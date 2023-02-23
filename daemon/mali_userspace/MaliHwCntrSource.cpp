@@ -118,9 +118,9 @@ namespace mali_userspace {
         std::vector<std::unique_ptr<MaliHwCntrTask>> tasks {};
     };
 
-    std::unique_ptr<Source> createMaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver)
+    std::shared_ptr<Source> createMaliHwCntrSource(sem_t & senderSem, MaliHwCntrDriver & driver)
     {
-        auto source = lib::make_unique<MaliHwCntrSource>(senderSem, driver);
+        auto source = std::make_shared<MaliHwCntrSource>(senderSem, driver);
         if (!source->prepare()) {
             return {};
         }

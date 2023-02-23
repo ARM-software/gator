@@ -38,6 +38,7 @@
 #include <boost/system/error_code.hpp>
 
 namespace agents::perf {
+
     /**
      * Manages the perf capture process.
      */
@@ -91,7 +92,8 @@ namespace agents::perf {
                       ipc_sink,
                       perf_activator,
                       configuration->session_data.live_rate,
-                      (configuration->session_data.one_shot ? configuration->session_data.total_buffer_size : 0)),
+                      (configuration->session_data.one_shot ? configuration->session_data.total_buffer_size * MEGABYTES
+                                                            : 0)),
                   perf_capture_events_helper_t(configuration,
                                                event_binding_manager_t(perf_activator,
                                                                        configuration->event_configuration,
@@ -253,6 +255,7 @@ namespace agents::perf {
         std::shared_ptr<perf_capture_helper_t> perf_capture_helper {};
         std::unique_ptr<sync_generator> sync_thread {};
         std::shared_ptr<perf_capture_cpu_monitor_t> perf_capture_cpu_monitor {};
+        static constexpr std::size_t MEGABYTES = 1024UL * 1024UL;
 
         /** @return True if the capture is terminated, false if not */
         [[nodiscard]] bool is_terminated() const { return perf_capture_cpu_monitor->is_terminated(); }

@@ -78,7 +78,7 @@ private:
 
     sem_t haltPipeline;
     sem_t senderSem;
-    std::vector<std::unique_ptr<Source>> sources {};
+    std::vector<std::shared_ptr<Source>> sources {};
     std::unique_ptr<Sender> sender;
     Drivers & drivers;
     OlySocket * socket;
@@ -108,10 +108,10 @@ private:
      * return true if not empty
      */
     template<typename S>
-    bool addSource(std::unique_ptr<S> source);
+    bool addSource(std::shared_ptr<S> source);
 
     template<typename S, typename Callback>
-    bool addSource(std::unique_ptr<S> source, Callback callback);
+    bool addSource(std::shared_ptr<S> source, Callback callback);
 
     void cleanupException();
     void durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd);
