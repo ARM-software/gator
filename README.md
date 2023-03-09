@@ -1,19 +1,24 @@
-# Gator daemon, driver and related tools
+# Gator daemon, barman embedded agent, and related tools
 
-The source code for `gatord`, `gator.py` and related tools.
+The source code for `barman`, `gatord`, and related tools.
+
+The `barman` subdirectory contains the sources for the barman embedded agent which
+can be used to collect performance data within an embedded environment as per the
+[Arm Streamline Target Setup Guide for Bare-metal Applications].
+
+The rest of this document refers to `gatord` and related tools.
 
 ## License
 
 * `daemon`, and `notify` are provided under GPL-2.0-only. See
-   [daemon/COPYING], and [notify/COPYING] respectively.
-* `annotate`, and `gator_me.py` are provided under the BSD-3-Clause license. See [annotate/LICENSE].
+  [daemon/COPYING], and [notify/COPYING] respectively.
+* `annotate`, `barman` and `gator_me.py` are provided under the BSD-3-Clause 
+  license. See [annotate/LICENSE].
 
 This project contains code from other projects listed below. The original license
 text is included in those source files.
 
 * `libsensors` source code in [daemon/libsensors] licensed under LGPL-2.1-or-later
-* `mxml` source code in [daemon/mxml] licensed under
-  APACHE-2.0 WITH Mini-XML-exception
 * `perf_event.h` from Linux userspace kernel headers in [daemon/k] licensed
   under GPL-2.0-only WITH Linux-syscall-note
 
@@ -326,6 +331,7 @@ Use vmlinux as the image for debug symbols in Streamline.
 Drivers may be profiled using this method by statically linking the driver into the
 kernel image or adding the driver as an image to Streamline.
 
+[Arm Streamline Target Setup Guide for Bare-metal Applications]: https://developer.arm.com/documentation/101815/latest
 [Contributing]: Contributing.md
 [annotate/LICENSE]: annotate/LICENSE
 [cmake]: https://cmake.org/

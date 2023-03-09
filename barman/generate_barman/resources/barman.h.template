@@ -1,0 +1,38 @@
+#ifndef __INCLUDE_BARMAN_H__
+#define __INCLUDE_BARMAN_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ------------------------------------------------------------------------- */
+
+#include "barman-config.h"
+
+/* ------------------------------------------------------------------------- */
+
+#include "barman-protocol-api.h"
+
+#include "barman-api-public.h"
+
+/* ------------------------------------------------------------------------- */
+
+#include "barman-external-dependencies.h"
+
+/* ------------------------------------------------------------------------- */
+
+#include "barman-custom-counters.h"
+
+/*#CUSTOM_COUNTERS_CONSTANTS_HEADER*/
+
+/* ------------------------------------------------------------------------- */
+
+#undef  BM_PUBLIC_FUNCTION
+#undef  BM_PUBLIC_FUNCTION_BODY
+#undef  BM_PUBLIC_FUNCTION_BODY_VOID
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __INCLUDE_BARMAN_H__ */

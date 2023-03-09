@@ -1,0 +1,2 @@
+# last pytest with 3.6 support
+pytest == 7.0.1
