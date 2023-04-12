@@ -49,7 +49,7 @@ namespace agents::perf {
             msg.set_has_exclude_callchain_kernel(perf_config.has_exclude_callchain_kernel);
         }
 
-        template<typename T, typename H, typename R>
+        template<typename T, typename H, typename R = void>
         constexpr void set_if_not_null(T const * ptr, H & host, R (H::*fn)(const std::string &))
         {
             if (ptr != nullptr) {
