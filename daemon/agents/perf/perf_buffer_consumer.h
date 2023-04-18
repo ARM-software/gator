@@ -51,7 +51,7 @@ namespace agents::perf {
 
             LOG_DEBUG("Add new mmap request for %d", cpu);
 
-            return async_initiate<continuation_of_t<boost::system::error_code>>(
+            return async_initiate_cont<continuation_of_t<boost::system::error_code>>(
                 [st = shared_from_this(), cpu, mmap = std::move(mmap)]() mutable {
                     return start_on(st->strand) //
                          | then([st, cpu, mmap = std::move(mmap)]() mutable {
@@ -93,7 +93,7 @@ namespace agents::perf {
 
             LOG_TRACE("Poll requested for %d", cpu);
 
-            return async_initiate<continuation_of_t<boost::system::error_code>>(
+            return async_initiate_cont<continuation_of_t<boost::system::error_code>>(
                 [st = shared_from_this(), cpu]() mutable {
                     return start_on(st->strand) //
                          | then([cpu, st]() mutable -> polymorphic_continuation_t<boost::system::error_code> {
@@ -129,7 +129,7 @@ namespace agents::perf {
 
             LOG_TRACE("Poll all requested");
 
-            return async_initiate<continuation_of_t<boost::system::error_code>>(
+            return async_initiate_cont<continuation_of_t<boost::system::error_code>>(
                 [st = shared_from_this()]() mutable {
                     return start_on(st->strand) //
                          | then([st]() mutable {
@@ -168,7 +168,7 @@ namespace agents::perf {
 
             LOG_TRACE("Remove mmap requested for %d", cpu);
 
-            return async_initiate<continuation_of_t<boost::system::error_code>>(
+            return async_initiate_cont<continuation_of_t<boost::system::error_code>>(
                 [st = shared_from_this(), cpu]() mutable {
                     return start_on(st->strand) //
                          | then([st, cpu]() {

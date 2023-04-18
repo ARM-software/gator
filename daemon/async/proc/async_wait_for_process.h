@@ -66,7 +66,7 @@ namespace async {
             using namespace async::continuations;
 
             state->cancel = false;
-            return async_initiate<continuation_of_t<boost::system::error_code, std::set<int>>>(
+            return async_initiate_cont<continuation_of_t<boost::system::error_code, std::set<int>>>(
                 [interval, self = state]() mutable {
                     return start_with(boost::system::error_code {}, std::set<int> {})
                          | loop(

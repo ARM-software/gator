@@ -116,7 +116,7 @@ namespace async::proc {
         {
             using namespace async::continuations;
 
-            return async_initiate(
+            return async_initiate_cont(
                 [this,
                  prepend_command,
                  cmd = std::move(cmd),
@@ -145,7 +145,7 @@ namespace async::proc {
         {
             using namespace async::continuations;
 
-            return async_initiate(
+            return async_initiate_cont(
                 [this, pid]() mutable {
                     return start_on(strand) //
                          | then([this, pid]() mutable { return do_async_monitor_forked_pid(pid); });

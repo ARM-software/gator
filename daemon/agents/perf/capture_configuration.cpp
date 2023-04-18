@@ -49,13 +49,12 @@ namespace agents::perf {
             msg.set_has_exclude_callchain_kernel(perf_config.has_exclude_callchain_kernel);
         }
 
-        template<typename T, typename H, typename R>
-        constexpr void set_if_not_null(T const * ptr, H & host, R (H::*fn)(T const *))
-        {
-            if (ptr != nullptr) {
-                (host.*fn)(ptr);
-            }
-        }
+#define SET_IF_NOT_NULL(ptr, object, method)                                                                           \
+    do {                                                                                                               \
+        if ((ptr) != nullptr) {                                                                                        \
+            (object)->method(ptr);                                                                                     \
+        }                                                                                                              \
+    } while (false)
 
         void add_clusters(
             google::protobuf::RepeatedPtrField<ipc::proto::shell::perf::capture_configuration_t::cpu_cluster_t> & msg,
@@ -70,21 +69,11 @@ namespace agents::perf {
                 auto * entry = msg.Add();
                 // add properties
                 auto * cluster = entry->mutable_properties();
-                set_if_not_null(cpu.getCoreName(),
-                                *cluster,
-                                &ipc::proto::shell::perf::capture_configuration_t::gator_cpu_t::set_core_name);
-                set_if_not_null(cpu.getId(),
-                                *cluster,
-                                &ipc::proto::shell::perf::capture_configuration_t::gator_cpu_t::set_id);
-                set_if_not_null(cpu.getCounterSet(),
-                                *cluster,
-                                &ipc::proto::shell::perf::capture_configuration_t::gator_cpu_t::set_counter_set);
-                set_if_not_null(cpu.getDtName(),
-                                *cluster,
-                                &ipc::proto::shell::perf::capture_configuration_t::gator_cpu_t::set_dt_name);
-                set_if_not_null(cpu.getSpeName(),
-                                *cluster,
-                                &ipc::proto::shell::perf::capture_configuration_t::gator_cpu_t::set_spe_name);
+                SET_IF_NOT_NULL(cpu.getCoreName(), cluster, set_core_name);
+                SET_IF_NOT_NULL(cpu.getId(), cluster, set_id);
+                SET_IF_NOT_NULL(cpu.getCounterSet(), cluster, set_counter_set);
+                SET_IF_NOT_NULL(cpu.getDtName(), cluster, set_dt_name);
+                SET_IF_NOT_NULL(cpu.getSpeName(), cluster, set_spe_name);
                 cluster->set_pmnc_counters(cpu.getPmncCounters());
                 cluster->set_is_v8(cpu.getIsV8());
                 for (auto id : cpu.getCpuIds()) {
@@ -121,18 +110,10 @@ namespace agents::perf {
         {
             for (auto const & pmu : uncore_pmus) {
                 auto * entry = msg.Add();
-                set_if_not_null(pmu.getCoreName(),
-                                *entry,
-                                &ipc::proto::shell::perf::capture_configuration_t::uncore_pmu_t::set_core_name);
-                set_if_not_null(pmu.getId(),
-                                *entry,
-                                &ipc::proto::shell::perf::capture_configuration_t::uncore_pmu_t::set_id);
-                set_if_not_null(pmu.getCounterSet(),
-                                *entry,
-                                &ipc::proto::shell::perf::capture_configuration_t::uncore_pmu_t::set_counter_set);
-                set_if_not_null(pmu.getDeviceInstance(),
-                                *entry,
-                                &ipc::proto::shell::perf::capture_configuration_t::uncore_pmu_t::set_device_instance);
+                SET_IF_NOT_NULL(pmu.getCoreName(), entry, set_core_name);
+                SET_IF_NOT_NULL(pmu.getId(), entry, set_id);
+                SET_IF_NOT_NULL(pmu.getCounterSet(), entry, set_counter_set);
+                SET_IF_NOT_NULL(pmu.getDeviceInstance(), entry, set_device_instance);
                 entry->set_pmnc_counters(pmu.getPmncCounters());
                 entry->set_has_cycles_counter(pmu.getHasCyclesCounter());
             }
@@ -597,7 +578,7 @@ namespace agents::perf {
         if (!cmd_args.empty()) {
             auto * cmd = msg.suffix.mutable_command();
 
-            set_if_not_null(working_dir, *cmd, &ipc::proto::shell::perf::capture_configuration_t::command_t::set_cwd);
+            SET_IF_NOT_NULL(working_dir, cmd, set_cwd);
 
             cmd->set_command(cmd_args.front());
             cmd->set_uid(uid);
@@ -611,7 +592,7 @@ namespace agents::perf {
 
     void add_wait_for_process(ipc::msg_capture_configuration_t & msg, const char * command)
     {
-        set_if_not_null(command, msg.suffix, &ipc::proto::shell::perf::capture_configuration_t::set_wait_process);
+        SET_IF_NOT_NULL(command, &msg.suffix, set_wait_process);
     }
 
     void add_pids(ipc::msg_capture_configuration_t & msg, std::set<int> const & pids)
