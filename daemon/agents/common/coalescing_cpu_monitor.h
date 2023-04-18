@@ -43,7 +43,7 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            return async_initiate(
+            return async::continuations::async_initiate_cont(
                 [st = shared_from_this(), cpu_no, online]() {
                     return start_on(st->strand)                      //
                          | do_if([cpu_no]() { return cpu_no >= 0; }, // ignore invalid cpu_no values

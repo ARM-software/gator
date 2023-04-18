@@ -32,7 +32,7 @@ namespace async {
         using namespace async::continuations;
         using poly_return_type = polymorphic_continuation_t<boost::system::error_code>;
 
-        return async_initiate<continuation_of_t<boost::system::error_code>>(
+        return async_initiate_cont<continuation_of_t<boost::system::error_code>>(
             [poller = make_async_proc_poller(std::forward<Executor>(executor)),
              sender = std::move(sender),
              filter = std::forward<Filter>(filter)]() mutable {

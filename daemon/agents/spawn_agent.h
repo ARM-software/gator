@@ -143,7 +143,7 @@ namespace agents {
     {
         using namespace async::continuations;
 
-        return async_initiate(
+        return async_initiate_cont(
             [&io_context, &spawner, observer = std::move(observer)](auto &&... args) mutable {
                 return start_with(std::forward<decltype(args)>(args)...) //
                      | then([&io_context, &spawner, observer = std::move(observer)](
