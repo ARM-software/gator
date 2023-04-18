@@ -427,7 +427,7 @@ namespace async::proc {
 
         LOG_DEBUG("Creating process %s", exec_args.command.c_str());
 
-        return async_initiate(
+        return async_initiate_cont(
             [&process_monitor, exec_args = std::move(exec_args), stdio_fds = std::move(stdio_fds)]() mutable {
                 return process_monitor.async_fork_exec(exec_args.prepend_command,
                                                        std::move(exec_args.command),
@@ -463,7 +463,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate(
+        return async_initiate_cont(
             [&process_monitor,
              &context,
              exec_args = std::move(exec_args),
@@ -543,7 +543,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate<continuation_of_t<boost::system::error_code, bool, int>>(
+        return async_initiate_cont<continuation_of_t<boost::system::error_code, bool, int>>(
             [process]() mutable -> polymorphic_continuation_t<boost::system::error_code, bool, int> {
                 // read off events until it terminates
                 return repeatedly([process]() { return !process->is_terminated(); },
@@ -577,7 +577,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate<continuation_of_t<boost::system::error_code, bool, int>>(
+        return async_initiate_cont<continuation_of_t<boost::system::error_code, bool, int>>(
             [process]() mutable -> polymorphic_continuation_t<boost::system::error_code, bool, int> {
                 // exec the process
                 if (!process->exec()) {
@@ -602,7 +602,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate<continuation_of_t<boost::system::error_code, bool, int>>(
+        return async_initiate_cont<continuation_of_t<boost::system::error_code, bool, int>>(
             [c = std::move(continuation)]() mutable {
                 return std::move(c) //
                      | map_error()  //

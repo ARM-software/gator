@@ -299,7 +299,7 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            return async_initiate(
+            return async_initiate_cont(
                 [this, &process_monitor, privilege_level](auto &&... args) mutable {
                     LOG_DEBUG("Creating agent process");
 
@@ -360,7 +360,7 @@ namespace agents {
             using message_type = std::decay_t<MessageType>;
             static_assert(ipc::is_ipc_message_type_v<message_type>);
 
-            return async_initiate(
+            return async_initiate_cont(
                 [this, message = std::move(message)]() {
                     return start_on(strand) //
                          | iterate(agent_workers,

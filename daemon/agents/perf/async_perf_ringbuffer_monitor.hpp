@@ -145,7 +145,7 @@ namespace agents::perf {
                       supplimentary_fds.size(),
                       mmap->header());
 
-            return async_initiate(
+            return async_initiate_cont(
                 [st = this->shared_from_this(),
                  primary_fds = std::move(primary_fds),
                  supplimentary_fds = std::move(supplimentary_fds),
@@ -189,7 +189,7 @@ namespace agents::perf {
 
             LOG_TRACE("async_add_additional_event_fds(%zu, %zu)", primary_fds.size(), supplimentary_fds.size());
 
-            return async_initiate(
+            return async_initiate_cont(
                 [st = this->shared_from_this(),
                  primary_fds = std::move(primary_fds),
                  supplimentary_fds = std::move(supplimentary_fds)]() mutable {

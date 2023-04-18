@@ -192,7 +192,7 @@ namespace async {
                 });
             }
 
-            return async_initiate<continuation_of_t<boost::system::error_code>>(
+            return async_initiate_cont<continuation_of_t<boost::system::error_code>>(
                 [self = this->shared_from_this(),
                  callbacks = std::make_shared<callbacks_t>(std::move(callbacks_wrapper))]() mutable {
                     auto iterator = async::detail::make_async_dir_iterator(
