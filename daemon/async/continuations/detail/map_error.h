@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -54,18 +54,15 @@ namespace async::continuations::detail {
     // specialization for when the error type is a boost error code
     template<typename... Args>
     class map_error_factory_t<boost::system::error_code, Args...>
-        : public map_error_factory_error_adaptor_t<boost::system::error_code, Args...> {
-    };
+        : public map_error_factory_error_adaptor_t<boost::system::error_code, Args...> {};
 
     // specialization for when the error type is a STL error code
     template<typename... Args>
     class map_error_factory_t<std::error_code, Args...>
-        : public map_error_factory_error_adaptor_t<std::error_code, Args...> {
-    };
+        : public map_error_factory_error_adaptor_t<std::error_code, Args...> {};
 
     // specialization for when the error type is an exception pointer
     template<typename... Args>
     class map_error_factory_t<std::exception_ptr, Args...>
-        : public map_error_factory_error_adaptor_t<std::exception_ptr, Args...> {
-    };
+        : public map_error_factory_error_adaptor_t<std::exception_ptr, Args...> {};
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -292,11 +292,17 @@ namespace async::continuations {
 
     /** Constructs a 'continue if' operation that can be chained to some continuation using | that consumes its output,
      * where its first value must be a bool. When the bool is true the chain is continued, otherwise no further continuation is called */
-    constexpr auto continue_if_true(SLOC_DEFAULT_ARGUMENT) { return detail::cont_if_co_op_t<true> {sloc}; }
+    constexpr auto continue_if_true(SLOC_DEFAULT_ARGUMENT)
+    {
+        return detail::cont_if_co_op_t<true> {sloc};
+    }
 
     /** Constructs a 'continue if' operation that can be chained to some continuation using | that consumes its output,
      * where its first value must be a bool. When the bool is false the chain is continued, otherwise no further continuation is called */
-    constexpr auto continue_if_false(SLOC_DEFAULT_ARGUMENT) { return detail::cont_if_co_op_t<false> {sloc}; }
+    constexpr auto continue_if_false(SLOC_DEFAULT_ARGUMENT)
+    {
+        return detail::cont_if_co_op_t<false> {sloc};
+    }
 
     /**
      * Constructs a do_if operation that can be chained to some continuation using | to consume its output
@@ -350,7 +356,10 @@ namespace async::continuations {
      * Constructs a 'unpacked tuple' operation that can be chained to some continuation using | so that subsequent operations execute on the supplied executor.
      * @return The op wrapper object
      */
-    constexpr auto unpack_tuple(SLOC_DEFAULT_ARGUMENT) { return detail::unpack_tuple_co_op_t {sloc}; }
+    constexpr auto unpack_tuple(SLOC_DEFAULT_ARGUMENT)
+    {
+        return detail::unpack_tuple_co_op_t {sloc};
+    }
 
     /** Bring the config option in */
     using detail::on_executor_mode_t;
@@ -426,13 +435,22 @@ namespace async::continuations {
     }
 
     /** Creates a 'map error' operation that can be chained to some continuation using | so that any error argument (as the first argument) is mapped to the exception handler */
-    constexpr auto map_error(SLOC_DEFAULT_ARGUMENT) { return detail::on_map_error_t<false> {sloc}; }
+    constexpr auto map_error(SLOC_DEFAULT_ARGUMENT)
+    {
+        return detail::on_map_error_t<false> {sloc};
+    }
 
     /** Creates a 'map error' operation that can be chained to some continuation using | so that any error argument (as the first argument) is mapped to the exception handler. Any additional arguments are discareded. */
-    constexpr auto map_error_and_discard(SLOC_DEFAULT_ARGUMENT) { return detail::on_map_error_t<true> {sloc}; }
+    constexpr auto map_error_and_discard(SLOC_DEFAULT_ARGUMENT)
+    {
+        return detail::on_map_error_t<true> {sloc};
+    }
 
     /** Creates a 'detach' operation that can be chained to some continuation using | which invokes the operation with a non-consuming received */
-    constexpr auto detach(SLOC_DEFAULT_ARGUMENT) { return detail::detach_t {sloc}; }
+    constexpr auto detach(SLOC_DEFAULT_ARGUMENT)
+    {
+        return detail::detach_t {sloc};
+    }
 
     /** Chain a continuation and a 'then' operation to produce a new continuation where the results of the first continuation are passed to the operation */
     template<typename Initiator, typename... Args, typename Op>

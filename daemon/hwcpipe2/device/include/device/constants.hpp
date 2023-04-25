@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 ARM Limited.
+ * Copyright (c) 2021-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -67,7 +67,7 @@ struct constants {
     /** L2 cache slice size in bytes. */
     uint64_t l2_slice_size;
 
-    /** Number of execution engines. */
+    /** Maximum number of execution engines (per core, over all cores). */
     uint64_t num_exec_engines;
 
     /** Tile size in pixels. */

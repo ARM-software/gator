@@ -121,7 +121,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), monotonic_start, cpu_no, online]() {
                     return start_on(st->strand) //
                          | do_if([st, cpu_no]() { return (cpu_no >= 0) && (!st->is_terminated()); },
@@ -347,7 +347,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), monotonic_start]() {
                     // monitor for cpu state changes (do this early so we don't miss anything)
                     return start_on(st->strand) //

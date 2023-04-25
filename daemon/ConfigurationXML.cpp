@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXML.h"
 
@@ -259,12 +259,15 @@ namespace configuration_xml {
         }
         // the counter is not in events.xml. This usually means it is a PMU slot counter, but since
         // the user has not specified an event code, this is probably incorrect.
-        else if (strcasestr(counterName, "_cnt") != nullptr) {
-            LOG_WARNING("Counter '%s' does not have an event code specified, PMU slot counters require an event code",
-                        counterName);
-        }
-        else {
-            LOG_WARNING("Counter '%s' was not recognized", counterName);
+        else if (printWarningIfUnclaimed) {
+            if (strcasestr(counterName, "_cnt") != nullptr) {
+                LOG_WARNING(
+                    "Counter '%s' does not have an event code specified, PMU slot counters require an event code",
+                    counterName);
+            }
+            else {
+                LOG_WARNING("Counter '%s' was not recognized", counterName);
+            }
         }
         counter.setCount(count);
         counter.setCores(cores);

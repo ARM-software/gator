@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -86,6 +86,15 @@ namespace agents::perf {
         /** @return true if the event is in the offline state, or false otherwise */
         [[nodiscard]] bool is_offline() const { return state == event_binding_state_t::offline; }
 
+        /** @return true for pmu events */
+        [[nodiscard]] bool is_pmu_event() const
+        {
+            return (event.attr.type == PERF_TYPE_HARDWARE) //
+                || (event.attr.type == PERF_TYPE_RAW)      //
+                || (event.attr.type == PERF_TYPE_HW_CACHE) //
+                || (event.attr.type >= PERF_TYPE_MAX);
+        }
+
         /** Set the event id as read from the legacy read id method */
         void set_id(perf_event_id_t id) { perf_id = id; }
 
@@ -109,9 +118,13 @@ namespace agents::perf {
             switch (state) {
                 case event_binding_state_t::offline: {
                     // attempt to create, updating state
-                    return (
-                        state =
-                            do_create_event(enable_on_exec, group_fd, mmap_tracker, activator, core_no, pid, spe_type));
+                    return (state = do_create_event(enable_on_exec, //
+                                                    group_fd,
+                                                    mmap_tracker,
+                                                    activator,
+                                                    core_no,
+                                                    pid,
+                                                    spe_type));
                 }
                 case event_binding_state_t::ready:
                 case event_binding_state_t::online:
@@ -283,6 +296,8 @@ namespace agents::perf {
 
             // first activate the leader
             auto & leader = bindings.front();
+            auto const is_group_of_one_pmu = (this->bindings.size() == 1) && leader.is_pmu_event();
+
             auto leader_state =
                 leader.create_event(enable_on_exec, -1, mmap_tracker, activator, core_no, pid, spe_type);
             switch (leader_state) {
@@ -298,6 +313,9 @@ namespace agents::perf {
                 case event_binding_state_t::offline:
                     return aggregate_state_t::offline;
 
+                case event_binding_state_t::not_supported:
+                    return (is_group_of_one_pmu ? aggregate_state_t::usable : aggregate_state_t::offline);
+
                 case event_binding_state_t::online:
                     return aggregate_state_t::usable;
 
@@ -305,7 +323,6 @@ namespace agents::perf {
                     return aggregate_state_t::terminated;
 
                 case event_binding_state_t::failed:
-                case event_binding_state_t::not_supported:
                     return aggregate_state_t::failed;
 
                 default:
@@ -393,16 +410,23 @@ namespace agents::perf {
         template<typename PerfActivator>
         [[nodiscard]] aggregate_state_t start(PerfActivator && activator)
         {
-            auto result = bindings.front().start(activator);
+
+            // first activate the leader
+            auto & leader = bindings.front();
+            auto const is_group_of_one_pmu = (this->bindings.size() == 1) && leader.is_pmu_event();
+            auto result = leader.start(activator);
+
             switch (result) {
                 case event_binding_state_t::offline:
                     return aggregate_state_t::offline;
+
+                case event_binding_state_t::not_supported:
+                    return (is_group_of_one_pmu ? aggregate_state_t::usable : aggregate_state_t::offline);
 
                 case event_binding_state_t::online:
                     return aggregate_state_t::usable;
 
                 case event_binding_state_t::failed:
-                case event_binding_state_t::not_supported:
                     return aggregate_state_t::failed;
 
                 case event_binding_state_t::terminated:

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 /**
  * Encode/Decode related functions for preparing IPC messages for transmit/receive.
@@ -167,8 +167,7 @@ namespace ipc {
         };
 
         /** The scatter-gather helper object used for reading the suffix */
-        struct sg_read_helper_type {
-        };
+        struct sg_read_helper_type {};
 
         /** The number of buffers required to perform a scatter gather based write of the length + suffix fields (in this case nothing) */
         static constexpr std::size_t sg_writer_buffers_count = 0;
@@ -213,14 +212,12 @@ namespace ipc {
     /** Specialization for vector of integrals */
     template<typename T, typename U>
     struct blob_codec_t<std::vector<T>, U, std::enable_if_t<std::is_integral_v<T>>>
-        : byte_span_blob_codec_t<std::vector<T>, U> {
-    };
+        : byte_span_blob_codec_t<std::vector<T>, U> {};
 
     /** Specialization for Span of integrals */
     template<typename T, typename U>
     struct blob_codec_t<lib::Span<T const>, U, std::enable_if_t<std::is_integral_v<T>>>
-        : byte_span_blob_codec_t<lib::Span<T const>, U> {
-    };
+        : byte_span_blob_codec_t<lib::Span<T const>, U> {};
 
     /** Specialization for protobuf messages */
     template<typename T, typename U>

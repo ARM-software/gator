@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "CounterXML.h"
 
@@ -9,7 +9,6 @@
 #include "SessionData.h"
 #include "lib/String.h"
 #include "logging/global_log.h"
-#include <mxml.h>
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
@@ -17,6 +16,7 @@
 #include <cstring>
 
 #include <dirent.h>
+#include <mxml.h>
 
 static mxml_node_t * getTree(bool supportsMultiEbs,
                              lib::Span<const Driver * const> drivers,

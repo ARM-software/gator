@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -31,17 +31,18 @@
 #pragma once
 
 #include "backend_args.hpp"
-#include "queue.hpp"
 #include "sample_layout.hpp"
 #include "session.hpp"
-#include "timestamp.hpp"
 
 #include <device/hwcnt/block_metadata.hpp>
 #include <device/hwcnt/reader.hpp>
 #include <device/hwcnt/sample.hpp>
 #include <device/hwcnt/sampler/base/backend.hpp>
 #include <device/hwcnt/sampler/detail/backend.hpp>
+#include <device/hwcnt/sampler/discard_impl.hpp>
 #include <device/hwcnt/sampler/poll.hpp>
+#include <device/hwcnt/sampler/queue.hpp>
+#include <device/hwcnt/sampler/timestamp.hpp>
 #include <device/ioctl/offset_pointer.hpp>
 #include <device/ioctl/vinstr/commands.hpp>
 #include <device/ioctl/vinstr/types.hpp>
@@ -229,40 +230,7 @@ class backend : public base::backend<syscall_iface_t>, private timestamp_iface_t
         return ec;
     }
 
-    std::error_code discard() override {
-        const auto now = get_ts_iface().clock_gettime();
-
-        for (;;) {
-            std::error_code ec;
-            bool ready_read{false};
-
-            std::tie(ec, ready_read) = check_ready_read(fd_, get_syscall_iface());
-            if (ec)
-                return ec;
-
-            if (!ready_read)
-                break;
-
-            sample_metadata sm{};
-            sample_handle sample_hndl{};
-
-            ec = get_sample(sm, sample_hndl);
-            if (ec)
-                return ec;
-
-            ec = put_sample(sample_hndl);
-            if (ec)
-                return ec;
-
-            /* If samples are produced faster than discarded, this condition
-             * prevents from infinite looping.
-             */
-            if (sm.timestamp_ns_end >= now)
-                break;
-        }
-
-        return {};
-    }
+    std::error_code discard() override { return discard_impl(*this, get_syscall_iface(), get_ts_iface()); }
 
   private:
     using base_type = base::backend<syscall_iface_t>;

@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017-2022 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2023 by Arm Limited. All rights reserved. -->
 <category name="Mali Job Manager" per_cpu="no">
 	<event counter="ARM_Mali-TDVx_GPU_ACTIVE" description="The number of cycles where the GPU has a workload of any type queued for processing." name="GPU active" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_IRQ_ACTIVE" description="The number of cycles where the GPU has a pending interrupt." name="GPU interrupt active" title="Mali GPU Cycles" units="cycles"/>
@@ -19,14 +19,14 @@
 	<event counter="ARM_Mali-TDVx_PRIM_SAT_CULLED" description="The number of primitives culled by the sample coverage test." name="Sample test culled primitives" title="Mali Primitive Culling" units="primitives"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_BUS_READ" description="The number of internal bus data read cycles made by the tiler." name="Read beats" title="Mali Tiler L2 Accesses" units="beats"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_BUS_WRITE" description="The number of internal bus data write cycles made by the tiler." name="Write beats" title="Mali Tiler L2 Accesses" units="beats"/>
-	<event counter="ARM_Mali-TDVx_IDVS_POS_SHAD_REQ" description="The number of position shading requests in the IDVS flow." name="Position shading requests" title="Mali Tiler Shading Requests" units="requests"/>
+	<event counter="ARM_Mali-TDVx_IDVS_POS_SHAD_REQ" description="The number of position shading requests in the tiler geometry flow." name="Position shading requests" title="Mali Tiler Shading Requests" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_IDVS_POS_SHAD_STALL" description="The number of cycles where the tiler has a stalled position shading request." name="Position shading stall cycles" title="Mali Tiler Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_IDVS_POS_FIFO_FULL" description="The number of cycles where the tiler has a stalled position shading buffer." name="Position FIFO full cycles" title="Mali Tiler Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_VCACHE_HIT" description="The number of position lookups that result in a hit in the vertex cache." name="Position cache hits" title="Mali Tiler Vertex Cache" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_VCACHE_MISS" description="The number of position lookups that miss in the vertex cache." name="Position cache misses" title="Mali Tiler Vertex Cache" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_IDVS_VBU_HIT" description="The number of varying lookups that result in a hit in the vertex cache." name="Varying cache hits" title="Mali Tiler Vertex Cache" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_IDVS_VBU_MISS" description="The number of varying lookups that miss in the vertex cache." name="Varying cache misses" title="Mali Tiler Vertex Cache" units="requests"/>
-	<event counter="ARM_Mali-TDVx_IDVS_VAR_SHAD_REQ" description="The number of varying shading requests in the IDVS flow." name="Varying shading requests" title="Mali Tiler Shading Requests" units="requests"/>
+	<event counter="ARM_Mali-TDVx_IDVS_VAR_SHAD_REQ" description="The number of varying shading requests in the tiler geometry flow." name="Varying shading requests" title="Mali Tiler Shading Requests" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-TDVx_IDVS_VAR_SHAD_STALL" description="The number of cycles where the tiler has a stalled varying shading request." name="Varying shading stall cycles" title="Mali Tiler Cycles" units="cycles"/>
 </category>
 <category name="Mali Shader Core" per_cpu="no">

@@ -1,3 +1,8 @@
+# Gator 8.5
+
+Support for collecting Immortalis/Mali GPU timeline events from Perfetto on Linux.
+Various bug fixes
+
 # Gator 8.4
 
 Updated Mali events files for recent GPUs and various minor fixes

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "GatorCLIParser.h"
 
@@ -161,7 +161,7 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
             }
             size_t start = command.find_first_not_of(' ');
             result.addArgValuePair({"A",
-                                    start == std::string::npos ? std::optional<std::string>(command)
+                                    start == std::string::npos ? std::optional<std::string>(std::move(command))
                                                                : std::optional<std::string>(command.substr(start))});
             result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_CAPTURE_COMMAND;
         }
@@ -322,8 +322,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
         SampleRate sampleRate;
         std::string value;
-        result.addArgValuePair(
-            {std::string(1, char(c)), optarg == nullptr ? std::nullopt : std::optional<std::string>(optarg)});
+        result.addArgValuePair({std::string(1, char(c)),                               //
+                                optarg != nullptr ? std::optional<std::string>(optarg) //
+                                                  : std::nullopt});
         switch (c) {
             case 'N':
                 if (!stringToInt(&result.mAndroidApiLevel, optarg, 10)) {

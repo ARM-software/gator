@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXMLParser.h"
 
@@ -9,7 +9,6 @@
 #include "lib/FsEntry.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
-#include <mxml.h>
 
 #include <algorithm>
 #include <cstring>
@@ -17,6 +16,7 @@
 
 #include <boost/regex.hpp>
 
+#include <mxml.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -303,8 +303,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                   pmncCounters);
 
         // Check if SPE name is specified for the given CPU. If so, check to see if the SPE device is configured on the device.
-        if (speName != nullptr)
-        {
+        if (speName != nullptr) {
             bool speDeviceFound = false;
             lib::FsEntryDirectoryIterator it = lib::FsEntry::create(perf_devices.data()).children();
             std::optional<lib::FsEntry> child;
@@ -316,8 +315,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                 }
             }
 
-            if (!speDeviceFound)
-            {
+            if (!speDeviceFound) {
                 speName = nullptr;
             }
         }

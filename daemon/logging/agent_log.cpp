@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "logging/agent_log.h"
 
@@ -39,10 +39,22 @@ namespace logging {
             }
         }
 
-        void write(int file_descriptor, std::uint32_t n) { dprintf(file_descriptor, "%" PRIu32, n); }
-        void write(int file_descriptor, std::int64_t n) { dprintf(file_descriptor, "%" PRId64, n); }
-        void write(int file_descriptor, thread_id_t t) { dprintf(file_descriptor, "%" PRIi32, pid_t(t)); }
-        void write(int file_descriptor, log_level_t l) { write(file_descriptor, std::uint32_t(l)); }
+        void write(int file_descriptor, std::uint32_t n)
+        {
+            dprintf(file_descriptor, "%" PRIu32, n);
+        }
+        void write(int file_descriptor, std::int64_t n)
+        {
+            dprintf(file_descriptor, "%" PRId64, n);
+        }
+        void write(int file_descriptor, thread_id_t t)
+        {
+            dprintf(file_descriptor, "%" PRIi32, pid_t(t));
+        }
+        void write(int file_descriptor, log_level_t l)
+        {
+            write(file_descriptor, std::uint32_t(l));
+        }
         void write(int file_descriptor, std::string_view str)
         {
             std::size_t from = 0;
@@ -75,9 +87,15 @@ namespace logging {
             }
         }
 
-        constexpr bool is_octal(char c) { return (c >= '0') && (c < '8'); }
+        constexpr bool is_octal(char c)
+        {
+            return (c >= '0') && (c < '8');
+        }
 
-        std::optional<std::int64_t> decode_num(std::string_view s) { return lib::try_to_int<std::int64_t>(s); }
+        std::optional<std::int64_t> decode_num(std::string_view s)
+        {
+            return lib::try_to_int<std::int64_t>(s);
+        }
 
         std::optional<std::string_view> decode_str(char * start, char const * end)
         {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "non_root/MixedFrameBuffer.h"
 
@@ -83,7 +83,10 @@ namespace non_root {
         }
     }
 
-    bool MixedFrameBuffer::Frame::isValid() const { return valid; }
+    bool MixedFrameBuffer::Frame::isValid() const
+    {
+        return valid;
+    }
 
     MixedFrameBuffer::MixedFrameBuffer(IRawFrameBuilder & buffer_, CommitTimeChecker flushIsNeeded_)
         : buffer(buffer_), flushIsNeeded(flushIsNeeded_)

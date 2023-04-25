@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATIONXMLPARSER_H_
 #define CONFIGURATIONXMLPARSER_H_
@@ -6,11 +6,12 @@
 #include "Configuration.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include <mxml.h>
 
 #include <regex>
 #include <string>
 #include <vector>
+
+#include <mxml.h>
 
 static const int PARSER_ERROR = -1;
 static const int VERSION_ERROR = -2;

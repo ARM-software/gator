@@ -1,0 +1,613 @@
+From a4808220f3ac66c32c5b9c5569b8f82d2888ee26 Mon Sep 17 00:00:00 2001
+From: Andrey Semashev <andrey.semashev@gmail.com>
+Date: Sun, 16 May 2021 20:44:09 +0300
+Subject: [PATCH] Added config macros for disabling use of some system APIs.
+
+By defining these new config macros the user can configure the library
+to avoid using some system APIs even if they are detected as available
+by the library build scripts. This can be useful in case if the API
+is known to consistently fail at runtime on the target system.
+
+Related to https://github.com/boostorg/filesystem/issues/172.
+---
+ build/Jamfile.v2    |  42 ++++++++++-
+ doc/index.htm       |  34 ++++++++-
+ src/operations.cpp  | 180 +++++++++++++++++++++++---------------------
+ src/unique_path.cpp | 120 ++++++++++++++++-------------
+ 4 files changed, 232 insertions(+), 144 deletions(-)
+
+diff --git a/build/Jamfile.v2 b/build/Jamfile.v2
+index 132641a..883ebf8 100644
+--- a/build/Jamfile.v2
++++ b/build/Jamfile.v2
+@@ -1,7 +1,7 @@
+ # Boost Filesystem Library Build Jamfile
+ 
+ # (C) Copyright Beman Dawes 2002-2006
+-# (C) Copyright Andrey Semashev 2020
++# (C) Copyright Andrey Semashev 2020, 2021
+ # Distributed under the Boost Software License, Version 1.0.
+ # See www.boost.org/LICENSE_1_0.txt
+ 
+@@ -15,6 +15,19 @@ lib advapi32 ;
+ lib coredll ;
+ explicit bcrypt advapi32 coredll ;
+ 
++# The rule checks if a config macro is defined in the command line or build properties
++rule has-config-flag ( flag : properties * )
++{
++    if ( "<define>$(flag)" in $(properties) || "<define>$(flag)=1" in $(properties) )
++    {
++        return 1 ;
++    }
++    else
++    {
++        return ;
++    }
++}
++
+ # The rule checks we're building for Windows and selects crypto API to be used
+ rule select-windows-crypto-api ( properties * )
+ {
+@@ -22,7 +35,8 @@ rule select-windows-crypto-api ( properties * )
+ 
+     if <target-os>windows in $(properties) || <target-os>cygwin in $(properties)
+     {
+-        if [ configure.builds ../config//has_bcrypt : $(properties) : "has BCrypt API" ]
++        if ! [ has-config-flag BOOST_FILESYSTEM_DISABLE_BCRYPT : $(properties) ] &&
++            [ configure.builds ../config//has_bcrypt : $(properties) : "has BCrypt API" ]
+         {
+             result = <define>BOOST_FILESYSTEM_HAS_BCRYPT <library>bcrypt ;
+         }
+@@ -44,6 +58,27 @@ rule select-windows-crypto-api ( properties * )
+     return $(result) ;
+ }
+ 
++# The rule checks if statx syscall is supported
++rule check-statx ( properties * )
++{
++    local result ;
++
++    if ! [ has-config-flag BOOST_FILESYSTEM_DISABLE_STATX : $(properties) ]
++    {
++        if [ configure.builds ../config//has_statx : $(properties) : "has statx" ]
++        {
++            result = <define>BOOST_FILESYSTEM_HAS_STATX ;
++        }
++        else if [ configure.builds ../config//has_statx_syscall : $(properties) : "has statx syscall" ]
++        {
++            result = <define>BOOST_FILESYSTEM_HAS_STATX_SYSCALL ;
++        }
++    }
++
++    #ECHO Result: $(result) ;
++    return $(result) ;
++}
++
+ project boost/filesystem
+     : requirements
+       <host-os>hpux,<toolset>gcc:<define>_INCLUDE_STDC__SOURCE_199901
+@@ -53,8 +88,7 @@ project boost/filesystem
+       [ check-target-builds ../config//has_stat_st_birthtim "has stat::st_birthtim" : <define>BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIM ]
+       [ check-target-builds ../config//has_stat_st_birthtimensec "has stat::st_birthtimensec" : <define>BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIMENSEC ]
+       [ check-target-builds ../config//has_stat_st_birthtimespec "has stat::st_birthtimespec" : <define>BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIMESPEC ]
+-      [ check-target-builds ../config//has_statx "has statx" : <define>BOOST_FILESYSTEM_HAS_STATX ]
+-      [ check-target-builds ../config//has_statx_syscall "has statx syscall" : <define>BOOST_FILESYSTEM_HAS_STATX_SYSCALL ]
++      <conditional>@check-statx
+       <conditional>@select-windows-crypto-api
+     : source-location ../src
+     : usage-requirements # pass these requirement to dependents (i.e. users)
+diff --git a/doc/index.htm b/doc/index.htm
+index 8063562..a8308bb 100644
+--- a/doc/index.htm
++++ b/doc/index.htm
+@@ -243,7 +243,7 @@ the POSIX or Windows API's.</p>
+ Microsoft Windows, SGI IRIX, and Sun Solaris operating systems using a variety
+ of compilers. It is also used by several smart phone operating systems.</p>
+ <h2><a name="Macros">Macros</a></h2>
+-<p>Users may defined the following macros if desired. Sensible defaults are
++<p>Users may define the following macros if desired. Sensible defaults are
+ provided, so users can ignore these macros unless they have special needs.</p>
+ <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111">
+   <tr>
+@@ -270,7 +270,37 @@ provided, so users can ignore these macros unless they have special needs.</p>
+     <td valign="top">Boost.Filesystem library does not use the Boost auto-link
+     facility.</td>
+   </tr>
+-  </table>
++  <tr>
++    <td valign="top"><code>BOOST_FILESYSTEM_DISABLE_SENDFILE</code></td>
++    <td valign="top">Not defined. <code>sendfile</code> API presence detected at library build time.</td>
++    <td valign="top">Boost.Filesystem library does not use the <code>sendfile</code> system call on Linux. The <code>sendfile</code> system call started accepting regular file descriptors as the target in Linux 2.6.33.</td>
++  </tr>
++  <tr>
++    <td valign="top"><code>BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE</code></td>
++    <td valign="top">Not defined. <code>copy_file_range</code> API presence detected at library build time.</td>
++    <td valign="top">Boost.Filesystem library does not use the <code>copy_file_range</code> system call on Linux. The <code>copy_file_range</code> system call was introduced in Linux kernel 4.5 and started operating across filesystems in 5.3.</td>
++  </tr>
++  <tr>
++    <td valign="top"><code>BOOST_FILESYSTEM_DISABLE_STATX</code></td>
++    <td valign="top">Not defined. <code>statx</code> presence detected at library build time.</td>
++    <td valign="top">Boost.Filesystem library does not use the <code>statx</code> system call on Linux. The <code>statx</code> system call was introduced in Linux kernel 4.11.</td>
++  </tr>
++  <tr>
++    <td valign="top"><code>BOOST_FILESYSTEM_DISABLE_GETRANDOM</code></td>
++    <td valign="top">Not defined. <code>getrandom</code> API presence detected at library build time.</td>
++    <td valign="top">Boost.Filesystem library does not use the <code>getrandom</code> system call on Linux. The <code>getrandom</code> system call was introduced in Linux kernel 3.17.</td>
++  </tr>
++  <tr>
++    <td valign="top"><code>BOOST_FILESYSTEM_DISABLE_ARC4RANDOM</code></td>
++    <td valign="top">Not defined. <code>arc4random</code> API presence detected at library build time.</td>
++    <td valign="top">Boost.Filesystem library does not use the <code>arc4random_buf</code> system call on BSD systems. The <code>arc4random</code> API was introduced in OpenBSD 2.1 and FreeBSD 8.0.</td>
++  </tr>
++  <tr>
++    <td valign="top"><code>BOOST_FILESYSTEM_DISABLE_BCRYPT</code></td>
++    <td valign="top">Not defined. BCrypt API presence detected at library build time.</td>
++    <td valign="top">Boost.Filesystem library does not use the BCrypt API on Windows. Has no effect on other platforms.</td>
++  </tr>
++</table>
+ <p>User-defined BOOST_POSIX_API and BOOST_WINDOWS_API macros are no longer
+ supported.</p>
+ <h2><a name="Building">Building</a> the object-library</h2>
+diff --git a/src/operations.cpp b/src/operations.cpp
+index fc853fb..0daa7a6 100644
+--- a/src/operations.cpp
++++ b/src/operations.cpp
+@@ -46,75 +46,85 @@
+ #   include <sys/stat.h>
+ #   if defined(__wasm)
+ // WASI does not have statfs or statvfs.
+-#   elif !defined(__APPLE__) && (!defined(__OpenBSD__) || BOOST_OS_BSD_OPEN >= BOOST_VERSION_NUMBER(4, 4, 0)) && !defined(__ANDROID__) && !defined(__VXWORKS__)
+-#     include <sys/statvfs.h>
+-#     define BOOST_STATVFS statvfs
+-#     define BOOST_STATVFS_F_FRSIZE vfs.f_frsize
+-#   else
+-#     ifdef __OpenBSD__
+-#       include <sys/param.h>
+-#     elif defined(__ANDROID__)
+-#       include <sys/vfs.h>
+-#     endif
+-#     if !defined(__VXWORKS__)
+-#       include <sys/mount.h>
+-#     endif
+-#     define BOOST_STATVFS statfs
+-#     define BOOST_STATVFS_F_FRSIZE static_cast<uintmax_t>(vfs.f_bsize)
+-#   endif
+-#   include <unistd.h>
+-#   include <fcntl.h>
+-#   if _POSIX_C_SOURCE < 200809L
+-#     include <utime.h>
+-#   endif
+-#   include <limits.h>
+-#   if defined(linux) || defined(__linux) || defined(__linux__)
+-#     include <sys/utsname.h>
+-#     include <sys/sendfile.h>
+-#     include <sys/syscall.h>
+-#     define BOOST_FILESYSTEM_USE_SENDFILE
+-#     if defined(__NR_copy_file_range)
+-#       define BOOST_FILESYSTEM_USE_COPY_FILE_RANGE
+-#     endif
+-#     if !defined(BOOST_FILESYSTEM_HAS_STATX) && defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
+-#       include <linux/stat.h>
+-#     endif
+-#   endif
+-
+-#   if defined(BOOST_FILESYSTEM_HAS_STAT_ST_MTIM)
+-#     define BOOST_FILESYSTEM_STAT_ST_MTIMENSEC st_mtim.tv_nsec
+-#   elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_MTIMESPEC)
+-#     define BOOST_FILESYSTEM_STAT_ST_MTIMENSEC st_mtimespec.tv_nsec
+-#   elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_MTIMENSEC)
+-#     define BOOST_FILESYSTEM_STAT_ST_MTIMENSEC st_mtimensec
+-#   endif
++#elif !defined(__APPLE__) && \
++    (!defined(__OpenBSD__) || BOOST_OS_BSD_OPEN >= BOOST_VERSION_NUMBER(4, 4, 0)) && \
++    !defined(__ANDROID__) && \
++    !defined(__VXWORKS__)
++#include <sys/statvfs.h>
++#define BOOST_STATVFS statvfs
++#define BOOST_STATVFS_F_FRSIZE vfs.f_frsize
++#else
++#ifdef __OpenBSD__
++#include <sys/param.h>
++#elif defined(__ANDROID__)
++#include <sys/vfs.h>
++#endif
++#if !defined(__VXWORKS__)
++#include <sys/mount.h>
++#endif
++#define BOOST_STATVFS statfs
++#define BOOST_STATVFS_F_FRSIZE static_cast< uintmax_t >(vfs.f_bsize)
++#endif // BOOST_STATVFS definition
++
++#include <unistd.h>
++#include <fcntl.h>
++#if _POSIX_C_SOURCE < 200809L
++#include <utime.h>
++#endif
++#include <limits.h>
++
++#if defined(linux) || defined(__linux) || defined(__linux__)
++#include <sys/utsname.h>
++#include <sys/syscall.h>
++#if !defined(BOOST_FILESYSTEM_DISABLE_SENDFILE)
++#include <sys/sendfile.h>
++#define BOOST_FILESYSTEM_USE_SENDFILE
++#endif // !defined(BOOST_FILESYSTEM_DISABLE_SENDFILE)
++#if !defined(BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE) && defined(__NR_copy_file_range)
++#define BOOST_FILESYSTEM_USE_COPY_FILE_RANGE
++#endif // !defined(BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE) && defined(__NR_copy_file_range)
++#if !defined(BOOST_FILESYSTEM_DISABLE_STATX) && (defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL))
++#if !defined(BOOST_FILESYSTEM_HAS_STATX) && defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#include <linux/stat.h>
++#endif
++#define BOOST_FILESYSTEM_USE_STATX
++#endif // !defined(BOOST_FILESYSTEM_DISABLE_STATX) && (defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL))
++#endif // defined(linux) || defined(__linux) || defined(__linux__)
++
++#if defined(BOOST_FILESYSTEM_HAS_STAT_ST_MTIM)
++#define BOOST_FILESYSTEM_STAT_ST_MTIMENSEC st_mtim.tv_nsec
++#elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_MTIMESPEC)
++#define BOOST_FILESYSTEM_STAT_ST_MTIMENSEC st_mtimespec.tv_nsec
++#elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_MTIMENSEC)
++#define BOOST_FILESYSTEM_STAT_ST_MTIMENSEC st_mtimensec
++#endif
+ 
+-#   if defined(BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIM)
+-#     define BOOST_FILESYSTEM_STAT_ST_BIRTHTIME st_birthtim.tv_sec
+-#     define BOOST_FILESYSTEM_STAT_ST_BIRTHTIMENSEC st_birthtim.tv_nsec
+-#   elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIMESPEC)
+-#     define BOOST_FILESYSTEM_STAT_ST_BIRTHTIME st_birthtimespec.tv_sec
+-#     define BOOST_FILESYSTEM_STAT_ST_BIRTHTIMENSEC st_birthtimespec.tv_nsec
+-#   elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIMENSEC)
+-#     define BOOST_FILESYSTEM_STAT_ST_BIRTHTIME st_birthtime
+-#     define BOOST_FILESYSTEM_STAT_ST_BIRTHTIMENSEC st_birthtimensec
+-#   endif
++#if defined(BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIM)
++#define BOOST_FILESYSTEM_STAT_ST_BIRTHTIME st_birthtim.tv_sec
++#define BOOST_FILESYSTEM_STAT_ST_BIRTHTIMENSEC st_birthtim.tv_nsec
++#elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIMESPEC)
++#define BOOST_FILESYSTEM_STAT_ST_BIRTHTIME st_birthtimespec.tv_sec
++#define BOOST_FILESYSTEM_STAT_ST_BIRTHTIMENSEC st_birthtimespec.tv_nsec
++#elif defined(BOOST_FILESYSTEM_HAS_STAT_ST_BIRTHTIMENSEC)
++#define BOOST_FILESYSTEM_STAT_ST_BIRTHTIME st_birthtime
++#define BOOST_FILESYSTEM_STAT_ST_BIRTHTIMENSEC st_birthtimensec
++#endif
+ 
+-# else // BOOST_WINDOWS_API
++#else // BOOST_WINDOWS_API
+ 
+-#   include <boost/winapi/dll.hpp> // get_proc_address, GetModuleHandleW
+-#   include <cwchar>
+-#   include <io.h>
+-#   include <windows.h>
+-#   include <winnt.h>
+-#   if defined(__BORLANDC__) || defined(__MWERKS__)
+-#     if defined(BOOST_BORLANDC)
+-        using std::time_t;
+-#     endif
+-#     include <utime.h>
+-#   else
+-#     include <sys/utime.h>
+-#   endif
++#include <boost/winapi/dll.hpp> // get_proc_address, GetModuleHandleW
++#include <cwchar>
++#include <io.h>
++#include <windows.h>
++#include <winnt.h>
++#if defined(__BORLANDC__) || defined(__MWERKS__)
++#if defined(BOOST_BORLANDC)
++using std::time_t;
++#endif
++#include <utime.h>
++#else
++#include <sys/utime.h>
++#endif
+ 
+ #include "windows_tools.hpp"
+ 
+@@ -362,7 +372,7 @@ uintmax_t remove_all_aux(const path& p, fs::file_type type, error_code* ec)
+ 
+ BOOST_CONSTEXPR_OR_CONST char dot = '.';
+ 
+-#if !defined(BOOST_FILESYSTEM_HAS_STATX) && defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+ //! A wrapper for the statx syscall
+ inline int statx(int dirfd, const char* path, int flags, unsigned int mask, struct ::statx* stx) BOOST_NOEXCEPT
+ {
+@@ -390,7 +400,7 @@ inline bool not_found_error(int errval) BOOST_NOEXCEPT
+   return errval == ENOENT || errval == ENOTDIR;
+ }
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+ 
+ //! Returns \c true if the two \c statx structures refer to the same file
+ inline bool equivalent_stat(struct ::statx const& s1, struct ::statx const& s2) BOOST_NOEXCEPT
+@@ -410,7 +420,7 @@ inline uintmax_t get_size(struct ::statx const& st) BOOST_NOEXCEPT
+   return st.stx_size;
+ }
+ 
+-#else // defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#else // defined(BOOST_FILESYSTEM_USE_STATX)
+ 
+ //! Returns \c true if the two \c stat structures refer to the same file
+ inline bool equivalent_stat(struct ::stat const& s1, struct ::stat const& s2) BOOST_NOEXCEPT
+@@ -432,7 +442,7 @@ inline uintmax_t get_size(struct ::stat const& st) BOOST_NOEXCEPT
+   return st.st_size;
+ }
+ 
+-#endif // defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#endif // defined(BOOST_FILESYSTEM_USE_STATX)
+ 
+ typedef int (copy_file_data_t)(int infile, int outfile, uintmax_t size);
+ 
+@@ -1202,7 +1212,7 @@ bool copy_file(const path& from, const path& to, unsigned int options, error_cod
+     break;
+   }
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   unsigned int statx_data_mask = STATX_TYPE | STATX_MODE | STATX_INO | STATX_SIZE;
+   if ((options & static_cast< unsigned int >(copy_options::update_existing)) != 0u)
+     statx_data_mask |= STATX_MTIME;
+@@ -1293,7 +1303,7 @@ bool copy_file(const path& from, const path& to, unsigned int options, error_cod
+     }
+   }
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   statx_data_mask = STATX_TYPE | STATX_MODE | STATX_INO;
+   if ((oflag & O_TRUNC) == 0)
+   {
+@@ -1333,7 +1343,7 @@ bool copy_file(const path& from, const path& to, unsigned int options, error_cod
+   {
+     // O_TRUNC is not set if copy_options::update_existing is set and an existing file was opened.
+     // We need to check the last write times.
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+     if (from_stat.stx_mtime.tv_sec < to_stat.stx_mtime.tv_sec || (from_stat.stx_mtime.tv_sec == to_stat.stx_mtime.tv_sec && from_stat.stx_mtime.tv_nsec <= to_stat.stx_mtime.tv_nsec))
+       return false;
+ #elif defined(BOOST_FILESYSTEM_STAT_ST_MTIMENSEC)
+@@ -1510,7 +1520,7 @@ bool create_directory(const path& p, const path* existing, error_code* ec)
+   mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO;
+   if (existing)
+   {
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+     struct ::statx existing_stat;
+     if (BOOST_UNLIKELY(statx(AT_FDCWD, existing->c_str(), AT_NO_AUTOMOUNT, STATX_TYPE | STATX_MODE, &existing_stat) < 0))
+     {
+@@ -1579,7 +1589,7 @@ void copy_directory(const path& from, const path& to, system::error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   int err;
+   struct ::statx from_stat;
+   if (BOOST_UNLIKELY(statx(AT_FDCWD, from.c_str(), AT_NO_AUTOMOUNT, STATX_TYPE | STATX_MODE, &from_stat) < 0))
+@@ -1748,7 +1758,7 @@ bool equivalent(const path& p1, const path& p2, system::error_code* ec)
+ #if defined(BOOST_POSIX_API)
+ 
+   // p2 is done first, so any error reported is for p1
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx s2;
+   int e2 = statx(AT_FDCWD, p2.c_str(), AT_NO_AUTOMOUNT, STATX_INO, &s2);
+   if (BOOST_LIKELY(e2 == 0))
+@@ -1861,7 +1871,7 @@ uintmax_t file_size(const path& p, error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx path_stat;
+   if (BOOST_UNLIKELY(statx(AT_FDCWD, p.c_str(), AT_NO_AUTOMOUNT, STATX_TYPE | STATX_SIZE, &path_stat) < 0))
+   {
+@@ -1923,7 +1933,7 @@ uintmax_t hard_link_count(const path& p, system::error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx path_stat;
+   if (BOOST_UNLIKELY(statx(AT_FDCWD, p.c_str(), AT_NO_AUTOMOUNT, STATX_NLINK, &path_stat) < 0))
+   {
+@@ -1991,7 +2001,7 @@ bool is_empty(const path& p, system::error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx path_stat;
+   if (BOOST_UNLIKELY(statx(AT_FDCWD, p.c_str(), AT_NO_AUTOMOUNT, STATX_TYPE | STATX_SIZE, &path_stat) < 0))
+   {
+@@ -2051,7 +2061,7 @@ std::time_t creation_time(const path& p, system::error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx stx;
+   if (BOOST_UNLIKELY(statx(AT_FDCWD, p.c_str(), AT_NO_AUTOMOUNT, STATX_BTIME, &stx) < 0))
+   {
+@@ -2109,7 +2119,7 @@ std::time_t last_write_time(const path& p, system::error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx stx;
+   if (BOOST_UNLIKELY(statx(AT_FDCWD, p.c_str(), AT_NO_AUTOMOUNT, STATX_MTIME, &stx) < 0))
+   {
+@@ -2575,7 +2585,7 @@ file_status status(const path& p, error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx path_stat;
+   int err = statx(AT_FDCWD, p.c_str(), AT_NO_AUTOMOUNT, STATX_TYPE | STATX_MODE, &path_stat);
+ #else
+@@ -2599,7 +2609,7 @@ file_status status(const path& p, error_code* ec)
+     return fs::file_status(fs::status_error);
+   }
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   if (BOOST_UNLIKELY((path_stat.stx_mask & (STATX_TYPE | STATX_MODE)) != (STATX_TYPE | STATX_MODE)))
+   {
+     emit_error(BOOST_ERROR_NOT_SUPPORTED, p, ec, "boost::filesystem::status");
+@@ -2689,7 +2699,7 @@ file_status symlink_status(const path& p, error_code* ec)
+ 
+ #if defined(BOOST_POSIX_API)
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   struct ::statx path_stat;
+   int err = statx(AT_FDCWD, p.c_str(), AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_TYPE | STATX_MODE, &path_stat);
+ #else
+@@ -2713,7 +2723,7 @@ file_status symlink_status(const path& p, error_code* ec)
+     return fs::file_status(fs::status_error);
+   }
+ 
+-#if defined(BOOST_FILESYSTEM_HAS_STATX) || defined(BOOST_FILESYSTEM_HAS_STATX_SYSCALL)
++#if defined(BOOST_FILESYSTEM_USE_STATX)
+   if (BOOST_UNLIKELY((path_stat.stx_mask & (STATX_TYPE | STATX_MODE)) != (STATX_TYPE | STATX_MODE)))
+   {
+     emit_error(BOOST_ERROR_NOT_SUPPORTED, p, ec, "boost::filesystem::symlink_status");
+diff --git a/src/unique_path.cpp b/src/unique_path.cpp
+index 185cfd8..9136a56 100644
+--- a/src/unique_path.cpp
++++ b/src/unique_path.cpp
+@@ -17,60 +17,74 @@
+ #include <boost/predef/os/bsd/free.h>
+ 
+ #ifdef BOOST_POSIX_API
+-#   include <cerrno>
+-#   include <stddef.h>
+-#   include <fcntl.h>
+-#   ifdef BOOST_HAS_UNISTD_H
+-#      include <unistd.h>
+-#   endif
+-#   if BOOST_OS_BSD_OPEN >= BOOST_VERSION_NUMBER(2, 1, 0) || BOOST_OS_BSD_FREE >= BOOST_VERSION_NUMBER(8, 0, 0) || BOOST_LIB_C_CLOUDABI
+-#      include <stdlib.h>
+-#      define BOOST_FILESYSTEM_HAS_ARC4RANDOM
+-#   endif
+-#   if (defined(__linux__) || defined(__linux) || defined(linux)) && (!defined(__ANDROID__) || __ANDROID_API__ >= 28)
+-#      include <sys/syscall.h>
+-#      if defined(SYS_getrandom)
+-#          define BOOST_FILESYSTEM_HAS_SYS_GETRANDOM
+-#      endif // defined(SYS_getrandom)
+-#      if defined(__has_include)
+-#          if __has_include(<sys/random.h>)
+-#              define BOOST_FILESYSTEM_HAS_GETRANDOM
+-#          endif
+-#      elif defined(__GLIBC__)
+-#          if __GLIBC_PREREQ(2, 25)
+-#              define BOOST_FILESYSTEM_HAS_GETRANDOM
+-#          endif
+-#      endif
+-#      if defined(BOOST_FILESYSTEM_HAS_GETRANDOM)
+-#          include <sys/random.h>
+-#      endif
+-#   endif // (defined(__linux__) || defined(__linux) || defined(linux)) && (!defined(__ANDROID__) || __ANDROID_API__ >= 28)
+-#else // BOOST_WINDOWS_API
+-    // We use auto-linking below to help users of static builds of Boost.Filesystem to link to whatever Windows SDK library we selected.
+-    // The dependency information is currently not exposed in CMake config files generated by Boost.Build (https://github.com/boostorg/boost_install/issues/18),
+-    // which makes it non-trivial for users to discover the libraries they need. This feature is deprecated and may be removed in the future,
+-    // when the situation with CMake config files improves.
+-    // Note that the library build system is the principal source of linking the library, which must work regardless of auto-linking.
+-#   include <boost/predef/platform.h>
+-#   include <boost/winapi/basic_types.hpp>
+-#   if defined(BOOST_FILESYSTEM_HAS_BCRYPT) // defined on the command line by the project
+-#      include <boost/winapi/error_codes.hpp>
+-#      include <boost/winapi/bcrypt.hpp>
+-#      if !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
+-#          pragma comment(lib, "bcrypt.lib")
+-#      endif // !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
+-#   else // defined(BOOST_FILESYSTEM_HAS_BCRYPT)
+-#      include <boost/winapi/crypt.hpp>
+-#      include <boost/winapi/get_last_error.hpp>
+-#      if !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
+-#          if !defined(_WIN32_WCE)
+-#              pragma comment(lib, "advapi32.lib")
+-#          else
+-#              pragma comment(lib, "coredll.lib")
+-#          endif
+-#      endif // !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
+-#   endif // defined(BOOST_FILESYSTEM_HAS_BCRYPT)
++
++#include <cerrno>
++#include <stddef.h>
++#include <fcntl.h>
++#ifdef BOOST_HAS_UNISTD_H
++#include <unistd.h>
++#endif
++
++#if !defined(BOOST_FILESYSTEM_DISABLE_ARC4RANDOM)
++#if BOOST_OS_BSD_OPEN >= BOOST_VERSION_NUMBER(2, 1, 0) || \
++    BOOST_OS_BSD_FREE >= BOOST_VERSION_NUMBER(8, 0, 0) || \
++    BOOST_LIB_C_CLOUDABI
++#include <stdlib.h>
++#define BOOST_FILESYSTEM_HAS_ARC4RANDOM
+ #endif
++#endif // !defined(BOOST_FILESYSTEM_DISABLE_ARC4RANDOM)
++
++#if !defined(BOOST_FILESYSTEM_DISABLE_GETRANDOM)
++#if (defined(__linux__) || defined(__linux) || defined(linux)) && \
++    (!defined(__ANDROID__) || __ANDROID_API__ >= 28)
++#include <sys/syscall.h>
++#if defined(SYS_getrandom)
++#define BOOST_FILESYSTEM_HAS_SYS_GETRANDOM
++#endif // defined(SYS_getrandom)
++#if defined(__has_include)
++#if __has_include(<sys/random.h>)
++#define BOOST_FILESYSTEM_HAS_GETRANDOM
++#endif
++#elif defined(__GLIBC__)
++#if __GLIBC_PREREQ(2, 25)
++#define BOOST_FILESYSTEM_HAS_GETRANDOM
++#endif
++#endif // BOOST_FILESYSTEM_HAS_GETRANDOM definition
++#if defined(BOOST_FILESYSTEM_HAS_GETRANDOM)
++#include <sys/random.h>
++#endif
++#endif // (defined(__linux__) || defined(__linux) || defined(linux)) && (!defined(__ANDROID__) || __ANDROID_API__ >= 28)
++#endif // !defined(BOOST_FILESYSTEM_DISABLE_GETRANDOM)
++
++#else  // BOOST_WINDOWS_API
++
++// We use auto-linking below to help users of static builds of Boost.Filesystem to link to whatever Windows SDK library we selected.
++// The dependency information is currently not exposed in CMake config files generated by Boost.Build (https://github.com/boostorg/boost_install/issues/18),
++// which makes it non-trivial for users to discover the libraries they need. This feature is deprecated and may be removed in the future,
++// when the situation with CMake config files improves.
++// Note that the library build system is the principal source of linking the library, which must work regardless of auto-linking.
++#include <boost/predef/platform.h>
++#include <boost/winapi/basic_types.hpp>
++
++#if defined(BOOST_FILESYSTEM_HAS_BCRYPT) // defined on the command line by the project
++#include <boost/winapi/error_codes.hpp>
++#include <boost/winapi/bcrypt.hpp>
++#if !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
++#pragma comment(lib, "bcrypt.lib")
++#endif // !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
++#else  // defined(BOOST_FILESYSTEM_HAS_BCRYPT)
++#include <boost/winapi/crypt.hpp>
++#include <boost/winapi/get_last_error.hpp>
++#if !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
++#if !defined(_WIN32_WCE)
++#pragma comment(lib, "advapi32.lib")
++#else
++#pragma comment(lib, "coredll.lib")
++#endif
++#endif // !defined(BOOST_FILESYSTEM_NO_DEPRECATED) && defined(_MSC_VER)
++#endif // defined(BOOST_FILESYSTEM_HAS_BCRYPT)
++
++#endif // BOOST_POSIX_API
+ 
+ #include <cstddef>
+ #include <boost/filesystem/operations.hpp>
+-- 
+2.17.1
+

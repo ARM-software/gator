@@ -1,9 +1,9 @@
 {
     "versions": [
         {
-            "version": "1.82.0",
+            "version": "1.75.0",
             "port-version": 1,
-            "path": "$/ports/boost-filesystem/1.82.0"
+            "path": "$/ports/boost-filesystem/1.75.0"
         }
     ]
 }

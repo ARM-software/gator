@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <optional>
@@ -67,20 +68,31 @@ namespace agents {
               perfetto_sdk_helper(perfetto_sdk_helper),
               buffer(buffer_sz, '\0')
         {
+#if defined(ANDROID) || defined(__ANDROID__)
             graphics_property_value = android_prop_utils::readProperty(GRAPHICS_PROFILER_PROPERTY.data(), false);
             if (!android_prop_utils::setProperty(GRAPHICS_PROFILER_PROPERTY.data(),
                                                  GRAPHICS_PROFILER_PROPERTY_VALUE.data())) {
                 LOG_WARNING("Failed to set graphics property %s", GRAPHICS_PROFILER_PROPERTY.data());
             }
+#else
+            const auto * driver_config_value = std::getenv("MALI_GPU_RENDERSTAGES_ENABLE");
+            if (driver_config_value == nullptr || driver_config_value[0] != '1') {
+                LOG_WARNING("Perfetto support enabled but Mali config option 'MALI_GPU_RENDERSTAGES_ENABLE=1' "
+                            "was not detected in the environment. Please set this environment variable for the "
+                            "target application to enable the Mali driver's timeline event support.");
+            }
+#endif
             perfetto_sdk_helper->initialize_sdk();
         }
 
         ~perfetto_agent_t()
         {
+#if defined(ANDROID) || defined(__ANDROID__)
             if (graphics_property_value) {
                 android_prop_utils::setProperty(GRAPHICS_PROFILER_PROPERTY.data(),
                                                 graphics_property_value.value().c_str());
             }
+#endif
         }
 
         async::continuations::polymorphic_continuation_t<> co_shutdown()

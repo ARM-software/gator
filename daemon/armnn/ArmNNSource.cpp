@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
@@ -9,8 +9,8 @@
 #include "armnn/FrameBuilderFactory.h"
 #include "armnn/ICaptureController.h"
 #include "armnn/TimestampCorrector.h"
-#include <memory>
 
+#include <memory>
 #include <utility>
 
 namespace armnn {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -26,24 +26,60 @@
 
 #pragma once
 
+// clang-format off
+
 #include "commands.hpp"
+
+#include <algorithm>
 
 namespace hwcpipe {
 namespace device {
 namespace ioctl {
 namespace vinstr {
 
-// clang-format off
-bool operator==(const reader_metadata_cycles &lhs, const reader_metadata_cycles &rhs);
+inline bool operator==(const reader_metadata_cycles &lhs, const reader_metadata_cycles &rhs);
 inline bool operator!=(const reader_metadata_cycles &lhs, const reader_metadata_cycles &rhs) { return !(lhs == rhs); }
-bool operator==(const reader_metadata &lhs, const reader_metadata &rhs);
+inline bool operator==(const reader_metadata &lhs, const reader_metadata &rhs);
 inline bool operator!=(const reader_metadata &lhs, const reader_metadata &rhs) { return !(lhs == rhs); }
-bool operator==(const reader_metadata_with_cycles &lhs, const reader_metadata_with_cycles &rhs);
+inline bool operator==(const reader_metadata_with_cycles &lhs, const reader_metadata_with_cycles &rhs);
 inline bool operator!=(const reader_metadata_with_cycles &lhs, const reader_metadata_with_cycles &rhs) { return !(lhs == rhs); }
-bool operator==(const reader_api_version &lhs, const reader_api_version &rhs);
+inline bool operator==(const reader_api_version &lhs, const reader_api_version &rhs);
 inline bool operator!=(const reader_api_version &lhs, const reader_api_version &rhs) { return !(lhs == rhs); }
-// clang-format on
+
+inline bool operator==(const reader_metadata_cycles &lhs, const reader_metadata_cycles &rhs) {
+    return true //
+            && lhs.top == rhs.top //
+            && lhs.shader_cores == rhs.shader_cores //
+        ;
+}
+
+inline bool operator==(const reader_metadata &lhs, const reader_metadata &rhs) {
+    return true //
+            && lhs.timestamp == rhs.timestamp //
+            && lhs.event_id == rhs.event_id //
+            && lhs.buffer_idx == rhs.buffer_idx //
+        ;
+}
+
+inline bool operator==(const reader_metadata_with_cycles &lhs, const reader_metadata_with_cycles &rhs) {
+    return true //
+            && lhs.metadata == rhs.metadata //
+            && lhs.cycles == rhs.cycles //
+        ;
+}
+
+inline bool operator==(const reader_api_version &lhs, const reader_api_version &rhs) {
+    return true //
+            && lhs.version == rhs.version //
+            && lhs.features == rhs.features //
+        ;
+}
+
 } // namespace vinstr
 } // namespace ioctl
 } // namespace device
 } // namespace hwcpipe
+
+#include "compare_manual.hpp"
+
+// clang-format on

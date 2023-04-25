@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -9,13 +9,22 @@
 // otherwise use as default argument leads to  error: predefined identifier is only valid inside function [-Werror,-Wpredefined-identifier-outside-function] :-(
 #if defined(__clang__) && (__clang_major__ >= 9)
 #define SOURCE_LOCATION                                                                                                \
-    ::lib::source_loc_t { __builtin_FILE(), __builtin_LINE() }
+    ::lib::source_loc_t                                                                                                \
+    {                                                                                                                  \
+        __builtin_FILE(), __builtin_LINE()                                                                             \
+    }
 #elif defined(__GNUC__) && (__GNUC__ >= 7)
 #define SOURCE_LOCATION                                                                                                \
-    ::lib::source_loc_t { __builtin_FILE(), __builtin_LINE() }
+    ::lib::source_loc_t                                                                                                \
+    {                                                                                                                  \
+        __builtin_FILE(), __builtin_LINE()                                                                             \
+    }
 #else
 #define SOURCE_LOCATION                                                                                                \
-    ::lib::source_loc_t { __FILE__, __LINE__ }
+    ::lib::source_loc_t                                                                                                \
+    {                                                                                                                  \
+        __FILE__, __LINE__                                                                                             \
+    }
 #endif
 
 #define SLOC_DEFAULT_ARGUMENT ::lib::source_loc_t sloc = SOURCE_LOCATION

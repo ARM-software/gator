@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -73,6 +73,11 @@ class product_id {
         arch_product_major,
     };
 
+    /**
+     * Default-construct a product id.
+     */
+    explicit constexpr product_id()
+        : product_id_{} {}
     /**
      * Construct product id from a GPU id.
      *

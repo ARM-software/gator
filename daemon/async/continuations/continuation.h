@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -31,12 +31,10 @@ namespace async::continuations {
 
     /** Helper trait for identifying if some type is a continuation */
     template<typename T>
-    struct is_some_continuation_t : std::bool_constant<false> {
-    };
+    struct is_some_continuation_t : std::bool_constant<false> {};
 
     template<typename I, typename... A>
-    struct is_some_continuation_t<continuation_t<I, A...>> : std::bool_constant<true> {
-    };
+    struct is_some_continuation_t<continuation_t<I, A...>> : std::bool_constant<true> {};
 
     template<typename T>
     static constexpr bool is_some_continuation_v = is_some_continuation_t<T>::value;

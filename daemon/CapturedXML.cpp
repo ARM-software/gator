@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "CapturedXML.h"
 
@@ -168,7 +168,7 @@ static mxml_node_t * getTree(bool includeTime,
 
     mxml_node_t * counters = nullptr;
     for (const auto & counter : gSessionData.mCounters) {
-        if(counter.excludeFromCapturedXml()) {
+        if (counter.excludeFromCapturedXml()) {
             continue;
         }
 

@@ -37,7 +37,7 @@ namespace agents {
                 using namespace async::continuations;
                 if (auto ptr = agent_worker.lock()) {
                     LOG_TRACE("Asking ext source agent to close connection");
-                    auto fut = async_initiate_cont([ptr]() { return ptr->cont_shutdown(); }, boost::asio::use_future);
+                    auto fut = async_initiate([ptr]() { return ptr->cont_shutdown(); }, boost::asio::use_future);
                     fut.get();
                 }
             }

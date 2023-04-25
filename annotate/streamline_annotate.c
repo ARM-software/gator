@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2021 by Arm Limited. All rights reserved.
+ * Copyright (C) 2014-2023 by Arm Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -608,7 +608,7 @@ static void * gator_func(void * arg)
                         if (!gator_send(thread, write_pos)) {
                             LOG(LOG_ERROR,
                                 "Failed to send bytes, "                                                    //
-                                "gator_thread = (exited:%s, fd:%d, oob_length:%ld, read_pos:%d,  tid:%d), " //
+                                "gator_thread = (exited:%s, fd:%d, oob_length:%zu, read_pos:%d,  tid:%d), " //
                                 "write_pos = %u",                                                           //
                                 thread->exited ? "true" : "false",
                                 thread->fd,
@@ -1142,7 +1142,8 @@ free_counter:
     free(counter);
 }
 
-void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const int64_t value)
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters, readability-identifier-length)
+void gator_annotate_counter_time_value(const uint32_t core, const uint32_t id, const uint64_t time, const int64_t value)
 {
     struct gator_thread * const thread = gator_get_thread();
     if (thread == NULL) {
@@ -1156,7 +1157,8 @@ void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const 
     uint32_t length;
     gator_msg_begin(HEADER_COUNTER_VALUE, thread, &write_pos, &size_pos, &length);
 
-    length += gator_buf_write_time(thread->buf, &write_pos);
+    // NOLINTNEXTLINE(bugprone-narrowing-conversions)
+    length += gator_buf_write_long(thread->buf, &write_pos, time);
     length += gator_buf_write_int(thread->buf, &write_pos, core);
     length += gator_buf_write_int(thread->buf, &write_pos, id);
     length += gator_buf_write_long(thread->buf, &write_pos, value);
@@ -1164,6 +1166,14 @@ void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const 
     gator_msg_end(thread, write_pos, size_pos, length);
 }
 
+// NOLINTNEXTLINE(readability-identifier-length)
+void gator_annotate_counter_value(const uint32_t core, const uint32_t id, const int64_t value)
+{
+    const uint64_t current_time = gator_get_time();
+    gator_annotate_counter_time_value(core, id, current_time, value);
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
 void gator_annotate_activity_switch(const uint32_t core, const uint32_t id, const uint32_t activity, const uint32_t tid)
 {
     struct gator_thread * const thread = gator_get_thread();
@@ -1267,6 +1277,7 @@ void gator_cam_job(const uint32_t view_uid,
     length += gator_buf_write_long(thread->buf, &write_pos, start_time);
     length += gator_buf_write_long(thread->buf, &write_pos, duration);
     length += gator_buf_write_color(thread->buf, &write_pos, color);
+    // NOLINTNEXTLINE(bugprone-narrowing-conversions)
     length += gator_buf_write_int(thread->buf, &write_pos, primary_dependency);
     length += gator_buf_write_int(thread->buf, &write_pos, dependency_count);
     size_t i;

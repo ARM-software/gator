@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -34,6 +34,10 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#if defined(unix)
+#undef unix
+#endif
 
 namespace hwcpipe {
 namespace device {

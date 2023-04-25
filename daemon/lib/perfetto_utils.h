@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -14,10 +14,4 @@ namespace lib {
 
         return traced_poller.poll(traced_pids);
     }
-
-    [[nodiscard]] inline bool is_android()
-    {
-        return capture::detectOs() == capture::OsType::Android;
-    }
-
 }

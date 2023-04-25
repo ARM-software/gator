@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved.
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -156,6 +156,7 @@ void gator_annotate_counter(uint32_t id,
                             uint32_t color,
                             const char * description);
 void gator_annotate_counter_value(uint32_t core, uint32_t id, int64_t value);
+void gator_annotate_counter_time_value(uint32_t core, uint32_t id, uint64_t time, int64_t value);
 void gator_annotate_activity_switch(uint32_t core, uint32_t id, uint32_t activity, uint32_t tid);
 void gator_cam_track(uint32_t view_uid, uint32_t track_uid, uint32_t parent_track, const char * name);
 void gator_cam_job(uint32_t view_uid,
@@ -289,6 +290,12 @@ void gator_cam_view_name(uint32_t view_uid, const char * name);
     do {                                                                                                               \
         uint64_t __scaledvalue = (uint64_t) ((value) * (modifier) + 0.5f);                                             \
         gator_annotate_counter_value(0, id, __scaledvalue);                                                            \
+    } while (0)
+
+#define ANNOTATE_COUNTER_TIME_VALUE_SCALE(id, time, value, modifier)                                                   \
+    do {                                                                                                               \
+        uint64_t __scaledvalue = (uint64_t) ((value) * (modifier) + 0.5f);                                             \
+        gator_annotate_counter_time_value(0, id, time, __scaledvalue);                                                 \
     } while (0)
 
 #define CAM_TRACK(view_uid, track_uid, parent_track, name) gator_cam_track(view_uid, track_uid, parent_track, name)

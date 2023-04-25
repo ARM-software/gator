@@ -13,7 +13,7 @@ show_help() {
     echo "                        The default is 21, meaning the binary is "
     echo "                        compatible with Android L and later."
     echo "    -t <target>       - Specify the target architecture. Must be one of"
-    echo "                        arm64, arm, or x86_64. The default is arm64."
+    echo "                        arm64, arm-neon, arm, or x86_64. The default is arm64."
     echo "    -g <generator>    - Specify the CMake generator to use. Defaults to Ninja if"
     echo "                        it is available, otherwise to whatever the CMake default"
     echo "                        is."
@@ -95,6 +95,10 @@ if [ "${target}" = "arm64" ]; then
     abi="arm64-v8a"
     toolchain="aarch64-linux-android-clang"
     triplet="arm64-android"
+elif [ "${target}" = "arm-neon" ]; then
+    abi="armeabi-v7a"
+    toolchain="arm-linux-androideabi-clang"
+    triplet="arm-neon-android"
 elif [ "${target}" = "arm" ]; then
     abi="armeabi-v7a"
     toolchain="arm-linux-androideabi-clang"
@@ -141,6 +145,10 @@ else
 fi
 
 build_args+=( -DVCPKG_TARGET_TRIPLET="${triplet}" -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/android.toolchain.cmake" -DCMAKE_BUILD_TYPE="${build_type}" -DANDROID_NDK="${ndk_path}" -DANDROID_ABI="${abi}" -DANDROID_TOOLCHAIN_NAME="${toolchain}" -DANDROID_PLATFORM="${api_level}" -DCONFIG_SUPPORT_PROC_POLLING=OFF -DCONFIG_PREFER_SYSTEM_WIDE_MODE=OFF -DCONFIG_ASSUME_PERF_HIGH_PARANOIA=OFF )
+
+if [ "${target}" = "arm-neon" ]; then
+    build_args+=( -DANDROID_ARM_NEON=ON )
+fi
 
 echo "Running cmake build for api_level=${api_level} with target=${target}:"
 run_cmake "${cmake_exe}" "${cmake_generator}" "${src_path}" "${build_path}" "${use_system_binaries}" "${verbose}" "${build_args[@]}"

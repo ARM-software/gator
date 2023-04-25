@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
 #define MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
@@ -7,7 +7,6 @@
 #include "Logging.h"
 #include "MaliGPUClockPolledDriverCounter.h"
 #include "PolledDriver.h"
-#include <mxml.h>
 
 #include <cstdint>
 #include <cstdlib>
@@ -15,6 +14,7 @@
 #include <string_view>
 #include <utility>
 
+#include <mxml.h>
 #include <unistd.h>
 
 namespace mali_userspace {

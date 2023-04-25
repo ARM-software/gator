@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -25,6 +25,7 @@
 #pragma once
 
 #include "ioctl/kbase_pre_r21/types.hpp"
+#include "kbase_version.hpp"
 
 #include <device/constants.hpp>
 #include <device/hwcnt/backend_type.hpp>
@@ -40,6 +41,7 @@
 #include <device/ioctl/kbase_pre_r21/types.hpp>
 #include <device/ioctl/pointer64.hpp>
 #include <device/kbase_version.hpp>
+#include <device/num_exec_engines.hpp>
 #include <device/product_id.hpp>
 
 #include <array>
@@ -79,7 +81,7 @@ static uint64_t get_warp_width(uint64_t raw_gpu_id, std::error_code &ec) {
 
     /* Midgard does not support warps. */
     if (pid.get_gpu_family() == product_id::gpu_family::midgard)
-        return 0;
+        return 1;
 
     switch (pid) {
     case product_id_g31:
@@ -124,6 +126,8 @@ class prop_decoder {
         constants dev_consts{};
         uint64_t num_core_groups{};
         std::array<uint64_t, 16> core_mask{};
+        uint64_t raw_core_features{};
+        uint64_t raw_thread_features{};
 
         while (reader_.size() > 0) {
             auto p = next(ec);
@@ -149,8 +153,14 @@ class prop_decoder {
                 /* log2(bus width in bits) stored in top 8 bits of register. */
                 dev_consts.axi_bus_width = 1UL << ((value & 0xFF000000) >> 24);
                 break;
+            case prop_id_type::raw_core_features:
+                raw_core_features = value;
+                break;
             case prop_id_type::coherency_num_core_groups:
                 num_core_groups = value;
+                break;
+            case prop_id_type::raw_thread_features:
+                raw_thread_features = value;
                 break;
             case prop_id_type::coherency_group_0:
                 core_mask[0] = value;
@@ -200,10 +210,6 @@ class prop_decoder {
             case prop_id_type::coherency_group_15:
                 core_mask[15] = value;
                 break;
-            case prop_id_type::num_exec_engines:
-                /* TODO GPUCORE-33051: Fix incorrect num_exec_engines in DDK kernel */
-                dev_consts.num_exec_engines = 0;
-                break;
             case prop_id_type::minor_revision:
             case prop_id_type::major_revision:
             default:
@@ -215,6 +221,15 @@ class prop_decoder {
         dev_consts.num_shader_cores = __builtin_popcount(dev_consts.shader_core_mask);
 
         dev_consts.tile_size = 16;
+
+        get_num_exec_engines_args args{};
+        args.id = product_id{dev_consts.gpu_id};
+        args.core_count = dev_consts.num_shader_cores;
+        args.core_features = raw_core_features;
+        args.thread_features = raw_thread_features;
+        dev_consts.num_exec_engines = get_num_exec_engines(std::move(args), ec);
+        if (ec)
+            return {};
 
         return dev_consts;
     }
@@ -305,6 +320,11 @@ class prop_decoder {
         std::size_t size_;
     } reader_;
 };
+
+template <typename version_t>
+bool is_version_set(const version_t &version) {
+    return version.major != 0 || version.minor != 0;
+}
 
 } // namespace detail
 
@@ -404,6 +424,15 @@ class instance_impl : public instance, private syscall_iface_t {
 
         dev_consts.tile_size = 16;
 
+        get_num_exec_engines_args args{};
+        args.id = product_id{dev_consts.gpu_id};
+        args.core_count = dev_consts.num_shader_cores;
+        /* No core features in this interface version. */
+        args.core_features = 0;
+        args.thread_features = props.props.raw_props.thread_features;
+
+        dev_consts.num_exec_engines = get_num_exec_engines(std::move(args), ec);
+
         return dev_consts;
     }
 
@@ -442,46 +471,53 @@ class instance_impl : public instance, private syscall_iface_t {
         return get_glb.out.glb_version;
     }
 
-    /** Detect kbase version and initialize kbase_version_ field. */
-    std::error_code version_check() {
-        std::error_code ec;
-        ioctl_iface_type iface_type{ioctl_iface_type::csf};
-
-        {
-            ioctl::kbase::version_check version_check_args = {0, 0};
-
-            std::tie(ec, std::ignore) =
-                get_syscall_iface().ioctl(fd_, ioctl::kbase::command::version_check_csf, &version_check_args);
-
-            if (ec) {
-                iface_type = ioctl_iface_type::jm_post_r21;
-                std::tie(ec, std::ignore) =
-                    get_syscall_iface().ioctl(fd_, ioctl::kbase::command::version_check_jm, &version_check_args);
-            }
-
-            if (!ec) {
-                kbase_version_ = kbase_version_type(version_check_args.major, version_check_args.minor, iface_type);
-                return ec;
-            }
-        }
-
+    std::error_code version_check_pre_r21() {
         ioctl::kbase_pre_r21::version_check_args version_check_args{};
         version_check_args.header.id = ioctl::kbase_pre_r21::header_id::version_check;
 
-        std::tie(ec, std::ignore) =
-            get_syscall_iface().ioctl(fd_, ioctl::kbase_pre_r21::command::version_check, &version_check_args);
+        get_syscall_iface().ioctl(fd_, ioctl::kbase_pre_r21::command::version_check, &version_check_args);
 
-        if (ec)
-            return ec;
+        if (!detail::is_version_set(version_check_args))
+            return std::make_error_code(std::errc::not_supported);
 
-        iface_type = ioctl_iface_type::jm_pre_r21;
-        kbase_version_ = kbase_version_type(version_check_args.major, version_check_args.minor, iface_type);
+        kbase_version_ =
+            kbase_version_type(version_check_args.major, version_check_args.minor, ioctl_iface_type::jm_pre_r21);
 
         constexpr kbase_version_type legacy_min_version{10, 2, ioctl_iface_type::jm_pre_r21};
         if (kbase_version_ < legacy_min_version)
             return std::make_error_code(std::errc::not_supported);
 
         return {};
+    }
+
+    std::error_code version_check_post_r21(ioctl_iface_type iface_type) {
+        assert(iface_type != ioctl_iface_type::jm_pre_r21);
+
+        ioctl::kbase::version_check version_check_args = {0, 0};
+
+        const ioctl::kbase::command::command_type command = iface_type == ioctl_iface_type::csf
+                                                                ? ioctl::kbase::command::version_check_csf
+                                                                : ioctl::kbase::command::version_check_jm;
+
+        get_syscall_iface().ioctl(fd_, command, &version_check_args);
+
+        if (!detail::is_version_set(version_check_args))
+            return std::make_error_code(std::errc::not_supported);
+
+        kbase_version_ = kbase_version_type(version_check_args.major, version_check_args.minor, iface_type);
+
+        return {};
+    }
+
+    /** Detect kbase version and initialize kbase_version_ field. */
+    std::error_code version_check() {
+        if (!version_check_pre_r21())
+            return {};
+
+        if (!version_check_post_r21(ioctl_iface_type::jm_post_r21))
+            return {};
+
+        return version_check_post_r21(ioctl_iface_type::csf);
     }
 
     /** Detect backend interface type and initialize backend_type_ field. */
@@ -509,11 +545,23 @@ class instance_impl : public instance, private syscall_iface_t {
             std::tie(ec, std::ignore) =
                 get_syscall_iface().ioctl(fd_, ioctl::kbase_pre_r21::command::set_flags, &flags);
 
-            return ec;
+        } else {
+            ioctl::kbase::set_flags flags{system_monitor_flag};
+            std::tie(ec, std::ignore) = get_syscall_iface().ioctl(fd_, ioctl::kbase::command::set_flags, &flags);
         }
 
-        ioctl::kbase::set_flags flags{system_monitor_flag};
-        std::tie(ec, std::ignore) = get_syscall_iface().ioctl(fd_, ioctl::kbase::command::set_flags, &flags);
+        static const std::error_code eperm = std::make_error_code(std::errc::operation_not_permitted);
+        static const std::error_code einval = std::make_error_code(std::errc::invalid_argument);
+        static const std::error_code efault = std::make_error_code(std::errc::bad_address);
+
+        /* Set_flags may fail with eperm if context has been already initialized. */
+        if (ec == eperm)
+            ec = {};
+        if (ec == einval)
+            ec = {};
+        /* And on old kernels it may return a misleading error. */
+        if (ec == efault && kbase_version_.type() == ioctl_iface_type::jm_pre_r21)
+            ec = {};
 
         return ec;
     }
@@ -545,13 +593,8 @@ class instance_impl : public instance, private syscall_iface_t {
         if (ec)
             return ec;
 
-        static const std::error_code eperm = std::make_error_code(std::errc::operation_not_permitted);
-        static const std::error_code einval = std::make_error_code(std::errc::invalid_argument);
-
         ec = set_flags();
-
-        /* Note, that set_flags may fail with eperm if context has been already initialized. */
-        if (ec && ec != eperm && ec != einval)
+        if (ec)
             return ec;
 
         ec = init_constants();

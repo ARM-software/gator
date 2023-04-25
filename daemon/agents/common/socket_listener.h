@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -30,7 +30,9 @@ namespace agents {
     };
 
     /** Set any options on a UDS socket */
-    inline void set_acceptor_options(boost::asio::local::stream_protocol::acceptor & /*acceptor*/) {}
+    inline void set_acceptor_options(boost::asio::local::stream_protocol::acceptor & /*acceptor*/)
+    {
+    }
 
     /** Set any options on a TCP socket */
     inline void set_acceptor_options(boost::asio::ip::tcp::acceptor & acceptor)

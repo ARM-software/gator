@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -54,7 +54,7 @@ struct backend_args {
     /** Shader cores mask. */
     sc_mask_type sc_mask;
     /** Metadata item size. */
-    size_t metadata_item_size;
+    size_t metadata_item_size{};
 };
 
 } // namespace kinstr_prfcnt

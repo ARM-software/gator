@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/perf/source_adapter.h"
 
 #include "ExitStatus.h"
@@ -110,7 +110,8 @@ namespace agents::perf {
 
         {
             auto lock = std::unique_lock(event_mutex);
-            local_agent_started = std::exchange(agent_started_callback, std::function<void(bool, std::vector<pid_t>)>());
+            local_agent_started =
+                std::exchange(agent_started_callback, std::function<void(bool, std::vector<pid_t>)>());
             if (!shutdown_initiated_from_shell) {
                 local_end_session = std::exchange(end_session, std::function<void()>());
             }

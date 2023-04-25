@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/PacketEncoder.h"
 
@@ -12,7 +12,9 @@
 
 namespace armnn {
 
-    PacketEncoder::PacketEncoder(ByteOrder byteOrder_) : byteOrder(byteOrder_) {}
+    PacketEncoder::PacketEncoder(ByteOrder byteOrder_) : byteOrder(byteOrder_)
+    {
+    }
 
     template<typename T>
     void appendBytes(std::vector<std::uint8_t> & input, T value, ByteOrder byteOrder)

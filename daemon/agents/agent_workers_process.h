@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -14,7 +14,7 @@
 #include "lib/String.h"
 #include "lib/Syscall.h"
 
-#if defined(ANDROID) || defined(__ANDROID__)
+#ifdef CONFIG_USE_PERFETTO
 #include "agents/perfetto/perfetto_agent_worker.h"
 #endif
 
@@ -114,7 +114,8 @@ namespace agents {
                 std::forward<CompletionToken>(token),
                 std::ref(external_souce));
         }
-#if defined(ANDROID) || defined(__ANDROID__)
+
+#ifdef CONFIG_USE_PERFETTO
         /**
          * Add the 'perfetto' agent worker
          *
@@ -134,7 +135,9 @@ namespace agents {
 #endif
 
         template<typename EventHandler, typename ConfigMsg, typename CompletionToken>
-        auto async_add_perf_source(std::shared_ptr<EventHandler> event_handler, ConfigMsg && msg, CompletionToken && token)
+        auto async_add_perf_source(std::shared_ptr<EventHandler> event_handler,
+                                   ConfigMsg && msg,
+                                   CompletionToken && token)
         {
             return worker_manager.template async_add_agent<agents::perf::perf_agent_worker_t<EventHandler>>(
                 process_monitor,
@@ -296,7 +299,7 @@ namespace agents {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [this, &process_monitor, privilege_level](auto &&... args) mutable {
                     LOG_DEBUG("Creating agent process");
 
@@ -357,7 +360,7 @@ namespace agents {
             using message_type = std::decay_t<MessageType>;
             static_assert(ipc::is_ipc_message_type_v<message_type>);
 
-            return async_initiate_cont(
+            return async_initiate(
                 [this, message = std::move(message)]() {
                     return start_on(strand) //
                          | iterate(agent_workers,
@@ -383,7 +386,6 @@ namespace agents {
                 },
                 std::forward<CompletionToken>(token));
         }
-
 
     private:
         struct agent_worker_state_t {

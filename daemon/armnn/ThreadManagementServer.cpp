@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 #include "armnn/ThreadManagementServer.h"
 
 #include "Logging.h"
@@ -52,7 +52,10 @@ namespace armnn {
         mEnabled = false;
     }
 
-    void ThreadManagementServer::addThreadToVector(ThreadData threadData) { mThreads.push_back(std::move(threadData)); }
+    void ThreadManagementServer::addThreadToVector(ThreadData threadData)
+    {
+        mThreads.push_back(std::move(threadData));
+    }
 
     void ThreadManagementServer::closeThreads()
     {

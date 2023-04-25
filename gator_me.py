@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2019-2022 by Arm Limited
+# Copyright (C) 2019-2023 by Arm Limited
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -446,27 +446,25 @@ def get_gpu_name(device):
     """
     Determine the GPU name from dumpsys queries.
 
+    Immortalis GPUs report in dumpsys as e.g., Mali-G715-Immortalis.
+
     Args:
         device: The device instance.
-
-    Returns:
-        The Mali GPU name if found, else None.
     """
+    print("\nSearching for an Arm GPU:")
     try:
-        print("\nSearching for a Mali GPU:")
         logFile = device.adb("shell", "dumpsys", "SurfaceFlinger")
-        pattern = re.compile("Mali-([TG][0-9]+)")
+        pattern = re.compile("Mali-([TG][0-9]+)(-Immortalis)?")
         match = pattern.search(logFile)
         if match:
             gpu = match.group(1)
-            print("    Mali-%s GPU found" % gpu)
-            return gpu
+            brand = "Mali" if not match.group(2) else "Immortalis"
+            print("    %s-%s GPU found" % (brand, gpu))
         else:
-            print("    No Mali GPU found")
-            return None
+            print("    No Arm GPU found")
 
     except sp.CalledProcessError:
-        return None
+        print("    Failed to query device")
 
 
 def get_package_name(device, pkgName, interactive):
@@ -566,8 +564,13 @@ def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
         command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd1
 
     try:
-        logFile = device.adb("shell", command)
-        return logFile.splitlines()
+        package_list = device.adb("shell", command).splitlines()
+
+        # some shells (seen on android 10 and 9) report "sh" as a valid package
+        if "sh" in package_list:
+            package_list.remove("sh")
+
+        return package_list
     except sp.CalledProcessError:
         return []
 

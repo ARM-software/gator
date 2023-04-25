@@ -1,17 +1,18 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVER_H
 #define DRIVER_H
 
 #include "CapturedSpe.h"
 #include "Constant.h"
-#include <mxml.h>
 
 #include <cstdint>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
+
+#include <mxml.h>
 
 class Counter;
 struct SpeConfiguration;

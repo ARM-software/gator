@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -20,14 +20,10 @@
 namespace async::proc {
 
     namespace detail {
-        struct discard_tag_t {
-        };
-        struct pipe_tag_t {
-        };
-        struct log_tag_t {
-        };
-        struct ignore_tag_t {
-        };
+        struct discard_tag_t {};
+        struct pipe_tag_t {};
+        struct log_tag_t {};
+        struct ignore_tag_t {};
 
         struct from_file_t {
             char const * filename;
@@ -228,11 +224,20 @@ namespace async::proc {
     /** Used to indicate that stdout/stderr should be a pipe, which will be logged to */
     static constexpr detail::log_tag_t log_oe;
     /** Used to indicate that stdin should read from a file */
-    [[nodiscard]] constexpr detail::from_file_t read_from(char const * filename) { return {filename}; }
+    [[nodiscard]] constexpr detail::from_file_t read_from(char const * filename)
+    {
+        return {filename};
+    }
     /** Used to indicate that stdout/stderr should write from a file (overwriting it) */
-    [[nodiscard]] constexpr detail::to_file_t write_to(char const * filename) { return {filename, true}; }
+    [[nodiscard]] constexpr detail::to_file_t write_to(char const * filename)
+    {
+        return {filename, true};
+    }
     /** Used to indicate that stdout/stderr should write from a file (appending it) */
-    [[nodiscard]] constexpr detail::to_file_t append_to(char const * filename) { return {filename, false}; }
+    [[nodiscard]] constexpr detail::to_file_t append_to(char const * filename)
+    {
+        return {filename, false};
+    }
     /** Use to extract a pipe for stdin of a new process, using stdout of the prev process */
     [[nodiscard]] lib::AutoClosingFd from_stdout(async_process_t & p);
     /** Use to extract a pipe for stdin of a new process, using stderr of the prev process */
@@ -242,7 +247,10 @@ namespace async::proc {
      * Map a stdin 'mode' value to a handler type tag.
      * In this case, the discard tag is returned, indicating that stdin should be closed as it will not be used.
      */
-    [[nodiscard]] constexpr detail::discard_tag_t stdin_mode_type(detail::discard_tag_t const & /*tag*/) { return {}; }
+    [[nodiscard]] constexpr detail::discard_tag_t stdin_mode_type(detail::discard_tag_t const & /*tag*/)
+    {
+        return {};
+    }
 
     /**
      * Map a stdin 'mode' value to a handler type tag.
@@ -419,7 +427,7 @@ namespace async::proc {
 
         LOG_DEBUG("Creating process %s", exec_args.command.c_str());
 
-        return async_initiate_cont(
+        return async_initiate(
             [&process_monitor, exec_args = std::move(exec_args), stdio_fds = std::move(stdio_fds)]() mutable {
                 return process_monitor.async_fork_exec(exec_args.prepend_command,
                                                        std::move(exec_args.command),
@@ -455,7 +463,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate_cont(
+        return async_initiate(
             [&process_monitor,
              &context,
              exec_args = std::move(exec_args),
@@ -535,7 +543,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate_cont<continuation_of_t<boost::system::error_code, bool, int>>(
+        return async_initiate<continuation_of_t<boost::system::error_code, bool, int>>(
             [process]() mutable -> polymorphic_continuation_t<boost::system::error_code, bool, int> {
                 // read off events until it terminates
                 return repeatedly([process]() { return !process->is_terminated(); },
@@ -569,7 +577,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate_cont<continuation_of_t<boost::system::error_code, bool, int>>(
+        return async_initiate<continuation_of_t<boost::system::error_code, bool, int>>(
             [process]() mutable -> polymorphic_continuation_t<boost::system::error_code, bool, int> {
                 // exec the process
                 if (!process->exec()) {
@@ -594,7 +602,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        return async_initiate_cont<continuation_of_t<boost::system::error_code, bool, int>>(
+        return async_initiate<continuation_of_t<boost::system::error_code, bool, int>>(
             [c = std::move(continuation)]() mutable {
                 return std::move(c) //
                      | map_error()  //

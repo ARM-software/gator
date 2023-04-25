@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
@@ -11,7 +11,6 @@
 #include "Time.h"
 #include "lib/SharedMemory.h"
 #include "linux/smmu_identifier.h"
-#include <mxml.h>
 
 #include <cstdint>
 #include <list>
@@ -22,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include <mxml.h>
 #include <semaphore.h>
 
 extern const char MALI_GRAPHICS[];

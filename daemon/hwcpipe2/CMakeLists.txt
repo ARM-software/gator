@@ -22,7 +22,6 @@
 # SOFTWARE.
 #
 
-# TODO GPUCORE-30489: Update the version to 3.16.
 cmake_minimum_required(VERSION 3.13.5)
 
 project(hwcpipe2)
@@ -30,7 +29,7 @@ project(hwcpipe2)
 option(
     HWCPIPE_ENABLE_TESTS
     "If set, build unit tests."
-    ON
+    OFF
 )
 option(HWCPIPE_ENABLE_EXCEPTIONS "If set, c++ exceptions are enabled.")
 option(
@@ -134,7 +133,6 @@ if(HWCPIPE_WERROR)
     add_link_options(-Werror)
 endif()
 
-add_subdirectory(debug)
 add_subdirectory(device)
 
 if(HWCPIPE_ENABLE_TESTS)

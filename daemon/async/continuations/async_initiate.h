@@ -198,7 +198,7 @@ namespace async::continuations {
              typename ContinuationFactory,
              typename CompletionToken,
              typename... FactoryArgs>
-    auto async_initiate_cont(ContinuationFactory && factory, CompletionToken && token, FactoryArgs &&... args)
+    auto async_initiate(ContinuationFactory && factory, CompletionToken && token, FactoryArgs &&... args)
     {
         using factory_return_type = std::invoke_result_t<ContinuationFactory, FactoryArgs &&...>;
 

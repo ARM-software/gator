@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/ArmNNDriver.h"
 
@@ -33,7 +33,10 @@ namespace armnn {
     }
 
     // Clears and disables all counters/SPE
-    void Driver::resetCounters() { mGlobalState.disableAllCounters(); }
+    void Driver::resetCounters()
+    {
+        mGlobalState.disableAllCounters();
+    }
 
     // Enables and prepares the counter for capture
     void Driver::setupCounter(Counter & counter)

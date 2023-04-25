@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -187,9 +187,15 @@ namespace logging {
     void set_log_sink(std::shared_ptr<log_sink_t> sink);
 
     /** @return true if trace logging is enabled */
-    inline bool is_log_enable_trace() noexcept { return detail::enabled_log_trace; }
+    inline bool is_log_enable_trace() noexcept
+    {
+        return detail::enabled_log_trace;
+    }
     /** Enable trace logging (which also enables debug) */
-    inline void set_log_enable_trace(bool enabled) noexcept { detail::enabled_log_trace = enabled; }
+    inline void set_log_enable_trace(bool enabled) noexcept
+    {
+        detail::enabled_log_trace = enabled;
+    }
     /** Enable trace logging based on the --trace argument on the command line */
     inline void set_log_enable_trace(lib::Span<char const * const> argv)
     {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "GatorCLIParser.h"
 
@@ -12,9 +12,9 @@ const std::vector<std::pair<std::string, std::optional<std::string>>> & ParserRe
     return argValuePairs;
 }
 
-void ParserResult::addArgValuePair(const std::pair<std::string, std::optional<std::string>> & argValuePair)
+void ParserResult::addArgValuePair(std::pair<std::string, std::optional<std::string>> argValuePair)
 {
-    argValuePairs.push_back(argValuePair);
+    argValuePairs.emplace_back(std::move(argValuePair));
 }
 
 void ParserResult::moveAppArgToEndOfVector()

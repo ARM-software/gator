@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -43,13 +43,30 @@ static bool is_gtux_or_later(product_id pid) {
     return false;
 }
 
+static bool is_kinstr_prfcnt_available(const kbase_version &version) {
+    static constexpr kbase_version jm_min_version{11, 37, ioctl_iface_type::jm_post_r21};
+    static constexpr kbase_version csf_min_version{1, 17, ioctl_iface_type::csf};
+
+    const auto type = version.type();
+
+    /* kinstr_prfcnt becomes available after these versions. */
+    if ((type == ioctl_iface_type::jm_post_r21 && version >= jm_min_version) ||
+        (type == ioctl_iface_type::csf && version >= csf_min_version))
+        return true;
+
+    return false;
+}
+
 static bool is_kinstr_prfcnt_bad_available(const kbase_version &version) {
+    if (is_kinstr_prfcnt_available(version))
+        return false;
+
     static constexpr kbase_version jm_min_version{11, 34, ioctl_iface_type::jm_post_r21};
     static constexpr kbase_version csf_min_version{1, 10, ioctl_iface_type::csf};
 
     const auto type = version.type();
 
-    /* kinstr_prfcnt becomes available after these versions. */
+    /* kinstr_prfcnt_bad becomes available after these versions. */
     if ((type == ioctl_iface_type::jm_post_r21 && version >= jm_min_version) ||
         (type == ioctl_iface_type::csf && version >= csf_min_version))
         return true;
@@ -87,6 +104,10 @@ backend_types_set backend_type_discover(const kbase_version &version, product_id
      */
     if (!is_gtux_or_later(pid))
         result.set(static_cast<size_t>(backend_type::vinstr));
+
+    if (is_kinstr_prfcnt_available(version)) {
+        result.set(static_cast<size_t>(backend_type::kinstr_prfcnt));
+    }
 
     if (is_kinstr_prfcnt_bad_available(version)) {
         result.set(static_cast<size_t>(backend_type::kinstr_prfcnt_bad));

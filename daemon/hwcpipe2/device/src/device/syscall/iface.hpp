@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include "funcs/libmali.hpp"
 #include "funcs/unix.hpp"
 
 #include <device/detail/is_empty_class.hpp>

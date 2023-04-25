@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/SenderThread.h"
 
@@ -19,7 +19,13 @@ namespace armnn {
         mSenderThread.join();
     }
 
-    bool SenderThread::send(std::vector<std::uint8_t> && data) { return mSenderQueue->add(std::move(data)); }
+    bool SenderThread::send(std::vector<std::uint8_t> && data)
+    {
+        return mSenderQueue->add(std::move(data));
+    }
 
-    void SenderThread::run() { mSenderQueue->sendLoop(); }
+    void SenderThread::run()
+    {
+        mSenderQueue->sendLoop();
+    }
 }

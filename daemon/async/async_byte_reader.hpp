@@ -44,7 +44,7 @@ namespace async {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = shared_from_this()]() {
                     // consume the bytes from the buffer, ready for the next loop
                     st->buffer.consume(std::exchange(st->n_to_consume, 0));
@@ -98,7 +98,7 @@ namespace async {
     {
         using namespace async::continuations;
 
-        return async_initiate_cont(
+        return async_initiate(
             [pipe_reader = std::move(pipe_reader), h = std::forward<Handler>(handler)]() mutable {
                 return start_with(boost::system::error_code {})                               //
                      | loop([](boost::system::error_code ec) { return start_with(!ec, ec); }, //

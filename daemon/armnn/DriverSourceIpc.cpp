@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/DriverSourceIpc.h"
 
@@ -93,7 +93,9 @@ namespace armnn {
     static const uint8_t COUNTERS_MSG = 14;
     static const uint8_t PACKET_MSG = 15;
 
-    ChildToParentController::ChildToParentController() : mChildToParent {createPipe()} {}
+    ChildToParentController::ChildToParentController() : mChildToParent {createPipe()}
+    {
+    }
 
     bool ChildToParentController::consumeControlMsg(ICaptureStartStopHandler & handler)
     {

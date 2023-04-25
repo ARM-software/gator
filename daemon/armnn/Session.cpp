@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2023 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -144,7 +144,10 @@ namespace armnn {
     {
     }
 
-    Session::~Session() { close(); }
+    Session::~Session()
+    {
+        close();
+    }
 
     void Session::close()
     {

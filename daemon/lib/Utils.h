@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_UTILS_H
 #define INCLUDE_LIB_UTILS_H
@@ -50,8 +50,7 @@ namespace lib {
      * input parameter type to force a conditional evaluation.
      */
     template<typename... T>
-    struct always_false : std::false_type {
-    };
+    struct always_false : std::false_type {};
 
     /** Use in a std::visit to allow for multiple Callables to handle variant types based on overloading.
      *

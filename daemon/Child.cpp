@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "Child.h"
 
@@ -323,7 +323,7 @@ void Child::run()
                                    LOG_DEBUG("Started ext_source agent");
                                }
                            });
-#if defined(ANDROID) || defined(__ANDROID__)
+#ifdef CONFIG_USE_PERFETTO
                        if (enablePerfettoAgent) {
                            this->agent_workers_process.async_add_perfetto_source(
                                source,
@@ -358,6 +358,9 @@ void Child::run()
         LOG_DEBUG("Waiting for agents complete");
     }
 
+    // Sender thread shall be halted until it is signaled for one shot mode
+    sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
+
     // create the primary source last as it will launch the process, which may lead to a race receiving external messages
     auto newPrimarySource = primarySourceProvider.createPrimarySource(
         senderSem,
@@ -384,9 +387,6 @@ void Child::run()
             handleException();
         }
     }
-
-    // Sender thread shall be halted until it is signaled for one shot mode
-    sem_init(&haltPipeline, 0, gSessionData.mOneShot ? 0 : 2);
 
     // Create the duration and sender threads
     lib::Waiter waitTillEnd;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "FtraceDriver.h"
 
@@ -241,7 +241,10 @@ namespace {
         return pthread_kill(mThread, SIGUSR1) == 0;
     }
 
-    bool FtraceReader::join() const { return pthread_join(mThread, nullptr) == 0; }
+    bool FtraceReader::join() const
+    {
+        return pthread_join(mThread, nullptr) == 0;
+    }
 
     void * FtraceReader::runStatic(void * arg)
     {

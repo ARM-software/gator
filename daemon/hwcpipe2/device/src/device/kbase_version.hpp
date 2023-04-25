@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -38,7 +38,7 @@
 #undef major
 #endif
 
-#if defined(major)
+#if defined(minor)
 #undef minor
 #endif
 

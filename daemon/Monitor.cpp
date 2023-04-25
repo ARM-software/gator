@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "Monitor.h"
 
@@ -11,7 +11,10 @@
 #include <unistd.h>
 
 namespace gator::io {
-    std::unique_ptr<IMonitor> create_monitor() { return std::make_unique<Monitor>(); }
+    std::unique_ptr<IMonitor> create_monitor()
+    {
+        return std::make_unique<Monitor>();
+    }
 }
 
 Monitor::Monitor() noexcept : mFd(-1), mSize(0)

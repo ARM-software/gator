@@ -30,17 +30,7 @@ add_library(
     src/device/hwcnt/sampler/detail/backend.cpp
     src/device/hwcnt/sampler/kinstr_prfcnt/block_index_remap.cpp
     src/device/instance.cpp
-    src/device/ioctl/kbase/compare.cpp
-    src/device/ioctl/kbase/print.cpp
-    src/device/ioctl/kbase_pre_r21/compare_manual.cpp
-    src/device/ioctl/kbase_pre_r21/print.cpp
-    src/device/ioctl/kbase_pre_r21/print_manual.cpp
-    src/device/ioctl/kinstr_prfcnt/compare.cpp
-    src/device/ioctl/kinstr_prfcnt/compare_manual.cpp
-    src/device/ioctl/kinstr_prfcnt/print.cpp
-    src/device/ioctl/kinstr_prfcnt/print_manual.cpp
-    src/device/ioctl/vinstr/compare.cpp
-    src/device/ioctl/vinstr/print.cpp
+    src/device/num_exec_engines.cpp
 )
 
 target_include_directories(device PUBLIC "include")
@@ -57,7 +47,6 @@ target_include_directories(device_private INTERFACE "src")
 
 target_link_libraries(
     device
-    PUBLIC debug_
     PRIVATE device_private
 )
 

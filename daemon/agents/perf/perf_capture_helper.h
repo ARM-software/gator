@@ -121,7 +121,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() -> polymorphic_continuation_t<> {
                     if (st->is_terminate_requested()) {
                         return {};
@@ -144,7 +144,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() -> polymorphic_continuation_t<> {
                     if (st->is_terminate_requested()) {
                         return {};
@@ -225,7 +225,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), monotonic_start, cpu_no]() {
                     return start_on(st->strand) //
                          | then([st, monotonic_start, cpu_no]() -> polymorphic_continuation_t<> {
@@ -266,7 +266,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), monotonic_start]() {
                     return start_on(st->strand) //
                          | then([st, monotonic_start]() {
@@ -294,7 +294,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() {
                     return async::async_read_proc_sys_dependencies(
                                st->strand,
@@ -322,7 +322,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() {
                     return async::async_read_proc_maps(
                                st->strand,
@@ -348,7 +348,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() -> polymorphic_continuation_t<> {
                     auto kallsyms = lib::FsEntry::create("/proc/kallsyms");
 
@@ -379,7 +379,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), cpu_no]() {
                     return start_on(st->strand) //
                          | then([st, cpu_no]() -> polymorphic_continuation_t<> {
@@ -428,7 +428,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), monotonic_start]() {
                     return start_on(st->strand) //
                          | then([st, monotonic_start]() -> polymorphic_continuation_t<> {
@@ -466,7 +466,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), cpu_no]() {
                     return start_on(st->strand) //
                          | then([st, cpu_no]() {
@@ -495,7 +495,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), monotonic_start, cpu_no, online]() {
                     auto monotonic_delta = monotonic_delta_now(monotonic_start);
 
@@ -531,7 +531,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), cpu_no]() {
                     return start_on(st->strand) //
                          | then([st, cpu_no]() -> polymorphic_continuation_t<bool> {
@@ -591,7 +591,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this(), cpu_no]() {
                     return start_on(st->strand)                                                                     //
                          | then([st, cpu_no]() { st->perf_capture_events_helper.core_offline(core_no_t(cpu_no)); }) //
@@ -612,7 +612,7 @@ namespace agents::perf {
             using namespace async::continuations;
             using namespace std::chrono_literals;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() mutable {
                     return start_on(st->strand) //
                          | then([=]() mutable {
@@ -654,7 +654,7 @@ namespace agents::perf {
         [[nodiscard]] auto async_fork_process(CompletionToken && token)
         {
             using namespace async::continuations;
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() mutable {
                     return start_on(st->strand) //
                          | then([st]() mutable -> polymorphic_continuation_t<> {
@@ -706,7 +706,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() {
                     return start_with()
                          | do_if([st]() { return !st->configuration->wait_process.empty(); }, //
@@ -726,7 +726,7 @@ namespace agents::perf {
         [[nodiscard]] auto async_exec_child(CompletionToken && token)
         {
             using namespace async::continuations;
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() {
                     return start_on(st->strand) //
                          | then([st]() {
@@ -789,7 +789,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = this->shared_from_this()]() {
                     return start_on(st->strand) //
                          | then([st]() {

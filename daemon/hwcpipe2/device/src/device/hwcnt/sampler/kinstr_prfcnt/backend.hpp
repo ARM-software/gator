@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 ARM Limited.
+ * Copyright (c) 2022-2023 Arm Limited.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -126,6 +126,13 @@ class backend : public base::backend<syscall_iface_t>, private block_index_remap
 
     std::error_code discard() override { return issue_command(cmd_code_type::discard); }
 
+  protected:
+    using base_type = base::backend<syscall_iface_t>;
+    using base_type::block_extents_;
+    using base_type::fd_;
+    using base_type::get_syscall_iface;
+    using base_type::memory_;
+
   private:
     using metadata_parser_type = metadata_parser_t;
     using block_index_remap_type = block_index_remap_t;
@@ -161,12 +168,6 @@ class backend : public base::backend<syscall_iface_t>, private block_index_remap
 
         return result;
     }
-
-    using base_type = base::backend<syscall_iface_t>;
-    using base_type::block_extents_;
-    using base_type::fd_;
-    using base_type::get_syscall_iface;
-    using base_type::memory_;
 
     /** Size of metadata item: includes sample metadata, clock metadata and block metadata. */
     const uint32_t metadata_item_size_{};

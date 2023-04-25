@@ -1,282 +1,350 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) 2016-2022 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2023 by Arm Limited. All rights reserved. -->
 
 <configurations revision="3">
-  <configuration counter="ARM_ARM11_ccnt" event="0xff"/>
-  <configuration counter="ARM_ARM11_cnt0" event="0x7"/>
-  <configuration counter="ARM_ARM11_cnt1" event="0xb"/>
-  <configuration counter="ARM_ARM11MPCore_ccnt" event="0xff"/>
-  <configuration counter="ARM_ARM11MPCore_cnt0" event="0x08"/>
-  <configuration counter="ARM_ARM11MPCore_cnt1" event="0x0b"/>
-  <configuration counter="ARMv7_Cortex_A5_ccnt" event="0xff"/>
-  <configuration counter="ARMv7_Cortex_A5_cnt0" event="0x8"/>
-  <configuration counter="ARMv7_Cortex_A5_cnt1" event="0x1"/>
-  <configuration counter="ARMv7_Cortex_A7_ccnt" event="0xff"/>
-  <configuration counter="ARMv7_Cortex_A7_cnt0" event="0x08"/>
-  <configuration counter="ARMv7_Cortex_A7_cnt1" event="0x10"/>
-  <configuration counter="ARMv7_Cortex_A7_cnt2" event="0x16"/>
-  <configuration counter="ARMv7_Cortex_A8_ccnt" event="0xff"/>
-  <configuration counter="ARMv7_Cortex_A8_cnt0" event="0x8"/>
-  <configuration counter="ARMv7_Cortex_A8_cnt1" event="0x44"/>
-  <configuration counter="ARMv7_Cortex_A8_cnt2" event="0x43"/>
-  <configuration counter="ARMv7_Cortex_A8_cnt3" event="0x10"/>
-  <configuration counter="ARMv7_Cortex_A9_ccnt" event="0xff"/>
-  <configuration counter="ARMv7_Cortex_A9_cnt0" event="0x68"/>
-  <configuration counter="ARMv7_Cortex_A9_cnt1" event="0x06"/>
-  <configuration counter="ARMv7_Cortex_A9_cnt2" event="0x07"/>
-  <configuration counter="ARMv7_Cortex_A9_cnt3" event="0x03"/>
-  <configuration counter="ARMv7_Cortex_A9_cnt4" event="0x04"/>
-  <configuration counter="ARMv7_Cortex_A15_ccnt" event="0xff"/>
-  <configuration counter="ARMv7_Cortex_A15_cnt0" event="0x8"/>
-  <configuration counter="ARMv7_Cortex_A15_cnt1" event="0x16"/>
-  <configuration counter="ARMv7_Cortex_A15_cnt2" event="0x10"/>
-  <configuration counter="ARMv7_Cortex_A15_cnt3" event="0x19"/>
-  <configuration counter="ARMv7_Cortex_A17_ccnt" event="0xff"/>
-  <configuration counter="ARMv7_Cortex_A17_cnt0" event="0x08"/>
-  <configuration counter="ARMv7_Cortex_A17_cnt1" event="0x16"/>
-  <configuration counter="ARMv7_Cortex_A17_cnt2" event="0x10"/>
-  <configuration counter="ARMv7_Cortex_A17_cnt3" event="0x19"/>
-  <configuration counter="Scorpion_ccnt" event="0xff"/>
-  <configuration counter="Scorpion_cnt0" event="0x08"/>
-  <configuration counter="Scorpion_cnt1" event="0x10"/>
-  <configuration counter="ScorpionMP_ccnt" event="0xff"/>
-  <configuration counter="ScorpionMP_cnt0" event="0x08"/>
-  <configuration counter="ScorpionMP_cnt1" event="0x10"/>
-  <configuration counter="Krait_ccnt" event="0xff"/>
-  <configuration counter="Krait_cnt0" event="0x08"/>
-  <configuration counter="Krait_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A32_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A32_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A32_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A32_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A32_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A32_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A34_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A34_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A34_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A34_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A34_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A34_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A35_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A35_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A35_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A35_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A35_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A35_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A53_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A53_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A53_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A53_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A53_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A53_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A55_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A55_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A55_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A55_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A55_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A55_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A57_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A57_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A57_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A57_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A57_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A57_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A65_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A65_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A65_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A65_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A65_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A65_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A65AE_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A65AE_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A65AE_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A65AE_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A65AE_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A65AE_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A72_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A72_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A72_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A72_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A72_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A72_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A73_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A73_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A73_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A73_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A73_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A73_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A75_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A75_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A75_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A75_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A75_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A75_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A76_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A76_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A76_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A76_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A76_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A76_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A76AE_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A76AE_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A76AE_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A76AE_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A76AE_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A76AE_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A77_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A77_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A77_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A77_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A77_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A77_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A78_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A78_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A78_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A78_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A78_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A78_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A78AE_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A78AE_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A78AE_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A78AE_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A78AE_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A78AE_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_A78C_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_A78C_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_A78C_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_A78C_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_A78C_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_A78C_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cortex_X1_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cortex_X1_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cortex_X1_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cortex_X1_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cortex_X1_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cortex_X1_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Neoverse_E1_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Neoverse_E1_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Neoverse_E1_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Neoverse_E1_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Neoverse_E1_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Neoverse_E1_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Neoverse_N1_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Neoverse_N1_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Neoverse_N1_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Neoverse_N1_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Neoverse_N1_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Neoverse_N1_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Neoverse_N2_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Neoverse_N2_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Neoverse_N2_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Neoverse_N2_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Neoverse_N2_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Neoverse_N2_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Neoverse_V1_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Neoverse_V1_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Neoverse_V1_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Neoverse_V1_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Neoverse_V1_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Neoverse_V1_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Ampere_eMAG_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Ampere_eMAG_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Ampere_eMAG_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Ampere_eMAG_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Ampere_eMAG_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Ampere_eMAG_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Cavium_Thunder_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Cavium_Thunder_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Cavium_Thunder_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Cavium_Thunder_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Cavium_Thunder_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Cavium_Thunder_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Exynos_M1_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Exynos_M1_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Exynos_M1_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Exynos_M1_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Exynos_M1_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Exynos_M1_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Exynos_M3_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Exynos_M3_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Exynos_M3_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Exynos_M3_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Exynos_M3_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Exynos_M3_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Exynos_M4_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Exynos_M4_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Exynos_M4_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Exynos_M4_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Exynos_M4_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Exynos_M4_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Exynos_M5_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Exynos_M5_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Exynos_M5_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Exynos_M5_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Exynos_M5_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Exynos_M5_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_Silver_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_Silver_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_Silver_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_Silver_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_Silver_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_Silver_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_Gold_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_Gold_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_Gold_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_Gold_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_Gold_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_Gold_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_2x0_Silver_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_3x0_Silver_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_4x0_Silver_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_2x0_Gold_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_3x0_Gold_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt4" event="0x04"/>
-  <configuration counter="ARMv8_Kryo_4x0_Gold_ccnt" event="0x11"/>
-  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt0" event="0x8"/>
-  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt1" event="0x10"/>
-  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt2" event="0x12"/>
-  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt3" event="0x03"/>
-  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt4" event="0x04"/>
-  <configuration counter="Linux_block_rq_wr"/>
-  <configuration counter="Linux_block_rq_rd"/>
-  <configuration counter="Linux_meminfo_memused2"/>
-  <configuration counter="Linux_meminfo_memfree"/>
-  <configuration counter="${cluster}_freq"/>
-  <configuration counter="${cluster}_system"/>
-  <configuration counter="${cluster}_user"/>
-  <configuration counter="MaliTimeline_Perfetto"/>
-  <configuration counter="ARM_Mali-Midgard_fragment" cores="1"/>
-  <configuration counter="ARM_Mali-Midgard_vertex" cores="1"/>
-  <configuration counter="ARM_Mali-Midgard_opencl" cores="1"/>
-  <configuration counter="ARM_Mali-Bifrost_fragment" cores="1"/>
-  <configuration counter="ARM_Mali-Bifrost_vertex" cores="1"/>
-  <configuration counter="ARM_Mali-Bifrost_opencl" cores="1"/>
-  <configuration counter="ARM_Mali-Valhall_fragment" cores="1"/>
-  <configuration counter="ARM_Mali-Valhall_vertex" cores="1"/>
-  <configuration counter="ARM_Mali-Valhall_opencl" cores="1"/>
-  <configuration counter="L2C-310_cnt0" event="0x1"/>
+  <configuration counter="ARM_ARM11_ccnt" event="0xff" />
+  <configuration counter="ARM_ARM11_cnt0" event="0x7" />
+  <configuration counter="ARM_ARM11_cnt1" event="0xb" />
+  <configuration counter="ARM_ARM11MPCore_ccnt" event="0xff" />
+  <configuration counter="ARM_ARM11MPCore_cnt0" event="0x08" />
+  <configuration counter="ARM_ARM11MPCore_cnt1" event="0x0b" />
+  <configuration counter="Scorpion_ccnt" event="0xff" />
+  <configuration counter="Scorpion_cnt0" event="0x08" />
+  <configuration counter="Scorpion_cnt1" event="0x10" />
+  <configuration counter="ScorpionMP_ccnt" event="0xff" />
+  <configuration counter="ScorpionMP_cnt0" event="0x08" />
+  <configuration counter="ScorpionMP_cnt1" event="0x10" />
+  <configuration counter="Krait_ccnt" event="0xff" />
+  <configuration counter="Krait_cnt0" event="0x08" />
+  <configuration counter="Krait_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Cavium_Thunder_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cavium_Thunder_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Cavium_Thunder_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Cavium_Thunder_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Cavium_Thunder_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Cavium_Thunder_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_Silver_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_Silver_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_Silver_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_Silver_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_Silver_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_Silver_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_Gold_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_Gold_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_Gold_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_Gold_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_Gold_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_Gold_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_2x0_Silver_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_2x0_Silver_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_3x0_Silver_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_3x0_Silver_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_4x0_Silver_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_4x0_Silver_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_2x0_Gold_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_2x0_Gold_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_3x0_Gold_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_3x0_Gold_cnt4" event="0x04" />
+  <configuration counter="ARMv8_Kryo_4x0_Gold_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt0" event="0x8" />
+  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt1" event="0x10" />
+  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt2" event="0x12" />
+  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt3" event="0x03" />
+  <configuration counter="ARMv8_Kryo_4x0_Gold_cnt4" event="0x04" />
+  <configuration counter="ARMv7_Cortex_A15_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Cortex_A15_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Cortex_A15_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Cortex_A15_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Cortex_A15_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Cortex_A15_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv7_Cortex_A15_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv7_Cortex_A17_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Cortex_A17_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Cortex_A17_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Cortex_A17_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Cortex_A17_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Cortex_A17_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv7_Cortex_A17_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv7_Cortex_A5_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Cortex_A5_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Cortex_A5_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Cortex_A5_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Cortex_A5_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Cortex_A5_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv7_Cortex_A7_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Cortex_A7_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Cortex_A7_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Cortex_A7_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Cortex_A7_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Cortex_A7_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv7_Cortex_A8_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Cortex_A8_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Cortex_A8_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Cortex_A8_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Cortex_A8_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Cortex_A8_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv7_Cortex_A9_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Cortex_A9_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Cortex_A9_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Cortex_A9_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Cortex_A9_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Cortex_A9_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv7_Krait_ccnt" event="0xff" />
+  <configuration counter="ARMv7_Krait_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv7_Krait_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv7_Krait_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv7_Krait_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv7_Krait_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Ampere_eMAG_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Ampere_eMAG_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Ampere_eMAG_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Ampere_eMAG_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Ampere_eMAG_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Ampere_eMAG_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Ampere_eMAG_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A32_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A32_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A32_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A32_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A32_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A32_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A34_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A34_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A34_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A34_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A34_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A34_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A35_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A35_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A35_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A35_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A35_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A35_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A35_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A510_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A510_cnt0" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt1" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A510_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A510_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A53_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A53_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A53_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A53_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A53_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A53_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A55_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A55_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A55_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A55_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A55_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A55_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A55_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A57_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A57_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A57_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A57_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A57_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A57_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A57_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A65AE_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A65AE_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A710_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A710_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A710_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A710_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A72_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A72_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A72_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A72_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A72_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A72_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A72_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A73_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A73_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A73_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A73_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A73_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A73_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A73_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A75_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A75_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A75_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A75_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A75_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A75_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A75_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A76_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A76_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A76_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A76_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A76_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A76_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A76_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A77_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A77_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A77_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A77_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A77_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A77_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A77_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A78_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A78_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78AE_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A78AE_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78C_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A78C_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X1_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_X1_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_X1_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_X1_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X1C_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_X1C_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X2_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_X2_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_X2_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_X2_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Exynos_M1_M2_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Exynos_M1_M2_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Exynos_M1_M2_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Exynos_M1_M2_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Exynos_M1_M2_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Exynos_M1_M2_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Exynos_M1_M2_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Exynos_M3_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Exynos_M3_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Exynos_M3_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Exynos_M3_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Exynos_M3_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Exynos_M3_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Exynos_M3_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_E1_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Neoverse_E1_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_N1_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Neoverse_N1_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_N2_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Neoverse_N2_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Neoverse_V1_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Neoverse_V1_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_A715_ccnt" event="0x11" />
+  <configuration counter="ARMv9_Cortex_A715_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_A715_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_A715_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_X3_ccnt" event="0x11" />
+  <configuration counter="ARMv9_Cortex_X3_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_X3_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_X3_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Neoverse_V2_ccnt" event="0x11" />
+  <configuration counter="ARMv9_Neoverse_V2_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt2" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt3" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="Perf_Hardware_ccnt" />
+  <configuration counter="Perf_Hardware_cnt0" event="1" />
+  <configuration counter="Perf_Hardware_cnt1" event="2" />
+  <configuration counter="Perf_Hardware_cnt2" event="3" />
+  <configuration counter="Perf_Hardware_cnt3" event="7" />
+  <configuration counter="Perf_Hardware_cnt4" event="8" />
+  <configuration counter="Linux_block_rq_wr" />
+  <configuration counter="Linux_block_rq_rd" />
+  <configuration counter="Linux_meminfo_memused2" />
+  <configuration counter="Linux_meminfo_memfree" />
+  <configuration counter="${cluster}_freq" />
+  <configuration counter="${cluster}_system" />
+  <configuration counter="${cluster}_user" />
+  <configuration counter="Android_ThermalState" />
+  <configuration counter="MaliTimeline_Perfetto" />
+  <configuration counter="ARM_Mali-Midgard_fragment" cores="1" />
+  <configuration counter="ARM_Mali-Midgard_vertex" cores="1" />
+  <configuration counter="ARM_Mali-Midgard_opencl" cores="1" />
+  <configuration counter="ARM_Mali-Bifrost_fragment" cores="1" />
+  <configuration counter="ARM_Mali-Bifrost_vertex" cores="1" />
+  <configuration counter="ARM_Mali-Bifrost_opencl" cores="1" />
+  <configuration counter="ARM_Mali-Valhall_fragment" cores="1" />
+  <configuration counter="ARM_Mali-Valhall_vertex" cores="1" />
+  <configuration counter="ARM_Mali-Valhall_opencl" cores="1" />
+  <configuration counter="L2C-310_cnt0" event="0x1" />
 </configurations>

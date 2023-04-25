@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2023 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -243,7 +243,10 @@ namespace armnn {
         return pollAction<std::unique_ptr<SocketIO>>(*fd, true, timeout, nullptr, &SocketIO::doAccept, *this, timeout);
     }
 
-    void SocketIO::interrupt() { ::shutdown(*fd, SHUT_RDWR); }
+    void SocketIO::interrupt()
+    {
+        ::shutdown(*fd, SHUT_RDWR);
+    }
 
     int SocketIO::doWrite(SocketIO & host, const std::uint8_t * buffer, std::size_t length, int /*timeout*/)
     {
@@ -350,6 +353,8 @@ namespace armnn {
         return result;
     }
 
-    SocketIO::SocketIO(AutoClosingFd && fd, int type) : fd(std::move(fd)), type(type) {}
+    SocketIO::SocketIO(AutoClosingFd && fd, int type) : fd(std::move(fd)), type(type)
+    {
+    }
 
 }

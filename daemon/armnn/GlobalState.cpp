@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/GlobalState.h"
 
@@ -105,9 +105,15 @@ namespace armnn {
     }
 
     /** @return The requested capture mode */
-    CaptureMode GlobalState::getCaptureMode() const { return CaptureMode::PERIOD_CAPTURE; }
+    CaptureMode GlobalState::getCaptureMode() const
+    {
+        return CaptureMode::PERIOD_CAPTURE;
+    }
     /** @return The requested sample period in microseconds */
-    std::uint32_t GlobalState::getSamplePeriod() const { return DEFAULT_SAMPLE_PERIOD_MICROS; }
+    std::uint32_t GlobalState::getSamplePeriod() const
+    {
+        return DEFAULT_SAMPLE_PERIOD_MICROS;
+    }
 
     static Event::Class toEventClass(ICounterDirectoryConsumer::Class clazz,
                                      ICounterDirectoryConsumer::Interpolation interpolation)
@@ -157,7 +163,10 @@ namespace armnn {
         return name;
     }
 
-    std::string GlobalState::makeCounterSetName(const CategoryId & id) { return makeCounterNamePrefix(id) + "_cnt"; }
+    std::string GlobalState::makeCounterSetName(const CategoryId & id)
+    {
+        return makeCounterNamePrefix(id) + "_cnt";
+    }
 
     std::string GlobalState::makeCounterSetCounterName(const CategoryId & id, int counterNumber)
     {
@@ -412,7 +421,10 @@ namespace armnn {
         return key;
     }
 
-    void GlobalState::disableAllCounters() { enabledIdKeyAndEventNumbers->clear(); }
+    void GlobalState::disableAllCounters()
+    {
+        enabledIdKeyAndEventNumbers->clear();
+    }
 
     std::vector<std::string> GlobalState::getAllCounterNames() const
     {

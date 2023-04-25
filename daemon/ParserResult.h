@@ -1,10 +1,9 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #ifndef PARSERRESULT_H_
 #define PARSERRESULT_H_
 
 #include "Configuration.h"
-#include "ParserResult.h"
 #include "linux/smmu_identifier.h"
 
 #include <map>
@@ -78,7 +77,7 @@ public:
     /**
      * Add a new argument value pair to the list of argument-value pairs
      */
-    void addArgValuePair(const std::pair<std::string, std::optional<std::string>> & argValuePair);
+    void addArgValuePair(std::pair<std::string, std::optional<std::string>> argValuePair);
 
     /**
      * Move the --app or -A argument to the end of the list of argument value pairs

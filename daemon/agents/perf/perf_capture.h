@@ -119,7 +119,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = shared_from_this()]() {
                     // spawn a thread to poll for process to start or fork (but not exec the app we are launching)
                     // do not block on the continuation here, as it blocks the message loop
@@ -151,7 +151,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = shared_from_this(), monotonic_start]() {
                     return start_on(st->strand)
                          // send the summary frame
@@ -212,7 +212,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            return async_initiate_cont(
+            return async_initiate(
                 [st = shared_from_this()]() {
                     return start_on(st->strand) //
                          | then([st]() mutable {

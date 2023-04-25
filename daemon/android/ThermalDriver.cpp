@@ -5,7 +5,6 @@
 #include "IBlockCounterFrameBuilder.h"
 #include "Logging.h"
 #include "SessionData.h"
-#include <mxml.h>
 
 #include <array>
 #include <cstdint>
@@ -13,6 +12,7 @@
 #include <string_view>
 
 #include <dlfcn.h>
+#include <mxml.h>
 #include <unistd.h>
 
 using namespace std::string_view_literals;
@@ -158,7 +158,10 @@ namespace gator::android {
 #endif
     }
 
-    ThermalDriver::ThermalDriver() : PolledDriver("Thermal") { findThermalLibrary(); }
+    ThermalDriver::ThermalDriver() : PolledDriver("Thermal")
+    {
+        findThermalLibrary();
+    }
     /**
      *  Performs counter discovery. Checks for conditions and creates one or more counters if those conditions are met.
      */

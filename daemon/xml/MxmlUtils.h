@@ -1,12 +1,12 @@
-/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #ifndef MXML_UTILS_H
 #define MXML_UTILS_H
 
-#include <mxml.h>
-
 #include <memory>
 #include <string>
+
+#include <mxml.h>
 
 /** unique_ptr for mxml nodes */
 using mxml_unique_ptr = std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)>;

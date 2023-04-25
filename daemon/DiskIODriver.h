@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #ifndef DISKIODRIVER_H
 #define DISKIODRIVER_H
@@ -22,13 +22,10 @@ public:
     void readEvents(mxml_node_t * root) override;
     void start() override;
     void read(IBlockCounterFrameBuilder & buffer) override;
+    void writeEvents(mxml_node_t * root) const override;
 
 private:
     void doRead();
-
-    DynBuf mBuf {};
-    uint64_t mReadBytes {0};
-    uint64_t mWriteBytes {0};
 };
 
 #endif // DISKIODRIVER_H
