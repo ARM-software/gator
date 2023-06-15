@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -27,8 +27,8 @@ namespace async {
          * @param executor Executor instance to run the timer on
          * @param command Command to poll for
          */
-        async_wait_for_process_t(Executor const & executor, std::string_view command)
-            : state {std::make_shared<impl_t>(executor, command)}
+        async_wait_for_process_t(Executor const & executor, std::string_view command, std::optional<std::string_view> android_pkg = std::nullopt)
+            : state {std::make_shared<impl_t>(executor, command, android_pkg)}
         {
         }
 
@@ -119,25 +119,36 @@ namespace async {
         // std::enable_shared_from_this could result in the loop being unstoppable if the 'handle' from the caller is
         // lost
         struct impl_t {
-            impl_t(Executor const & executor, std::string_view command)
+            impl_t(Executor const & executor, std::string_view command, std::optional<std::string_view> android_pkg)
                 : executor(executor),
                   strand {boost::asio::make_strand(executor)},
                   timer {strand},
                   command {command},
+                  android_pkg {android_pkg},
                   real_path(lib::FsEntry::create(std::string {command}).realpath()),
                   cancel {false}
             {
             }
 
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             Executor executor;
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             strand_type strand;
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             boost::asio::steady_timer timer;
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::string_view command;
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+            std::optional<std::string_view> android_pkg;
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::optional<lib::FsEntry> real_path;
+            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::atomic_bool cancel;
         };
 
+        //NOLINTNEXTLINE(readability-function-cognitive-complexity)
         [[nodiscard]] static bool check_path(std::string_view command,
+                                             std::optional<std::string_view> android_pkg,
                                              const std::optional<lib::FsEntry> & real_path,
                                              const lib::FsEntry & path)
         {
@@ -156,6 +167,21 @@ namespace async {
                     if (command == tested_command) {
                         LOG_TRACE("    Selected as cmdline matches");
                         return true;
+                    }
+
+                    //for android apk, the process name can depend on the android:process
+                    //property in AndroidManifest.xml file.
+                    //Ref https://developer.android.com/guide/topics/manifest/application-element#proc
+                    //adding a check to handle the new process, private to the application.
+                    if (android_pkg && !android_pkg.value().empty()) {
+                        LOG_TRACE("    Android package name is specified. %s", android_pkg.value().data());
+                        auto const index = tested_command.find(':');
+                        if (index != std::string::npos) {
+                            if (tested_command.substr(0, index) == android_pkg.value()) {
+                                LOG_TRACE("    Android package name matched with process %s.", tested_command.c_str());
+                                return true;
+                            }
+                        }
                     }
 
                     // track it if they are the same file, or if they are the same basename
@@ -206,7 +232,7 @@ namespace async {
                                               return start_with(
                                                   boost::system::error_code {boost::asio::error::operation_aborted});
                                           }
-                                          if (check_path(self->command, self->real_path, path)) {
+                                          if (check_path(self->command,self->android_pkg, self->real_path, path)) {
                                               pids->insert(pid);
                                           }
                                           return start_with(boost::system::error_code {});
@@ -236,14 +262,14 @@ namespace async {
     };
 
     template<typename Executor, std::enable_if_t<is_asio_executor_v<Executor>, bool> = false>
-    auto make_async_wait_for_process(Executor const & ex, std::string_view command)
+    auto make_async_wait_for_process(Executor const & ex, std::string_view command, std::optional<std::string_view> android_pkg = std::nullopt)
     {
-        return std::make_shared<async_wait_for_process_t<Executor>>(ex, command);
+        return std::make_shared<async_wait_for_process_t<Executor>>(ex, command, android_pkg);
     }
 
     template<typename ExecutionContext, std::enable_if_t<is_asio_execution_context_v<ExecutionContext>, bool> = false>
-    auto make_async_wait_for_process(ExecutionContext & context, std::string_view command)
+    auto make_async_wait_for_process(ExecutionContext & context, std::string_view command, std::optional<std::string_view> android_pkg = std::nullopt)
     {
-        return make_async_wait_for_process(context.get_executor(), command);
+        return make_async_wait_for_process(context.get_executor(), command, android_pkg);
     }
 }

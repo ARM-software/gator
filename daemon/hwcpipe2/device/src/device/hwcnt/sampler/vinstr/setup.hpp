@@ -139,11 +139,17 @@ auto setup(const instance_t &instance, uint64_t period_ns, const configuration *
     if (ec)
         return std::make_pair(ec, std::move(result));
 
-    setup_args.buffer_count = backend_args_type::buffer_count;
+    setup_args.buffer_count = backend_args_type::max_buffer_count;
 
     int vinstr_fd = -1;
 
-    std::tie(ec, vinstr_fd) = detail::reader_setup(instance, setup_args, iface);
+    /* Try to initialize vinstr reader with `max_buffer_count` buffers or fewer. */
+    for (; setup_args.buffer_count > 1; setup_args.buffer_count >>= 1) {
+        std::tie(ec, vinstr_fd) = detail::reader_setup(instance, setup_args, iface);
+
+        if (ec != std::errc::not_enough_memory)
+            break;
+    }
 
     if (ec)
         return std::make_pair(ec, std::move(result));
@@ -170,7 +176,7 @@ auto setup(const instance_t &instance, uint64_t period_ns, const configuration *
     if (ec)
         return std::make_pair(ec, std::move(result));
 
-    const size_t mapping_size = buffer_size * backend_args_type::buffer_count;
+    const size_t mapping_size = buffer_size * static_cast<size_t>(setup_args.buffer_count);
     typename backend_args_type::memory_type memory{vinstr_fd, mapping_size, ec, iface};
 
     if (ec)

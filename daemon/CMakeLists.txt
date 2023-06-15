@@ -550,8 +550,7 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrDriver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntr.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNames.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNamesBifrost.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrNamesGenerated.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrSource.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrTask.cpp

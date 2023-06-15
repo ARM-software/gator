@@ -294,7 +294,7 @@ class backend : public base::backend<syscall_iface_t>, private timestamp_iface_t
     /** True if sampling thread is running. */
     bool sampling_{};
     /** User data for manual samples. */
-    queue<uint64_t, args_type::buffer_count> user_data_manual_{};
+    queue<uint64_t, args_type::max_buffer_count> user_data_manual_{};
     /** Maximum profiling sessions being tracked at a time.
      *
      * Every session stop() results into a manual sample. There could be at most
@@ -303,7 +303,7 @@ class backend : public base::backend<syscall_iface_t>, private timestamp_iface_t
      * (because it does not require a sample). Since a queue size must be a power of two,
      * we take the next power of two.
      */
-    static constexpr size_t max_sessions = args_type::buffer_count * 2;
+    static constexpr size_t max_sessions = args_type::max_buffer_count * 2;
     /** Profiling session states. */
     queue<session, max_sessions> sessions_;
     /** Counter to allocate values for sample_metadata::sample_nr. */

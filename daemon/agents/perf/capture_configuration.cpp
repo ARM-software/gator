@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/capture_configuration.h"
 
@@ -518,6 +518,13 @@ namespace agents::perf {
             }
         }
 
+        void extract_android_pkg(std::string & msg, std::string & android_pkg)
+        {
+            if (!msg.empty()) {
+                android_pkg = msg;
+            }
+        }
+
         void extract_pids(ipc::proto::shell::perf::capture_configuration_t::pid_array_t const & msg,
                           std::set<pid_t> & pids)
         {
@@ -595,6 +602,11 @@ namespace agents::perf {
         SET_IF_NOT_NULL(command, &msg.suffix, set_wait_process);
     }
 
+    void add_android_package(ipc::msg_capture_configuration_t & msg, const char * android_pkg)
+    {
+        SET_IF_NOT_NULL(android_pkg, &msg.suffix, set_android_pkg);
+    }
+
     void add_pids(ipc::msg_capture_configuration_t & msg, std::set<int> const & pids)
     {
         auto * msg_pids = msg.suffix.mutable_pids();
@@ -631,6 +643,7 @@ namespace agents::perf {
         extract_ringbuffer_config(msg.suffix.ringbuffer_config(), result->ringbuffer_config);
         extract_command(*msg.suffix.mutable_command(), result->command);
         extract_wait_process(*msg.suffix.mutable_wait_process(), result->wait_process);
+        extract_android_pkg(*msg.suffix.mutable_android_pkg(), result->android_pkg);
         extract_pids(msg.suffix.pids(), result->pids);
         extract_perf_pmu_type_to_name(*msg.suffix.mutable_perf_pmu_type_to_name(), result->perf_pmu_type_to_name);
 

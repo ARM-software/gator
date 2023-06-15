@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -60,6 +60,7 @@ namespace agents::perf {
         buffer_config_t ringbuffer_config {};
         std::optional<command_t> command {};
         std::string wait_process {};
+        std::string android_pkg {};
         std::set<pid_t> pids {};
         std::uint32_t num_cpu_cores {};
         bool enable_on_exec {};
@@ -92,6 +93,9 @@ namespace agents::perf {
 
     /** Add the name for --wait-process */
     void add_wait_for_process(ipc::msg_capture_configuration_t & msg, const char * command);
+
+     /** Add the android package name  for --android-pkg */
+    void add_android_package(ipc::msg_capture_configuration_t & msg, const char * android_pkg);
 
     /** Add the pids for --pids */
     void add_pids(ipc::msg_capture_configuration_t & msg, std::set<int> const & pids);

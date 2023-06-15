@@ -50,6 +50,9 @@ static constexpr product_id product_g610{10, 7};
 static constexpr product_id product_g710{10, 2};
 static constexpr product_id product_g615{11, 3};
 static constexpr product_id product_g715{11, 2};
+static constexpr product_id product_g720{12, 0};
+static constexpr product_id product_g720_2{12, 1};
+static constexpr product_id product_g720_3{12, 2};
 
 template <uint32_t pid_v>
 static constexpr uint32_t max_registers(uint32_t raw_thread_features) {
@@ -130,6 +133,18 @@ uint8_t get_num_exec_engines(get_num_exec_engines_args &&args, std::error_code &
             return 1;
         case 2:
         case 3:
+        case 4:
+            return 2;
+        }
+        ec = std::make_error_code(std::errc::not_supported);
+        return 0;
+    case product_g720:
+    case product_g720_2:
+    case product_g720_3:
+        core_variant = static_cast<uint8_t>(core_features & 0xF);
+        switch (core_variant) {
+        case 1:
+            return 1;
         case 4:
             return 2;
         }

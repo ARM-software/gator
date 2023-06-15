@@ -1,11 +1,12 @@
-/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIHWCNTRTASK_H_
 #define MALI_USERSPACE_MALIHWCNTRTASK_H_
 
 #include "Child.h"
 #include "MaliDevice.h"
-#include "device/hwcnt/reader.hpp"
+#include "device/handle.hpp"
+#include "device/instance.hpp"
 
 #include <array>
 #include <functional>
@@ -45,6 +46,11 @@ namespace mali_userspace {
         void interrupt();
 
     private:
+        using handle_type = hwcpipe::device::handle::handle_ptr;
+        using instance_type = hwcpipe::device::instance::instance_ptr;
+
+        handle_type handle;
+        instance_type instance;
         std::unique_ptr<IBufferControl> mBuffer;
         std::unique_ptr<IBlockCounterFrameBuilder> mFrameBuilder;
         IMaliDeviceCounterDumpCallback & mCallback;

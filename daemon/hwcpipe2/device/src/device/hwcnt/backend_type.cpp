@@ -43,6 +43,25 @@ static bool is_gtux_or_later(product_id pid) {
     return false;
 }
 
+static bool is_vinstr_available(const kbase_version &version, product_id pid) {
+    if (is_gtux_or_later(pid))
+        return false;
+
+    static constexpr kbase_version jm_max_version{11, 40, ioctl_iface_type::jm_post_r21};
+    static constexpr kbase_version csf_max_version{1, 21, ioctl_iface_type::csf};
+
+    switch (version.type()) {
+    case ioctl_iface_type::jm_pre_r21:
+        return true;
+    case ioctl_iface_type::jm_post_r21:
+        return version < jm_max_version;
+    case ioctl_iface_type::csf:
+        return version < csf_max_version;
+    }
+
+    __builtin_unreachable();
+}
+
 static bool is_kinstr_prfcnt_available(const kbase_version &version) {
     static constexpr kbase_version jm_min_version{11, 37, ioctl_iface_type::jm_post_r21};
     static constexpr kbase_version csf_min_version{1, 17, ioctl_iface_type::csf};
@@ -102,7 +121,7 @@ backend_types_set backend_type_discover(const kbase_version &version, product_id
     /* We disallow vinstr for gtux and later since vinstr does not
      * support 128 counters per block.
      */
-    if (!is_gtux_or_later(pid))
+    if (is_vinstr_available(version, pid))
         result.set(static_cast<size_t>(backend_type::vinstr));
 
     if (is_kinstr_prfcnt_available(version)) {

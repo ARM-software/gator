@@ -118,7 +118,10 @@
     </pmu>
 
     <!-- Qualcomm V8 parts based on publicly available information -->
-    <pmu counter_set="Other" id="ARMv8_Kryo_Silver" cpuid="0x51201" core_name="Kryo Silver" pmnc_counters="6" profile="8a"/>
+    <pmu counter_set="Other" id="ARMv8_Kryo_Silver" core_name="Kryo Silver" pmnc_counters="6" profile="8a">
+        <cpuid id="0x51201" />
+        <cpuid id="0x51211" />
+    </pmu>
     <pmu counter_set="Other" id="ARMv8_Kryo_Gold" cpuid="0x51205" core_name="Kryo Gold" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A53" id="ARMv8_Kryo_2x0_Silver" cpuid="0x51801" core_name="Kryo 250/260/280 Silver" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A55" id="ARMv8_Kryo_3x0_Silver" cpuid="0x51803" core_name="Kryo 360/385 Silver" pmnc_counters="6" profile="8a"/>

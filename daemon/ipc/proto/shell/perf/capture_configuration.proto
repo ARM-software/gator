@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 syntax = "proto3";
 
@@ -178,10 +178,11 @@ message capture_configuration_t {
     perf_ringbuffer_config_t ringbuffer_config = 7;
     command_t command = 8;
     string wait_process = 9;
-    pid_array_t pids = 10;
-    uint32 num_cpu_cores = 11;
-    bool enable_on_exec = 12;
-    map<uint32, string> cpuid_to_core_name = 13;
-    map<uint32, string> perf_pmu_type_to_name = 14;
-    bool stop_pids = 15;
+    string android_pkg = 10;
+    pid_array_t pids = 11;
+    uint32 num_cpu_cores = 12;
+    bool enable_on_exec = 13;
+    map<uint32, string> cpuid_to_core_name = 14;
+    map<uint32, string> perf_pmu_type_to_name = 15;
+    bool stop_pids = 16;
 }

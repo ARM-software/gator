@@ -56,12 +56,18 @@ struct backend_args {
     size_t buffer_size{0};
     /** Sample layout to use. */
     sample_layout sample_layout_v;
-    /** Number of buffers in the kernel ring buffer. */
-    static const constexpr size_t buffer_count{32};
+    /** Default number of buffers in the kernel ring buffer.
+     *
+     * Kbase will use `__get_free_pages` to allocate these buffers as a
+     * physically contiguous memory chunk. When fragmentation is high,
+     * it may fail to do so. Then we will try to allocate fewer
+     * power-of-two buffer numbers -- 16, 8, 4 and 2.
+     */
+    static const constexpr size_t max_buffer_count{32};
 };
 
 template <typename syscall_iface_t>
-constexpr size_t backend_args<syscall_iface_t>::buffer_count;
+constexpr size_t backend_args<syscall_iface_t>::max_buffer_count;
 
 } // namespace vinstr
 } // namespace sampler

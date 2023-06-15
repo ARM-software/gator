@@ -1,3 +1,7 @@
+# Gator 8.6
+
+Support for Immortalis-G720, Mali-G720 and Mali-G620 GPUs.
+
 # Gator 8.5
 
 Support for collecting Immortalis/Mali GPU timeline events from Perfetto on Linux.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -617,7 +617,8 @@ namespace agents::perf {
                     return start_on(st->strand) //
                          | then([=]() mutable {
                                st->waiter = async::make_async_wait_for_process(st->strand.context(),
-                                                                               st->configuration->wait_process);
+                                                                               st->configuration->wait_process,
+                                                                               st->configuration->android_pkg);
                            })
                          | st->ipc_sink->async_send_message(ipc::msg_exec_target_app_t {}, use_continuation)
                          | map_error_and_discard() //

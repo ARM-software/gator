@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
@@ -137,8 +137,6 @@ namespace mali_userspace {
         MaliDevice & operator=(const MaliDevice &) = delete;
         MaliDevice(MaliDevice &&) = delete;
         MaliDevice & operator=(MaliDevice &&) = delete;
-
-        hwcpipe::device::instance & get_device_instance() const { return *instance; }
 
         /**
          * @return The path to the clock file

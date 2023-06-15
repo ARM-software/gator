@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "Child.h"
 #include "DynBuf.h"
@@ -225,6 +225,9 @@ std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
     }
     agents::perf::add_pids(config_msg, app_tids);
     agents::perf::add_wait_for_process(config_msg, gSessionData.mWaitForProcessCommand);
+    if (gSessionData.mAndroidPackage != nullptr) {
+        agents::perf::add_android_package(config_msg, gSessionData.mAndroidPackage);
+    }
 
     // start the agent worker and tell it to communicate with the source adapter
     struct wait_state_t {

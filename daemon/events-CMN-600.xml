@@ -2,7 +2,6 @@
 
   <counter_set name="CMN_600_cnt" count="8"/>
   <category name="CMN-600" counter_set="CMN_600_cnt" per_cpu="no">
-    <event counter="CMN_600_ccnt" event="0x30068" title="CMN-600 Clock" name="Cycles" units="cycles" description="The number of core clock cycles"/>
     <!--
         Customising CMN-600 events
         ===========================

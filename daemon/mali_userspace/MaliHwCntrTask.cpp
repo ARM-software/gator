@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "MaliHwCntrTask.h"
 
@@ -58,6 +58,18 @@ namespace mali_userspace {
           deviceNumber(deviceNumber),
           mConstantValues(std::move(constantValues))
     {
+        handle = dev::handle::create(deviceNumber);
+        if (!handle) {
+            LOG_ERROR("Failed to create hwcpipe handle for device %d", deviceNumber);
+            handleException();
+        }
+
+        instance = dev::instance::create(*handle);
+        if (!instance) {
+            LOG_ERROR("Failed to create hwcpipe instance for device %d", deviceNumber);
+            handleException();
+        }
+
         if (pipe2(interrupt_fd.data(), O_CLOEXEC) < 0) {
             LOG_ERROR("Could not create task interrupt pipe");
             handleException();
@@ -82,7 +94,7 @@ namespace mali_userspace {
         const uint32_t sampleIntervalNs =
             (sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000U / sampleRate) : 1U) : 10000000U);
 
-        auto sampler = create_sampler(mDevice.get_device_instance(), sampleIntervalNs);
+        auto sampler = create_sampler(*instance, sampleIntervalNs);
         if (!sampler) {
             LOG_ERROR("GPU sampler could not be initialized for device number %d", deviceNumber);
             handleException();

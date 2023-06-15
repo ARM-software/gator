@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriver.h"
 
@@ -342,6 +342,7 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
     }
 
     if (getConfig().can_access_tracepoints || getConfig().has_attr_context_switch) {
+        // can get contention from switch record and tracepoint
         setCounters(new PerfCounter(getCounters(),
                                     PerfEventGroupIdentifier(),
                                     "Linux_cpu_wait_contention",
@@ -349,18 +350,31 @@ PerfDriver::PerfDriver(PerfDriverConfiguration && configuration,
                                     -1,
                                     0,
                                     0));
-        setCounters(
-            new PerfCounter(getCounters(), PerfEventGroupIdentifier(), "Linux_cpu_wait_io", TYPE_DERIVED, -1, 0, 0));
-        for (const auto & perfCpu : mConfig.cpus) {
-            lib::printf_str_t<buffer_size> buf {"%s_system", perfCpu.gator_cpu.getId()};
+        // iowait only from tracepoint
+        if (getConfig().can_access_tracepoints) {
             setCounters(new PerfCounter(getCounters(),
-                                        PerfEventGroupIdentifier(perfCpu.gator_cpu),
-                                        buf,
+                                        PerfEventGroupIdentifier(),
+                                        "Linux_cpu_wait_io",
                                         TYPE_DERIVED,
                                         -1,
                                         0,
                                         0));
-            buf.printf("%s_user", perfCpu.gator_cpu.getId());
+        }
+
+        // add kernel/user time
+        for (const auto & perfCpu : mConfig.cpus) {
+            if (!getConfig().exclude_kernel) {
+                lib::printf_str_t<buffer_size> const buf {"%s_system", perfCpu.gator_cpu.getId()};
+                setCounters(new PerfCounter(getCounters(),
+                                            PerfEventGroupIdentifier(perfCpu.gator_cpu),
+                                            buf,
+                                            TYPE_DERIVED,
+                                            -1,
+                                            0,
+                                            0));
+            }
+
+            lib::printf_str_t<buffer_size> const buf {"%s_user", perfCpu.gator_cpu.getId()};
             setCounters(new PerfCounter(getCounters(),
                                         PerfEventGroupIdentifier(perfCpu.gator_cpu),
                                         buf,
