@@ -1,10 +1,11 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "GatorMain.h"
 
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "ExitStatus.h"
+#include "GatorCLIFlags.h"
 #include "GatorCLIParser.h"
 #include "GatorException.h"
 #include "ICpuInfo.h"
@@ -23,7 +24,9 @@
 #include "lib/String.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
+#include "logging/file_log_sink.h"
 #include "logging/global_log.h"
+#include "logging/std_log_sink.h"
 #include "logging/suppliers.h"
 #include "xml/EventsXML.h"
 #include "xml/PmuXMLParser.h"
@@ -31,6 +34,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstring>
+#include <ios>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -51,8 +55,6 @@ namespace {
     void handler(int signum)
     {
         if (::write(signalPipe[1], &signum, sizeof(signum)) != sizeof(signum)) {
-            // NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_ERROR("write failed (%d) %s", errno, strerror(errno));
             handleException();
         }
     }
@@ -109,6 +111,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mExcludeKernelEvents = result.mExcludeKernelEvents;
     gSessionData.mWaitForProcessCommand = result.mWaitForCommand;
     gSessionData.mPids = result.mPids;
+    gSessionData.mLogToFile = result.mLogToFile;
 
     if (result.mTargetPath != nullptr) {
         if (gSessionData.mTargetPath != nullptr) {
@@ -151,9 +154,12 @@ void updateSessionData(const ParserResult & result)
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_FTRACE_RAW) != 0) {
         gSessionData.mFtraceRaw = result.mFtraceRaw;
     }
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) != 0) {
+        gSessionData.mEnableOffCpuSampling = result.mEnableOffCpuSampling;
+    }
 }
 
-void dumpCounterDetails(const ParserResult & result, logging::log_setup_supplier_t log_setup_supplier)
+void dumpCounterDetails(const ParserResult & result, const logging::log_access_ops_t & log_ops)
 {
     Drivers drivers {result.mSystemWide,
                      readPmuXml(result.pmuPath),
@@ -171,7 +177,7 @@ void dumpCounterDetails(const ParserResult & result, logging::log_setup_supplier
         std::cout << counters_xml::getXML(drivers.getPrimarySourceProvider().supportsMultiEbs(),
                                           drivers.getAllConst(),
                                           drivers.getPrimarySourceProvider().getCpuInfo(),
-                                          log_setup_supplier)
+                                          log_ops)
                          .get();
     }
     if (result.printables.count(ParserResult::Printable::DEFAULT_CONFIGURATION_XML) == 1) {
@@ -181,9 +187,7 @@ void dumpCounterDetails(const ParserResult & result, logging::log_setup_supplier
     }
 }
 
-int start_capture_process(const ParserResult & result,
-                          const logging::last_log_error_supplier_t & last_log_error_supplier,
-                          const logging::log_setup_supplier_t & log_setup_supplier)
+int start_capture_process(const ParserResult & result, logging::log_access_ops_t & log_ops)
 {
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
     Drivers drivers {result.mSystemWide,
@@ -246,27 +250,33 @@ int start_capture_process(const ParserResult & result,
     } event_handler {};
 
     // we're starting gator in legacy mode - run the loop as normal
-    return capture::beginCaptureProcess(result,
-                                        drivers,
-                                        signalPipe,
-                                        last_log_error_supplier,
-                                        log_setup_supplier,
-                                        event_handler);
+    return capture::beginCaptureProcess(result, drivers, signalPipe, log_ops, event_handler);
 }
 
 // Gator data flow: collector -> collector fifo -> sender
 int gator_main(int argc, char ** argv)
 {
     // Set up global thread-safe logging
-    auto global_logging = std::make_shared<logging::global_log_sink_t>();
+    auto global_logging = std::make_shared<logging::global_logger_t>();
+    global_logging->add_sink<logging::std_log_sink_t>();
+    logging::set_logger(global_logging);
 
-    logging::set_log_sink(global_logging);
-    logging::last_log_error_supplier_t last_log_error_supplier {
-        [global_logging]() { return global_logging->get_last_log_error(); }};
-    logging::log_setup_supplier_t log_setup_supplier {
-        [global_logging]() { return global_logging->get_log_setup_messages(); }};
     // and enable debug mode
     global_logging->set_debug_enabled(GatorCLIParser::hasDebugFlag(argc, argv));
+
+    // enable fine level logging mode
+    global_logging->set_fine_enabled(GatorCLIParser::hasCaptureLogFlag(argc, argv));
+
+    // write the log to a file, if requested
+    if (GatorCLIParser::hasCaptureLogFlag(argc, argv)) {
+        try {
+            global_logging->add_sink<logging::file_log_sink_t>();
+        }
+        catch (std::ios_base::failure & e) {
+            LOG_ERROR("Log setup error: %s", e.what());
+            handleException();
+        }
+    }
 
     gSessionData.initialize();
     //setting default values of gSessionData
@@ -320,10 +330,10 @@ int gator_main(int argc, char ** argv)
     environment->postInit(gSessionData);
 
     if (result.mode == ParserResult::ExecutionMode::PRINT) {
-        dumpCounterDetails(result, log_setup_supplier);
+        dumpCounterDetails(result, *global_logging);
     }
     else {
-        return start_capture_process(result, last_log_error_supplier, log_setup_supplier);
+        return start_capture_process(result, *global_logging);
     }
 
     return 0;

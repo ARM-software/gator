@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/agent_environment.h"
 
 #include "Logging.h"
@@ -32,7 +32,7 @@ namespace agents {
 
             if (!dup_fd) {
                 // NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_DEBUG("fcntl failed with error %d (%s)", errno, strerror(errno));
+                LOG_WARNING("fcntl failed with error %d (%s)", errno, strerror(errno));
 
                 // not ideal, but just use the FD directly
                 return lib::AutoClosingFd {fd};
@@ -49,11 +49,11 @@ namespace agents {
         {
             signals.async_wait([env = std::move(env), &signals, &process_monitor](auto const & ec, auto signo) mutable {
                 if (ec) {
-                    LOG_DEBUG("Signal handler received error %s", ec.message().c_str());
+                    LOG_WARNING("Signal handler received error %s", ec.message().c_str());
                     return;
                 }
                 //NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_DEBUG("Received signal %d %s", signo, strsignal(signo));
+                LOG_FINE("Received signal %d %s", signo, strsignal(signo));
                 if ((signo == SIGHUP) || (signo == SIGTERM) || (signo == SIGINT)) {
                     env->shutdown();
                 }
@@ -74,13 +74,13 @@ namespace agents {
 
         // Set up global thread-safe logging
         auto agent_logging =
-            std::make_shared<logging::agent_log_sink_t>(STDERR_FILENO, logging::agent_log_sink_t::get_log_file_fd());
+            std::make_shared<logging::agent_logger_t>(STDERR_FILENO, logging::agent_logger_t::get_log_file_fd());
 
-        logging::set_log_sink(agent_logging);
+        logging::set_logger(agent_logging);
         logging::set_log_enable_trace(args);
 
         try {
-            LOG_DEBUG("Bootstrapping agent process.");
+            LOG_FINE("Bootstrapping agent process.");
 
             // disable buffering on in/out/err
             ::setvbuf(stdin, nullptr, _IONBF, 0);
@@ -115,14 +115,14 @@ namespace agents {
             auto env = factory(args, io_context, process_monitor, ipc_sink, ipc_source);
             // set process name
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(env->name()), 0, 0, 0);
-            LOG_DEBUG("Starting agent [%s]", env->name());
+            LOG_FINE("Starting agent [%s]", env->name());
 
             // handle signals
             do_wait_signal(signals, env, process_monitor);
 
             async_await_agent_shutdown(env, [&io_context]() {
                 // fully shut down
-                LOG_DEBUG("Agent is shutdown. Stopping io_context.");
+                LOG_FINE("Agent is shutdown. Stopping io_context.");
                 io_context.stop();
             });
 
@@ -153,7 +153,7 @@ namespace agents {
 
             threads.join();
 
-            LOG_DEBUG("Terminating [%s] agent successfully.", env->name());
+            LOG_FINE("Terminating [%s] agent successfully.", env->name());
         }
         catch (std::exception const & ex) {
             LOG_FATAL("Unexpected exception received: what=%s", ex.what());

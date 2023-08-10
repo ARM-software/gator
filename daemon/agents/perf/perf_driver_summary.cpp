@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/perf_driver_summary.h"
 
@@ -18,7 +18,7 @@ namespace agents::perf {
     {
         struct utsname utsname;
         if (uname(&utsname) != 0) {
-            LOG_DEBUG("uname failed");
+            LOG_WARNING("uname() failed");
             return {};
         }
 
@@ -31,20 +31,20 @@ namespace agents::perf {
 
         long page_size = sysconf(_SC_PAGESIZE);
         if (page_size < 0) {
-            LOG_DEBUG("sysconf _SC_PAGESIZE failed");
+            LOG_WARNING("sysconf _SC_PAGESIZE failed");
             return {};
         }
 
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-            LOG_DEBUG("clock_gettime failed");
+            LOG_WARNING("clock_gettime failed");
             return {};
         }
 
         const std::uint64_t clock_realtime = (ts.tv_sec * NS_PER_S) + ts.tv_nsec;
 
         if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
-            LOG_DEBUG("clock_gettime failed");
+            LOG_WARNING("clock_gettime failed");
             return {};
         }
 

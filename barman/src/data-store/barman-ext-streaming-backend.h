@@ -6,8 +6,7 @@
 #ifndef INCLUDE_BARMAN_EXT_STREAMING_BACKEND
 #define INCLUDE_BARMAN_EXT_STREAMING_BACKEND
 
-#include "data-store/barman-data-store-types.h"
-#include "barman-types.h"
+#include "barman-types-public.h"
 
 /**
  * Initialize the backend
@@ -23,9 +22,9 @@ bm_bool barman_ext_streaming_backend_init(void * config);
  * @param data    Data to write in the frame
  * @param length  Length of the frame
  * @param channel Channel to write the frame on
- * @param flush   Whether to flush the channel after writing the frame (may have some overhead)
+ * @param flush_header   Set to BM_TRUE when the frame contains an update to the header. Indicates to flush the channel after writing the frame.
  */
-void barman_ext_streaming_backend_write_frame(const bm_uint8 * data, bm_uintptr length, bm_uint16 channel, bm_bool flush);
+void barman_ext_streaming_backend_write_frame(const bm_uint8 * data, bm_uintptr length, bm_uint16 channel, bm_bool flush_header);
 
 /**
  * Shutdown the backend

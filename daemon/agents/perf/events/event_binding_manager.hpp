@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -212,9 +212,9 @@ namespace agents::perf {
             mmap_ptr = std::make_shared<perf_ringbuffer_mmap_t>(
                 perf_activator->mmap_data(no, header_result.fd->native_handle()));
             if (!mmap_ptr->has_data()) {
-                LOG_DEBUG("Core online prepare %d 0x%x failed due to data mmap error",
-                          lib::toEnumValue(no),
-                          lib::toEnumValue(cluster_id));
+                LOG_WARNING("Core online prepare %d 0x%x failed due to data mmap error",
+                            lib::toEnumValue(no),
+                            lib::toEnumValue(cluster_id));
                 core_offline_it(it);
                 return core_online_prepare_result_t {aggregate_state_t::failed};
             }
@@ -242,9 +242,9 @@ namespace agents::perf {
 
             switch (result) {
                 case aggregate_state_t::usable: {
-                    LOG_DEBUG("Core online prepare %d 0x%x succeeded",
-                              lib::toEnumValue(no),
-                              lib::toEnumValue(cluster_id));
+                    LOG_FINE("Core online prepare %d 0x%x succeeded",
+                             lib::toEnumValue(no),
+                             lib::toEnumValue(cluster_id));
 
                     return core_online_prepare_result_t {result,
                                                          std::move(id_to_key_mappings),
@@ -253,9 +253,9 @@ namespace agents::perf {
                                                          mmap_ptr};
                 }
                 case aggregate_state_t::terminated: {
-                    LOG_DEBUG("Core online prepare %d 0x%x failed as all threads terminated / none tracked",
-                              lib::toEnumValue(no),
-                              lib::toEnumValue(cluster_id));
+                    LOG_WARNING("Core online prepare %d 0x%x failed as all threads terminated / none tracked",
+                                lib::toEnumValue(no),
+                                lib::toEnumValue(cluster_id));
                     // return usable, but only have the header id mapping
                     return core_online_prepare_result_t {aggregate_state_t::usable,
                                                          {
@@ -266,15 +266,15 @@ namespace agents::perf {
                                                          mmap_ptr};
                 }
                 case aggregate_state_t::offline: {
-                    LOG_DEBUG("Core online prepare %d 0x%x failed as core went offline",
-                              lib::toEnumValue(no),
-                              lib::toEnumValue(cluster_id));
+                    LOG_WARNING("Core online prepare %d 0x%x failed as core went offline",
+                                lib::toEnumValue(no),
+                                lib::toEnumValue(cluster_id));
                     break;
                 }
                 case aggregate_state_t::failed: {
-                    LOG_DEBUG("Core online prepare %d 0x%x failed due to error",
-                              lib::toEnumValue(no),
-                              lib::toEnumValue(cluster_id));
+                    LOG_WARNING("Core online prepare %d 0x%x failed due to error",
+                                lib::toEnumValue(no),
+                                lib::toEnumValue(cluster_id));
                     break;
                 }
                 default: {
@@ -501,7 +501,7 @@ namespace agents::perf {
                     }
                 }
                 else {
-                    LOG_DEBUG("Start pid %d on core %d failed as pid not found", pid, lib::toEnumValue(entry.first));
+                    LOG_WARNING("Start pid %d on core %d failed as pid not found", pid, lib::toEnumValue(entry.first));
                 }
             }
 

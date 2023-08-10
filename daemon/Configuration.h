@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATION_H_
 #define CONFIGURATION_H_
@@ -74,5 +74,9 @@ namespace std {
         }
     };
 }
+
+struct TemplateConfiguration {
+    std::string raw {};
+};
 
 #endif /* CONFIGURATION_H_ */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef EXITSTATUS_H_
 #define EXITSTATUS_H_
@@ -13,5 +13,7 @@ static constexpr int SIGNAL_FAILED_EXIT_CODE = 6;
 static constexpr int OK_TO_EXIT_GATOR_EXIT_CODE = 7;
 // command failed
 static constexpr int COMMAND_FAILED_EXIT_CODE = 8;
+// returned by gator-child to indicate that the capture has completed
+static constexpr int CHILD_EXIT_AFTER_CAPTURE = 9;
 
 #endif /* EXITSTATUS_H_ */

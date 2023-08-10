@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
@@ -189,11 +189,11 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         LOG_DEBUG("perf_event_paranoid: %d", perf_event_paranoid);
     }
 
-    const bool allow_system_wide = isRoot || perf_event_paranoid <= 0;
-    const bool exclude_kernel = !(isRoot || perf_event_paranoid <= 1);
-    const bool allow_non_system_wide = isRoot || perf_event_paranoid <= 2;
+    const bool can_collect_system_wide_data = isRoot || perf_event_paranoid <= 0;
+    const bool can_collect_kernel_data = isRoot || (perf_event_paranoid <= 1);
+    const bool can_collect_any_data = isRoot || perf_event_paranoid <= 2;
 
-    if (!allow_non_system_wide) {
+    if (!can_collect_any_data) {
         // This is only actually true if the kernel has the grsecurity PERF_HARDEN patch
         // but we assume no-one would ever set perf_event_paranoid > 2 without it.
         LOG_SETUP("perf_event_open\nperf_event_paranoid > 2 is not supported for non-root");
@@ -203,7 +203,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
         return nullptr;
     }
 
-    if (systemWide && !allow_system_wide) {
+    if (systemWide && !can_collect_system_wide_data) {
         LOG_SETUP("System wide tracing\nperf_event_paranoid > 0 is not supported for system-wide non-root");
         LOG_ERROR("perf_event_open: perf_event_paranoid > 0 is not supported for system-wide non-root.\n"
                   "To use it\n"
@@ -279,7 +279,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     configuration->config.has_exclude_callchain_kernel = (kernelVersion >= KERNEL_VERSION(3U, 7U, 0U));
 
     configuration->config.is_system_wide = systemWide;
-    configuration->config.exclude_kernel = exclude_kernel;
+    configuration->config.exclude_kernel = !can_collect_kernel_data;
     configuration->config.can_access_tracepoints = can_access_raw_tracepoints;
 
     configuration->config.has_armv7_pmu_driver = hasArmv7PmuDriver;

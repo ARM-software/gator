@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2011-2023 by Arm Limited. All rights reserved. */
 
 #include "StreamlineSetup.h"
 
@@ -33,8 +33,8 @@ static const char VALUE_DEFAULTS[] = "defaults";
 StreamlineSetup::StreamlineSetup(OlySocket & s,
                                  Drivers & drivers,
                                  lib::Span<const CapturedSpe> capturedSpes,
-                                 logging::log_setup_supplier_t log_setup_supplier)
-    : mSocket(s), mDrivers(drivers), mCapturedSpes(capturedSpes), log_setup_supplier(std::move(log_setup_supplier))
+                                 const logging::log_access_ops_t & log_ops)
+    : mSocket(s), mDrivers(drivers), mCapturedSpes(capturedSpes), log_ops(log_ops)
 {
     const auto result =
         streamlineSetupCommandLoop(s, *this, [](bool recvd) -> void { gSessionData.mWaitingOnCommand = !recvd; });
@@ -53,32 +53,32 @@ StreamlineSetup::StreamlineSetup(OlySocket & s,
 
 IStreamlineCommandHandler::State StreamlineSetup::handleApcStart()
 {
-    LOG_DEBUG("Received apc start request");
+    LOG_FINE("Received apc start request");
     return State::EXIT_APC_START;
 }
 
 IStreamlineCommandHandler::State StreamlineSetup::handleApcStop()
 {
-    LOG_DEBUG("Received apc stop request before apc start request");
+    LOG_FINE("Received apc stop request before apc start request");
     return State::EXIT_APC_STOP;
 }
 
 IStreamlineCommandHandler::State StreamlineSetup::handleDisconnect()
 {
-    LOG_DEBUG("Received disconnect command");
+    LOG_FINE("Received disconnect command");
     return State::EXIT_DISCONNECT;
 }
 
 IStreamlineCommandHandler::State StreamlineSetup::handlePing()
 {
-    LOG_DEBUG("Received ping command");
+    LOG_FINE("Received ping command");
     sendData(nullptr, 0, ResponseType::ACK);
     return State::PROCESS_COMMANDS;
 }
 
 IStreamlineCommandHandler::State StreamlineSetup::handleExit()
 {
-    LOG_DEBUG("Received exit command");
+    LOG_FINE("Received exit command");
     return State::EXIT_OK;
 }
 
@@ -96,38 +96,44 @@ IStreamlineCommandHandler::State StreamlineSetup::handleRequest(char * xml)
                                                    mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
                                                    mDrivers.getPrimarySourceProvider().getDetectedUncorePmus());
         sendString(xml.get(), ResponseType::XML);
-        LOG_DEBUG("Sent events xml response");
+        LOG_FINE("Sent events xml response");
     }
     else if ((attr != nullptr) && strcmp(attr, VALUE_CONFIGURATION) == 0) {
         const auto & xml =
             configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters());
         sendString(xml.raw.get(), ResponseType::XML);
-        LOG_DEBUG("Sent configuration xml response");
+        LOG_FINE("Sent configuration xml response");
     }
     else if ((attr != nullptr) && strcmp(attr, VALUE_COUNTERS) == 0) {
         const auto xml = counters_xml::getXML(mDrivers.getPrimarySourceProvider().supportsMultiEbs(),
                                               mDrivers.getAllConst(),
                                               mDrivers.getPrimarySourceProvider().getCpuInfo(),
-                                              log_setup_supplier);
+                                              log_ops);
         sendString(xml.get(), ResponseType::XML);
-        LOG_DEBUG("Sent counters xml response");
+        LOG_FINE("Sent counters xml response");
     }
     else if ((attr != nullptr) && strcmp(attr, VALUE_CAPTURED) == 0) {
+        //Grab our template from the configuration xml
+        const auto & templateConfiguration =
+            configuration_xml::getConfigurationXML(mDrivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+                .templateConfiguration;
+
         const auto xml = captured_xml::getXML(false,
                                               mCapturedSpes,
+                                              templateConfiguration,
                                               mDrivers.getPrimarySourceProvider(),
                                               mDrivers.getMaliHwCntrs().getDeviceGpuIds());
         sendString(xml.get(), ResponseType::XML);
-        LOG_DEBUG("Sent captured xml response");
+        LOG_FINE("Sent captured xml response");
     }
     else if ((attr != nullptr) && strcmp(attr, VALUE_DEFAULTS) == 0) {
         sendDefaults();
-        LOG_DEBUG("Sent default configuration xml response");
+        LOG_FINE("Sent default configuration xml response");
     }
     else {
         char error[] = "Unknown request";
         sendData(error, strlen(error), ResponseType::NAK);
-        LOG_DEBUG("Received unknown request:\n%s", xml);
+        LOG_WARNING("Received unknown request:\n%s", xml);
     }
 
     mxmlDelete(tree);
@@ -145,17 +151,17 @@ IStreamlineCommandHandler::State StreamlineSetup::handleDeliver(char * xml)
         // Session XML
         gSessionData.parseSessionXML(xml);
         sendData(nullptr, 0, ResponseType::ACK);
-        LOG_DEBUG("Received session xml");
+        LOG_FINE("Received session xml");
     }
     else if (mxmlFindElement(tree, tree, TAG_CONFIGURATIONS, nullptr, nullptr, MXML_DESCEND_FIRST) != nullptr) {
         // Configuration XML
         writeConfiguration(xml);
         sendData(nullptr, 0, ResponseType::ACK);
-        LOG_DEBUG("Received configuration xml");
+        LOG_FINE("Received configuration xml");
     }
     else {
         // Unknown XML
-        LOG_DEBUG("Received unknown XML delivery type");
+        LOG_WARNING("Received unknown XML delivery type");
         sendData(nullptr, 0, ResponseType::NAK);
     }
 

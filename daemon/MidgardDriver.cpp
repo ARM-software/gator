@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "MidgardDriver.h"
 
@@ -116,7 +116,7 @@ void MidgardDriver::query() const
             LOG_DEBUG("Unable to connect to Midgard");
         }
         else {
-            LOG_DEBUG("Connected to midgard");
+            LOG_FINE("Connected to midgard");
             gSessionData.mSharedData->mMaliMidgardCountersSize = 0;
 
             PacketHeader header;

@@ -257,7 +257,7 @@ namespace agents {
                 sigalarm_counter += 1;
             }
             else {
-                LOG_DEBUG("Unexpected signal # %d", signo);
+                LOG_WARNING("Unexpected signal # %d", signo);
             }
         }
 
@@ -274,7 +274,7 @@ namespace agents {
                                 terminate();
                             }
                             else {
-                                LOG_DEBUG("Requesting all agents to shut down");
+                                LOG_FINE("Requesting all agents to shut down");
                                 for (auto & agent : agent_workers) {
                                     agent.second.worker->shutdown();
                                 }
@@ -301,7 +301,7 @@ namespace agents {
 
             return async_initiate_cont(
                 [this, &process_monitor, privilege_level](auto &&... args) mutable {
-                    LOG_DEBUG("Creating agent process");
+                    LOG_FINE("Creating agent process");
 
                     return start_with(std::move(args)...) //
                          | post_on(strand)                //
@@ -416,9 +416,9 @@ namespace agents {
                                     return process_monitor.async_wait_event(uid, use_continuation) //
                                          | then([pid, worker, repeat_flag](auto ec, auto event) {
                                                if (ec) {
-                                                   LOG_DEBUG("unexpected error reported for process %d (%s)",
-                                                             pid,
-                                                             ec.message().c_str());
+                                                   LOG_WARNING("unexpected error reported for process %d (%s)",
+                                                               pid,
+                                                               ec.message().c_str());
                                                }
 
                                                switch (event.state) {
@@ -466,7 +466,7 @@ namespace agents {
         /** terminate the worker loop */
         void terminate()
         {
-            LOG_DEBUG("All agents exited, terminating");
+            LOG_FINE("All agents exited, terminating");
             terminated = true;
             io_context.stop();
             parent.on_agent_thread_terminated();
@@ -506,7 +506,7 @@ namespace agents {
                               | then([this, pid]() -> polymorphic_continuation_t<> {
                                     auto it = agent_workers.find(pid);
                                     if (it == agent_workers.end()) {
-                                        LOG_DEBUG("Unknown agent PID: %d", pid);
+                                        LOG_WARNING("Unknown agent PID: %d", pid);
                                         return {};
                                     }
 

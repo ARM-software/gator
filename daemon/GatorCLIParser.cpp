@@ -22,7 +22,7 @@ namespace {
     constexpr int GATOR_ANNOTATION_PORT2 = 8083;
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
 
-    constexpr std::string_view OPTSTRING_SHORT = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:N:O:P:Q:R:S:TVX:Z:";
+    constexpr std::string_view OPTSTRING_SHORT = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:LN:O:P:Q:R:S:TVX:Y:Z:";
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
@@ -51,6 +51,7 @@ namespace {
         {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
         {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
         {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
+        {"capture-log", /************/ no_argument, /***/ nullptr, 'L'}, //
         /********************************************************* 'N' ***/
         {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
         {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
@@ -60,6 +61,7 @@ namespace {
         {"trace", /******************/ no_argument, /***/ nullptr, 'T'}, //
         {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
         {"spe", /********************/ required_argument, nullptr, 'X'}, //
+        {"off-cpu-time", /***********/ required_argument, nullptr, 'Y'}, //
         {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
         {nullptr, 0, nullptr, 0}};
 
@@ -75,6 +77,77 @@ namespace {
     const char * SPE_MIN_LATENCY_KEY = "min_latency";
     const char * SPE_EVENTS_KEY = "events";
     const char * SPE_OPS_KEY = "ops";
+
+    // trim
+    void trim(std::string & data)
+    {
+        //trim from  left
+        data.erase(data.begin(), std::find_if(data.begin(), data.end(), [](int ch) { return std::isspace(ch) == 0; }));
+        //trim from right
+        data.erase(std::find_if(data.rbegin(), data.rend(), [](int ch) { return std::isspace(ch) == 0; }).base(),
+                   data.end());
+    }
+
+    void split(const std::string & data, char delimiter, std::vector<std::string> & tokens)
+    {
+        std::string token;
+        std::istringstream dataStream(data);
+        while (std::getline(dataStream, token, delimiter)) {
+            trim(token);
+            tokens.push_back(token);
+        }
+    }
+
+    /**
+     * @return 1 for a true-like string, 0 for a false-like string and -1 otherwise
+     */
+    int parseBoolean(const char * value)
+    {
+        if (strcasecmp(value, "yes") == 0     //
+            || strcasecmp(value, "y") == 0    //
+            || strcasecmp(value, "true") == 0 //
+            || strcmp(value, "1") == 0) {
+            return 1;
+        }
+        if (strcasecmp(value, "no") == 0       //
+            || strcasecmp(value, "n") == 0     //
+            || strcasecmp(value, "false") == 0 //
+            || strcmp(value, "0") == 0) {
+            return 0;
+        }
+        return -1;
+    }
+
+    //NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    int findIndexOfArg(const std::string_view arg_toCheck, int argc, const char * const argv[])
+    {
+        for (int j = 1; j < argc; j++) {
+            if (std::string_view(argv[j]) == arg_toCheck) {
+                return j;
+            }
+        }
+        return -1;
+    }
+
+    // check the presence of any of the arguments in dict before --app or -A
+    template<std::size_t SIZE>
+    //NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    bool checkBeforeApp(const std::array<std::string_view, SIZE> & dict, int argc, const char * const argv[])
+    {
+        int appIndex = findIndexOfArg("--app", argc, argv);
+        if (appIndex == -1) {
+            appIndex = findIndexOfArg("-A", argc, argv);
+        }
+
+        for (int j = 1; j < argc; ++j) {
+            const std::string_view arg(argv[j]);
+            if (std::find(dict.begin(), dict.end(), arg) != std::end(dict)) {
+                return appIndex <= -1 || j < appIndex;
+            }
+        }
+
+        return false;
+    }
 }
 
 using ExecutionMode = ParserResult::ExecutionMode;
@@ -169,46 +242,7 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
     return found;
 }
 
-/**
- * @return 1 for a true-like string, 0 for a false-like string and -1 otherwise
- */
-static int parseBoolean(const char * value)
-{
-    if (strcasecmp(value, "yes") == 0     //
-        || strcasecmp(value, "y") == 0    //
-        || strcasecmp(value, "true") == 0 //
-        || strcmp(value, "1") == 0) {
-        return 1;
-    }
-    if (strcasecmp(value, "no") == 0       //
-        || strcasecmp(value, "n") == 0     //
-        || strcasecmp(value, "false") == 0 //
-        || strcmp(value, "0") == 0) {
-        return 0;
-    }
-    return -1;
-}
-
-// trim
-static void trim(std::string & data)
-{
-    //trim from  left
-    data.erase(data.begin(), std::find_if(data.begin(), data.end(), [](int ch) { return std::isspace(ch) == 0; }));
-    //trim from right
-    data.erase(std::find_if(data.rbegin(), data.rend(), [](int ch) { return std::isspace(ch) == 0; }).base(),
-               data.end());
-}
-
-static void split(const std::string & data, char delimiter, std::vector<std::string> & tokens)
-{
-    std::string token;
-    std::istringstream dataStream(data);
-    while (std::getline(dataStream, token, delimiter)) {
-        trim(token);
-        tokens.push_back(token);
-    }
-}
-
+//NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void GatorCLIParser::parseAndUpdateSpe()
 {
     std::vector<std::string> spe_data;
@@ -309,7 +343,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                                        const char * gSrcMd5,
                                        const char * gBuildId)
 {
-    LOG_ERROR("%s", version_string);
+    LOG_INFO("%s", version_string);
     const int indexApp = findAndUpdateCmndLineCmnd(argc, argv);
     if (indexApp > 0) {
         argc = indexApp;
@@ -528,7 +562,6 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        this file. In local capture mode the\n"
                     "                                        list of counters will be read from this\n"
                     "                                        file.\n"
-                    "  -D|--disable-kernel-annotations       Disable collection of kernel annotations\n"
                     "  -e|--events-xml <events_xml>          Specify path and filename of the events\n"
                     "                                        XML to use\n"
                     "  -E|--append-events-xml <events_xml>   Specify path and filename of events XML\n"
@@ -542,6 +575,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        argument passed to gatord as all\n"
                     "                                        subsequent arguments are passed to the\n"
                     "                                        launched application.\n"
+                    "  -D|--disable-kernel-annotations       Disable collection of kernel annotations\n"
                     "  -k|--exclude-kernel (yes|no)          Specify whether kernel events should be\n"
                     "                                        filtered out of perf results.\n"
                     "  -S|--system-wide (yes|no)             Specify whether to capture the whole\n"
@@ -596,6 +630,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        Values below this threshold are ignored\n"
                     "                                        and the hardware minimum is used\n"
                     "                                        instead.\n"
+                    "  -L|--capture-log                      Enable to generate a log file for\n"
+                    "                                        the capture in the capture's directory,\n"
+                    "                                        as well as sending the logs to 'stderr'.\n"
                     "  --smmuv3-model <model_id>|<iidr>      Specify the SMMUv3 model.\n"
                     "                                        The user can specify the model ID\n"
                     "                                        string directly (e.g., mmu-600) or\n"
@@ -603,6 +640,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        model's IIDR number  either\n"
                     "                                        fully (e.g., 4832243b) or\n"
                     "                                        partially (e.g., 483_43b).\n"
+                    "  -Y|--off-cpu-time (yes|no)            Enable collecting Off-CPU time\n"
+                    "                                        statistics.\n"
                     "\n"
                     "* Arguments available only on Android targets:\n"
                     "\n"
@@ -763,6 +802,16 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_EXCLUDE_KERNEL;
                 break;
             }
+            case 'Y': {
+                if (optionInt < 0) {
+                    LOG_ERROR("Invalid value for --off-cpu-time (%s), 'yes' or 'no' expected.", optarg);
+                    result.parsingFailed();
+                    return;
+                }
+                result.mEnableOffCpuSampling = optionInt == 1;
+                result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_OFF_CPU_PROFILING;
+                break;
+            }
             case 'l': // android-pkg
             {
                 result.mAndroidPackage = optarg;
@@ -775,6 +824,10 @@ void GatorCLIParser::parseCLIArguments(int argc,
             }
             case 'T': {
                 logging::set_log_enable_trace(true);
+                break;
+            }
+            case 'L': {
+                result.mLogToFile = true;
                 break;
             }
         }
@@ -912,37 +965,20 @@ void GatorCLIParser::parseCLIArguments(int argc,
     }
 }
 
-static int findIndexOfArg(const std::string & arg_toCheck, int argc, const char * const argv[])
-{
-    for (int j = 1; j < argc; j++) {
-        std::string arg(argv[j]);
-        if (arg == arg_toCheck) {
-            return j;
-        }
-    }
-    return -1;
-}
+using namespace std::literals::string_view_literals;
 
+//NOLINTNEXTLINE(modernize-avoid-c-arrays)
 bool GatorCLIParser::hasDebugFlag(int argc, const char * const argv[])
 {
-    //had to use this instead of opt api, when -A or --app is made an optional argument opt api
-    //permute the contents of argv while scanning it so that eventually all the non-options are at the end.
-    //when --app or -A is given as an optional argument. and has option as ls -lrt
-    //-lrt get treated as another option for gatord
-    //TODO: needs investigation
-    constexpr std::string_view debugArgShort = "-d";
-    constexpr std::string_view debugArgLong = "--debug";
-    constexpr std::string_view traceArgShort = "-T";
-    constexpr std::string_view traceArgLong = "--trace";
-    for (int j = 1; j < argc; j++) {
-        std::string_view arg(argv[j]);
-        if ((arg == debugArgShort) || (arg == debugArgLong) || (arg == traceArgShort) || (arg == traceArgLong)) {
-            int appIndex = findIndexOfArg("--app", argc, argv);
-            if (appIndex == -1) {
-                appIndex = findIndexOfArg("-A", argc, argv);
-            }
-            return !(appIndex > -1 && j > appIndex);
-        }
-    }
-    return false;
+    constexpr std::array<std::string_view, 4> args {{"-d"sv, "--debug"sv, "-T"sv, "--trace"sv}};
+
+    return checkBeforeApp(args, argc, argv);
+}
+
+//NOLINTNEXTLINE(modernize-avoid-c-arrays)
+bool GatorCLIParser::hasCaptureLogFlag(int argc, const char * const argv[])
+{
+    constexpr std::array<std::string_view, 2> args {{"-L"sv, "--capture-log"sv}};
+
+    return checkBeforeApp(args, argc, argv);
 }

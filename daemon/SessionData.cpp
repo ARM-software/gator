@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "SessionData.h"
 
@@ -38,6 +38,7 @@ void SessionData::initialize()
     mFtraceRaw = false;
     mSystemWide = false;
     mExcludeKernelEvents = false;
+    mEnableOffCpuSampling = false;
     mImages.clear();
     mConfigurationXMLPath = nullptr;
     mSessionXMLPath = nullptr;

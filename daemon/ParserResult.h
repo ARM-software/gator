@@ -68,6 +68,8 @@ public:
     bool mDisableCpuOnlining {false};
     bool mDisableKernelAnnotations {false};
     bool mExcludeKernelEvents {false};
+    bool mEnableOffCpuSampling {false};
+    bool mLogToFile {false};
 
     /**
      * @return - a list of argument-value pairs

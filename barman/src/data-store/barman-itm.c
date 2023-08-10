@@ -21,8 +21,13 @@
  * address in a volatile way, i.e., they only make exactly one write to the address per call
  * (if the CAS is successful, zero writes otherwise)
  */
-#define BM_WRITE_ITM_STIM_WHEN_READY(port, value, bits) \
-    while (!barman_atomic_cmp_ex_weak_value((bm_uint ## bits *) ((bm_uintptr)(itm_base) + (port) * 0x04), BM_ITM_STIM_FIFOREADY_BIT, value))
+#define BM_WRITE_ITM_STIM_WHEN_READY(port, value, bits)                                                                \
+    do {                                                                                                               \
+        volatile bm_uint##bits * pointer = (volatile bm_uint##bits *) ((bm_uintptr) itm_base + (port) *0x04);          \
+        while (BM_ITM_STIM_FIFOREADY_BIT != *pointer) {                                                                \
+        }                                                                                                              \
+        *pointer = value;                                                                                              \
+    } while (0)
 
 #define BM_WRITE_ITM_STIM_8(port, value)  BM_WRITE_ITM_STIM_WHEN_READY(port, value, 8)
 #define BM_WRITE_ITM_STIM_16(port, value) BM_WRITE_ITM_STIM_WHEN_READY(port, value, 16)

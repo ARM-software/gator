@@ -95,36 +95,36 @@ namespace mali_userspace {
 
         /* supported product versions */
         // NOLINTNEXTLINE(cert-err58-cpp)
-        const auto PRODUCT_VERSIONS =
-            std::array {MALI_PRODUCT_VERSION(PRODUCT_ID_T72X, "T72x", "Midgard", hardware_counters_mali_t720, true),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_T76X, "T76x", "Midgard", hardware_counters_mali_t760, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_T82X, "T82x", "Midgard", hardware_counters_mali_t820, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_T83X, "T83x", "Midgard", hardware_counters_mali_t830, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_T86X, "T86x", "Midgard", hardware_counters_mali_t860, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TFRX, "T88x", "Midgard", hardware_counters_mali_t880, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TMIX, "G71", "Bifrost", hardware_counters_mali_g71, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_THEX, "G72", "Bifrost", hardware_counters_mali_g72, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TDVX, "G31", "Bifrost", hardware_counters_mali_g31, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TSIX, "G51", "Bifrost", hardware_counters_mali_g51, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TGOX, "G52", "Bifrost", hardware_counters_mali_g52, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TNOX, "G76", "Bifrost", hardware_counters_mali_g76, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TNAXa, "G57", "Valhall", hardware_counters_mali_g57, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TNAXb, "G57", "Valhall", hardware_counters_mali_g57, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TTRX, "G77", "Valhall", hardware_counters_mali_g77, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TOTX, "G68", "Valhall", hardware_counters_mali_g68, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TBOX, "G78", "Valhall", hardware_counters_mali_g78, false),
-                        // Detect Mali-G78E as a specific product, but alias
-                        // to the same underlying counter definitions as
-                        // Mali-G78, as they are the same in both cases ...
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TBOXAE, "G78AE", "Valhall", hardware_counters_mali_g78, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TODX, "G710", "Valhall", hardware_counters_mali_g710, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TVIX, "G610", "Valhall", hardware_counters_mali_g610, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TGRX, "G510", "Valhall", hardware_counters_mali_g510, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TVAX, "G310", "Valhall", hardware_counters_mali_g310, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TTUX, "G715", "Valhall", hardware_counters_mali_g715, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TTUX2, "G615", "Valhall", hardware_counters_mali_g615, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TTIX, "G720", "Arm GPU Gen5", hardware_counters_mali_g720, false),
-                        MALI_PRODUCT_VERSION(PRODUCT_ID_TTIX2, "G620", "Arm GPU Gen5", hardware_counters_mali_g620, false)};
+        const auto PRODUCT_VERSIONS = std::array {
+            MALI_PRODUCT_VERSION(PRODUCT_ID_T72X, "T72x", "Midgard", hardware_counters_mali_t720, true),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_T76X, "T76x", "Midgard", hardware_counters_mali_t760, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_T82X, "T82x", "Midgard", hardware_counters_mali_t820, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_T83X, "T83x", "Midgard", hardware_counters_mali_t830, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_T86X, "T86x", "Midgard", hardware_counters_mali_t860, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TFRX, "T88x", "Midgard", hardware_counters_mali_t880, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TMIX, "G71", "Bifrost", hardware_counters_mali_g71, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_THEX, "G72", "Bifrost", hardware_counters_mali_g72, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TDVX, "G31", "Bifrost", hardware_counters_mali_g31, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TSIX, "G51", "Bifrost", hardware_counters_mali_g51, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TGOX, "G52", "Bifrost", hardware_counters_mali_g52, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TNOX, "G76", "Bifrost", hardware_counters_mali_g76, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TNAXa, "G57", "Valhall", hardware_counters_mali_g57, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TNAXb, "G57", "Valhall", hardware_counters_mali_g57, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TTRX, "G77", "Valhall", hardware_counters_mali_g77, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TOTX, "G68", "Valhall", hardware_counters_mali_g68, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TBOX, "G78", "Valhall", hardware_counters_mali_g78, false),
+            // Detect Mali-G78E as a specific product, but alias
+            // to the same underlying counter definitions as
+            // Mali-G78, as they are the same in both cases ...
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TBOXAE, "G78AE", "Valhall", hardware_counters_mali_g78, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TODX, "G710", "Valhall", hardware_counters_mali_g710, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TVIX, "G610", "Valhall", hardware_counters_mali_g610, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TGRX, "G510", "Valhall", hardware_counters_mali_g510, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TVAX, "G310", "Valhall", hardware_counters_mali_g310, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TTUX, "G715", "Valhall", hardware_counters_mali_g715, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TTUX2, "G615", "Valhall", hardware_counters_mali_g615, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TTIX, "G720", "Arm GPU Gen5", hardware_counters_mali_g720, false),
+            MALI_PRODUCT_VERSION(PRODUCT_ID_TTIX2, "G620", "Arm GPU Gen5", hardware_counters_mali_g620, false)};
 
         enum { NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS) };
 
@@ -437,13 +437,13 @@ namespace mali_userspace {
             }
         }
 
-        // now send shader core averages
+        // now send shader core sums
         for (std::size_t i = 0; i < block_metadata.num_counters_per_block; ++i) {
             auto & counter = shader_core_counters[i];
             if (counter.isValid()) {
                 callback.nextCounterValue(mapNameBlockToIndex(MaliCounterBlockName::SHADER),
                                           i,
-                                          counter.average(),
+                                          counter.sum,
                                           static_cast<std::uint32_t>(mProductVersion.product_id),
                                           buffer_data);
             }

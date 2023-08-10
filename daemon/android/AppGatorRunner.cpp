@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "AppGatorRunner.h"
 
@@ -91,16 +91,18 @@ namespace gator::android {
     bool AppGatorRunner::sendMessageToAppGator(const std::string & message) const
     {
         if (!popenRunAsResult.has_value()) {
-            LOG_DEBUG("No PopenResult returned while starting app gator");
+            LOG_WARNING("No PopenResult returned while starting app gator");
             return false;
         }
         auto bytesWritten = lib::write(popenRunAsResult->in, message.c_str(), message.length());
         if (bytesWritten < 0) {
-            LOG_DEBUG("Error while writing message (%s)", message.c_str());
+            LOG_WARNING("Error while writing message (%s)", message.c_str());
             return false;
         }
         if (static_cast<unsigned long>(bytesWritten) != message.length()) {
-            LOG_DEBUG("Message written length varies actual(%zu) expected(%zu)", bytesWritten, strlen(message.c_str()));
+            LOG_WARNING("Message written length varies actual(%zu) expected(%zu)",
+                        bytesWritten,
+                        strlen(message.c_str()));
             return false;
         }
         return true;
@@ -127,30 +129,30 @@ namespace gator::android {
 
         auto result = lib::popen(argumentsToSendSignal);
         if (result.pid < 0) {
-            LOG_DEBUG("Failed to send signal %d to gator agent process with pid %d", signum, popenRunAsResult->pid);
+            LOG_WARNING("Failed to send signal %d to gator agent process with pid %d", signum, popenRunAsResult->pid);
             return false;
         }
         const int status = lib::pclose(result);
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         if (!WIFEXITED(status)) {
-            LOG_DEBUG("'%s %s %s %s %s' exited abnormally",
-                      RUN_AS.data(),
-                      appName.c_str(), //
-                      KILL.data(),
-                      sig_buf.c_str(),
-                      pid_str.c_str());
+            LOG_WARNING("'%s %s %s %s %s' exited abnormally",
+                        RUN_AS.data(),
+                        appName.c_str(), //
+                        KILL.data(),
+                        sig_buf.c_str(),
+                        pid_str.c_str());
             return false;
         }
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         const int exitCode = WEXITSTATUS(status);
         if (exitCode != 0) {
-            LOG_DEBUG("'%s %s %s %s %s' failed: %d",
-                      RUN_AS.data(),
-                      appName.c_str(), //
-                      KILL.data(),
-                      sig_buf.c_str(),
-                      pid_str.c_str(),
-                      exitCode);
+            LOG_WARNING("'%s %s %s %s %s' failed: %d",
+                        RUN_AS.data(),
+                        appName.c_str(), //
+                        KILL.data(),
+                        sig_buf.c_str(),
+                        pid_str.c_str(),
+                        exitCode);
             return false;
         }
         return true;
@@ -170,24 +172,24 @@ namespace gator::android {
 
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         if (!WIFEXITED(status)) {
-            LOG_DEBUG("'%s %s %s %s%s' exited abnormally",
-                      RUN_AS.data(),
-                      appName.c_str(), //
-                      gatorExePath.c_str(),
-                      gatorAgentName.c_str(),
-                      cmdUsed.has_value() ? cmdUsed.value().c_str() : "");
+            LOG_WARNING("'%s %s %s %s%s' exited abnormally",
+                        RUN_AS.data(),
+                        appName.c_str(), //
+                        gatorExePath.c_str(),
+                        gatorAgentName.c_str(),
+                        cmdUsed.has_value() ? cmdUsed.value().c_str() : "");
             return false;
         }
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         const int exitCode = WEXITSTATUS(status);
         if (exitCode != 0) {
-            LOG_DEBUG("'%s %s %s %s%s' failed: %d",
-                      RUN_AS.data(),
-                      appName.c_str(), //
-                      gatorExePath.c_str(),
-                      gatorAgentName.c_str(),
-                      (cmdUsed.has_value() ? cmdUsed.value().c_str() : ""),
-                      exitCode);
+            LOG_WARNING("'%s %s %s %s%s' failed: %d",
+                        RUN_AS.data(),
+                        appName.c_str(), //
+                        gatorExePath.c_str(),
+                        gatorAgentName.c_str(),
+                        (cmdUsed.has_value() ? cmdUsed.value().c_str() : ""),
+                        exitCode);
             return false;
         }
         return true;
@@ -196,10 +198,10 @@ namespace gator::android {
     bool AppGatorRunner::removeGator() const
     {
         if (popenRunAsResult.has_value()) {
-            LOG_DEBUG("Gatord has file descriptors that are not closed (pi = %d). Try closeAppGatorDescriptors() "
-                      "before removing "
-                      "gatord.",
-                      popenRunAsResult->pid);
+            LOG_WARNING("Gatord has file descriptors that are not closed (pi = %d). Try closeAppGatorDescriptors() "
+                        "before removing "
+                        "gatord.",
+                        popenRunAsResult->pid);
             return false;
         }
         std::vector<const char *> argumentsToRemoveGator;
@@ -213,30 +215,30 @@ namespace gator::android {
         auto result = lib::popen(argumentsToRemoveGator);
 
         if (result.pid < 0) {
-            LOG_DEBUG("Failed to remove gatord at %s , errno %d", gatorExePath.c_str(), -result.pid);
+            LOG_WARNING("Failed to remove gatord at %s , errno %d", gatorExePath.c_str(), -result.pid);
             return false;
         }
         const int status = lib::pclose(result);
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         if (!WIFEXITED(status)) {
-            LOG_DEBUG("'%s %s %s %s %s' exited abnormally",
-                      RUN_AS.data(),
-                      appName.c_str(), //
-                      RM.data(),
-                      FORCE.data(),
-                      gatorExePath.c_str());
+            LOG_WARNING("'%s %s %s %s %s' exited abnormally",
+                        RUN_AS.data(),
+                        appName.c_str(), //
+                        RM.data(),
+                        FORCE.data(),
+                        gatorExePath.c_str());
             return false;
         }
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         const int exitCode = WEXITSTATUS(status);
         if (exitCode != 0) {
-            LOG_DEBUG("'%s %s %s %s %s' failed: %d",
-                      RUN_AS.data(),
-                      appName.c_str(), //
-                      RM.data(),
-                      FORCE.data(),
-                      gatorExePath.c_str(),
-                      exitCode);
+            LOG_WARNING("'%s %s %s %s %s' failed: %d",
+                        RUN_AS.data(),
+                        appName.c_str(), //
+                        RM.data(),
+                        FORCE.data(),
+                        gatorExePath.c_str(),
+                        exitCode);
             return false;
         }
         return true;

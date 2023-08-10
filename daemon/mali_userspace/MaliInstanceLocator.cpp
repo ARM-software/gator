@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
 
@@ -25,7 +25,7 @@ namespace mali_userspace {
     {
         // open sysfs directory
         if (currentDirectory.read_stats().type() != lib::FsEntry::Type::DIR) {
-            LOG_DEBUG("Failed to open '%s'", currentDirectory.path().c_str());
+            LOG_WARNING("Failed to open '%s'", currentDirectory.path().c_str());
             return;
         }
 

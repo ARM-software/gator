@@ -228,7 +228,7 @@ namespace logging {
 
     }
 
-    lib::AutoClosingFd agent_log_sink_t::get_log_file_fd()
+    lib::AutoClosingFd agent_logger_t::get_log_file_fd()
     {
         //NOLINTNEXTLINE(concurrency-mt-unsafe)
         auto const * lfp = getenv("GATORD_LOG_FILE_PATH");
@@ -247,11 +247,11 @@ namespace logging {
                                         S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)};
     }
 
-    void agent_log_sink_t::log_item(thread_id_t tid,
-                                    log_level_t level,
-                                    log_timestamp_t const & timestamp,
-                                    source_loc_t const & location,
-                                    std::string_view message)
+    void agent_logger_t::log_item(thread_id_t tid,
+                                  log_level_t level,
+                                  log_timestamp_t const & timestamp,
+                                  source_loc_t const & location,
+                                  std::string_view message)
     {
         // writing to the log must be serialized in a multithreaded environment
         std::lock_guard lock {mutex};

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef __ISENDER_H__
 #define __ISENDER_H__
@@ -15,6 +15,7 @@ enum class ResponseType : char {
     ACK = 4,
     NAK = 5,
     CURRENT_CONFIG = 6,
+    GATOR_LOG = 7,
     ERROR = '\xFF'
 };
 

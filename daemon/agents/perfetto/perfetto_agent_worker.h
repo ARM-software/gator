@@ -60,7 +60,7 @@ namespace agents {
             return start_on(strand) //
                  | then([st = this->shared_from_this()]() -> polymorphic_continuation_t<> {
                        if (!st->transition_state(state_t::shutdown_requested)) {
-                           LOG_DEBUG("Perfetto agent worker failed to transition to the shutdown_requested state");
+                           LOG_FINE("Perfetto agent worker failed to transition to the shutdown_requested state");
                            return {};
                        }
 
@@ -75,7 +75,7 @@ namespace agents {
                                           return;
                                       }
 
-                                      LOG_DEBUG("Failed to send IPC message due to %s", ec.message().c_str());
+                                      LOG_WARNING("Failed to send IPC message due to %s", ec.message().c_str());
                                   }
                               });
                    });
@@ -106,7 +106,7 @@ namespace agents {
         /** Handle the 'ready' IPC message variant. The agent is ready. */
         void cont_on_recv_message(ipc::msg_ready_t const & /*message*/)
         {
-            LOG_DEBUG("Received ready message.");
+            LOG_FINE("Received ready message.");
 
             if (perfetto_source_pipe) {
                 LOG_ERROR("Perfetto external data pipe already created.");
@@ -125,21 +125,21 @@ namespace agents {
 
             // transition state
             if (transition_state(state_t::ready)) {
-                LOG_DEBUG("Perfetto agent is now ready");
+                LOG_FINE("Perfetto agent is now ready");
             }
         }
 
         /** Handle the 'shutdown' IPC message variant. The agent is shutdown. */
         void cont_on_recv_message(ipc::msg_shutdown_t const & /*message*/)
         {
-            LOG_DEBUG("Received shutdown message.");
+            LOG_FINE("Received shutdown message.");
 
             //close the write end.
             perfetto_source_pipe.reset();
 
             // transition state
             if (transition_state(state_t::shutdown_received)) {
-                LOG_DEBUG("Perfetto agent is now shut down");
+                LOG_FINE("Perfetto agent is now shut down");
             }
         }
 
@@ -211,7 +211,7 @@ namespace agents {
                   start_on(strand) //
                       | then([st = this->shared_from_this()]() {
                             if (st->transition_state(state_t::terminated)) {
-                                LOG_DEBUG("perfetto agent is now terminated");
+                                LOG_FINE("perfetto agent is now terminated");
                             }
                         }));
         }

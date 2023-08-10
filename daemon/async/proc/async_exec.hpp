@@ -425,7 +425,7 @@ namespace async::proc {
     {
         using namespace async::continuations;
 
-        LOG_DEBUG("Creating process %s", exec_args.command.c_str());
+        LOG_FINE("Creating process %s", exec_args.command.c_str());
 
         return async_initiate_cont(
             [&process_monitor, exec_args = std::move(exec_args), stdio_fds = std::move(stdio_fds)]() mutable {
@@ -483,7 +483,7 @@ namespace async::proc {
 
                 auto const * error = lib::get_error(stdio_fds);
                 if (error != nullptr) {
-                    LOG_DEBUG("Failed to create some io");
+                    LOG_WARNING("Failed to create some io");
                     return start_with(*error, std::shared_ptr<async_process_t>());
                 }
 
@@ -499,7 +499,7 @@ namespace async::proc {
                              stderr_type =
                                  std::move(stderr_type)](boost::system::error_code ec,
                                                          process_monitor_t::fork_result_t fork_result) mutable {
-                           LOG_DEBUG("Forked process %s, %d", ec.message().c_str(), fork_result.process.get_pid());
+                           LOG_FINE("Forked process %s, %d", ec.message().c_str(), fork_result.process.get_pid());
 
                            // forward error
                            if (ec) {
@@ -553,15 +553,15 @@ namespace async::proc {
                                       return process->async_wait_complete(use_continuation) //
                                            | then([process](auto ec, auto by_signal, auto status) {
                                                  if (ec) {
-                                                     LOG_DEBUG("unexpected error reported for process %d (%s)",
-                                                               process->get_pid(),
-                                                               ec.message().c_str());
+                                                     LOG_WARNING("unexpected error reported for process %d (%s)",
+                                                                 process->get_pid(),
+                                                                 ec.message().c_str());
                                                  }
                                                  else {
-                                                     LOG_DEBUG("process %d terminated due to %s with status=%d",
-                                                               process->get_pid(),
-                                                               (by_signal ? "signal" : "exit"),
-                                                               status);
+                                                     LOG_FINE("process %d terminated due to %s with status=%d",
+                                                              process->get_pid(),
+                                                              (by_signal ? "signal" : "exit"),
+                                                              status);
                                                  }
                                              });
                                   })
@@ -581,7 +581,7 @@ namespace async::proc {
             [process]() mutable -> polymorphic_continuation_t<boost::system::error_code, bool, int> {
                 // exec the process
                 if (!process->exec()) {
-                    LOG_DEBUG("Exec failed for %d", process->get_pid());
+                    LOG_WARNING("Exec failed for %d", process->get_pid());
 
                     return start_with(boost::system::errc::make_error_code(boost::system::errc::no_such_process),
                                       false,
@@ -608,7 +608,7 @@ namespace async::proc {
                      | map_error()  //
                      | then([](std::shared_ptr<async_process_t> const & ap)
                                 -> polymorphic_continuation_t<boost::system::error_code, bool, int> {
-                           LOG_DEBUG("Successfully started process %d", ap->get_pid());
+                           LOG_FINE("Successfully started process %d", ap->get_pid());
                            return async_run_to_completion(ap, use_continuation);
                        });
             },

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIFLAGS_H_
 #define GATORCLIFLAGS_H_
@@ -14,6 +14,7 @@ enum {
     USE_CMDLINE_ARG_EXCLUDE_KERNEL = (1 << 7),
     USE_CMDLINE_ARG_SMMU_MODEL = (1 << 8),
     USE_CMDLINE_ARG_IIDR_NUMBER = (1 << 9),
+    USE_CMDLINE_ARG_OFF_CPU_PROFILING = (1 << 10),
 };
 
 #endif /* GATORCLIFLAGS_H_ */

@@ -1,12 +1,14 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXMLParser.h"
 
 #include <cstdlib>
 #include <memory>
 
+//NOLINTBEGIN(modernize-avoid-c-arrays)
 static const char TAG_CONFIGURATIONS[] = "configurations";
 static const char TAG_CONFIGURATION[] = "configuration";
+static const char TAG_TEMPLATE[] = "template";
 static const char TAG_SPE[] = "spe";
 
 static const char ATTR_COUNTER[] = "counter";
@@ -21,6 +23,7 @@ static const char * ATTR_LOAD_FILTER = "load-filter";
 static const char * ATTR_STORE_FILTER = "store-filter";
 static const char * ATTR_BRANCH_FILTER = "branch-filter";
 static const char * ATTR_MIN_LATENCY = "min-latency";
+//NOLINTEND(modernize-avoid-c-arrays)
 
 #define CONFIGURATION_REVISION 3
 int static configurationsTag(mxml_node_t * node)
@@ -82,6 +85,7 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     counterConfigurations.push_back(counter);
     return 0;
 }
+
 /**
  * Parse/read spe elements and update spe structure
  */
@@ -153,6 +157,18 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
 }
 
 /**
+ * Parse/read template elements and store raw template configuration
+ */
+int ConfigurationXMLParser::readTemplate(mxml_node_t * node)
+{
+    TemplateConfiguration currentTemplate;
+    currentTemplate.raw = mxmlSaveAsStdString(node, mxmlWhitespaceCB);
+
+    templateConfigurations.push_back(currentTemplate);
+    return 0;
+}
+
+/**
  * Parse the xml content passed as argument,
  */
 int ConfigurationXMLParser::parseConfigurationContent(const char * config_xml_content)
@@ -184,6 +200,9 @@ int ConfigurationXMLParser::parseConfigurationContent(const char * config_xml_co
             else if (strcasecmp(mxmlGetElement0, TAG_CONFIGURATION) == 0) {
                 read_ret = readCounter(node);
             }
+            else if (strcasecmp(mxmlGetElement0, TAG_TEMPLATE) == 0) {
+                read_ret = readTemplate(node);
+            }
             else {
                 LOG_DEBUG("Ignoring unknown element while parsing configuration xml (%s)", mxmlGetElement0);
                 read_ret = 0;
@@ -212,4 +231,9 @@ const std::vector<CounterConfiguration> & ConfigurationXMLParser::getCounterConf
 const std::vector<SpeConfiguration> & ConfigurationXMLParser::getSpeConfiguration()
 {
     return speConfigurations;
+}
+
+const std::vector<TemplateConfiguration> & ConfigurationXMLParser::getTemplateConfiguration()
+{
+    return templateConfigurations;
 }

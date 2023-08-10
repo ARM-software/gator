@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATION_XML_H
 #define CONFIGURATION_XML_H
@@ -40,6 +40,7 @@ namespace configuration_xml {
         bool isDefault;
         std::vector<CounterConfiguration> counterConfigurations;
         std::vector<SpeConfiguration> speConfigurations;
+        std::vector<TemplateConfiguration> templateConfiguration;
     };
     Contents getConfigurationXML(lib::Span<const GatorCpu> clusters);
 

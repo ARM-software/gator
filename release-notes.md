@@ -1,3 +1,11 @@
+# Gator 8.7
+
+Add the ability to include gator log messages in a capture to help with analysing support cases.
+
+Per-core/-cache Mali counters are now summed in all cases, rather than some summed and others averaged, to align with [HWCPipe](https://github.com/ARM-software/HWCPipe). The Streamline templates have been updated so that derived metrics show sum or average as is appropriate to the metric, rather than on a per-HW-block basis.
+
+Support for Cortex A520, A720 and X4 CPUs.
+
 # Gator 8.6
 
 Support for Immortalis-G720, Mali-G720 and Mali-G620 GPUs.

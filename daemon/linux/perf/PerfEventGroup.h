@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
@@ -37,6 +37,7 @@ struct perf_event_group_configurer_config_t {
     int sampleRate;
     bool excludeKernelEvents;
     bool enablePeriodicSampling;
+    bool enableOffCpuSampling;
 
     inline perf_event_group_configurer_config_t(PerfConfig const & perfConfig,
                                                 lib::Span<const GatorCpu> clusters,
@@ -46,7 +47,8 @@ struct perf_event_group_configurer_config_t {
                                                 int64_t schedSwitchId,
                                                 int backtraceDepth,
                                                 int sampleRate,
-                                                bool enablePeriodicSampling)
+                                                bool enablePeriodicSampling,
+                                                bool enableOffCpuSampling)
         : perfConfig(perfConfig),
           clusters(clusters),
           clusterIds(clusterIds),
@@ -55,7 +57,8 @@ struct perf_event_group_configurer_config_t {
           backtraceDepth(backtraceDepth),
           sampleRate(sampleRate),
           excludeKernelEvents(excludeKernelEvents),
-          enablePeriodicSampling(enablePeriodicSampling)
+          enablePeriodicSampling(enablePeriodicSampling),
+          enableOffCpuSampling(enableOffCpuSampling)
     {
     }
 };

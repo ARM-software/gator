@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 #include "capture/Environment.h"
 
 #include "GatorException.h"
@@ -58,7 +58,7 @@ namespace {
         }
         else {
             // NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_DEBUG("getpwnam_r errored %d (%s)", errno, strerror(errno));
+            LOG_WARNING("getpwnam_r errored %d (%s)", errno, strerror(errno));
         }
 
         //
@@ -74,16 +74,16 @@ namespace {
         struct rlimit rlim;
         memset(&rlim, 0, sizeof(rlim));
         if (lib::getrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-            LOG_DEBUG("Unable to get the maximum number of files");
+            LOG_WARNING("Unable to get the maximum number of files");
             // Not good, but not a fatal error either
         }
         else {
             rlim.rlim_max = std::max(rlim.rlim_cur, rlim.rlim_max);
             rlim.rlim_cur = std::min(std::max(DEFAULT_MIN_RLIM_CUR, rlim.rlim_cur), rlim.rlim_max);
             if (lib::setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
-                LOG_DEBUG("Unable to increase the maximum number of files (%" PRIuMAX ", %" PRIuMAX ")",
-                          static_cast<uintmax_t>(rlim.rlim_cur),
-                          static_cast<uintmax_t>(rlim.rlim_max));
+                LOG_WARNING("Unable to increase the maximum number of files (%" PRIuMAX ", %" PRIuMAX ")",
+                            static_cast<uintmax_t>(rlim.rlim_cur),
+                            static_cast<uintmax_t>(rlim.rlim_max));
                 // Not good, but not a fatal error either
             }
         }

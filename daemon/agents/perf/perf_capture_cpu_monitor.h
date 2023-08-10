@@ -55,7 +55,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            LOG_DEBUG("Offlining cpu # %d", cpu_no);
+            LOG_FINE("Offlining cpu # %d", cpu_no);
 
             return
                 //  deactivate all the events
@@ -74,7 +74,7 @@ namespace agents::perf {
         {
             using namespace async::continuations;
 
-            LOG_DEBUG("Onlining cpu # %d", cpu_no);
+            LOG_FINE("Onlining cpu # %d", cpu_no);
 
             return
                 //  rescan for the updated cpuid
@@ -86,7 +86,7 @@ namespace agents::perf {
                            bool really_online) mutable -> polymorphic_continuation_t<> {
                       // if it didnt come online for some reason, then send an offline event
                       if (!really_online) {
-                          LOG_DEBUG("Onlining cpu # %d failed as not all cores came online", cpu_no);
+                          LOG_WARNING("Onlining cpu # %d failed as not all cores came online", cpu_no);
                           return st->co_offline_cpu(monotonic_start, cpu_no);
                       }
 
@@ -224,7 +224,7 @@ namespace agents::perf {
             }
 
             if (inserted && (cores_having_received_initial_event.size() == num_cpu_cores)) {
-                LOG_DEBUG("All cores are now ready");
+                LOG_FINE("All cores are now ready");
                 all_cores_ready_handler_t all_cores_ready_handler {std::move(this->all_cores_ready_handler)};
                 if (all_cores_ready_handler) {
                     LOG_DEBUG("Notifiying that all are ready");
@@ -305,7 +305,7 @@ namespace agents::perf {
                 return;
             }
 
-            LOG_DEBUG("Terminating Perf CPU monitor");
+            LOG_FINE("Terminating Perf CPU monitor");
 
             terminated = true;
 

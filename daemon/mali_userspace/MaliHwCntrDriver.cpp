@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliHwCntrDriver.h"
 
@@ -21,7 +21,7 @@ namespace mali_userspace {
         : SimpleDriver("MaliHwCntrDriver"), mDevices(mali_userspace::enumerateAllMaliHwCntrDrivers())
     {
         if (mDevices.empty()) {
-            LOG_DEBUG("There are no mali devices to create readers");
+            LOG_WARNING("There are no mali devices to create readers");
             return;
         }
 
@@ -55,7 +55,7 @@ namespace mali_userspace {
                             handleException();
                         }
 
-                        LOG_DEBUG("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
+                        LOG_FINE("Added counter '%s' @ %u %u", name, nameBlockIndex, counterIndex);
                         setCounters(new MaliHwCntr(getCounters(),
                                                    name,
                                                    static_cast<std::int32_t>(nameBlockIndex),

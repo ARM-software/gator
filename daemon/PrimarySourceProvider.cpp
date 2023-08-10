@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "PrimarySourceProvider.h"
 
@@ -383,15 +383,15 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
     // Verify root permissions
     const bool isRoot = (geteuid() == 0);
 
-    LOG_DEBUG("Determining primary source");
+    LOG_FINE("Determining primary source");
 
     // try perf
 #if CONFIG_SUPPORT_PERF
     if (isRoot) {
-        LOG_DEBUG("Trying perf API as root...");
+        LOG_FINE("Trying perf API as root...");
     }
     else {
-        LOG_DEBUG("Trying perf API as non-root...");
+        LOG_FINE("Trying perf API as non-root...");
     }
 
     result = PerfPrimarySource::tryCreate(systemWide,
@@ -403,7 +403,7 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
                                           disableCpuOnlining,
                                           disableKernelAnnotations);
     if (result != nullptr) {
-        LOG_DEBUG("...Success");
+        LOG_FINE("...Success");
         LOG_SETUP("Profiling Source\nUsing perf API for primary data source");
         return result;
     }
@@ -414,20 +414,20 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
     // fall back to proc mode
 #if CONFIG_SUPPORT_PROC_POLLING
     if (isRoot) {
-        LOG_DEBUG("Trying /proc counters as root...");
+        LOG_FINE("Trying /proc counters as root...");
     }
     else {
-        LOG_DEBUG("Trying /proc counters as non-root; limited system profiling information available...");
+        LOG_FINE("Trying /proc counters as non-root; limited system profiling information available...");
     }
 
     result = NonRootPrimarySource::tryCreate(std::move(pmuXml), ids, modelNameToUse, disableCpuOnlining);
     if (result != nullptr) {
-        LOG_DEBUG("...Success");
+        LOG_FINE("...Success");
         LOG_SETUP("Profiling Source\nUsing /proc polling for primary data source");
         LOG_ERROR("Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
         return result;
     }
-    LOG_DEBUG("...Unable to set /proc counters");
+    LOG_WARNING("...Unable to set /proc counters");
 
 #endif /* CONFIG_SUPPORT_PROC_POLLING */
 

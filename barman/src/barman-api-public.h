@@ -6,9 +6,14 @@
 #ifndef INCLUDE_BARMAN_API_PUBLIC
 #define INCLUDE_BARMAN_API_PUBLIC
 
-#include "barman-types-public.h"
 #include "barman-intrinsics-public.h"
 #include "barman-protocol-api.h"
+#include "barman-types-public.h"
+#include "multicore/barman-multicore.h"
+
+#if (BM_CONFIG_USE_DATASTORE == BM_CONFIG_USE_DATASTORE_STREAMING_USER_SUPPLIED)
+#include "data-store/barman-ext-streaming-backend.h"
+#endif
 
 /**
  * @defgroup    bm_public   Public functions

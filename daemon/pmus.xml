@@ -100,10 +100,14 @@
     <pmu id="ARMv8_Cortex_X2" cpuid="0x41d48" core_name="Cortex-X2" dt_name="arm,cortex-x2" pmnc_counters="6" profile="8a"/>
 
     <pmu id="ARMv8_Cortex_A510" cpuid="0x41d46" core_name="Cortex-A510" dt_name="arm,cortex-a510" pmnc_counters="6" profile="8a"/>
+    <pmu id="ARMv9_Cortex_A520" cpuid="0x41d80" core_name="Cortex-A520" dt_name="arm,cortex-a520" pmnc_counters="6" profile="9a"/>
     <pmu id="ARMv8_Cortex_A710" cpuid="0x41d47" core_name="Cortex-A710" dt_name="arm,cortex-a710" pmnc_counters="6" profile="8a"/>
 
     <pmu id="ARMv9_Cortex_X3" cpuid="0x41d4e" core_name="Cortex-X3" dt_name="arm,cortex-x3" pmnc_counters="6" profile="9a"/>
     <pmu id="ARMv9_Cortex_A715" cpuid="0x41d4d" core_name="Cortex-A715" dt_name="arm,cortex-a715" pmnc_counters="6" profile="9a"/>
+
+    <pmu id="ARMv9_Cortex_A720" cpuid="0x41d81" core_name="Cortex-A720" dt_name="arm,cortex-a720" pmnc_counters="6" profile="9a"/>
+    <pmu id="ARMv9_Cortex_X4" cpuid="0x41d82" core_name="Cortex-X4" dt_name="arm,cortex-x4" pmnc_counters="6" profile="9a"/>
 
     <!-- Arm China -->
     <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>

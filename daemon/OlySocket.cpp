@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "OlySocket.h"
 
@@ -42,19 +42,21 @@ int socket_cloexec(int domain, int type, int protocol)
     if (sock >= 0) {
         return sock;
     }
-    LOG_DEBUG("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
+    //NOLINTNEXTLINE(concurrency-mt-unsafe)
+    LOG_WARNING("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
 
 #endif
 
     /* Try create socket */
     sock = socket(domain, type, protocol);
     if (sock < 0) {
-        LOG_DEBUG("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)",
-                  domain,
-                  type,
-                  protocol,
-                  errno,
-                  strerror(errno));
+        LOG_WARNING("Failed socket {domain = %i, type = %i, protocol = %i} due to %i (%s)",
+                    domain,
+                    type,
+                    protocol,
+                    errno,
+                    //NOLINTNEXTLINE(concurrency-mt-unsafe)
+                    strerror(errno));
         return -1;
     }
 
@@ -62,14 +64,15 @@ int socket_cloexec(int domain, int type, int protocol)
 #ifdef FD_CLOEXEC
     int fdf = fcntl(sock, F_GETFD);
     if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-        LOG_DEBUG("Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)",
-                  domain,
-                  type,
-                  protocol,
-                  sock,
-                  fdf,
-                  errno,
-                  strerror(errno));
+        LOG_WARNING("Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)",
+                    domain,
+                    type,
+                    protocol,
+                    sock,
+                    fdf,
+                    errno,
+                    //NOLINTNEXTLINE(concurrency-mt-unsafe)
+                    strerror(errno));
         close(sock);
         return -1;
     }
@@ -254,7 +257,7 @@ void OlyServerSocket::createServerSocket(int port)
     // Listen on both IPv4 and IPv6
     on = 0;
     if (setsockopt(mFDServer, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) != 0) {
-        LOG_DEBUG("setsockopt IPV6_V6ONLY failed");
+        LOG_FINE("setsockopt IPV6_V6ONLY failed");
     }
 
     // Create sockaddr_in structure, ensuring non-populated fields are zero
@@ -329,7 +332,7 @@ int OlySocket::receive(char * buffer, int size)
         handleException();
     }
     else if (bytes == 0) {
-        LOG_DEBUG("Socket disconnected");
+        LOG_FINE("Socket disconnected");
         return -1;
     }
     return bytes;
@@ -346,7 +349,7 @@ int OlySocket::receiveNBytes(char * buffer, int size)
             handleException();
         }
         else if (bytes == 0) {
-            LOG_DEBUG("Socket disconnected");
+            LOG_FINE("Socket disconnected");
             return -1;
         }
         buffer += bytes;
@@ -373,7 +376,7 @@ int OlySocket::receiveString(char * buffer, int size)
             handleException();
         }
         else if (bytes == 0) {
-            LOG_DEBUG("Socket disconnected");
+            LOG_FINE("Socket disconnected");
             return -1;
         }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "agents/agent_worker_base.h"
@@ -192,7 +192,7 @@ namespace agents::perf {
          */
         auto co_receive_message(ipc::msg_capture_ready_t && msg)
         {
-            LOG_DEBUG("Perf agent is prepared for capture");
+            LOG_FINE("Perf agent is prepared for capture");
             observer->on_capture_ready(std::move(msg.suffix));
         }
 
@@ -202,7 +202,7 @@ namespace agents::perf {
          */
         auto co_receive_message(const ipc::msg_shutdown_t & /*msg*/)
         {
-            LOG_DEBUG("Perf agent has shut down.");
+            LOG_FINE("Perf agent has shut down.");
             transition_state(state_t::shutdown_received);
             return async::continuations::start_with();
         }
@@ -224,7 +224,7 @@ namespace agents::perf {
             using namespace async::continuations;
             using namespace ipc;
 
-            LOG_DEBUG("starting perf agent worker");
+            LOG_FINE("starting perf agent worker");
             observer->set_controller(std::make_unique<capture_controller_t>(this->shared_from_this()));
 
             auto self = this->shared_from_this();

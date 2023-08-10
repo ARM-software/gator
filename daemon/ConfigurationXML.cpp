@@ -68,7 +68,8 @@ namespace configuration_xml {
                     return {std::move(configurationXML),
                             false,
                             parser.getCounterConfiguration(),
-                            parser.getSpeConfiguration()};
+                            parser.getSpeConfiguration(),
+                            parser.getTemplateConfiguration()};
                 }
                 // invalid so delete it
                 remove();
@@ -85,7 +86,8 @@ namespace configuration_xml {
                 return {std::move(configurationXML),
                         true,
                         parser.getCounterConfiguration(),
-                        parser.getSpeConfiguration()};
+                        parser.getSpeConfiguration(),
+                        parser.getTemplateConfiguration()};
             }
         }
 
@@ -216,7 +218,7 @@ namespace configuration_xml {
                       "configuration.xml on disk");
             handleException();
         }
-        LOG_DEBUG("Invalid configuration.xml file detected and removed");
+        LOG_FINE("Invalid configuration.xml file detected and removed");
     }
 
     static bool addCounter(const char * counterName,

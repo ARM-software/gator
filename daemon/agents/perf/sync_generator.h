@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -120,7 +120,7 @@ namespace agents::perf {
                                      [](auto const & ec, auto const & /*msg*/) {
                                          // EOF means terminated
                                          if (ec && ec != boost::asio::error::eof) {
-                                             LOG_DEBUG("Failed to send IPC message due to %s", ec.message().c_str());
+                                             LOG_WARNING("Failed to send IPC message due to %s", ec.message().c_str());
                                          }
                                      });
         }

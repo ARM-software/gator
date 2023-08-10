@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "linux/smmu_support.h"
 
 #include "Logging.h"
@@ -198,7 +198,7 @@ namespace gator::smmuv3 {
                                << "An SMMUv3 identifier command line argument was provided "
                                   "but the device was identified via sysfs. Detected id ["
                                << device_identifier.value() << "], provided IDs [" << default_identifiers << "]";
-                LOG_DEBUG("%s", msg.c_str());
+                LOG_FINE("%s", msg.c_str());
             }
         }
         else if (pmu_type == pmu_type_t::tcu) {

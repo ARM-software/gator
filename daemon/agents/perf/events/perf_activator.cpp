@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/events/perf_activator.hpp"
 
@@ -47,7 +47,7 @@ namespace agents::perf {
                 int fdf = lib::fcntl(result, F_GETFD);
                 //NOLINTNEXTLINE(hicpp-signed-bitwise) - FD_CLOEXEC
                 if (lib::fcntl(result, F_SETFD, fdf | FD_CLOEXEC) != 0) {
-                    LOG_DEBUG("failed to set CLOEXEC on perf event due to %d", errno);
+                    LOG_WARNING("failed to set CLOEXEC on perf event due to %d", errno);
                 }
             }
 
@@ -83,11 +83,11 @@ namespace agents::perf {
                     return {std::move(fd)};
                 }
 
-                LOG_DEBUG("Failed when exclude_kernel=%u, exclude_hv=%u, exclude_idle=%u with %s",
-                          bool(attr.exclude_kernel),
-                          bool(attr.exclude_hv),
-                          bool(attr.exclude_idle),
-                          peo_errno.message().c_str());
+                LOG_WARNING("Failed when exclude_kernel=%u, exclude_hv=%u, exclude_idle=%u with %s",
+                            bool(attr.exclude_kernel),
+                            bool(attr.exclude_hv),
+                            bool(attr.exclude_idle),
+                            peo_errno.message().c_str());
 
                 // not an error we can retry?
                 if ((peo_errno != boost::system::errc::errc_t::permission_denied)
@@ -131,12 +131,12 @@ namespace agents::perf {
             if (!result) {
                 auto const mm_errno = boost::system::errc::make_error_code(boost::system::errc::errc_t(errno));
 
-                LOG_DEBUG("mmap failed for fd %i (errno=%d, %s, mmapLength=%zu, offset=%zu)",
-                          fd,
-                          mm_errno.value(),
-                          mm_errno.message().c_str(),
-                          length,
-                          static_cast<std::size_t>(offset));
+                LOG_WARNING("mmap failed for fd %i (errno=%d, %s, mmapLength=%zu, offset=%zu)",
+                            fd,
+                            mm_errno.value(),
+                            mm_errno.message().c_str(),
+                            length,
+                            static_cast<std::size_t>(offset));
 
                 if ((mm_errno == boost::system::errc::errc_t::not_enough_memory)
                     || ((errno == boost::system::errc::errc_t::operation_not_permitted) && (getuid() != 0))) {
@@ -217,7 +217,7 @@ namespace agents::perf {
 
             if (bytes < 0) {
                 auto rerrno = boost::system::errc::make_error_code(boost::system::errc::errc_t(errno));
-                LOG_DEBUG("read failed for read_legacy_ids with %d (%s)", rerrno.value(), rerrno.message().c_str());
+                LOG_WARNING("read failed for read_legacy_ids with %d (%s)", rerrno.value(), rerrno.message().c_str());
                 return {read_ids_status_t::failed_fatal, {}};
             }
 
@@ -285,15 +285,15 @@ namespace agents::perf {
         attr.disabled = ((group_fd < 0) && (enable_state != enable_state_t::enabled));
         attr.enable_on_exec = (attr.disabled && (enable_state == enable_state_t::enable_on_exec));
 
-        LOG_DEBUG("Opening attribute:\n"
-                  "    cpu: %i\n"
-                  "    key: %i\n"
-                  "    -------------\n"
-                  "%s",
-                  lib::toEnumValue(core_no),
-                  lib::toEnumValue(event.key),
-                  perf_event_printer.perf_attr_to_string(attr, core_no, "    ", "\n").c_str());
-        LOG_DEBUG("perf_event_open: cpu: %d, pid: %d, leader = %d", lib::toEnumValue(core_no), pid, group_fd);
+        LOG_FINE("Opening attribute:\n"
+                 "    cpu: %i\n"
+                 "    key: %i\n"
+                 "    -------------\n"
+                 "%s",
+                 lib::toEnumValue(core_no),
+                 lib::toEnumValue(event.key),
+                 perf_event_printer.perf_attr_to_string(attr, core_no, "    ", "\n").c_str());
+        LOG_FINE("perf_event_open: cpu: %d, pid: %d, leader = %d", lib::toEnumValue(core_no), pid, group_fd);
 
         lib::AutoClosingFd fd {};
         boost::system::error_code peo_errno {};
@@ -322,7 +322,7 @@ namespace agents::perf {
 
         // process the failure?
         if (!fd) {
-            LOG_DEBUG("... failed %d %s", peo_errno.value(), peo_errno.message().c_str());
+            LOG_WARNING("... failed %d %s", peo_errno.value(), peo_errno.message().c_str());
 
             if (peo_errno == boost::system::errc::errc_t::no_such_device) {
                 // CPU offline
@@ -377,15 +377,15 @@ namespace agents::perf {
             if (perf_id == perf_event_id_t::invalid) {
                 // take a new copy of the errno if it failed, before calling log
                 peo_errno = boost::system::errc::make_error_code(boost::system::errc::errc_t(errno));
-                LOG_DEBUG("Reading a perf event id failed for file-descriptor %d with error %d (%s)",
-                          *fd,
-                          peo_errno.value(),
-                          peo_errno.message().c_str());
+                LOG_WARNING("Reading a perf event id failed for file-descriptor %d with error %d (%s)",
+                            *fd,
+                            peo_errno.value(),
+                            peo_errno.message().c_str());
                 return event_creation_result_t {peo_errno};
             }
         }
 
-        LOG_DEBUG("... event activated successfully %" PRIu64 " %d", lib::toEnumValue(perf_id), *fd);
+        LOG_FINE("... event activated successfully %" PRIu64 " %d", lib::toEnumValue(perf_id), *fd);
 
         // complete
         return event_creation_result_t {perf_id,
@@ -432,7 +432,7 @@ namespace agents::perf {
         auto const aux_length = ringbuffer_config.aux_buffer_size;
 
         if (data_length > std::numeric_limits<off_t>::max()) {
-            LOG_DEBUG("Offset for perf aux buffer is out of range: %zu", data_length);
+            LOG_WARNING("Offset for perf aux buffer is out of range: %zu", data_length);
             return;
         }
 

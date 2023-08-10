@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
 
 #include "lib/forked_process.h"
 
@@ -59,16 +59,16 @@ namespace lib {
         gid_t const r_gid = (uid_gid ? uid_gid->second : -1);
 
         // log the operation
-        LOG_DEBUG("Forking exe '%s' with prepend_command=%u, cwd='%s', uid_gid={%d, %d} vs {%d, %d}",
-                  cmd.c_str(),
-                  prepend_command,
-                  cwd.c_str(),
-                  r_uid,
-                  r_gid,
-                  c_uid,
-                  c_gid);
+        LOG_FINE("Forking exe '%s' with prepend_command=%u, cwd='%s', uid_gid={%d, %d} vs {%d, %d}",
+                 cmd.c_str(),
+                 prepend_command,
+                 cwd.c_str(),
+                 r_uid,
+                 r_gid,
+                 c_uid,
+                 c_gid);
         for (auto const & a : args) {
-            LOG_DEBUG("   ARG: '%s'", a.c_str());
+            LOG_FINE("   ARG: '%s'", a.c_str());
         }
 
         // this pipe is used to trigger the exec or abort from the parent to the child
@@ -96,7 +96,7 @@ namespace lib {
         auto pid = ::fork();
 
         if (pid < 0) {
-            LOG_DEBUG("fork failed with %d", errno);
+            LOG_WARNING("fork failed with %d", errno);
             return boost::system::errc::make_error_code(boost::system::errc::errc_t(errno));
         }
 

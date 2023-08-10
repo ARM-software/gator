@@ -538,10 +538,13 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/linux/Tracepoints.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/file_log_sink.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/file_log_sink.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/logging.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h

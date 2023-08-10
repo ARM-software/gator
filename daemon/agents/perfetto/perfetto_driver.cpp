@@ -32,6 +32,7 @@ namespace agents::perfetto {
         }
     }
 
+    // LiveContent.java has a filter in UNSAVED_SOURCES_TO_IGNORE which must be kept in sync with the counter alias here
     void perfetto_driver_t::writeEvents(mxml_node_t * root) const
     {
         root = mxmlNewElement(root, "category");

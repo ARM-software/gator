@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "capture/CaptureProcess.h"
 
@@ -79,9 +79,9 @@ namespace {
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
         if (WIFEXITED(status)) {
             exitStatus = WEXITSTATUS(status);
-            LOG_DEBUG("Child process %d terminated normally with status %d", pid, exitStatus);
+            LOG_FINE("Child process %d terminated normally with status %d", pid, exitStatus);
             if (exitStatus == OK_TO_EXIT_GATOR_EXIT_CODE) {
-                LOG_DEBUG("Received EXIT_OK command. exiting gatord");
+                LOG_FINE("Received EXIT_OK command. exiting gatord");
                 return {State::EXIT, 0};
             }
         }
@@ -89,7 +89,8 @@ namespace {
             assert(WIFSIGNALED(status));
             // NOLINTNEXTLINE(hicpp-signed-bitwise)
             int signal = WTERMSIG(status);
-            LOG_DEBUG("Child process %d was terminated by signal %s (%d)", pid, strsignal(signal), signal);
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_FINE("Child process %d was terminated by signal %s (%d)", pid, strsignal(signal), signal);
             // child exit codes start from 1 so should be less than 64.
             // add 64 for signal to differentiate from normal exit.
             // can't use 128 to 255 because that would be used by a shell
@@ -99,7 +100,7 @@ namespace {
 
         assert(currentStateAndChildPid.state != State::IDLE);
         if (currentStateAndChildPid.state == State::CAPTURING) {
-            return {.state = State::IDLE, .pid = -1};
+            return {.state = State::IDLE, .pid = exitStatus};
         }
 
         return {State::EXIT, exitStatus};
@@ -107,12 +108,11 @@ namespace {
 
     StateAndPid handleSignal(StateAndPid currentStateAndChildPid, Drivers & drivers, int signum)
     {
-
         if (signum == SIGCHLD) {
             return handleSigchld(currentStateAndChildPid, drivers);
         }
 
-        LOG_DEBUG("Received signal %d, gator daemon exiting", signum);
+        LOG_FINE("Received signal %d, gator daemon exiting", signum);
 
         switch (currentStateAndChildPid.state) {
             case State::CAPTURING:
@@ -182,14 +182,16 @@ namespace {
      * This is used to allow the ADB device scanner to continue to function even during a
      * capture without flooding the console with "Session already active" messages.
      * @param fd The newly accepted connection's file handle
-     * @param last_log_error_supplier Supplies the last generated error log message for reporting back to Streamline
+     * @param log_ops Supplies the last generated error log message for reporting back to Streamline
      */
-    void handleSecondaryConnection(int fd, logging::last_log_error_supplier_t last_log_error_supplier)
+    void handleSecondaryConnection(int fd, const logging::log_access_ops_t * log_ops)
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-2ndconn"), 0, 0, 0);
 
         OlySocket client {fd};
         Sender sender(&client);
+
+        assert(log_ops != nullptr);
 
         // Wait to receive a single command
         StreamlineCommandHandler commandHandler;
@@ -209,7 +211,7 @@ namespace {
         else if (result != IStreamlineCommandHandler::State::EXIT_DISCONNECT) {
             // the expectation is that the user sends COMMAND_DISCONNECT, so anything else is an error
             LOG_ERROR("Session already in progress");
-            std::string last_error = last_log_error_supplier();
+            std::string last_error = log_ops->get_last_log_error();
             sender.writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
         }
 
@@ -248,12 +250,11 @@ namespace {
                              OlyServerSocket & sock,
                              OlyServerSocket * otherSock,
                              capture::capture_process_event_listener_t & event_listener,
-                             logging::last_log_error_supplier_t last_log_error_supplier,
-                             logging::log_setup_supplier_t log_setup_supplier)
+                             const logging::log_access_ops_t & log_ops)
     {
         if (currentStateAndChildPid.state != State::IDLE) {
             // A temporary socket connection to host, to transfer error message
-            std::thread handler {handleSecondaryConnection, sock.acceptConnection(), last_log_error_supplier};
+            std::thread handler {handleSecondaryConnection, sock.acceptConnection(), &log_ops};
             handler.detach();
 
             return currentStateAndChildPid;
@@ -296,15 +297,14 @@ namespace {
                                            drivers,
                                            client,
                                            event_listener,
-                                           last_log_error_supplier,
-                                           std::move(log_setup_supplier));
+                                           log_ops);
             child->run();
             child.reset();
             low_privilege_spawner.reset(); // the dtor may perform some necessary cleanup
             high_privilege_spawner.reset();
 
             // NOLINTNEXTLINE(concurrency-mt-unsafe)
-            exit(0);
+            exit(CHILD_EXIT_AFTER_CAPTURE);
         }
         else {
             // Parent
@@ -319,8 +319,7 @@ namespace {
     StateAndPid doLocalCapture(Drivers & drivers,
                                const Child::Config & config,
                                capture::capture_process_event_listener_t & event_listener,
-                               logging::last_log_error_supplier_t last_log_error_supplier,
-                               logging::log_setup_supplier_t log_setup_supplier)
+                               const logging::log_access_ops_t & log_ops)
     {
         for (const auto & driver : drivers.getAll()) {
             driver->preChildFork();
@@ -348,16 +347,16 @@ namespace {
                                             drivers,
                                             config,
                                             event_listener,
-                                            std::move(last_log_error_supplier),
-                                            std::move(log_setup_supplier));
+                                            log_ops);
+            LOG_FINE("Starting gator-child");
             child->run();
-            LOG_DEBUG("gator-child finished running");
+            LOG_FINE("gator-child finished running");
             child.reset();
 
             low_privilege_spawner.reset(); // the dtor may perform some necessary cleanup
             high_privilege_spawner.reset();
 
-            LOG_DEBUG("gator-child exiting");
+            LOG_FINE("gator-child exiting");
 
             // NOLINTNEXTLINE(concurrency-mt-unsafe)
             exit(0);
@@ -375,13 +374,12 @@ namespace {
 int capture::beginCaptureProcess(const ParserResult & result,
                                  Drivers & drivers,
                                  std::array<int, 2> signalPipe,
-                                 const logging::last_log_error_supplier_t & last_log_error_supplier,
-                                 const logging::log_setup_supplier_t & log_setup_supplier,
+                                 logging::log_access_ops_t & log_ops,
                                  capture::capture_process_event_listener_t & event_listener)
 {
     // Set to high priority
     if (setpriority(PRIO_PROCESS, lib::gettid(), high_priority) == -1) {
-        LOG_DEBUG("setpriority() failed");
+        LOG_WARNING("setpriority() failed");
     }
 
     // Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal
@@ -428,8 +426,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
             for (const auto & spe : result.mSpeConfigs) {
                 childConfig.spes.insert(spe);
             }
-            stateAndChildPid =
-                doLocalCapture(drivers, childConfig, event_listener, last_log_error_supplier, log_setup_supplier);
+            stateAndChildPid = doLocalCapture(drivers, childConfig, event_listener, log_ops);
         }
         else {
             // enable TCP socket
@@ -461,22 +458,12 @@ int capture::beginCaptureProcess(const ParserResult & result,
 
             for (int i = 0; i < ready; ++i) {
                 if ((socketUds != nullptr) && (events[i].data.fd == socketUds->getFd())) {
-                    stateAndChildPid = handleClient(stateAndChildPid,
-                                                    drivers,
-                                                    *socketUds,
-                                                    socketTcp.get(),
-                                                    event_listener,
-                                                    last_log_error_supplier,
-                                                    log_setup_supplier);
+                    stateAndChildPid =
+                        handleClient(stateAndChildPid, drivers, *socketUds, socketTcp.get(), event_listener, log_ops);
                 }
                 else if ((socketTcp != nullptr) && (events[i].data.fd == socketTcp->getFd())) {
-                    stateAndChildPid = handleClient(stateAndChildPid,
-                                                    drivers,
-                                                    *socketTcp,
-                                                    socketUds.get(),
-                                                    event_listener,
-                                                    last_log_error_supplier,
-                                                    log_setup_supplier);
+                    stateAndChildPid =
+                        handleClient(stateAndChildPid, drivers, *socketTcp, socketUds.get(), event_listener, log_ops);
                 }
                 else if (events[i].data.fd == udpListener.getReq()) {
                     udpListener.handle();
@@ -492,7 +479,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
                 else if (events[i].data.fd == pipefd[0]) {
                     uint64_t val;
                     if (read(pipefd[0], &val, sizeof(val)) != sizeof(val)) {
-                        LOG_DEBUG("Reading annotate pipe failed");
+                        LOG_WARNING("Reading annotate pipe failed");
                     }
                     if (annotateListenerPtr != nullptr) {
                         annotateListenerPtr->signal();
@@ -507,7 +494,22 @@ int capture::beginCaptureProcess(const ParserResult & result,
                         throw GatorException(ss.str());
                     }
 
+                    const auto old_state = stateAndChildPid.state;
                     stateAndChildPid = handleSignal(stateAndChildPid, drivers, signum);
+
+                    // if the gator-child process has just completed a capture we should restart the log file
+                    // to prevent it from growing in size infinitely.
+                    // NOTE: this needs to happen here, in gator-main, because at this point we know there will be
+                    // only one process with a handle to the file (gator-main). The original idea was to close and
+                    // move the file in gator-child, at the end of the capture, but this doesn't work because
+                    // gator-main still has a handle to the old log file. This means log data ends up in the wrong
+                    // file when running in daemon mode.
+                    if (old_state == State::CAPTURING && stateAndChildPid.state == State::IDLE
+                        && stateAndChildPid.pid == CHILD_EXIT_AFTER_CAPTURE) {
+                        log_ops.restart_log_file();
+                        // change to the "exit OK" status
+                        stateAndChildPid.pid = 0;
+                    }
                 }
                 else {
                     // shouldn't really happen unless we forgot to handle a new item
@@ -520,12 +522,12 @@ int capture::beginCaptureProcess(const ParserResult & result,
         return stateAndChildPid.pid;
     }
     catch (const GatorException & ex) {
-        LOG_DEBUG("%s", ex.what());
+        LOG_WARNING("GatorException caught %s", ex.what());
 
         // hard-kill the child process if its running
         switch (stateAndChildPid.state) {
             case State::CAPTURING:
-                LOG_DEBUG("Sending SIGKILL to child process");
+                LOG_INFO("Sending SIGKILL to child process");
                 kill(-stateAndChildPid.pid, SIGKILL);
                 break;
             case State::IDLE:

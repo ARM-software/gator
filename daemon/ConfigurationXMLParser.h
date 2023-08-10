@@ -6,6 +6,7 @@
 #include "Configuration.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "xml/MxmlUtils.h"
 
 #include <regex>
 #include <string>
@@ -22,13 +23,16 @@ public:
     int parseConfigurationContent(const char * config_xml_content);
     const std::vector<CounterConfiguration> & getCounterConfiguration();
     const std::vector<SpeConfiguration> & getSpeConfiguration();
+    const std::vector<TemplateConfiguration> & getTemplateConfiguration();
 
 private:
     std::vector<CounterConfiguration> counterConfigurations {};
     std::vector<SpeConfiguration> speConfigurations {};
+    std::vector<TemplateConfiguration> templateConfigurations {};
 
     int readSpe(mxml_node_t * node);
     int readCounter(mxml_node_t * node);
+    int readTemplate(mxml_node_t * node);
 };
 
 #endif /* CONFIGURATIONXMLPARSER_H_ */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "android/Utils.h"
 
@@ -81,7 +81,7 @@ namespace android_utils {
             gator::process::runCommandAndRedirectOutput("run-as " + androidPackageName + " tar -c " + origApcDir.name(),
                                                         std::make_optional(targetTarFile));
         if (copyResult != 0) {
-            LOG_DEBUG("Zip tar file '/data/data/%s/%s' to '%s' failed ",
+            LOG_ERROR("Zip tar file '/data/data/%s/%s' to '%s' failed ",
                       androidPackageName.c_str(),
                       origApcDir.name().c_str(),
                       targetTarFile.c_str());
@@ -93,12 +93,12 @@ namespace android_utils {
                                                                            + " -C " + destination,
                                                                        std::nullopt);
         if (unzipResult != 0) {
-            LOG_DEBUG("Unzipping tar file '%s' to '%s' failed ", targetTarFile.c_str(), destination.c_str());
+            LOG_WARNING("Unzipping tar file '%s' to '%s' failed ", targetTarFile.c_str(), destination.c_str());
         }
         gator::process::runCommandAndRedirectOutput("run-as " + androidPackageName + " rm -r " + origApcDir.name(),
                                                     std::nullopt);
         if (!targetTarFileFsEnrty.remove()) {
-            LOG_DEBUG("Failed to removed tar file '%s'", targetTarFileFsEnrty.path().c_str());
+            LOG_WARNING("Failed to removed tar file '%s'", targetTarFileFsEnrty.path().c_str());
         }
         return unzipResult == 0;
     }
@@ -126,7 +126,7 @@ namespace android_utils {
         if (origApcDir.exists()) {
             origApcDir.remove_all();
             if (origApcDir.exists()) {
-                LOG_DEBUG("Desitination folder exists '%s' and could not be deleted.", apcPathWithEtn.c_str());
+                LOG_ERROR("Desitination folder exists '%s' and could not be deleted.", apcPathWithEtn.c_str());
                 return {};
             }
         }

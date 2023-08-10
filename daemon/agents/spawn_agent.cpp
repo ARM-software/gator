@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 #include "agents/spawn_agent.h"
 
 #include "android/Spawn.h"
@@ -63,7 +63,7 @@ namespace agents {
         std::vector<std::string> arguments {};
 
         if (should_debug_this_agent(agent_name)) {
-            LOG_DEBUG("Enabling debug for agent [%s]", agent_name);
+            LOG_FINE("Enabling debug for agent [%s]", agent_name);
             arguments.emplace_back(":5001");
             arguments.emplace_back(exe_name);
             exe_name = "./gdbserver";
@@ -111,7 +111,7 @@ namespace agents {
         std::vector<std::string> arguments;
         arguments.push_back(package_name);
         if (should_debug_this_agent(agent_name)) {
-            LOG_DEBUG("Enabling debug for agent [%s]", agent_name);
+            LOG_FINE("Enabling debug for agent [%s]", agent_name);
             arguments.emplace_back("./gdbserver");
             arguments.emplace_back(":5001");
         }

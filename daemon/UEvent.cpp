@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "UEvent.h"
 
@@ -32,7 +32,8 @@ bool UEvent::init()
 {
     mFd = socket_cloexec(PF_NETLINK, SOCK_RAW, NETLINK_KOBJECT_UEVENT);
     if (mFd < 0) {
-        LOG_DEBUG("Socket failed for uevents (%d - %s)", errno, strerror(errno));
+        //NOLINTNEXTLINE(concurrency-mt-unsafe)
+        LOG_WARNING("Socket failed for uevents (%d - %s)", errno, strerror(errno));
         return false;
     }
 
@@ -42,7 +43,8 @@ bool UEvent::init()
     sockaddr.nl_groups = 1; // bitmask: (1 << 0) == kernel events, (1 << 1) == udev events
     sockaddr.nl_pid = 0;
     if (bind(mFd, reinterpret_cast<struct sockaddr *>(&sockaddr), sizeof(sockaddr)) != 0) {
-        LOG_DEBUG("Bind failed for uevents (%d - %s)", errno, strerror(errno));
+        //NOLINTNEXTLINE(concurrency-mt-unsafe)
+        LOG_WARNING("Bind failed for uevents (%d - %s)", errno, strerror(errno));
         return false;
     }
 
@@ -53,7 +55,7 @@ bool UEvent::read(UEventResult * const result)
 {
     ssize_t bytes = recv(mFd, result->mBuf, sizeof(result->mBuf), 0);
     if (bytes <= 0) {
-        LOG_DEBUG("recv failed");
+        LOG_WARNING("recv failed");
         return false;
     }
 

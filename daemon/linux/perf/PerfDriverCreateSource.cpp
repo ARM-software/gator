@@ -42,7 +42,7 @@ namespace {
                 handleException();
             }
             else {
-                LOG_DEBUG("readProcSysDependencies failed");
+                LOG_FINE("readProcSysDependencies failed");
             }
         }
 
@@ -103,6 +103,7 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
         gSessionData.mBacktraceDepth,
         gSessionData.mSampleRate,
         !gSessionData.mIsEBS,
+        gSessionData.mEnableOffCpuSampling,
     };
 
     perf_groups_configurer_state_t event_configurer_state {};
@@ -120,7 +121,7 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
         attr_to_key_mapping_tracker_t wrapper {*attrs_buffer};
         perf_groups_configurer_t groups_builder {wrapper, event_configurer_config, event_configurer_state};
         if (!enable(groups_builder, wrapper)) {
-            LOG_DEBUG("perf setup failed, are you running Linux 3.4 or later?");
+            LOG_WARNING("perf setup failed, are you running Linux 3.4 or later?");
             return {};
         }
     }

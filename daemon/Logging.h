@@ -5,6 +5,7 @@
 #include "Config.h"
 #include "lib/Span.h"
 #include "lib/source_location.h"
+#include "logging/suppliers.h"
 
 #include <cstddef>
 #include <memory>
@@ -31,6 +32,9 @@ inline void LOG_TRACE(char const *, Args &&...)
 
 /** Log a 'debug' level item */
 #define LOG_DEBUG(format, ...) LOG_ITEM(::logging::log_level_t::debug, (format), ##__VA_ARGS__)
+
+/** Log a 'fine' level item */
+#define LOG_FINE(format, ...) LOG_ITEM(::logging::log_level_t::fine, (format), ##__VA_ARGS__)
 
 /** Log a 'info' level item */
 #define LOG_INFO(format, ...) LOG_ITEM(::logging::log_level_t::info, (format), ##__VA_ARGS__)
@@ -82,6 +86,7 @@ namespace logging {
         trace,
         debug,
         setup,
+        fine,
         info,
         warning,
         error,
@@ -102,13 +107,35 @@ namespace logging {
     /** Identifies the source thread */
     enum class thread_id_t : pid_t;
 
-    /** Log sink interface */
+    /**
+     * Log sink implementations receive formatted log messages and write them somewhere (e.g. a file/stdout).
+     */
     class log_sink_t {
     public:
-        virtual ~log_sink_t() noexcept = default;
+        log_sink_t() = default;
+
+        virtual ~log_sink_t() = default;
+
+        log_sink_t(const log_sink_t &) = delete;
+        log_sink_t & operator=(const log_sink_t &) = delete;
+
+        log_sink_t(log_sink_t &&) = delete;
+        log_sink_t & operator=(log_sink_t &&) = delete;
+
+        /** Emit the specified formatted log message. */
+        virtual void write_log(std::string_view log_item) = 0;
+    };
+
+    /** Logger interface */
+    class logger_t {
+    public:
+        virtual ~logger_t() noexcept = default;
 
         /** Toggle whether TRACE/DEBUG/SETUP messages are output to the console */
         virtual void set_debug_enabled(bool enabled) = 0;
+
+        /** Toggle whether FINE messages are output to the console */
+        virtual void set_fine_enabled(bool enabled) = 0;
 
         /**
          * Store some log item to the log
@@ -184,7 +211,7 @@ namespace logging {
      *
      * @param sink Some sink object (may be null to clear the sink)
      */
-    void set_log_sink(std::shared_ptr<log_sink_t> sink);
+    void set_logger(std::shared_ptr<logger_t> sink);
 
     /** @return true if trace logging is enabled */
     inline bool is_log_enable_trace() noexcept

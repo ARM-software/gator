@@ -301,10 +301,25 @@ namespace {
         while (mSessionIsActive) {
             const ssize_t bytes = splice(mTfd, nullptr, internal_pipe[1], nullptr, pageSize, SPLICE_F_MOVE);
             if (bytes == 0) {
-                LOG_ERROR("ftrace splice unexpectedly returned 0");
-                handleException();
+                constexpr int sleep_timeout = 100'000;
+                constexpr int num_times_to_wait = 10;
+                // we can get here after the ftrace pipe has been closed but before the rest of gator
+                // has had a chance to respond to the target app closing, so the interrupt() method
+                // may not have been called. Wait for a bit to let it catch up.
+                // If we blindly exit the loop without waiting then there's a chance that the SIGUSR1
+                // signal could arrive during the splice syscall that reads the slop, causing an
+                // incomplete read, and resulting in gator exiting with a non-zero error code.
+                for (int i = 0; i < num_times_to_wait && mSessionIsActive; ++i) {
+                    usleep(sleep_timeout);
+                }
+
+                if (mSessionIsActive) {
+                    LOG_DEBUG("FTrace pipe has ended but session still seems to be active.");
+                }
+                break;
             }
-            else if (bytes < 0) {
+
+            if (bytes < 0) {
                 if (errno != EINTR) {
                     LOG_ERROR("splice failed");
                     handleException();

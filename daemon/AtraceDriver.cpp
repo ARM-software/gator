@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "AtraceDriver.h"
 
@@ -87,7 +87,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
 
 void AtraceDriver::setAtrace(const int flags)
 {
-    LOG_DEBUG("Setting atrace flags to %i", flags);
+    LOG_FINE("Setting atrace flags to %i", flags);
     pid_t pid = fork();
     if (pid < 0) {
         LOG_ERROR("fork failed");

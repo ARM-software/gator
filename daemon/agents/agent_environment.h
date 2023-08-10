@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -181,8 +181,8 @@ namespace agents {
                   start_on(strand) //
                       | then([self = this->shared_from_this()]() mutable -> polymorphic_continuation_t<> {
                             if (std::exchange(self->is_shutdown, true)) {
-                                LOG_DEBUG("[%s] Shutdown requested by agent, but shutdown already in progress",
-                                          self->instance_name.c_str());
+                                LOG_FINE("[%s] Shutdown requested by agent, but shutdown already in progress",
+                                         self->instance_name.c_str());
                                 return {};
                             }
                             return self->co_init_shutdown();
@@ -287,11 +287,11 @@ namespace agents {
             using namespace async::continuations;
 
             if (std::exchange(is_shutdown, true)) {
-                LOG_DEBUG("[%s] Shutdown message received, but shutdown already in progress", instance_name.c_str());
+                LOG_WARNING("[%s] Shutdown message received, but shutdown already in progress", instance_name.c_str());
                 return {};
             }
 
-            LOG_TRACE("[%s] Shutdown message received - scheduling shutdown continuation", instance_name.c_str());
+            LOG_FINE("[%s] Shutdown message received - scheduling shutdown continuation", instance_name.c_str());
             // ask the agent to shutdown first, then clean up the environment
             return start_on(strand) | co_init_shutdown();
         }
@@ -317,7 +317,7 @@ namespace agents {
                    })                                                           //
                  | then([self](const auto & ec, const auto & /*msg*/) mutable { //
                        if (ec) {
-                           LOG_DEBUG("Failed to send shutdown IPC to host due to %s", ec.message().c_str());
+                           LOG_WARNING("Failed to send shutdown IPC to host due to %s", ec.message().c_str());
                        }
                        else {
                            LOG_TRACE("[%s] Shutdown message sent", self->instance_name.c_str());

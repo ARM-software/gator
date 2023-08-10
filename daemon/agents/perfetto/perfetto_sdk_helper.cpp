@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/perfetto/perfetto_sdk_helper.h"
 
 #include "lib/AutoClosingFd.h"
@@ -41,7 +41,7 @@ namespace agents {
             tracing_session = perfetto::Tracing::NewTrace();
         }
         else {
-            LOG_DEBUG("Perfetto SDK should be initialized only one time");
+            LOG_WARNING("Perfetto SDK should be initialized only one time");
         }
     }
 

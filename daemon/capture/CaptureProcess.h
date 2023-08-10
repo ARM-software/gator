@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -43,7 +43,6 @@ namespace capture {
     int beginCaptureProcess(const ParserResult & result,
                             Drivers & drivers,
                             std::array<int, 2> signalPipe,
-                            const logging::last_log_error_supplier_t & last_log_error_supplier,
-                            const logging::log_setup_supplier_t & log_setup_supplier,
+                            logging::log_access_ops_t & log_ops,
                             capture_process_event_listener_t & event_listener);
 }

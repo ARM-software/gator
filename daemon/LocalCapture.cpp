@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "LocalCapture.h"
 
@@ -27,7 +27,7 @@ static char * createUniqueDirectory(const char * initialPath, const char * endin
     }
     else if (initialPath[0] != '/') {
         if (getcwd(path, PATH_MAX - 1) == nullptr) {
-            LOG_DEBUG("Unable to retrieve the current working directory");
+            LOG_WARNING("Unable to retrieve the current working directory");
         }
         strncat(path, "/", PATH_MAX - strlen(path) - 1);
         strncat(path, initialPath, PATH_MAX - strlen(path) - 1);
@@ -103,10 +103,10 @@ namespace local_capture {
             }
             strncat(dstfilename, getFilePart(element.c_str()), PATH_MAX - strlen(dstfilename) - 1);
             if (copyFile(element.c_str(), dstfilename) != 0) {
-                LOG_DEBUG("copied file %s to %s", element.c_str(), dstfilename);
+                LOG_FINE("copied file %s to %s", element.c_str(), dstfilename);
             }
             else {
-                LOG_DEBUG("copy of file %s to %s failed", element.c_str(), dstfilename);
+                LOG_WARNING("copy of file %s to %s failed", element.c_str(), dstfilename);
             }
         }
     }

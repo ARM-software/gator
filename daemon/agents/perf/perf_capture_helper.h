@@ -150,7 +150,7 @@ namespace agents::perf {
                         return {};
                     }
 
-                    LOG_DEBUG("Starting pid monitoring...");
+                    LOG_FINE("Starting pid monitoring...");
 
                     // start any pids we are monitoring
                     return start_on(st->strand) //
@@ -745,7 +745,8 @@ namespace agents::perf {
                                      async::proc::async_run_to_completion(fc, use_continuation)
                                          | then([st, forked_pid = fc->get_pid()](auto ec, bool by_signal, int status) {
                                                if (ec) {
-                                                   LOG_DEBUG("Exec monitor failed with error %s", ec.message().c_str());
+                                                   LOG_WARNING("Exec monitor failed with error %s",
+                                                               ec.message().c_str());
                                                }
                                                else if (by_signal) {
                                                    LOG_ERROR("Command exited with signal %d", status);
@@ -810,7 +811,7 @@ namespace agents::perf {
         void terminate()
         {
             boost::asio::post(strand, [st = this->shared_from_this()]() mutable {
-                LOG_DEBUG("Terminating");
+                LOG_FINE("Terminating pid monitoring...");
 
                 auto w = st->waiter;
                 if (w) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "ExternalDriver.h"
 
@@ -140,7 +140,7 @@ void ExternalDriver::query() const
 
         size -= HEADER_SIZE;
         gSessionData.mSharedData->mMaliUtgardCountersSize = size;
-        LOG_DEBUG("Requested counters; size: %zi", size);
+        LOG_FINE("Requested counters; size: %zi", size);
     }
 
     size_t pos = 0;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "TtraceDriver.h"
 
@@ -82,7 +82,7 @@ void TtraceDriver::readEvents(mxml_node_t * const xml)
 
 void TtraceDriver::setTtrace(const int flags)
 {
-    LOG_DEBUG("Setting ttrace flags to %i", flags);
+    LOG_FINE("Setting ttrace flags to %i", flags);
 
     const int fd = open("/tmp/ttrace_tag", O_CREAT | O_RDWR | O_CLOEXEC, 0666);
     if (fd < 0) {

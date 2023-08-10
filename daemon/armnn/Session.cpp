@@ -27,7 +27,7 @@ namespace armnn {
                                              ICounterConsumer & counterConsumer,
                                              const std::uint32_t sessionID)
     {
-        LOG_DEBUG("Creating new ArmNN session");
+        LOG_FINE("Creating new ArmNN session");
 
         HeaderPacket headerPacket {};
         if (!Session::initialiseConnection(*connection, headerPacket)) {

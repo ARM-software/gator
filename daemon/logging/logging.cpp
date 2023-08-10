@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
@@ -19,7 +19,7 @@
 
 namespace logging {
     namespace {
-        std::shared_ptr<log_sink_t> current_log_sink {};
+        std::shared_ptr<logger_t> current_logger {};
 
         void protobuf_log_handler(google::protobuf::LogLevel level,
                                   const char * filename,
@@ -85,7 +85,7 @@ namespace logging {
 
     void log_item(log_level_t level, source_loc_t const & location, std::string_view message)
     {
-        std::shared_ptr<log_sink_t> sink = current_log_sink;
+        std::shared_ptr<logger_t> sink = current_logger;
 
         if (sink != nullptr) {
             struct timespec t;
@@ -97,7 +97,7 @@ namespace logging {
 
     void log_item(thread_id_t tid, log_level_t level, source_loc_t const & location, std::string_view message)
     {
-        std::shared_ptr<log_sink_t> sink = current_log_sink;
+        std::shared_ptr<logger_t> sink = current_logger;
 
         if (sink != nullptr) {
             struct timespec t;
@@ -113,7 +113,7 @@ namespace logging {
                   source_loc_t const & location,
                   std::string_view message)
     {
-        std::shared_ptr<log_sink_t> sink = current_log_sink;
+        std::shared_ptr<logger_t> sink = current_logger;
 
         if (sink != nullptr) {
 
@@ -121,10 +121,10 @@ namespace logging {
         }
     }
 
-    void set_log_sink(std::shared_ptr<log_sink_t> sink)
+    void set_logger(std::shared_ptr<logger_t> sink)
     {
-        current_log_sink = std::move(sink);
+        current_logger = std::move(sink);
 
-        google::protobuf::SetLogHandler(current_log_sink ? protobuf_log_handler : nullptr);
+        google::protobuf::SetLogHandler(current_logger ? protobuf_log_handler : nullptr);
     }
 }

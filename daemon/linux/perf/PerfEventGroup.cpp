@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroup.h"
 
@@ -6,6 +6,7 @@
 #include "Logging.h"
 #include "SessionData.h"
 #include "k/perf_event.h"
+#include "lib/Assert.h"
 #include "lib/Format.h"
 #include "lib/Syscall.h"
 #include "linux/perf/PerfUtils.h"
@@ -131,8 +132,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     const bool use_inherit = !(config.perfConfig.is_system_wide || is_header);
     // group doesn't require a leader (so all events are stand alone)
     const bool every_attribute_in_own_group = use_inherit || (!requires_leader) || is_header;
-    // use READ_FORMAT_GROUP; only when the leader and not a stand alone event
-    const bool use_read_format_group = leader && (!use_inherit) && (!every_attribute_in_own_group) && (!is_header);
+    // use READ_FORMAT_GROUP; for any item that overflows, but not for inherit (which cannot support groups) and not a stand alone event
+    const bool use_read_format_group = (!use_inherit) && (!every_attribute_in_own_group) && (!is_header);
 
     // filter kernel events?
     const bool exclude_kernel = should_exclude_kernel(attr.type, attr.config, config.excludeKernelEvents);
@@ -264,48 +265,70 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
             LOG_DEBUG("Unable to read sched_switch id");
             return false;
         }
+
         attr.type = PERF_TYPE_TRACEPOINT;
         attr.config = config.schedSwitchId;
         attr.periodOrFreq = 1;
-        // collect sched switch info from the tracepoint
-        attr.sampleType |= PERF_SAMPLE_RAW;
+
+        // collect sched switch info from the tracepoint, and additionally collect callchains in off-cpu mode
+        attr.sampleType |= PERF_SAMPLE_RAW                                                                          //
+                         | PERF_SAMPLE_READ                                                                         //
+                         | (config.enableOffCpuSampling ? (enableCallChain ? PERF_SAMPLE_IP | PERF_SAMPLE_CALLCHAIN //
+                                                                           : PERF_SAMPLE_IP)                        //
+                                                        : 0);
     }
     else {
+        // all subsequent options use software type
         attr.type = PERF_TYPE_SOFTWARE;
-        if (config.perfConfig.has_attr_context_switch) {
-            // collect sched switch info directly from perf
-            attr.context_switch = true;
 
-            // use dummy as leader if possible
-            if (config.perfConfig.has_count_sw_dummy) {
-                attr.config = PERF_COUNT_SW_DUMMY;
-                attr.periodOrFreq = 0;
+        // does the user want off-cpu profiling?
+        if (config.enableOffCpuSampling) {
+            if ((!config.perfConfig.has_attr_context_switch) || config.perfConfig.exclude_kernel) {
+                LOG_ERROR("Off-CPU profiling is not supported in this configuration");
+                return false;
             }
-            // otherwise use sampling as leader
-            else {
-                attr.config = PERF_COUNT_SW_CPU_CLOCK;
-                attr.periodOrFreq = (config.sampleRate > 0 && config.enablePeriodicSampling
-                                         ? NANO_SECONDS_IN_ONE_SECOND / config.sampleRate
-                                         : 0);
-                attr.sampleType |=
-                    PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
-            }
-        }
-        else if (!config.perfConfig.exclude_kernel) {
+
             // use context switches as leader. this should give us 'switch-out' events
+            attr.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
+            attr.periodOrFreq = 1;
+            attr.sampleType |= PERF_SAMPLE_TID                          //
+                             | PERF_SAMPLE_READ                         //
+                             | PERF_SAMPLE_IP                           //
+                             | (enableCallChain ? PERF_SAMPLE_CALLCHAIN //
+                                                : 0);
+            // and collect PERF_RECORD_SWITCH for the switch-in events
+            attr.context_switch = true;
+            enableTaskClock = true;
+        }
+        // if we have context switch events, then use dummy as the leader as something to hange process related records off of
+        else if (config.perfConfig.has_attr_context_switch) {
+            // attr_context_switch implies dummy
+            runtime_assert(config.perfConfig.has_count_sw_dummy, "What configuration is this??");
+
+            attr.config = PERF_COUNT_SW_DUMMY;
+            attr.periodOrFreq = 0;
+            attr.context_switch = true;
+            enableTaskClock = true;
+        }
+        // too old for context switch records, but can at least see kernel events; use switch as the leader so that we at
+        // least get switch out events
+        else if (!config.perfConfig.exclude_kernel) {
             attr.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
             attr.periodOrFreq = 1;
             attr.sampleType |= PERF_SAMPLE_TID;
             enableTaskClock = true;
         }
+        // no context switches at all :-( - just use the timer
         else {
-            // no context switches at all :-(
             attr.config = PERF_COUNT_SW_CPU_CLOCK;
             attr.periodOrFreq =
                 (config.sampleRate > 0 && config.enablePeriodicSampling ? NANO_SECONDS_IN_ONE_SECOND / config.sampleRate
                                                                         : 0);
-            attr.sampleType |=
-                PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
+            attr.sampleType |= PERF_SAMPLE_TID                          //
+                             | PERF_SAMPLE_READ                         //
+                             | PERF_SAMPLE_IP                           //
+                             | (enableCallChain ? PERF_SAMPLE_CALLCHAIN //
+                                                : 0);
         }
     }
 
@@ -315,12 +338,15 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
     }
 
     // Periodic PC sampling
-    if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && config.sampleRate > 0 && config.enablePeriodicSampling) {
+    if ((attr.config != PERF_COUNT_SW_CPU_CLOCK) && (config.sampleRate > 0) && config.enablePeriodicSampling) {
         IPerfGroups::Attr pcAttr {};
         pcAttr.type = PERF_TYPE_SOFTWARE;
         pcAttr.config = PERF_COUNT_SW_CPU_CLOCK;
-        pcAttr.sampleType =
-            PERF_SAMPLE_TID | PERF_SAMPLE_IP | PERF_SAMPLE_READ | (enableCallChain ? PERF_SAMPLE_CALLCHAIN : 0);
+        pcAttr.sampleType = PERF_SAMPLE_TID                          //
+                          | PERF_SAMPLE_READ                         //
+                          | PERF_SAMPLE_IP                           //
+                          | (enableCallChain ? PERF_SAMPLE_CALLCHAIN //
+                                             : 0);
         pcAttr.periodOrFreq = NANO_SECONDS_IN_ONE_SECOND / config.sampleRate;
         if (!addEvent(false, mapping_tracker, nextDummyKey(), pcAttr, false)) {
             return false;

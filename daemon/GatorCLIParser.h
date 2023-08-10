@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIPARSER_H_
 #define GATORCLIPARSER_H_
@@ -36,9 +36,14 @@ class GatorCLIParser {
 public:
     ParserResult result {};
 
+    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     static bool hasDebugFlag(int argc, const char * const argv[]);
 
+    //NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    static bool hasCaptureLogFlag(int argc, const char * const argv[]);
+
     void parseCLIArguments(int argc,
+                           //NOLINTNEXTLINE(modernize-avoid-c-arrays)
                            char * argv[],
                            const char * version_string,
                            int maxPerformanceCounter,

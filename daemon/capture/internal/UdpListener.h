@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -17,7 +17,7 @@
 
 namespace capture::internal {
 
-    constexpr int UDP_REQ_PORT = 30001;
+    constexpr int UDP_REQ_PORT = 30003;
 
     struct RVIConfigureInfo {
         char rviHeader[8];

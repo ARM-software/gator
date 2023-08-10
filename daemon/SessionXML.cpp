@@ -1,7 +1,8 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "SessionXML.h"
 
+#include "GatorCLIFlags.h"
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
@@ -28,6 +29,7 @@ namespace {
     constexpr const char * ATTR_STOP_GATOR = "stop_gator";
     constexpr const char * ATTR_CAPTURE_USER = "capture_user";
     constexpr const char * ATTR_EXCLUDE_KERNEL_EVENTS = "exclude_kernel_events";
+    constexpr const char * ATTR_OFF_CPU_PROFILING = "off_cpu_profiling";
 }
 
 SessionXML::SessionXML(const char * str) : mSessionXML(str)
@@ -130,8 +132,13 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
             handleException();
         }
     }
+
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_EXCLUDE_KERNEL) == 0) {
         gSessionData.mExcludeKernelEvents = stringToBool(mxmlElementGetAttr(node, ATTR_EXCLUDE_KERNEL_EVENTS), false);
+    }
+
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) == 0) {
+        gSessionData.mEnableOffCpuSampling = stringToBool(mxmlElementGetAttr(node, ATTR_OFF_CPU_PROFILING), false);
     }
 
     // parse subtags

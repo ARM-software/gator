@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/Tracepoints.h"
 
@@ -28,7 +28,7 @@ bool readTracepointFormat(IPerfAttrsConsumer & attrsConsumer, const char * trace
 
     if (!file.canAccess(true, false, false)) {
         const std::string path = file.path();
-        LOG_DEBUG("can't read %s", path.c_str());
+        LOG_WARNING("can't read %s", path.c_str());
         return false;
     }
 
@@ -42,7 +42,7 @@ int64_t getTracepointId(const char * tracefsEventsPath, const char * const name)
 {
     int64_t result;
     if (lib::readInt64FromFile(getTracepointPath(tracefsEventsPath, name, "id").c_str(), result) != 0) {
-        LOG_DEBUG("Unable to read tracepoint id for %s", name);
+        LOG_FINE("Unable to read tracepoint id for %s", name);
         return UNKNOWN_TRACEPOINT_ID;
     }
 
@@ -124,12 +124,12 @@ namespace {
             return &pointer->constants;
         }
 
-        LOG_DEBUG("Reading /proc/mounts");
+        LOG_FINE("Reading /proc/mounts");
 
         // iterate each line of /proc/mounts
         std::ifstream file("/proc/mounts", std::ios_base::in);
         for (std::string line; std::getline(file, line);) {
-            LOG_DEBUG("    '%s'", line.c_str());
+            LOG_FINE("    '%s'", line.c_str());
 
             // find the mount point section of the string, provided it is a tracefs mount
             const auto indexOfFirstSep = line.find(" /");
@@ -143,7 +143,7 @@ namespace {
 
             // found it
             auto mountPoint = line.substr(indexOfFirstSep + 1, indexOfTraceFs - (indexOfFirstSep + 1));
-            LOG_DEBUG("Found tracefs at '%s'", mountPoint.c_str());
+            LOG_FINE("Found tracefs at '%s'", mountPoint.c_str());
 
             if (lib::access(mountPoint.c_str(), R_OK) == 0) {
                 // check it is not one of the baked in configurations, reuse it instead of constructing a new item

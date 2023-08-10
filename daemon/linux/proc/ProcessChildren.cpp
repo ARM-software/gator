@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessChildren.h"
 
@@ -100,7 +100,7 @@ namespace lnx {
                     auto const error = errno;
 
                     // add it to the map with an empty entry so as not to poll it again, but dont set modified
-                    LOG_DEBUG("Could not SIGSTOP %d due to errno=%d", tid, error);
+                    LOG_WARNING("Could not SIGSTOP %d due to errno=%d", tid, error);
                     paused_tids.emplace(tid, sig_continuer_t {});
 
                     // add it to 'result' if exited
@@ -109,7 +109,7 @@ namespace lnx {
                     }
                 }
                 else {
-                    LOG_DEBUG("Successfully stopped %d", tid);
+                    LOG_FINE("Successfully stopped %d", tid);
                     // success
                     paused_tids.emplace(tid, sig_continuer_t {tid});
                     result.insert(tid);

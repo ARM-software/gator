@@ -1,8 +1,9 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef __CAPTURED_XML_H__
 #define __CAPTURED_XML_H__
 
+#include "Configuration.h"
 #include "lib/Span.h"
 
 #include <map>
@@ -17,10 +18,12 @@ namespace captured_xml {
      */
     std::unique_ptr<char, void (*)(void *)> getXML(bool includeTime,
                                                    lib::Span<const CapturedSpe> spes,
+                                                   const std::vector<TemplateConfiguration> & templateConfiguration,
                                                    const PrimarySourceProvider & primarySourceProvider,
                                                    const std::map<unsigned, unsigned> & maliGpuIds);
     void write(const char * path,
                lib::Span<const CapturedSpe> spes,
+               const std::vector<TemplateConfiguration> & templateConfiguration,
                const PrimarySourceProvider & primarySourceProvider,
                const std::map<unsigned, unsigned> & maliGpuIds);
 };

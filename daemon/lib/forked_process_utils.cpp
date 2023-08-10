@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "lib/forked_process_utils.h"
 
@@ -17,7 +17,7 @@ namespace lib {
 
         if (pipe2(fds, flags) != 0) {
             auto const e = errno;
-            LOG_DEBUG("pipe2 failed with %d", errno);
+            LOG_WARNING("pipe2 failed with %d", errno);
             return boost::system::errc::make_error_code(boost::system::errc::errc_t(e));
         }
 
@@ -30,7 +30,7 @@ namespace lib {
         AutoClosingFd fd {::open(path, O_RDONLY)};
         if (!fd) {
             auto const e = errno;
-            LOG_DEBUG("open failed with %d", errno);
+            LOG_WARNING("open failed with %d", errno);
             return boost::system::errc::make_error_code(boost::system::errc::errc_t(e));
         }
 
@@ -43,7 +43,7 @@ namespace lib {
         AutoClosingFd fd {::open(path, O_WRONLY | O_CREAT | (truncate ? O_TRUNC : 0), mode)};
         if (!fd) {
             auto const e = errno;
-            LOG_DEBUG("open failed with %d", errno);
+            LOG_WARNING("open failed with %d", errno);
             return boost::system::errc::make_error_code(boost::system::errc::errc_t(e));
         }
 

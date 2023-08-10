@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfSyncThread.h"
 
@@ -111,7 +111,8 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
             LOG_DEBUG("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
             param.sched_priority = sched_get_priority_max(SCHED_OTHER);
             if (sched_setscheduler(tid, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
-                LOG_DEBUG("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
+                //NOLINTNEXTLINE(concurrency-mt-unsafe)
+                LOG_WARNING("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
             }
         }
     }

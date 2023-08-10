@@ -9,6 +9,7 @@
 #include "SessionData.h"
 #include "lib/String.h"
 #include "logging/global_log.h"
+#include "logging/suppliers.h"
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
@@ -21,7 +22,7 @@
 static mxml_node_t * getTree(bool supportsMultiEbs,
                              lib::Span<const Driver * const> drivers,
                              const ICpuInfo & cpuInfo,
-                             logging::log_setup_supplier_t log_setup_supplier)
+                             const logging::log_access_ops_t & log_ops)
 {
     auto * const xml = mxmlNewXML("1.0");
     auto * const counters = mxmlNewElement(xml, "counters");
@@ -41,7 +42,7 @@ static mxml_node_t * getTree(bool supportsMultiEbs,
         handleException();
     }
 
-    auto setup_message = log_setup_supplier();
+    auto setup_message = log_ops.get_log_setup_messages();
     mxml_node_t * setup = mxmlNewElement(counters, "setup_warnings");
     mxmlNewText(setup, 0, setup_message.c_str());
     {
@@ -77,9 +78,9 @@ namespace counters_xml {
     std::unique_ptr<char, void (*)(void *)> getXML(bool supportsMultiEbs,
                                                    lib::Span<const Driver * const> drivers,
                                                    const ICpuInfo & cpuInfo,
-                                                   logging::log_setup_supplier_t log_setup_supplier)
+                                                   const logging::log_access_ops_t & log_ops)
     {
-        mxml_node_t * xml = getTree(supportsMultiEbs, drivers, cpuInfo, std::move(log_setup_supplier));
+        mxml_node_t * xml = getTree(supportsMultiEbs, drivers, cpuInfo, log_ops);
         auto * const xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
         mxmlDelete(xml);
         return {xml_string, &::free};
@@ -89,12 +90,12 @@ namespace counters_xml {
                bool supportsMultiEbs,
                lib::Span<const Driver * const> drivers,
                const ICpuInfo & cpuInfo,
-               logging::log_setup_supplier_t log_setup_supplier)
+               const logging::log_access_ops_t & log_ops)
     {
         // Set full path
         lib::printf_str_t<PATH_MAX> file {"%s/counters.xml", path};
 
-        if (writeToDisk(file, getXML(supportsMultiEbs, drivers, cpuInfo, std::move(log_setup_supplier)).get()) < 0) {
+        if (writeToDisk(file, getXML(supportsMultiEbs, drivers, cpuInfo, log_ops).get()) < 0) {
             LOG_ERROR("Error writing %s\nPlease verify the path.", file.c_str());
             handleException();
         }

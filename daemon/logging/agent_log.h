@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -17,19 +17,24 @@
 #include <boost/asio/posix/stream_descriptor.hpp>
 
 namespace logging {
-    /** Implements log_sink_t for agent sub-processes that log out via the IPC channel */
-    class agent_log_sink_t : public log_sink_t {
+    /** Implements logger_t for agent sub-processes that log out via the IPC channel */
+    class agent_logger_t : public logger_t {
     public:
         /** Allocate an optional log file fd for this process */
         static lib::AutoClosingFd get_log_file_fd();
 
-        explicit agent_log_sink_t(int pipe_fd, lib::AutoClosingFd log_file_descriptor = {})
+        explicit agent_logger_t(int pipe_fd, lib::AutoClosingFd log_file_descriptor = {})
             : pipe_fd(pipe_fd), log_file_descriptor(std::move(log_file_descriptor))
         {
         }
 
         /** Toggle whether TRACE/DEBUG/SETUP messages are output to the console */
         void set_debug_enabled(bool /*enabled*/) override
+        { /*ignored*/
+        }
+
+        /** Toggle whether fine messages are output to the console */
+        void set_fine_enabled(bool /*enabled*/) override
         { /*ignored*/
         }
 

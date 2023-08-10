@@ -10,6 +10,7 @@
 #include "ExitStatus.h"
 #include "ExternalSource.h"
 #include "ICpuInfo.h"
+#include "ISender.h"
 #include "LocalCapture.h"
 #include "Logging.h"
 #include "Monitor.h"
@@ -43,6 +44,7 @@
 #include <utility>
 
 #include <boost/asio/detached.hpp>
+#include <boost/filesystem.hpp>
 
 #include <sys/eventfd.h>
 #include <sys/prctl.h>
@@ -80,17 +82,10 @@ std::unique_ptr<Child> Child::createLocal(agents::i_agent_spawner_t & hi_priv_sp
                                           Drivers & drivers,
                                           const Child::Config & config,
                                           capture::capture_process_event_listener_t & event_listener,
-                                          logging::last_log_error_supplier_t last_error_supplier,
-                                          logging::log_setup_supplier_t log_setup_supplier)
+                                          const logging::log_access_ops_t & log_ops)
 {
-    return std::unique_ptr<Child>(new Child(hi_priv_spawner,
-                                            lo_priv_spawner,
-                                            drivers,
-                                            nullptr,
-                                            config,
-                                            event_listener,
-                                            std::move(last_error_supplier),
-                                            std::move(log_setup_supplier)));
+    return std::unique_ptr<Child>(
+        new Child(hi_priv_spawner, lo_priv_spawner, drivers, nullptr, config, event_listener, log_ops));
 }
 
 std::unique_ptr<Child> Child::createLive(agents::i_agent_spawner_t & hi_priv_spawner,
@@ -98,34 +93,15 @@ std::unique_ptr<Child> Child::createLive(agents::i_agent_spawner_t & hi_priv_spa
                                          Drivers & drivers,
                                          OlySocket & sock,
                                          capture::capture_process_event_listener_t & event_listener,
-                                         logging::last_log_error_supplier_t last_error_supplier,
-                                         logging::log_setup_supplier_t log_setup_supplier)
+                                         const logging::log_access_ops_t & log_ops)
 {
-    return std::unique_ptr<Child>(new Child(hi_priv_spawner,
-                                            lo_priv_spawner,
-                                            drivers,
-                                            &sock,
-                                            {},
-                                            event_listener,
-                                            std::move(last_error_supplier),
-                                            std::move(log_setup_supplier)));
+    return std::unique_ptr<Child>(
+        new Child(hi_priv_spawner, lo_priv_spawner, drivers, &sock, {}, event_listener, log_ops));
 }
 
 Child * Child::getSingleton()
 {
     return gSingleton.load(std::memory_order_acquire);
-}
-
-void Child::signalHandler(int signum)
-{
-    Child * const singleton = getSingleton();
-    if (singleton == nullptr) {
-        // this should not be possible because we set the singleton before
-        // installing the handlers
-        exit(NO_SINGLETON_EXIT_CODE);
-    }
-
-    singleton->endSession(signum);
 }
 
 Child::Child(agents::i_agent_spawner_t & hi_priv_spawner,
@@ -134,19 +110,16 @@ Child::Child(agents::i_agent_spawner_t & hi_priv_spawner,
              OlySocket * sock,
              Child::Config config,
              capture::capture_process_event_listener_t & event_listener,
-             logging::last_log_error_supplier_t last_error_supplier,
-             logging::log_setup_supplier_t log_setup_supplier)
+             const logging::log_access_ops_t & log_ops)
     : haltPipeline(),
       senderSem(),
-      sender(),
       drivers(drivers),
       socket(sock),
       event_listener(event_listener),
       numExceptions(0),
       sessionEnded(),
       config(std::move(config)),
-      last_error_supplier(std::move(last_error_supplier)),
-      log_setup_supplier(std::move(log_setup_supplier)),
+      log_ops(log_ops),
       agent_workers_process(*this, hi_priv_spawner, lo_priv_spawner)
 {
     const int fd = eventfd(0, EFD_CLOEXEC);
@@ -209,7 +182,7 @@ void Child::run()
                 checkError(configuration_xml::addCounterToSet(counterConfigs, std::move(counter)));
             }
             else {
-                LOG_DEBUG("Overriding <counter> '%s' from configuration.xml", counter.counterName.c_str());
+                LOG_FINE("Overriding <counter> '%s' from configuration.xml", counter.counterName.c_str());
             }
         }
         for (auto && spe : result.speConfigurations) {
@@ -217,7 +190,7 @@ void Child::run()
                 checkError(configuration_xml::addSpeToSet(speConfigs, std::move(spe)));
             }
             else {
-                LOG_DEBUG("Overriding <spe> '%s' from configuration.xml", spe.id.c_str());
+                LOG_FINE("Overriding <spe> '%s' from configuration.xml", spe.id.c_str());
             }
         }
     }
@@ -259,7 +232,7 @@ void Child::run()
     // Start up and parse session xml
     if (socket != nullptr) {
         // Respond to Streamline requests
-        StreamlineSetup ss(*socket, drivers, capturedSpes, log_setup_supplier);
+        const StreamlineSetup ss(*socket, drivers, capturedSpes, log_ops);
     }
     else {
         char * xmlString;
@@ -320,7 +293,7 @@ void Child::run()
                                    handleException();
                                }
                                else {
-                                   LOG_DEBUG("Started ext_source agent");
+                                   LOG_FINE("Started ext_source agent");
                                }
                            });
 #ifdef CONFIG_USE_PERFETTO
@@ -334,7 +307,7 @@ void Child::run()
                                        handleException();
                                    }
                                    else {
-                                       LOG_DEBUG("Started perfetto agent");
+                                       LOG_FINE("Started perfetto agent");
                                    }
                                });
                        }
@@ -352,10 +325,10 @@ void Child::run()
 
     // wait for the ext agent to start
     if (!sessionEnded) {
-        LOG_DEBUG("Waiting for agents to start");
+        LOG_FINE("Waiting for agents to start");
         waitForExternalSourceAgent.wait();
         waitForPerfettoAgent.wait();
-        LOG_DEBUG("Waiting for agents complete");
+        LOG_FINE("Waiting for agents complete");
     }
 
     // Sender thread shall be halted until it is signaled for one shot mode
@@ -440,25 +413,73 @@ void Child::run()
 
     // Write the captured xml file
     if (gSessionData.mLocalCapture) {
+        const auto & templateConfiguration =
+            configuration_xml::getConfigurationXML(drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+                .templateConfiguration;
+
         auto & maliCntrDriver = drivers.getMaliHwCntrs();
         captured_xml::write(gSessionData.mAPCDir,
                             capturedSpes,
+                            templateConfiguration,
                             primarySourceProvider,
                             maliCntrDriver.getDeviceGpuIds());
         counters_xml::write(gSessionData.mAPCDir,
                             primarySourceProvider.supportsMultiEbs(),
                             drivers.getAllConst(),
                             primarySourceProvider.getCpuInfo(),
-                            log_setup_supplier);
+                            log_ops);
     }
 
-    LOG_DEBUG("Profiling ended.");
+    LOG_FINE("Profiling ended.");
 
     // must happen before sources is cleared
     agent_workers_process.join();
 
     sources.clear();
+
+    if (gSessionData.mLocalCapture) {
+        if (gSessionData.mLogToFile) {
+            // if the capture was successful then move the log file to the APC directory.
+            // If the capture failed then we won't get here and we can just leave the file where it is
+            // so that it doesn't get deleted when we clean up the incomplete APC dir.
+            auto log_file = log_ops.capture_log_file();
+            if (gSessionData.mAPCDir != nullptr) {
+                log_file.copy_to(gSessionData.mAPCDir);
+            }
+            else {
+                LOG_WARNING("APC directory appears to be invalid. Log file will not be moved.");
+            }
+        }
+    }
+    else {
+        sendGatorLogAndApcEndSequence();
+    }
+
     sender.reset();
+}
+
+void Child::sendGatorLogAndApcEndSequence()
+{
+    constexpr auto LOG_FILE_READ_SIZE = 65536;
+    if (gSessionData.mLogToFile) {
+        auto log_file = log_ops.capture_log_file();
+        if (log_file.valid()) {
+            auto const & stream = log_file.open_for_reading();
+            std::array<char, LOG_FILE_READ_SIZE> buffer {};
+            while (stream->read(buffer.data(), buffer.size())) {
+                sender->writeData(buffer.data(), buffer.size(), ResponseType::GATOR_LOG);
+            }
+            //stream might have failed because eofbit
+            if (stream->eof() && stream->gcount() > 0) {
+                //write the last few bytes
+                sender->writeData(buffer.data(), stream->gcount(), ResponseType::GATOR_LOG);
+            }
+            //null bytes indicates we have reached end of log
+            sender->writeData(nullptr, 0, ResponseType::GATOR_LOG);
+        }
+    }
+    // write end-of-capture sequence
+    sender->writeData(nullptr, 0, ResponseType::APC_DATA);
 }
 
 template<typename S>
@@ -512,7 +533,7 @@ void Child::cleanupException()
 {
     if (numExceptions++ > 0) {
         // it is possible one of the below functions itself can cause an exception, thus allow only one exception
-        LOG_DEBUG("Received multiple exceptions, terminating the child");
+        LOG_ERROR("Received multiple exceptions, terminating the child");
 
         // Something is really wrong, exit immediately
         _exit(SECOND_EXCEPTION_EXIT_CODE);
@@ -520,8 +541,9 @@ void Child::cleanupException()
 
     if (socket != nullptr) {
         if (sender) {
+            sendGatorLogAndApcEndSequence();
             // send the error, regardless of the command sent by Streamline
-            auto last_error = last_error_supplier();
+            auto last_error = log_ops.get_last_log_error();
             sender->writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
 
             // cannot close the socket before Streamline issues the command, so wait for the command before exiting
@@ -642,7 +664,8 @@ void Child::stopThreadEntryPoint()
 
         if (ee.data.fd == *sessionEndEventFd) {
             if (signalNumber != 0) {
-                LOG_DEBUG("Gator child is shutting down due to signal: %s", strsignal(signalNumber));
+                //NOLINTNEXTLINE(concurrency-mt-unsafe)
+                LOG_FINE("Gator child is shutting down due to signal: %s", strsignal(signalNumber));
             }
             break;
         }
@@ -658,7 +681,7 @@ void Child::stopThreadEntryPoint()
 
     doEndSession();
 
-    LOG_DEBUG("Exit stop thread");
+    LOG_FINE("Exit stop thread");
 }
 
 bool Child::sendAllSources()
@@ -682,12 +705,7 @@ void Child::senderThreadEntryPoint()
         }
     } while (sendAllSources());
 
-    // write end-of-capture sequence
-    if (!gSessionData.mLocalCapture) {
-        sender->writeData(nullptr, 0, ResponseType::APC_DATA);
-    }
-
-    LOG_DEBUG("Exit sender thread");
+    LOG_FINE("Exit sender thread");
 }
 
 void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & waiter)
@@ -713,9 +731,9 @@ void Child::watchPidsThreadEntryPoint(std::set<int> & pids, const lib::Waiter & 
             }
         }
     }
-    LOG_DEBUG("Ending session because all watched processes have exited");
+    LOG_FINE("Ending session because all watched processes have exited");
     endSession();
-    LOG_DEBUG("Exit watch pids thread");
+    LOG_FINE("Exit watch pids thread");
 }
 
 void Child::on_terminal_signal(int signo)

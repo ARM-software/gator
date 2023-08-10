@@ -44,14 +44,14 @@ bool Monitor::init()
     mFd = epoll_create(16);
 #endif
     if (mFd < 0) {
-        LOG_DEBUG("epoll_create1 failed");
+        LOG_WARNING("epoll_create1 failed");
         return false;
     }
 
 #ifndef EPOLL_CLOEXEC
     int fdf = fcntl(mFd, F_GETFD);
     if ((fdf == -1) || (fcntl(mFd, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
-        LOG_DEBUG("fcntl failed");
+        LOG_WARNING("fcntl failed");
         ::close(mFd);
         return false;
     }
@@ -71,7 +71,7 @@ static bool addOrRemove(int mFd, int fd, bool add)
     event.data.fd = fd;
     event.events = EPOLLIN | EPOLLERR | EPOLLHUP;
     if (epoll_ctl(mFd, op, fd, &event) != 0) {
-        LOG_DEBUG("epoll_ctl failed");
+        LOG_WARNING("epoll_ctl failed");
         return false;
     }
     return true;
@@ -104,7 +104,7 @@ int Monitor::wait(struct epoll_event * const events, int maxevents, int timeout)
             result = 0;
         }
         else {
-            LOG_DEBUG("epoll_wait failed");
+            LOG_WARNING("epoll_wait failed");
         }
     }
 

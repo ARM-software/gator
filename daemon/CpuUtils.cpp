@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils.h"
 
@@ -86,8 +86,8 @@ namespace cpu_utils {
 
         FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
         if (f == nullptr) {
-            LOG_DEBUG("Error opening /proc/cpuinfo\n"
-                      "The core name in the captured xml file will be 'unknown'.");
+            LOG_WARNING("Error opening /proc/cpuinfo\n"
+                        "The core name in the captured xml file will be 'unknown'.");
             return hardwareName;
         }
 
@@ -123,8 +123,8 @@ namespace cpu_utils {
             if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
                 char * position = strchr(temp, ':');
                 if (position == nullptr || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
-                    LOG_DEBUG("Unknown format of /proc/cpuinfo\n"
-                              "The core name in the captured xml file will be 'unknown'.");
+                    LOG_WARNING("Unknown format of /proc/cpuinfo\n"
+                                "The core name in the captured xml file will be 'unknown'.");
                     return hardwareName;
                 }
                 position += 2;
@@ -206,8 +206,8 @@ namespace cpu_utils {
         }
 
         if (!foundCoreName) {
-            LOG_DEBUG("Could not determine core name from /proc/cpuinfo\n"
-                      "The core name in the captured xml file will be 'unknown'.");
+            LOG_FINE("Could not determine core name from /proc/cpuinfo\n"
+                     "The core name in the captured xml file will be 'unknown'.");
         }
 
         return hardwareName;
@@ -256,9 +256,9 @@ namespace cpu_utils {
                     return identificationThreadCallbackCounter >= cpuIds.size();
                 });
                 if (!succeeded) {
-                    LOG_DEBUG("Could not identify all CPU cores within the timeout period. Activated %zu of %zu",
-                              identificationThreadCallbackCounter,
-                              cpuIds.size());
+                    LOG_WARNING("Could not identify all CPU cores within the timeout period. Activated %zu of %zu",
+                                identificationThreadCallbackCounter,
+                                cpuIds.size());
                 }
             }
             //
@@ -307,15 +307,15 @@ namespace cpu_utils {
 
         // log what we learnt
         for (const auto & pair : cpuToCpuIds) {
-            LOG_DEBUG("Read CPU %u CPUID from MIDR_EL1 -> 0x%05x", pair.first, pair.second);
+            LOG_FINE("Read CPU %u CPUID from MIDR_EL1 -> 0x%05x", pair.first, pair.second);
         }
         for (const auto & pair : cpuToCluster) {
-            LOG_DEBUG("Read CPU %u CLUSTER %u", pair.first, pair.second);
+            LOG_FINE("Read CPU %u CLUSTER %u", pair.first, pair.second);
         }
         for (const auto & pair : clusterToCpuIds) {
-            LOG_DEBUG("Read CLUSTER %u CPUIDs:", pair.first);
+            LOG_FINE("Read CLUSTER %u CPUIDs:", pair.first);
             for (auto cpuId : pair.second) {
-                LOG_DEBUG("    0x%05x", cpuId);
+                LOG_FINE("    0x%05x", cpuId);
             }
         }
 

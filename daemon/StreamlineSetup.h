@@ -1,9 +1,10 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef __STREAMLINE_SETUP_H__
 #define __STREAMLINE_SETUP_H__
 
 #include "ISender.h"
+#include "Logging.h"
 #include "StreamlineSetupLoop.h"
 #include "lib/Span.h"
 #include "logging/suppliers.h"
@@ -22,7 +23,7 @@ public:
     StreamlineSetup(OlySocket & socket,
                     Drivers & drivers,
                     lib::Span<const CapturedSpe> capturedSpes,
-                    logging::log_setup_supplier_t log_setup_supplier);
+                    const logging::log_access_ops_t & log_ops);
 
     // Intentionally unimplemented
     StreamlineSetup(const StreamlineSetup &) = delete;
@@ -34,7 +35,7 @@ private:
     OlySocket & mSocket;
     Drivers & mDrivers;
     lib::Span<const CapturedSpe> mCapturedSpes;
-    logging::log_setup_supplier_t log_setup_supplier;
+    const logging::log_access_ops_t & log_ops;
 
     State handleRequest(char * xml) override;
     State handleDeliver(char * xml) override;

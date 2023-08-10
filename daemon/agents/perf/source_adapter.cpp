@@ -144,12 +144,12 @@ namespace agents::perf {
         // NOLINTNEXTLINE(hicpp-multiway-paths-covered)
         switch (reason) {
             case ipc::capture_failed_reason_t::command_exec_failed: {
-                LOG_DEBUG("Capture failed due to exec failure");
+                LOG_ERROR("Capture failed due to exec failure");
                 handleException();
                 break;
             }
             default: {
-                LOG_DEBUG("Unexpected capture failure reason");
+                LOG_ERROR("Unexpected capture failure reason");
                 handleException();
                 break;
             }

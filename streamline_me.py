@@ -138,16 +138,17 @@ try:
     import tarfile
     import tempfile
     import textwrap
+    import time
 
 # Standard library import failure implies old Python
 except ImportError:
-    print("ERROR: Script requires Python 3.5 or newer")
+    print("ERROR: Script requires Python 3.8 or newer")
     sys.exit(1)
 
 # We know we have an API break with Python 3.4 or older
 if (sys.version_info[0] < 3) or \
-   (sys.version_info[0] == 3 and sys.version_info[1] < 5):
-    print("ERROR: Script requires Python 3.5 or newer")
+   (sys.version_info[0] == 3 and sys.version_info[1] < 8):
+    print("ERROR: Script requires Python 3.8 or newer")
     sys.exit(1)
 
 
@@ -193,7 +194,7 @@ class ArgFormatter(ap.HelpFormatter):
             return text[len(self.PREFIX):].splitlines()
 
         # Fall back to the default argparse formatter otherwise
-        return ap.HelpFormatter._split_lines(self, text, width)
+        return ap.HelpFormatter._split_lines(self, text, width)  # pylint: disable=protected-access
 
 
 class Device:
@@ -219,7 +220,7 @@ class Device:
         Call `adb` to start a command, but do not wait for it to complete.
 
         Args:
-            args: List of command line paramaters.
+            *args: List of command line parameters.
 
         Returns:
             The process instance.
@@ -239,7 +240,8 @@ class Device:
                                stdin=stde, stdout=stde)
         else:
             devn = sp.DEVNULL
-            process = sp.Popen(commands, stdin=devn, stdout=devn, stderr=devn)
+            process = sp.Popen(commands, stdin=devn, stdout=devn,  # pylint: disable=consider-using-with
+                               stderr=devn)
 
         return process
 
@@ -248,7 +250,7 @@ class Device:
         Call `adb` to run a command, but ignore output and errors.
 
         Args:
-            *args : List of command line paramaters.
+            *args : List of command line parameters.
         """
         commands = ["adb"]
         if self.device:
@@ -256,15 +258,18 @@ class Device:
         commands.extend(args)
 
         # Note do not use shell=True; arguments are not safely escaped
-        ret = sp.run(commands, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+        sp.run(commands, stdout=sp.DEVNULL,
+               stderr=sp.DEVNULL, check=False)
 
     def adb(self, *args, **kwargs):
         """
         Call `adb` to run command, and capture output and results.
 
         Args:
-            *args: List of command line paramaters.
-            **kwargs: Text: Is output is text, or binary? Shell: Use a shell?
+            *args: List of command line parameters.
+            **kwargs: text: Is output is text, or binary?
+                      shell: Use the host shell?
+                      quote: Quote arguments before forwarding
 
         Returns:
             The contents of stdout.
@@ -279,7 +284,9 @@ class Device:
 
         text = kwargs.get("text", True)
         shell = kwargs.get("shell", False)
+        quote = kwargs.get("quote", False)
 
+        # Run on the host shell
         if shell:
             # Unix shells need a flattened command for shell commands
             if os.name != 'nt':
@@ -290,8 +297,13 @@ class Device:
                     quotedCommands.append(command)
                 commands = " ".join(quotedCommands)
 
+        # Run on the device but with shell argument quoting
+        if quote:
+            for i, command in enumerate(commands):
+                commands[i] = shlex.quote(command)
+
         rep = sp.run(commands, check=True, shell=shell, stdout=sp.PIPE,
-                    stderr=sp.PIPE, universal_newlines=text)
+                     stderr=sp.PIPE, universal_newlines=text)
 
         return rep.stdout
 
@@ -309,7 +321,7 @@ def select_from_menu(title, menuEntries):
     Returns:
         The selected list index, or None if no selection made.
     """
-    assert len(menuEntries) > 0 # The caller is responsible for handling this case
+    assert len(menuEntries) > 0  # The caller is responsible for handling this case
 
     if len(menuEntries) == 1:
         print("\nSelect a %s:" % title)
@@ -331,11 +343,11 @@ def select_from_menu(title, menuEntries):
             response = int(input("\n    Select entry: "))
             if response == 0:
                 return None
-            elif 0 < response <= len(menuEntries):
+            if 0 < response <= len(menuEntries):
                 selection = response - 1
                 break
-            else:
-                raise ValueError()
+
+            raise ValueError()
 
         except ValueError:
             print("    Please enter an int in range 0-%u" % len(menuEntries))
@@ -389,8 +401,9 @@ def is_package_32bit_abi(device, package):
     preferredABI = None
 
     # Match against the primary ABI loaded by the application
-    output = device.adb("shell", "pm", "dump", package, "|", "grep", "primaryCpuAbi")
-    pattern = re.compile("primaryCpuAbi=(\S+)")
+    output = device.adb("shell", "pm", "dump", package,
+                        "|", "grep", "primaryCpuAbi")
+    pattern = re.compile("primaryCpuAbi=(\\S+)")
     match = pattern.search(output)
 
     if match:
@@ -420,7 +433,8 @@ def is_gatord_running(device):
     # In case a capture is running on a renamed gatord, we try to find the
     # external agent forked arg, if the first search fails
     for name in ["gatord", "agent-external"]:
-        output = device.adb("shell", "ps", "-ef", "|", "grep", name, "|", "grep", "-v", "grep")
+        output = device.adb("shell", "ps", "-ef", "|",
+                            "grep", name, "|", "grep", "-v", "grep")
         if len(output.strip()) > 0:
             return True
 
@@ -507,13 +521,12 @@ def get_device_name(devName, interactive):
 
             return userDvs[0][0]
 
-        else:
-            # Non-specific devices found too many times
-            if len(goodDvs) > 1:
-                print("ERROR: Device must be specified; multiple available")
-                return None
+        # Non-specific devices found too many times
+        if len(goodDvs) > 1:
+            print("ERROR: Device must be specified; multiple available")
+            return None
 
-            return goodDvs[0][0]
+        return goodDvs[0][0]
 
     # In interactive mode use the menu selector; print header if not already
     if not badDvs:
@@ -570,7 +583,8 @@ def get_package_name(device, pkgName, interactive):
             be the full name (case-sensitive), or None (auto-select).
         interactive: Is this an interactive session which can use menu prompts?
     """
-    allPkg = get_package_list(device, showDebuggableOnly=False, showMainIntentOnly=False)
+    allPkg = get_package_list(
+        device, showDebuggableOnly=False, showMainIntentOnly=False)
 
     # In non-interactive mode or with a user-specified package, then check it
     if not interactive or pkgName:
@@ -592,7 +606,8 @@ def get_package_name(device, pkgName, interactive):
     print("\nSearching for debuggable packages:")
     pleaseWait = "    Please wait for search to complete..."
     print(pleaseWait, end="\r")
-    goodPkg = get_package_list(device, showDebuggableOnly=True, showMainIntentOnly=True)
+    goodPkg = get_package_list(
+        device, showDebuggableOnly=True, showMainIntentOnly=True)
     plural = "s" if len(goodPkg) != 1 else ""
     message = "    %u debuggable package%s found" % (len(goodPkg), plural)
     template = "\r%%-%us" % len(pleaseWait)
@@ -653,7 +668,8 @@ def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
 
     if showMainIntentOnly:
         # Test if the package has a MAIN activity
-        subCmd1 = "dumpsys package $0 | if grep -q \"android.intent.action.MAIN\" ; then echo $0 ; fi"
+        subCmd1 = ("dumpsys package $0 | if grep "
+                   "-q \"android.intent.action.MAIN\" ; then echo $0 ; fi")
         command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd1
 
     try:
@@ -668,7 +684,7 @@ def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
         return []
 
 
-def push_lwi_config(device, args, package):
+def push_lwi_config(device, args, _package):
     """
     Create a configuration file for LWI and push it onto the device.
 
@@ -703,7 +719,7 @@ def push_lwi_config(device, args, package):
     # Check if file's been actually pushed
     try:
         device.adb("shell", "ls", device_config_file)
-    except:
+    except sp.CalledProcessError:
         return False
 
     # Set permission
@@ -762,8 +778,9 @@ def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
     try:
         device_config_file = ANDROID_TMP_DIR + CONFIG_FILE
         device.adb("shell", "run-as", package, "ls", device_config_file)
-        device.adb("shell", "run-as", package, "cp", device_config_file, "pa_lwi")
-    except:
+        device.adb("shell", "run-as", package, "cp",
+                   device_config_file, "pa_lwi")
+    except sp.CalledProcessError:
         print("    WARNING: No configuration file found")
 
     # Write in host
@@ -783,11 +800,14 @@ def enable_vulkan_debug_layer(device, args):
     How to load/enable vulkan here will be determined by two things:
 
        1) What API version the target is running:
-           Devices running Android 9 (sdk 28) or above will use sandboxed library within app local storage.
-           Devices running lower version of Android will use global layer activation
+           Devices running Android 9 (sdk 28) or above will use sandboxed
+           library within app local storage.
+           Devices running lower version of Android will
+           use global layer activation
 
        2) What version of ndk we built with:
-           With NDK r21+ per app layer activation will be possible without access to app's sources.
+           With NDK r21+ per app layer activation will be possible without
+           access to app's sources.
 
     Args:
         device: The device instance.
@@ -799,20 +819,27 @@ def enable_vulkan_debug_layer(device, args):
     vkLayerBaseName = os.path.basename(os.path.normpath(args.vkLayerLibPath))
 
     if vkLayerBaseName != EXPECTED_VULKAN_LAYER_FILE:
-        print("\nWARNING: The provided Vulkan layer does not match the expected Vulkan layer name (given: %s, expected: %s); is this correct?\n" % (vkLayerBaseName, EXPECTED_VULKAN_LAYER_FILE,))
+        print("\nWARNING: The provided Vulkan layer does not match the expected Vulkan layer name (given: %s, expected: %s); is this correct?\n" % (
+            vkLayerBaseName, EXPECTED_VULKAN_LAYER_FILE,))
 
     if args.androidVersion < ANDROID_MIN_VULKAN_SDK:
-        device.adb("shell", "setprop", "debug.vulkan.layers", EXPECTED_VULKAN_LAYER_NAME)
+        device.adb("shell", "setprop", "debug.vulkan.layers",
+                   EXPECTED_VULKAN_LAYER_NAME)
     else:
         device.adb("push", args.vkLayerLibPath, ANDROID_TMP_DIR)
-        device.adb("shell", "run-as", args.package, "cp", ANDROID_TMP_DIR + vkLayerBaseName, ".")
-        device.adb("shell", "settings", "put", "global", "enable_gpu_debug_layers", "1")
-        device.adb("shell", "settings", "put", "global", "gpu_debug_app", args.package)
+        device.adb("shell", "run-as", args.package, "cp",
+                   ANDROID_TMP_DIR + vkLayerBaseName, ".")
+        device.adb("shell", "settings", "put", "global",
+                   "enable_gpu_debug_layers", "1")
+        device.adb("shell", "settings", "put", "global",
+                   "gpu_debug_app", args.package)
 
         if args.lwiVal:
-            device.adb("shell", "settings", "put", "global", "gpu_debug_layers", EXPECTED_VULKAN_LAYER_NAME + ":" + EXPECTED_VALIDATION_LAYER_NAME)
+            device.adb("shell", "settings", "put", "global", "gpu_debug_layers",
+                       EXPECTED_VULKAN_LAYER_NAME + ":" + EXPECTED_VALIDATION_LAYER_NAME)
         else:
-            device.adb("shell", "settings", "put", "global", "gpu_debug_layers", EXPECTED_VULKAN_LAYER_NAME)
+            device.adb("shell", "settings", "put", "global",
+                       "gpu_debug_layers", EXPECTED_VULKAN_LAYER_NAME)
 
 
 def enable_gles_debug_layer(device, args):
@@ -823,16 +850,22 @@ def enable_gles_debug_layer(device, args):
     """
     print("\nInstalling OpenGL ES debug layer")
 
-    glesLayerBaseName = os.path.basename(os.path.normpath(args.glesLayerLibPath))
+    glesLayerBaseName = os.path.basename(
+        os.path.normpath(args.glesLayerLibPath))
 
     if glesLayerBaseName != EXPECTED_GLES_LAYER_FILE_NAME:
-        print("\nWARNING: The provided GLES layer does not match the expected GLES layer name (given: %s, expected: %s); is this correct?\n" % (glesLayerBaseName, EXPECTED_GLES_LAYER_FILE_NAME,))
+        print("\nWARNING: The provided GLES layer does not match the expected GLES layer name (given: %s, expected: %s); is this correct?\n" % (
+            glesLayerBaseName, EXPECTED_GLES_LAYER_FILE_NAME,))
 
     device.adb("push", args.glesLayerLibPath, ANDROID_TMP_DIR)
-    device.adb("shell", "run-as", args.package, "cp", ANDROID_TMP_DIR + glesLayerBaseName, ".")
-    device.adb("shell", "settings", "put", "global", "enable_gpu_debug_layers", "1")
-    device.adb("shell", "settings", "put", "global", "gpu_debug_app", args.package)
-    device.adb("shell", "settings", "put", "global", "gpu_debug_layers_gles", glesLayerBaseName)
+    device.adb("shell", "run-as", args.package, "cp",
+               ANDROID_TMP_DIR + glesLayerBaseName, ".")
+    device.adb("shell", "settings", "put", "global",
+               "enable_gpu_debug_layers", "1")
+    device.adb("shell", "settings", "put", "global",
+               "gpu_debug_app", args.package)
+    device.adb("shell", "settings", "put", "global",
+               "gpu_debug_layers_gles", glesLayerBaseName)
 
 
 def disable_vulkan_debug_layer(device, args):
@@ -850,7 +883,8 @@ def disable_vulkan_debug_layer(device, args):
     if args.androidVersion < ANDROID_MIN_VULKAN_SDK:
         device.adb("shell", "setprop", "debug.vulkan.layers", "''")
     else:
-        device.adb("shell", "settings", "delete", "global", "enable_gpu_debug_layers")
+        device.adb("shell", "settings", "delete",
+                   "global", "enable_gpu_debug_layers")
         device.adb("shell", "settings", "delete", "global gpu_debug_app")
         device.adb("shell", "settings", "delete", "global gpu_debug_layers")
 
@@ -870,7 +904,8 @@ def disable_gles_debug_layer(device, args):
 
     layerBaseName = os.path.basename(os.path.normpath(args.glesLayerLibPath))
 
-    device.adb("shell", "settings", "delete", "global", "enable_gpu_debug_layers")
+    device.adb("shell", "settings", "delete",
+               "global", "enable_gpu_debug_layers")
     device.adb("shell", "settings", "delete", "global gpu_debug_app")
     device.adb("shell", "settings", "delete", "global gpu_debug_layers_gles")
 
@@ -894,14 +929,16 @@ def clean_gatord(device, package):
 
     # Remove any data files in both temp directory and app directory
     device.adb_quiet("shell", "rm", "-f", "%sgatord" % ANDROID_TMP_DIR)
-    device.adb_quiet("shell", "rm", "-f", "%sconfiguration.xml" % ANDROID_TMP_DIR)
-    device.adb_quiet("shell", "rm", "-rf", "%s%s.apc" % (ANDROID_TMP_DIR, package))
+    device.adb_quiet("shell", "rm", "-f",
+                     "%sconfiguration.xml" % ANDROID_TMP_DIR)
+    device.adb_quiet("shell", "rm", "-rf", "%s%s.apc" %
+                     (ANDROID_TMP_DIR, package))
 
     # Disable perf counters
     device.adb_quiet("shell", "setprop", "security.perf_harden", "1")
 
 
-def install_gatord(device, package, gatord, configuration):
+def install_gatord(device, _package, gatord, configuration):
     """
     Install the gatord binary and configuration files.
 
@@ -918,14 +955,16 @@ def install_gatord(device, package, gatord, configuration):
 
     # Install gatord counter configuration
     if configuration:
-        device.adb("push", configuration, "%sconfiguration.xml" % ANDROID_TMP_DIR)
-        device.adb("shell", "chmod", "0666", "%sconfiguration.xml" % ANDROID_TMP_DIR)
+        device.adb("push", configuration, "%sconfiguration.xml" %
+                   ANDROID_TMP_DIR)
+        device.adb("shell", "chmod", "0666", "%sconfiguration.xml" %
+                   ANDROID_TMP_DIR)
 
-    # Enable perf conters
+    # Enable perf counters
     device.adb("shell", "setprop", "security.perf_harden", "0")
 
 
-def run_gatord_interactive(device, package):
+def run_gatord_interactive(_device, _package):
     """
     Run gatord for an interactive capture session.
 
@@ -940,7 +979,7 @@ def run_gatord_interactive(device, package):
     input("\nWaiting for data capture ...")
 
 
-def run_gatord_headless(device, package, outputName, timeout):
+def run_gatord_headless(device, package, outputName, timeout, activity, activityArgs):
     """
     Run gatord for a headless capture session.
 
@@ -951,6 +990,8 @@ def run_gatord_headless(device, package, outputName, timeout):
         package: The package name.
         outputName: Name of the output directory (*.apc), or file (*.apc.zip).
         timeout: The test scenario capture timeout in seconds.
+        activity: The activity to run, or None if no auto-start.
+        activityArgs: The activity arguments to run, or None if no arguments.
     """
     # Wait for user to do the manual test
     print("\nRunning headless test:")
@@ -959,13 +1000,30 @@ def run_gatord_headless(device, package, outputName, timeout):
     else:
         print("    Capture set to stop after %s seconds" % timeout)
 
-    # Run gatord
+    # Run gatord but don't wait for it to return
     apcName = "%s.apc" % package
     remoteApcPath = "%s%s" % (ANDROID_TMP_DIR, apcName,)
-    device.adb(
+    gatorProcess = device.adb_async(
         "shell", "%sgatord" % ANDROID_TMP_DIR,
         "--android-pkg", package, "--stop-on-exit", "yes",
         "--max-duration", "%u" % timeout, "--output", remoteApcPath)
+
+    # Start the user activity if asked to do so
+    if activity:
+        # Short sleep just to give time for gator to start
+        # TODO: Would be better to programmatically wait for a message that gator is ready
+        time.sleep(2)
+
+        if activityArgs:
+            activityArgs = shlex.split(activityArgs)
+            device.adb("shell", "am", "start", "-n",
+                       f"{package}/{activity}", *activityArgs, quote=True)
+        else:
+            device.adb("shell", "am", "start", "-n",
+                       f"{package}/{activity}")
+
+    # Now wait for gatord to finish
+    gatorProcess.wait()
 
     print("    Capture complete, downloading from target")
 
@@ -983,7 +1041,7 @@ def run_gatord_headless(device, package, outputName, timeout):
         oldName = os.path.join(tempDir, apcName)
         newName = os.path.join(tempDir, outApcName)
 
-        if (oldName != newName):
+        if oldName != newName:
             os.rename(oldName, newName)
 
         # Pack as appropriate
@@ -1016,14 +1074,17 @@ def exit_handler(device, args):
                 disable_vulkan_debug_layer(device, args)
 
             # Disable gles layer if necessary
-            elif args.lwiApi == "gles" and args.androidVersion >= ANDROID_MIN_OPENGLES_SDK:
+            elif (args.lwiApi == "gles" and
+                  args.androidVersion >= ANDROID_MIN_OPENGLES_SDK):
                 disable_gles_debug_layer(device, args)
         except sp.CalledProcessError as e:
             handle_disconnect_error(e)
 
         device.adb_quiet("shell", "rm", ANDROID_TMP_DIR + CONFIG_FILE)
-        device.adb_quiet("shell", "run-as", args.package, "rm", "-rf", "pa_lwi")
-        device.adb_quiet("shell", "run-as", args.package, "rm", "-rf", "pa_lwi.tar")
+        device.adb_quiet("shell", "run-as", args.package,
+                         "rm", "-rf", "pa_lwi")
+        device.adb_quiet("shell", "run-as", args.package,
+                         "rm", "-rf", "pa_lwi.tar")
 
 
 def raise_path_error(message, location, option):
@@ -1060,6 +1121,14 @@ def parse_cli(parser):
         help="the application package name (default=auto-detected)")
 
     parser.add_argument(
+        "--package-activity", dest="packageActivity", default=None,
+        help="the application package activity to start (default=None)")
+
+    parser.add_argument(
+        "--package-arguments",  dest="packageArguments", default=None,
+        help="the application package argument string (default=None)")
+
+    parser.add_argument(
         "--headless", "-H", default=None, metavar="CAPTURE_PATH",
         help="perform a headless capture, writing the result to the path "
              "CAPTURE_PATH (default=perform interactive capture)")
@@ -1089,15 +1158,21 @@ def parse_cli(parser):
     parser.add_argument(
         "--lwi-mode", "-M", dest="lwiMode", default="off",
         choices=["off", "counters", "screenshots"],
-        help="AF@Select layer mode. Possible values are 'off', 'counters', or 'screenshots' (default=off).\n"
-             "  - off: Do not use an interceptor. The application must provide frame boundary annotations\n"
-             "         if they want to generate Performance Advisor reports. \n"
-             "  - counters: Use an interceptor to provide frame boundaries and counters.\n"
-             "  - screenshots: Use an interceptor to provide frame boundaries, counters, and screenshots.\n")
+        help="AF@Select layer mode. Possible values are 'off', 'counters', or "
+        + "'screenshots' (default=off).\n"
+             "  - off: Do not use an interceptor. The application must "
+             + "provide frame boundary annotations\n"
+             "         if they want to generate "
+             + "Performance Advisor reports. \n"
+             "  - counters: Use an interceptor to provide frame boundaries "
+             + "and counters.\n"
+             "  - screenshots: Use an interceptor to provide frame "
+             + "boundaries, counters, and screenshots.\n")
 
     parser.add_argument(
         "--lwi-api", dest="lwiApi", default="gles", choices=["gles", "vulkan"],
-        help="The API to listen to. Possible values are 'gles' or 'vulkan' (default=gles).")
+        help=("The API to listen to. Possible values are 'gles'"
+              "or 'vulkan' (default=gles)."))
 
     parser.add_argument(
         "--lwi-gles-layer-lib-path", dest="glesLayerLibPath", default="",
@@ -1112,7 +1187,8 @@ def parse_cli(parser):
         help="Size (in frames) of the sliding window used for FPS calculation")
 
     parser.add_argument(
-        "--lwi-fps-threshold", "-Th", dest="fpsThreshold", type=int, default=30,
+        "--lwi-fps-threshold", "-Th", dest="fpsThreshold",
+        type=int, default=30,
         help="Perform capture if FPS goes under this threshold. Default is 30")
 
     parser.add_argument(
@@ -1132,10 +1208,13 @@ def parse_cli(parser):
         help="Directory where the LWI capture is output.")
 
     parser.add_argument(
-        "--lwi-compress-img", "-X", dest="compress", action="store_true", default=False,
-        help="If set the layer will store compressed frame captures. Default is unset.")
+        "--lwi-compress-img", "-X", dest="compress",
+        action="store_true", default=False,
+        help=("If set the layer will store compressed frame captures."
+              "Default is unset."))
 
-    # Internal development option that allows Khronos validation to be enabled underneath LWI
+    # Internal development option that allows Khronos validation
+    # to be enabled underneath LWI
     parser.add_argument(
         "--lwi-val", dest="lwiVal", default=False, action="store_true",
         help=ap.SUPPRESS)
@@ -1148,15 +1227,28 @@ def parse_cli(parser):
     if args.frameGap < 1:
         raise ValueError("ERROR: --lwi-frame-gap must be greater than zero")
     if args.fpsThreshold < 1:
-        raise ValueError("ERROR: --lwi-fps-threshold must be greater than zero")
+        raise ValueError(
+            "ERROR: --lwi-fps-threshold must be greater than zero")
     if args.frameStart < 1:
         raise ValueError("ERROR: --lwi-frame-start must be greater than zero")
     if args.frameEnd != -1 and args.frameEnd < 1:
-        raise ValueError("ERROR: --lwi-frame-end must be greater than zero, or -1 (no end)")
+        raise ValueError(
+            "ERROR: --lwi-frame-end must be greater than zero, or -1 (no end)")
     if args.frameEnd != -1 and args.frameEnd <= args.frameStart:
-        raise ValueError("ERROR: --lwi-frame-end must be greater than --lwi-frame-start, or -1 (no end)")
+        raise ValueError(
+            "ERROR: --lwi-frame-end must be greater than --lwi-frame-start, or -1 (no end)")
     if args.headless and args.timeout < 0:
-        raise ValueError("ERROR: --headless-timeout must be greater than or equal to zero")
+        raise ValueError(
+            "ERROR: --headless-timeout must be greater than or equal to zero")
+
+    # Validate headless-only arguments
+    if not args.headless and args.packageActivity:
+        raise ValueError(
+            "ERROR: --package-activity only supported for --headless captures")
+
+    if not args.headless and args.packageArguments:
+        raise ValueError(
+            "ERROR: --package-arguments only supported for --headless captures")
 
     if args.config:
         args.config = args.config.name
@@ -1169,14 +1261,16 @@ def parse_cli(parser):
 
     # Check if the config file exists.
     if args.config and not os.path.exists(args.config):
-        raise ValueError("ERROR: Could not find config file '%s'" % args.config)
+        raise ValueError(
+            "ERROR: Could not find config file '%s'" % args.config)
 
     # Check that the headless path has a valid extension
     if args.headless:
         isAPC = args.headless.endswith(".apc")
         isZIP = args.headless.endswith(".apc.zip")
         if (not isAPC) and (not isZIP):
-            raise_path_error("Headless output must be a *.apc dir or a *.apc.zip file",
+            raise_path_error("Headless output must be a *.apc dir "
+                             "or a *.apc.zip file",
                              args.headless, "--headless")
 
         dirname = os.path.dirname(args.headless)
@@ -1185,12 +1279,14 @@ def parse_cli(parser):
                              dirname, "--headless")
 
         if dirname and not os.access(dirname, os.W_OK):
-            raise_path_error("Headless output parent directory must be writable",
+            raise_path_error("Headless output parent directory "
+                             "must be writable",
                              dirname, "--headless")
 
         if os.path.exists(args.headless):
             if not args.overwrite:
-                raise_path_error("Headless output already exists and --overwrite not set",
+                raise_path_error("Headless output already exists "
+                                 "and --overwrite not set",
                                  args.headless, "--headless")
 
             # If overwrite enabled then remove the old files
@@ -1201,7 +1297,7 @@ def parse_cli(parser):
 
     # Ensure the lwi output path is absolute
     # Use a default path if the user hasn't specified it
-    if args.lwiMode != "off":
+    if args.lwiMode == "screenshots":
         if args.outDir is None:
             args.outDir = default_lwi_dir()
         else:
@@ -1211,7 +1307,8 @@ def parse_cli(parser):
 
 
 def is_a_directory(device, path_to_test):
-    is_directory = device.adb("shell", "if [ -d %s ] ; then echo d ; fi" % path_to_test)
+    is_directory = device.adb(
+        "shell", "if [ -d %s ] ; then echo d ; fi" % path_to_test)
     return len(is_directory) > 0
 
 
@@ -1224,30 +1321,32 @@ def has_adb():
 
 def print_lwi_args_info(args):
     if args.lwiMode == "off":
-        infoStr = ("--lwi-mode=off, frame marker annotations will not be added to your"
-                   " application and screenshots will not be taken")
+        infoStr = ("--lwi-mode=off, frame marker annotations will not be "
+                   "added to your application and screenshots "
+                   "will not be taken")
         print(textwrap.fill(infoStr, LINE_LENGTH))
 
     if args.lwiMode == "screenshots":
         print("--lwi-fps-threshold={}".format(args.fpsThreshold))
 
-        infoStr = ("--lwi-mode=screenshots, screenshots will be captured when fps drops "
-                   "below --lwi-fps-threshold")
+        infoStr = ("--lwi-mode=screenshots, screenshots will be captured when "
+                   "fps drops below --lwi-fps-threshold")
         print(textwrap.fill(infoStr, LINE_LENGTH))
 
     if args.lwiMode == "counters":
-        infoStr = ("--lwi-mode=counters, screenshots will not be captured.")
+        infoStr = "--lwi-mode=counters, screenshots will not be captured."
         print(textwrap.fill(infoStr, LINE_LENGTH))
 
     if args.lwiMode != "off":
-        infoStr = ("--lwi-api={}".format(args.lwiApi))
+        infoStr = "--lwi-api={}".format(args.lwiApi)
         print(textwrap.fill(infoStr, LINE_LENGTH))
 
     print("--lwi-out-dir={}".format(args.outDir))
 
 
 def default_lwi_dir():
-    lwiOutDir = os.path.abspath('lwi-out-{:%d%m%y-%H%M%S}'.format(datetime.datetime.now()))
+    lwiOutDir = os.path.abspath(
+        'lwi-out-{:%d%m%y-%H%M%S}'.format(datetime.datetime.now()))
     print("--lwi-out-dir not specified, will use default directory {}".format(lwiOutDir))
     return lwiOutDir
 
@@ -1265,7 +1364,8 @@ def get_daemon(isArm32):
 
     dirName = "arm" if isArm32 else "arm64"
     return os.path.join(
-        scriptDir, os.pardir, os.pardir, os.pardir, "streamline", "bin", "android", dirName, daemonName)
+        scriptDir, os.pardir, os.pardir, os.pardir, "streamline", "bin",
+        "android", dirName, daemonName)
 
 
 def get_default_lib_layer_path(isArm32, layerName):
@@ -1278,12 +1378,14 @@ def get_default_lib_layer_path(isArm32, layerName):
     dirName = "arm" if isArm32 else "arm64"
     return os.path.join(scriptDir, dirName, layerName)
 
+
 def ensure_lwi_output_path_usable(abs_lwi_out_dir, overwrite):
     # Check that the LWI capture output directory is empty and writable.
 
     if os.path.exists(abs_lwi_out_dir):
         if not overwrite:
-            raise_path_error("Report output already exists and --overwrite not set",
+            raise_path_error("Report output already exists and "
+                             "--overwrite not set",
                              abs_lwi_out_dir, "--lwi-out-dir")
 
         # If overwrite enabled then remove the old files
@@ -1296,15 +1398,18 @@ def ensure_lwi_output_path_usable(abs_lwi_out_dir, overwrite):
         try:
             os.makedirs(abs_lwi_out_dir)
         except PermissionError:
-            raise_path_error("Report output could not be created, is parent directory writable?",
+            raise_path_error("Report output could not be created, is parent "
+                             "directory writable?",
                              abs_lwi_out_dir, "--lwi-out-dir")
 
     if not os.path.isdir(abs_lwi_out_dir):
-        raise_path_error("Report output directory already exists and --overwrite not set",
+        raise_path_error("Report output directory already exists "
+                         "and --overwrite not set",
                          abs_lwi_out_dir, "--lwi-out-dir")
 
     if len(os.listdir(abs_lwi_out_dir)) > 0:
-        raise_path_error("Report output directory already exists and --overwrite not set",
+        raise_path_error("Report output directory already exists "
+                         "and --overwrite not set",
                          abs_lwi_out_dir, "--lwi-out-dir")
 
     if not os.access(abs_lwi_out_dir, os.W_OK):
@@ -1313,11 +1418,13 @@ def ensure_lwi_output_path_usable(abs_lwi_out_dir, overwrite):
 
 
 def handle_disconnect_error(e):
-    print("ERROR: Unexpected error while running gatord on device, unable to run command:", file=sys.stderr, end=" ")
+    print("ERROR: Unexpected error while running gatord on device, unable to run command:",
+          file=sys.stderr, end=" ")
     print("\"", end=" ", file=sys.stderr)
     print(*e.cmd, file=sys.stderr, end=" ")
     print("\"", file=sys.stderr)
-    print("Please ensure device remains on while gatord is running.", file=sys.stderr)
+    print("Please ensure device remains on while gatord is running.",
+          file=sys.stderr)
     sys.exit(1)
 
 
@@ -1337,7 +1444,7 @@ def main():
         return 4
 
     if args.verbose:
-        global DEBUG_GATORD
+        global DEBUG_GATORD  # pylint: disable=global-statement
         DEBUG_GATORD = True
         print_lwi_args_info(args)
 
@@ -1374,7 +1481,8 @@ def main():
 
     # Now check that adb is present
     if not has_adb():
-        print("ERROR: adb not found. Make sure adb is installed and on your PATH")
+        print("ERROR: adb not found. "
+              "Make sure adb is installed and on your PATH")
         return 1
 
     # Select a specific target device, or fail if we cannot
@@ -1387,33 +1495,39 @@ def main():
     # Store the device android version
     args.androidVersion = get_android_version(device)
     if args.androidVersion < ANDROID_MIN_SUPPORTED_VERSION:
-        print("\nWARNING: Android version on device is < Android 10. Arm only supports Android versions 10 or higher.")
+        print("\nWARNING: Android version on device is < Android 10. "
+              "Arm only supports Android versions 10 or higher.")
 
     # Test if this is a supported device and fail early if it's not
     if args.lwiMode != "off":
         if args.lwiApi == "vulkan" and args.androidVersion < ANDROID_MIN_VULKAN_SDK:
-            print("\nERROR: Using the Vulkan layer requires a device with Android 9 or higher.")
-            print("       For older devices, custom annotations in the application can be used")
+            print(
+                "\nERROR: Using the Vulkan layer requires a device with Android 9 or higher.")
+            print(
+                "       For older devices, custom annotations in the application can be used")
             print("       with --lwi=off to generate the frame boundaries needed.")
             return 4
-        elif args.lwiApi == "gles" and args.androidVersion < ANDROID_MIN_OPENGLES_SDK:
-            print("\nERROR: Using the OpenGL ES layer requires a device with Android 10 or higher.")
-            print("       For older devices, custom annotations in the application can be used")
+        if args.lwiApi == "gles" and args.androidVersion < ANDROID_MIN_OPENGLES_SDK:
+            print(
+                "\nERROR: Using the OpenGL ES layer requires a device with Android 10 or higher.")
+            print(
+                "       For older devices, custom annotations in the application can be used")
             print("       with --lwi=off to generate the frame boundaries needed.")
             return 4
 
     gatord_device_path = "%sgatord" % ANDROID_TMP_DIR
     if is_a_directory(device, gatord_device_path):
-        print("\nERROR: Unexpected directory on the device, at '%s'.  Ensure nothing resides at the location then retry." % gatord_device_path)
+        print("\nERROR: Unexpected directory on the device, at '%s'. "
+              "Ensure nothing resides at the location then retry."
+              % gatord_device_path)
         return 1
 
     # Select a specific package, or fail if we cannot
     package = get_package_name(device, args.package, not args.headless)
     if not package:
         return 3
-    else:
-        args.package = package
 
+    args.package = package
     isArm32 = is_package_32bit_abi(device, package)
 
     # Note: this is no longer technical required; gator now reliably
@@ -1441,14 +1555,16 @@ def main():
 
     # If LWI activated, make and upload config file
     if args.lwiMode != "off":
-        try:
-            ensure_lwi_output_path_usable(args.outDir, args.overwrite)
-        except ValueError as err:
-            print("{0}".format(err))
-            return 4
+        if args.lwiMode != "counters":
+            try:
+                ensure_lwi_output_path_usable(args.outDir, args.overwrite)
+            except ValueError as err:
+                print("{0}".format(err))
+                return 4
 
         if not push_lwi_config(device, args, package):
-            print("ERROR: Failed to upload the LWI configuration onto the device")
+            print("ERROR: Failed to upload the LWI configuration "
+                  "onto the device")
             return 4
 
         # If we are tracing vulkan
@@ -1457,10 +1573,12 @@ def main():
             if args.androidVersion >= ANDROID_MIN_VULKAN_SDK:
                 vkLayerLibPath = args.vkLayerLibPath
                 if vkLayerLibPath == "":
-                    vkLayerLibPath = get_default_lib_layer_path(isArm32, EXPECTED_VULKAN_LAYER_FILE)
+                    vkLayerLibPath = get_default_lib_layer_path(
+                        isArm32, EXPECTED_VULKAN_LAYER_FILE)
 
                 if not os.path.isfile(vkLayerLibPath):
-                    print("\nERROR: Couldn't find the vulkan layer, specify with --lwi-vk-layer-lib-path.")
+                    print(
+                        "\nERROR: Couldn't find the vulkan layer, specify with --lwi-vk-layer-lib-path.")
                     return 4
 
                 args.vkLayerLibPath = vkLayerLibPath
@@ -1470,10 +1588,12 @@ def main():
             if args.androidVersion >= ANDROID_MIN_OPENGLES_SDK:
                 glesLayerLibPath = args.glesLayerLibPath
                 if glesLayerLibPath == "":
-                    glesLayerLibPath = get_default_lib_layer_path(isArm32, EXPECTED_GLES_LAYER_FILE_NAME)
+                    glesLayerLibPath = get_default_lib_layer_path(
+                        isArm32, EXPECTED_GLES_LAYER_FILE_NAME)
 
                 if not os.path.isfile(glesLayerLibPath):
-                    print("\nERROR: Couldn't find the gles layer, specify with --lwi-gles-layer-lib-path.")
+                    print(
+                        "\nERROR: Couldn't find the gles layer, specify with --lwi-gles-layer-lib-path.")
                     return 4
 
                 args.glesLayerLibPath = glesLayerLibPath
@@ -1486,13 +1606,15 @@ def main():
         if args.headless is None:
             run_gatord_interactive(device, package)
         else:
-            run_gatord_headless(device, package, args.headless, args.timeout)
+            run_gatord_headless(device, package, args.headless, args.timeout,
+                                args.packageActivity, args.packageArguments)
 
         # Clean and download LWI capture
         if args.lwiMode != "off":
             # Pulling the capture from device
             print("\nPulling capture from device")
-            if not pull_capture(device, args.outDir, package, headless=args.headless):
+            if not pull_capture(device, args.outDir, package,
+                                headless=args.headless):
                 print("\nERROR: Failed to pull capture from the device.")
             device.adb_quiet("shell", "rm", ANDROID_TMP_DIR + CONFIG_FILE)
 

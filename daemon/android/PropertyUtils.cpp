@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "android/PropertyUtils.h"
 
@@ -18,10 +18,10 @@ namespace android_prop_utils {
         std::string result;
         const lib::PopenResult getprop = lib::popen(GET_PROP.data(), prop.data());
         if (getprop.pid < 0) {
-            LOG_DEBUG("lib::popen(%s %s) failed: Probably not android (errno = %d)",
-                      GET_PROP.data(),
-                      prop.data(),
-                      -getprop.pid);
+            LOG_WARNING("lib::popen(%s %s) failed: Probably not android (errno = %d)",
+                        GET_PROP.data(),
+                        prop.data(),
+                        -getprop.pid);
             return {};
         }
         char value = '0';
@@ -45,31 +45,31 @@ namespace android_prop_utils {
         const lib::PopenResult setPropResult = lib::popen(SET_PROP.data(), prop.data(), value.data());
         //setprop not found, probably not Android.
         if (setPropResult.pid == -ENOENT) {
-            LOG_DEBUG("lib::popen(%s %s %s) failed (errno =%d)",
-                      SET_PROP.data(),
-                      prop.data(),
-                      value.data(),
-                      -setPropResult.pid);
+            LOG_WARNING("lib::popen(%s %s %s) failed (errno =%d)",
+                        SET_PROP.data(),
+                        prop.data(),
+                        value.data(),
+                        -setPropResult.pid);
             return false;
         }
         if (setPropResult.pid < 0) {
-            LOG_DEBUG("lib::popen(%s %s %s) failed (errno =%d) ",
-                      SET_PROP.data(),
-                      prop.data(),
-                      value.data(),
-                      -setPropResult.pid);
+            LOG_WARNING("lib::popen(%s %s %s) failed (errno =%d) ",
+                        SET_PROP.data(),
+                        prop.data(),
+                        value.data(),
+                        -setPropResult.pid);
             return false;
         }
         const int status = lib::pclose(setPropResult);
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         if (!WIFEXITED(status)) {
-            LOG_DEBUG("'%s %s %s' exited abnormally", SET_PROP.data(), prop.data(), value.data());
+            LOG_WARNING("'%s %s %s' exited abnormally", SET_PROP.data(), prop.data(), value.data());
             return false;
         }
         //NOLINTNEXTLINE(hicpp-signed-bitwise)
         const int exitCode = WEXITSTATUS(status);
         if (exitCode != 0) {
-            LOG_DEBUG("'%s %s %s' failed: %d", SET_PROP.data(), prop.data(), value.data(), exitCode);
+            LOG_WARNING("'%s %s %s' failed: %d", SET_PROP.data(), prop.data(), value.data(), exitCode);
             return false;
         }
         return true;

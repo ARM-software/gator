@@ -96,6 +96,8 @@ public:
     bool mFtraceRaw {false};
     bool mSystemWide {false};
     bool mExcludeKernelEvents {false};
+    bool mEnableOffCpuSampling {false};
+    bool mLogToFile {false};
 
     gator::smmuv3::default_identifiers_t smmu_identifiers;
 

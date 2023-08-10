@@ -3,6 +3,7 @@
 #include "CapturedXML.h"
 
 #include "CapturedSpe.h"
+#include "Configuration.h"
 #include "Constant.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
@@ -87,8 +88,10 @@ static std::string modeAsString(const ConstantMode mode)
 }
 
 /** Generate the xml tree for capture.xml */
+//NOLINTNEXTLINE(readability-function-cognitive-complexity)
 static mxml_node_t * getTree(bool includeTime,
                              lib::Span<const CapturedSpe> spes,
+                             const std::vector<TemplateConfiguration> & templateConfiguration,
                              const PrimarySourceProvider & primarySourceProvider,
                              const std::map<unsigned, unsigned> & maliGpuIds)
 {
@@ -140,6 +143,11 @@ static mxml_node_t * getTree(bool includeTime,
 
     if (gSessionData.mLocalCapture) {
         mxmlElementSetAttr(target, "local_capture", "yes");
+    }
+
+    // the off-cpu-flag
+    if (gSessionData.mEnableOffCpuSampling) {
+        mxmlElementSetAttr(target, "off_cpu_profiling", "yes");
     }
 
     // add some OS information
@@ -217,16 +225,26 @@ static mxml_node_t * getTree(bool includeTime,
         mxmlElementSetAttr(node, "id", spe.id.c_str());
     }
 
+    // Add template data
+    mxml_node_t * templates = nullptr;
+    for (const auto & templateConfig : templateConfiguration) {
+        if (templates == nullptr) {
+            templates = mxmlNewElement(captured, "templates");
+        }
+        mxmlLoadString(templates, templateConfig.raw.c_str(), MXML_NO_CALLBACK);
+    }
+
     return xml;
 }
 
 namespace captured_xml {
     std::unique_ptr<char, void (*)(void *)> getXML(bool includeTime,
                                                    lib::Span<const CapturedSpe> spes,
+                                                   const std::vector<TemplateConfiguration> & templateConfiguration,
                                                    const PrimarySourceProvider & primarySourceProvider,
                                                    const std::map<unsigned, unsigned> & maliGpuIds)
     {
-        mxml_node_t * xml = getTree(includeTime, spes, primarySourceProvider, maliGpuIds);
+        mxml_node_t * xml = getTree(includeTime, spes, templateConfiguration, primarySourceProvider, maliGpuIds);
         char * xml_string = mxmlSaveAllocString(xml, mxmlWhitespaceCB);
         mxmlDelete(xml);
         return {xml_string, &free};
@@ -234,13 +252,14 @@ namespace captured_xml {
 
     void write(const char * path,
                lib::Span<const CapturedSpe> spes,
+               const std::vector<TemplateConfiguration> & templateConfiguration,
                const PrimarySourceProvider & primarySourceProvider,
                const std::map<unsigned, unsigned> & maliGpuIds)
     {
         // Set full path
-        lib::printf_str_t<PATH_MAX> file {"%s/captured.xml", path};
+        const lib::printf_str_t<PATH_MAX> file {"%s/captured.xml", path};
 
-        if (writeToDisk(file, getXML(true, spes, primarySourceProvider, maliGpuIds).get()) < 0) {
+        if (writeToDisk(file, getXML(true, spes, templateConfiguration, primarySourceProvider, maliGpuIds).get()) < 0) {
             LOG_ERROR("Error writing %s\nPlease verify the path.", file.c_str());
             handleException();
         }

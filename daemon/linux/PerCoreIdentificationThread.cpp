@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/PerCoreIdentificationThread.h"
 
@@ -66,7 +66,8 @@ bool PerCoreIdentificationThread::configureAffinity()
     }
 
     if (!affinitySucceeded) {
-        LOG_DEBUG("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, strerror(errno));
+        //NOLINTNEXTLINE(concurrency-mt-unsafe)
+        LOG_WARNING("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, strerror(errno));
         return false;
     }
 

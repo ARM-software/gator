@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #define __STDC_FORMAT_MACROS
 #define BUFFER_USE_SESSION_DATA
@@ -51,7 +51,7 @@ public:
             // Sample ten times a second ignoring gSessionData.mSampleRate
             nextTime += NS_PER_S / 10; //gSessionData.mSampleRate;
             if (nextTime < currTime) {
-                LOG_DEBUG("Too slow, currTime: %" PRIi64 " nextTime: %" PRIi64, currTime, nextTime);
+                LOG_WARNING("Too slow, currTime: %" PRIi64 " nextTime: %" PRIi64, currTime, nextTime);
                 nextTime = currTime;
             }
 
