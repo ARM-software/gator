@@ -260,6 +260,9 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_worker_base.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_worker.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_workers_process.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_workers_process_fwd.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_workers_process_holder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/agent_workers_process_holder.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/coalescing_cpu_monitor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/nl_cpu_monitor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/polling_cpu_monitor.h
@@ -327,6 +330,7 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/apc/perf_apc_frame_utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/apc/perf_counter.h
     ${CMAKE_CURRENT_SOURCE_DIR}/apc/summary_apc_frame_utils.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/armnn/AcceptedSocketQueue.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNDriver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ArmNNSource.cpp
@@ -341,6 +345,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DecoderUtility.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DriverSourceIpc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DriverSourceIpc.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DriverSourceWithAgent.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/armnn/DriverSourceWithAgent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/FrameBuilderFactory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/FrameBuilderFactory.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/GlobalState.cpp
@@ -360,6 +366,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IPerJobCounterSelectionConsumer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISender.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISession.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISocketIO.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IAcceptingSocket.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/ISessionPacketSender.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/IStartStopHandler.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/PacketDecoder.cpp
@@ -381,7 +389,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionPacketSender.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionStateTracker.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SessionStateTracker.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketAcceptor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketAcceptor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketIO.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/armnn/SocketIO.h
@@ -445,6 +452,7 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/capture/Environment.h
     ${CMAKE_CURRENT_SOURCE_DIR}/capture/internal/UdpListener.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/handleException.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ipc/async_streamline_sender.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ipc/codec.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ipc/message_key.h
@@ -471,6 +479,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsEntry.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/FsUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/GenericTimer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/LineReader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/LineReader.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/Memory.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/perfetto_utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/PmuCommonEvents.h
@@ -538,13 +548,18 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/linux/Tracepoints.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/agent_log.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/logging/file_log_sink.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/configuration.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/file_log_sink.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/file_log_sink.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/global_log.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/logger_t.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/logging.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/log_sink_t.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/parameters.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/std_log_sink.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h
@@ -599,6 +614,15 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/PmuXMLParser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/PmuXMLParser.h
 )
+
+IF(ANDROID)
+    SET(GATORD_SRC_FILES ${GATORD_SRC_FILES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent_main.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent_main.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent_worker.h
+)
+ENDIF()
 
 IF(CONFIG_USE_PERFETTO)
     SET(GATORD_SRC_FILES ${GATORD_SRC_FILES}

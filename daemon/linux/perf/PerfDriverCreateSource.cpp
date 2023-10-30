@@ -1,6 +1,5 @@
 /* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
-#include "Child.h"
 #include "DynBuf.h"
 #include "ICpuInfo.h"
 #include "ISender.h"
@@ -10,6 +9,7 @@
 #include "Source.h"
 #include "agents/agent_workers_process.h"
 #include "agents/perf/capture_configuration.h"
+#include "handleException.h"
 #include "ipc/messages.h"
 #include "lib/Utils.h"
 #include "linux/perf/PerfAttrsBuffer.h"
@@ -77,17 +77,18 @@ namespace {
 
 /// this method is extracted so that it can be excluded from the unit tests as it brings deps on PerfSource...
 
-std::shared_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
-                                                         ISender & sender,
-                                                         std::function<bool()> session_ended_callback,
-                                                         std::function<void()> exec_target_app_callback,
-                                                         std::function<void()> profilingStartedCallback,
-                                                         const std::set<int> & appTids,
-                                                         FtraceDriver & ftraceDriver,
-                                                         bool enableOnCommandExec,
-                                                         ICpuInfo & cpuInfo,
-                                                         lib::Span<UncorePmu> uncore_pmus,
-                                                         agents::agent_workers_process_t<Child> & agent_workers_process)
+std::shared_ptr<PrimarySource> PerfDriver::create_source(
+    sem_t & senderSem,
+    ISender & sender,
+    std::function<bool()> session_ended_callback,
+    std::function<void()> exec_target_app_callback,
+    std::function<void()> profilingStartedCallback,
+    const std::set<int> & appTids,
+    FtraceDriver & ftraceDriver,
+    bool enableOnCommandExec,
+    ICpuInfo & cpuInfo,
+    lib::Span<UncorePmu> uncore_pmus,
+    agents::agent_workers_process_default_t & agent_workers_process)
 {
     auto attrs_buffer = std::make_unique<PerfAttrsBuffer>(gSessionData.mTotalBufferSize * MEGABYTES, senderSem);
 
@@ -173,7 +174,7 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(sem_t & senderSem,
 }
 
 std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_adapter(
-    agents::agent_workers_process_t<Child> & agent_workers_process,
+    agents::agent_workers_process_default_t & agent_workers_process,
     sem_t & senderSem,
     ISender & sender,
     std::function<bool()> session_ended_callback, // NOLINT(performance-unnecessary-value-param)

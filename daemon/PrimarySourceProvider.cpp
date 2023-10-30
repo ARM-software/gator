@@ -2,7 +2,6 @@
 
 #include "PrimarySourceProvider.h"
 
-#include "Child.h"
 #include "Config.h"
 #include "CpuUtils.h"
 #include "DiskIODriver.h"
@@ -183,7 +182,7 @@ namespace {
             const std::set<int> & appTids,
             FtraceDriver & ftraceDriver,
             bool enableOnCommandExec,
-            agents::agent_workers_process_t<Child> & agent_workers_process) override
+            agents::agent_workers_process_default_t & agent_workers_process) override
         {
             return driver.create_source(senderSem,
                                         sender,
@@ -319,7 +318,7 @@ namespace {
             const std::set<int> & /*appTids*/,
             FtraceDriver & /*ftraceDriver*/,
             bool /*enableOnCommandExec*/,
-            agents::agent_workers_process_t<Child> & /*agent_workers_process*/) override
+            agents::agent_workers_process_default_t & /*agent_workers_process*/) override
         {
             return std::unique_ptr<PrimarySource>(new non_root::NonRootSource(driver,
                                                                               senderSem,

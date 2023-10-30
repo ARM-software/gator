@@ -1,17 +1,17 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "armnn/ISender.h"
+#include "armnn/ISocketIO.h"
 #include "armnn/SenderQueue.h"
-#include "armnn/SocketIO.h"
 
 #include <thread>
 
 namespace armnn {
     class SenderThread : public ISender {
     public:
-        SenderThread(SocketIO & connection);
+        SenderThread(ISocketIO & connection);
         SenderThread() = delete;
         ~SenderThread() override;
 

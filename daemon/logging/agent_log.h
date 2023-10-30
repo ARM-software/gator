@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Logging.h"
 #include "async/async_line_reader.hpp"
 #include "lib/AutoClosingFd.h"
+#include "logging/logger_t.h"
 
 #include <functional>
 #include <iostream>

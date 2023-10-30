@@ -92,7 +92,7 @@ namespace agents {
                  | then([self = this->shared_from_this(),
                          msg = std::move(msg)](const auto & err, auto n) -> polymorphic_continuation_t<> {
                        if (err) {
-                           LOG_ERROR("Error while forwarding perfetto source bytes: %s", err.message().c_str());
+                           LOG_DEBUG("Error while forwarding perfetto source bytes: %s", err.message().c_str());
                            return self->cont_shutdown();
                        }
                        if (n != msg.suffix.size()) {

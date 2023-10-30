@@ -6,9 +6,7 @@
 #include "lib/AutoClosingFd.h"
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
-#include "lib/Span.h"
 #include "lib/String.h"
-#include "lib/Time.h"
 
 #include <cinttypes>
 #include <cstdio>

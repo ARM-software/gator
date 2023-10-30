@@ -7,6 +7,7 @@
 #include "Logging.h"
 #include "lib/FileDescriptor.h"
 #include "lib/FsEntry.h"
+#include "lib/LineReader.h"
 #include "lib/Popen.h"
 #include "lib/Process.h"
 #include "lib/Syscall.h"
@@ -138,4 +139,58 @@ namespace android_utils {
         }
         return {origApcDir.path()};
     }
+
+    // Trim any newline characters off the right end of the string
+    static void rightTrim(std::string & s)
+    {
+        s.erase(std::remove(s.begin(), s.end(), '\n'), s.cend());
+    }
+
+    static bool findAndroidPackage(const lib::PopenResult invokedCmd, const std::string & package)
+    {
+        std::string currentPackage;
+        lib::LineReader reader(invokedCmd.out);
+        lib::LineReaderResult moreLines {};
+        while (moreLines.ok()) {
+            currentPackage.clear();
+            moreLines = reader.readLine(currentPackage);
+            rightTrim(currentPackage);
+            if (currentPackage == "package:" + package) {
+                LOG_DEBUG("Package found: " + package);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool packageExists(const std::string & desiredPackage)
+    {
+        constexpr std::string_view PM = "pm";
+        constexpr std::string_view LIST = "list";
+        constexpr std::string_view PKGS = "packages";
+
+        const std::array<const char *, 4> cmd = {PM.data(), LIST.data(), PKGS.data(), nullptr};
+
+        const lib::PopenResult pkgListingInvocation = lib::popen(cmd);
+        bool packageFound = false;
+        if (pkgListingInvocation.pid >= 0) {
+            packageFound = findAndroidPackage(pkgListingInvocation, desiredPackage);
+
+            // positive number or zero is the exit status from the command
+            // negative number indicates a problem waiting, so we don't know whether
+            // the command was ok
+            const int pclose_res = lib::pclose(pkgListingInvocation);
+            if (pclose_res == 0) {
+                return packageFound;
+            }
+
+            LOG_ERROR("Could not discover installed packages, pclose of 'pm list packages' reported code %d",
+                      pclose_res);
+            return false;
+        }
+
+        LOG_WARNING("Could not discover installed packages, is the 'pm' command installed?");
+        return false;
+    }
+
 }

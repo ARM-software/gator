@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #define BUFFER_USE_SESSION_DATA
 
@@ -7,18 +7,15 @@
 #include "BlockCounterFrameBuilder.h"
 #include "Buffer.h"
 #include "BufferUtils.h"
-#include "Child.h"
 #include "CommitTimeChecker.h"
 #include "Drivers.h"
 #include "Logging.h"
 #include "Monitor.h"
 #include "OlySocket.h"
-#include "PrimarySourceProvider.h"
 #include "SessionData.h"
-#include "Source.h"
+#include "handleException.h"
 #include "lib/AutoClosingFd.h"
 #include "lib/FileDescriptor.h"
-#include "lib/Memory.h"
 #include "lib/Syscall.h"
 
 #include <atomic>

@@ -4,25 +4,46 @@
 	<event advanced="yes" counter="ARM_Mali-G710_MCU_ACTIVE" description="The number of cycles where the CSF front-end MCU is actively processing" name="MCU active" title="Mali GPU Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_GPU_ITER_ACTIVE" description="The number of cycles where any GPU iterator is active" name="Any iterator active" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_GPU_IRQ_ACTIVE" description="The number of cycles where the GPU has a pending interrupt" name="GPU interrupt active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_GPU_IRQ_COUNT" description="The number of interrupts raised by the GPU to the CPU" name="Interrupt count" title="Mali GPU Jobs" units="issues"/>
+	<event advanced="yes" counter="ARM_Mali-G710_CACHE_FLUSH_CYCLES" description="The number of cycles spent flushing GPU L2 caches" name="L2 cache flush cycles" title="Mali GPU Cache Flushes" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_CACHE_FLUSH" description="The number of GPU L2 cache flushes performed" name="L2 cache flushes" title="Mali GPU Cache Flushes" units="requests"/>
 	<event counter="ARM_Mali-G710_ITER_TILER_ACTIVE" description="The number of cycles that the vertex shading iterator has work queued" name="Vertex queued" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_TILER_JOB_COMPLETED" description="The number of vertex jobs processed" name="Vertex jobs" title="Mali GPU Jobs" units="jobs"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_TILER_IDVS_TASK_COMPLETED" description="The number of vertex tasks processed" name="Vertex tasks" title="Mali GPU Tasks" units="tasks"/>
 	<event advanced="yes" counter="ARM_Mali-G710_ITER_TILER_TOTAL_IDVS_TASK_ACTIVE_CYCLES" description="The total number of vertex shading cycles processed" multiplier="1024" name="Total vertex active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_TILER_IRQ_ACTIVE" description="The number of cycles that the vertex iterator IRQ was pending" name="Vertex IRQ active" title="Mali GPU Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_ITER_TILER_READY_BLOCKED" description="The number of cycles the vertex iterator is waiting for endpoints to be assigned" name="Vertex endpoint stall" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_TILER_EP_DRAIN" description="The number of cycles the vertex iterator is waiting for endpoints to drain" name="Vertex endpoint drain stall" title="Mali CSF Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_ITER_COMP_ACTIVE" description="The number of cycles that the compute iterator has work queued" name="Compute queued" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_COMP_JOB_COMPLETED" description="The number of compute jobs processed" name="Compute jobs" title="Mali GPU Jobs" units="jobs"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_COMP_TASK_COMPLETED" description="The number of compute tasks processed" name="Compute tasks" title="Mali GPU Tasks" units="tasks"/>
 	<event advanced="yes" counter="ARM_Mali-G710_ITER_COMP_TOTAL_TASK_ACTIVE_CYCLES" description="The total number of compute shading cycles processed" multiplier="1024" name="Total compute active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_COMP_IRQ_ACTIVE" description="The number of cycles that the compute iterator IRQ was pending" name="Compute IRQ active" title="Mali GPU Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_ITER_COMP_READY_BLOCKED" description="The number of cycles the compute iterator is waiting for endpoints to be assigned" name="Compute endpoint stall" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_COMP_EP_DRAIN" description="The number of cycles the compute iterator is waiting for endpoints to drain" name="Compute endpoint drain stall" title="Mali CSF Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_ITER_FRAG_ACTIVE" description="The number of cycles that the fragment iterator has work queued" name="Fragment queued" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_FRAG_JOB_COMPLETED" description="The number of fragment jobs processed" name="Fragment jobs" title="Mali GPU Jobs" units="jobs"/>
 	<event counter="ARM_Mali-G710_ITER_FRAG_TASK_COMPLETED" description="The number of tasks processed by the GPU fragment queue" name="Fragment tasks" title="Mali GPU Tasks" units="tasks"/>
 	<event advanced="yes" counter="ARM_Mali-G710_ITER_FRAG_TOTAL_TASK_ACTIVE_CYCLES" description="The total number of fragment shading cycles processed" multiplier="1024" name="Total fragment active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_ITER_FRAG_IRQ_ACTIVE" description="The number of cycles that the fragment iterator IRQ was pending" name="Fragment IRQ active" title="Mali GPU Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_ITER_FRAG_READY_BLOCKED" description="The number of cycles the fragment iterator is waiting for endpoints to be assigned" name="Fragment endpoint stall" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_CEU_ACTIVE" description="The number of cycles that the CEU is processing commands" name="CEU active" title="Mali CSF Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_LSU_ACTIVE" description="The number of cycles that the load-store unit is processing commands" name="LSU active" title="Mali CSF Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF0_ENABLED" description="The number of cycles that command stream interface 0 contained an enabled command stream" name="CS0 active" title="Mali CSF Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF0_WAIT_BLOCKED" description="The number of cycles that command stream interface 0 was blocked because of a scheduling dependency" name="CS0 wait stall" title="Mali CSF Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF1_ENABLED" description="The number of cycles that command stream interface 1 contained an enabled command stream" name="CS1 active" title="Mali CSF Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF1_WAIT_BLOCKED" description="The number of cycles that command stream interface 1 was blocked because of a scheduling dependency" name="CS1 wait stall" title="Mali CSF Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF2_ENABLED" description="The number of cycles that command stream interface 2 contained an enabled command stream" name="CS2 active" title="Mali CSF Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF2_WAIT_BLOCKED" description="The number of cycles that command stream interface 2 was blocked because of a scheduling dependency" name="CS2 wait stall" title="Mali CSF Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF3_ENABLED" description="The number of cycles that command stream interface 3 contained an enabled command stream" name="CS3 active" title="Mali CSF Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_CSHWIF3_WAIT_BLOCKED" description="The number of cycles that command stream interface 3 was blocked because of a scheduling dependency" name="CS3 wait stall" title="Mali CSF Cycles" units="cycles"/>
 </category>
 <category name="Mali Memory System" per_cpu="no">
 	<event advanced="yes" counter="ARM_Mali-G710_MMU_REQUESTS" description="The number of main MMU address translations performed" name="MMU lookups" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G710_MMU_TABLE_READS_L3" description="The number of level 3 translation table reads" name="L3 table reads" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G710_MMU_TABLE_READS_L2" description="The number of level 2 translation table reads" name="L2 table reads" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G710_MMU_HIT_L3" description="The number of level 3 translation table reads that hit in the main MMU TLB" name="L3 table read hits" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G710_MMU_HIT_L2" description="The number of level 2 translation table reads that hit in the main MMU TLB" name="L2 table read hits" title="Mali MMU Stage 1 Translations" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-G710_L2_RD_MSG_IN_EVICT" description="The number of L2 cache line evict requests from internal requesters" name="Evict requests" title="Mali L2 Cache Requests" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-G710_L2_RD_MSG_IN_CU" description="The number of L2 cache line clean unique requests from internal requesters" name="Clean unique requests" title="Mali L2 Cache Requests" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-G710_L2_RD_MSG_IN" description="The number of L2 cache read requests from internal requesters" name="Read requests" title="Mali L2 Cache Requests" units="requests"/>
@@ -66,6 +87,7 @@
 </category>
 <category name="Mali Shader Core" per_cpu="no">
 	<event counter="ARM_Mali-G710_FRAG_ACTIVE" description="The number of cycles where the shader core is processing a fragment workload" name="Fragment active" title="Mali Core Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_FRAG_PRIMITIVES_OUT" description="The number of primitives read from the tile list by the fragment front-end" name="Read primitives" title="Mali Core Primitives" units="primitives"/>
 	<event counter="ARM_Mali-G710_FRAG_PRIM_RAST" description="The number of primitives being rasterized" name="Rasterized primitives" title="Mali Core Primitives" units="primitives"/>
 	<event counter="ARM_Mali-G710_FRAG_FPK_ACTIVE" description="The number of cycles where at least one quad is present in the pre-pipe quad queue" name="Fragment FPKB active" title="Mali Core Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_FRAG_WARPS" description="The number of fragment warps created" name="Fragment warps" title="Mali Core Warps" units="warps"/>
@@ -82,6 +104,7 @@
 	<event counter="ARM_Mali-G710_QUAD_FPK_KILLER" description="The number of quads that are valid occluders for hidden surface removal" name="FPK occluder quads" title="Mali Core Quads" units="quads"/>
 	<event counter="ARM_Mali-G710_FULL_QUAD_WARPS" description="The number of warps that are fully populated with quads" name="Full quad warps" title="Mali Core Warps" units="warps"/>
 	<event counter="ARM_Mali-G710_COMPUTE_ACTIVE" description="The number of cycles where the shader core is processing some non-fragment workload" name="Non-fragment active" title="Mali Core Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G710_COMPUTE_TASKS" description="The number of non-fragment tasks issued to the shader core" name="Non-fragment tasks" title="Mali Core Tasks" units="tasks"/>
 	<event counter="ARM_Mali-G710_COMPUTE_WARPS" description="The number of non-fragment warps created" name="Non-fragment warps" title="Mali Core Warps" units="warps"/>
 	<event counter="ARM_Mali-G710_EXEC_CORE_ACTIVE" description="The number of cycles where the shader core is processing at least one warp" name="Execution core active" title="Mali Core Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G710_EXEC_INSTR_FMA" description="The number of instructions issued to the FMA pipe" name="FMA instructions" title="Mali Core Instructions" units="instructions"/>

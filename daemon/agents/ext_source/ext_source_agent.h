@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -6,6 +6,7 @@
 #include "agents/common/socket_listener.h"
 #include "agents/common/socket_reference.h"
 #include "agents/common/socket_worker.h"
+#include "agents/common/uds_protocol.h"
 #include "agents/ext_source/ipc_sink_wrapper.h"
 #include "async/completion_handler.h"
 #include "async/continuations/continuation.h"
@@ -25,7 +26,6 @@
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address_v6.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/system/error_code.hpp>
 
 namespace agents {
@@ -67,15 +67,15 @@ namespace agents {
                 if (!st->is_shutdown) {
                     st->on_strand_add_agent(
                         "Annotations UDS parent listener",
-                        make_uds_socket_lister([st](auto socket) { st->log_parent(std::move(socket)); },
-                                               st->io_context,
-                                               boost::asio::local::stream_protocol::endpoint {parent_name}));
+                        make_uds_socket_listener([st](auto socket) { st->log_parent(std::move(socket)); },
+                                                 st->io_context,
+                                                 uds_protocol_t::endpoint {parent_name}));
 
                     st->on_strand_add_agent(
                         "Annotations UDS data listener",
-                        make_uds_socket_lister([st](auto socket) { st->spawn_worker(std::move(socket)); },
-                                               st->io_context,
-                                               boost::asio::local::stream_protocol::endpoint {data_name}));
+                        make_uds_socket_listener([st](auto socket) { st->spawn_worker(std::move(socket)); },
+                                                 st->io_context,
+                                                 uds_protocol_t::endpoint {data_name}));
                 }
             });
         }
@@ -89,15 +89,15 @@ namespace agents {
                 if (!st->is_shutdown) {
                     st->on_strand_add_agent(
                         "Annotations TCP parent listener",
-                        make_tcp_socket_lister([st](auto socket) { st->log_parent(std::move(socket)); },
-                                               st->io_context,
-                                               parent));
+                        make_tcp_socket_listener([st](auto socket) { st->log_parent(std::move(socket)); },
+                                                 st->io_context,
+                                                 parent));
 
                     st->on_strand_add_agent(
                         "Annotations TCP data listener",
-                        make_tcp_socket_lister([st](auto socket) { st->spawn_worker(std::move(socket)); },
-                                               st->io_context,
-                                               data));
+                        make_tcp_socket_listener([st](auto socket) { st->spawn_worker(std::move(socket)); },
+                                                 st->io_context,
+                                                 data));
                 }
             });
         }
@@ -304,7 +304,7 @@ namespace agents {
                 if constexpr (std::is_same_v<ProtocolType, boost::asio::ip::tcp>) {
                     LOG_DEBUG("Failed to setup %s. Is the socket already in use?", name.data());
                 }
-                else if constexpr (std::is_same_v<ProtocolType, boost::asio::local::stream_protocol>) {
+                else if constexpr (std::is_same_v<ProtocolType, uds_protocol_t>) {
                     LOG_WARNING("Failed to setup %s. Is the socket already in use?", name.data());
                 }
                 else {

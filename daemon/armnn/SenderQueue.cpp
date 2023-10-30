@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/SenderQueue.h"
 
@@ -28,6 +28,7 @@ namespace armnn {
 
     void SenderQueue::sendLoop()
     {
+        LOG_DEBUG("Start of sender loop");
         // send packets from the queue as and when they become available.
         while (true) {
             std::unique_lock<std::mutex> queueLock {mQueueMutex};

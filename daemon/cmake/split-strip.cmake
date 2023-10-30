@@ -21,7 +21,7 @@ MACRO(STRIP_TARGET TARGET_NAME)
                             COMMAND ${CMAKE_STRIP} --strip-all "$<TARGET_FILE:${TARGET_NAME}>"
                             COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink="${TARGET_NAME_DEBUG_FILE}" "$<TARGET_FILE:${TARGET_NAME}>"
                             COMMENT "Stripping ${TARGET_NAME}, generating $<TARGET_FILE:${TARGET_NAME}>.debug")
-        ADD_DEPENDENCIES("${GATORD_SPLIT_DEBUG_ZIP}" "${TARGET_NAME}")
+        ADD_DEPENDENCIES(create-split-debug-zip "${TARGET_NAME}")
         LIST(APPEND ADDITIONAL_CLEAN_FILES "${TARGET_NAME_DEBUG_FILE}")
     ELSEIF (NOT(${CMAKE_BUILD_TYPE} STREQUAL "Debug"))
         ADD_CUSTOM_COMMAND( TARGET ${TARGET_NAME} POST_BUILD
@@ -34,8 +34,11 @@ ENDMACRO()
 #   Build the split-debug zip file
 #
 IF (${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-    ADD_CUSTOM_TARGET("${GATORD_SPLIT_DEBUG_ZIP}" ALL
-                      COMMAND zip -9rvj "${CMAKE_BINARY_DIR}/${GATORD_SPLIT_DEBUG_ZIP}" "${SPLIT_DEBUG_LOCATION}"
+    ADD_CUSTOM_COMMAND(OUTPUT "${CMAKE_BINARY_DIR}/${GATORD_SPLIT_DEBUG_ZIP}"
+                       COMMAND zip -9rvj "${CMAKE_BINARY_DIR}/${GATORD_SPLIT_DEBUG_ZIP}" "${SPLIT_DEBUG_LOCATION}"
+                       DEPENDS "${SPLIT_DEBUG_LOCATION}")
+    ADD_CUSTOM_TARGET(create-split-debug-zip ALL
+                      DEPENDS "${CMAKE_BINARY_DIR}/${GATORD_SPLIT_DEBUG_ZIP}" "${SPLIT_DEBUG_LOCATION}"
                       COMMENT "Zipping up split debug files")
     LIST(APPEND ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/${GATORD_SPLIT_DEBUG_ZIP}")
 ENDIF()

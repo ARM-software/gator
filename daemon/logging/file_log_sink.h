@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "logging/log_sink_t.h"
+
 #include <array>
 #include <cstring>
 #include <fstream>
@@ -10,9 +12,6 @@
 #include <mutex>
 
 #include <boost/filesystem.hpp>
-
-#include <Logging.h>
-#include <OlyUtility.h>
 
 namespace logging {
 

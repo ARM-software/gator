@@ -1,8 +1,8 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
-#include "armnn/SocketIO.h"
+#include "armnn/ISocketIO.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -11,7 +11,7 @@
 namespace armnn {
     class SenderQueue {
     public:
-        SenderQueue(SocketIO & connection) : mConnection {connection} {}
+        SenderQueue(ISocketIO & connection) : mConnection {connection} {}
 
         // No copying
         SenderQueue(const SenderQueue &) = delete;
@@ -40,7 +40,7 @@ namespace armnn {
         void sendItem(std::vector<std::uint8_t> && data);
 
     private:
-        SocketIO & mConnection;
+        ISocketIO & mConnection;
         std::queue<std::vector<std::uint8_t>> mQueue {};
         std::mutex mQueueMutex {};
         std::condition_variable mConditionVar {};

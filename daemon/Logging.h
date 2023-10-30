@@ -3,12 +3,9 @@
 #pragma once
 
 #include "Config.h"
-#include "lib/Span.h"
-#include "lib/source_location.h"
-#include "logging/suppliers.h"
+#include "logging/parameters.h"
 
 #include <cstddef>
-#include <memory>
 #include <string_view>
 
 #define LOG_ITEM(level, format, ...)                                                                                   \
@@ -81,82 +78,9 @@ inline void LOG_TRACE(char const *, Args &&...)
     } while (false)
 
 namespace logging {
-    /** Possible logging levels */
-    enum class log_level_t {
-        trace,
-        debug,
-        setup,
-        fine,
-        info,
-        warning,
-        error,
-        fatal,
-        child_stdout,
-        child_stderr,
-    };
-
-    // the source location
-    using source_loc_t = lib::source_loc_t;
-
-    /** Timestamp (effectively just what comes from clockgettime) */
-    struct log_timestamp_t {
-        std::int64_t seconds;
-        std::int64_t nanos;
-    };
-
-    /** Identifies the source thread */
-    enum class thread_id_t : pid_t;
-
-    /**
-     * Log sink implementations receive formatted log messages and write them somewhere (e.g. a file/stdout).
-     */
-    class log_sink_t {
-    public:
-        log_sink_t() = default;
-
-        virtual ~log_sink_t() = default;
-
-        log_sink_t(const log_sink_t &) = delete;
-        log_sink_t & operator=(const log_sink_t &) = delete;
-
-        log_sink_t(log_sink_t &&) = delete;
-        log_sink_t & operator=(log_sink_t &&) = delete;
-
-        /** Emit the specified formatted log message. */
-        virtual void write_log(std::string_view log_item) = 0;
-    };
-
-    /** Logger interface */
-    class logger_t {
-    public:
-        virtual ~logger_t() noexcept = default;
-
-        /** Toggle whether TRACE/DEBUG/SETUP messages are output to the console */
-        virtual void set_debug_enabled(bool enabled) = 0;
-
-        /** Toggle whether FINE messages are output to the console */
-        virtual void set_fine_enabled(bool enabled) = 0;
-
-        /**
-         * Store some log item to the log
-         *
-         * @param tid The originating thread ID
-         * @param level The log level
-         * @param timestamp The timestamp of the event (CLOCK_MONOTONIC)
-         * @param location The file/line source location
-         * @param message The log message
-         */
-        virtual void log_item(thread_id_t tid,
-                              log_level_t level,
-                              log_timestamp_t const & timestamp,
-                              source_loc_t const & location,
-                              std::string_view message) = 0;
-    };
 
     // internal helper functions used by the macros; use the macros for convenience sake
     namespace detail {
-        /** Flag to enable / disable tracing, exposed here so that it can be inlined into LOG_TRACE */
-        extern bool enabled_log_trace;
 
         /** Write out a log item */
         //NOLINTNEXTLINE(cert-dcl50-cpp)
@@ -206,33 +130,9 @@ namespace logging {
                   source_loc_t const & location,
                   std::string_view message);
 
-    /**
-     * Set the log sink object, which is the consumer of log messages
-     *
-     * @param sink Some sink object (may be null to clear the sink)
-     */
-    void set_logger(std::shared_ptr<logger_t> sink);
-
     /** @return true if trace logging is enabled */
-    inline bool is_log_enable_trace() noexcept
-    {
-        return detail::enabled_log_trace;
-    }
-    /** Enable trace logging (which also enables debug) */
-    inline void set_log_enable_trace(bool enabled) noexcept
-    {
-        detail::enabled_log_trace = enabled;
-    }
-    /** Enable trace logging based on the --trace argument on the command line */
-    inline void set_log_enable_trace(lib::Span<char const * const> argv)
-    {
-        for (auto const * arg : argv) {
-            if (std::string_view(arg) == "--trace") {
-                set_log_enable_trace(true);
-                return;
-            }
-        }
-    }
+    bool is_log_enable_trace() noexcept;
+
 }
 
 extern void handleException() __attribute__((noreturn));

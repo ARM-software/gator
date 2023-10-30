@@ -1,10 +1,10 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
 
 #include "MaliGPUClockPolledDriver.h"
 
-namespace mali_userspace {
+#include "Logging.h"
 
-    static constexpr uint64_t CLOCK_MULTIPLIER = 1000000ULL;
+namespace mali_userspace {
 
     MaliGPUClockPolledDriver::MaliGPUClockPolledDriver(std::string clockPath, unsigned deviceNumber)
         : PolledDriver("MaliGPUClock"), mClockPath(std::move(clockPath)), deviceNumber(deviceNumber)
@@ -58,8 +58,28 @@ namespace mali_userspace {
             return false;
         }
 
-        mClockValue = strtoull(mBuf.getBuf(), nullptr, 0) * CLOCK_MULTIPLIER;
+        const uint64_t rawClockValue = strtoull(mBuf.getBuf(), nullptr, 0);
+        mClockValue = clockValueInHz(rawClockValue);
+
         return true;
+    }
+
+    /**
+     * We apply conversion to Hz under the assumption that the GPU clock cannot be
+     * below 10MHz or above 10GHz.
+     */
+    uint64_t MaliGPUClockPolledDriver::clockValueInHz(const uint64_t rawClockValue)
+    {
+        const bool rawClockIsInMHz = (rawClockValue > 0 && rawClockValue < MIN_RAW_kHz);
+        const bool rawClockIsInkHz = (rawClockValue < MAX_RAW_kHz);
+
+        if (rawClockIsInMHz) {
+            return rawClockValue * ONE_MILLION;
+        }
+        if (rawClockIsInkHz) {
+            return rawClockValue * ONE_THOUSAND;
+        }
+        return rawClockValue;
     }
 
     void MaliGPUClockPolledDriver::writeEvents(mxml_node_t * root) const

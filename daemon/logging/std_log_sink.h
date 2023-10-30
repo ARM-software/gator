@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include <iostream>
+#include "logging/log_sink_t.h"
 
-#include <Logging.h>
+#include <iostream>
 
 namespace logging {
 

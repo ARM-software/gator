@@ -4,10 +4,10 @@
 #define __CHILD_H__
 
 #include "Configuration.h"
-#include "Logging.h"
 #include "Source.h"
-#include "agents/agent_workers_process.h"
+#include "agents/agent_workers_process_holder.h"
 #include "capture/CaptureProcess.h"
+#include "handleException.h"
 #include "lib/AutoClosingFd.h"
 #include "logging/suppliers.h"
 
@@ -16,8 +16,6 @@
 #include <mutex>
 #include <set>
 #include <vector>
-
-#include <semaphore.h>
 
 class Drivers;
 class Sender;
@@ -28,9 +26,7 @@ namespace lib {
     class Waiter;
 }
 
-void handleException() __attribute__((noreturn));
-
-class Child {
+class Child : private agents::i_agent_worker_manager_callbacks_t {
 public:
     struct Config {
         std::set<CounterConfiguration> events;
@@ -67,7 +63,6 @@ public:
 
 private:
     friend void ::handleException();
-    friend class agents::agent_workers_process_manager_t<Child>;
 
     static std::atomic<Child *> gSingleton;
 
@@ -88,7 +83,7 @@ private:
     Config config;
     const logging::log_access_ops_t & log_ops;
     std::shared_ptr<Command> command {};
-    agents::agent_workers_process_t<Child> agent_workers_process;
+    agents::agent_worker_manager_holder_t agent_workers_process;
 
     Child(agents::i_agent_spawner_t & hi_priv_spawner,
           agents::i_agent_spawner_t & lo_priv_spawner,
@@ -128,8 +123,8 @@ private:
     void doEndSession();
 
     // for agent_workers_process_t
-    void on_terminal_signal(int signo);
-    void on_agent_thread_terminated();
+    void on_agent_thread_terminated() override;
+    void on_terminal_signal(int signo) override;
 };
 
 #endif //__CHILD_H__

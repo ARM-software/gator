@@ -1,3 +1,7 @@
+# Gator 8.8
+
+Adds support for capturing data from the [Arm NN](https://developer.arm.com/Tools%20and%20Software/ArmNN) library on Android devices.
+
 # Gator 8.7
 
 Add the ability to include gator log messages in a capture to help with analysing support cases.

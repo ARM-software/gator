@@ -45,11 +45,10 @@ namespace configuration_xml {
 #include "defaults_xml.h"
     }
 
-    static bool addCounter(const char * counterName,
+    static void addCounter(const char * counterName,
                            const EventCode & event,
                            int count,
                            int cores,
-                           int mIndex,
                            bool printWarningIfUnclaimed,
                            lib::Span<Driver * const> drivers,
                            const std::map<std::string, EventCode> & counterToEventMap);
@@ -132,37 +131,22 @@ namespace configuration_xml {
 
         std::ostringstream error;
 
-        // disable all counters prior to parsing the configuration xml
-        for (auto & mCounter : gSessionData.mCounters) {
-            mCounter.setEnabled(false);
-        }
+        // clear all previous counters prior to parsing the configuration xml
+        gSessionData.mCounters.clear();
+
         const std::map<std::string, EventCode> counterToEventMap =
             events_xml::getCounterToEventMap(drivers.getAllConst(),
                                              drivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
                                              drivers.getPrimarySourceProvider().getDetectedUncorePmus());
-        //Add counter
-        int index = 0;
+        //Add counters
         for (const CounterConfiguration & cc : counterConfigurations) {
-            if (index >= MAX_PERFORMANCE_COUNTERS) {
-                error << "Only "                                 //
-                      << MAX_PERFORMANCE_COUNTERS                //
-                      << " performance counters are permitted, " //
-                      << counterConfigurations.size()            //
-                      << " are selected.";                       //
-                break;
-            }
-            const bool added = addCounter(cc.counterName.c_str(),
-                                          cc.event,
-                                          cc.count,
-                                          cc.cores,
-                                          index,
-                                          printWarningIfUnclaimed,
-                                          drivers.getAll(),
-                                          counterToEventMap);
-            if (added) {
-                // update counter index
-                index++;
-            }
+            addCounter(cc.counterName.c_str(),
+                       cc.event,
+                       cc.count,
+                       cc.cores,
+                       printWarningIfUnclaimed,
+                       drivers.getAll(),
+                       counterToEventMap);
         }
 
         appendError(error, drivers.getCcnDriver().validateCounters());
@@ -221,11 +205,10 @@ namespace configuration_xml {
         LOG_FINE("Invalid configuration.xml file detected and removed");
     }
 
-    static bool addCounter(const char * counterName,
+    static void addCounter(const char * counterName,
                            const EventCode & event,
                            int count,
                            int cores,
-                           int mIndex,
                            bool printWarningIfUnclaimed,
                            lib::Span<Driver * const> drivers,
                            const std::map<std::string, EventCode> & counterToEventMap)
@@ -240,7 +223,7 @@ namespace configuration_xml {
                          });
 
         // read attributes
-        Counter & counter = gSessionData.mCounters[mIndex];
+        Counter & counter = gSessionData.mCounters.emplace_back();
         counter.clear();
         counter.setType(counterName);
 
@@ -303,6 +286,10 @@ namespace configuration_xml {
             }
             counter.setEnabled(false);
         }
-        return counter.isEnabled();
+
+        // remove it if it is not enabled
+        if (!counter.isEnabled()) {
+            gSessionData.mCounters.pop_back();
+        }
     }
 }

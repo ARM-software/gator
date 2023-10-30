@@ -9,6 +9,7 @@
 #include "SessionData.h"
 #include "lib/FileDescriptor.h"
 #include "lib/String.h"
+#include "lib/Syscall.h"
 #include "lib/Utils.h"
 #include "linux/Tracepoints.h"
 #include "linux/perf/IPerfAttrsConsumer.h"

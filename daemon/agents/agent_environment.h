@@ -12,7 +12,6 @@
 #include "ipc/messages.h"
 #include "ipc/raw_ipc_channel_sink.h"
 #include "ipc/raw_ipc_channel_source.h"
-#include "logging/agent_log.h"
 
 #include <memory>
 #include <string>

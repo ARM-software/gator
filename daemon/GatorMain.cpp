@@ -24,6 +24,7 @@
 #include "lib/String.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
+#include "logging/configuration.h"
 #include "logging/file_log_sink.h"
 #include "logging/global_log.h"
 #include "logging/std_log_sink.h"
@@ -316,7 +317,7 @@ int gator_main(int argc, char ** argv)
     }
     // Parse the command line parameters
     GatorCLIParser parser;
-    parser.parseCLIArguments(argc, argv, versionString, MAX_PERFORMANCE_COUNTERS, gSrcMd5, gBuildId);
+    parser.parseCLIArguments(argc, argv, versionString, gSrcMd5, gBuildId);
     const ParserResult & result = parser.result;
     if (result.mode == ParserResult::ExecutionMode::EXIT) {
         handleException();

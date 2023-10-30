@@ -56,7 +56,7 @@ namespace armnn {
         memcpy(udsAddress.sun_path, address, length);
         udsAddress.sun_family = AF_UNIX;
 
-        return (useStructSize ? offsetof(struct sockaddr_un, sun_path) + length - 1 : sizeof(sockaddr_un));
+        return (useStructSize ? sizeof(sockaddr_un) : offsetof(struct sockaddr_un, sun_path) + length - 1);
     }
 
     /**
@@ -238,7 +238,7 @@ namespace armnn {
         handleException();
     }
 
-    std::unique_ptr<SocketIO> SocketIO::accept(int timeout) const
+    std::unique_ptr<ISocketIO> SocketIO::accept(int timeout)
     {
         return pollAction<std::unique_ptr<SocketIO>>(*fd, true, timeout, nullptr, &SocketIO::doAccept, *this, timeout);
     }
@@ -335,22 +335,6 @@ namespace armnn {
         }
 
         return true;
-    }
-
-    std::size_t SocketIO::queryBufferSize(bool recv) const
-    {
-        int result = 0;
-        socklen_t length = sizeof(int);
-
-        if (getsockopt(*fd, SOL_SOCKET, (recv ? SO_RCVBUF : SO_SNDBUF), &result, &length) != 0) {
-            return 0;
-        }
-
-        if (result <= 0) {
-            return 0;
-        }
-
-        return result;
     }
 
     SocketIO::SocketIO(AutoClosingFd && fd, int type) : fd(std::move(fd)), type(type)

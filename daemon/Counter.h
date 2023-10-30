@@ -1,12 +1,15 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #ifndef COUNTER_H
 #define COUNTER_H
 
 #include "EventCode.h"
+#include "Events.h"
 
 #include <new>
+#include <optional>
 #include <string>
+#include <utility>
 
 class Driver;
 
@@ -15,11 +18,11 @@ public:
     static const size_t MAX_DESCRIPTION_LEN = 400;
 
     Counter() = default;
+    Counter(Counter &&) noexcept = default;
 
     // Intentionally unimplemented
     Counter(const Counter &) = delete;
     Counter & operator=(const Counter &) = delete;
-    Counter(Counter &&) = delete;
     Counter & operator=(Counter &&) = delete;
 
     void clear()

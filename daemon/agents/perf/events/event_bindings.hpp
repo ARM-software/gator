@@ -105,14 +105,12 @@ namespace agents::perf {
          * If the binding is in a failed state, or creating fails, then it will be put in / stay in failed state.
          * @return The new state
          */
-        template<typename MmapTracker, typename PerfActivator>
+        template<typename PerfActivator>
         [[nodiscard]] event_binding_state_t create_event(bool enable_on_exec,
                                                          int group_fd,
-                                                         MmapTracker && mmap_tracker,
                                                          PerfActivator && activator,
                                                          core_no_t core_no,
-                                                         pid_t pid,
-                                                         std::uint32_t spe_type)
+                                                         pid_t pid)
         {
 
             switch (state) {
@@ -120,11 +118,9 @@ namespace agents::perf {
                     // attempt to create, updating state
                     return (state = do_create_event(enable_on_exec, //
                                                     group_fd,
-                                                    mmap_tracker,
                                                     activator,
                                                     core_no,
-                                                    pid,
-                                                    spe_type));
+                                                    pid));
                 }
                 case event_binding_state_t::ready:
                 case event_binding_state_t::online:
@@ -185,6 +181,12 @@ namespace agents::perf {
             this->state = (failed ? event_binding_state_t::failed : event_binding_state_t::offline);
         }
 
+        template<typename MMapTracker>
+        [[nodiscard]] bool add_to_mmap(MMapTracker && mmap_tracker, std::uint32_t spe_type)
+        {
+            return mmap_tracker(fd, requires_aux(spe_type, event.attr.type));
+        }
+
     private:
         /** Does the attr require an aux buffer ? */
         static constexpr bool requires_aux(std::uint64_t spe_type, std::uint64_t attr_type)
@@ -202,14 +204,12 @@ namespace agents::perf {
         std::shared_ptr<stream_descriptor_t> fd {};
 
         /** Perform the online, returning the new state */
-        template<typename MmapTracker, typename PerfActivator>
+        template<typename PerfActivator>
         [[nodiscard]] event_binding_state_t do_create_event(bool enable_on_exec,
                                                             int group_fd,
-                                                            MmapTracker && mmap_tracker,
                                                             PerfActivator && activator,
                                                             core_no_t core_no,
-                                                            pid_t pid,
-                                                            std::uint32_t spe_type)
+                                                            pid_t pid)
         {
             // never enable it (Streamline expects the id->key map to be received before any ringbuffer data)
             const auto enable_state = (enable_on_exec ? perf_activator_t::enable_state_t::enable_on_exec
@@ -219,10 +219,6 @@ namespace agents::perf {
 
             switch (result.status) {
                 case perf_activator_t::event_creation_status_t::success: {
-                    // add it to the mmap
-                    if (!mmap_tracker(result.fd, requires_aux(spe_type, event.attr.type))) {
-                        return event_binding_state_t::failed;
-                    }
                     // success
                     this->perf_id = result.perf_id;
                     this->fd = std::move(result.fd);
@@ -298,8 +294,11 @@ namespace agents::perf {
             auto & leader = bindings.front();
             auto const is_group_of_one_pmu = (this->bindings.size() == 1) && leader.is_pmu_event();
 
-            auto leader_state =
-                leader.create_event(enable_on_exec, -1, mmap_tracker, activator, core_no, pid, spe_type);
+            auto leader_state = leader.create_event(enable_on_exec, //
+                                                    -1,
+                                                    activator,
+                                                    core_no,
+                                                    pid);
             switch (leader_state) {
                 case event_binding_state_t::ready:
                     if (legacy_id_from_read) {
@@ -329,13 +328,17 @@ namespace agents::perf {
                     throw std::runtime_error("unexpected event_binding_state_t");
             }
 
+            // add it to the mmap
+            if (!leader.add_to_mmap(mmap_tracker, spe_type)) {
+                return destroy_events(activator, 1, aggregate_state_t::failed);
+            }
+
             auto const group_fd = leader.get_fd();
 
             // nnw activate any children
             for (std::size_t n = 1; n < bindings.size(); ++n) {
                 auto & child = bindings.at(n);
-                auto child_state =
-                    child.create_event(enable_on_exec, group_fd, mmap_tracker, activator, core_no, pid, spe_type);
+                auto child_state = child.create_event(enable_on_exec, group_fd, activator, core_no, pid);
                 switch (child_state) {
                     case event_binding_state_t::ready:
                     case event_binding_state_t::online:

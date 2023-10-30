@@ -253,9 +253,6 @@ namespace mali_userspace {
         /** The path to the /sys/class/misc/mali0/device/clock file used to read GPU clock frequency */
         const std::string clockPath;
 
-        /** The shader core block mask */
-        std::uint64_t shaderCoreAvailabilityMask;
-
         /** The shader core max block count */
         std::uint32_t shaderCoreMaxCount;
 

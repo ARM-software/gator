@@ -3,7 +3,6 @@
 #ifndef MALI_USERSPACE_MALIHWCNTRTASK_H_
 #define MALI_USERSPACE_MALIHWCNTRTASK_H_
 
-#include "Child.h"
 #include "MaliDevice.h"
 #include "device/handle.hpp"
 #include "device/instance.hpp"

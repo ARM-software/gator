@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #ifndef BUFFER_H
 #define BUFFER_H
@@ -9,6 +9,7 @@
 
 #include "IBufferControl.h"
 #include "IRawFrameBuilder.h"
+#include "lib/Span.h"
 
 #include <atomic>
 #include <cstdint>

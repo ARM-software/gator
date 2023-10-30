@@ -85,15 +85,14 @@ namespace gator::android {
      */
     void ThermalCounter::setCounterValues(mxml_node_t * node)
     {
-        constexpr std::array<std::array<char const *, 4>, 8> activities {{
-            {"activity1", "Error", "activity_color1", "0x0d47a1"},
-            {"activity2", "None", "activity_color2", "0x2e7d32"},
-            {"activity3", "Light", "activity_color3", "0x627a2b"},
-            {"activity4", "Moderate", "activity_color4", "0x877424"},
-            {"activity5", "Severe", "activity_color5", "0xa76c1c"},
-            {"activity6", "Critical", "activity_color6", "0xc56014"},
-            {"activity7", "Emergency", "activity_color7", "0xe24e0a"},
-            {"activity8", "Shutdown", "activity_color8", "0xff2d00"},
+        constexpr std::array<std::array<char const *, 4>, 7> activities {{
+            {"activity1", "None", "activity_color1", "0x2e7d32"},
+            {"activity2", "Light", "activity_color2", "0x627a2b"},
+            {"activity3", "Moderate", "activity_color3", "0x877424"},
+            {"activity4", "Severe", "activity_color4", "0xa76c1c"},
+            {"activity5", "Critical", "activity_color5", "0xc56014"},
+            {"activity6", "Emergency", "activity_color6", "0xe24e0a"},
+            {"activity7", "Shutdown", "activity_color7", "0xff2d00"},
         }};
 
         mxmlElementSetAttr(node, "counter", getName());
@@ -124,8 +123,12 @@ namespace gator::android {
         auto * mgr = atw.acquireManager()();
         auto status = atw.getCurrentThermalStatus()(mgr);
 
-        // convert to an int, incrementing by one so that negative values (including the error value are mapped to zero)
-        return std::max<int>(0, status + 1);
+        // Map AThermalStatus to integer indices of the activities array in setCounterValues
+        // For docs on AThermalStatus:
+        //     https://developer.android.com/ndk/reference/group/thermal
+        // ATHERMAL_STATUS_NONE and ATHERMAL_STATUS_ERROR are intended to map to
+        // the zeroth entry in the array.
+        return std::max<int>(0, status);
     }
 
     /**

@@ -89,6 +89,26 @@ namespace agents {
                         }));
         }
 
+        bool is_safe_to_bring_online_or_offline(int cpu_no, bool online) const
+        {
+            //NOLINTNEXTLINE(readability-simplify-boolean-expr)
+            runtime_assert(cpu_no >= 0 && std::size_t(cpu_no) < per_core_state.size(), "Invalid cpu_no value");
+            switch (per_core_state[cpu_no]) {
+                case state_t::initial_pending_online:
+                case state_t::pending_offline_online:
+                case state_t::pending_online:
+                case state_t::online:
+                    return online;
+                case state_t::initial_pending_offline:
+                case state_t::pending_online_offline:
+                case state_t::pending_offline:
+                case state_t::offline:
+                    return !online;
+                default:
+                    throw std::runtime_error("invalid state_t");
+            }
+        }
+
     private:
         enum class state_t {
             initial_unknown,

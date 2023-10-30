@@ -1,6 +1,5 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
-#include "Logging.h"
 #include "android/IAppGatorRunner.h"
 #include "lib/Popen.h"
 

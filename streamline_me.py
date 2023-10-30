@@ -31,14 +31,15 @@
 """
 The `streamline_me.py` script helps set up either an interactive Streamline
 capture, or a headless gatord capture, for a single debuggable package running
-on a non-rooted Android device. This script requires Python 3.5 or higher.
+on a non-rooted Android device or both debuggable and non-debuggable packages
+on rooted Android device. This script requires Python 3.5 or higher.
 
 
 Prerequisites
 =============
 
-The test application APK must be debuggable and pre-installed on to the
-target device prior to starting this script.
+The test application APK pre-installed on to the target device prior to
+starting this script. If the device is not rooted, the APK must be debuggable.
 
 By default the script will look for the `gatord` binary to use in the current
 working directory on the host. The following instructions will assume that
@@ -154,6 +155,8 @@ if (sys.version_info[0] < 3) or \
 
 DEBUG_GATORD = False
 
+PKG_DATA_DIR = None
+
 # Android temp directory
 ANDROID_TMP_DIR = "/data/local/tmp/"
 
@@ -214,6 +217,7 @@ class Device:
                 or None for non-specific use.
         """
         self.device = deviceName
+        self.is_root = None
 
     def adb_async(self, *args):
         """
@@ -307,6 +311,56 @@ class Device:
 
         return rep.stdout
 
+    def adb_run_as(self, package, *args, quiet=False):
+        """
+        Call `adb` to run command as a package using `run-as` or as root,
+        if root is accessible. If command will be run as root, this function
+        will change CWD to the package data directory before executing the command.
+
+        Args:
+            package: Package name to run-as or chage CWD to.
+            *args: List of command line parameters.
+            quiet: If True, ignors output from adb.
+
+        Returns:
+            The contents of stdout or Nothing, if quiet=True.
+
+        Raises:
+            CalledProcessError: The subprocess was not successfully executed.
+        """
+        global PKG_DATA_DIR  # pylint: disable=global-statement
+        if package is None or PKG_DATA_DIR is None:
+            PKG_DATA_DIR = ""
+            return self.adb("shell", args)
+
+        command = []
+        if self.has_root_access():
+            args_string = " ".join(args)
+            command = ["shell", "su", "0", "sh", "-c"]
+            command.append(f"'cd {PKG_DATA_DIR} && {args_string}'")
+        else:
+            command = ["shell", "run-as", package]
+            command.extend(args)
+
+        if quiet:
+            return self.adb_quiet(*command)
+
+        return self.adb(*command)
+
+    def has_root_access(self):
+        """
+        Checks if user can get root access on this device
+
+        Returns:
+            True if root access can be gained, False otherwise.
+        """
+        if self.is_root is None:
+            subCmd = "su 0 echo true || exit 0"
+            cmdOutput = self.adb("shell", subCmd)
+            self.is_root = "true" in cmdOutput
+
+        return self.is_root
+
 
 def select_from_menu(title, menuEntries):
     """
@@ -317,7 +371,6 @@ def select_from_menu(title, menuEntries):
     Args:
         title: The title string.
         menuEntries: The list of options.
-
     Returns:
         The selected list index, or None if no selection made.
     """
@@ -573,56 +626,111 @@ def get_gpu_name(device):
         print("    Failed to query device")
 
 
-def get_package_name(device, pkgName, interactive):
+def get_package_name(device, pkgName, showAllPackages, interactive):
     """
     Helper function to determine which package to use.
 
     Args:
         device: The device instance.
-        pkgName: The user-specified package name on the command line. This may
-            be the full name (case-sensitive), or None (auto-select).
+        pkgName: The user-specified package name or glob selector (regex) on the command line.
+            This may be the full name (case-sensitive), or None (auto-select).
+        showDebuggableOnly: Determines if non-debuggable packages are displayed
+            default is True
         interactive: Is this an interactive session which can use menu prompts?
+    Returns:
+        Package name and package debuggability if a single matching package was found.
+        None, otherwise.
     """
-    allPkg = get_package_list(
-        device, showDebuggableOnly=False, showMainIntentOnly=False)
 
+    # pylint: disable-msg=too-many-locals
+    goodPkg = []
+    is_debuggable = False
     # In non-interactive mode or with a user-specified package, then check it
     if not interactive or pkgName:
         if not pkgName:
             print("ERROR: Package must be specified")
-            return None
+            return None, None
 
+        allPkg = get_package_list(
+            device, not showAllPackages, showMainIntentOnly=False)
+
+        matchesSinglePackage = True
+        # Accept a regex (*) for the package name
         if pkgName not in allPkg:
-            print("ERROR: Package '%s' not found" % pkgName)
-            return None
+            try:
+                r = "%s$" % re.escape(pkgName).replace(r"\*", ".*")
+                regex = re.compile(r)
+                goodPkg = list(filter(regex.match, allPkg))
+                if len(goodPkg) == 1:
+                    pkgName = goodPkg[0]
+                elif len(goodPkg) > 1:
+                    matchesSinglePackage = False
+                elif not goodPkg:
+                    raise ValueError()
+            except (ValueError, re.error):
+                print("ERROR: Package '%s' not found." % pkgName)
+                return None, None
 
-        if not is_package_debuggable(device, pkgName):
+        if not matchesSinglePackage and not interactive:
+            print("ERROR: Multiple packages found when --package used. Listed packages:")
+            print("\n".join(goodPkg))
+            return None, None
+
+        is_debuggable = is_package_debuggable(device, pkgName)
+        if not is_debuggable and matchesSinglePackage and not showAllPackages:
             print("ERROR: Package '%s' not debuggable" % pkgName)
-            return None
+            return None, None
 
-        return pkgName
+        if matchesSinglePackage:
+            print("Matched package: %s" % pkgName)
+            return pkgName, is_debuggable
 
     # In interactive mode without named package then find one, with prompt ...
-    print("\nSearching for debuggable packages:")
+    debuggableMessage = 'debuggable' if not showAllPackages else 'all'
+    print("\nSearching for %s packages:" % debuggableMessage)
     pleaseWait = "    Please wait for search to complete..."
     print(pleaseWait, end="\r")
-    goodPkg = get_package_list(
-        device, showDebuggableOnly=True, showMainIntentOnly=True)
+
+    # If this wasn't populated before, we can use the packaged filtered by package name
+    if not goodPkg:
+        goodPkg = get_package_list(
+            device, not showAllPackages, showMainIntentOnly=True)
+
     plural = "s" if len(goodPkg) != 1 else ""
-    message = "    %u debuggable package%s found" % (len(goodPkg), plural)
+    message = "    %u package%s found" % (len(goodPkg), plural)
     template = "\r%%-%us" % len(pleaseWait)
     print(template % message)
 
     if len(goodPkg) < 1:
-        print("\nERROR: No debuggable packages with MAIN activities found")
-        return None
+        print("\nERROR: No packages with MAIN activities found")
+        return None, None
 
-    pkgIndex = select_from_menu("debuggable packages", goodPkg)
+    pkgIndex = select_from_menu(
+        "%s packages" % debuggableMessage, goodPkg)
+
     if pkgIndex is None:
         print("\nNo package selected, exiting ...")
-        return None
+        return None, None
 
-    return goodPkg[pkgIndex]
+    is_debuggable = is_package_debuggable(device, goodPkg[pkgIndex])
+    if not is_debuggable and not showAllPackages:
+        print("ERROR: Package '%s' is not debuggable" %
+              goodPkg[pkgIndex])
+        return None, None
+
+    return goodPkg[pkgIndex], is_debuggable
+
+
+def get_main_activity(device, package):
+    cmd = (f"dumpsys package {package} " +
+           r"| grep -A1 'android.intent.action.MAIN:' " +
+           r'| tr " " "\n" ' +
+           f"| grep {package}/ " +
+           r"|| exit 0")
+    output = device.adb("shell", "sh", "-c", f"'{cmd}'")
+    if not output:
+        return None
+    return str(output).replace(f"{package}/", "").strip()
 
 
 def is_package_debuggable(device, package):
@@ -644,6 +752,25 @@ def is_package_debuggable(device, package):
         return False
 
 
+def get_package_data_dir(device, package):
+    """
+    Gets the package data directory in Android system
+
+    Args:
+        device: The device instance.
+        package: The package name.
+
+    Returns:
+        package data directory or None on error.
+    """
+    try:
+        subCmd = "dumpsys package %s | grep dataDir" % package
+        dumpsysOutput = device.adb("shell", subCmd)
+        return dumpsysOutput.replace("dataDir=", "").strip()
+    except sp.CalledProcessError:
+        return None
+
+
 def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
     """
     Fetch the list of packages on the target device.
@@ -659,7 +786,7 @@ def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
         The list of packages, or an empty list on error.
     """
     opt = "-3" if showDebuggableOnly else ""
-    command = "pm list packages -e %s | sed 's/^package://'" % opt
+    command = "pm list packages -e %s | sed 's/^package://' | sort" % opt
 
     if showDebuggableOnly:
         # Test if the package is debuggable on the device
@@ -739,9 +866,16 @@ def write_capture(device, outDir, package):
         # directly for new Android applications due to SELinux policy
         tempName = fileHandle.name
         fileHandle.close()
+        pkg_data_dir = get_package_data_dir(device, package)
+        is_root = device.has_root_access()
 
-        device.adb("exec-out", "run-as", package, "tar",
-                   "-c", captureName, ">", tempName, text=False, shell=True)
+        if is_root:
+            device.adb("exec-out", "su", "0", "sh", "-c",
+                       f"cd {pkg_data_dir} && tar -c ./{captureName}", ">", tempName,
+                       text=False, shell=True)
+        else:
+            device.adb("exec-out", "run-as", package, "tar", "-c",
+                       captureName, ">", tempName, text=False, shell=True)
 
         # Repack the tar file into the required output format
         with tempfile.TemporaryDirectory() as tempDir:
@@ -764,7 +898,7 @@ def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
     # Check if capture exists
     adb_stdout = ""
     try:
-        adb_stdout = device.adb("shell", "run-as", package, "ls", "pa_lwi")
+        adb_stdout = device.adb_run_as(package, "ls", "pa_lwi")
     except sp.CalledProcessError:
         # Command failed, there is no capture, nothing to do
         pass
@@ -777,9 +911,8 @@ def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
     # Also copy config into pa_lwi dir
     try:
         device_config_file = ANDROID_TMP_DIR + CONFIG_FILE
-        device.adb("shell", "run-as", package, "ls", device_config_file)
-        device.adb("shell", "run-as", package, "cp",
-                   device_config_file, "pa_lwi")
+        device.adb_run_as(package, "ls", device_config_file)
+        device.adb_run_as(package, "cp", device_config_file, "pa_lwi")
     except sp.CalledProcessError:
         print("    WARNING: No configuration file found")
 
@@ -789,8 +922,8 @@ def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
 
     # Clean up
     if cleanUp:
-        device.adb("shell", "run-as", package, "rm", "-rf", "pa_lwi")
-        device.adb("shell", "run-as", package, "rm", "-rf", "pa_lwi.tar")
+        device.adb_run_as(package, "rm", "-rf", "pa_lwi")
+        device.adb_run_as(package, "rm", "-rf", "pa_lwi.tar")
 
     return True
 
@@ -827,8 +960,8 @@ def enable_vulkan_debug_layer(device, args):
                    EXPECTED_VULKAN_LAYER_NAME)
     else:
         device.adb("push", args.vkLayerLibPath, ANDROID_TMP_DIR)
-        device.adb("shell", "run-as", args.package, "cp",
-                   ANDROID_TMP_DIR + vkLayerBaseName, ".")
+        device.adb_run_as(args.package, "cp",
+                          ANDROID_TMP_DIR + vkLayerBaseName, ".")
         device.adb("shell", "settings", "put", "global",
                    "enable_gpu_debug_layers", "1")
         device.adb("shell", "settings", "put", "global",
@@ -858,8 +991,8 @@ def enable_gles_debug_layer(device, args):
             glesLayerBaseName, EXPECTED_GLES_LAYER_FILE_NAME,))
 
     device.adb("push", args.glesLayerLibPath, ANDROID_TMP_DIR)
-    device.adb("shell", "run-as", args.package, "cp",
-               ANDROID_TMP_DIR + glesLayerBaseName, ".")
+    device.adb_run_as(args.package, "cp",
+                      ANDROID_TMP_DIR + glesLayerBaseName, ".")
     device.adb("shell", "settings", "put", "global",
                "enable_gpu_debug_layers", "1")
     device.adb("shell", "settings", "put", "global",
@@ -888,7 +1021,7 @@ def disable_vulkan_debug_layer(device, args):
         device.adb("shell", "settings", "delete", "global gpu_debug_app")
         device.adb("shell", "settings", "delete", "global gpu_debug_layers")
 
-    device.adb_quiet("shell", "run-as", args.package, "rm", layerBaseName)
+    device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
 def disable_gles_debug_layer(device, args):
@@ -909,7 +1042,7 @@ def disable_gles_debug_layer(device, args):
     device.adb("shell", "settings", "delete", "global gpu_debug_app")
     device.adb("shell", "settings", "delete", "global gpu_debug_layers_gles")
 
-    device.adb_quiet("shell", "run-as", args.package, "rm", layerBaseName)
+    device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
 def clean_gatord(device, package):
@@ -922,7 +1055,8 @@ def clean_gatord(device, package):
     """
     # Kill any prior instances of gatord
     device.adb_quiet("shell", "pkill", "gatord")
-    device.adb_quiet("shell", "run-as", package, "pkill", "gatord")
+
+    device.adb_run_as(package, "pkill", "gatord", quiet=True)
 
     # Kill any prior instances of the test application
     device.adb_quiet("shell", "am", "force-stop", package)
@@ -979,6 +1113,7 @@ def run_gatord_interactive(_device, _package):
     input("\nWaiting for data capture ...")
 
 
+# pylint: disable-msg=too-many-locals
 def run_gatord_headless(device, package, outputName, timeout, activity, activityArgs):
     """
     Run gatord for a headless capture session.
@@ -1003,17 +1138,27 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
     # Run gatord but don't wait for it to return
     apcName = "%s.apc" % package
     remoteApcPath = "%s%s" % (ANDROID_TMP_DIR, apcName,)
-    gatorProcess = device.adb_async(
-        "shell", "%sgatord" % ANDROID_TMP_DIR,
-        "--android-pkg", package, "--stop-on-exit", "yes",
-        "--max-duration", "%u" % timeout, "--output", remoteApcPath)
 
-    # Start the user activity if asked to do so
+    gator_cmd = ["%sgatord" % ANDROID_TMP_DIR,
+                 "--android-pkg", package, "--stop-on-exit", "yes",
+                 "--max-duration", "%u" % timeout, "--capture-log", "--output", remoteApcPath]
+
+    is_root = device.has_root_access()
+    if is_root:
+        gatorProcess = device.adb_async("shell", "su", "0", *gator_cmd)
+    else:
+        gatorProcess = device.adb_async("shell", *gator_cmd)
+
+    # Short sleep just to give time for gator to start
+    # TODO: Would be better to programmatically wait for a message that gator is ready
+    time.sleep(2)
+
+    # Try to find MAIN activity, if no activity specified
+    if not activity:
+        activity = get_main_activity(device, package)
+
+    # If we have an activity, start it
     if activity:
-        # Short sleep just to give time for gator to start
-        # TODO: Would be better to programmatically wait for a message that gator is ready
-        time.sleep(2)
-
         if activityArgs:
             activityArgs = shlex.split(activityArgs)
             device.adb("shell", "am", "start", "-n",
@@ -1021,11 +1166,19 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
         else:
             device.adb("shell", "am", "start", "-n",
                        f"{package}/{activity}")
+    else:
+        print("\n    Couldn't find main activity for this package")
+        print("    Please start the application manually or use '--package-activity'")
 
     # Now wait for gatord to finish
     gatorProcess.wait()
 
     print("    Capture complete, downloading from target")
+
+    # Change apc directory ownership to shell
+    if is_root:
+        device.adb_quiet("shell", "su", "0", "sh", "-c",
+                         f"'chown -R shell:shell {remoteApcPath}'")
 
     with tempfile.TemporaryDirectory() as tempDir:
         # Fetch the results
@@ -1065,7 +1218,7 @@ def exit_handler(device, args):
         package: The package name.
     """
     device.adb_quiet("shell", "pkill", "gatord")
-    device.adb_quiet("shell", "run-as", args.package, "pkill", "gatord")
+    device.adb_run_as(args.package, "pkill", "gatord", quiet=True)
 
     if args.lwiMode != "off":
         try:
@@ -1081,10 +1234,10 @@ def exit_handler(device, args):
             handle_disconnect_error(e)
 
         device.adb_quiet("shell", "rm", ANDROID_TMP_DIR + CONFIG_FILE)
-        device.adb_quiet("shell", "run-as", args.package,
-                         "rm", "-rf", "pa_lwi")
-        device.adb_quiet("shell", "run-as", args.package,
-                         "rm", "-rf", "pa_lwi.tar")
+        device.adb_run_as(args.package,
+                          "rm", "-rf", "pa_lwi", quiet=True)
+        device.adb_run_as(args.package,
+                          "rm", "-rf", "pa_lwi.tar", quiet=True)
 
 
 def raise_path_error(message, location, option):
@@ -1118,7 +1271,7 @@ def parse_cli(parser):
 
     parser.add_argument(
         "--package", "-P", default=None,
-        help="the application package name (default=auto-detected)")
+        help="the application package name or pattern (default=auto-detected) (e.g. com.arm.application.*)")
 
     parser.add_argument(
         "--package-activity", dest="packageActivity", default=None,
@@ -1212,6 +1365,12 @@ def parse_cli(parser):
         action="store_true", default=False,
         help=("If set the layer will store compressed frame captures."
               "Default is unset."))
+
+    parser.add_argument(
+        "--show-all-packages", "-A", dest="showAllPackages",
+        action="store_true", default=False,
+        help=("Displays only debuggable packages when true."
+              "Default is set."))
 
     # Internal development option that allows Khronos validation
     # to be enabled underneath LWI
@@ -1435,6 +1594,7 @@ def main():
     Returns:
         Process return code.
     """
+    # pylint: disable-msg=too-many-locals
     parser = ap.ArgumentParser(formatter_class=ArgFormatter)
     try:
         args = parse_cli(parser)
@@ -1523,12 +1683,22 @@ def main():
         return 1
 
     # Select a specific package, or fail if we cannot
-    package = get_package_name(device, args.package, not args.headless)
+    package, pkg_is_debuggable = get_package_name(
+        device, args.package, args.showAllPackages, not args.headless)
     if not package:
         return 3
 
     args.package = package
     isArm32 = is_package_32bit_abi(device, package)
+
+    global PKG_DATA_DIR  # pylint: disable=global-statement
+    PKG_DATA_DIR = get_package_data_dir(device, package)
+    if not PKG_DATA_DIR:
+        return 3
+
+    if not pkg_is_debuggable and not device.has_root_access():
+        print("\nERROR: Analysis on a non-debuggable package is not supported without root access on the device.")
+        return 3
 
     # Note: this is no longer technical required; gator now reliably
     # auto-detects the Mali GPU, but the information is useful for the user

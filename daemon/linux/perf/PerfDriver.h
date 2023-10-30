@@ -1,11 +1,11 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_H
 #define PERFDRIVER_H
 
 #include "IPerfGroups.h"
 #include "SimpleDriver.h"
-#include "agents/agent_workers_process.h"
+#include "agents/agent_workers_process_holder.h"
 #include "agents/perf/capture_configuration.h"
 #include "agents/perf/source_adapter.h"
 #include "linux/Tracepoints.h"
@@ -91,7 +91,7 @@ public:
                                                  bool enableOnCommandExec,
                                                  ICpuInfo & cpuInfo,
                                                  lib::Span<UncorePmu> uncore_pmus,
-                                                 agents::agent_workers_process_t<Child> & agent_workers_process);
+                                                 agents::agent_workers_process_default_t & agent_workers_process);
 
 private:
     const TraceFsConstants & traceFsConstants;
@@ -112,7 +112,7 @@ private:
     get_cpu_cluster_keys_for_cpu_frequency_counter();
 
     std::shared_ptr<agents::perf::perf_source_adapter_t> create_source_adapter(
-        agents::agent_workers_process_t<Child> & agent_workers_process,
+        agents::agent_workers_process_default_t & agent_workers_process,
         sem_t & senderSem,
         ISender & sender,
         std::function<bool()> session_ended_callback,

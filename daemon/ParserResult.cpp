@@ -36,3 +36,8 @@ void ParserResult::parsingFailed()
     mode = ExecutionMode::EXIT;
     argValuePairs.clear();
 }
+
+bool ParserResult::ok() const
+{
+    return mode != ExecutionMode::EXIT;
+}

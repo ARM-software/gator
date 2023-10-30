@@ -5,13 +5,10 @@
 
 #include "BlockCounterFrameBuilder.h"
 #include "BlockCounterMessageConsumer.h"
-#include "Child.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
-#include "Protocol.h"
 #include "SessionData.h"
 #include "lib/String.h"
-#include "lib/Time.h"
 #include "non_root/GlobalPoller.h"
 #include "non_root/GlobalStateChangeHandler.h"
 #include "non_root/GlobalStatsTracker.h"

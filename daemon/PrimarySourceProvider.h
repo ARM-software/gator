@@ -1,10 +1,10 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
 
 #include "ISender.h"
-#include "agents/agent_workers_process.h"
+#include "agents/agent_workers_process_holder.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 
@@ -89,7 +89,7 @@ public:
         const std::set<int> & appTids,
         FtraceDriver & ftraceDriver,
         bool enableOnCommandExec,
-        agents::agent_workers_process_t<Child> & agent_workers_process) = 0;
+        agents::agent_workers_process_default_t & agent_workers_process) = 0;
 
     [[nodiscard]] virtual const ICpuInfo & getCpuInfo() const = 0;
     [[nodiscard]] virtual ICpuInfo & getCpuInfo() = 0;

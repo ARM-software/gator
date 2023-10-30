@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include "Config.h"
 #include "agents/agent_worker.h"
+#include "agents/agent_workers_process_holder.h"
 #include "agents/ext_source/ext_source_agent_worker.h"
 #include "agents/perf/perf_agent_worker.h"
 #include "async/completion_handler.h"
@@ -13,6 +15,10 @@
 #include "async/proc/process_monitor.hpp"
 #include "lib/String.h"
 #include "lib/Syscall.h"
+
+#if CONFIG_ARMNN_AGENT
+#include "agents/armnn/armnn_agent_worker.h"
+#endif
 
 #ifdef CONFIG_USE_PERFETTO
 #include "agents/perfetto/perfetto_agent_worker.h"
@@ -45,14 +51,14 @@ namespace agents {
     /**
      * The io_context, worker threads and signal_set for the agent worker processes manager. Decoupled to allow the worker process manager to be unit tested.
      *
-     * @tparam Parent The parent class, that owns the agent processes (usually Child)
      * @tparam WorkerManager The agent process manager class (usually agent_workers_process_manager_t)
      */
-    template<typename Parent, typename WorkerManager>
+    template<typename WorkerManager>
     class agent_workers_process_context_t {
     public:
         static constexpr std::size_t n_threads = 2;
 
+        template<typename Parent>
         agent_workers_process_context_t(Parent & parent,
                                         i_agent_spawner_t & hi_priv_spawner,
                                         i_agent_spawner_t & lo_priv_spawner)
@@ -115,7 +121,27 @@ namespace agents {
                 std::ref(external_souce));
         }
 
+#if CONFIG_ARMNN_AGENT
+        /**
+         * Add the 'armnn' agent worker
+         *
+         * @param socket_consumer A reference to an object responsible for forming an armnn::Session from a ISocketIO
+         * @param token Some completion token, called asynchronously once the agent is ready
+         * @return depends on completion token type
+         */
+        template< typename CompletionToken>
+        auto async_add_armnn_source(armnn::ISocketIOConsumer & socket_consumer, CompletionToken && token)
+        {
+            return worker_manager.template async_add_agent<armnn_agent_worker_t>(
+                process_monitor,
+                agent_privilege_level_t::low,
+                std::forward<CompletionToken>(token),
+                std::ref(socket_consumer));
+        }
+#endif
+
 #ifdef CONFIG_USE_PERFETTO
+
         /**
          * Add the 'perfetto' agent worker
          *
@@ -236,6 +262,10 @@ namespace agents {
             : parent(parent), hi_priv_spawner(hi_priv_spawner), lo_priv_spawner(lo_priv_spawner), io_context(io_context)
         {
         }
+
+        // reference holder so delete assignment
+        agent_workers_process_manager_t & operator=(agent_workers_process_manager_t const &) = delete;
+        agent_workers_process_manager_t & operator=(agent_workers_process_manager_t &&) noexcept = delete;
 
         /** @return True if the worker manager is terminated */
         [[nodiscard]] bool is_terminated() const noexcept { return terminated; }
@@ -593,8 +623,4 @@ namespace agents {
             };
         }
     };
-
-    /** Convenience alias for the context and manager */
-    template<typename Parent>
-    using agent_workers_process_t = agent_workers_process_context_t<Parent, agent_workers_process_manager_t<Parent>>;
 }

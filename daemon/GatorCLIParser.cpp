@@ -5,14 +5,22 @@
 #include "Config.h"
 #include "GatorCLIFlags.h"
 #include "Logging.h"
+#include "android/Utils.h"
+#include "lib/Process.h"
 #include "lib/String.h"
+#include "lib/Syscall.h"
 #include "lib/Utils.h"
 #include "linux/smmu_identifier.h"
+#include "logging/configuration.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <sstream>
+#include <string>
 #include <string_view>
+#include <system_error>
 
+#include <boost/algorithm/string.hpp>
 namespace {
     constexpr int DECIMAL_BASE = 10;
     constexpr int HEX_BASE = 16;
@@ -339,7 +347,6 @@ void GatorCLIParser::parseAndUpdateSpe()
 void GatorCLIParser::parseCLIArguments(int argc,
                                        char * argv[],
                                        const char * version_string,
-                                       int maxPerformanceCounter,
                                        const char * gSrcMd5,
                                        const char * gBuildId)
 {
@@ -507,9 +514,6 @@ void GatorCLIParser::parseCLIArguments(int argc,
             {
                 int startpos = -1;
                 size_t counterSplitPos = 0;
-                if (perfCounterCount > maxPerformanceCounter) {
-                    continue;
-                }
                 value = std::string(optarg);
 
                 while ((counterSplitPos = value.find(',', startpos + 1)) != std::string::npos) {
@@ -933,6 +937,29 @@ void GatorCLIParser::parseCLIArguments(int argc,
         LOG_ERROR("--android-pkg requires to be run from a shell or root user.");
         result.parsingFailed();
         return;
+    }
+
+    if (result.mAndroidPackage != nullptr) {
+        const bool packageFound = android_utils::packageExists(result.mAndroidPackage);
+        if (!packageFound) {
+            const std::string error_msg = "Android package, " + std::string(result.mAndroidPackage) + ", not found.";
+            LOG_ERROR(error_msg);
+            result.parsingFailed();
+            return;
+        }
+    }
+
+    if (result.mAndroidPackage != nullptr && result.mAndroidActivity != nullptr) {
+        const std::string cmd = "dumpsys package " + std::string(result.mAndroidPackage) + " | grep --silent "
+                              + std::string(result.mAndroidActivity);
+        const int rc = gator::process::system(cmd);
+        if (rc != 0) {
+            const std::string error_msg = "Android activity, " + std::string(result.mAndroidActivity)
+                                        + ", not found in Android package " + std::string(result.mAndroidPackage);
+            LOG_ERROR(error_msg);
+            result.parsingFailed();
+            return;
+        }
     }
 
     if (result.mDuration < 0) {

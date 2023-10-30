@@ -1,9 +1,8 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #ifndef ARMNN_PACKETDECODERENCODERFACTORY_H_
 #define ARMNN_PACKETDECODERENCODERFACTORY_H_
 
-#include "Logging.h"
 #include "armnn/DecoderUtility.h"
 #include "armnn/IEncoder.h"
 #include "armnn/IPacketConsumer.h"

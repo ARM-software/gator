@@ -246,6 +246,10 @@ namespace agents::perf {
                              lib::toEnumValue(no),
                              lib::toEnumValue(cluster_id));
 
+                    // now enable the header event
+                    auto const started = perf_activator->start(header_result.fd->native_handle());
+                    runtime_assert(started, "header event not started");
+
                     return core_online_prepare_result_t {result,
                                                          std::move(id_to_key_mappings),
                                                          std::move(removed_pids),
@@ -256,6 +260,11 @@ namespace agents::perf {
                     LOG_WARNING("Core online prepare %d 0x%x failed as all threads terminated / none tracked",
                                 lib::toEnumValue(no),
                                 lib::toEnumValue(cluster_id));
+
+                    // now enable the header event
+                    auto const started = perf_activator->start(header_result.fd->native_handle());
+                    runtime_assert(started, "header event not started");
+
                     // return usable, but only have the header id mapping
                     return core_online_prepare_result_t {aggregate_state_t::usable,
                                                          {
@@ -1021,7 +1030,7 @@ namespace agents::perf {
 
             LOG_DEBUG("Creating core header %d 0x%x", lib::toEnumValue(no), lib::toEnumValue(cluster_id));
             auto header_result = perf_activator->create_event(configuration.header_event,
-                                                              enable_state_t::enabled,
+                                                              enable_state_t::disabled,
                                                               no,
                                                               (is_system_wide ? system_wide_pid : self_pid),
                                                               -1);

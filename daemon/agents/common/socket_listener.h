@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Logging.h"
+#include "agents/common/uds_protocol.h"
 
 #include <memory>
 #include <type_traits>
@@ -13,7 +14,6 @@
 #include <boost/asio/ip/address_v6.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/v6_only.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/system/system_error.hpp>
 
 namespace agents {
@@ -30,7 +30,7 @@ namespace agents {
     };
 
     /** Set any options on a UDS socket */
-    inline void set_acceptor_options(boost::asio::local::stream_protocol::acceptor & /*acceptor*/)
+    inline void set_acceptor_options(uds_protocol_t::acceptor & /*acceptor*/)
     {
     }
 
@@ -123,20 +123,19 @@ namespace agents {
 
     /** a socket listener that listens on unix domain sockets */
     template<typename WorkerSpawnerFn>
-    using uds_socket_lister_t = socket_listener_t<boost::asio::local::stream_protocol, WorkerSpawnerFn>;
+    using uds_socket_listener_t = socket_listener_t<uds_protocol_t, WorkerSpawnerFn>;
 
     /** a socket listener that listens on tcp sockets */
     template<typename WorkerSpawnerFn>
-    using tcp_socket_lister_t = socket_listener_t<boost::asio::ip::tcp, WorkerSpawnerFn>;
+    using tcp_socket_listener_t = socket_listener_t<boost::asio::ip::tcp, WorkerSpawnerFn>;
 
     /** Make a UDS socket listener for some endpoint with the supplied worker fn */
     template<typename WorkerSpawnerFn>
-    auto make_uds_socket_lister(WorkerSpawnerFn && worker_spawner,
-                                boost::asio::io_context & ctx,
-                                typename uds_socket_lister_t<WorkerSpawnerFn>::endpoint_type const & endpoint)
+    auto make_uds_socket_listener(WorkerSpawnerFn && worker_spawner,
+                                  boost::asio::io_context & ctx,
+                                  typename uds_socket_listener_t<WorkerSpawnerFn>::endpoint_type const & endpoint)
     {
-        using listener_t = uds_socket_lister_t<WorkerSpawnerFn>;
-
+        using listener_t = uds_socket_listener_t<WorkerSpawnerFn>;
         try {
             return listener_t::create(std::forward<WorkerSpawnerFn>(worker_spawner), ctx, endpoint);
         }
@@ -148,12 +147,11 @@ namespace agents {
 
     /** Make a TCP socket listener for some endpoint with the supplied worker fn */
     template<typename WorkerSpawnerFn>
-    auto make_tcp_socket_lister(WorkerSpawnerFn && worker_spawner,
-                                boost::asio::io_context & ctx,
-                                typename tcp_socket_lister_t<WorkerSpawnerFn>::endpoint_type const & endpoint)
+    auto make_tcp_socket_listener(WorkerSpawnerFn && worker_spawner,
+                                  boost::asio::io_context & ctx,
+                                  typename tcp_socket_listener_t<WorkerSpawnerFn>::endpoint_type const & endpoint)
     {
-        using listener_t = tcp_socket_lister_t<WorkerSpawnerFn>;
-
+        using listener_t = tcp_socket_listener_t<WorkerSpawnerFn>;
         try {
             return listener_t::create(std::forward<WorkerSpawnerFn>(worker_spawner), ctx, endpoint);
         }

@@ -1,14 +1,23 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 #pragma once
 
+#include "Config.h"
 #include "Driver.h"
-#include "armnn/DriverSourceIpc.h"
 #include "armnn/GlobalState.h"
+#include "armnn/ISessionConsumer.h"
 #include "armnn/Session.h"
 #include "armnn/SessionStateTracker.h"
 #include "armnn/SocketAcceptor.h"
 #include "armnn/SocketIO.h"
 #include "armnn/ThreadManagementServer.h"
+
+#if CONFIG_ARMNN_AGENT
+#include "armnn/AcceptedSocketQueue.h"
+#include "armnn/DriverSourceWithAgent.h"
+#include "armnn/ISocketIOConsumer.h"
+#else
+#include "armnn/DriverSourceIpc.h"
+#endif
 
 #include <memory>
 
@@ -33,28 +42,45 @@ namespace armnn {
         void writeEvents(mxml_node_t * const /*unused*/) const override;
 
         // Called before the gator-child process is forked
-        void preChildFork() override { mDriverSourceIpc.prepareForFork(); }
+        void preChildFork() override { mDriverSourceConn.prepareForFork(); }
 
         // Called in the parent immediately after the gator-child process is forked
-        void postChildForkInParent() override { mDriverSourceIpc.afterFork(); }
+        void postChildForkInParent() override { mDriverSourceConn.afterFork(); }
 
         // Called in the parent after the gator-child process exits
-        void postChildExitInParent() override { mDriverSourceIpc.onChildDeath(); }
+        void postChildExitInParent() override { mDriverSourceConn.onChildDeath(); }
 
-        ICaptureController & getCaptureController() { return mDriverSourceIpc; }
+        [[nodiscard]] ICaptureController & getCaptureController() { return mDriverSourceConn; }
+
+        void startAcceptingThread() { mSessionManager.start(); }
+
+#if CONFIG_ARMNN_AGENT
+        [[nodiscard]] ISocketIOConsumer & getAcceptedSocketConsumer() { return mAcceptedSocketQueue; }
+#endif
 
     private:
-        std::uint32_t mSessionCount;
-        GlobalState mGlobalState;
-        SocketIO mAcceptingSocket;
-        DriverSourceIpc mDriverSourceIpc;
+        std::uint32_t mSessionCount {0};
 
-        SessionSupplier createSession = [&](std::unique_ptr<SocketIO> connection) {
+        SessionSupplier createSession = [&](std::unique_ptr<ISocketIO> connection) {
             const std::uint32_t uniqueSessionID = mSessionCount++;
 
-            return Session::create(std::move(connection), mGlobalState, mDriverSourceIpc, uniqueSessionID);
+            return Session::create(std::move(connection), mGlobalState, mDriverSourceConn, uniqueSessionID);
         };
+
+        GlobalState mGlobalState;
+
+#if !CONFIG_ARMNN_AGENT
+        SocketIO mAcceptingSocket;
+#else
+        AcceptedSocketQueue mAcceptedSocketQueue;
+#endif
         ThreadManagementServer mSessionManager;
+
+#if !CONFIG_ARMNN_AGENT
+        DriverSourceIpc mDriverSourceConn;
+#else
+        DriverSourceWithAgent mDriverSourceConn;
+#endif
     };
 
 }

@@ -9,10 +9,10 @@
 #include "armnn/Session.h"
 
 #include "Logging.h"
+#include "armnn/ISocketIO.h"
 #include "armnn/PacketDecoderEncoderFactory.h"
 #include "armnn/SenderThread.h"
 #include "armnn/SessionPacketSender.h"
-#include "armnn/SocketIO.h"
 
 #include <cinttypes>
 #include <cstring>
@@ -22,7 +22,7 @@ static constexpr std::size_t HEADER_SIZE = 8;
 static constexpr std::size_t MAGIC_SIZE = 4;
 
 namespace armnn {
-    std::unique_ptr<Session> Session::create(std::unique_ptr<SocketIO> connection,
+    std::unique_ptr<Session> Session::create(std::unique_ptr<ISocketIO> connection,
                                              IGlobalState & globalState,
                                              ICounterConsumer & counterConsumer,
                                              const std::uint32_t sessionID)
@@ -77,7 +77,7 @@ namespace armnn {
                                          std::move(sst));
     }
 
-    bool Session::initialiseConnection(SocketIO & connection, HeaderPacket & headerPacket)
+    bool Session::initialiseConnection(ISocketIO & connection, HeaderPacket & headerPacket)
     {
         // Read meta data and do first time set up.
         if (connection.isOpen()) {
@@ -133,7 +133,7 @@ namespace armnn {
         return false;
     }
 
-    Session::Session(std::unique_ptr<SocketIO> connection,
+    Session::Session(std::unique_ptr<ISocketIO> connection,
                      ByteOrder byteOrder,
                      std::unique_ptr<IPacketDecoder> decoder,
                      std::unique_ptr<SessionStateTracker> sst)

@@ -4,7 +4,6 @@
 #include "Logging.h"
 #include "agents/agent_worker.h"
 #include "async/continuations/async_initiate.h"
-#include "async/proc/process_monitor.hpp"
 #include "ipc/raw_ipc_channel_sink.h"
 #include "ipc/raw_ipc_channel_source.h"
 #include "lib/error_code_or.hpp"
@@ -17,6 +16,9 @@
 #include <boost/asio/io_context.hpp>
 
 namespace agents {
+
+    /** ID string used to identify the armnn agent */
+    constexpr std::string_view agent_id_armnn {"agent-armnn"};
 
     /** ID string used to identify the external annotation agent */
     constexpr std::string_view agent_id_ext_source {"agent-external"};

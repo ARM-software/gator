@@ -4,6 +4,7 @@
 
 #include "lib/Assert.h"
 #include "lib/Time.h"
+#include "logging/configuration.h"
 #include "logging/global_log.h"
 
 #include <atomic>
@@ -127,4 +128,17 @@ namespace logging {
 
         google::protobuf::SetLogHandler(current_logger ? protobuf_log_handler : nullptr);
     }
+
+    /** @return true if trace logging is enabled */
+    bool is_log_enable_trace() noexcept
+    {
+        return detail::enabled_log_trace;
+    }
+
+    /** Enable trace logging (which also enables debug) */
+    void set_log_enable_trace(bool enabled) noexcept
+    {
+        detail::enabled_log_trace = enabled;
+    }
+
 }

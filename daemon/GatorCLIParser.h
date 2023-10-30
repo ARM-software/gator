@@ -5,7 +5,6 @@
 
 #include "Configuration.h"
 #include "GatorCLIFlags.h"
-#include "Logging.h"
 #include "OlyUtility.h"
 #include "ParserResult.h"
 
@@ -46,7 +45,6 @@ public:
                            //NOLINTNEXTLINE(modernize-avoid-c-arrays)
                            char * argv[],
                            const char * version_string,
-                           int maxPerformanceCounter,
                            const char * gSrcMd5,
                            const char * gBuildId);
     struct cmdline_t getGatorSetting();

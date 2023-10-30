@@ -1,12 +1,13 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
+
+#include "agents/common/uds_protocol.h"
 
 #include <memory>
 #include <utility>
 
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
 
 namespace agents {
     /** visitor type for socket_reference_base_t */
@@ -15,7 +16,7 @@ namespace agents {
         virtual ~socket_reference_visitor_t() noexcept = default;
 
         virtual void visit(boost::asio::ip::tcp::socket & socket) const = 0;
-        virtual void visit(boost::asio::local::stream_protocol::socket & socket) const = 0;
+        virtual void visit(uds_protocol_t::socket & socket) const = 0;
     };
 
     /** Adapts some handler (e.g. a templated lambda) as a socket_reference_visitor_t */
@@ -26,7 +27,7 @@ namespace agents {
         public:
             explicit binding_t(Handler handler) : handler(std::move(handler)) {}
             void visit(boost::asio::ip::tcp::socket & socket) const override { handler(socket); }
-            void visit(boost::asio::local::stream_protocol::socket & socket) const override { handler(socket); }
+            void visit(uds_protocol_t::socket & socket) const override { handler(socket); }
 
         private:
             mutable Handler handler;
@@ -101,8 +102,8 @@ namespace agents {
     }
 
     /** Create a socket reference in a shared pointer */
-    inline auto make_socket_ref(boost::asio::local::stream_protocol::socket socket)
+    inline auto make_socket_ref(uds_protocol_t::socket socket)
     {
-        return std::make_shared<socket_reference_t<boost::asio::local::stream_protocol::socket>>(std::move(socket));
+        return std::make_shared<socket_reference_t<uds_protocol_t::socket>>(std::move(socket));
     }
 }

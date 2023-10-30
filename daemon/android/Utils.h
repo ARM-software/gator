@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #ifndef ANDROID_UTILS_H_
 #define ANDROID_UTILS_H_
@@ -45,6 +45,15 @@ namespace android_utils {
      * @return - path to the apc if created , else nullopt
      */
     std::optional<std::string> canCreateApcDirectory(const std::string & targetApcPath);
+
+    /**
+     * @brief Test if the named package exists
+     * @param desiredPackage the package to check
+     * @return true if the package is installed
+     * @return false if the package is not installed
+     */
+    bool packageExists(const std::string & desiredPackage);
+
 }
 
 #endif /* ANDROID_UTILS_H_ */

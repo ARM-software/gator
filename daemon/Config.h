@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -7,8 +7,6 @@
 #define STRIFY(ARG) STRIFY2(ARG)
 
 #define ARRAY_LENGTH(A) static_cast<int>(sizeof(A) / sizeof((A)[0]))
-
-#define MAX_PERFORMANCE_COUNTERS 100
 
 // feature control options
 #ifndef CONFIG_PREFER_SYSTEM_WIDE_MODE
@@ -65,6 +63,14 @@
 #define CONFIG_LOG_TRACE 1
 #else
 #define CONFIG_LOG_TRACE 0
+#endif
+#endif
+
+#ifndef CONFIG_ARMNN_AGENT
+#if defined(ANDROID) || defined(__ANDROID__)
+#define CONFIG_ARMNN_AGENT 1
+#else
+#define CONFIG_ARMNN_AGENT 0
 #endif
 #endif
 

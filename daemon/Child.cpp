@@ -3,6 +3,7 @@
 #include "Child.h"
 
 #include "CapturedXML.h"
+#include "Config.h"
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "Driver.h"
@@ -22,17 +23,14 @@
 #include "SessionData.h"
 #include "StreamlineSetup.h"
 #include "UserSpaceSource.h"
+#include "agents/agent_workers_process.h"
 #include "agents/perfetto/perfetto_driver.h"
 #include "agents/spawn_agent.h"
 #include "armnn/ArmNNSource.h"
 #include "capture/CaptureProcess.h"
-#include "capture/Environment.h"
 #include "lib/Assert.h"
 #include "lib/FsUtils.h"
-#include "lib/WaitForProcessPoller.h"
 #include "lib/Waiter.h"
-#include "lib/perfetto_utils.h"
-#include "logging/global_log.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 #include "xml/EventsXML.h"
 
@@ -46,6 +44,7 @@
 #include <boost/asio/detached.hpp>
 #include <boost/filesystem.hpp>
 
+#include <semaphore.h>
 #include <sys/eventfd.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
@@ -152,7 +151,7 @@ void Child::run()
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
 
     // TODO: better place for this
-    agent_workers_process.start();
+    agent_workers_process->start();
 
     // Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
     mxmlSetWrapMargin(0);
@@ -272,6 +271,7 @@ void Child::run()
     lib::Waiter waitTillStart;
     lib::Waiter waitForExternalSourceAgent;
     lib::Waiter waitForPerfettoAgent;
+    lib::Waiter waitForArmnnAgent;
 
     auto startedCallback = [&]() {
         LOG_DEBUG("Received start capture callback");
@@ -285,7 +285,7 @@ void Child::run()
     // Must be initialized before senderThread is started as senderThread checks externalSource
     if (!addSource(createExternalSource(senderSem, drivers),
                    [this, &waitForExternalSourceAgent, &waitForPerfettoAgent, enablePerfettoAgent](auto & source) {
-                       this->agent_workers_process.async_add_external_source(
+                       this->agent_workers_process->async_add_external_source(
                            source,
                            [&waitForExternalSourceAgent](bool success) {
                                waitForExternalSourceAgent.disable();
@@ -298,7 +298,7 @@ void Child::run()
                            });
 #ifdef CONFIG_USE_PERFETTO
                        if (enablePerfettoAgent) {
-                           this->agent_workers_process.async_add_perfetto_source(
+                           this->agent_workers_process->async_add_perfetto_source(
                                source,
                                [&waitForPerfettoAgent](bool success) {
                                    waitForPerfettoAgent.disable();
@@ -344,7 +344,7 @@ void Child::run()
         gSessionData.mPids,
         drivers.getFtraceDriver(),
         !gSessionData.mCaptureCommand.empty(),
-        agent_workers_process);
+        *agent_workers_process);
     if (newPrimarySource == nullptr) {
         LOG_ERROR("%s", primarySourceProvider.getPrepareFailedMessage());
         handleException();
@@ -376,10 +376,38 @@ void Child::run()
         }
     }
 
-    if (!addSource(armnn::createSource(drivers.getArmnnDriver().getCaptureController(), senderSem))) {
+    if (!addSource(armnn::createSource(drivers.getArmnnDriver().getCaptureController(), senderSem),
+#if CONFIG_ARMNN_AGENT
+                   [this, &waitForArmnnAgent](auto & /*source*/) {
+                       this->agent_workers_process->async_add_armnn_source(
+                           drivers.getArmnnDriver().getAcceptedSocketConsumer(),
+                           [&waitForArmnnAgent](bool success) {
+                               waitForArmnnAgent.disable();
+                               if (!success) {
+                                   LOG_ERROR("Failed to start armnn agent");
+                                   handleException();
+                               }
+                               else {
+                                   LOG_DEBUG("Started armnn agent");
+                               }
+                           });
+                   }
+#else
+                   [&waitForArmnnAgent](auto & /*source*/) { waitForArmnnAgent.disable(); }
+#endif
+                   )) {
         LOG_ERROR("Unable to prepare ArmNN source for capture");
         handleException();
     }
+
+#if CONFIG_ARMNN_AGENT
+    if (!sessionEnded) {
+        LOG_DEBUG("Waiting for armnn agent to start");
+        waitForArmnnAgent.wait();
+        LOG_DEBUG("Waiting for armnn agent complete");
+        drivers.getArmnnDriver().startAcceptingThread();
+    }
+#endif
 
     // do this last so that monotonic start is close to start of profiling
     auto monotonicStart = primarySource.sendSummary();
@@ -433,7 +461,7 @@ void Child::run()
     LOG_FINE("Profiling ended.");
 
     // must happen before sources is cleared
-    agent_workers_process.join();
+    agent_workers_process->join();
 
     sources.clear();
 

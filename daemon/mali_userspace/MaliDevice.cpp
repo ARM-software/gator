@@ -255,7 +255,6 @@ namespace mali_userspace {
         using namespace std::placeholders;
 
         const auto constants = this->instance->get_constants();
-        shaderCoreAvailabilityMask = static_cast<std::uint32_t>(constants.shader_core_mask);
         shaderCoreMaxCount = static_cast<std::uint32_t>(constants.num_shader_cores);
 
         const auto extents = this->instance->get_hwcnt_block_extents();
@@ -419,8 +418,9 @@ namespace mali_userspace {
 
                 case hwcnt::block_type::core: {
                     // skip over any absent shader core blocks based on the availabilty mask
-                    bool available = has_block_state_feature ? (it.state.on != 0 && it.state.available != 0) : true;
-                    if ((shaderCoreAvailabilityMask & (1U << it.index)) != 0 && available) {
+                    const bool available =
+                        has_block_state_feature ? (it.state.on != 0 && it.state.available != 0) : true;
+                    if (available) {
                         counter_accumulator(counter_list, it, shader_core_counters);
                     }
                 } break;

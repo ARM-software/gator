@@ -62,6 +62,8 @@ public:
     std::vector<std::string> mCaptureCommand {};
     std::set<int> mPids {};
     std::set<Constant> mConstants {};
+    std::vector<Counter> mCounters {};
+    gator::smmuv3::default_identifiers_t smmu_identifiers {};
 
     const char * mConfigurationXMLPath {nullptr};
     const char * mSessionXMLPath {nullptr};
@@ -98,11 +100,6 @@ public:
     bool mExcludeKernelEvents {false};
     bool mEnableOffCpuSampling {false};
     bool mLogToFile {false};
-
-    gator::smmuv3::default_identifiers_t smmu_identifiers;
-
-    // PMU Counters
-    Counter mCounters[MAX_PERFORMANCE_COUNTERS];
 };
 
 extern SessionData gSessionData;

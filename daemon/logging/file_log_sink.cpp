@@ -2,6 +2,8 @@
 
 #include "file_log_sink.h"
 
+#include "OlyUtility.h"
+
 namespace {
     constexpr std::size_t path_buffer_size = 4096;
 

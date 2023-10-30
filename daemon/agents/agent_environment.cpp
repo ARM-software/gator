@@ -8,6 +8,7 @@
 #include "lib/AutoClosingFd.h"
 #include "lib/String.h"
 #include "logging/agent_log.h"
+#include "logging/configuration.h"
 
 #include <csignal>
 #include <cstdio>
@@ -65,6 +66,16 @@ namespace agents {
                 }
             });
         }
+        /** Enable trace logging based on the --trace argument on the command line */
+        inline void set_log_enable_trace(lib::Span<char const * const> argv)
+        {
+            for (auto const * arg : argv) {
+                if (std::string_view(arg) == "--trace") {
+                    logging::set_log_enable_trace(true);
+                    return;
+                }
+            }
+        }
     }
 
     int start_agent(lib::Span<char const * const> args, const environment_factory_t & factory)
@@ -77,7 +88,7 @@ namespace agents {
             std::make_shared<logging::agent_logger_t>(STDERR_FILENO, logging::agent_logger_t::get_log_file_fd());
 
         logging::set_logger(agent_logging);
-        logging::set_log_enable_trace(args);
+        set_log_enable_trace(args);
 
         try {
             LOG_FINE("Bootstrapping agent process.");

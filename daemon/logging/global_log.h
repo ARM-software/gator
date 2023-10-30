@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Logging.h"
-#include "file_log_sink.h"
-#include "suppliers.h"
+#include "logging/file_log_sink.h"
+#include "logging/logger_t.h"
+#include "logging/suppliers.h"
 
 #include <memory>
 #include <mutex>

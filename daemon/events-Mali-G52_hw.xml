@@ -2,9 +2,31 @@
 <category name="Mali Job Manager" per_cpu="no">
 	<event counter="ARM_Mali-G52_GPU_ACTIVE" description="The number of cycles where the GPU has a workload of any type queued for processing" name="GPU active" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G52_IRQ_ACTIVE" description="The number of cycles where the GPU has a pending interrupt" name="GPU interrupt active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS0_JOBS" description="The number of jobs processed by the GPU fragment queue" name="Fragment jobs" title="Mali GPU Jobs" units="jobs"/>
 	<event counter="ARM_Mali-G52_JS0_TASKS" description="The number of tasks processed by the GPU fragment queue" name="Fragment tasks" title="Mali GPU Tasks" units="tasks"/>
 	<event counter="ARM_Mali-G52_JS0_ACTIVE" description="The number of cycles where work is queued for processing in the GPU fragment queue" name="Fragment queue active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS0_WAIT_FLUSH" description="The number of cycles where queued fragment work is waiting for a cache flush" name="Fragment cache flush cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS0_WAIT_READ" description="The number of cycles where queued fragment work is waiting for a descriptor load" name="Fragment descriptor reads cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS0_WAIT_ISSUE" description="The number of cycles where queued fragment work is waiting for an available processor" name="Fragment job issue cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS0_WAIT_DEPEND" description="The number of cycles where queued fragment work is waiting for dependent work to complete" name="Fragment job dependency cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS0_WAIT_FINISH" description="The number of cycles where the GPU is waiting for issued fragment work to complete" name="Fragment job finish cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_JOBS" description="The number of jobs processed by the GPU non-fragment queue" name="Non-fragment jobs" title="Mali GPU Jobs" units="jobs"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_TASKS" description="The number of tasks processed by the GPU non-fragment queue" name="Non-fragment tasks" title="Mali GPU Tasks" units="tasks"/>
 	<event counter="ARM_Mali-G52_JS1_ACTIVE" description="The number of cycles where work is queued in the GPU non-fragment queue" name="Non-fragment queue active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_WAIT_FLUSH" description="The number of cycles where queued non-fragment work is waiting for a cache flush" name="Non-fragment cache flush cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_WAIT_READ" description="The number number of cycles where queued non-fragment work is waiting for a descriptor load" name="Non-fragment descriptor read cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_WAIT_ISSUE" description="The number of cycles where queued non-fragment work is waiting for an available processor" name="Non-fragment job issue cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_WAIT_DEPEND" description="The number of cycles where queued non-fragment work is waiting for dependent work to complete" name="Non-fragment job dependency cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS1_WAIT_FINISH" description="The number of cycles where the GPU is waiting for issued non-fragment work to complete" name="Non-fragment job finish cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_JOBS" description="The number of jobs processed by the GPU reserved queue" name="Reserved jobs" title="Mali GPU Jobs" units="jobs"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_TASKS" description="The number of tasks processed by the GPU reserved queue" name="Reserved tasks" title="Mali GPU Tasks" units="tasks"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_ACTIVE" description="The number of cycles where work is queued in the GPU reserved queue" name="Reserved queue active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_WAIT_FLUSH" description="The number of cycles where queued reserved work is waiting for a cache flush" name="Reserved cache flush cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_WAIT_READ" description="The number of cycles where queued reserved work is waiting for a descriptor load" name="Reserved descriptor read cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_WAIT_ISSUE" description="The number of cycles where queued reserved work is waiting for an available processor" name="Reserved job issue cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_WAIT_DEPEND" description="The number of cycles where queued reserved work is waiting for dependent work to complete" name="Reserved job dependency cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_JS2_WAIT_FINISH" description="The number of cycles where the GPU is waiting for issued reserved work to complete" name="Reserved job finish cycles" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_CACHE_FLUSH" description="The number of GPU L2 cache flushes performed" name="L2 cache flushes" title="Mali GPU Cache Flushes" units="requests"/>
 </category>
 <category name="Mali Tiler" per_cpu="no">
 	<event advanced="yes" counter="ARM_Mali-G52_TILER_ACTIVE" description="The number of cycles where the tiler has a workload queued for processing" name="Tiler active" title="Mali GPU Cycles" units="cycles"/>
@@ -31,6 +53,7 @@
 </category>
 <category name="Mali Shader Core" per_cpu="no">
 	<event counter="ARM_Mali-G52_FRAG_ACTIVE" description="The number of cycles where the shader core is processing a fragment workload" name="Fragment active" title="Mali Core Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_FRAG_PRIMITIVES" description="The number of primitives read from the tile list by the fragment front-end" name="Read primitives" title="Mali Core Primitives" units="primitives"/>
 	<event counter="ARM_Mali-G52_FRAG_PRIM_RAST" description="The number of primitives being rasterized" name="Rasterized primitives" title="Mali Core Primitives" units="primitives"/>
 	<event counter="ARM_Mali-G52_FRAG_FPK_ACTIVE" description="The number of cycles where at least one quad is present in the pre-pipe quad queue" name="Fragment FPKB active" title="Mali Core Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G52_FRAG_WARPS" description="The number of fragment warps created" name="Fragment warps" title="Mali Core Warps" units="warps"/>
@@ -47,8 +70,10 @@
 	<event counter="ARM_Mali-G52_QUAD_FPK_KILLER" description="The number of quads that are valid occluders for hidden surface removal" name="FPK occluder quads" title="Mali Core Quads" units="quads"/>
 	<event counter="ARM_Mali-G52_FULL_QUAD_WARPS" description="The number of warps that are fully populated with quads" name="Full quad warps" title="Mali Core Warps" units="warps"/>
 	<event counter="ARM_Mali-G52_COMPUTE_ACTIVE" description="The number of cycles where the shader core is processing some non-fragment workload" name="Non-fragment active" title="Mali Core Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_COMPUTE_TASKS" description="The number of non-fragment tasks issued to the shader core" name="Non-fragment tasks" title="Mali Core Tasks" units="tasks"/>
 	<event counter="ARM_Mali-G52_COMPUTE_WARPS" description="The number of non-fragment warps created" name="Non-fragment warps" title="Mali Core Warps" units="warps"/>
 	<event counter="ARM_Mali-G52_EXEC_CORE_ACTIVE" description="The number of cycles where the shader core is processing at least one warp" name="Execution core active" title="Mali Core Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G52_EXEC_ACTIVE" description="The number of cycles where the execution engine unit is processing at least one thread" name="Execution engine active" title="Mali Core Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G52_EXEC_INSTR_COUNT" description="The number of instructions executed per warp" name="Executed instructions" title="Mali Core Instructions" units="instructions"/>
 	<event counter="ARM_Mali-G52_EXEC_INSTR_DIVERGED" description="The number of instructions executed per warp, that have control flow divergence" name="Diverged instructions" title="Mali Core Instructions" units="instructions"/>
 	<event advanced="yes" counter="ARM_Mali-G52_EXEC_INSTR_STARVING" description="The number of cycles where no new threads are available for execution" name="Execution engine starvation cycles" title="Mali Core Starvation Cycles" units="cycles"/>
@@ -83,6 +108,15 @@
 </category>
 <category name="Mali Memory System" per_cpu="no">
 	<event advanced="yes" counter="ARM_Mali-G52_MMU_REQUESTS" description="The number of main MMU address translations performed" name="MMU lookups" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_TABLE_READS_L3" description="The number of level 3 translation table reads" name="L3 table reads" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_TABLE_READS_L2" description="The number of level 2 translation table reads" name="L2 table reads" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_HIT_L3" description="The number of level 3 translation table reads that hit in the main MMU TLB" name="L3 table read hits" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_HIT_L2" description="The number of level 2 translation table reads that hit in the main MMU TLB" name="L2 table read hits" title="Mali MMU Stage 1 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_S2_REQUESTS" description="The number of main MMU stage 2 address translations performed" name="MMU lookups" title="Mali MMU Stage 2 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_S2_TABLE_READS_L3" description="The number of stage 2 level 3 translation table reads" name="L3 table reads" title="Mali MMU Stage 2 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_S2_TABLE_READS_L2" description="The number of stage 2 level 2 translation table reads" name="L2 table reads" title="Mali MMU Stage 2 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_S2_HIT_L3" description="The number of stage 2 level 3 translation table reads that hit in the main MMU TLB" name="L3 table read hits" title="Mali MMU Stage 2 Translations" units="requests"/>
+	<event advanced="yes" counter="ARM_Mali-G52_MMU_S2_HIT_L2" description="The number of stage 2 level 2 translation table reads that hit in the main MMU TLB" name="L2 table read hits" title="Mali MMU Stage 2 Translations" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-G52_L2_RD_MSG_IN" description="The number of L2 cache read requests from internal requesters" name="Read requests" title="Mali L2 Cache Requests" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-G52_L2_RD_MSG_IN_STALL" description="The number of cycles L2 cache read requests from internal requesters are stalled" name="Read stall cycles" title="Mali L2 Cache Stall Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G52_L2_WR_MSG_IN" description="The number of L2 cache write requests from internal requesters" name="Write requests" title="Mali L2 Cache Requests" units="requests"/>

@@ -7,15 +7,10 @@
 
 #include "BlockCounterFrameBuilder.h"
 #include "Buffer.h"
-#include "BufferUtils.h"
-#include "Child.h"
-#include "Drivers.h"
 #include "Logging.h"
 #include "PolledDriver.h"
-#include "PrimarySourceProvider.h"
 #include "SessionData.h"
 #include "Source.h"
-#include "lib/Memory.h"
 #include "lib/Span.h"
 
 #include <atomic>

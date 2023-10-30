@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2023 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,6 +9,8 @@
 #ifndef ARMNN_SOCKET_IO_H
 #define ARMNN_SOCKET_IO_H
 
+#include "armnn/IAcceptingSocket.h"
+#include "armnn/ISocketIO.h"
 #include "lib/AutoClosingFd.h"
 #include "lib/Span.h"
 
@@ -22,7 +24,7 @@ struct sockaddr;
 namespace armnn {
     using lib::AutoClosingFd;
 
-    class SocketIO {
+    class SocketIO : public ISocketIO, public IAcceptingSocket {
     public:
         /**
          * Construct a SocketIO object for a unix-domain socket
@@ -58,48 +60,42 @@ namespace armnn {
          * @param timeout Value in milliseconds to wait for connection, negative value means infinite wait
          * @return The socket, or empty if timed out
          */
-        std::unique_ptr<SocketIO> accept(int timeout) const;
+        [[nodiscard]] std::unique_ptr<ISocketIO> accept(int timeout) override;
 
         /**
          * Close the connection
          */
-        inline void close() { fd.close(); }
+        void close() override { fd.close(); }
 
         /**
          * @return True if the connection is open
          */
-        inline bool isOpen() const { return !!fd; }
+        [[nodiscard]] bool isOpen() const override { return !!fd; }
 
         /**
          * Write exactly the number of bytes contained in the Span.
          * @param buffer The data to write to the socket.
          * @return false if not all bytes in the Span could be written to the socket for whatever reason.  True otherwise.
          */
-        bool writeExact(lib::Span<const std::uint8_t> buffer);
+        [[nodiscard]] bool writeExact(lib::Span<const std::uint8_t> buffer) override;
 
         /**
          * Read bytes into the Span.  The number of desired bytes is dictated by the Span's size() method.
          * @param buffer The buffer to populate
          * @return false if we could not read buffer.size() bytes from the socket for whatever reason.  True otherwise.
          */
-        bool readExact(lib::Span<std::uint8_t> buffer);
-
-        /**
-         * Query size of socket send/receive buffer
-         * @param recv True for receive, false for send
-         * @return The size
-         */
-        std::size_t queryBufferSize(bool recv) const;
+        [[nodiscard]] bool readExact(lib::Span<std::uint8_t> buffer) override;
 
         /**
          * Interrupts the connection by shutting down the fd (stopping both receptions and transmissions)
          * Use this instead of close to avoid race condtitions because close will free OS level fd
          **/
-        void interrupt();
+        void interrupt() override;
 
     private:
-        int write(const std::uint8_t * buffer, std::size_t length, int timeout = 1000);
-        int read(std::uint8_t * buffer, std::size_t length, int timeout = 1000);
+        constexpr static int one_second = 1000;
+        int write(const std::uint8_t * buffer, std::size_t length, int timeout = one_second);
+        int read(std::uint8_t * buffer, std::size_t length, int timeout = one_second);
 
         static std::unique_ptr<SocketIO> doAccept(const SocketIO & host, int timeout);
         static int doRead(SocketIO & host, std::uint8_t * buffer, std::size_t length, int timeout);

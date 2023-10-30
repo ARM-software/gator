@@ -10,12 +10,16 @@
 namespace armnn {
     Driver::Driver()
         : ::Driver {"ArmNN Driver"},
-          mSessionCount {0},
           mGlobalState {&getEventKey},
-          mAcceptingSocket {SocketIO::udsServerListen("\0gatord_namespace", false)},
-          mDriverSourceIpc {
-              mSessionManager}, // This constructor doesn't access mSessionManager so it's okay to not be initialised at this point
-          mSessionManager {std::unique_ptr<IAcceptor> {new SocketAcceptor {mAcceptingSocket, createSession}}}
+
+#if !CONFIG_ARMNN_AGENT
+          mAcceptingSocket {SocketIO::udsServerListen("\0gatord_namespace", true)},
+          mSessionManager {std::unique_ptr<IAcceptor> {new SocketAcceptor {mAcceptingSocket, createSession}}},
+#else
+          mAcceptedSocketQueue {},
+          mSessionManager {std::unique_ptr<IAcceptor> {new SocketAcceptor {mAcceptedSocketQueue, createSession}}},
+#endif
+          mDriverSourceConn {mSessionManager}
     {
 #if defined(__SANITIZE_THREAD__) || defined(__SANITIZE_ADDRESS__)
         // mSessionManager starts threads that cause undefined behaviour and leaks when we fork
@@ -23,6 +27,10 @@ namespace armnn {
         // there shouldn't be any threading issues, just a small memory leak.
         mSessionManager.stop();
         LOG_ERROR("Arm NN connection listening disabled due to address or thread sanitizer being enabled.");
+#else
+#if !CONFIG_ARMNN_AGENT
+        mSessionManager.start();
+#endif
 #endif
     }
 

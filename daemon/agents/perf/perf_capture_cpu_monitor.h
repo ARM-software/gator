@@ -124,19 +124,31 @@ namespace agents::perf {
             return async_initiate_cont(
                 [st = this->shared_from_this(), monotonic_start, cpu_no, online]() {
                     return start_on(st->strand) //
-                         | do_if([st, cpu_no]() { return (cpu_no >= 0) && (!st->is_terminated()); },
-                                 [st, monotonic_start, cpu_no, online]() {
-                                     return start_with() //
-                                          | do_if_else([online]() { return online; },
-                                                       // when online
-                                                       [st, monotonic_start, cpu_no]() {
-                                                           return st->co_online_cpu(monotonic_start, cpu_no);
-                                                       },
-                                                       // when offline
-                                                       [st, monotonic_start, cpu_no]() {
-                                                           return st->co_offline_cpu(monotonic_start, cpu_no);
-                                                       });
-                                 });
+                         | do_if(
+                               [st, cpu_no]() { return (cpu_no >= 0) && (!st->is_terminated()); },
+                               [st, monotonic_start, cpu_no, online]() {
+                                   return start_with()
+                                        // final check in case the cpu has been online/offline asynchronously but not yet processed
+                                        // in which case, this execution should be invalidated
+                                        | do_if(
+                                              [st, cpu_no, online] {
+                                                  const auto & monitor = st->coalescing_cpu_monitor;
+                                                  return monitor->is_safe_to_bring_online_or_offline(cpu_no, online);
+                                              },
+                                              [st, cpu_no, monotonic_start, online] {
+                                                  return start_with()
+                                                       | do_if_else(
+                                                             [online]() { return online; },
+                                                             // when online
+                                                             [st, monotonic_start, cpu_no]() {
+                                                                 return st->co_online_cpu(monotonic_start, cpu_no);
+                                                             },
+                                                             // when offline
+                                                             [st, monotonic_start, cpu_no]() {
+                                                                 return st->co_offline_cpu(monotonic_start, cpu_no);
+                                                             });
+                                              });
+                               });
                 },
                 std::forward<CompletionToken>(token));
         }

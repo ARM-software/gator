@@ -91,6 +91,14 @@ public:
      */
     void parsingFailed();
 
+    /**
+     * @brief Returns whether the argument parsing has succeeded or not.
+     *
+     * @return true When the parsing is regarded as successful.
+     * @return false When the parsing has failed.  ExecutionMode is EXIT.
+     */
+    [[nodiscard]] bool ok() const;
+
     ParserResult() = default;
     ParserResult(const ParserResult &) = delete;
     ParserResult & operator=(const ParserResult &) = delete;
