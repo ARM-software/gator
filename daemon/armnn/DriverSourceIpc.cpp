@@ -5,15 +5,26 @@
 #include "BufferUtils.h"
 #include "IRawFrameBuilder.h"
 #include "Logging.h"
+#include "armnn/ICounterConsumer.h"
+#include "armnn/IStartStopHandler.h"
+#include "lib/AutoClosingFd.h"
+#include "lib/Span.h"
 
+#include <cerrno>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <functional>
+#include <mutex>
 #include <sstream>
 #include <string>
-#include <utility>
+#include <thread>
+#include <type_traits>
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace armnn {
 
@@ -165,7 +176,7 @@ namespace armnn {
     template<typename T>
     static lib::Span<uint8_t> asBytes(T & original)
     {
-        static_assert(std::is_trivially_copyable<T>::value, "must be a trivially copyable type");
+        static_assert(std::is_trivially_copyable_v<T>, "must be a trivially copyable type");
         void * ptr = static_cast<void *>(&original);
         return lib::Span<uint8_t>(static_cast<uint8_t *>(ptr), sizeof(T));
     }

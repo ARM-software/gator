@@ -3,12 +3,20 @@
 #include "ExternalDriver.h"
 
 #include "BufferUtils.h"
+#include "Counter.h"
+#include "DriverCounter.h"
+#include "EventCode.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
+#include "SimpleDriver.h"
+#include "Time.h"
 #include "lib/FileDescriptor.h"
 
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <unistd.h>
 

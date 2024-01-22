@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -109,7 +109,7 @@ namespace async::continuations {
         }
 
         /** to support std::swap */
-        void swap(raw_stored_continuation_t & that)
+        void swap(raw_stored_continuation_t & that) noexcept
         {
             receiver_type tmp_r {std::move(receiver)};
             exceptionally_type tmp_e {std::move(exceptionally)};
@@ -179,7 +179,7 @@ namespace async::continuations {
 namespace std {
     template<typename R, typename E, typename... Args>
     inline void swap(async::continuations::raw_stored_continuation_t<R, E, Args...> & a,
-                     async::continuations::raw_stored_continuation_t<R, E, Args...> & b)
+                     async::continuations::raw_stored_continuation_t<R, E, Args...> & b) noexcept
     {
         a.swap(b);
     }

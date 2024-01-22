@@ -1,10 +1,13 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "Spawn.h"
 
 #include "Logging.h"
 #include "lib/FsEntry.h"
 #include "lib/Process.h"
+
+#include <optional>
+#include <string>
 
 namespace gp = gator::process;
 

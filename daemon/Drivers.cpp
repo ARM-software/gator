@@ -4,7 +4,14 @@
 
 #include "ICpuInfo.h"
 #include "Logging.h"
+#include "PolledDriver.h"
+#include "PrimarySourceProvider.h"
+#include "linux/Tracepoints.h"
 #include "xml/EventsXML.h"
+#include "xml/PmuXML.h"
+
+#include <memory>
+#include <utility>
 
 static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool systemWide,
                                                                           const TraceFsConstants & traceFsConstants,

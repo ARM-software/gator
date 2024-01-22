@@ -1,3 +1,9 @@
+# Gator 8.9
+
+Adds the ability to pass command-line arguments to Android activity manager when running an Android package.
+
+The default for exclude_kernel is now yes for application profiling. To restore the previous behaviour, pass `--exclude_kernel yes` command line argument, or select the correct option in the Streamline capture configuration dialog.
+
 # Gator 8.8
 
 Adds support for capturing data from the [Arm NN](https://developer.arm.com/Tools%20and%20Software/ArmNN) library on Android devices.

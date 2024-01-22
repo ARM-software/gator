@@ -74,7 +74,10 @@ namespace async::continuations {
         /** Exception handler*/
         struct async_initiate_exceptionally_t {
             void operator()(boost::system::error_code e) const { error_swallower_t::consume("async_init_explicit", e); }
-            void operator()(std::exception_ptr e) const { error_swallower_t::consume("async_init_explicit", e); }
+            void operator()(const std::exception_ptr & e) const
+            {
+                error_swallower_t::consume("async_init_explicit", e);
+            }
         };
 
         /** Helper for async_initiate_explicit; specialized for different token types */

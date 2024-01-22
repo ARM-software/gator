@@ -1,11 +1,16 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStateChangeHandler.h"
 
 #include "Buffer.h"
 #include "IBlockCounterMessageConsumer.h"
-#include "Logging.h"
 #include "SessionData.h"
+#include "non_root/NonRootCounter.h"
+#include "non_root/PerCoreMixedFrameBuffer.h"
+#include "non_root/ProcessCounter.h"
+
+#include <map>
+#include <string>
 
 namespace non_root {
     ProcessStateChangeHandler::ProcessStateChangeHandler(IBlockCounterMessageConsumer & counterBuffer_,

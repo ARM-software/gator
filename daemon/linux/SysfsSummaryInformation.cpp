@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/SysfsSummaryInformation.h"
 
@@ -6,7 +6,9 @@
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
 
-#include <cstring>
+#include <map>
+#include <optional>
+#include <string>
 
 namespace lnx {
     void addDefaultSysfsSummaryInformation(std::map<std::string, std::string> & additionalAttributes)

@@ -1,11 +1,17 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/FrameBuilderFactory.h"
 
 #include "BlockCounterFrameBuilder.h"
 #include "BlockCounterMessageConsumer.h"
 #include "BufferUtils.h"
+#include "IBlockCounterMessageConsumer.h"
 #include "IRawFrameBuilder.h"
+#include "Protocol.h"
+#include "lib/Span.h"
+
+#include <cstdint>
+#include <memory>
 
 namespace armnn {
 

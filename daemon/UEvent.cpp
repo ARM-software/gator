@@ -10,6 +10,7 @@
 
 #include <linux/netlink.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 static const char EMPTY[] = "";

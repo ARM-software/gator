@@ -1,16 +1,23 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "non_root/NonRootDriver.h"
 
 #include "DriverCounter.h"
 #include "Logging.h"
 #include "SessionData.h"
+#include "SimpleDriver.h"
 #include "lib/Format.h"
-#include "lib/FsEntry.h"
+#include "lib/Span.h"
 #include "non_root/GlobalStatsTracker.h"
+#include "non_root/NonRootCounter.h"
+#include "xml/PmuXML.h"
 
 #include <cstring>
+#include <map>
+#include <string>
+#include <utility>
 
+#include <mxml.h>
 #include <unistd.h>
 
 namespace non_root {

@@ -6,8 +6,12 @@
 #include "lib/Syscall.h"
 
 #include <algorithm>
-#include <iostream>
+#include <cstddef>
+#include <iterator>
+#include <string>
 #include <system_error>
+
+#include <sys/types.h>
 
 namespace lib {
     static constexpr std::size_t DEFAULT_LINEBUFFER_CAPACITY = 4096;

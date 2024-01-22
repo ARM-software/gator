@@ -47,7 +47,7 @@ namespace logging {
 
         template<typename Logger,
                  typename... Args,
-                 std::enable_if_t<!std::is_same<Logger, file_log_sink_t>::value, bool> = false>
+                 std::enable_if_t<!std::is_same_v<Logger, file_log_sink_t>, bool> = false>
         void add_sink(Args &&... args)
         {
             sinks.push_back(std::make_unique<Logger>(std::forward<Args>(args)...));
@@ -55,7 +55,7 @@ namespace logging {
 
         // this template jank is to work around a bug in older versions of GCC that breaks full specialisation of
         // member function templates
-        template<typename Logger, std::enable_if_t<std::is_same<Logger, file_log_sink_t>::value, bool> = false>
+        template<typename Logger, std::enable_if_t<std::is_same_v<Logger, file_log_sink_t>, bool> = false>
         void add_sink()
         {
             // don't create a second file logger if we already have one

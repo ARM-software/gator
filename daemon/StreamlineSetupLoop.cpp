@@ -3,7 +3,9 @@
 #include "StreamlineSetupLoop.h"
 
 #include "Logging.h"
+#include "OlySocket.h"
 
+#include <functional>
 #include <vector>
 
 namespace {

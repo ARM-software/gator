@@ -23,7 +23,7 @@ namespace logging {
         void write_log(std::string_view log_item) override
         {
             const std::lock_guard<std::mutex> lock {file_mutex};
-            log_file << log_item << std::endl;
+            log_file << log_item << '\n';
         }
 
         boost::filesystem::path get_log_file_path() const { return log_file_path; }

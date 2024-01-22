@@ -27,7 +27,9 @@ namespace async {
          * @param executor Executor instance to run the timer on
          * @param command Command to poll for
          */
-        async_wait_for_process_t(Executor const & executor, std::string_view command, std::optional<std::string_view> android_pkg = std::nullopt)
+        async_wait_for_process_t(Executor const & executor,
+                                 std::string_view command,
+                                 std::optional<std::string_view> android_pkg = std::nullopt)
             : state {std::make_shared<impl_t>(executor, command, android_pkg)}
         {
         }
@@ -232,7 +234,7 @@ namespace async {
                                               return start_with(
                                                   boost::system::error_code {boost::asio::error::operation_aborted});
                                           }
-                                          if (check_path(self->command,self->android_pkg, self->real_path, path)) {
+                                          if (check_path(self->command, self->android_pkg, self->real_path, path)) {
                                               pids->insert(pid);
                                           }
                                           return start_with(boost::system::error_code {});
@@ -262,13 +264,17 @@ namespace async {
     };
 
     template<typename Executor, std::enable_if_t<is_asio_executor_v<Executor>, bool> = false>
-    auto make_async_wait_for_process(Executor const & ex, std::string_view command, std::optional<std::string_view> android_pkg = std::nullopt)
+    auto make_async_wait_for_process(Executor const & ex,
+                                     std::string_view command,
+                                     std::optional<std::string_view> android_pkg = std::nullopt)
     {
         return std::make_shared<async_wait_for_process_t<Executor>>(ex, command, android_pkg);
     }
 
     template<typename ExecutionContext, std::enable_if_t<is_asio_execution_context_v<ExecutionContext>, bool> = false>
-    auto make_async_wait_for_process(ExecutionContext & context, std::string_view command, std::optional<std::string_view> android_pkg = std::nullopt)
+    auto make_async_wait_for_process(ExecutionContext & context,
+                                     std::string_view command,
+                                     std::optional<std::string_view> android_pkg = std::nullopt)
     {
         return make_async_wait_for_process(context.get_executor(), command, android_pkg);
     }

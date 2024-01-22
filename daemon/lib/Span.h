@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_SPAN_H
 #define INCLUDE_LIB_SPAN_H
@@ -16,9 +16,9 @@ namespace lib {
     template<typename T, typename L = std::size_t>
     class Span {
     public:
-        using value_type = typename std::remove_cv<T>::type;
+        using value_type = std::remove_cv_t<T>;
         using size_type = L;
-        using difference_type = typename std::make_signed<L>::type;
+        using difference_type = std::make_signed_t<L>;
 
         using reference = T &;
         using const_reference = const T &;
@@ -43,8 +43,7 @@ namespace lib {
         /// convert Span<T> -> Span<const T>
         template<typename U,
                  typename M,
-                 typename = typename std::enable_if<std::is_same<value_type, U>::value
-                                                    && std::is_convertible<M, L>::value>::type>
+                 typename = std::enable_if_t<std::is_same_v<value_type, U> && std::is_convertible_v<M, L>>>
         //NOLINTNEXTLINE(hicpp-explicit-conversions)
         constexpr Span(Span<U, M> other) : pointer {other.pointer}, length {other.length}
         {
@@ -56,7 +55,7 @@ namespace lib {
                  typename = typename C::value_type,
                  typename = typename C::size_type, // make sure is a container
                  // make sure copy constructor is preferred to this
-                 typename = typename std::enable_if<!std::is_same<typename std::remove_cv<C>::type, Span>::value>::type>
+                 typename = std::enable_if_t<!std::is_same_v<std::remove_cv_t<C>, Span>>>
         //NOLINTNEXTLINE(hicpp-explicit-conversions)
         constexpr Span(C & container) : pointer {container.data()}, length {container.size()}
         {
@@ -132,8 +131,7 @@ namespace lib {
 
     /// Creates a Span object, deducing the value_type from the type of the argument
     template<typename C>
-    auto makeSpan(C & container)
-        -> Span<typename std::remove_pointer<decltype(container.data())>::type, decltype(container.size())>
+    auto makeSpan(C & container) -> Span<std::remove_pointer_t<decltype(container.data())>, decltype(container.size())>
     {
         return {container.data(), container.size()};
     }

@@ -3,22 +3,20 @@
 #include "linux/PerCoreIdentificationThread.h"
 
 #include "Logging.h"
-#include "lib/Assert.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
 #include "linux/CoreOnliner.h"
 
 #include <cerrno>
-#include <csignal>
-#include <cstdio>
+#include <cstdint>
 #include <cstring>
 #include <optional>
+#include <set>
 #include <utility>
 
 #include <sys/prctl.h>
-#include <sys/syscall.h>
-#include <unistd.h>
+#include <sys/types.h>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -124,11 +122,21 @@ PerCoreIdentificationThread::properties_t PerCoreIdentificationThread::detectFor
         lib::printf_str_t<128> buffer {"/sys/devices/system/cpu/cpu%u/topology/core_id", cpu};
         core_id_valid = (lib::readIntFromFile(buffer, core_id) == 0);
 
-        buffer.printf("/sys/devices/system/cpu/cpu%u/topology/physical_package_id", cpu);
+        buffer.printf("/sys/devices/system/cpu/cpu%u/topology/cluster_id", cpu);
         physical_package_id_valid = (lib::readIntFromFile(buffer, physical_package_id) == 0);
 
-        buffer.printf("/sys/devices/system/cpu/cpu%u/topology/core_siblings_list", cpu);
+        if (!physical_package_id_valid) {
+            buffer.printf("/sys/devices/system/cpu/cpu%u/topology/physical_package_id", cpu);
+            physical_package_id_valid = (lib::readIntFromFile(buffer, physical_package_id) == 0);
+        }
+
+        buffer.printf("/sys/devices/system/cpu/cpu%u/topology/cluster_cpus_list", cpu);
         core_siblings = lib::readCpuMaskFromFile(buffer);
+
+        if (core_siblings.empty()) {
+            buffer.printf("/sys/devices/system/cpu/cpu%u/topology/core_siblings_list", cpu);
+            core_siblings = lib::readCpuMaskFromFile(buffer);
+        }
 
         // read MIDR value if available
         buffer.printf("/sys/devices/system/cpu/cpu%u/regs/identification/midr_el1", cpu);

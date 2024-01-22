@@ -714,7 +714,11 @@ namespace agents::perf {
                                                            core_properties_t & properties,
                                                            pid_t pid)
         {
-            LOG_DEBUG("Create binding set %d :: %d", lib::toEnumValue(properties.no), pid);
+            LOG_DEBUG("Create binding set %d :: %d :: %d :: %zu",
+                      lib::toEnumValue(properties.no),
+                      pid,
+                      lib::toEnumValue(properties.cluster_id),
+                      configuration.cluster_specific_events.size());
 
             // check the header fd and mmap
             runtime_assert(properties.mmap != nullptr, "Invalid mmap value");

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -12,6 +12,6 @@ namespace async::continuations {
     };
 
     struct nop_exception_receiver_t {
-        void operator()(std::exception_ptr /*ex*/) noexcept {}
+        void operator()(const std::exception_ptr & /*ex*/) noexcept {}
     };
 }

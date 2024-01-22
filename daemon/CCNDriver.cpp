@@ -1,13 +1,19 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "CCNDriver.h"
 
 #include "Config.h"
+#include "Counter.h"
+#include "Driver.h"
 #include "Logging.h"
 #include "SessionData.h"
 #include "k/perf_event.h"
 #include "lib/Utils.h"
 
+#include <cstring>
+#include <string>
+
+#include <mxml.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>

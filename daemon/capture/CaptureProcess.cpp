@@ -4,12 +4,17 @@
 
 #include "AnnotateListener.h"
 #include "Child.h"
+#include "Config.h"
+#include "Configuration.h"
 #include "Drivers.h"
 #include "ExitStatus.h"
+#include "GatorCLIParser.h"
 #include "GatorException.h"
+#include "ISender.h"
 #include "Logging.h"
 #include "Monitor.h"
 #include "OlySocket.h"
+#include "ParserResult.h"
 #include "Sender.h"
 #include "SessionData.h"
 #include "StreamlineSetupLoop.h"
@@ -18,17 +23,26 @@
 #include "capture/internal/UdpListener.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Process.h"
+#include "lib/Syscall.h"
+#include "logging/suppliers.h"
 #include "xml/CurrentConfigXML.h"
-#include "xml/PmuXMLParser.h"
 
+#include <array>
+#include <cassert>
+#include <cerrno>
+#include <csignal>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <sstream>
+#include <string>
 #include <thread>
+#include <utility>
 
+#include <sys/epoll.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
-#include <sys/syscall.h>
-#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 

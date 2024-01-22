@@ -3,6 +3,9 @@
 #include "GatorCLIParser.h"
 
 #include <algorithm>
+#include <optional>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <ParserResult.h>

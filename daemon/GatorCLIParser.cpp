@@ -3,24 +3,31 @@
 #include "GatorCLIParser.h"
 
 #include "Config.h"
+#include "Configuration.h"
+#include "EventCode.h"
 #include "GatorCLIFlags.h"
 #include "Logging.h"
+#include "OlyUtility.h"
+#include "ParserResult.h"
 #include "android/Utils.h"
 #include "lib/Process.h"
 #include "lib/String.h"
-#include "lib/Syscall.h"
 #include "lib/Utils.h"
 #include "linux/smmu_identifier.h"
 #include "logging/configuration.h"
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cstdio>
+#include <cstring>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <system_error>
+#include <utility>
+#include <vector>
 
-#include <boost/algorithm/string.hpp>
 namespace {
     constexpr int DECIMAL_BASE = 10;
     constexpr int HEX_BASE = 16;
@@ -30,7 +37,7 @@ namespace {
     constexpr int GATOR_ANNOTATION_PORT2 = 8083;
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
 
-    constexpr std::string_view OPTSTRING_SHORT = "ac:d::e:f:hi:k:l:m:o:p:r:s:t:u:vw:x:A:C:DE:F:LN:O:P:Q:R:S:TVX:Y:Z:";
+    constexpr std::string_view OPTSTRING_SHORT = "ac:d::e:f:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:LN:O:P:Q:R:S:TVX:Y:Z:";
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
@@ -44,6 +51,7 @@ namespace {
         {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
         ANDROID_PACKAGE,                                                 //
         ANDROID_ACTIVITY,                                                //
+        PACKAGE_FLAGS,                                                   //
         {"output", /*****************/ required_argument, nullptr, 'o'}, //
         {"port", /*******************/ required_argument, nullptr, 'p'}, //
         {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
@@ -356,6 +364,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
         argc = indexApp;
     }
     bool systemWideSet = false;
+    bool userSetIncludeKernelEvents = false;
     optind = 1;
     opterr = 1;
     int c;
@@ -656,6 +665,12 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "  -m|--android-activity <activity>      Launch the specified activity of a\n"
                     "                                        package and profile its process. You\n"
                     "                                        must also specify --android-pkg.\n"
+                    "  -n|--activity-args <arguments>        Launch the package and activity \n"
+                    "                                        with the supplied activity manager (am)\n"
+                    "                                        arguments. \n."
+                    "                                        Must be used with --android-pkg and\n"
+                    "                                        --android-activity\n."
+                    "                                        Arguments should be supplied as a single string.\n"
                     "\n"
                     "* Arguments available in daemon mode only:\n"
                     "\n"
@@ -804,6 +819,10 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 }
                 result.mExcludeKernelEvents = optionInt == 1;
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_EXCLUDE_KERNEL;
+
+                if (!result.mExcludeKernelEvents) {
+                    userSetIncludeKernelEvents = true;
+                }
                 break;
             }
             case 'Y': {
@@ -824,6 +843,11 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'm': // android-activity
             {
                 result.mAndroidActivity = optarg;
+                break;
+            }
+            case 'n': // activity-args
+            {
+                result.mAndroidActivityFlags = optarg;
                 break;
             }
             case 'T': {
@@ -860,6 +884,11 @@ void GatorCLIParser::parseCLIArguments(int argc,
         // user must explicitly request system-wide mode
         result.mSystemWide = false;
 #endif
+    }
+
+    //If the the capture isn't system wide and the user didn't explicitly include kernel events, we exclude them by default.
+    if (!result.mSystemWide && !userSetIncludeKernelEvents) {
+        result.mExcludeKernelEvents = true;
     }
 
     // Error checking
@@ -918,6 +947,13 @@ void GatorCLIParser::parseCLIArguments(int argc,
         return;
     }
 
+    if (result.mAndroidActivityFlags != nullptr
+        && (result.mAndroidActivity == nullptr || result.mAndroidPackage == nullptr)) {
+        LOG_ERROR("--activity-args must be used together with --android-package and --android-activity");
+        result.parsingFailed();
+        return;
+    }
+
     const bool hasAnotherProcessArg = !result.mCaptureCommand.empty() || !result.mPids.empty()
                                    || result.mWaitForCommand != nullptr || result.mAllowCommands;
     if ((result.mAndroidPackage != nullptr) && hasAnotherProcessArg) {
@@ -943,19 +979,6 @@ void GatorCLIParser::parseCLIArguments(int argc,
         const bool packageFound = android_utils::packageExists(result.mAndroidPackage);
         if (!packageFound) {
             const std::string error_msg = "Android package, " + std::string(result.mAndroidPackage) + ", not found.";
-            LOG_ERROR(error_msg);
-            result.parsingFailed();
-            return;
-        }
-    }
-
-    if (result.mAndroidPackage != nullptr && result.mAndroidActivity != nullptr) {
-        const std::string cmd = "dumpsys package " + std::string(result.mAndroidPackage) + " | grep --silent "
-                              + std::string(result.mAndroidActivity);
-        const int rc = gator::process::system(cmd);
-        if (rc != 0) {
-            const std::string error_msg = "Android activity, " + std::string(result.mAndroidActivity)
-                                        + ", not found in Android package " + std::string(result.mAndroidPackage);
             LOG_ERROR(error_msg);
             result.parsingFailed();
             return;

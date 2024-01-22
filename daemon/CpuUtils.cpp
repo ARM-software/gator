@@ -6,21 +6,24 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "lib/File.h"
+#include "lib/Span.h"
 #include "linux/PerCoreIdentificationThread.h"
 
-#include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <dirent.h>
-#include <unistd.h>
 
 namespace cpu_utils {
     unsigned int getMaxCoreNum()
@@ -266,7 +269,13 @@ namespace cpu_utils {
             //
             else {
                 for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
-                    collected_properties.emplace(cpu, PerCoreIdentificationThread::detectFor(cpu));
+                    if (collected_properties.count(cpu) == 0) {
+                        auto const properties = PerCoreIdentificationThread::detectFor(cpu);
+                        auto const it = collected_properties.emplace(cpu, properties).first;
+                        for (auto const sibling : it->second.core_siblings) {
+                            collected_properties.try_emplace(sibling, properties);
+                        }
+                    }
                 }
             }
 
@@ -323,7 +332,7 @@ namespace cpu_utils {
         const bool knowAllMidrValues = (cpuToCpuIds.size() == cpuIds.size());
 
         // do we need to read /proc/cpuinfo
-        std::string hardwareName = (wantsHardwareName || !knowAllMidrValues
+        std::string hardwareName = (wantsHardwareName || (!knowAllMidrValues && !ignoreOffline)
                                         ? parseProcCpuInfo(/* justGetHardwareName = */ knowAllMidrValues, cpuIds)
                                         : "");
 

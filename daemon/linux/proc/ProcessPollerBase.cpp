@@ -1,15 +1,18 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessPollerBase.h"
 
 #include "Logging.h"
-#include "lib/Format.h"
 #include "lib/FsEntry.h"
 #include "lib/String.h"
+#include "linux/proc/ProcPidStatFileRecord.h"
+#include "linux/proc/ProcPidStatmFileRecord.h"
 
 #include <cctype>
 #include <cstdlib>
+#include <optional>
 #include <string>
+#include <string_view>
 
 namespace lnx {
     namespace {
@@ -36,7 +39,7 @@ namespace lnx {
             const std::string cmdline_contents = lib::readFileContents(cmdline_file);
             // need to extract just the first part of cmdline_contents (as it is an packed sequence of c-strings)
             // so use .c_str() to extract the first string (which is the exe path) and create a new string from it
-            const std::string cmdline_exe =
+            std::string cmdline_exe =
                 trimInvalid(cmdline_contents.c_str()); // NOLINT(readability-redundant-string-cstr)
             if (!cmdline_exe.empty()) {
                 return cmdline_exe;

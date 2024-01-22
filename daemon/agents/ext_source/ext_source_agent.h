@@ -45,15 +45,15 @@ namespace agents {
 
         static std::shared_ptr<ext_source_agent_t> create(boost::asio::io_context & io_context,
                                                           std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink,
-                                                          agent_environment_base_t::terminator terminator)
+                                                          const agent_environment_base_t::terminator & terminator)
         {
-            return std::make_shared<ext_source_agent_t>(io_context, std::move(ipc_sink), std::move(terminator));
+            return std::make_shared<ext_source_agent_t>(io_context, std::move(ipc_sink), terminator);
         }
 
         // use create... or make shared your self...
         ext_source_agent_t(boost::asio::io_context & io_context,
                            std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink,
-                           [[maybe_unused]] agent_environment_base_t::terminator terminator)
+                           [[maybe_unused]] const agent_environment_base_t::terminator & terminator)
             : io_context(io_context), strand(io_context), ipc_sink(std::move(ipc_sink))
         {
             // terminator isn't used as failed connections are closed individually, they won't kill the whole capture

@@ -1,10 +1,12 @@
-/* Copyright (C) 2020-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "BlockCounterFrameBuilder.h"
 
 #include "BufferUtils.h"
-#include "CommitTimeChecker.h"
 #include "IRawFrameBuilder.h"
+#include "Protocol.h"
+
+#include <cstdint>
 
 BlockCounterFrameBuilder::~BlockCounterFrameBuilder()
 {

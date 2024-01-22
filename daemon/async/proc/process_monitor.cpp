@@ -1,31 +1,33 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "async/proc/process_monitor.hpp"
 
 #include "Logging.h"
 #include "async/continuations/operations.h"
+#include "async/continuations/stored_continuation.h"
 #include "async/proc/process_state.hpp"
 #include "async/proc/process_state_tracker.hpp"
 #include "lib/Assert.h"
+#include "lib/Syscall.h"
 #include "lib/error_code_or.hpp"
 #include "lib/forked_process.h"
+#include "lib/forked_process_utils.h"
 
 #include <cerrno>
 #include <cinttypes>
-#include <csignal>
 #include <cstdint>
-#include <cstring>
-#include <exception>
-#include <fstream>
+#include <cstdlib>
+#include <optional>
 #include <string>
-#include <system_error>
+#include <utility>
+#include <vector>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/post.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/system/errc.hpp>
 #include <boost/system/error_code.hpp>
 
-#include <sched.h>
+#include <sys/types.h>
 
 namespace async::proc {
     process_monitor_t::error_event_tracker_t process_monitor_t::await_get_common(process_uid_t uid)

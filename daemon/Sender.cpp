@@ -1,19 +1,23 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "Sender.h"
 
 #include "BufferUtils.h"
+#include "ISender.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "ProtocolVersion.h"
 #include "SessionData.h"
+#include "Time.h"
 #include "lib/File.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 
 #include <algorithm>
-#include <climits>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 
 #include <unistd.h>
 

@@ -2,19 +2,35 @@
 
 #include "mali_userspace/MaliDevice.h"
 
+#include "Constant.h"
+#include "ConstantMode.h"
 #include "GetEventKey.h"
+#include "IBlockCounterFrameBuilder.h"
 #include "Logging.h"
+#include "device/handle.hpp"
+#include "device/hwcnt/block_extents.hpp"
+#include "device/hwcnt/block_metadata.hpp"
 #include "device/hwcnt/sample.hpp"
+#include "device/instance.hpp"
 #include "device/product_id.hpp"
-#include "lib/Assert.h"
+#include "lib/Span.h"
 #include "mali_userspace/MaliHwCntrNamesGenerated.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
 #include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <ios>
+#include <map>
+#include <memory>
+#include <set>
 #include <sstream>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace mali_userspace {
@@ -133,9 +149,9 @@ namespace mali_userspace {
             return uint32_t(nameBlock);
         }
 
-        const MaliProductVersion * findMaliProductRecordFromId(uint32_t id)
+        const MaliProductVersion * findMaliProductRecordFromId(uint64_t gpuId)
         {
-            auto product = dev::product_id(id);
+            auto product = dev::product_id(dev::product_id::from_raw_gpu_id(gpuId));
 
             for (const auto & index : PRODUCT_VERSIONS) {
                 if (static_cast<std::uint32_t>(index.product_id) == static_cast<std::uint32_t>(product)) {
@@ -219,12 +235,6 @@ namespace mali_userspace {
         return {};
     }
 
-    const char * findMaliProductNameFromId(uint32_t productId)
-    {
-        const auto * productRecord = findMaliProductRecordFromId(productId);
-        return (productRecord != nullptr ? productRecord->mName : nullptr);
-    }
-
     std::unique_ptr<MaliDevice> MaliDevice::create(dev::handle::handle_ptr handle, std::string clockPath)
     {
         auto instance = dev::instance::create(*handle);
@@ -232,10 +242,7 @@ namespace mali_userspace {
             LOG_ERROR("Mali device instance creation failed.");
             return {};
         }
-
-        auto product_id = dev::product_id(instance->get_constants().gpu_id);
-
-        const auto * productRecord = findMaliProductRecordFromId(product_id);
+        const auto * productRecord = findMaliProductRecordFromId(instance->get_constants().gpu_id);
         if (productRecord != nullptr) {
             return std::unique_ptr<MaliDevice>(
                 new MaliDevice(*productRecord, std::move(handle), std::move(instance), std::move(clockPath)));
@@ -289,35 +296,40 @@ namespace mali_userspace {
 
         //Log Mali GPU information
         const auto * product_record = findMaliProductRecordFromId(constants.gpu_id);
-
-        std::ostringstream log_output;
-
-        log_output << "Mali GPU Counters\nSuccessfully probed Mali Device";
-
-        if (product_record->mName != nullptr) {
-            log_output << " as Mali-" << product_record->mName << " (0x" << std::hex << constants.gpu_id << std::dec
-                       << ")";
+        if (product_record == nullptr) {
+            LOG_ERROR("No known Mali device detected for GPU ID 0x%" PRIx64, constants.gpu_id);
         }
         else {
-            log_output << "but it is not recognised (id: 0x" << std::hex << constants.gpu_id;
-        }
+            std::ostringstream log_output;
 
-        log_output << ", " << constants.num_l2_slices << " L2 Slices, ";
-        log_output << constants.axi_bus_width << "-bit Bus, ";
-        log_output << constants.num_shader_cores << " Shader Cores";
+            log_output << "Mali GPU Counters\nSuccessfully probed Mali Device";
 
-        if (constants.shader_core_mask != ((1ULL << constants.num_shader_cores) - 1)) {
-            log_output << " (sparse layout, mask is 0x" << std::hex << constants.shader_core_mask << std::dec << ")";
-        }
+            if (product_record->mName != nullptr) {
+                log_output << " as Mali-" << product_record->mName << " (0x" << std::hex << constants.gpu_id << std::dec
+                           << ")";
+            }
+            else {
+                log_output << "but it is not recognised (id: 0x" << std::hex << constants.gpu_id;
+            }
 
-        if (product_record->mName != nullptr) {
-            log_output << ".";
-        }
-        else {
-            log_output << "). Please try updating your verson of gatord.";
-        }
+            log_output << ", " << constants.num_l2_slices << " L2 Slices, ";
+            log_output << constants.axi_bus_width << "-bit Bus, ";
+            log_output << constants.num_shader_cores << " Shader Cores";
 
-        LOG_SETUP(log_output.str());
+            if (constants.shader_core_mask != ((1ULL << constants.num_shader_cores) - 1)) {
+                log_output << " (sparse layout, mask is 0x" << std::hex << constants.shader_core_mask << std::dec
+                           << ")";
+            }
+
+            if (product_record->mName != nullptr) {
+                log_output << ".";
+            }
+            else {
+                log_output << "). Please try updating your verson of gatord.";
+            }
+
+            LOG_SETUP(log_output.str());
+        }
     }
 
     uint32_t MaliDevice::getGpuId() const

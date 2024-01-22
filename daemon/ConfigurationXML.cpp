@@ -5,21 +5,33 @@
 #include "CCNDriver.h"
 #include "Configuration.h"
 #include "ConfigurationXMLParser.h"
+#include "Counter.h"
 #include "Drivers.h"
+#include "EventCode.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
 #include "lib/Format.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 #include "xml/EventsXML.h"
 #include "xml/MxmlUtils.h"
 
+#include <algorithm>
+#include <climits>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <set>
 #include <sstream>
+#include <string>
+#include <utility>
 
-#include <dirent.h>
+#include <mxml.h>
 
 static const char TAG_CONFIGURATION[] = "configuration";
 

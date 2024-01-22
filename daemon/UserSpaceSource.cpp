@@ -1,7 +1,12 @@
 /* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
+// Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
+// must be before includes
+
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "UserSpaceSource.h"
 
@@ -11,12 +16,17 @@
 #include "PolledDriver.h"
 #include "SessionData.h"
 #include "Source.h"
+#include "Time.h"
 #include "lib/Span.h"
 
 #include <atomic>
 #include <cinttypes>
-#include <utility>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <vector>
 
+#include <semaphore.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 

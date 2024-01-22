@@ -1,6 +1,11 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "xml/MxmlUtils.h"
+
+#include <cstring>
+#include <string>
+
+#include <mxml.h>
 
 // mxml doesn't have a function to do this, so dip into its private API
 // Copy all the attributes from src to dst

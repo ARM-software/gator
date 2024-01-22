@@ -1,10 +1,18 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/cpufreq_counter.h"
 
+#include "GetEventKey.h"
+#include "ICpuInfo.h"
+#include "agents/perf/capture_configuration.h"
+#include "apc/perf_counter.h"
 #include "lib/Span.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
 
 namespace agents::perf {
 

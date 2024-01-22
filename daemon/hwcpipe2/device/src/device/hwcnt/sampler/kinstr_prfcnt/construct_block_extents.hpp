@@ -25,7 +25,7 @@
 #pragma once
 
 #include <device/hwcnt/block_extents.hpp>
-#include <device/hwcnt/sampler/kinstr_prfcnt/enum_info.hpp>
+#include <device/hwcnt/sampler/kinstr_prfcnt/enum_info_parser.hpp>
 
 namespace hwcpipe {
 namespace device {
@@ -41,14 +41,9 @@ namespace kinstr_prfcnt {
  */
 inline hwcnt::block_extents construct_block_extents(enum_info ei) {
     hwcnt::block_extents block_extents = hwcnt::block_extents{
-        {{
-            ei.blocks[static_cast<uint8_t>(hwcnt::block_type::fe)].num_instances,     // num_fe_blocks
-            ei.blocks[static_cast<uint8_t>(hwcnt::block_type::tiler)].num_instances,  // num_tiler_blocks
-            ei.blocks[static_cast<uint8_t>(hwcnt::block_type::memory)].num_instances, // num_memory_blocks
-            ei.blocks[static_cast<uint8_t>(hwcnt::block_type::core)].num_instances,   // num_core_blocks
-        }},
-        ei.num_values,                     // counters_per_block
-        hwcnt::sample_values_type::uint64, // values_type
+        ei.num_blocks_of_type,
+        ei.num_values,
+        hwcnt::sample_values_type::uint64,
     };
     return block_extents;
 }

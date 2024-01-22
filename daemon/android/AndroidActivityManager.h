@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -26,7 +26,8 @@ public:
 };
 
 extern std::unique_ptr<IAndroidActivityManager> create_android_activity_manager(const std::string & package_name,
-                                                                                const std::string & activity_name);
+                                                                                const std::string & activity_name,
+                                                                                const std::string & activity_flags);
 
 /**
  * Default implementation of IAndroidActivityManager that uses the command line
@@ -35,6 +36,7 @@ extern std::unique_ptr<IAndroidActivityManager> create_android_activity_manager(
 class AndroidActivityManager : public IAndroidActivityManager {
 public:
     friend std::unique_ptr<AndroidActivityManager> std::make_unique<AndroidActivityManager>(const std::string &,
+                                                                                            const std::string &,
                                                                                             const std::string &);
 
     /**
@@ -42,7 +44,9 @@ public:
      * @param activity the activity name
      * @returns a unique pointer to an AndroidActivityManager, or nullptr
      */
-    static std::unique_ptr<IAndroidActivityManager> create(const std::string & pkg, const std::string & activity);
+    static std::unique_ptr<IAndroidActivityManager> create(const std::string & pkg,
+                                                           const std::string & activity,
+                                                           const std::string & flags);
 
     /**
      * Returns true if @a pkg is installed on the target device.
@@ -67,6 +71,7 @@ public:
 private:
     const std::string pkgName;
     const std::string actName;
+    const std::string actFlags;
 
-    AndroidActivityManager(std::string pkg, std::string activity);
+    AndroidActivityManager(std::string pkg, std::string activity, std::string flags);
 };

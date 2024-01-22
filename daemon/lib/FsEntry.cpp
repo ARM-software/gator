@@ -1,24 +1,29 @@
-/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
 
 #include "lib/FsEntry.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
 
-#include <algorithm>
+#include <cerrno>
 #include <climits>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <sstream>
-#include <system_error>
+#include <string>
 #include <utility>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/exception.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
-#include <linux/limits.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 

@@ -60,7 +60,7 @@ namespace agents {
 
         perfetto_agent_t(boost::asio::io_context & io_context,
                          std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink,
-                         [[maybe_unused]] agent_environment_base_t::terminator terminator,
+                         [[maybe_unused]] const agent_environment_base_t::terminator & terminator,
                          std::shared_ptr<perfetto_sdk_helper_t> perfetto_sdk_helper)
             : io_context(io_context),
               strand(io_context),

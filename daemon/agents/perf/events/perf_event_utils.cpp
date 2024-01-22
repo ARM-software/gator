@@ -1,11 +1,15 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/events/perf_event_utils.hpp"
 
+#include "agents/perf/events/types.hpp"
+#include "k/perf_event.h"
 #include "lib/Assert.h"
 #include "lib/EnumUtils.h"
 #include "lib/Format.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <ios>
 #include <string>
 

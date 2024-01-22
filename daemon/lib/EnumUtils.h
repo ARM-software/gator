@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #ifndef LIB_ENUMUTILS_H_
 #define LIB_ENUMUTILS_H_
@@ -7,9 +7,9 @@
 
 namespace lib {
     template<typename EnumType>
-    constexpr typename std::underlying_type<EnumType>::type toEnumValue(EnumType e) noexcept
+    constexpr std::underlying_type_t<EnumType> toEnumValue(EnumType e) noexcept
     {
-        return static_cast<typename std::underlying_type<EnumType>::type>(e);
+        return static_cast<std::underlying_type_t<EnumType>>(e);
     }
 }
 

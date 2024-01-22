@@ -1,6 +1,8 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "BufferUtils.h"
+
+#include <cstdint>
 
 namespace buffer_utils {
     int sizeOfPackInt(int32_t x)

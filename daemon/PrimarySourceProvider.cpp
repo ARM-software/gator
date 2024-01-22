@@ -13,11 +13,20 @@
 #include "MemInfoDriver.h"
 #include "NetDriver.h"
 #include "SessionData.h"
+#include "agents/agent_workers_process_holder.h"
 #include "lib/FsEntry.h"
-#include "lib/Utils.h"
+#include "lib/SharedMemory.h"
+#include "lib/Span.h"
 #include "xml/PmuXML.h"
 
+#include <functional>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+
 #include <android/ThermalDriver.h>
+#include <semaphore.h>
 #if CONFIG_SUPPORT_PERF
 #include "linux/perf/PerfDriver.h"
 #include "linux/perf/PerfDriverConfiguration.h"

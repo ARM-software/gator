@@ -2,26 +2,22 @@
 
 #include "linux/perf/PerfEventGroup.h"
 
-#include "DynBuf.h"
+#include "Config.h"
 #include "Logging.h"
-#include "SessionData.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
-#include "lib/Format.h"
 #include "lib/Syscall.h"
-#include "linux/perf/PerfUtils.h"
-#include "xml/PmuXML.h"
+#include "linux/Tracepoints.h"
+#include "linux/perf/IPerfGroups.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
+#include "linux/perf/attr_to_key_mapping_tracker.h"
 
+#include <algorithm>
 #include <cassert>
-#include <cinttypes>
 #include <climits>
 #include <cstddef>
-#include <iostream>
-#include <optional>
-#include <set>
-
-#include <fcntl.h>
-#include <sys/ioctl.h>
+#include <cstdint>
+#include <ctime>
 
 namespace {
     constexpr unsigned long NANO_SECONDS_IN_ONE_SECOND = 1000000000UL;

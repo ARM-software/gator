@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -12,7 +12,7 @@ namespace lib {
      * @param ptr The expection pointer
      * @return Some descriptive string (usually std::exception::what())
      */
-    inline char const * get_exception_ptr_str(std::exception_ptr ptr)
+    inline char const * get_exception_ptr_str(const std::exception_ptr & ptr)
     {
         if (ptr == nullptr) {
             return "<nullptr>";

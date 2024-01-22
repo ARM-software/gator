@@ -132,7 +132,7 @@ namespace agents::perf {
                           [st](bool failed) {
                               // an error occured, terminate
                               if (failed) {
-                                  st->perf_capture_helper->terminate();
+                                  st->perf_capture_helper->terminate(false);
                               }
                           });
 

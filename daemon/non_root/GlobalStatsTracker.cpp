@@ -2,6 +2,10 @@
 
 #include "non_root/GlobalStatsTracker.h"
 
+#include "linux/proc/ProcLoadAvgFileRecord.h"
+#include "linux/proc/ProcStatFileRecord.h"
+#include "non_root/CounterHelpers.h"
+#include "non_root/GlobalCounter.h"
 #include "non_root/GlobalStateChangeHandler.h"
 
 namespace non_root {

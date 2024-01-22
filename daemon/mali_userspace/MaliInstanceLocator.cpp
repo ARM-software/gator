@@ -2,22 +2,17 @@
 
 #include "mali_userspace/MaliInstanceLocator.h"
 
-#include "DynBuf.h"
 #include "Logging.h"
 #include "device/handle.hpp"
 #include "lib/FsEntry.h"
+#include "mali_userspace/MaliDevice.h"
 
-#include <cstddef>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <map>
 #include <memory>
 #include <optional>
-#include <sstream>
-
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <string>
+#include <utility>
 
 namespace mali_userspace {
     static void enumerateMaliGpuClockPaths(const lib::FsEntry & currentDirectory,

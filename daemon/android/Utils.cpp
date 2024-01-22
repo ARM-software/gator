@@ -3,19 +3,19 @@
 #include "android/Utils.h"
 
 #include "GatorCLIParser.h"
-#include "LocalCapture.h"
 #include "Logging.h"
-#include "lib/FileDescriptor.h"
 #include "lib/FsEntry.h"
 #include "lib/LineReader.h"
 #include "lib/Popen.h"
 #include "lib/Process.h"
-#include "lib/Syscall.h"
 
+#include <algorithm>
 #include <array>
-#include <cerrno>
-#include <iostream>
 #include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace android_utils {
 

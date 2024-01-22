@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXML.h"
 
@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <set>
+#include <string>
 #include <utility>
 
 GatorCpu::GatorCpu(std::string coreName,

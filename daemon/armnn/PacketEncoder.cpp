@@ -5,10 +5,15 @@
 #include "Logging.h"
 #include "armnn/ByteOrder.h"
 #include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 #include "lib/EnumUtils.h"
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <iterator>
+#include <set>
+#include <vector>
 
 namespace armnn {
 

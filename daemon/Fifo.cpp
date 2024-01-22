@@ -1,10 +1,12 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #include "Fifo.h"
 
 #include "Logging.h"
 
 #include <cstdlib>
+
+#include <semaphore.h>
 
 // bufferSize is the amount of data to be filled
 // singleBufferSize is the maximum size that may be filled during a single write

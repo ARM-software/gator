@@ -2,20 +2,22 @@
 
 #include "Logging.h"
 
-#include "lib/Assert.h"
-#include "lib/Time.h"
 #include "logging/configuration.h"
-#include "logging/global_log.h"
+#include "logging/logger_t.h"
+#include "logging/parameters.h"
 
-#include <atomic>
 #include <cstdarg>
-#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <google/protobuf/stubs/logging.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace logging {

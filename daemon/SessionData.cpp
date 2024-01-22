@@ -2,25 +2,13 @@
 
 #include "SessionData.h"
 
-#include "CpuUtils.h"
-#include "DiskIODriver.h"
-#include "FSDriver.h"
-#include "HwmonDriver.h"
+#include "GatorCLIFlags.h"
 #include "Logging.h"
-#include "MemInfoDriver.h"
-#include "NetDriver.h"
-#include "OlyUtility.h"
-#include "PrimarySourceProvider.h"
 #include "SessionXML.h"
-#include "lib/File.h"
-#include "lib/Format.h"
-#include "lib/Time.h"
-#include "mali_userspace/MaliInstanceLocator.h"
+#include "lib/SharedMemory.h"
 
-#include <algorithm>
 #include <cstring>
 
-#include <sys/mman.h>
 #include <unistd.h>
 
 const char MALI_GRAPHICS[] = "\0mali_thirdparty_server";

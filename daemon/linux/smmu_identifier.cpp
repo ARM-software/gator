@@ -1,7 +1,12 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "linux/smmu_identifier.h"
 
-#include <boost/regex.hpp>
+#include <string>
+#include <string_view>
+
+#include <boost/regex/v5/regex.hpp>
+#include <boost/regex/v5/regex_fwd.hpp>
+#include <boost/regex/v5/regex_match.hpp>
 
 namespace gator::smmuv3 {
 

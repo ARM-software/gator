@@ -3,6 +3,16 @@
 #include "MaliGPUClockPolledDriver.h"
 
 #include "Logging.h"
+#include "PolledDriver.h"
+#include "mali_userspace/MaliGPUClockPolledDriverCounter.h"
+
+#include <cstdint>
+#include <cstdlib>
+#include <string>
+#include <utility>
+
+#include <mxml.h>
+#include <unistd.h>
 
 namespace mali_userspace {
 

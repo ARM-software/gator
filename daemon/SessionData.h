@@ -76,6 +76,7 @@ public:
     const char * mWaitForProcessCommand {nullptr};
     const char * mAndroidPackage {nullptr};
     const char * mAndroidActivity {nullptr};
+    const char * mAndroidActivityFlags {nullptr};
     uint64_t mLiveRate {0};
     uint64_t parameterSetFlag {0};
     int mAndroidApiLevel {0};

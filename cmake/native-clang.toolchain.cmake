@@ -1,34 +1,62 @@
-# Copyright (C) 2021 by Arm Limited. All rights reserved.
+# Copyright (C) 2021-2023 by Arm Limited (or its affiliates). All rights reserved.
 
-FIND_PROGRAM(CMAKE_ADDR2LINE    NAMES   "addr2line"             REQUIRED)
-FIND_PROGRAM(CMAKE_AR           NAMES   "llvm-ar" "ar"          REQUIRED)
-FIND_PROGRAM(CMAKE_LINKER       NAMES   "ld.lld" "ld.gold" "ld" REQUIRED)
-FIND_PROGRAM(CMAKE_NM           NAMES   "llvm-nm" "nm"          REQUIRED)
-FIND_PROGRAM(CMAKE_OBJCOPY      NAMES   "objcopy"               REQUIRED)
-FIND_PROGRAM(CMAKE_OBJDUMP      NAMES   "objdump"               REQUIRED)
-FIND_PROGRAM(CMAKE_RANLIB       NAMES   "llvm-ranlib" "ranlib"  REQUIRED)
-FIND_PROGRAM(CMAKE_READELF      NAMES   "readelf"               REQUIRED)
-FIND_PROGRAM(CMAKE_STRIP        NAMES   "strip"                 REQUIRED)
+FIND_PROGRAM(CMAKE_ADDR2LINE NAMES "llvm-addr2line" "addr2line")
+FIND_PROGRAM(CMAKE_AR NAMES "llvm-ar" "ar" REQUIRED)
+FIND_PROGRAM(CMAKE_LINKER NAMES "ld.lld" "ld.bfd" "ld.gold" "ld" REQUIRED)
+FIND_PROGRAM(CMAKE_NM NAMES "llvm-nm" "nm" REQUIRED)
+FIND_PROGRAM(CMAKE_OBJCOPY NAMES "llvm-objcopy" "objcopy")
+FIND_PROGRAM(CMAKE_OBJDUMP NAMES "llvm-objdump" "objdump" REQUIRED)
+FIND_PROGRAM(CMAKE_RANLIB NAMES "llvm-ranlib" "ranlib" REQUIRED)
+FIND_PROGRAM(CMAKE_READELF NAMES "llvm-readelf" "readelf")
+FIND_PROGRAM(CMAKE_STRIP NAMES "llvm-strip" "strip" REQUIRED)
+FIND_PROGRAM(CMAKE_LLVM_COV NAMES "llvm-cov")
 
-FIND_PROGRAM(CMAKE_C_COMPILER           NAMES   "clang"         REQUIRED)
-FIND_PROGRAM(CMAKE_C_COMPILER_AR        NAMES   "llvm-ar")
-FIND_PROGRAM(CMAKE_C_COMPILER_NM        NAMES   "llvm-nm")
-FIND_PROGRAM(CMAKE_C_COMPILER_RANLIB    NAMES   "llvm-ranlib")
-FIND_PROGRAM(CMAKE_CXX_COMPILER         NAMES   "clang++"       REQUIRED)
-FIND_PROGRAM(CMAKE_CXX_COMPILER_AR      NAMES   "llvm-ar")
-FIND_PROGRAM(CMAKE_CXX_COMPILER_NM      NAMES   "llvm-nm")
-FIND_PROGRAM(CMAKE_CXX_COMPILER_RANLIB  NAMES   "llvm-ranlib")
+FIND_PROGRAM(CMAKE_C_COMPILER NAMES "clang" REQUIRED)
+FIND_PROGRAM(CMAKE_C_COMPILER_AR NAMES "llvm-ar" "ar")
+FIND_PROGRAM(CMAKE_C_COMPILER_NM NAMES "llvm-nm" "nm")
+FIND_PROGRAM(CMAKE_C_COMPILER_RANLIB NAMES "llvm-ranlib" "ranlib")
+FIND_PROGRAM(CMAKE_CXX_COMPILER NAMES "clang++" REQUIRED)
+FIND_PROGRAM(CMAKE_CXX_COMPILER_AR NAMES "llvm-ar" "ar")
+FIND_PROGRAM(CMAKE_CXX_COMPILER_NM NAMES "llvm-nm" "nm")
+FIND_PROGRAM(CMAKE_CXX_COMPILER_RANLIB NAMES "llvm-ranlib" "ranlib")
 
-SET(CMAKE_C_FLAGS               ""
-                                CACHE STRING "Default GCC compiler flags")
-SET(CMAKE_CXX_FLAGS             ""
-                                CACHE STRING "Default G++ compiler flags")
-SET(CMAKE_EXE_LINKER_FLAGS      ""
-                                CACHE STRING "Default exe linker flags")
-SET(CMAKE_MODULE_LINKER_FLAGS   ""
-                                CACHE STRING "Default module linker flags")
-SET(CMAKE_SHARED_LINKER_FLAGS   ""
-                                CACHE STRING "Default shared linker flags")
+# Start with any user specified flags
+SET(CMAKE_C_FLAGS "$CACHE{CMAKE_C_FLAGS}")
+SET(CMAKE_CXX_FLAGS "$CACHE{CMAKE_CXX_FLAGS}")
+SET(CMAKE_EXE_LINKER_FLAGS "$CACHE{CMAKE_EXE_LINKER_FLAGS}")
+SET(CMAKE_MODULE_LINKER_FLAGS "$CACHE{CMAKE_MODULE_LINKER_FLAGS}")
+SET(CMAKE_SHARED_LINKER_FLAGS "$CACHE{CMAKE_SHARED_LINKER_FLAGS}")
+
+# here is the target environment located
+IF(_VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+  SET(CMAKE_FIND_ROOT_PATH "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+
+  # adjust the default behaviour of the FIND_XXX() commands:
+  # search headers and libraries in the target environment, search
+  # programs in the host environment
+  if(NOT VCPKG_REQUIRES_HOST_LIBRARIES)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    SET(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+  endif()
+ENDIF()
+
+# Default standard
+SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # LTO options
-INCLUDE("${CMAKE_CURRENT_LIST_DIR}/lto.toolchain.cmake")
+SET(CMAKE_USE_THINLTO ON CACHE BOOL "" FORCE)
+
+IF(CMAKE_HOST_WIN32)
+  SET(CMAKE_USE_THINLTO_CACHE_DIR "$ENV{USERPROFILE}/.cache/cmake/thin-lto")
+ELSE()
+  SET(CMAKE_USE_THINLTO_CACHE_DIR "$ENV{HOME}/.cache/cmake/thin-lto")
+ENDIF()
+
+SET(CMAKE_ENABLE_LTO_ADDITIONAL_C_FLAGS "")
+SET(CMAKE_ENABLE_LTO_ADDITIONAL_CXX_FLAGS "")
+SET(CMAKE_ENABLE_LTO_ADDITIONAL_LINKER_FLAGS "")
+
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/lto.cmake")

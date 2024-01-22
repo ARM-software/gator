@@ -2,13 +2,22 @@
 
 #include "MidgardDriver.h"
 
-#include "Buffer.h"
+#include "Config.h"
+#include "Counter.h"
+#include "DriverCounter.h"
+#include "EventCode.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
+#include "SimpleDriver.h"
 #include "lib/FileDescriptor.h"
 
 #include <cinttypes>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <unistd.h>
 

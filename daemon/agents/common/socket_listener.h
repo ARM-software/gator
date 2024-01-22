@@ -5,6 +5,7 @@
 #include "Logging.h"
 #include "agents/common/uds_protocol.h"
 
+#include <exception>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -143,6 +144,14 @@ namespace agents {
             LOG_WARNING("Failed to create new UDS socket listener due to %s", ex.what());
             return std::shared_ptr<listener_t> {};
         }
+        catch (std::exception const & ex) {
+            LOG_WARNING("Failed to create new UDS socket listener due to %s", ex.what());
+            return std::shared_ptr<listener_t> {};
+        }
+        catch (...) {
+            LOG_WARNING("Failed to create new UDS socket listener due to unexpected throw");
+            return std::shared_ptr<listener_t> {};
+        }
     }
 
     /** Make a TCP socket listener for some endpoint with the supplied worker fn */
@@ -157,6 +166,14 @@ namespace agents {
         }
         catch (boost::system::system_error const & ex) {
             LOG_WARNING("Failed to create new TCP socket listener due to %s", ex.what());
+            return std::shared_ptr<listener_t> {};
+        }
+        catch (std::exception const & ex) {
+            LOG_WARNING("Failed to create new UDS socket listener due to %s", ex.what());
+            return std::shared_ptr<listener_t> {};
+        }
+        catch (...) {
+            LOG_WARNING("Failed to create new UDS socket listener due to unexpected throw");
             return std::shared_ptr<listener_t> {};
         }
     }

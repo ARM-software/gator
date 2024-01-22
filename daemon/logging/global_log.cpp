@@ -3,12 +3,18 @@
 #include "logging/global_log.h"
 
 #include "file_log_sink.h"
+#include "logging/parameters.h"
+#include "logging/suppliers.h"
 
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <ostream>
+#include <string>
+#include <string_view>
+
+#include <sched.h>
 
 namespace logging {
 

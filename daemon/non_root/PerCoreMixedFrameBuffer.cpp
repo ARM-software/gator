@@ -1,11 +1,20 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "non_root/PerCoreMixedFrameBuffer.h"
 
+#include "Buffer.h"
+#include "CommitTimeChecker.h"
 #include "ISender.h"
-#include "Logging.h"
 #include "SessionData.h"
+#include "non_root/MixedFrameBuffer.h"
+
+#include <memory>
+
+#include <semaphore.h>
 
 namespace non_root {
     PerCoreMixedFrameBuffer::PerCoreMixedFrameBuffer(int bufferSize_, sem_t & readerSem_)

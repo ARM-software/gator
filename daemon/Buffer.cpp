@@ -1,15 +1,22 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "Buffer.h"
 
 #include "BufferUtils.h"
+#include "ISender.h"
 #include "Logging.h"
 #include "Protocol.h"
-#include "Sender.h"
 #include "lib/Assert.h"
+#include "lib/Span.h"
 
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
 #include <cstring>
 #include <limits>
+#include <string_view>
+
+#include <semaphore.h>
 
 #define mask (mSize - 1)
 #define FRAME_HEADER_SIZE 1 // single byte of FrameType

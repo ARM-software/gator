@@ -7,6 +7,7 @@
 #include "IBlockCounterFrameBuilder.h"
 #include "Logging.h"
 #include "device/handle.hpp"
+#include "device/hwcnt/block_extents.hpp"
 #include "device/hwcnt/block_metadata.hpp"
 #include "device/hwcnt/sample.hpp"
 #include "device/instance.hpp"
@@ -161,9 +162,10 @@ namespace mali_userspace {
         /**
          * @return The number of counter name blocks
          */
-        inline uint32_t getNameBlockCount() const
+        //NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+        [[nodiscard]] inline uint32_t getNameBlockCount() const
         {
-            return static_cast<std::uint32_t>(hwcpipe::device::hwcnt::block_type::num_block_types);
+            return static_cast<std::uint32_t>(hwcpipe::device::hwcnt::block_extents::num_block_types);
         }
 
         /**
@@ -307,13 +309,6 @@ namespace mali_userspace {
             }
         }
     };
-
-    /**
-     * Map a product id to a product name string
-     *
-     * @return The product name string, or null if not recognized
-     */
-    const char * findMaliProductNameFromId(uint32_t productId);
 }
 
 #endif /* NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_ */

@@ -6,12 +6,16 @@
 #include "lib/FsEntry.h"
 #include "lib/Utils.h"
 #include "linux/perf/PerfDriverConfiguration.h"
+#include "linux/smmu_identifier.h"
 #include "xml/PmuXML.h"
 
 #include <algorithm>
-#include <array>
-
-#include <boost/regex.hpp>
+#include <functional>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace gator::smmuv3 {
 

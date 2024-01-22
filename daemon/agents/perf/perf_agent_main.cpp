@@ -1,11 +1,16 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/agent_environment.h"
 #include "agents/perf/perf_agent.h"
 #include "agents/perf/perf_capture.h"
+#include "async/proc/process_monitor.hpp"
 #include "ipc/raw_ipc_channel_sink.h"
+#include "lib/Span.h"
 
 #include <memory>
+#include <utility>
+
+#include <boost/asio/io_context.hpp>
 
 namespace agents::perf {
 

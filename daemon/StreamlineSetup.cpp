@@ -4,20 +4,36 @@
 
 #include "BufferUtils.h"
 #include "CapturedXML.h"
+#include "Configuration.h"
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "Driver.h"
 #include "Drivers.h"
 #include "ExitStatus.h"
 #include "ICpuInfo.h"
+#include "ISender.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
 #include "Sender.h"
 #include "SessionData.h"
-#include "lib/Syscall.h"
+#include "StreamlineSetupLoop.h"
+#include "lib/Span.h"
+#include "logging/suppliers.h"
 #include "xml/CurrentConfigXML.h"
 #include "xml/EventsXML.h"
+
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <set>
+#include <string>
+#include <utility>
+
+#include <mxml.h>
+#include <unistd.h>
 
 static const char TAG_SESSION[] = "session";
 static const char TAG_REQUEST[] = "request";

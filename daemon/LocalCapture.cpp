@@ -6,13 +6,15 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
-#include <cstdlib>
+#include <climits>
+#include <cstdio>
 #include <cstring>
+#include <list>
 #include <memory>
+#include <string>
 
 #include <dirent.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 static char * createUniqueDirectory(const char * initialPath, const char * ending)

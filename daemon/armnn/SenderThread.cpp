@@ -2,10 +2,12 @@
 
 #include "armnn/SenderThread.h"
 
-#include "Logging.h"
 #include "armnn/ISocketIO.h"
+#include "armnn/SenderQueue.h"
 
-#include <cstring>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace armnn {
     SenderThread::SenderThread(ISocketIO & connection)

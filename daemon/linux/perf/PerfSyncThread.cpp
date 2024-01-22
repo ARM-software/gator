@@ -8,14 +8,18 @@
 #include "lib/String.h"
 #include "lib/Syscall.h"
 
+#include <atomic>
 #include <cerrno>
 #include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
+#include <thread>
 #include <utility>
 
 #include <sys/prctl.h>
-#include <sys/syscall.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #ifndef _GNU_SOURCE

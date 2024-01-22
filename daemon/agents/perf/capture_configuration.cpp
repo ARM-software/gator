@@ -2,16 +2,30 @@
 
 #include "agents/perf/capture_configuration.h"
 
+#include "ICpuInfo.h"
 #include "SessionData.h"
 #include "agents/perf/events/event_configuration.hpp"
 #include "agents/perf/events/types.hpp"
+#include "agents/perf/record_types.h"
+#include "ipc/messages.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
+#include "lib/Span.h"
+#include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
+#include "linux/perf/PerfGroups.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <map>
 #include <memory>
+#include <optional>
+#include <set>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace agents::perf {
     namespace {

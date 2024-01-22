@@ -1,12 +1,17 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 #include "armnn/PacketDecoder.h"
 
+#include "Logging.h"
+#include "armnn/ByteOrder.h"
 #include "armnn/CounterDirectoryDecoder.h"
 #include "armnn/DecoderUtility.h"
+#include "armnn/IPacketConsumer.h"
 #include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 #include "lib/EnumUtils.h"
 
-#include <string>
+#include <cstdint>
+#include <vector>
 
 namespace armnn {
     PacketDecoder::PacketDecoder(ByteOrder byteOrder_, IPacketConsumer & consumer_)

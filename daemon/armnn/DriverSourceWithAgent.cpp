@@ -3,7 +3,14 @@
 #include "armnn/DriverSourceWithAgent.h"
 
 #include "Logging.h"
+#include "armnn/ICounterConsumer.h"
+#include "armnn/IStartStopHandler.h"
 #include "lib/Assert.h"
+#include "lib/Span.h"
+
+#include <cstdint>
+#include <functional>
+#include <mutex>
 
 namespace armnn {
 

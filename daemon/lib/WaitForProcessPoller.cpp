@@ -1,9 +1,13 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "lib/WaitForProcessPoller.h"
 
 #include "Logging.h"
+#include "lib/FsEntry.h"
+#include "linux/proc/ProcessPollerBase.h"
 
+#include <optional>
+#include <set>
 #include <string>
 
 namespace {

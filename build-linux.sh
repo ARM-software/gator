@@ -78,11 +78,11 @@ elif [ "${target}" = "native-clang" ]; then
 elif [ "${target}" = "arm-glibc" ]; then
     build_args=( -DVCPKG_TARGET_TRIPLET=gatord-armv7-linux -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/arm-linux-hardfloat.toolchain.cmake" )
 elif [ "${target}" = "arm-musl" ]; then
-    build_args=( -DVCPKG_TARGET_TRIPLET=gatord-armv7-linux-musl -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/arm-linux-musleabihf.toolchain.cmake" -DDGATORD_BUILD_STATIC:BOOLEAN=ON )
+    build_args=( -DVCPKG_TARGET_TRIPLET=gatord-armv7-linux-musl -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/arm-linux-musleabihf.toolchain.cmake" -DGATORD_BUILD_STATIC:BOOLEAN=ON )
 elif [ "${target}" = "arm64-glibc" ]; then
     build_args=( -DVCPKG_TARGET_TRIPLET=gatord-arm64-linux -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/aarch64-linux.toolchain.cmake" )
 elif [ "${target}" = "arm64-musl" ]; then
-    build_args=( -DVCPKG_TARGET_TRIPLET=gatord-arm64-linux-musl -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/aarch64-linux-musleabi.toolchain.cmake" -DDGATORD_BUILD_STATIC:BOOLEAN=ON )
+    build_args=( -DVCPKG_TARGET_TRIPLET=gatord-arm64-linux-musl -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="${gator_dir}/cmake/aarch64-linux-musleabi.toolchain.cmake" -DGATORD_BUILD_STATIC:BOOLEAN=ON )
 else
     echo "Error: Unrecognized value for target: '${target}'"
     exit 1

@@ -1,15 +1,22 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "PerfAttrsBuffer.h"
 
 #include "BufferUtils.h"
+#include "IBufferControl.h"
+#include "IRawFrameBuilder.h"
 #include "Logging.h"
-#include "SessionData.h"
+#include "Protocol.h"
 #include "k/perf_event.h"
 
+#include <cstdint>
 #include <cstring>
+
+#include <semaphore.h>
 
 PerfAttrsBuffer::PerfAttrsBuffer(const int size, sem_t & readerSem) : buffer(size, readerSem)
 {

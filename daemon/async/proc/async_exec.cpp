@@ -1,6 +1,14 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "async/proc/async_exec.hpp"
+
+#include "async/proc/async_process.hpp"
+#include "lib/AutoClosingFd.h"
+
+#include <memory>
+#include <utility>
+
+#include <boost/system/error_code.hpp>
 
 namespace async::proc {
 

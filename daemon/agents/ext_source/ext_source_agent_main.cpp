@@ -1,10 +1,9 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 #include "agents/ext_source/ext_source_agent_main.h"
 
-#include "Logging.h"
 #include "agents/agent_environment.h"
 #include "agents/ext_source/ext_source_agent.h"
-#include "ipc/raw_ipc_channel_source.h"
+#include "lib/Span.h"
 
 namespace agents {
 

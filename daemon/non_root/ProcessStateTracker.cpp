@@ -1,15 +1,18 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessStateTracker.h"
 
 #include "lib/Assert.h"
-#include "lib/FsEntry.h"
 #include "linux/proc/ProcPidStatFileRecord.h"
 #include "linux/proc/ProcPidStatmFileRecord.h"
 #include "non_root/ProcessStateChangeHandler.h"
 
 #include <algorithm>
-#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace non_root {
     namespace {

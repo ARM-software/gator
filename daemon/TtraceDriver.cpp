@@ -2,14 +2,18 @@
 
 #include "TtraceDriver.h"
 
+#include "DriverCounter.h"
 #include "FtraceDriver.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "SimpleDriver.h"
+
+#include <cstdint>
+#include <cstring>
 
 #include <fcntl.h>
+#include <mxml.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 class TtraceCounter : public DriverCounter {

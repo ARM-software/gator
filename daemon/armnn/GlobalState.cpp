@@ -2,13 +2,26 @@
 
 #include "armnn/GlobalState.h"
 
+#include "EventCode.h"
+#include "Events.h"
 #include "Logging.h"
+#include "armnn/CaptureMode.h"
+#include "armnn/ICounterDirectoryConsumer.h"
+#include "armnn/IGlobalState.h"
 #include "lib/EnumUtils.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cctype>
+#include <cstdint>
+#include <map>
+#include <mutex>
+#include <optional>
 #include <set>
+#include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace armnn {
     static constexpr std::uint32_t DEFAULT_SAMPLE_PERIOD_MICROS = 1000;

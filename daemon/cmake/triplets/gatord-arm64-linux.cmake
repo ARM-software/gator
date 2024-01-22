@@ -9,3 +9,5 @@ if(NOT CMAKE_HOST_SYSTEM_PROCESSOR)
 endif()
 
 set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/../../../cmake/aarch64-linux.toolchain.cmake)
+
+include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")

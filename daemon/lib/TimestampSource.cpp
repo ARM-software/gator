@@ -2,6 +2,8 @@
 
 #include "lib/TimestampSource.h"
 
+#include <ctime>
+
 namespace lib {
     TimestampSource::TimestampSource(clockid_t id_) : base(0), id(id_)
     {

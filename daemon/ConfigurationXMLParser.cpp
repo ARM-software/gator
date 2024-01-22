@@ -2,8 +2,21 @@
 
 #include "ConfigurationXMLParser.h"
 
+#include "Configuration.h"
+#include "EventCode.h"
+#include "Logging.h"
+#include "OlyUtility.h"
+#include "xml/MxmlUtils.h"
+
+#include <cerrno>
+#include <climits>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
+#include <vector>
+
+#include <mxml.h>
 
 //NOLINTBEGIN(modernize-avoid-c-arrays)
 static const char TAG_CONFIGURATIONS[] = "configurations";

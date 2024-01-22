@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_SHARED_MEMORY_H
 #define INCLUDE_SHARED_MEMORY_H
@@ -12,10 +12,8 @@
 
 namespace shared_memory {
     template<typename T>
-    using unique_ptr = std::unique_ptr<
-        T,
-        std::function<void(
-            typename std::conditional<std::is_array<T>::value, typename std::remove_extent<T>::type, T>::type *)>>;
+    using unique_ptr =
+        std::unique_ptr<T, std::function<void(std::conditional_t<std::is_array_v<T>, std::remove_extent_t<T>, T> *)>>;
 
     /**
      * Allocates an array of n T in shared memory
@@ -43,7 +41,7 @@ namespace shared_memory {
     /**
      * Creates a unique pointer in shared memory
      */
-    template<typename T, typename... Args, typename = typename std::enable_if<!std::is_array<T>::value>::type>
+    template<typename T, typename... Args, typename = std::enable_if_t<!std::is_array_v<T>>>
     unique_ptr<T> make_unique(Args &&... args)
     {
         T * const allocation = allocate<T>(1);
@@ -67,7 +65,7 @@ namespace shared_memory {
     /**
      * Creates a unique pointer for an array in shared memory
      */
-    template<typename T, typename = typename std::enable_if<std::is_array<T>::value>::type>
+    template<typename T, typename = std::enable_if_t<std::is_array_v<T>>>
     unique_ptr<T> make_unique(std::size_t size)
     {
         using element_type = typename unique_ptr<T>::element_type;

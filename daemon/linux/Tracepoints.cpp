@@ -2,8 +2,6 @@
 
 #include "linux/Tracepoints.h"
 
-#include "Config.h"
-#include "DynBuf.h"
 #include "Logging.h"
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
@@ -12,8 +10,12 @@
 #include "linux/perf/IPerfAttrsConsumer.h"
 
 #include <array>
+#include <cstdint>
 #include <fstream>
+#include <ios>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <unistd.h>
 

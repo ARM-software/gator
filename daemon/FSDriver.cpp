@@ -1,13 +1,21 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #include "FSDriver.h"
 
+#include "DriverCounter.h"
 #include "Logging.h"
+#include "PolledDriver.h"
 #include "lib/Utils.h"
 
+#include <cerrno>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+
 #include <fcntl.h>
+#include <mxml.h>
 #include <regex.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 

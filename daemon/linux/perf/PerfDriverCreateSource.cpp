@@ -8,22 +8,41 @@
 #include "SessionData.h"
 #include "Source.h"
 #include "agents/agent_workers_process.h"
+#include "agents/agent_workers_process_holder.h"
 #include "agents/perf/capture_configuration.h"
+#include "agents/perf/record_types.h"
+#include "agents/perf/source_adapter.h"
+#include "async/continuations/operations.h"
+#include "async/continuations/use_continuation.h"
 #include "handleException.h"
 #include "ipc/messages.h"
+#include "lib/Span.h"
 #include "lib/Utils.h"
+#include "linux/Tracepoints.h"
 #include "linux/perf/PerfAttrsBuffer.h"
 #include "linux/perf/PerfDriver.h"
 #include "linux/perf/PerfDriverConfiguration.h"
+#include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfGroups.h"
+#include "linux/perf/attr_to_key_mapping_tracker.h"
 #include "xml/PmuXML.h"
 
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include <boost/asio/use_future.hpp>
+#include <semaphore.h>
+#include <sys/types.h>
 
 namespace {
     constexpr std::size_t MEGABYTES = 1024UL * 1024UL;
@@ -189,6 +208,7 @@ std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
     auto cluster_keys_for_freq_counter = get_cpu_cluster_keys_for_cpu_frequency_counter();
 
     std::vector<GatorCpu> gator_cpus;
+    gator_cpus.reserve(mConfig.cpus.size());
     for (const auto & cpu : mConfig.cpus) {
         gator_cpus.push_back(cpu.gator_cpu);
     }

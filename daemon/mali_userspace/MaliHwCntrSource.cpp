@@ -1,7 +1,12 @@
 /* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
+// Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
+// must be before includes
+
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "mali_userspace/MaliHwCntrSource.h"
 
@@ -15,9 +20,8 @@
 #include "mali_userspace/MaliHwCntrTask.h"
 
 #include <algorithm>
-#include <cinttypes>
+#include <cstdint>
 #include <functional>
-#include <map>
 #include <memory>
 #include <thread>
 #include <utility>
@@ -25,7 +29,6 @@
 
 #include <semaphore.h>
 #include <sys/prctl.h>
-#include <unistd.h>
 
 namespace mali_userspace {
     class MaliHwCntrSource : public Source, public virtual IMaliDeviceCounterDumpCallback {

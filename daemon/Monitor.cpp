@@ -2,12 +2,14 @@
 
 #include "Monitor.h"
 
+#include "IMonitor.h"
 #include "Logging.h"
 
 #include <cerrno>
 #include <cstring>
+#include <memory>
 
-#include <fcntl.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 
 namespace gator::io {

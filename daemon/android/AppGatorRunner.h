@@ -12,7 +12,9 @@ namespace gator::android {
     class AppGatorRunner : public IAppGatorRunner {
 
     public:
-        AppGatorRunner(const std::string & gatorExePath, const std::string appName, const std::string gatorAgentName)
+        AppGatorRunner(const std::string & gatorExePath,
+                       const std::string & appName,
+                       const std::string & gatorAgentName)
             : gatorExePath(gatorExePath), appName(appName), gatorAgentName(gatorAgentName)
         {
         }

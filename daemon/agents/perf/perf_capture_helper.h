@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Logging.h"
 #include "Time.h"
 #include "agents/agent_environment.h"
 #include "agents/perf/async_perf_ringbuffer_monitor.hpp"
@@ -34,10 +35,12 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/read_until.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/system/error_code.hpp>
 
 namespace agents::perf {
@@ -111,7 +114,7 @@ namespace agents::perf {
                   async_perf_ringbuffer_monitor->async_wait_one_shot_full(use_continuation),
                   [st = this->shared_from_this()](bool) {
                       LOG_DEBUG("Stopping due to one shot mode");
-                      st->terminate();
+                      st->terminate(false);
                   });
         }
 
@@ -131,7 +134,7 @@ namespace agents::perf {
                     return st->ipc_sink->async_send_message(ipc::msg_capture_started_t {}, use_continuation)
                          | then([st](auto const & ec, auto const & /*msg*/) {
                                if (ec) {
-                                   st->terminate();
+                                   st->terminate(false);
                                }
                            });
                 },
@@ -162,7 +165,7 @@ namespace agents::perf {
                                // terminate on failure
                                if (!result) {
                                    if (!st->is_terminate_requested()) {
-                                       st->terminate();
+                                       st->terminate(false);
                                    }
                                    return {};
                                }
@@ -174,7 +177,7 @@ namespace agents::perf {
                                          | map_error(),
                                      [st](bool failed) {
                                          if (failed) {
-                                             st->terminate();
+                                             st->terminate(false);
                                          }
                                      });
 
@@ -191,7 +194,7 @@ namespace agents::perf {
                                           // then start the events
                                           if (!st->perf_capture_events_helper.start_all_pid_trackers()) {
                                               LOG_DEBUG("start_all_pid_trackers returned false, terminating");
-                                              st->terminate();
+                                              st->terminate(false);
                                           }
                                       });
                            });
@@ -554,7 +557,7 @@ namespace agents::perf {
                                          | map_error(),
                                      [st](bool failed) {
                                          if (failed) {
-                                             st->terminate();
+                                             st->terminate(false);
                                          }
                                      });
 
@@ -775,7 +778,7 @@ namespace agents::perf {
                                                    st->on_command_exited(forked_pid, false);
                                                }
                                            }),
-                                     [st](bool) { st->terminate(); });
+                                     [st](bool) { st->terminate(true); });
                            });
                 },
                 std::forward<CompletionToken>(token));
@@ -808,26 +811,53 @@ namespace agents::perf {
         }
 
         /** Cancel any outstanding asynchronous operations that need special handling. */
-        void terminate()
+        void terminate(bool defer = false)
         {
-            boost::asio::post(strand, [st = this->shared_from_this()]() mutable {
-                LOG_FINE("Terminating pid monitoring...");
+            boost::asio::post(strand, [defer, st = this->shared_from_this()]() {
+                // delay to use when deferring shutdown
+                constexpr auto defer_delay_ms = boost::posix_time::milliseconds(1000);
 
-                auto w = st->waiter;
-                if (w) {
-                    w->cancel();
+                // only perform the terminate once
+                auto timer = std::exchange(st->terminate_delay_timer, nullptr);
+                if (timer == nullptr) {
+                    return;
                 }
 
-                st->perf_capture_events_helper.clear_stopped_tids();
+                // termination handler, which may be defered
+                auto handler = [timer, st](boost::system::error_code const & ec) mutable {
+                    if (ec != boost::asio::error::operation_aborted) {
+                        LOG_FATAL("Terminating pid monitoring... terminating.");
+                        timer->cancel();
+                        timer.reset();
 
-                auto fc = st->forked_command;
-                if (fc) {
-                    fc->abort();
+                        auto w = st->waiter;
+                        if (w) {
+                            w->cancel();
+                        }
+
+                        st->perf_capture_events_helper.clear_stopped_tids();
+
+                        auto fc = st->forked_command;
+                        if (fc) {
+                            fc->abort();
+                        }
+
+                        st->async_perf_ringbuffer_monitor->terminate();
+
+                        st->terminator();
+                    }
+                };
+
+                // defer the terminate() call to allow the async_perf_ringbuffer_monitor to receive any closed() events for the event fds it monitors
+                if (defer) {
+                    LOG_FATAL("Terminating pid monitoring... starting termination countdown.");
+                    timer->expires_from_now(defer_delay_ms);
+                    timer->async_wait(std::move(handler));
                 }
-
-                st->async_perf_ringbuffer_monitor->terminate();
-
-                st->terminator();
+                // otherwise, call the handler directly
+                else {
+                    handler({});
+                }
             });
         }
 
@@ -842,6 +872,8 @@ namespace agents::perf {
         std::shared_ptr<async::async_wait_for_process_t<boost::asio::io_context::executor_type>> waiter {};
         std::shared_ptr<async_perf_ringbuffer_monitor_t> async_perf_ringbuffer_monitor;
         std::shared_ptr<async::proc::async_process_t> forked_command;
+        std::shared_ptr<boost::asio::deadline_timer> terminate_delay_timer {
+            new boost::asio::deadline_timer(strand.context())};
         perf_capture_events_helper_t perf_capture_events_helper;
         bool terminate_requested {false};
 
@@ -861,10 +893,10 @@ namespace agents::perf {
                       ipc_sink->async_send_message(
                           ipc::msg_capture_failed_t {ipc::capture_failed_reason_t::command_exec_failed},
                           use_continuation),
-                      [st = this->shared_from_this()](bool) { st->terminate(); });
+                      [st = this->shared_from_this()](bool) { st->terminate(false); });
             }
             else if (perf_capture_events_helper.remove_command_pid(pid)) {
-                terminate();
+                terminate(true);
             }
         }
     };

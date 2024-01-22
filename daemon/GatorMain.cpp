@@ -2,28 +2,23 @@
 
 #include "GatorMain.h"
 
+#include "Configuration.h"
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
-#include "ExitStatus.h"
 #include "GatorCLIFlags.h"
 #include "GatorCLIParser.h"
-#include "GatorException.h"
 #include "ICpuInfo.h"
+#include "Logging.h"
 #include "ParserResult.h"
 #include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "android/AndroidActivityManager.h"
-#include "android/AppGatorRunner.h"
-#include "android/Spawn.h"
-#include "android/Utils.h"
 #include "capture/CaptureProcess.h"
 #include "capture/Environment.h"
-#include "lib/FileDescriptor.h"
-#include "lib/Popen.h"
 #include "lib/Process.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
-#include "lib/Utils.h"
+#include "linux/Tracepoints.h"
 #include "logging/configuration.h"
 #include "logging/file_log_sink.h"
 #include "logging/global_log.h"
@@ -32,21 +27,20 @@
 #include "xml/EventsXML.h"
 #include "xml/PmuXMLParser.h"
 
-#include <algorithm>
-#include <cinttypes>
+#include <array>
+#include <cerrno>
+#include <climits>
+#include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <ios>
 #include <iostream>
-#include <limits>
-#include <sstream>
+#include <memory>
 #include <string_view>
 
 #include <Drivers.h>
-#include <Monitor.h>
 #include <fcntl.h>
 #include <sys/prctl.h>
-#include <sys/signalfd.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 namespace {
@@ -128,6 +122,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mSpeSampleRate = result.mSpeSampleRate;
     gSessionData.mAndroidPackage = result.mAndroidPackage;
     gSessionData.mAndroidActivity = result.mAndroidActivity;
+    gSessionData.mAndroidActivityFlags = (result.mAndroidActivityFlags == nullptr) ? "" : result.mAndroidActivityFlags;
     gSessionData.smmu_identifiers = result.smmu_identifiers;
 
     // when profiling an android package, use the package name as the '--wait-process' value
@@ -205,8 +200,9 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
         local_event_handler_t()
         {
             if (gSessionData.mAndroidPackage != nullptr && gSessionData.mAndroidActivity != nullptr) {
-                activity_manager =
-                    create_android_activity_manager(gSessionData.mAndroidPackage, gSessionData.mAndroidActivity);
+                activity_manager = create_android_activity_manager(gSessionData.mAndroidPackage,
+                                                                   gSessionData.mAndroidActivity,
+                                                                   gSessionData.mAndroidActivityFlags);
             }
         }
 
@@ -237,12 +233,7 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
             }
 
             LOG_DEBUG("Starting the target application now...");
-            if (activity_manager->start()) {
-                return true;
-            }
-
-            LOG_ERROR("The target application could not be started automatically. Please start it manually.");
-            return false;
+            return activity_manager->start();
         }
 
     private:

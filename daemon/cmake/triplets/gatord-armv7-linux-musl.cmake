@@ -9,3 +9,5 @@ if(NOT CMAKE_HOST_SYSTEM_PROCESSOR)
 endif()
 
 set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/../../../cmake/arm-linux-musleabihf.toolchain.cmake)
+
+include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")

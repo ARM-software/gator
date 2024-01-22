@@ -3,21 +3,26 @@
 #include "logging/agent_log.h"
 
 #include "Logging.h"
+#include "async/async_line_reader.hpp"
+#include "async/continuations/operations.h"
+#include "async/continuations/use_continuation.h"
 #include "lib/AutoClosingFd.h"
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
 #include "lib/String.h"
+#include "logging/parameters.h"
 
+#include <array>
 #include <cinttypes>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <mutex>
 #include <optional>
 #include <string_view>
 
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/read_until.hpp>
-
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace logging {

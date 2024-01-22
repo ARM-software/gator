@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_PROCESSCOUNTER_H
 #define INCLUDE_NON_ROOT_PROCESSCOUNTER_H
@@ -6,7 +6,7 @@
 #include "non_root/NonRootCounter.h"
 
 namespace non_root {
-    enum class AbsoluteProcessCounter : typename std::underlying_type<NonRootCounter>::type {
+    enum class AbsoluteProcessCounter : std::underlying_type_t<NonRootCounter> {
         DATA_SIZE = NonRootCounterValue(NonRootCounter::PROCESS_ABS_DATA_SIZE),
         NUM_THREADS = NonRootCounterValue(NonRootCounter::PROCESS_ABS_NUM_THREADS),
         RES_LIMIT = NonRootCounterValue(NonRootCounter::PROCESS_ABS_RES_LIMIT),
@@ -16,7 +16,7 @@ namespace non_root {
         VM_SIZE = NonRootCounterValue(NonRootCounter::PROCESS_ABS_VM_SIZE),
     };
 
-    enum class DeltaProcessCounter : typename std::underlying_type<NonRootCounter>::type {
+    enum class DeltaProcessCounter : std::underlying_type_t<NonRootCounter> {
         MAJOR_FAULTS = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_MAJOR_FAULTS),
         MINOR_FAULTS = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_MINOR_FAULTS),
         UTIME = NonRootCounterValue(NonRootCounter::PROCESS_DELTA_UTIME),

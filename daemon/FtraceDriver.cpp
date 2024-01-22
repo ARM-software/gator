@@ -2,11 +2,12 @@
 
 #include "FtraceDriver.h"
 
-#include "Config.h"
+#include "DriverCounter.h"
 #include "DynBuf.h"
 #include "Logging.h"
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
+#include "SimpleDriver.h"
 #include "lib/FileDescriptor.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -16,18 +17,26 @@
 
 #include <array>
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <csignal>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <memory>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include <dirent.h>
 #include <fcntl.h>
-#include <regex.h>
+#include <mxml.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 using namespace std::chrono_literals;
@@ -613,7 +622,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     return result;
 }
 
-void FtraceDriver::start(std::function<void(int, int, std::int64_t)> initialValuesConsumer)
+void FtraceDriver::start(const std::function<void(int, int, std::int64_t)> & initialValuesConsumer)
 {
     if (lib::writeCStringToFile(traceFsConstants.path__tracing_on, "1") != 0) {
         LOG_ERROR("Unable to turn ftrace on");

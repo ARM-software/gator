@@ -51,6 +51,8 @@ public:
     const char * pmuPath {nullptr};
     const char * mAndroidPackage {nullptr};
     const char * mAndroidActivity {nullptr};
+    const char * mAndroidActivityFlags {nullptr};
+
     gator::smmuv3::default_identifiers_t smmu_identifiers;
 
     int mBacktraceDepth {0};

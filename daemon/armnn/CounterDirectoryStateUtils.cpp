@@ -1,10 +1,14 @@
-/* Copyright (C) 2019-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/CounterDirectoryStateUtils.h"
 
+#include "armnn/ICounterDirectoryConsumer.h"
 #include "lib/Format.h"
 
+#include <cctype>
+#include <cstdint>
 #include <locale>
+#include <map>
 #include <string>
 
 namespace armnn {

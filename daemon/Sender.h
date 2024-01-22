@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
 #ifndef __SENDER_H__
 #define __SENDER_H__
@@ -7,8 +7,7 @@
 
 #include <cstdio>
 #include <memory>
-
-#include <pthread.h>
+#include <thread>
 
 class OlySocket;
 

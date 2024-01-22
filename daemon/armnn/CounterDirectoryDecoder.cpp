@@ -1,10 +1,16 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/CounterDirectoryDecoder.h"
 
 #include "Logging.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/ICounterDirectoryConsumer.h"
 
+#include <cstdint>
 #include <cstring>
+#include <map>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace armnn {

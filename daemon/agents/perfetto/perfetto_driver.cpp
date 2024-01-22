@@ -1,13 +1,16 @@
 /* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/perfetto/perfetto_driver.h"
 
+#include "Counter.h"
+#include "DriverCounter.h"
 #include "Logging.h"
-#include "SessionData.h"
-#include "capture/Environment.h"
-#include "k/perf_event.h"
+#include "PolledDriver.h"
 #include "lib/perfetto_utils.h"
 
+#include <string>
 #include <vector>
+
+#include <mxml.h>
 
 namespace agents::perfetto {
 

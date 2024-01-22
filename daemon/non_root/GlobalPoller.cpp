@@ -1,10 +1,12 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "non_root/GlobalPoller.h"
 
 #include "lib/FsEntry.h"
+#include "lib/TimestampSource.h"
 #include "linux/proc/ProcLoadAvgFileRecord.h"
 #include "linux/proc/ProcStatFileRecord.h"
+#include "non_root/GlobalStatsTracker.h"
 
 #include <string>
 

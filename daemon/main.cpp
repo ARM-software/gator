@@ -5,6 +5,7 @@
 #include "agents/ext_source/ext_source_agent_main.h"
 #include "agents/perf/perf_agent_main.h"
 #include "agents/spawn_agent.h"
+#include "lib/Span.h"
 
 #if CONFIG_ARMNN_AGENT
 #include "agents/armnn/armnn_agent_main.h"

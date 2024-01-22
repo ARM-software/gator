@@ -1,6 +1,12 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "non_root/ProcessPoller.h"
+
+#include "lib/TimestampSource.h"
+#include "linux/proc/ProcPidStatFileRecord.h"
+#include "linux/proc/ProcPidStatmFileRecord.h"
+#include "linux/proc/ProcessPollerBase.h"
+#include "non_root/ProcessStateTracker.h"
 
 #include <optional>
 #include <string>

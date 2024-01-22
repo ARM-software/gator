@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 #include "lib/Utils.h"
 
 #include "ExitStatus.h"
@@ -7,17 +7,25 @@
 #include "lib/String.h"
 #include "lib/Syscall.h"
 
+#include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cinttypes>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
 
 #include <fcntl.h>
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 //Works for Linux and Android
 #define ROOT_UID 0

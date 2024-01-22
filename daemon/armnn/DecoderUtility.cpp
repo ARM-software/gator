@@ -1,9 +1,20 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 #include "armnn/DecoderUtility.h"
 
 #include "Logging.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/IPacketConsumer.h"
+#include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <set>
 #include <sstream>
+#include <string>
+#include <vector>
 
 namespace armnn {
     static const std::size_t UINT32_SIZE = sizeof(std::uint32_t);

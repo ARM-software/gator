@@ -5,18 +5,13 @@
 #include "Logging.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
+#include "linux/perf/IPerfGroups.h"
 #include "linux/perf/PerfEventGroup.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
+#include "linux/perf/attr_to_key_mapping_tracker.h"
 
-#include <cassert>
-#include <cerrno>
 #include <cinttypes>
-#include <climits>
-#include <cstring>
-#include <iterator>
-#include <numeric>
-
-#include <sys/resource.h>
-#include <unistd.h>
+#include <string>
 
 perf_event_group_configurer_t perf_groups_configurer_t::getGroup(attr_to_key_mapping_tracker_t & mapping_tracker,
                                                                  const PerfEventGroupIdentifier & groupIdentifier)

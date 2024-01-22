@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroupIdentifier.h"
 
@@ -7,6 +7,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
+#include <map>
+#include <string>
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier()
     : cluster(nullptr), pmu(nullptr), cpuNumber(-1), cpuNumberToType(nullptr)

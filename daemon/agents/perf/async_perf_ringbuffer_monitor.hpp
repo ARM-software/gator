@@ -166,10 +166,10 @@ namespace agents::perf {
                                  primary_fds = std::move(primary_fds),
                                  supplimentary_fds = std::move(supplimentary_fds),
                                  cpu]() {
-                               for (auto pair : primary_fds) {
+                               for (const auto & pair : primary_fds) {
                                    st->do_observer_perf_fd(cpu, pair.first, true, pair.second);
                                }
-                               for (auto pair : supplimentary_fds) {
+                               for (const auto & pair : supplimentary_fds) {
                                    st->do_observer_perf_fd(cpu, pair.first, false, pair.second);
                                }
                            });
@@ -197,13 +197,13 @@ namespace agents::perf {
                          | then([st,
                                  primary_fds = std::move(primary_fds),
                                  supplimentary_fds = std::move(supplimentary_fds)]() {
-                               for (auto pair : primary_fds) {
+                               for (const auto & pair : primary_fds) {
                                    st->do_observer_perf_fd(lib::toEnumValue(pair.first),
                                                            pair.second.first,
                                                            true,
                                                            pair.second.second);
                                }
-                               for (auto pair : supplimentary_fds) {
+                               for (const auto & pair : supplimentary_fds) {
                                    st->do_observer_perf_fd(lib::toEnumValue(pair.first),
                                                            pair.second.first,
                                                            false,

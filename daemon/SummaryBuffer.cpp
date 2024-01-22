@@ -1,14 +1,22 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "SummaryBuffer.h"
 
 #include "BufferUtils.h"
-#include "Logging.h"
-#include "SessionData.h"
+#include "IBufferControl.h"
+#include "IRawFrameBuilder.h"
+#include "Protocol.h"
 #include "lib/String.h"
 
-#include <cstring>
+#include <cstdint>
+#include <map>
+#include <string>
+
+#include <semaphore.h>
 
 SummaryBuffer::SummaryBuffer(const int size, sem_t & readerSem) : buffer(size, readerSem)
 {

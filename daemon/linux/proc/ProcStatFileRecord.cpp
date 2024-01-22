@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcStatFileRecord.h"
 
@@ -6,8 +6,9 @@
 #include "lib/Format.h"
 
 #include <cctype>
-#include <cstdlib>
-#include <cstring>
+#include <optional>
+#include <utility>
+#include <vector>
 
 namespace lnx {
     namespace {
@@ -329,15 +330,15 @@ namespace lnx {
                                            std::optional<unsigned long> && procs_running_,
                                            std::optional<unsigned long> && procs_blocked_)
         : cpus(std::move(cpus_)),
-          page(std::move(page_)),
-          swap(std::move(swap_)),
-          intr(std::move(intr_)),
-          soft_irq(std::move(soft_irq_)),
-          ctxt(std::move(ctxt_)),
-          btime(std::move(btime_)),
-          processes(std::move(processes_)),
-          procs_running(std::move(procs_running_)),
-          procs_blocked(std::move(procs_blocked_))
+          page(page_),
+          swap(swap_),
+          intr(intr_),
+          soft_irq(soft_irq_),
+          ctxt(ctxt_),
+          btime(btime_),
+          processes(processes_),
+          procs_running(procs_running_),
+          procs_blocked(procs_blocked_)
     {
     }
 }

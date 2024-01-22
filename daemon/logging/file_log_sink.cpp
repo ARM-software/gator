@@ -4,6 +4,14 @@
 
 #include "OlyUtility.h"
 
+#include <array>
+#include <cstddef>
+#include <ios>
+#include <mutex>
+#include <string_view>
+
+#include <boost/filesystem/path.hpp>
+
 namespace {
     constexpr std::size_t path_buffer_size = 4096;
 

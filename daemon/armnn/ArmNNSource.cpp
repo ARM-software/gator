@@ -1,17 +1,23 @@
 /* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "armnn/ArmNNSource.h"
 
 #include "Buffer.h"
+#include "SessionData.h"
 #include "Source.h"
 #include "armnn/FrameBuilderFactory.h"
 #include "armnn/ICaptureController.h"
 #include "armnn/TimestampCorrector.h"
 
+#include <cstdint>
+#include <functional>
 #include <memory>
-#include <utility>
+
+#include <semaphore.h>
 
 namespace armnn {
     class Source : public ::Source {

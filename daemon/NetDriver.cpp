@@ -1,15 +1,21 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
+// must be before includes
 
 #include "NetDriver.h"
 
+#include "DriverCounter.h"
 #include "Logging.h"
-#include "SessionData.h"
+#include "PolledDriver.h"
 
 #include <cinttypes>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 
+#include <mxml.h>
 #include <unistd.h>
 
 class NetCounter : public DriverCounter {

@@ -8,8 +8,6 @@
 #include "agents/perf/events/types.hpp"
 #include "agents/perf/record_types.h"
 #include "ipc/messages.h"
-#include "k/perf_event.h"
-#include "lib/Assert.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
@@ -94,7 +92,7 @@ namespace agents::perf {
     /** Add the name for --wait-process */
     void add_wait_for_process(ipc::msg_capture_configuration_t & msg, const char * command);
 
-     /** Add the android package name  for --android-pkg */
+    /** Add the android package name  for --android-pkg */
     void add_android_package(ipc::msg_capture_configuration_t & msg, const char * android_pkg);
 
     /** Add the pids for --pids */

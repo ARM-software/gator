@@ -3,18 +3,23 @@
 #include "AppGatorRunner.h"
 
 #include "Logging.h"
-#include "android/Spawn.h"
+#include "android/IAppGatorRunner.h"
 #include "android/Utils.h"
 #include "lib/Popen.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
 
 #include <array>
-#include <csignal>
+#include <cstdlib>
 #include <cstring>
-#include <iostream>
+#include <memory>
 #include <numeric>
-#include <sstream>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace gator::android {
     constexpr std::string_view RUN_AS = "run-as";

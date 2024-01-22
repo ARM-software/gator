@@ -4,13 +4,20 @@
 
 #include "Logging.h"
 #include "lib/String.h"
+#include "lib/Syscall.h"
 
 #include <cerrno>
+#include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <ios>
+#include <map>
 #include <memory>
+#include <set>
 
 #include <dirent.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace lnx {

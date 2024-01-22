@@ -1,12 +1,20 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "HwmonDriver.h"
 
+#include "DriverCounter.h"
 #include "Logging.h"
+#include "PolledDriver.h"
 #include "lib/String.h"
 #include "libsensors/sensors.h"
 
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
+
+#include <mxml.h>
 
 // feature->type to input map
 static sensors_subfeature_type getInput(const sensors_feature_type type)

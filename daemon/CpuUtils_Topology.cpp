@@ -1,8 +1,13 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils_Topology.h"
 
 #include "Logging.h"
+#include "lib/Span.h"
+
+#include <cstddef>
+#include <map>
+#include <set>
 
 namespace cpu_utils {
     void updateCpuIdsFromTopologyInformation(lib::Span<int> cpuIds,

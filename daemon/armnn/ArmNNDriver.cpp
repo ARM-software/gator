@@ -2,10 +2,21 @@
 
 #include "armnn/ArmNNDriver.h"
 
+#include "Config.h"
+#include "Counter.h"
+#include "Driver.h"
+#include "Events.h"
 #include "GetEventKey.h"
-#include "Logging.h"
-#include "SessionData.h"
+#include "armnn/IAcceptor.h"
+#include "armnn/SocketAcceptor.h"
+#include "armnn/SocketIO.h"
 #include "xml/EventsXMLProcessor.h"
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <mxml.h>
 
 namespace armnn {
     Driver::Driver()

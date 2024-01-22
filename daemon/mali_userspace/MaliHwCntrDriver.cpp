@@ -2,19 +2,25 @@
 
 #include "mali_userspace/MaliHwCntrDriver.h"
 
+#include "Constant.h"
 #include "Counter.h"
 #include "Logging.h"
 #include "MaliGPUClockPolledDriver.h"
 #include "MaliHwCntr.h"
-#include "SessionData.h"
-#include "capture/Environment.h"
-#include "lib/perfetto_utils.h"
+#include "PolledDriver.h"
+#include "SimpleDriver.h"
+#include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/MaliInstanceLocator.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
-
-#include <unistd.h>
+#include <map>
+#include <memory>
+#include <set>
+#include <utility>
+#include <vector>
 
 namespace mali_userspace {
     MaliHwCntrDriver::MaliHwCntrDriver()

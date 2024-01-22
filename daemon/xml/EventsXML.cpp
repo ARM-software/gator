@@ -1,18 +1,29 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXML.h"
 
-#include "CapturedXML.h"
 #include "Driver.h"
+#include "EventCode.h"
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
 #include "lib/File.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 #include "xml/EventsXMLProcessor.h"
+#include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
+#include <climits>
+#include <cstdio>
+#include <cstdlib>
+#include <map>
+#include <memory>
+#include <string>
 #include <string_view>
+#include <utility>
+
+#include <mxml.h>
 
 namespace events_xml {
     namespace {

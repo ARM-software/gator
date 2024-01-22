@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_ARMNN_BYTE_ORDER_H
 #define INCLUDE_ARMNN_BYTE_ORDER_H
@@ -19,12 +19,11 @@ namespace armnn {
 
     namespace byte_order {
         template<typename T>
-        using is_byte = std::integral_constant<bool,
-                                               std::is_same<T, char>::value                //
-                                                   || std::is_same<T, std::uint8_t>::value //
-                                                   || std::is_same<T, std::int8_t>::value>;
+        inline constexpr bool is_byte_v = std::is_same_v<T, char>         //
+                                       || std::is_same_v<T, std::uint8_t> //
+                                       || std::is_same_v<T, std::int8_t>;
 
-        template<typename T, typename = typename std::enable_if<is_byte<T>::value>::type>
+        template<typename T, typename = std::enable_if_t<is_byte_v<T>>>
         using ByteArray = lib::Span<const T>;
 
         /** Define the system byte order */

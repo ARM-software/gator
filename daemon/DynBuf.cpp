@@ -1,14 +1,17 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "DynBuf.h"
 
 #include "Logging.h"
 
 #include <cerrno>
+#include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 // Pick an aggressive size as buffer is primarily used for disk IO

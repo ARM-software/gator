@@ -1,7 +1,8 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "PolledDriver.h"
 
+#include "DriverCounter.h"
 #include "IBlockCounterFrameBuilder.h"
 
 void PolledDriver::read(IBlockCounterFrameBuilder & buffer)

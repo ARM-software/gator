@@ -10,18 +10,21 @@
 
 #include "Logging.h"
 #include "OlySocket.h"
+#include "armnn/ISocketIO.h"
+#include "lib/Span.h"
 
 #include <cassert>
 #include <cerrno>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
-#include <exception>
+#include <memory>
 #include <utility>
 
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <unistd.h>
 
 /** The number of connections to queue whilst waiting for accept */
 constexpr int MAX_LISTEN_BACKLOG = 128;

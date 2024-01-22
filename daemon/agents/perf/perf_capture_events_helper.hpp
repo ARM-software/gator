@@ -1,10 +1,12 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
+#include "Logging.h"
 #include "agents/perf/events/event_binding_manager.hpp"
 #include "agents/perf/events/perf_activator.hpp"
 #include "agents/perf/events/types.hpp"
+#include "lib/EnumUtils.h"
 #include "lib/error_code_or.hpp"
 #include "linux/proc/ProcessChildren.h"
 
@@ -320,6 +322,8 @@ namespace agents::perf {
             core_no_t core_no,
             cpu_cluster_id_t cluster_id)
         {
+            LOG_DEBUG("core_online_prepare(%u, %u)", lib::toEnumValue(core_no), lib::toEnumValue(cluster_id));
+
             std::set<pid_t> additional_tids {};
             std::set<pid_t> supplimentary_tids {};
             std::map<pid_t, lnx::sig_continuer_t> paused_pids {};
@@ -374,7 +378,7 @@ namespace agents::perf {
                         return {boost::system::error_code {boost::asio::error::eof}};
                     }
 
-                    for (auto entry : result.event_fds_by_pid) {
+                    for (const auto & entry : result.event_fds_by_pid) {
                         if ((entry.first == header_pid) || (supplimentary_tids.count(entry.first) > 0)) {
                             supplimentary_event_fds.emplace_back(entry.second);
                         }

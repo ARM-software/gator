@@ -1,12 +1,14 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
 #include <algorithm>
 #include <cerrno>
+#include <cstddef>
 #include <cstdint>
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace lib {

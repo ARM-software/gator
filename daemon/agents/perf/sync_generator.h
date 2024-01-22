@@ -55,9 +55,8 @@ namespace agents::perf {
         basic_sync_generator_t(bool enable_sync_thread_mode,
                                bool read_timer,
                                std::shared_ptr<ipc::raw_ipc_channel_sink_t> sink)
-            : sink {std::move(sink)}, thread {enable_sync_thread_mode, read_timer, [this](auto... args) {
-                                                  write(args...);
-                                              }}
+            : sink {std::move(sink)},
+              thread {enable_sync_thread_mode, read_timer, [this](auto... args) { write(args...); }}
         {
         }
 

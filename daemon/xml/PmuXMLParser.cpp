@@ -4,21 +4,25 @@
 
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "SessionData.h"
-#include "lib/Format.h"
 #include "lib/FsEntry.h"
-#include "lib/String.h"
-#include "lib/Utils.h"
+#include "linux/smmu_identifier.h"
+#include "xml/PmuXML.h"
 
-#include <algorithm>
+#include <array>
+#include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
 #include <string_view>
+#include <utility>
 
-#include <boost/regex.hpp>
+#include <boost/regex/v5/regex.hpp>
+#include <boost/regex/v5/regex_fwd.hpp>
+#include <boost/regex/v5/regex_match.hpp>
 
 #include <mxml.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 using namespace std::literals;
 

@@ -1,12 +1,27 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/SessionStateTracker.h"
 
 #include "Logging.h"
-#include "armnn/CounterDirectoryStateUtils.h"
+#include "armnn/CaptureMode.h"
+#include "armnn/ICounterConsumer.h"
+#include "armnn/ICounterDirectoryConsumer.h"
+#include "armnn/IGlobalState.h"
+#include "armnn/ISessionPacketSender.h"
+#include "lib/Span.h"
 
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <set>
+#include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace armnn {
 

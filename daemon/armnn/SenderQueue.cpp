@@ -4,6 +4,11 @@
 
 #include "Logging.h"
 
+#include <cstdint>
+#include <mutex>
+#include <utility>
+#include <vector>
+
 namespace armnn {
 
     bool SenderQueue::add(std::vector<std::uint8_t> && data)

@@ -1,14 +1,26 @@
 /* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/perf/source_adapter.h"
 
-#include "ExitStatus.h"
 #include "ISender.h"
 #include "Logging.h"
 #include "Time.h"
 #include "agents/perf/perf_agent_worker.h"
+#include "ipc/messages.h"
 #include "lib/Assert.h"
 
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <utility>
+#include <vector>
+
 #include <boost/asio/use_future.hpp>
+
+#include <semaphore.h>
+#include <sys/types.h>
 
 namespace agents::perf {
     perf_source_adapter_t::perf_source_adapter_t(sem_t & sender_sem,

@@ -1,13 +1,10 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/perfetto/perfetto_agent_main.h"
 
-#include "Logging.h"
 #include "agents/agent_environment.h"
 #include "agents/perfetto/perfetto_agent.h"
 #include "agents/perfetto/perfetto_sdk_helper.h"
-#include "ipc/raw_ipc_channel_source.h"
-
-#include <boost/asio/io_context.hpp>
+#include "lib/Span.h"
 
 namespace agents {
 

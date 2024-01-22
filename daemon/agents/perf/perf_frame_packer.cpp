@@ -1,10 +1,21 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/perf_frame_packer.hpp"
 
+#include "BufferUtils.h"
 #include "ISender.h"
+#include "Logging.h"
+#include "Protocol.h"
 #include "agents/perf/async_buffer_builder.h"
 #include "k/perf_event.h"
+#include "lib/Span.h"
+
+#include <algorithm>
+#include <cinttypes>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace agents::perf {
 

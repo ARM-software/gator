@@ -1,24 +1,23 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "Proc.h"
 
-#include "Config.h"
 #include "DynBuf.h"
 #include "FtraceDriver.h"
 #include "Logging.h"
-#include "OlyUtility.h"
-#include "lib/Utils.h"
+#include "lib/FsEntry.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 #include "linux/proc/ProcPidStatFileRecord.h"
+#include "linux/proc/ProcPidStatmFileRecord.h"
 #include "linux/proc/ProcessPollerBase.h"
 
-#include <cerrno>
-#include <cstdio>
-#include <cstdlib>
+#include <atomic>
 #include <cstring>
+#include <optional>
+#include <string>
 
-#include <dirent.h>
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace {

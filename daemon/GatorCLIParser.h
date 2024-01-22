@@ -22,6 +22,7 @@
 const int ERROR_PARSING = -101;
 static const struct option ANDROID_ACTIVITY = {"android-activity", /*******/ required_argument, nullptr, 'm'};
 static const struct option ANDROID_PACKAGE = {"android-pkg", /************/ required_argument, nullptr, 'l'};
+static const struct option PACKAGE_FLAGS = {"activity-args", /************/ required_argument, nullptr, 'n'};
 static const struct option WAIT_PROCESS = {"wait-process", /***********/ required_argument, nullptr, 'Q'};
 
 #define DISABLE_TCP_USE_UDS_PORT (-1)

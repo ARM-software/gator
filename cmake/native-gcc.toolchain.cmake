@@ -1,22 +1,17 @@
-# Copyright (C) 2021 by Arm Limited. All rights reserved.
+# Copyright (C) 2021-2023 by Arm Limited. All rights reserved.
 
 # No cross compiler
-SET(CROSS_COMPILE               ""
-                CACHE STRING "")
+SET(CROSS_COMPILE "" CACHE STRING "")
 
-SET(CMAKE_C_FLAGS               ""
-                                CACHE STRING "Default GCC compiler flags")
-SET(CMAKE_CXX_FLAGS             ""
-                                CACHE STRING "Default G++ compiler flags")
-SET(CMAKE_EXE_LINKER_FLAGS      ""
-                                CACHE STRING "Default exe linker flags")
-SET(CMAKE_MODULE_LINKER_FLAGS   ""
-                                CACHE STRING "Default module linker flags")
-SET(CMAKE_SHARED_LINKER_FLAGS   ""
-                                CACHE STRING "Default shared linker flags")
+# Start with any user specified flags
+SET(CMAKE_C_FLAGS               "$CACHE{CMAKE_C_FLAGS}")
+SET(CMAKE_CXX_FLAGS             "$CACHE{CMAKE_CXX_FLAGS}")
+SET(CMAKE_EXE_LINKER_FLAGS      "$CACHE{CMAKE_EXE_LINKER_FLAGS}")
+SET(CMAKE_MODULE_LINKER_FLAGS   "$CACHE{CMAKE_MODULE_LINKER_FLAGS}")
+SET(CMAKE_SHARED_LINKER_FLAGS   "$CACHE{CMAKE_SHARED_LINKER_FLAGS}")
 
 # Find the commands
 INCLUDE("${CMAKE_CURRENT_LIST_DIR}/xcompiler.toolchain.cmake")
 
 # LTO options
-INCLUDE("${CMAKE_CURRENT_LIST_DIR}/lto.toolchain.cmake")
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/lto.cmake")

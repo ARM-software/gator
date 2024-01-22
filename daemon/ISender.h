@@ -16,6 +16,7 @@ enum class ResponseType : char {
     NAK = 5,
     CURRENT_CONFIG = 6,
     GATOR_LOG = 7,
+    ACTIVITY_STARTED = 8,
     ERROR = '\xFF'
 };
 

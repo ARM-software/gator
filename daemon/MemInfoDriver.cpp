@@ -1,10 +1,16 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "MemInfoDriver.h"
 
+#include "DriverCounter.h"
 #include "Logging.h"
-#include "SessionData.h"
+#include "PolledDriver.h"
 
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+
+#include <mxml.h>
 #include <unistd.h>
 
 class MemInfoCounter : public DriverCounter {

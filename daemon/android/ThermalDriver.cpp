@@ -2,18 +2,16 @@
 
 #include "android/ThermalDriver.h"
 
-#include "IBlockCounterFrameBuilder.h"
+#include "DriverCounter.h"
 #include "Logging.h"
-#include "SessionData.h"
+#include "PolledDriver.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
-#include <cstdio>
-#include <string_view>
 
 #include <dlfcn.h>
 #include <mxml.h>
-#include <unistd.h>
 
 using namespace std::string_view_literals;
 

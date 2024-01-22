@@ -10,11 +10,18 @@
 #include "lib/Utils.h"
 #include "linux/perf/PerfUtils.h"
 
+#include <algorithm>
 #include <array>
+#include <cerrno>
+#include <cinttypes>
+#include <cstdint>
 #include <cstring>
+#include <memory>
+#include <optional>
 
 #include <pwd.h>
 #include <sys/resource.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 using namespace capture;

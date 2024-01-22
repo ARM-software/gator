@@ -7,10 +7,10 @@
 #include "OlyUtility.h"
 #include "SessionData.h"
 
-#include <climits>
-#include <cstddef>
 #include <cstdlib>
 #include <cstring>
+
+#include <mxml.h>
 
 namespace {
     constexpr const char * TAG_SESSION = "session";
@@ -55,6 +55,7 @@ void SessionXML::parse()
 void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
 {
     int version = 0;
+    bool userSetIncludeKernelEvents = false;
     if ((mxmlElementGetAttr(node, ATTR_VERSION) != nullptr)
         && !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), 10)) {
         LOG_ERROR("Invalid session.xml version must be an integer");
@@ -134,7 +135,11 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     }
 
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_EXCLUDE_KERNEL) == 0) {
-        gSessionData.mExcludeKernelEvents = stringToBool(mxmlElementGetAttr(node, ATTR_EXCLUDE_KERNEL_EVENTS), false);
+        const auto * exclude_kernel_attr = mxmlElementGetAttr(node, ATTR_EXCLUDE_KERNEL_EVENTS);
+        if (exclude_kernel_attr != nullptr) {
+            userSetIncludeKernelEvents = true;
+            gSessionData.mExcludeKernelEvents = stringToBool(exclude_kernel_attr, false);
+        }
     }
 
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) == 0) {
@@ -152,6 +157,11 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
             sessionImage(node);
         }
         node = mxmlWalkNext(node, tree, MXML_NO_DESCEND);
+    }
+
+    //If user hasn't explicitly included kernel events and its not system wide, default to excluding them.
+    if (!userSetIncludeKernelEvents && !gSessionData.mSystemWide) {
+        gSessionData.mExcludeKernelEvents = true;
     }
 }
 

@@ -4,7 +4,9 @@
 
 #include "Logging.h"
 #include "agents/perf/events/event_configuration.hpp"
+#include "agents/perf/events/perf_ringbuffer_mmap.hpp"
 #include "agents/perf/events/types.hpp"
+#include "agents/perf/record_types.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
 #include "lib/AutoClosingFd.h"
@@ -16,15 +18,26 @@
 #include "lib/error_code_or.hpp"
 #include "linux/perf/PerfUtils.h"
 
+#include <array>
 #include <cerrno>
+#include <cinttypes>
+#include <cstdint>
 #include <cstring>
+#include <ios>
+#include <limits>
+#include <memory>
+#include <optional>
 #include <sstream>
-#include <stdexcept>
+#include <utility>
+#include <vector>
 
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/system/errc.hpp>
 #include <boost/system/error_code.hpp>
 
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 namespace agents::perf {
@@ -59,13 +72,13 @@ namespace agents::perf {
                                                                      int core,
                                                                      int group_fd,
                                                                      bool supports_cloexec,
-                                                                     lib::Span<std::array<bool, 3> const> patterns)
+                                                                     lib::Span<std::array<bool, 2> const> patterns)
         {
             for (auto const pattern : patterns) {
                 // set
                 attr.exclude_kernel = pattern[0];
                 attr.exclude_hv = pattern[1];
-                attr.exclude_idle = pattern[2];
+                attr.exclude_idle = false;
 
                 // try to open the event as is
                 auto fd = perf_event_open(attr, pid, core, group_fd, supports_cloexec);
@@ -257,23 +270,19 @@ namespace agents::perf {
                                                                              pid_t pid,
                                                                              int group_fd)
     {
-        constexpr std::array<std::array<bool, 3>, 4> exclude_pattern_exclude_kernel {{
-            // exclude_kernel, exclude_hv, exclude_idle
-            {{true, true, true}},
-            {{true, true, false}},
-            {{true, false, true}},
-            {{true, false, false}},
+        constexpr std::array<std::array<bool, 2>, 2> exclude_pattern_exclude_kernel {{
+            // exclude_kernel, exclude_hv
+            {{true, true}},
+            {{true, false}},
         }};
 
-        constexpr std::array<std::array<bool, 3>, 6> exclude_pattern_include_kernel {{
-            // exclude_kernel, exclude_hv, exclude_idle
-            {{false, false, false}},
-            {{false, true, false}},
+        constexpr std::array<std::array<bool, 2>, 4> exclude_pattern_include_kernel {{
+            // exclude_kernel, exclude_hv
+            {{false, false}},
+            {{false, true}},
             // these are the same as per exclude_pattern_exclude_kernel
-            {{true, true, true}},
-            {{true, true, false}},
-            {{true, false, true}},
-            {{true, false, false}},
+            {{true, true}},
+            {{true, false}},
         }};
 
         // prepare the attribute

@@ -1,12 +1,15 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "GatorAndroidSetupHandler.h"
 
 #include "CpuUtils.h"
 #include "GatorException.h"
 #include "Logging.h"
+#include "SessionData.h"
 #include "android/PropertyUtils.h"
 
+#include <string>
+#include <string_view>
 #include <utility>
 
 using namespace gator::android;

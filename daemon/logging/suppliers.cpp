@@ -5,8 +5,13 @@
 #include "Logging.h"
 
 #include <fstream>
+#include <istream>
+#include <memory>
+#include <string>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem/exception.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 namespace logging {
 

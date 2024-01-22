@@ -2,24 +2,31 @@
 #include "agents/agent_environment.h"
 
 #include "Logging.h"
-#include "agents/ext_source/ext_source_agent.h"
+#include "async/proc/process_monitor.hpp"
 #include "ipc/raw_ipc_channel_sink.h"
 #include "ipc/raw_ipc_channel_source.h"
 #include "lib/AutoClosingFd.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 #include "logging/agent_log.h"
 #include "logging/configuration.h"
 
+#include <cerrno>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <memory>
+#include <string_view>
+#include <utility>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/thread_pool.hpp>
 
+#include <fcntl.h>
 #include <sys/prctl.h>
 #include <unistd.h>
 

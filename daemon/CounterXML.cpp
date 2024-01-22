@@ -6,17 +6,19 @@
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
-#include "SessionData.h"
+#include "lib/Span.h"
 #include "lib/String.h"
-#include "logging/global_log.h"
 #include "logging/suppliers.h"
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
+#include <climits>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <ostream>
+#include <sstream>
 
-#include <dirent.h>
 #include <mxml.h>
 
 static mxml_node_t * getTree(bool supportsMultiEbs,
@@ -50,7 +52,7 @@ static mxml_node_t * getTree(bool supportsMultiEbs,
         for (auto const * driver : drivers) {
             auto warnings = driver->get_other_warnings();
             for (auto const & warning : warnings) {
-                buffer << warning << "|" << std::endl;
+                buffer << warning << "|" << '\n';
             }
         }
         auto * warning_element = mxmlNewElement(counters, "other_warnings");

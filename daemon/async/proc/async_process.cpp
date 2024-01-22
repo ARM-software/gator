@@ -1,15 +1,18 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "async/proc/async_process.hpp"
 
-#include "async/continuations/async_initiate.h"
+#include "Logging.h"
 #include "async/continuations/operations.h"
+#include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
+#include "async/proc/process_monitor.hpp"
+#include "async/proc/process_state.hpp"
 
 #include <memory>
-#include <stdexcept>
 #include <utility>
 
+#include <boost/system/errc.hpp>
 #include <boost/system/error_code.hpp>
 
 namespace async::proc {

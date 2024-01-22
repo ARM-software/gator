@@ -2,32 +2,40 @@
 
 #include "linux/perf/PerfDriver.h"
 
-#include "Config.h"
+#include "CapturedSpe.h"
+#include "Configuration.h"
 #include "ConfigurationXML.h"
 #include "Counter.h"
+#include "DriverCounter.h"
+#include "EventCode.h"
 #include "GetEventKey.h"
 #include "ICpuInfo.h"
 #include "ISummaryConsumer.h"
 #include "Logging.h"
-#include "SessionData.h"
+#include "SimpleDriver.h"
+#include "agents/perf/capture_configuration.h"
 #include "agents/perf/perf_driver_summary.h"
 #include "k/perf_event.h"
-#include "lib/Assert.h"
 #include "lib/String.h"
-#include "lib/Time.h"
 #include "lib/Utils.h"
-#include "linux/SysfsSummaryInformation.h"
 #include "linux/Tracepoints.h"
 #include "linux/perf/IPerfGroups.h"
-#include "linux/perf/PerfAttrsBuffer.h"
+#include "linux/perf/PerfDriverConfiguration.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
+#include "linux/perf/attr_to_key_mapping_tracker.h"
 #include "xml/PmuXML.h"
 
-#include <array>
+#include <cinttypes>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <functional>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include <sys/utsname.h>
-#include <sys/wait.h>
+#include <mxml.h>
 #include <unistd.h>
 
 #define TYPE_DERIVED ~0U
@@ -227,6 +235,7 @@ static long long _getTracepointId(const TraceFsConstants & traceFsConstants, con
     if (result <= 0) {
         LOG_SETUP("%s is disabled\n%s was not found", counter, getTracepointPath(traceFsConstants, name, "id").c_str());
     }
+    LOG_DEBUG("Tracepoint %s ID is %lld", name, result);
     return result;
 }
 
@@ -236,6 +245,7 @@ static std::int64_t _getTracepointId(const TraceFsConstants & traceFsConstants, 
     if (result <= 0) {
         LOG_SETUP("%s is disabled\n%s was not found", name, getTracepointPath(traceFsConstants, name, "id").c_str());
     }
+    LOG_DEBUG("Tracepoint %s ID is %" PRId64, name, result);
     return result;
 }
 
@@ -998,7 +1008,9 @@ PerfDriver::get_cpu_cluster_keys_for_cpu_frequency_counter()
             if (!counter->isCpuFreqCounterFor(cluster)) {
                 continue;
             }
-            use_cpuinfo = static_cast<CPUFreqDriver *>(counter)->isUseCpuInfoPath();
+            const auto * cpu_freq_counter = static_cast<CPUFreqDriver *>(counter);
+            use_cpuinfo = cpu_freq_counter->isUseCpuInfoPath();
+            key = cpu_freq_counter->getKey();
             break;
         }
         result.emplace_back(agents::perf::perf_capture_configuration_t::cpu_freq_properties_t {key, use_cpuinfo});

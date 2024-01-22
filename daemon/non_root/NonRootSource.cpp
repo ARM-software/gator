@@ -1,24 +1,43 @@
 /* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "non_root/NonRootSource.h"
 
 #include "BlockCounterFrameBuilder.h"
 #include "BlockCounterMessageConsumer.h"
+#include "IBufferControl.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "SessionData.h"
+#include "Time.h"
 #include "lib/String.h"
+#include "lib/TimestampSource.h"
 #include "non_root/GlobalPoller.h"
 #include "non_root/GlobalStateChangeHandler.h"
 #include "non_root/GlobalStatsTracker.h"
+#include "non_root/MixedFrameBuffer.h"
+#include "non_root/NonRootCounter.h"
 #include "non_root/NonRootDriver.h"
 #include "non_root/ProcessPoller.h"
 #include "non_root/ProcessStateChangeHandler.h"
+#include "non_root/ProcessStateTracker.h"
+#include "xml/PmuXML.h"
 
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <ctime>
+#include <functional>
+#include <map>
+#include <optional>
 #include <utility>
 
+#include <semaphore.h>
 #include <sys/prctl.h>
+#include <sys/types.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 

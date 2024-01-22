@@ -1,17 +1,20 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "lib/Popen.h"
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/Span.h"
 
 #include <cerrno>
 #include <climits>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 
 #include <fcntl.h>
 #include <sys/prctl.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 

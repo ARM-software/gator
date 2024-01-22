@@ -9,13 +9,29 @@
 #include "armnn/Session.h"
 
 #include "Logging.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/ICounterConsumer.h"
+#include "armnn/IEncoder.h"
+#include "armnn/IGlobalState.h"
+#include "armnn/IPacketDecoder.h"
+#include "armnn/ISender.h"
+#include "armnn/ISessionPacketSender.h"
 #include "armnn/ISocketIO.h"
 #include "armnn/PacketDecoderEncoderFactory.h"
+#include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
 #include "armnn/SenderThread.h"
 #include "armnn/SessionPacketSender.h"
+#include "armnn/SessionStateTracker.h"
+#include "lib/Span.h"
 
 #include <cinttypes>
+#include <cstdint>
 #include <cstring>
+#include <memory>
+#include <optional>
+#include <utility>
+#include <vector>
 
 static constexpr uint32_t MAGIC = 0x45495434;
 static constexpr std::size_t HEADER_SIZE = 8;

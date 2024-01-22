@@ -2,11 +2,18 @@
 
 #include "AtraceDriver.h"
 
+#include "DriverCounter.h"
 #include "FtraceDriver.h"
 #include "Logging.h"
 #include "OlyUtility.h"
+#include "SimpleDriver.h"
 #include "lib/String.h"
 
+#include <cstdlib>
+#include <cstring>
+
+#include <mxml.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 class AtraceCounter : public DriverCounter {

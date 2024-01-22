@@ -21,8 +21,6 @@
 #include "Logging.h"
 #include "lib/Syscall.h"
 
-#include <utility>
-
 #ifdef WIN32
 #define CLOSE_SOCKET(x) closesocket(x)
 #define SHUTDOWN_RX_TX SD_BOTH

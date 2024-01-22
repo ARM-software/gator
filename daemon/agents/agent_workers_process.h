@@ -129,14 +129,13 @@ namespace agents {
          * @param token Some completion token, called asynchronously once the agent is ready
          * @return depends on completion token type
          */
-        template< typename CompletionToken>
+        template<typename CompletionToken>
         auto async_add_armnn_source(armnn::ISocketIOConsumer & socket_consumer, CompletionToken && token)
         {
-            return worker_manager.template async_add_agent<armnn_agent_worker_t>(
-                process_monitor,
-                agent_privilege_level_t::low,
-                std::forward<CompletionToken>(token),
-                std::ref(socket_consumer));
+            return worker_manager.template async_add_agent<armnn_agent_worker_t>(process_monitor,
+                                                                                 agent_privilege_level_t::low,
+                                                                                 std::forward<CompletionToken>(token),
+                                                                                 std::ref(socket_consumer));
         }
 #endif
 

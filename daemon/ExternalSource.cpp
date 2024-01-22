@@ -1,6 +1,8 @@
 /* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
 
+// Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
+// must be before includes
 
 #include "ExternalSource.h"
 
@@ -8,23 +10,38 @@
 #include "Buffer.h"
 #include "BufferUtils.h"
 #include "CommitTimeChecker.h"
+#include "Config.h"
 #include "Drivers.h"
+#include "ISender.h"
 #include "Logging.h"
 #include "Monitor.h"
 #include "OlySocket.h"
+#include "Protocol.h"
 #include "SessionData.h"
+#include "Time.h"
+#include "agents/ext_source/ext_source_connection.h"
 #include "handleException.h"
 #include "lib/AutoClosingFd.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Syscall.h"
 
+#include <array>
 #include <atomic>
+#include <cerrno>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
 #include <mutex>
+#include <utility>
+#include <vector>
 
 #include <fcntl.h>
+#include <semaphore.h>
+#include <sys/epoll.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 
 static const char MALI_GRAPHICS_STARTUP[] = "\0mali_thirdparty_client";

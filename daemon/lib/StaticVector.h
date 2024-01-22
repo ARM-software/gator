@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -117,7 +117,7 @@ namespace lib {
             (void) pos; // if assertions are disabled
         }
         void check() const { check(size_); }
-        typename std::aligned_storage<sizeof(T), alignof(T)>::type data_[N];
+        std::aligned_storage_t<sizeof(T), alignof(T)> data_[N];
         std::size_t size_ = 0;
     };
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/CoreOnliner.h"
 
@@ -6,7 +6,8 @@
 #include "lib/String.h"
 #include "lib/Utils.h"
 
-#include <cstdio>
+#include <cstdint>
+#include <utility>
 
 CoreOnliner::CoreOnliner(unsigned core) : core(core), known(false), changed(false), online(false)
 {

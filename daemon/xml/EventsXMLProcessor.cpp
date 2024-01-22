@@ -1,10 +1,14 @@
-/* Copyright (C) 2019-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXMLProcessor.h"
 
+#include "EventCode.h"
+#include "Events.h"
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/Span.h"
 #include "lib/String.h"
+#include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
 #include <cstring>
@@ -12,6 +16,8 @@
 #include <optional>
 #include <string>
 #include <utility>
+
+#include <mxml.h>
 
 namespace events_xml {
     namespace {

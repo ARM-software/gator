@@ -4,6 +4,7 @@
 
 #include "CapturedXML.h"
 #include "Config.h"
+#include "Configuration.h"
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "Driver.h"
@@ -17,11 +18,11 @@
 #include "Monitor.h"
 #include "OlySocket.h"
 #include "OlyUtility.h"
-#include "PolledDriver.h"
 #include "PrimarySourceProvider.h"
 #include "Sender.h"
 #include "SessionData.h"
 #include "StreamlineSetup.h"
+#include "StreamlineSetupLoop.h"
 #include "UserSpaceSource.h"
 #include "agents/agent_workers_process.h"
 #include "agents/perfetto/perfetto_driver.h"
@@ -31,23 +32,33 @@
 #include "lib/Assert.h"
 #include "lib/FsUtils.h"
 #include "lib/Waiter.h"
+#include "logging/suppliers.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 #include "xml/EventsXML.h"
 
 #include <algorithm>
+#include <array>
+#include <atomic>
+#include <cassert>
+#include <cerrno>
+#include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
-#include <boost/asio/detached.hpp>
-#include <boost/filesystem.hpp>
-
+#include <mxml.h>
 #include <semaphore.h>
+#include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/prctl.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
@@ -264,7 +275,12 @@ void Child::run()
     auto execTargetCallback = [this]() {
         LOG_DEBUG("Received exec_target callback");
         if (!event_listener.waiting_for_target()) {
+            auto last_error = log_ops.get_last_log_error();
+            sender->writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
             handleException();
+        }
+        if (!gSessionData.mLocalCapture) {
+            sender->writeData(nullptr, 0, ResponseType::ACTIVITY_STARTED);
         }
     };
 
@@ -418,6 +434,7 @@ void Child::run()
 
     // Start profiling
     std::vector<std::thread> sourceThreads {};
+    sourceThreads.reserve(sources.size());
     for (auto & source : sources) {
         sourceThreads.emplace_back(&Source::run, source.get(), *monotonicStart, [this]() { endSession(); });
     }

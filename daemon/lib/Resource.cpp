@@ -2,6 +2,8 @@
 
 #include "Resource.h"
 
+#include <sys/resource.h>
+
 namespace lib {
     int getrlimit(int resource, rlimit * rlp)
     {

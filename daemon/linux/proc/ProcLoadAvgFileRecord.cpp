@@ -1,9 +1,8 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcLoadAvgFileRecord.h"
 
 #include <cstdio>
-#include <cstring>
 
 namespace lnx {
     namespace {

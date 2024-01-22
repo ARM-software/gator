@@ -83,8 +83,12 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler-flags.cmake)
 
 ADD_SUBDIRECTORY(ipc/proto)
 
+# Include the clang tools (after HWCPIPE and PROTO, so as not to lint that subproject when ENABLE_CLANG_TIDY_DURING_BUILD is ON)
+SET(CLANG_TIDY_YAML "${CMAKE_SOURCE_DIR}/../.clang-tidy")
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clang-tools.cmake)
+
 # Find the external dependencies
-IF (ENABLE_VCPKG)
+IF(ENABLE_VCPKG)
     FIND_PACKAGE(mxml CONFIG REQUIRED)
     SET(MXML_TARGET mxml)
 ELSE()
@@ -103,10 +107,9 @@ FIND_PACKAGE(Boost 1.78 REQUIRED COMPONENTS
 ADD_DEFINITIONS(-DBOOST_FILESYSTEM_NO_DEPRECATED)
 
 ADD_DEFINITIONS(-DETCDIR="/etc")
-INCLUDE_DIRECTORIES(        ${CMAKE_CURRENT_SOURCE_DIR}
-                            ${CMAKE_CURRENT_SOURCE_DIR}/libsensors
-                            ${CMAKE_CURRENT_SOURCE_DIR}/../ext
-                            ${CMAKE_CURRENT_BINARY_DIR})
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/libsensors
+    ${CMAKE_CURRENT_BINARY_DIR})
 
 # This file is generated and contains a hash of the source files
 SET(GENERATED_MD5_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/SrcMd5.cpp)
@@ -621,7 +624,7 @@ IF(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent_main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent_main.h
         ${CMAKE_CURRENT_SOURCE_DIR}/agents/armnn/armnn_agent_worker.h
-)
+    )
 ENDIF()
 
 IF(CONFIG_USE_PERFETTO)
@@ -633,9 +636,14 @@ IF(CONFIG_USE_PERFETTO)
         ${CMAKE_CURRENT_SOURCE_DIR}/agents/perfetto/perfetto_sdk_helper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/agents/perfetto/perfetto_agent_worker.h)
 
-    SET(GATORD_3RD_PARTY_SOURCES ${GATORD_3RD_PARTY_SOURCES}
+    ADD_LIBRARY(perfetto_generated STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/../ext/perfetto/sdk/perfetto.cc
-        ${CMAKE_CURRENT_SOURCE_DIR}/../ext/perfetto/sdk/perfetto.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ext/perfetto/sdk/perfetto.h
+    )
+    TARGET_INCLUDE_DIRECTORIES(perfetto_generated
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../ext
+    )
+    TARGET_COMPILE_OPTIONS(perfetto_generated PRIVATE "-Wno-error")
 ENDIF()
 
 # Create a list of files to hash for the generated hash file
@@ -671,12 +679,12 @@ SET(EVENTS_XML_FILES_STRING "${EVENTS_XML_FILES_STRING};${CMAKE_CURRENT_SOURCE_D
 SET(CONCATENATED_EVENTS_XML ${CMAKE_CURRENT_BINARY_DIR}/events.xml)
 ADD_CUSTOM_COMMAND(OUTPUT ${CONCATENATED_EVENTS_XML}
     COMMAND ${CMAKE_COMMAND} -DOUTPUT_FILE="${CONCATENATED_EVENTS_XML}"
-                             -DFILES_TO_CONCATENATE="${EVENTS_XML_FILES_STRING}"
-                             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake
+    -DFILES_TO_CONCATENATE="${EVENTS_XML_FILES_STRING}"
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/events_header.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml
-            ${EVENTS_XML_FILES}
-            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake)
+    ${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml
+    ${EVENTS_XML_FILES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/concatenate-files.cmake)
 
 # Macro to aid generation of xml->header files
 SET(ALL_XML_HEADERS)
@@ -707,13 +715,14 @@ CREATE_XML_HEADER(DEFAULT_EVENTS_XML
 # the clang-tidy rules can be applied only to the gatord
 # target
 ADD_LIBRARY(gatord-tpip OBJECT ${GATORD_3RD_PARTY_SOURCES})
+TARGET_COMPILE_OPTIONS(gatord-tpip PRIVATE "-Wno-error")
 
 # Generate the gatord executable
-ADD_EXECUTABLE(gatord   ${GATORD_SRC_FILES}
-                        ${GENERATED_MD5_SOURCE}
-                        ${CMAKE_CURRENT_BINARY_DIR}/defaults_xml.h
-                        ${CMAKE_CURRENT_BINARY_DIR}/events_xml.h
-                        ${CMAKE_CURRENT_BINARY_DIR}/pmus_xml.h)
+ADD_EXECUTABLE(gatord ${GATORD_SRC_FILES}
+    ${GENERATED_MD5_SOURCE}
+    ${CMAKE_CURRENT_BINARY_DIR}/defaults_xml.h
+    ${CMAKE_CURRENT_BINARY_DIR}/events_xml.h
+    ${CMAKE_CURRENT_BINARY_DIR}/pmus_xml.h)
 
 TARGET_LINK_LIBRARIES(gatord
     PRIVATE gatord-tpip
@@ -739,6 +748,7 @@ IF(CONFIG_USE_PERFETTO)
     TARGET_COMPILE_DEFINITIONS(gatord
         PRIVATE CONFIG_USE_PERFETTO
     )
+    TARGET_LINK_LIBRARIES(gatord PRIVATE perfetto_generated)
 ENDIF()
 
 # Strip binary
@@ -766,81 +776,7 @@ INSTALL(TARGETS gatord
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/COPYING
     DESTINATION ${GATORD_INSTALL_DIR})
 
-
-# ###
-# Find various optional tools
-# ###
-FIND_FILE(CLANG_FORMAT NAMES "clang-format${CMAKE_EXECUTABLE_SUFFIX}"
-    NO_CMAKE_FIND_ROOT_PATH)
-FIND_FILE(CLANG_TIDY NAMES "clang-tidy${CMAKE_EXECUTABLE_SUFFIX}"
-    NO_CMAKE_FIND_ROOT_PATH)
-
-# ###
-# Add a custom targets for running clang-format and clang tidy
-# ###
-IF(EXISTS ${CLANG_FORMAT})
-    FOREACH(file ${GATORD_SRC_FILES})
-        # run clang tidy
-        SET(item "${CMAKE_BINARY_DIR}/clang-format-${TARGET_NAME}/${file}")
-        ADD_CUSTOM_COMMAND(OUTPUT ${item}
-                            COMMAND ${CLANG_FORMAT} -i ${file}
-                            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                            DEPENDS ${file} ${ALL_XML_HEADERS} ipcproto
-                            COMMENT "Running clang-format on ${item}")
-        SET(outputs ${outputs} ${item})
-        SET_SOURCE_FILES_PROPERTIES(${item} PROPERTIES SYMBOLIC ON)
-    ENDFOREACH()
-
-    ADD_CUSTOM_TARGET(clang-format
-        COMMAND ${CLANG_FORMAT} -i ${GATORD_SRC_FILES}
-        DEPENDS ${outputs}
-        SOURCES ${GATORD_SRC_FILES}
-        COMMENT "Run clang-format on the sources")
-ENDIF()
-
-IF(EXISTS ${CLANG_TIDY})
-    # ## CMAKE_xxx_CLANG_TIDY need to be before the ADD_EXECUTABLE
-    OPTION(ENABLE_CLANG_TIDY_DURING_BUILD "Compile and tidy at the same time" OFF)
-
-    IF(ENABLE_CLANG_TIDY_DURING_BUILD)
-        SET(CMAKE_C_CLANG_TIDY )
-        SET(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR})
-        SET_TARGET_PROPERTIES(gatord PROPERTIES
-                              C_CLANG_TIDY "${CLANG_TIDY};-p;${CMAKE_BINARY_DIR}"
-                              CXX_CLANG_TIDY "${CLANG_TIDY};-p;${CMAKE_BINARY_DIR}")
-    ENDIF()
-
-    SET(outputs )
-    SET(outputs_fix )
-    FOREACH(file ${GATORD_SRC_FILES})
-        IF ("${file}" MATCHES "\.(cpp|cc|c)$")
-            # run clang tidy
-            SET(item "${CMAKE_BINARY_DIR}/clang-tidy-${TARGET_NAME}/${file}")
-            ADD_CUSTOM_COMMAND(OUTPUT ${item}
-                               COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR} ${file}
-                               WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                               DEPENDS ${file} ${ALL_XML_HEADERS} ipcproto
-                               COMMENT "Running clang-tidy on ${item}")
-            SET(outputs ${outputs} ${item})
-            SET_SOURCE_FILES_PROPERTIES(${item} PROPERTIES SYMBOLIC ON)
-            # run clang tidy --fix
-            SET(item "${CMAKE_BINARY_DIR}/clang-tidy-fix-${TARGET_NAME}/${file}")
-            ADD_CUSTOM_COMMAND(OUTPUT ${item}
-                               COMMAND ${CLANG_TIDY} --fix -p ${CMAKE_BINARY_DIR} ${file}
-                               WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                               DEPENDS ${file} ${ALL_XML_HEADERS} ipcproto
-                               COMMENT "Running clang-tidy on ${item}")
-            SET(outputs_fix ${outputs_fix} ${item})
-            SET_SOURCE_FILES_PROPERTIES(${item} PROPERTIES SYMBOLIC ON)
-        ENDIF()
-    ENDFOREACH(file)
-
-    ADD_CUSTOM_TARGET(clang-tidy
-                      DEPENDS ${outputs}
-                      SOURCES ${GATORD_SRC_FILES}
-                      COMMENT "Run clang-tidy on the sources")
-    ADD_CUSTOM_TARGET(clang-tidy-fix
-                      DEPENDS ${outputs_fix}
-                      SOURCES ${GATORD_SRC_FILES}
-                      COMMENT "Run clang-tidy --fix on the sources")
-ENDIF()
+#
+# Add clang-format and clang-tidy
+#
+add_clang_tools(gatord ${GATORD_SRC_FILES})

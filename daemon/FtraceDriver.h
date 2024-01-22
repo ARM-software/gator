@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
 
 #ifndef FTRACEDRIVER_H
 #define FTRACEDRIVER_H
@@ -7,10 +7,9 @@
 #include "linux/Tracepoints.h"
 
 #include <functional>
+#include <thread>
 #include <utility>
 #include <vector>
-
-#include <pthread.h>
 
 class DynBuf;
 class IPerfAttrsConsumer;
@@ -46,7 +45,7 @@ public:
     void readEvents(mxml_node_t * xml) override;
 
     std::pair<std::vector<int>, bool> prepare();
-    void start(std::function<void(int, int, std::int64_t)> initialValuesConsumer);
+    void start(const std::function<void(int, int, std::int64_t)> & initialValuesConsumer);
     std::vector<int> requestStop();
     void stop();
     bool readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * printb, DynBuf * b);

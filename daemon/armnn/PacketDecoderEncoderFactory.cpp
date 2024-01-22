@@ -1,9 +1,25 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #ifndef ARMNN_PACKETDECODERENCODERFACTORY_CPP_
 #define ARMNN_PACKETDECODERENCODERFACTORY_CPP_
 
 #include "armnn/PacketDecoderEncoderFactory.h"
+
+#include "Logging.h"
+#include "armnn/ByteOrder.h"
+#include "armnn/DecoderUtility.h"
+#include "armnn/IEncoder.h"
+#include "armnn/IPacketConsumer.h"
+#include "armnn/IPacketDecoder.h"
+#include "armnn/PacketDecoder.h"
+#include "armnn/PacketEncoder.h"
+#include "armnn/PacketUtility.h"
+#include "armnn/PacketUtilityModels.h"
+
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <vector>
 
 namespace armnn {
     /**

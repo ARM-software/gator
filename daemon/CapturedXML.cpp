@@ -5,6 +5,8 @@
 #include "CapturedSpe.h"
 #include "Configuration.h"
 #include "Constant.h"
+#include "ConstantMode.h"
+#include "EventCode.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -12,16 +14,22 @@
 #include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "lib/FsEntry.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 #include "xml/MxmlUtils.h"
 
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
+#include <map>
+#include <memory>
 #include <set>
+#include <string>
+#include <vector>
 
-#include <dirent.h>
 #include <mxml.h>
 
 /* Basic target OS detection */
@@ -39,7 +47,6 @@
 #endif
 // not an android NDK build
 #else
-#include <climits>
 #if defined(__GLIBC__) || defined(__GNU_LIBRARY__) || defined(__UCLIBC__)
 //      using GLIBC or UCLIBC so must be linux
 #define GATOR_TARGET_OS "linux"

@@ -6,8 +6,13 @@
 #include "lib/Popen.h"
 #include "lib/Syscall.h"
 
-#include <array>
 #include <cerrno>
+#include <cstdlib>
+#include <optional>
+#include <string>
+#include <string_view>
+
+#include <sys/types.h>
 
 namespace android_prop_utils {
     constexpr std::string_view GET_PROP = "getprop";

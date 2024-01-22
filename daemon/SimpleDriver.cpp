@@ -1,8 +1,14 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
 
 #include "SimpleDriver.h"
 
 #include "Counter.h"
+#include "DriverCounter.h"
+
+#include <cstring>
+#include <string>
+
+#include <mxml.h>
 
 SimpleDriver::~SimpleDriver()
 {
@@ -73,7 +79,7 @@ DriverCounter * SimpleDriver::findCounter(Counter & counter) const
         //for eg: ARMv8_Cortex_A53 --> should be read as ARMv8_Cortex_A53_cnt0
         std::string driverCounterName = driverCounter->getName();
         std::string counterType = counter.getType();
-        counterType = counterType + "_cnt";
+        counterType += "_cnt";
         driverCounterName = driverCounterName.substr(0, counterType.length());
         if (strcasecmp(driverCounterName.c_str(), counterType.c_str()) == 0) {
             dcounter = driverCounter;

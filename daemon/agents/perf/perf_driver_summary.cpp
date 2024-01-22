@@ -3,13 +3,20 @@
 #include "agents/perf/perf_driver_summary.h"
 
 #include "Logging.h"
-#include "SessionData.h"
+#include "Time.h"
 #include "lib/String.h"
 #include "linux/SysfsSummaryInformation.h"
+#include "linux/perf/PerfConfig.h"
 
+#include <cstdint>
 #include <ctime>
+#include <map>
+#include <optional>
+#include <string>
+#include <utility>
 
 #include <sys/utsname.h>
+#include <unistd.h>
 
 namespace agents::perf {
 

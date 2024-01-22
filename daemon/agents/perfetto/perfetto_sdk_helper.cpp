@@ -1,13 +1,18 @@
 /* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 #include "agents/perfetto/perfetto_sdk_helper.h"
 
+#include "Logging.h"
 #include "lib/AutoClosingFd.h"
 
-#include <algorithm>
 #include <array>
-#include <string_view>
+#include <cstdint>
+#include <optional>
+#include <string>
 #include <utility>
 
+#include <boost/asio/posix/stream_descriptor.hpp>
+
+#include <fcntl.h>
 #include <unistd.h>
 
 namespace agents {

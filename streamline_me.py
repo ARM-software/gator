@@ -710,7 +710,7 @@ def get_package_name(device, pkgName, showAllPackages, interactive):
 
     if pkgIndex is None:
         print("\nNo package selected, exiting ...")
-        return None, None
+        return "", None
 
     is_debuggable = is_package_debuggable(device, goodPkg[pkgIndex])
     if not is_debuggable and not showAllPackages:
@@ -1363,14 +1363,12 @@ def parse_cli(parser):
     parser.add_argument(
         "--lwi-compress-img", "-X", dest="compress",
         action="store_true", default=False,
-        help=("If set the layer will store compressed frame captures."
-              "Default is unset."))
+        help="The layer will store compressed frame captures.")
 
     parser.add_argument(
         "--show-all-packages", "-A", dest="showAllPackages",
         action="store_true", default=False,
-        help=("Displays only debuggable packages when true."
-              "Default is set."))
+        help="Displays all packages installed, including non-debuggable.")
 
     # Internal development option that allows Khronos validation
     # to be enabled underneath LWI
@@ -1652,6 +1650,10 @@ def main():
 
     device = Device(deviceName)
 
+    if args.package:
+        # enable show all packages if --package supplied
+        args.showAllPackages = True
+
     # Store the device android version
     args.androidVersion = get_android_version(device)
     if args.androidVersion < ANDROID_MIN_SUPPORTED_VERSION:
@@ -1685,8 +1687,13 @@ def main():
     # Select a specific package, or fail if we cannot
     package, pkg_is_debuggable = get_package_name(
         device, args.package, args.showAllPackages, not args.headless)
-    if not package:
+
+    # We didn't get a package
+    if package is None:
         return 3
+    # User chose to exit
+    if len(package) == 0:
+        return 0
 
     args.package = package
     isArm32 = is_package_32bit_abi(device, package)

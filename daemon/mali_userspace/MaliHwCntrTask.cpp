@@ -2,22 +2,31 @@
 
 #include "MaliHwCntrTask.h"
 
+#include "GetEventKey.h"
 #include "IBlockCounterFrameBuilder.h"
 #include "IBufferControl.h"
 #include "Logging.h"
 #include "Monitor.h"
-#include "SessionData.h"
+#include "device/handle.hpp"
+#include "device/hwcnt/block_extents.hpp"
 #include "device/hwcnt/block_metadata.hpp"
 #include "device/hwcnt/prfcnt_set.hpp"
 #include "device/hwcnt/sample.hpp"
 #include "device/hwcnt/sampler/configuration.hpp"
 #include "device/hwcnt/sampler/periodic.hpp"
-#include "lib/Syscall.h"
+#include "device/instance.hpp"
+#include "mali_userspace/MaliDevice.h"
 
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
 #include <system_error>
 #include <utility>
 
 #include <fcntl.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 
 namespace mali_userspace {
@@ -33,7 +42,7 @@ namespace mali_userspace {
             sampler::configuration::enable_map_type enable_map {};
             enable_map.set();
 
-            constexpr auto num_configs = static_cast<std::uint32_t>(block_type::num_block_types);
+            constexpr auto num_configs = static_cast<std::uint32_t>(block_extents::num_block_types);
             std::array<sampler::configuration, num_configs> configs {{
                 {block_type::fe, prfcnt_set::primary, enable_map},
                 {block_type::tiler, prfcnt_set::primary, enable_map},

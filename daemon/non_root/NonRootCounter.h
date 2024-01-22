@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTCOUNTER_H
 #define INCLUDE_NON_ROOT_NONROOTCOUNTER_H
@@ -46,9 +46,9 @@ namespace non_root {
         PROCESS_DELTA_GUEST_TIME
     };
 
-    constexpr typename std::underlying_type<NonRootCounter>::type NonRootCounterValue(NonRootCounter nrc)
+    constexpr std::underlying_type_t<NonRootCounter> NonRootCounterValue(NonRootCounter nrc)
     {
-        return static_cast<typename std::underlying_type<NonRootCounter>::type>(nrc);
+        return static_cast<std::underlying_type_t<NonRootCounter>>(nrc);
     }
 }
 

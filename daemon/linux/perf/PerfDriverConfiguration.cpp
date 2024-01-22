@@ -2,8 +2,8 @@
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
+#include "Config.h"
 #include "Logging.h"
-#include "PerfUtils.h"
 #include "SessionData.h"
 #include "capture/Environment.h"
 #include "k/perf_event.h"
@@ -11,15 +11,23 @@
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
 #include "lib/Popen.h"
+#include "lib/Span.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
+#include "linux/smmu_identifier.h"
 #include "linux/smmu_support.h"
 
 #include <algorithm>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <optional>
 #include <set>
+#include <string>
+#include <string_view>
 
 #include <sys/utsname.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"

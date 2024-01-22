@@ -1,8 +1,14 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "CurrentConfigXML.h"
 
 #include "MxmlUtils.h"
+
+#include <cstdint>
+#include <set>
+#include <string>
+
+#include <mxml.h>
 
 namespace current_config_xml {
     static constexpr char TAG_CURRENT_CONFIG[] = "current_config";

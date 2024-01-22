@@ -1,17 +1,26 @@
 /* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 #include "agents/spawn_agent.h"
 
+#include "Logging.h"
 #include "android/Spawn.h"
+#include "ipc/raw_ipc_channel_sink.h"
+#include "ipc/raw_ipc_channel_source.h"
 #include "lib/Assert.h"
-#include "lib/AutoClosingFd.h"
 #include "lib/FsEntry.h"
 #include "lib/Process.h"
 #include "lib/error_code_or.hpp"
 #include "lib/forked_process.h"
+#include "lib/forked_process_utils.h"
+#include "logging/agent_log.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdlib>
 #include <string>
+#include <utility>
+#include <vector>
 
+#include <boost/asio/io_context.hpp>
 #include <boost/system/errc.hpp>
 
 namespace agents {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_GLOBALCOUNTER_H
 #define INCLUDE_NON_ROOT_GLOBALCOUNTER_H
@@ -6,7 +6,7 @@
 #include "non_root/NonRootCounter.h"
 
 namespace non_root {
-    enum class AbsoluteGlobalCounter : typename std::underlying_type<NonRootCounter>::type {
+    enum class AbsoluteGlobalCounter : std::underlying_type_t<NonRootCounter> {
         LOADAVG_1_MINUTE = NonRootCounterValue(NonRootCounter::GLOBAL_ABS_LOADAVG_1_MINUTE),
         LOADAVG_5_MINUTES = NonRootCounterValue(NonRootCounter::GLOBAL_ABS_LOADAVG_5_MINUTES),
         LOADAVG_15_MINUTES = NonRootCounterValue(NonRootCounter::GLOBAL_ABS_LOADAVG_15_MINUTES),
@@ -14,7 +14,7 @@ namespace non_root {
         NUM_PROCESSES_RUNNING = NonRootCounterValue(NonRootCounter::GLOBAL_ABS_NUM_PROCESSES_RUNNING)
     };
 
-    enum class DeltaGlobalCounter : typename std::underlying_type<NonRootCounter>::type {
+    enum class DeltaGlobalCounter : std::underlying_type_t<NonRootCounter> {
         NUM_CONTEXT_SWITCHES = NonRootCounterValue(NonRootCounter::GLOBAL_DELTA_NUM_CONTEXT_SWITCHES),
         NUM_FORKS = NonRootCounterValue(NonRootCounter::GLOBAL_DELTA_NUM_FORKS),
         NUM_IRQ = NonRootCounterValue(NonRootCounter::GLOBAL_DELTA_NUM_IRQ),

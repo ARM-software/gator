@@ -1,6 +1,8 @@
-/* Copyright (C) 2018-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
 
 #include "lib/File.h"
+
+#include <cstdio>
 
 #include <fcntl.h>
 

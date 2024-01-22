@@ -3,6 +3,9 @@
 #include "agents/agent_workers_process_holder.h"
 
 #include "agents/agent_workers_process.h"
+#include "agents/spawn_agent.h"
+
+#include <memory>
 
 namespace agents {
     i_agent_worker_manager_callbacks_t::~i_agent_worker_manager_callbacks_t() noexcept = default;

@@ -1,6 +1,16 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/SessionPacketSender.h"
+
+#include "armnn/CaptureMode.h"
+#include "armnn/IEncoder.h"
+#include "armnn/ISender.h"
+
+#include <cstdint>
+#include <memory>
+#include <set>
+#include <utility>
+#include <vector>
 
 namespace armnn {
     SessionPacketSender::SessionPacketSender(std::unique_ptr<ISender> sender, std::unique_ptr<IEncoder> encoder)

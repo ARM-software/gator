@@ -1,10 +1,12 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
 
 #include "armnn/TimestampCorrector.h"
 
+#include "armnn/ICounterConsumer.h"
 #include "armnn/IFrameBuilderFactory.h"
+#include "lib/Span.h"
 
-#include <utility>
+#include <cstdint>
 
 namespace armnn {
     TimestampCorrector::TimestampCorrector(IFrameBuilderFactory & frameBuilderFactory, std::uint64_t monotonicStarted)

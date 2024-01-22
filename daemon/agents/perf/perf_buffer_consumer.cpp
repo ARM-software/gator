@@ -1,17 +1,26 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/perf_buffer_consumer.h"
 
-#include "BufferUtils.h"
 #include "ISender.h"
-#include "agents/perf/async_buffer_builder.h"
+#include "Logging.h"
+#include "agents/perf/events/perf_ringbuffer_mmap.hpp"
 #include "agents/perf/perf_frame_packer.hpp"
 #include "async/continuations/continuation.h"
+#include "async/continuations/operations.h"
 #include "async/continuations/stored_continuation.h"
+#include "async/continuations/use_continuation.h"
 #include "ipc/messages.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
-#include "lib/error_code_or.hpp"
+
+#include <algorithm>
+#include <atomic>
+#include <cinttypes>
+#include <cstdint>
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include <boost/system/error_code.hpp>
 

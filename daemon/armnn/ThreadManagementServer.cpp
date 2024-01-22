@@ -2,8 +2,15 @@
 #include "armnn/ThreadManagementServer.h"
 
 #include "Logging.h"
+#include "armnn/IAcceptor.h"
+#include "armnn/ISession.h"
 
 #include <cassert>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <utility>
 
 namespace armnn {
     ThreadManagementServer::ThreadManagementServer(std::unique_ptr<IAcceptor> acceptor)

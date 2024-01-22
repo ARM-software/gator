@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_COUNTERHELPERS_H
 #define INCLUDE_NON_ROOT_COUNTERHELPERS_H
@@ -14,8 +14,7 @@ namespace non_root {
     class AbsoluteCounter {
     public:
         using value_type = T;
-        using cref_type = typename std::
-            conditional<std::is_integral<T>::value || std::is_floating_point<T>::value, T, const T &>::type;
+        using cref_type = std::conditional_t<std::is_integral_v<T> || std::is_floating_point_v<T>, T, const T &>;
 
         AbsoluteCounter() : currentValue_(), changed_(true) {}
 
@@ -42,8 +41,7 @@ namespace non_root {
     template<typename T>
     class DeltaCounter {
     public:
-        static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value,
-                      "T must be integral or float type");
+        static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>, "T must be integral or float type");
 
         using value_type = T;
 

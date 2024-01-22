@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -94,8 +94,8 @@ namespace async::continuations {
             [[nodiscard]] operator std::allocator<void>() const { return {}; }
         };
 
-        using real_allocator_type = typename std::
-            conditional<std::is_same<std::allocator<void>, Allocator>::value, std_allocator_void, Allocator>::type;
+        using real_allocator_type =
+            std::conditional_t<std::is_same_v<std::allocator<void>, Allocator>, std_allocator_void, Allocator>;
 
         real_allocator_type allocator;
     };

@@ -2,13 +2,17 @@
 
 #include "Syscall.h"
 
+#include <array>
 #include <csignal>
 #include <cstdlib>
 
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #include "lib/Process.h"
 
@@ -6,8 +6,12 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <optional>
+#include <string>
+#include <system_error>
 
-#include <boost/process.hpp>
+#include <boost/process/child.hpp>
+#include <boost/process/io.hpp>
 
 #include <sys/prctl.h>
 
