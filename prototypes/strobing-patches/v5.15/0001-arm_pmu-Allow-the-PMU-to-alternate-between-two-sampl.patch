@@ -1,0 +1,184 @@
+From ecc1be50a3e57752e6c4e3118ac7a57fe5eb29b0 Mon Sep 17 00:00:00 2001
+From: Ben Gainey <ben.gainey@arm.com>
+Date: Thu, 9 Nov 2023 10:36:48 +0000
+Subject: [RFC PATCH 1/3] arm_pmu: Allow the PMU to alternate between two
+ sample_period values.
+
+The arm PMU does not provide any mechanism for decoupling the period over
+which counters are counted from the period between samples. This is
+problematic for building a tool to measure per-function metrics derived
+from a sampled counter group. Ideally such a tool wants a very small
+sample window in order to correctly attribute the metrics to a given
+function, but prefers a larger sample period that provides representative
+coverage without excessive probe effect, triggering throttling, or
+generating excessive amounts of data.
+
+By alternating between a long and short sample_period and subsequently
+discarding the long samples, tools may decouple the period between
+samples that the tool cares about from the window of time over which
+interesting counts are collected.
+
+It is expected that typically tools would use this feature with the
+cycles or instructions events as an approximation for time, but no
+restrictions are applied to which events this can be applied to.
+
+Signed-off-by: Ben Gainey <ben.gainey@arm.com>
+---
+ drivers/perf/arm_pmu.c       | 74 +++++++++++++++++++++++++++++-------
+ include/linux/perf/arm_pmu.h |  1 +
+ include/linux/perf_event.h   | 10 ++++-
+ 3 files changed, 70 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/perf/arm_pmu.c b/drivers/perf/arm_pmu.c
+index 295cc7952d0ed..c280be60e7986 100644
+--- a/drivers/perf/arm_pmu.c
++++ b/drivers/perf/arm_pmu.c
+@@ -99,6 +99,17 @@ static const struct pmu_irq_ops percpu_pmunmi_ops = {
+ 	.free_pmuirq = armpmu_free_percpu_pmunmi
+ };
+ 
++static inline bool armpmu_is_strobe_enabled(struct hw_perf_event *hwc)
++{
++	return hwc->strobe_period != 0;
++}
++
++void armpmu_set_strobe_period(struct hw_perf_event *hwc, u32 period)
++{
++	hwc->strobe_period = period;
++	hwc->strobe_active = false;
++}
++
+ static DEFINE_PER_CPU(struct arm_pmu *, cpu_armpmu);
+ static DEFINE_PER_CPU(int, cpu_irq);
+ static DEFINE_PER_CPU(const struct pmu_irq_ops *, cpu_irq_ops);
+@@ -198,22 +209,45 @@ int armpmu_event_set_period(struct perf_event *event)
+ 	struct arm_pmu *armpmu = to_arm_pmu(event->pmu);
+ 	struct hw_perf_event *hwc = &event->hw;
+ 	s64 left = local64_read(&hwc->period_left);
+-	s64 period = hwc->sample_period;
+-	u64 max_period;
++	s64 period_active = hwc->sample_period;
++	u64 max_period = arm_pmu_event_max_period(event);
+ 	int ret = 0;
+ 
+-	max_period = arm_pmu_event_max_period(event);
+-	if (unlikely(left <= -period)) {
+-		left = period;
+-		local64_set(&hwc->period_left, left);
+-		hwc->last_period = period;
+-		ret = 1;
+-	}
++	if (likely(!armpmu_is_strobe_enabled(hwc))) {
++		if (unlikely(left <= -period_active)) {
++			left = period_active;
++			local64_set(&hwc->period_left, left);
++			hwc->last_period = period_active;
++			ret = 1;
++		}
++
++		if (unlikely(left <= 0)) {
++			left += period_active;
++			local64_set(&hwc->period_left, left);
++			hwc->last_period = period_active;
++			ret = 1;
++		}
++	} else if (unlikely(left <= 0)) {
++		s64 new_period;
++		bool new_active;
++
++		/*
++		 * When strobing is enabled, do not attempt to adjust the
++		 * period based on the previous overflow, instead just
++		 * alternate between the two periods
++		 */
++		if (hwc->strobe_active) {
++			new_period = period_active;
++			new_active = false;
++		} else {
++			new_period = hwc->strobe_period;
++			new_active = true;
++		}
+ 
+-	if (unlikely(left <= 0)) {
+-		left += period;
++		left = new_period;
+ 		local64_set(&hwc->period_left, left);
+-		hwc->last_period = period;
++		hwc->last_period = new_period;
++		hwc->strobe_active = new_active;
+ 		ret = 1;
+ 	}
+ 
+@@ -441,6 +475,9 @@ __hw_perf_event_init(struct perf_event *event)
+ 	int mapping;
+ 
+ 	hwc->flags = 0;
++	hwc->strobe_active = false;
++	hwc->strobe_period = 0;
++
+ 	mapping = armpmu->map_event(event);
+ 
+ 	if (mapping < 0) {
+@@ -449,6 +486,15 @@ __hw_perf_event_init(struct perf_event *event)
+ 		return mapping;
+ 	}
+ 
++	if (armpmu_is_strobe_enabled(hwc)) {
++		if (event->attr.freq)
++			return -EINVAL;
++		if (hwc->strobe_period == 0)
++			return -EINVAL;
++		if (hwc->strobe_period >= event->attr.sample_period)
++			return -EINVAL;
++	}
++
+ 	/*
+ 	 * We don't assign an index until we actually place the event onto
+ 	 * hardware. Use -1 to signify that we haven't decided where to put it
+@@ -482,8 +528,8 @@ __hw_perf_event_init(struct perf_event *event)
+ 		 * is far less likely to overtake the previous one unless
+ 		 * you have some serious IRQ latency issues.
+ 		 */
+-		hwc->sample_period  = arm_pmu_event_max_period(event) >> 1;
+-		hwc->last_period    = hwc->sample_period;
++		hwc->sample_period = arm_pmu_event_max_period(event) >> 1;
++		hwc->last_period = hwc->sample_period;
+ 		local64_set(&hwc->period_left, hwc->sample_period);
+ 	}
+ 
+diff --git a/include/linux/perf/arm_pmu.h b/include/linux/perf/arm_pmu.h
+index 2512e2f9cd4e7..01d20008d7d25 100644
+--- a/include/linux/perf/arm_pmu.h
++++ b/include/linux/perf/arm_pmu.h
+@@ -176,6 +176,7 @@ void armpmu_free(struct arm_pmu *pmu);
+ int armpmu_register(struct arm_pmu *pmu);
+ int armpmu_request_irq(int irq, int cpu);
+ void armpmu_free_irq(int irq, int cpu);
++void armpmu_set_strobe_period(struct hw_perf_event *hwc, u32 period);
+ 
+ #define ARMV8_PMU_PDEV_NAME "armv8-pmu"
+ 
+diff --git a/include/linux/perf_event.h b/include/linux/perf_event.h
+index 9b60bb89d86ab..5443eb02b2daf 100644
+--- a/include/linux/perf_event.h
++++ b/include/linux/perf_event.h
+@@ -136,7 +136,15 @@ struct hw_perf_event {
+ 	union {
+ 		struct { /* hardware */
+ 			u64		config;
+-			u64		last_tag;
++			union {
++				/* for s390 and x86 */
++				u64	last_tag;
++				/* for arm_pmu */
++				struct {
++					u32 strobe_period;
++					bool strobe_active;
++				};
++			};
+ 			unsigned long	config_base;
+ 			unsigned long	event_base;
+ 			int		event_base_rdpmc;
+-- 
+2.43.0
+

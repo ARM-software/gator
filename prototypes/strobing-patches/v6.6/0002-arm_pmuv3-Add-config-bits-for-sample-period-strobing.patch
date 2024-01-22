@@ -1,0 +1,68 @@
+From 0aa163ceaeb88fa6493c990bd2e8f1ad253f0075 Mon Sep 17 00:00:00 2001
+From: Ben Gainey <ben.gainey@arm.com>
+Date: Thu, 9 Nov 2023 11:41:27 +0000
+Subject: [RFC PATCH 2/3] arm_pmuv3: Add config bits for sample period strobing
+
+To expose the ability to alternate between sample periods to tools.
+The field `strobe_period` is defined for config2 to hold the alternate
+sample period. A non-zero value will enable strobing.
+
+Signed-off-by: Ben Gainey <ben.gainey@arm.com>
+---
+ drivers/perf/arm_pmuv3.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/drivers/perf/arm_pmuv3.c b/drivers/perf/arm_pmuv3.c
+index 8fcaa26f0f8a6..2b5be7464659a 100644
+--- a/drivers/perf/arm_pmuv3.c
++++ b/drivers/perf/arm_pmuv3.c
+@@ -297,6 +297,7 @@ static const struct attribute_group armv8_pmuv3_events_attr_group = {
+ PMU_FORMAT_ATTR(event, "config:0-15");
+ PMU_FORMAT_ATTR(long, "config1:0");
+ PMU_FORMAT_ATTR(rdpmc, "config1:1");
++PMU_FORMAT_ATTR(strobe_period, "config2:0-31");
+ 
+ static int sysctl_perf_user_access __read_mostly;
+ 
+@@ -310,10 +311,21 @@ static inline bool armv8pmu_event_want_user_access(struct perf_event *event)
+ 	return event->attr.config1 & 0x2;
+ }
+ 
++static inline u32 armv8pmu_event_strobe_period(struct perf_event *event)
++{
++	return event->attr.config2;
++}
++
++static inline bool armv8pmu_event_want_strobe(struct perf_event *event)
++{
++	return armv8pmu_event_strobe_period(event) != 0;
++}
++
+ static struct attribute *armv8_pmuv3_format_attrs[] = {
+ 	&format_attr_event.attr,
+ 	&format_attr_long.attr,
+ 	&format_attr_rdpmc.attr,
++	&format_attr_strobe_period.attr,
+ 	NULL,
+ };
+ 
+@@ -1025,6 +1037,16 @@ static int __armv8_pmuv3_map_event(struct perf_event *event,
+ 	if (armv8pmu_event_is_64bit(event))
+ 		event->hw.flags |= ARMPMU_EVT_64BIT;
+ 
++	/*
++	 * Support alternating between two sample periods
++	 */
++	if (armv8pmu_event_want_strobe(event)) {
++		u32 strobe_period = armv8pmu_event_strobe_period(event);
++		armpmu_set_strobe_period(&(event->hw), strobe_period);
++	} else {
++		armpmu_set_strobe_period(&(event->hw), 0);
++	}
++
+ 	/*
+ 	 * User events must be allocated into a single counter, and so
+ 	 * must not be chained.
+-- 
+2.43.0
+

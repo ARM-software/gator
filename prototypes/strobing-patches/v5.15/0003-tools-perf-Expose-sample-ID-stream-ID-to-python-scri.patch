@@ -1,0 +1,71 @@
+From a88e2b23b9c1a3bb837a71865030a33b3e356c47 Mon Sep 17 00:00:00 2001
+From: Ben Gainey <ben.gainey@arm.com>
+Date: Thu, 7 Dec 2023 10:33:29 +0000
+Subject: [RFC PATCH 3/3] tools: perf: Expose sample ID / stream ID to python
+ scripts
+
+perf script exposes the evsel_name to python scripts as part of the data
+passed to the sample or tracepoint handler function, and it passes the id and
+stream_id to the throttled/unthrottled handler functions. This makes matching
+throttle events and samples difficult.
+
+To make this possible, this change exposes the sample id and stream_id values
+to the script.
+
+Signed-off-by: Ben Gainey <ben.gainey@arm.com>
+---
+ tools/perf/Documentation/perf-script-python.txt        | 4 ++--
+ tools/perf/util/scripting-engines/trace-event-python.c | 8 +++++++-
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/tools/perf/Documentation/perf-script-python.txt b/tools/perf/Documentation/perf-script-python.txt
+index cf4b7f4b625ad..fbbaaad8155b1 100644
+--- a/tools/perf/Documentation/perf-script-python.txt
++++ b/tools/perf/Documentation/perf-script-python.txt
+@@ -642,8 +642,8 @@ SUPPORTED FIELDS
+ 
+ Currently supported fields:
+ 
+-ev_name, comm, pid, tid, cpu, ip, time, period, phys_addr, addr,
+-symbol, symoff, dso, time_enabled, time_running, values, callchain,
++ev_name, comm, id, stream_id, pid, tid, cpu, ip, time, period, phys_addr,
++addr, symbol, symoff, dso, time_enabled, time_running, values, callchain,
+ brstack, brstacksym, datasrc, datasrc_decode, iregs, uregs,
+ weight, transaction, raw_buf, attr, cpumode.
+ 
+diff --git a/tools/perf/util/scripting-engines/trace-event-python.c b/tools/perf/util/scripting-engines/trace-event-python.c
+index c0c010350bc2a..2f55194c0933e 100644
+--- a/tools/perf/util/scripting-engines/trace-event-python.c
++++ b/tools/perf/util/scripting-engines/trace-event-python.c
+@@ -791,6 +791,10 @@ static PyObject *get_perf_sample_dict(struct perf_sample *sample,
+ 	pydict_set_item_string_decref(dict, "ev_name", _PyUnicode_FromString(evsel__name(evsel)));
+ 	pydict_set_item_string_decref(dict, "attr", _PyBytes_FromStringAndSize((const char *)&evsel->core.attr, sizeof(evsel->core.attr)));
+ 
++	pydict_set_item_string_decref(dict_sample, "id",
++			PyLong_FromUnsignedLongLong(sample->id));
++	pydict_set_item_string_decref(dict_sample, "stream_id",
++			PyLong_FromUnsignedLongLong(sample->stream_id));
+ 	pydict_set_item_string_decref(dict_sample, "pid",
+ 			_PyLong_FromLong(sample->pid));
+ 	pydict_set_item_string_decref(dict_sample, "tid",
+@@ -1212,7 +1216,7 @@ static void python_export_sample_table(struct db_export *dbe,
+ 	struct tables *tables = container_of(dbe, struct tables, dbe);
+ 	PyObject *t;
+ 
+-	t = tuple_new(24);
++	t = tuple_new(26);
+ 
+ 	tuple_set_d64(t, 0, es->db_id);
+ 	tuple_set_d64(t, 1, es->evsel->db_id);
+@@ -1238,6 +1242,8 @@ static void python_export_sample_table(struct db_export *dbe,
+ 	tuple_set_d64(t, 21, es->call_path_id);
+ 	tuple_set_d64(t, 22, es->sample->insn_cnt);
+ 	tuple_set_d64(t, 23, es->sample->cyc_cnt);
++	tuple_set_d64(t, 24, es->sample->id);
++	tuple_set_d64(t, 25, es->sample->stream_id);
+ 
+ 	call_object(tables->sample_handler, t, "sample_table");
+ 
+-- 
+2.43.0
+
