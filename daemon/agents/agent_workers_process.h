@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -189,7 +189,7 @@ namespace agents {
         }
 
     private:
-        boost::asio::io_context io_context {};
+        boost::asio::io_context io_context {n_threads};
         async::proc::process_monitor_t process_monitor {io_context};
         boost::asio::signal_set signal_set {io_context};
         boost::asio::thread_pool threads {n_threads};

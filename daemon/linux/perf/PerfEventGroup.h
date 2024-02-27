@@ -1,8 +1,9 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 
+#include "Configuration.h"
 #include "agents/perf/record_types.h"
 #include "k/perf_event.h" // Use a snapshot of perf_event.h as it may be more recent than what is on the target and if not newer features won't be supported anyways
 #include "lib/AutoClosingFd.h"
@@ -35,6 +36,7 @@ struct perf_event_group_configurer_config_t {
     int dummyKeyCounter = std::numeric_limits<int>::max() - 1;
     int backtraceDepth;
     int sampleRate;
+    CaptureOperationMode captureOperationMode;
     bool excludeKernelEvents;
     bool enablePeriodicSampling;
     bool enableOffCpuSampling;
@@ -47,6 +49,7 @@ struct perf_event_group_configurer_config_t {
                                                 int64_t schedSwitchId,
                                                 int backtraceDepth,
                                                 int sampleRate,
+                                                CaptureOperationMode captureOperationMode,
                                                 bool enablePeriodicSampling,
                                                 bool enableOffCpuSampling)
         : perfConfig(perfConfig),
@@ -56,6 +59,7 @@ struct perf_event_group_configurer_config_t {
           schedSwitchId(schedSwitchId),
           backtraceDepth(backtraceDepth),
           sampleRate(sampleRate),
+          captureOperationMode(captureOperationMode),
           excludeKernelEvents(excludeKernelEvents),
           enablePeriodicSampling(enablePeriodicSampling),
           enableOffCpuSampling(enableOffCpuSampling)
@@ -93,7 +97,8 @@ public:
             case PerfEventGroupIdentifier::Type::SPECIFIC_CPU:
             case PerfEventGroupIdentifier::Type::SPE:
                 return false;
-            case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU:
+            case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_PINNED:
+            case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED:
             case PerfEventGroupIdentifier::Type::UNCORE_PMU:
                 return true;
             default:
@@ -113,7 +118,8 @@ public:
                                         attr_to_key_mapping_tracker_t & mapping_tracker,
                                         int key,
                                         const IPerfGroups::Attr & attr,
-                                        bool hasAuxData);
+                                        bool hasAuxData,
+                                        bool uses_strobe_period);
 
     [[nodiscard]] static int nextDummyKey(perf_event_group_configurer_config_t & config);
 
@@ -129,7 +135,8 @@ private:
     PerfEventGroupIdentifier const & identifier;
     perf_event_group_configurer_state_t & state;
 
-    [[nodiscard]] bool createCpuGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker);
+    [[nodiscard]] bool createCpuGroupLeaderPinned(attr_to_key_mapping_tracker_t & mapping_tracker);
+    [[nodiscard]] bool createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker);
     [[nodiscard]] bool createUncoreGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker);
     [[nodiscard]] int nextDummyKey() { return nextDummyKey(config); }
 };

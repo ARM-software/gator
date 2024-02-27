@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2020 by Arm Limited. All rights reserved.
+# Copyright (C) 2010-2023 by Arm Limited. All rights reserved.
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
@@ -120,7 +120,7 @@ MESSAGE(STATUS                          "'javac' command detected as '${JAVAC}'"
 
 # Compile the java -> class file
 ADD_CUSTOM_COMMAND(OUTPUT               ${NOTIFY_CLASS_PATHS}
-                   COMMAND              ${JAVAC} -cp ${ANDROID_LAYOUTLIB_PATH} -source 1.6 -target 1.6 ${NOTIFY_SOURCE_FILES} -d ${NOTIFY_CLASS_OUTDIR}
+                   COMMAND              ${JAVAC} -cp ${ANDROID_LAYOUTLIB_PATH} -source 1.8 -target 1.8 ${NOTIFY_SOURCE_FILES} -d ${NOTIFY_CLASS_OUTDIR}
                    WORKING_DIRECTORY    ${NOTIFY_CLASS_OUTDIR}
                    DEPENDS              ${NOTIFY_SOURCE_FILES}
                    COMMENT              "Compiling Notify.java")

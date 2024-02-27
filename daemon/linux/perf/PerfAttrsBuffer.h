@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_ATTRS_BUFFER_H
 #define PERF_ATTRS_BUFFER_H
@@ -39,6 +39,10 @@ public:
     void perfCounterFooter() override;
     void marshalHeaderPage(const char * headerPage) override;
     void marshalHeaderEvent(const char * headerEvent) override;
+    void marshalMetricKey(int metric_key,
+                          std::uint16_t event_code,
+                          int event_key,
+                          IPerfAttrsConsumer::MetricEventType type) override;
 
 private:
     void waitForSpace(int bytes);

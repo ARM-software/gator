@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #include "non_root/NonRootDriver.h"
 
@@ -441,221 +441,212 @@ namespace non_root {
             LOG_SETUP("/proc support\nCannot access /proc/stat");
         }
 
-        static const int ANDROID_N_API_LEVEL = 24;
+        // Android 7 severly restricts access to /proc filesystem on so we are unable to access other processes proc files.
+        // this means these will only report on a current process basis
+        if (canAccessProcSelfStatm) {
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_DATA_SIZE,
+                "nonroot_process_abs_data_size", //
+                "Data Size",                     //
+                "Process (Memory)",              //
+                "Total size of data + stack in bytes. "
+                "See the description of /proc/[PID]/statm [data] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                "B",
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_SHARED_SIZE,
+                "nonroot_process_abs_shared_size", //
+                "Shared Size",                     //
+                "Process (Memory)",                //
+                "Total size of resident shared pages (i.e., backed by a file). "
+                "See the description of /proc/[PID]/statm [shared] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                "B",
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_TEXT_SIZE,
+                "nonroot_process_abs_text_size", //
+                "Text Size",                     //
+                "Process (Memory)",              //
+                "Total size of text (code) in bytes. "
+                "See the description of /proc/[PID]/statm [text] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                "B",
+                "overlay",
+                1.0,
+                false,
+                true));
+        }
+        else {
+            LOG_SETUP("/proc support\nCannot access /proc/self/statm");
+        }
 
-        if (gSessionData.mAndroidApiLevel < ANDROID_N_API_LEVEL) {
-            // Android 7 severly restricts access to /proc filesystem on so we are unable to access other processes proc files.
-            // disable all per-process counters including CPU activity counters.
-            if (canAccessProcSelfStatm) {
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_DATA_SIZE,
-                    "nonroot_process_abs_data_size", //
-                    "Data Size",                     //
-                    "Process (Memory)",              //
-                    "Total size of data + stack in bytes. "
-                    "See the description of /proc/[PID]/statm [data] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    "B",
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_SHARED_SIZE,
-                    "nonroot_process_abs_shared_size", //
-                    "Shared Size",                     //
-                    "Process (Memory)",                //
-                    "Total size of resident shared pages (i.e., backed by a file). "
-                    "See the description of /proc/[PID]/statm [shared] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    "B",
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_TEXT_SIZE,
-                    "nonroot_process_abs_text_size", //
-                    "Text Size",                     //
-                    "Process (Memory)",              //
-                    "Total size of text (code) in bytes. "
-                    "See the description of /proc/[PID]/statm [text] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    "B",
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-            }
-            else {
-                LOG_SETUP("/proc support\nCannot access /proc/self/statm");
-            }
+        if (canAccessProcSelfStat) {
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_NUM_THREADS,
+                "nonroot_process_abs_num_threads", //
+                "Num Threads",                     //
+                "Process (Threads)",               //
+                "Number of threads in this process. "
+                "See the description of /proc/[PID]/stat [num_threads] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                nullptr,
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_RES_LIMIT,
+                "nonroot_process_abs_res_limit", //
+                "Res Limit",                     //
+                "Process (Memory)",              //
+                "Current soft limit in bytes on the rss of the process. "
+                "See the description of /proc/[PID]/stat [rsslim] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                "B",
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_RES_SIZE,
+                "nonroot_process_abs_res_size", //
+                "Res Size",                     //
+                "Process (Memory)",             //
+                "Resident Set Size: number of pages the process has in real memory. "
+                "This is just the pages which count toward text, data, or stack space. "
+                "This does not include pages which have not been demand-loaded in, or which are swapped out. "
+                "See the description of /proc/[PID]/stat [rss] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                "B",
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_ABS_VM_SIZE,
+                "nonroot_process_abs_vm_size", //
+                "VM Size",                     //
+                "Process (Memory)",            //
+                "Virtual memory size in bytes. "
+                "See the description of /proc/[PID]/stat [vsize] in 'man proc.5' for more details.", //
+                "maximum",
+                "absolute",
+                "B",
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_DELTA_MAJOR_FAULTS,
+                "nonroot_process_delta_major_faults", //
+                "Major Faults",                       //
+                "Process (Faults)",                   //
+                "The number of major faults the process has made which have required loading a memory page from "
+                "disk. "
+                "See the description of /proc/[PID]/stat [majflt] in 'man proc.5' for more details.", //
+                "accumulate",
+                "delta",
+                nullptr,
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_DELTA_MINOR_FAULTS,
+                "nonroot_process_delta_minor_faults", //
+                "Minor Faults",                       //
+                "Process (Faults)",                   //
+                "The number of minor faults the process has made which have not required loading a memory page "
+                "from "
+                "disk. "
+                "See the description of /proc/[PID]/stat [minflt] in 'man proc.5' for more details.", //
+                "accumulate",
+                "delta",
+                nullptr,
+                "overlay",
+                1.0,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_DELTA_UTIME,
+                "nonroot_process_delta_utime",                                                             //
+                "Userspace",                                                                               //
+                "Process (CPU Times)",                                                                     //
+                "Amount of time that this process has been scheduled in user mode (including guest time)." //
+                "See the description of /proc/[PID]/stat [utime] in 'man proc.5' for more details.",       //
+                "accumulate",
+                "delta",
+                "s",
+                "stacked",
+                ticks_mult,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_DELTA_STIME,
+                "nonroot_process_delta_stime", //
+                "Kernel",                      //
+                "Process (CPU Times)",         //
+                "Amount of time that this process has been scheduled in kernel mode. "
+                "See the description of /proc/[PID]/stat [stime] in 'man proc.5' for more details.", //
+                "accumulate",
+                "delta",
+                "s",
+                "stacked",
+                ticks_mult,
+                false,
+                true));
+            setCounters(new NonRootDriverCounter(
+                getCounters(),
+                NonRootCounter::PROCESS_DELTA_GUEST_TIME,
+                "nonroot_process_delta_guest_time",                                                           //
+                "Guest",                                                                                      //
+                "Process (CPU Times)",                                                                        //
+                "Guest time of the process (time spent running a virtual CPU for a guest operating system). " //
+                "See the description of /proc/[PID]/stat [guest_time] in 'man proc.5' for more details.",     //
+                "accumulate",
+                "delta",
+                "s",
+                "stacked",
+                ticks_mult,
+                false,
+                true));
 
-            if (canAccessProcSelfStat) {
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_NUM_THREADS,
-                    "nonroot_process_abs_num_threads", //
-                    "Num Threads",                     //
-                    "Process (Threads)",               //
-                    "Number of threads in this process. "
-                    "See the description of /proc/[PID]/stat [num_threads] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    nullptr,
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_RES_LIMIT,
-                    "nonroot_process_abs_res_limit", //
-                    "Res Limit",                     //
-                    "Process (Memory)",              //
-                    "Current soft limit in bytes on the rss of the process. "
-                    "See the description of /proc/[PID]/stat [rsslim] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    "B",
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_RES_SIZE,
-                    "nonroot_process_abs_res_size", //
-                    "Res Size",                     //
-                    "Process (Memory)",             //
-                    "Resident Set Size: number of pages the process has in real memory. "
-                    "This is just the pages which count toward text, data, or stack space. "
-                    "This does not include pages which have not been demand-loaded in, or which are swapped out. "
-                    "See the description of /proc/[PID]/stat [rss] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    "B",
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_ABS_VM_SIZE,
-                    "nonroot_process_abs_vm_size", //
-                    "VM Size",                     //
-                    "Process (Memory)",            //
-                    "Virtual memory size in bytes. "
-                    "See the description of /proc/[PID]/stat [vsize] in 'man proc.5' for more details.", //
-                    "maximum",
-                    "absolute",
-                    "B",
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_DELTA_MAJOR_FAULTS,
-                    "nonroot_process_delta_major_faults", //
-                    "Major Faults",                       //
-                    "Process (Faults)",                   //
-                    "The number of major faults the process has made which have required loading a memory page from "
-                    "disk. "
-                    "See the description of /proc/[PID]/stat [majflt] in 'man proc.5' for more details.", //
-                    "accumulate",
-                    "delta",
-                    nullptr,
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_DELTA_MINOR_FAULTS,
-                    "nonroot_process_delta_minor_faults", //
-                    "Minor Faults",                       //
-                    "Process (Faults)",                   //
-                    "The number of minor faults the process has made which have not required loading a memory page "
-                    "from "
-                    "disk. "
-                    "See the description of /proc/[PID]/stat [minflt] in 'man proc.5' for more details.", //
-                    "accumulate",
-                    "delta",
-                    nullptr,
-                    "overlay",
-                    1.0,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_DELTA_UTIME,
-                    "nonroot_process_delta_utime",                                                             //
-                    "Userspace",                                                                               //
-                    "Process (CPU Times)",                                                                     //
-                    "Amount of time that this process has been scheduled in user mode (including guest time)." //
-                    "See the description of /proc/[PID]/stat [utime] in 'man proc.5' for more details.",       //
-                    "accumulate",
-                    "delta",
-                    "s",
-                    "stacked",
-                    ticks_mult,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_DELTA_STIME,
-                    "nonroot_process_delta_stime", //
-                    "Kernel",                      //
-                    "Process (CPU Times)",         //
-                    "Amount of time that this process has been scheduled in kernel mode. "
-                    "See the description of /proc/[PID]/stat [stime] in 'man proc.5' for more details.", //
-                    "accumulate",
-                    "delta",
-                    "s",
-                    "stacked",
-                    ticks_mult,
-                    false,
-                    true));
-                setCounters(new NonRootDriverCounter(
-                    getCounters(),
-                    NonRootCounter::PROCESS_DELTA_GUEST_TIME,
-                    "nonroot_process_delta_guest_time",                                                           //
-                    "Guest",                                                                                      //
-                    "Process (CPU Times)",                                                                        //
-                    "Guest time of the process (time spent running a virtual CPU for a guest operating system). " //
-                    "See the description of /proc/[PID]/stat [guest_time] in 'man proc.5' for more details.",     //
-                    "accumulate",
-                    "delta",
-                    "s",
-                    "stacked",
-                    ticks_mult,
-                    false,
-                    true));
+            // CPU activity charts
+            for (const GatorCpu & cluster : clusters) {
+                const std::string sysName = (lib::Format() << cluster.getId() << "_system");
+                const std::string userName = (lib::Format() << cluster.getId() << "_user");
 
-                // CPU activity charts
-                for (const GatorCpu & cluster : clusters) {
-                    const std::string sysName = (lib::Format() << cluster.getId() << "_system");
-                    const std::string userName = (lib::Format() << cluster.getId() << "_user");
-
-                    setCounters(new NonRootDriverCounter(getCounters(), true, sysName));
-                    setCounters(new NonRootDriverCounter(getCounters(), false, userName));
-                }
-            }
-            else {
-                LOG_SETUP("/proc support\nCannot access /proc/self/stat");
+                setCounters(new NonRootDriverCounter(getCounters(), true, sysName));
+                setCounters(new NonRootDriverCounter(getCounters(), false, userName));
             }
         }
         else {
-            LOG_SETUP("/proc limited on Android 7+\nDisabled per-process proc counters on Android 7+ due to access "
-                      "restrictions on /proc (Android API level detected as %d)",
-                      gSessionData.mAndroidApiLevel);
+            LOG_SETUP("/proc support\nCannot access /proc/self/stat");
         }
     }
 

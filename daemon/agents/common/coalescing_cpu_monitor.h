@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -11,7 +11,7 @@
 #include "lib/Assert.h"
 #include "lib/EnumUtils.h"
 
-#include <deque>
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -56,15 +56,15 @@ namespace agents {
          * Receive an event from the monitor
          */
         template<typename CompletionToken>
-        auto async_receive_one(CompletionToken && token)
+        auto async_receive_one(int cpu_no, CompletionToken && token)
         {
             using namespace async::continuations;
 
             return async_initiate_explicit<void(event_t)>(
-                [st = this->shared_from_this()](auto && stored_continuation) {
+                [cpu_no, st = this->shared_from_this()](auto && stored_continuation) {
                     submit(start_on(st->strand) //
-                               | then([st, r = stored_continuation.move()]() mutable {
-                                     st->on_strand_do_receive_one(std::move(r));
+                               | then([cpu_no, st, r = stored_continuation.move()]() mutable {
+                                     st->on_strand_do_receive_one(cpu_no, std::move(r));
                                  }),
                            stored_continuation.get_exceptionally());
                 },
@@ -81,19 +81,28 @@ namespace agents {
                       | then([st = shared_from_this()]() {
                             // mark as terminated
                             st->terminated = true;
-                            // cancel the pending request if there is one
-                            st->cancel_pending();
-                            // clear any state
-                            st->per_core_state.clear();
-                            st->pending_cpu_nos.clear();
+
+                            // clear any state and cancel the pending requests if there are any
+                            std::vector<per_core_state_t> pcs {std::move(st->per_core_states_list)};
+
+                            for (auto & state : pcs) {
+                                st->cancel_pending(std::move(state.pending_handler));
+                            }
                         }));
         }
 
         bool is_safe_to_bring_online_or_offline(int cpu_no, bool online) const
         {
             //NOLINTNEXTLINE(readability-simplify-boolean-expr)
-            runtime_assert(cpu_no >= 0 && std::size_t(cpu_no) < per_core_state.size(), "Invalid cpu_no value");
-            switch (per_core_state[cpu_no]) {
+            runtime_assert(cpu_no >= 0, "Invalid cpu_no value");
+
+            if ((cpu_no < 0) || (std::size_t(cpu_no) >= per_core_states_list.size())) {
+                throw std::runtime_error("invalid state");
+            }
+
+            auto const & state = per_core_states_list[cpu_no];
+
+            switch (state.current_state) {
                 case state_t::initial_pending_online:
                 case state_t::pending_offline_online:
                 case state_t::pending_online:
@@ -104,6 +113,7 @@ namespace agents {
                 case state_t::pending_offline:
                 case state_t::offline:
                     return !online;
+                case state_t::initial_unknown:
                 default:
                     throw std::runtime_error("invalid state_t");
             }
@@ -123,6 +133,12 @@ namespace agents {
         };
 
         using completion_handler_t = async::continuations::stored_continuation_t<event_t>;
+
+        struct per_core_state_t {
+            completion_handler_t pending_handler {};
+            state_t current_state = state_t::initial_unknown;
+            bool transition_pending = false;
+        };
 
         /**
          * Transition current->new state value based on received raw on-off event
@@ -205,10 +221,34 @@ namespace agents {
             }
         }
 
+        /** Find the next pending event */
+        [[nodiscard]] static event_t find_next_pending_event(int cpu_no, per_core_state_t & state)
+        {
+            runtime_assert(state.transition_pending, "Unexpected call to find_next_pending_event");
+
+            // transform its state
+            auto const current_state = state.current_state;
+
+            runtime_assert(is_pending(current_state), "Unexpected core state");
+
+            auto const [new_state, online] = consume_pending(current_state);
+
+            state.current_state = new_state;
+
+            LOG_TRACE("Consuming coalesced CPU state from %u->%u, %u / %u",
+                      lib::toEnumValue(current_state),
+                      lib::toEnumValue(new_state),
+                      online,
+                      is_pending(new_state));
+
+            // if it is no longer pending, remove the core, otherwise leave at the front for next time
+            state.transition_pending = is_pending(new_state);
+
+            return {cpu_no, online};
+        }
+
         boost::asio::io_context::strand strand;
-        std::vector<state_t> per_core_state {};
-        completion_handler_t pending_handler {};
-        std::deque<int> pending_cpu_nos {};
+        std::vector<per_core_state_t> per_core_states_list {};
         bool terminated {false};
 
         /** Trigger the handler asynchronously */
@@ -219,24 +259,41 @@ namespace agents {
         }
 
         /** Cancel and clear any pending request */
-        void cancel_pending()
+        void cancel_pending(completion_handler_t && pending_handler)
         {
             completion_handler_t prev_pending {std::move(pending_handler)};
+
             if (prev_pending) {
                 // call it with invalid cpu
                 post_handler(std::move(prev_pending), event_t {-1, false});
             }
         }
 
+        [[nodiscard]] per_core_state_t & get_or_create_per_core_state(int cpu_no)
+        {
+            runtime_assert(cpu_no >= 0, "Invalid cpu no received");
+
+            std::size_t const ndx = cpu_no;
+
+            if (ndx >= per_core_states_list.size()) {
+                per_core_states_list.resize(ndx + 1);
+            }
+
+            return per_core_states_list[ndx];
+        }
+
         /** Handle the request to consume one pending event */
         template<typename Handler>
-        void on_strand_do_receive_one(Handler && handler)
+        void on_strand_do_receive_one(int cpu_no, Handler && handler)
         {
-            // cancel the pending request if there is one
-            cancel_pending();
+            // get or insert the current state of the core
+            auto & state = get_or_create_per_core_state(cpu_no);
 
-            // is there anything already pending
-            if (pending_cpu_nos.empty()) {
+            // is there already a pending handler? cancel it
+            cancel_pending(std::move(state.pending_handler));
+
+            // newly inserted OR no pending events, just store handler
+            if (!state.transition_pending) {
                 // cancel the new request if terminated
                 if (terminated) {
                     // call it with invalid cpu
@@ -244,70 +301,31 @@ namespace agents {
                 }
                 else {
                     // no, store the new handler and exit
-                    pending_handler = {std::forward<Handler>(handler)};
+                    state.pending_handler = completion_handler_t {std::forward<Handler>(handler)};
                 }
                 return;
             }
 
             // yes, find the next pending item for any subsequent call, then post the handler
-            post_handler(std::forward<Handler>(handler), find_next_pending_event());
-        }
-
-        /** Find the next pending event */
-        event_t find_next_pending_event()
-        {
-            runtime_assert(!pending_cpu_nos.empty(), "Unexpected call to find_next_pending_event");
-
-            // find the next pending core
-            auto cpu_no = pending_cpu_nos.front();
-
-            runtime_assert((cpu_no >= 0) && (std::size_t(cpu_no) < per_core_state.size()), "Invalid cpu_no value");
-
-            // transform its state
-            auto current_state = per_core_state[cpu_no];
-
-            runtime_assert(is_pending(current_state), "Unexpected core state");
-
-            auto [new_state, online] = consume_pending(current_state);
-
-            per_core_state[cpu_no] = new_state;
-
-            LOG_TRACE("Consuming coalesced CPU state from %u->%u, %u / %u",
-                      lib::toEnumValue(current_state),
-                      lib::toEnumValue(new_state),
-                      online,
-                      is_pending(new_state));
-
-            // if it is no longer pending, remove the core, otherwise leave at the front for next time
-            if (!is_pending(new_state)) {
-                pending_cpu_nos.pop_front();
-            }
-
-            return {cpu_no, online};
+            post_handler(std::forward<Handler>(handler), find_next_pending_event(cpu_no, state));
         }
 
         /** Update state from new raw event */
         void on_strand_on_raw_event(int cpu_no, bool online)
         {
-            runtime_assert(cpu_no >= 0, "Invalid cpu no received");
-
             // ignore the call if shutdown
             if (terminated) {
                 return;
             }
 
-            auto index = std::size_t(cpu_no);
-
             // make sure the vector has the core's index
-            if (index >= per_core_state.size()) {
-                per_core_state.resize(index + 1);
-            }
+            auto & state = get_or_create_per_core_state(cpu_no);
 
             // calculate transition
-            auto current_state = per_core_state[index];
-            auto new_state = transition(current_state, online);
-            auto was_pending = is_pending(current_state);
-            auto now_pending = is_pending(new_state);
+            auto const current_state = state.current_state;
+            auto const new_state = transition(current_state, online);
+            auto const was_pending = is_pending(current_state);
+            auto const now_pending = is_pending(new_state);
 
             LOG_TRACE("Transitioning coalesced CPU state from %u->%u (%u/%u)",
                       lib::toEnumValue(current_state),
@@ -316,19 +334,18 @@ namespace agents {
                       now_pending);
 
             // update state
-            per_core_state[index] = new_state;
+            state.current_state = new_state;
 
             // handle transition to pending
             if (now_pending && !was_pending) {
+                // mark as having a transition pending
+                state.transition_pending = true;
+
                 // is there a handler waiting ?
-                completion_handler_t prev_pending {std::move(pending_handler)};
+                completion_handler_t prev_pending {std::move(state.pending_handler)};
                 if (prev_pending) {
                     // call it by post
-                    post_handler(std::move(prev_pending), event_t {cpu_no, online});
-                }
-                else {
-                    // queue it up
-                    pending_cpu_nos.push_back(cpu_no);
+                    post_handler(std::move(prev_pending), find_next_pending_event(cpu_no, state));
                 }
             }
         }

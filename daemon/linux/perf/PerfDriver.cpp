@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriver.h"
 
@@ -12,10 +12,12 @@
 #include "ICpuInfo.h"
 #include "ISummaryConsumer.h"
 #include "Logging.h"
+#include "SessionData.h"
 #include "SimpleDriver.h"
 #include "agents/perf/capture_configuration.h"
 #include "agents/perf/perf_driver_summary.h"
 #include "k/perf_event.h"
+#include "lib/Span.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
 #include "linux/Tracepoints.h"
@@ -23,25 +25,35 @@
 #include "linux/perf/PerfDriverConfiguration.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "linux/perf/attr_to_key_mapping_tracker.h"
+#include "linux/perf/metric_key_to_event_key_tracker.h"
+#include "metrics/definitions.hpp"
+#include "metrics/group_generator.hpp"
 #include "xml/PmuXML.h"
 
+#include <algorithm>
 #include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <initializer_list>
+#include <map>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include <mxml.h>
 #include <unistd.h>
 
-#define TYPE_DERIVED ~0U
+static constexpr std::uint32_t TYPE_DERIVED = ~0U;
+static constexpr std::uint32_t TYPE_METRIC = ~1U;
 
-// from driver/perf/arm_spe_pmu.c
-// alternatively we could read them from /sys/devices/arm_spe_0/format/*
+// NOLINTBEGIN(modernize-macro-to-enum) - from driver/perf/arm_spe_pmu.c
+// TODO: we could read them from /sys/devices/arm_spe_0/format/*
 #define SPE_ts_enable_CFG config /* PMSCR_EL1.TS */
 #define SPE_ts_enable_LO 0
 #define SPE_ts_enable_HI 0
@@ -71,12 +83,309 @@
 #define SPE_min_latency_CFG config2 /* PMSLATFR_EL1.MINLAT */
 #define SPE_min_latency_LO 0
 #define SPE_min_latency_HI 11
+// NOLINTEND(modernize-macro-to-enum)
 
 // An improved version would mask out old value be we assume 0
 #define SET_SPE_CFG(cfg, value) SPE_##cfg##_CFG |= static_cast<uint64_t>(value) << SPE_##cfg##_LO
 
 static constexpr uint64_t armv7AndLaterClockCyclesEvent = 0x11;
 static constexpr uint64_t armv7PmuDriverCycleCounterPseudoEvent = 0xFF;
+
+namespace {
+    std::string metric_counter_name(PerfCpu const & pmu, metrics::metric_events_set_t const & metrics_set)
+    {
+        // uses the counter set, not the id, since the metrics are shared by all derivitives
+        return lib::dyn_printf_str_t("%s_metric_%s", pmu.gator_cpu.getCounterSet(), metrics_set.identifier.data());
+    }
+
+    char const * metric_title(metrics::metric_priority_t prio)
+    {
+        switch (prio) {
+            case metrics::metric_priority_t::backend_bound:
+            case metrics::metric_priority_t::backend_stalled_cycles:
+            case metrics::metric_priority_t::backend:
+                return "Backend";
+            case metrics::metric_priority_t::bad_speculation:
+                return "Basic";
+            case metrics::metric_priority_t::branch:
+                return "Branch";
+            case metrics::metric_priority_t::bus:
+                return "Bus";
+            case metrics::metric_priority_t::cas:
+                return "CAS";
+            case metrics::metric_priority_t::cpi:
+                return "Basic";
+            case metrics::metric_priority_t::data:
+                return "L1D Cache";
+            case metrics::metric_priority_t::frontend_bound:
+            case metrics::metric_priority_t::frontend_stalled_cycles:
+            case metrics::metric_priority_t::frontend:
+                return "Frontend";
+            case metrics::metric_priority_t::instruction:
+                return "Instructions";
+            case metrics::metric_priority_t::ipc:
+                return "Basic";
+            case metrics::metric_priority_t::l2:
+                return "L2 Cache";
+            case metrics::metric_priority_t::l3:
+                return "L3 Cache";
+            case metrics::metric_priority_t::ll:
+                return "Last Level Cache";
+            case metrics::metric_priority_t::ls:
+            case metrics::metric_priority_t::numeric:
+                return "Instructions";
+            case metrics::metric_priority_t::retiring:
+                return "Basic";
+            default:
+                return "unknown";
+        }
+    }
+
+    [[nodiscard]] std::unordered_map<metrics::metric_events_set_t const *, int> make_metric_to_key_map(
+        PerfCpu const & pmu,
+        std::unordered_map<std::string, int> const & metric_counter_keys,
+        metrics::metric_cpu_events_t const & metrics_sets)
+    {
+        std::unordered_map<metrics::metric_events_set_t const *, int> result {};
+
+        for (metrics::metric_events_set_t const & metrics_set : metrics_sets) {
+            auto const counter_name = metric_counter_name(pmu, metrics_set);
+            if (auto const it = metric_counter_keys.find(counter_name); it != metric_counter_keys.end()) {
+                result.try_emplace(&metrics_set, it->second);
+            }
+        }
+
+        return result;
+    }
+
+    std::function<bool(metrics::metric_events_set_t const &)> make_metric_filter(
+        PerfCpu const & pmu,
+        std::unordered_map<std::string, int> const & metric_counter_keys,
+        metrics::metric_cpu_events_t const & metrics_sets)
+    {
+        std::unordered_set<metrics::metric_events_set_t const *> valid_sets {};
+
+        for (metrics::metric_events_set_t const & metrics_set : metrics_sets) {
+            auto const counter_name = metric_counter_name(pmu, metrics_set);
+            if (metric_counter_keys.count(counter_name) != 0) {
+                valid_sets.insert(&metrics_set);
+            }
+        }
+
+        return [valid_sets = std::move(valid_sets)](metrics::metric_events_set_t const & set) {
+            return valid_sets.count(&set) != 0;
+        };
+    }
+
+    [[nodiscard]] bool add_one_metric_event(IPerfGroups & group,
+                                            attr_to_key_mapping_tracker_t & mapping_tracker,
+                                            PerfCpu const & cluster,
+                                            std::size_t group_ndx,
+                                            std::uint16_t event_code,
+                                            std::uint64_t rate,
+                                            std::uint32_t window,
+                                            std::unordered_map<std::uint16_t, int> & event_to_key)
+    {
+
+        LOG_DEBUG("Metric [%zu] = 0x%04x", group_ndx, event_code);
+        const int key = group.nextDummyKey();
+        IPerfGroups::Attr attr {};
+
+        attr.type = std::uint32_t(cluster.pmu_type);
+        attr.config = event_code;
+        attr.periodOrFreq = (rate - window);
+        attr.strobePeriod = window;
+        attr.sampleType = (PERF_SAMPLE_TID | PERF_SAMPLE_READ | PERF_SAMPLE_IP | PERF_SAMPLE_CALLCHAIN);
+        attr.userspace_only = true;
+
+        if (!group.add(mapping_tracker, PerfEventGroupIdentifier(cluster.gator_cpu, group_ndx), key, attr)) {
+            LOG_DEBUG("Failed to add metrics group counter");
+            return false;
+        }
+
+        event_to_key[event_code] = key;
+        return true;
+    }
+
+    void track_metric_events(metric_key_to_event_key_tracker_t & metric_tracker,
+                             std::unordered_map<const metrics::metric_events_set_t *, int> const & set_to_key,
+                             std::unordered_map<std::uint16_t, int> const & event_to_key,
+                             std::uint16_t const cpu_cycles_event,
+                             metrics::metric_events_set_t const & set,
+                             std::uint16_t branch_return_event)
+    {
+        auto const set_key = set_to_key.at(&set);
+
+        // cycle count
+        {
+            auto const event_key = event_to_key.at(cpu_cycles_event);
+            LOG_DEBUG("Metric %s:%u maps key %i to 0x%04x:%i",
+                      set.identifier.data(),
+                      set.instance_no,
+                      set_key,
+                      cpu_cycles_event,
+                      event_key);
+            metric_tracker(set_key,
+                           cpu_cycles_event,
+                           event_key,
+                           metric_key_to_event_key_tracker_t::metric_event_type_t::cycle_counter);
+        }
+
+        // branch return
+        if (branch_return_event != 0) {
+            auto const event_key = event_to_key.at(branch_return_event);
+            LOG_DEBUG("Metric %s:%u maps key %i to 0x%04x:%i",
+                      set.identifier.data(),
+                      set.instance_no,
+                      set_key,
+                      branch_return_event,
+                      event_key);
+            metric_tracker(set_key,
+                           branch_return_event,
+                           event_key,
+                           metric_key_to_event_key_tracker_t::metric_event_type_t::return_counter);
+        }
+
+        // other events
+        for (auto event : set.event_codes) {
+            if ((event == cpu_cycles_event) || (event == branch_return_event)) {
+                continue;
+            }
+            auto const event_key = event_to_key.at(event);
+            LOG_DEBUG("Metric %s:%u maps key %i to 0x%04x:%i",
+                      set.identifier.data(),
+                      set.instance_no,
+                      set_key,
+                      event,
+                      event_key);
+            metric_tracker(set_key, event, event_key, metric_key_to_event_key_tracker_t::metric_event_type_t::event);
+        }
+    }
+
+    [[nodiscard]] std::size_t get_n_used_pmu_counters(
+        std::map<PerfEventGroupIdentifier, std::size_t> const & cpu_event_counts,
+        PerfCpu const & cluster)
+    {
+        if (auto const it = cpu_event_counts.find(PerfEventGroupIdentifier(cluster.gator_cpu));
+            it != cpu_event_counts.end()) {
+            return it->second;
+        }
+
+        return 0;
+    }
+
+    [[nodiscard]] bool add_metrics_for(IPerfGroups & group,
+                                       attr_to_key_mapping_tracker_t & mapping_tracker,
+                                       metric_key_to_event_key_tracker_t & metric_tracker,
+                                       std::map<PerfEventGroupIdentifier, std::size_t> const & cpu_event_counts,
+                                       std::unordered_map<std::string, int> const & metric_ids,
+                                       std::uint16_t const cpu_cycles_event,
+                                       bool supports_strobing,
+                                       PerfCpu const & cluster,
+                                       metrics::metric_cpu_event_map_entry_t const & cpu_metrics)
+    {
+        auto const n_used = get_n_used_pmu_counters(cpu_event_counts, cluster);
+        auto const n_available_raw = cluster.gator_cpu.getPmncCounters() //
+                                   - std::min<std::size_t>(n_used, cluster.gator_cpu.getPmncCounters());
+
+        // counting return events is only enabled if there is space. Prioritize collecting metrics when there is limited number of programmable counters available
+        auto const use_return_counter = (cpu_metrics.return_event_code != 0) //
+                                     && ((cpu_metrics.largest_metric_event_count + 1) <= n_available_raw);
+
+        // counting return events consumes one counter
+        auto const n_available = (use_return_counter ? std::max<std::size_t>(1, n_available_raw) - 1 //
+                                                     : n_available_raw);
+
+        LOG_INFO("Found metrics set %p for core type %s, n_counters=%i (used %zu, raw %zu, ret %u, avail %zu)",
+                 &cpu_metrics,
+                 cluster.gator_cpu.getCoreName(),
+                 cluster.gator_cpu.getPmncCounters(),
+                 n_used,
+                 n_available_raw,
+                 use_return_counter,
+                 n_available);
+
+        // make a lookup from metric set to counter key .
+        // this is used by streamline to correlate the perf ids via there keys back to the original event code / metric(s)
+        auto const set_to_key = make_metric_to_key_map(cluster, metric_ids, cpu_metrics.events);
+
+        // find the valid metric combinations. this is the smallest set of multiplexed counter groups that will fit all valid metrics
+        auto const combinations =
+            metrics::make_combinations(n_available,
+                                       cpu_metrics.events,
+                                       make_metric_filter(cluster, metric_ids, cpu_metrics.events));
+
+        LOG_INFO("Combinations set size %zu", combinations.size());
+
+        // select the sample rate and strobe window
+        auto const long_period = (gSessionData.mSampleRate > 0 ? (1'000'000'000UL / gSessionData.mSampleRate) //
+                                                               : 1'000'000UL);
+        auto const short_period = 100UL;
+        auto const rate = (supports_strobing ? long_period : short_period);
+        auto const window = (supports_strobing ? short_period : 0);
+
+        // output each of the combinations as a seperate multiplexed group
+        for (std::size_t n = 0; n < combinations.size(); ++n) {
+            std::uint32_t const group_ndx = n + 1;
+            std::unordered_map<std::uint16_t, int> event_to_key {};
+            bool contains_return_event = false;
+
+            // add the leader
+            group.addGroupLeader(mapping_tracker, PerfEventGroupIdentifier {cluster.gator_cpu, group_ndx});
+
+            // add cycles, which is the sampling event
+            if (!add_one_metric_event(group,
+                                      mapping_tracker,
+                                      cluster,
+                                      group_ndx,
+                                      cpu_cycles_event,
+                                      rate,
+                                      window,
+                                      event_to_key)) {
+                return false;
+            }
+
+            // add the metric events (which are not sampling)
+            for (auto event : combinations[n].event_codes) {
+                // no need to add it twice
+                if (event == cpu_cycles_event) {
+                    continue;
+                }
+
+                if (!add_one_metric_event(group, mapping_tracker, cluster, group_ndx, event, 0, 0, event_to_key)) {
+                    return false;
+                }
+
+                contains_return_event |= (event == cpu_metrics.return_event_code);
+            }
+
+            // add branch-return counter for checking
+            if (use_return_counter && !contains_return_event
+                && !add_one_metric_event(group,
+                                         mapping_tracker,
+                                         cluster,
+                                         group_ndx,
+                                         cpu_metrics.return_event_code,
+                                         0,
+                                         0,
+                                         event_to_key)) {
+                return false;
+            }
+
+            // add the mappings
+            for (auto const * set : combinations[n].contains_sets) {
+                track_metric_events(metric_tracker,
+                                    set_to_key,
+                                    event_to_key,
+                                    cpu_cycles_event,
+                                    *set,
+                                    use_return_counter ? cpu_metrics.return_event_code : 0);
+            }
+        }
+
+        return true;
+    }
+}
 
 class PerfCounter : public DriverCounter {
 public:
@@ -532,6 +841,32 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
         setCounters(
             new PerfCounter(getCounters(), PerfEventGroupIdentifier(mConfig.cpuNumberToSpeType), speId, attr, true));
     }
+
+    auto const * cpu_metrics = metrics::find_events_for_cset(cpu.getCounterSet());
+    if (cpu_metrics != nullptr) {
+        auto const & metrics_sets = cpu_metrics->events.get();
+        LOG_DEBUG("PMU %s has %zu metrics", cpu.getCoreName(), metrics_sets.size());
+        for (metrics::metric_events_set_t const & metrics_set : metrics_sets) {
+            LOG_DEBUG("PMU %s has metric %s:%u containing %zu events",
+                      cpu.getCoreName(),
+                      metrics_set.identifier.data(),
+                      metrics_set.instance_no,
+                      metrics_set.event_codes.size());
+            if ((cpu.getPmncCounters() > 0) && (metrics_set.event_codes.size() <= std::size_t(cpu.getPmncCounters()))) {
+                auto const metric_id = metric_counter_name(perfCpu, metrics_set);
+
+                LOG_DEBUG("Adding metric %s", metric_id.c_str());
+
+                setCounters(new PerfCounter(getCounters(),
+                                            PerfEventGroupIdentifier(cpu, 1),
+                                            metric_id.c_str(),
+                                            TYPE_METRIC,
+                                            -1,
+                                            0,
+                                            0));
+            }
+        }
+    }
 }
 
 void PerfDriver::addUncoreCounters(const PerfUncore & perfUncore)
@@ -617,7 +952,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
 {
     static constexpr std::size_t buffer_size = 256;
 
-    bool isSystemWide = getConfig().is_system_wide;
+    bool isSystemWide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
     bool canAccessTrcPnt = getConfig().can_access_tracepoints;
     if (!isSystemWide || !canAccessTrcPnt) {
         LOG_DEBUG("No Mali Tracepoint counters added, (systemwide (%d), canAccessTracepoints(%d))",
@@ -720,7 +1055,10 @@ std::optional<std::uint64_t> PerfDriver::summary(ISummaryConsumer & consumer,
                                                  const std::function<uint64_t()> & getMonotonicTime)
 {
     auto monotonic_started = getMonotonicTime();
-    auto state = agents::perf::create_perf_driver_summary_state(mConfig.config, monotonic_started);
+    auto state = agents::perf::create_perf_driver_summary_state(
+        mConfig.config,
+        monotonic_started,
+        isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode));
     if (!state) {
         return {};
     }
@@ -841,74 +1179,154 @@ std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
     return {};
 }
 
-bool PerfDriver::enable(IPerfGroups & group, attr_to_key_mapping_tracker_t & mapping_tracker) const
+bool PerfDriver::enableGatorTracepoints(IPerfGroups & group, attr_to_key_mapping_tracker_t & mapping_tracker) const
 {
-    const uint64_t id = getConfig().can_access_tracepoints
-                          ? _getTracepointId(traceFsConstants, "Mali: Job slot events", "mali/mali_job_slots_event")
-                          : 0 /* never used */;
+    std::int64_t id;
+
+    // enable GATOR TRACEPOINTS
+    id = _getTracepointId(traceFsConstants, "gator counter", GATOR_COUNTER);
+    if (id >= 0) {
+        if (!enableGatorTracePoint(group, mapping_tracker, id)) {
+            return false;
+        }
+    }
+
+    id = _getTracepointId(traceFsConstants, "gator bookmark", GATOR_BOOKMARK);
+    if (id >= 0) {
+        if (!enableGatorTracePoint(group, mapping_tracker, id)) {
+            return false;
+        }
+    }
+
+    id = _getTracepointId(traceFsConstants, "gator text", GATOR_TEXT);
+    if (id >= 0) {
+        if (!enableGatorTracePoint(group, mapping_tracker, id)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool PerfDriver::enableTimelineCounters(IPerfGroups & group,
+                                        attr_to_key_mapping_tracker_t & mapping_tracker,
+                                        std::map<PerfEventGroupIdentifier, std::size_t> & cpu_event_counts,
+                                        std::unordered_map<std::string, int> & metric_ids) const
+{
+    const uint64_t mali_job_slots_id =
+        getConfig().can_access_tracepoints
+            ? _getTracepointId(traceFsConstants, "Mali: Job slot events", "mali/mali_job_slots_event")
+            : 0 /* never used */;
+
     bool sentMaliJobSlotEvents = false;
 
+    for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
+         counter = static_cast<PerfCounter *>(counter->getNext())) {
+
+        if (!counter->isEnabled()) {
+            continue;
+        }
+
+        auto const & attr = counter->getAttr();
+
+        if (attr.type == TYPE_METRIC) {
+            // accumulate these for filtering later
+            metric_ids.try_emplace(counter->getName(), counter->getKey());
+        }
+        else if (attr.type != TYPE_DERIVED) {
+            // do not sent mali_job_slots_event tracepoint multiple times; just send it once and let the processing on the host side
+            // deal with multiple counters that are generated from it
+            const bool isMaliJobSlotEvents = getConfig().can_access_tracepoints && (attr.type == PERF_TYPE_TRACEPOINT)
+                                          && (attr.config == mali_job_slots_id);
+
+            if (isMaliJobSlotEvents && sentMaliJobSlotEvents) {
+                continue;
+            }
+
+            sentMaliJobSlotEvents |= isMaliJobSlotEvents;
+
+            // count the number of CPU PMU counters used as these will not be available to metrics
+            if ((attr.type != PERF_TYPE_SOFTWARE) && (attr.type != PERF_TYPE_TRACEPOINT)) {
+                cpu_event_counts[counter->getPerfEventGroupIdentifier()] += 1;
+            }
+
+            // add the main event
+            if (!group.add(mapping_tracker,
+                           counter->getPerfEventGroupIdentifier(),
+                           counter->getKey(),
+                           counter->getAttr(),
+                           counter->usesAux())) {
+                LOG_DEBUG("PerfGroups::add failed");
+                return false;
+            }
+
+            // and the secondary event
+            if (counter->hasConfigId2()
+                && !group.add(mapping_tracker,
+                              counter->getPerfEventGroupIdentifier(),
+                              counter->getKey() | 0x40000000,
+                              counter->getAttr2(),
+                              counter->usesAux())) {
+                LOG_DEBUG("PerfGroups::add (2nd) failed");
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool PerfDriver::enable(IPerfGroups & group,
+                        attr_to_key_mapping_tracker_t & mapping_tracker,
+                        metric_key_to_event_key_tracker_t & metric_tracker) const
+{
+    std::uint16_t const cpu_cycles_event =
+        (mConfig.config.has_armv7_pmu_driver ? armv7PmuDriverCycleCounterPseudoEvent //
+                                             : armv7AndLaterClockCyclesEvent);
+
+    std::map<PerfEventGroupIdentifier, std::size_t> cpu_event_counts {};
+    std::unordered_map<std::string, int> metric_ids {};
+
+    // prepare the per-cpu group leaders (these collect context switch/forks/exits/mmaps/etc)
     for (const PerfCpu & cluster : mConfig.cpus) {
         PerfEventGroupIdentifier clusterGroupIdentifier(cluster.gator_cpu);
         group.addGroupLeader(mapping_tracker, clusterGroupIdentifier);
     }
+
+    // add gatord annotations
     if (!mDisableKernelAnnotations) {
-        std::int64_t id;
-        // enable GATOR TRACEPOINTS
-        id = _getTracepointId(traceFsConstants, "gator counter", GATOR_COUNTER);
-        if (id >= 0) {
-            if (!enableGatorTracePoint(group, mapping_tracker, id)) {
-                return false;
-            }
-        }
-        id = _getTracepointId(traceFsConstants, "gator bookmark", GATOR_BOOKMARK);
-        if (id >= 0) {
-            if (!enableGatorTracePoint(group, mapping_tracker, id)) {
-                return false;
-            }
-        }
-        id = _getTracepointId(traceFsConstants, "gator text", GATOR_TEXT);
-        if (id >= 0) {
-            if (!enableGatorTracePoint(group, mapping_tracker, id)) {
-                return false;
-            }
+        if (!enableGatorTracepoints(group, mapping_tracker)) {
+            return false;
         }
     }
 
-    for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
-         counter = static_cast<PerfCounter *>(counter->getNext())) {
-        if (counter->isEnabled() && (counter->getAttr().type != TYPE_DERIVED)) {
-            // do not sent mali_job_slots_event tracepoint multiple times; just send it once and let the processing on the host side
-            // deal with multiple counters that are generated from it
-            const bool isMaliJobSlotEvents = getConfig().can_access_tracepoints
-                                          && (counter->getAttr().type == PERF_TYPE_TRACEPOINT)
-                                          && (counter->getAttr().config == id);
-            const bool skip = (isMaliJobSlotEvents && sentMaliJobSlotEvents);
+    // add timeline counters
+    if (!enableTimelineCounters(group, mapping_tracker, cpu_event_counts, metric_ids)) {
+        return false;
+    }
 
-            sentMaliJobSlotEvents |= isMaliJobSlotEvents;
+    // enable metrics
+    for (const PerfCpu & cluster : mConfig.cpus) {
+        std::string_view const counter_set = cluster.gator_cpu.getCounterSet();
+        auto const * cpu_metrics = metrics::find_events_for_cset(counter_set);
 
-            if (!skip) {
-                if (group.add(mapping_tracker,
-                              counter->getPerfEventGroupIdentifier(),
-                              counter->getKey(),
-                              counter->getAttr(),
-                              counter->usesAux())) {
-                    if (counter->hasConfigId2()) {
-                        if (!group.add(mapping_tracker,
-                                       counter->getPerfEventGroupIdentifier(),
-                                       counter->getKey() | 0x40000000,
-                                       counter->getAttr2(),
-                                       counter->usesAux())) {
-                            LOG_DEBUG("PerfGroups::add (2nd) failed");
-                            return false;
-                        }
-                    }
-                }
-                else {
-                    LOG_DEBUG("PerfGroups::add failed");
-                    return false;
-                }
+        if (cpu_metrics != nullptr) {
+            if (!add_metrics_for(group,
+                                 mapping_tracker,
+                                 metric_tracker,
+                                 cpu_event_counts,
+                                 metric_ids,
+                                 cpu_cycles_event,
+                                 mConfig.config.supports_strobing,
+                                 cluster,
+                                 *cpu_metrics)) {
+                return false;
             }
+        }
+        else {
+            LOG_INFO("No metrics set for counter set %s, n_counters=%i",
+                     counter_set.data(),
+                     cluster.gator_cpu.getPmncCounters());
         }
     }
 
@@ -978,15 +1396,67 @@ bool PerfDriver::sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer)
     return true;
 }
 
-int PerfDriver::writeCounters(mxml_node_t * root) const
+// Emits possible dynamically generated events/counters
+void PerfDriver::writeEvents(mxml_node_t * root) const
 {
-    int count = SimpleDriver::writeCounters(root);
+    // do not expose per-function metrics if they are not able to be supported
+    if (!isCaptureOperationModeSupportingMetrics(gSessionData.mCaptureOperationMode)) {
+        return;
+    }
+
+    for (const auto & perf_cpu : mConfig.cpus) {
+        auto const & gator_cpu = perf_cpu.gator_cpu;
+        auto const * cpu_metrics = metrics::find_events_for_cset(gator_cpu.getCounterSet());
+        if (cpu_metrics == nullptr) {
+            continue;
+        }
+
+        auto * category = mxmlNewElement(root, "category");
+        mxmlElementSetAttr(category, "name", lib::dyn_printf_str_t("%s: Metrics", gator_cpu.getCoreName()));
+
+        for (metrics::metric_events_set_t const & metrics_set : cpu_metrics->events.get()) {
+            // only expose metrics that fit in the available PMU counter count
+            if ((gator_cpu.getPmncCounters() > 0)
+                && (metrics_set.event_codes.size() <= std::size_t(gator_cpu.getPmncCounters()))) {
+
+                auto * node = mxmlNewElement(category, "event");
+
+                mxmlElementSetAttr(node, "counter", metric_counter_name(perf_cpu, metrics_set).c_str());
+                mxmlElementSetAttr(node, "title", metric_title(metrics_set.priority_group));
+                mxmlElementSetAttr(node, "name", metrics_set.title.data());
+                mxmlElementSetAttr(node, "display", "average");
+                mxmlElementSetAttr(node, "class", "delta");
+                mxmlElementSetAttr(node, "units", metrics_set.unit.data());
+                mxmlElementSetAttr(node, "average_selection", "yes");
+                mxmlElementSetAttr(node, "series_composition", "stacked");
+                mxmlElementSetAttr(node, "rendering_type", "bar");
+                mxmlElementSetAttr(node, "per_core", "yes");
+                mxmlElementSetAttr(node, "description", metrics_set.description.data());
+                mxmlElementSetAttr(node, "metric", "yes");
+            }
+        }
+    }
+}
+
+int PerfDriver::writeCounters(available_counter_consumer_t const & consumer) const
+{
+    int count = SimpleDriver::writeCounters(consumer);
+
     for (const auto & perfCpu : mConfig.cpus) {
+        // SPE
         const char * const speName = perfCpu.gator_cpu.getSpeName();
         if (speName != nullptr) {
-            mxml_node_t * node = mxmlNewElement(root, "spe");
-            mxmlElementSetAttr(node, "id", speName);
+            consumer(counter_type_t::spe, speName);
             ++count;
+        }
+
+        // METRICS
+        auto const * cpu_metrics = metrics::find_events_for_cset(perfCpu.gator_cpu.getCounterSet());
+        if (cpu_metrics != nullptr) {
+            for (metrics::metric_events_set_t const & metrics_set : cpu_metrics->events.get()) {
+                consumer(counter_type_t::counter, metric_counter_name(perfCpu, metrics_set));
+                ++count;
+            }
         }
     }
 

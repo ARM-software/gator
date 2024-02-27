@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "lib/Assert.h"
@@ -28,5 +28,6 @@ namespace gator::smmuv3 {
     [[nodiscard]] bool detect_smmuv3_pmus(const PmuXML & pmu_xml,
                                           const default_identifiers_t & default_identifiers,
                                           PerfDriverConfiguration & config,
-                                          std::string_view pmu_name);
+                                          std::string_view pmu_name,
+                                          bool systemWide);
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "GatorMain.h"
 
@@ -25,17 +25,24 @@
 #include "logging/std_log_sink.h"
 #include "logging/suppliers.h"
 #include "xml/EventsXML.h"
+#include "xml/EventsXMLHelpers.h"
 #include "xml/PmuXMLParser.h"
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <climits>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
 #include <ios>
 #include <iostream>
+#include <map>
 #include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
 #include <string_view>
 
 #include <Drivers.h>
@@ -57,12 +64,398 @@ namespace {
     //Gator ready messages
     constexpr std::string_view gator_shell_ready = "Gator ready";
     constexpr unsigned int VERSION_STRING_CHAR_SIZE = 256;
+
+    [[nodiscard]] std::string_view get_cntn_prefix(std::string const & id)
+    {
+        auto const last_uscore = id.rfind('_');
+
+        if ((last_uscore == std::string::npos) || (last_uscore >= id.length())) {
+            return {};
+        }
+
+        auto const remaining = id.length() - (last_uscore + 1);
+
+        if (remaining < 4) {
+            return {};
+        }
+
+        if ((id[last_uscore + 1] != 'c') || (id[last_uscore + 2] != 'n') || (id[last_uscore + 3] != 't')) {
+            return {};
+        }
+
+        for (std::size_t n = last_uscore + 4; n < id.length(); ++n) {
+            if ((id[n] < '0') || (id[n] > '9')) {
+                return {};
+            }
+        }
+
+        return std::string_view(id).substr(0, last_uscore);
+    }
+
+    [[nodiscard]] std::string_view get_id_prefix(std::string_view id)
+    {
+        auto const first_uscore = id.find('_');
+
+        if ((first_uscore == std::string::npos) || (first_uscore >= id.length())) {
+            return id;
+        }
+
+        return id.substr(0, first_uscore);
+    }
+
+    struct category_order_t {
+        bool operator()(events_xml::EventCategory const * lhs, events_xml::EventCategory const * rhs) const
+        {
+            if (lhs == rhs) {
+                return false;
+            }
+            if (lhs == nullptr) {
+                return true;
+            }
+            if (rhs == nullptr) {
+                return false;
+            }
+
+            // sort CPU counters before other groups
+            if (lhs->cluster != nullptr) {
+                if (rhs->cluster != nullptr) {
+                    if (lhs->cluster->getCoreName() < rhs->cluster->getCoreName()) {
+                        return true;
+                    }
+                    if (lhs->cluster->getCoreName() > rhs->cluster->getCoreName()) {
+                        return false;
+                    }
+                }
+                else {
+                    return true;
+                }
+            }
+            else if (rhs->cluster != nullptr) {
+                return false;
+            }
+
+            // sort metrics next
+            if (lhs->contains_metrics && !rhs->contains_metrics) {
+                return true;
+            }
+            if (!lhs->contains_metrics && rhs->contains_metrics) {
+                return false;
+            }
+
+            // sort uncores after other groups
+            if (lhs->uncore != nullptr) {
+                if (rhs->uncore != nullptr) {
+                    if (lhs->uncore->getCoreName() < rhs->uncore->getCoreName()) {
+                        return true;
+                    }
+                    if (lhs->uncore->getCoreName() > rhs->uncore->getCoreName()) {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+            }
+            else if (rhs->uncore != nullptr) {
+                return true;
+            }
+
+            // sort by name
+            return lhs->name < rhs->name;
+        }
+    };
+
+    struct event_order_t {
+        using value_type = std::pair<std::string_view, events_xml::EventDescriptor const *>;
+        bool operator()(value_type const & lhs, value_type const & rhs) const
+        {
+            auto const & [l_id, l_ev] = lhs;
+            auto const & [r_id, r_ev] = rhs;
+
+            if (l_ev == r_ev) {
+                return l_id < r_id;
+            }
+            if (l_ev == nullptr) {
+                return true;
+            }
+            if (r_ev == nullptr) {
+                return false;
+            }
+
+            if (l_ev->title < r_ev->title) {
+                return true;
+            }
+            if (l_ev->title > r_ev->title) {
+                return false;
+            }
+
+            auto const l_pref = get_id_prefix(l_ev->id);
+            auto const r_pref = get_id_prefix(r_ev->id);
+
+            if (l_pref < r_pref) {
+                return true;
+            }
+            if (l_pref > r_pref) {
+                return false;
+            }
+
+            if (l_ev->name < r_ev->name) {
+                return true;
+            }
+            if (l_ev->name > r_ev->name) {
+                return false;
+            }
+
+            return l_id < r_id;
+        }
+    };
+
+    struct raw_ids_t {
+        std::set<std::string> counter_ids {};
+        std::map<std::string, std::set<std::string>> pmu_counter_ids {};
+        std::set<std::string> spe_ids {};
+        std::size_t longest_id = 0;
+    };
+
+    [[nodiscard]] raw_ids_t collect_counterids_from_drivers(Drivers const & drivers)
+    {
+        raw_ids_t result {};
+
+        for (const Driver * driver : drivers.getAllConst()) {
+            (void) driver->writeCounters([&result](Driver::counter_type_t type, std::string const & name) {
+                switch (type) {
+                    case Driver::counter_type_t::counter: {
+                        auto const pmu_prefix = get_cntn_prefix(name);
+                        if (!pmu_prefix.empty()) {
+                            result.pmu_counter_ids[std::string(pmu_prefix)].insert(name);
+                        }
+                        else {
+                            result.counter_ids.insert(name);
+
+                            result.longest_id = std::max(result.longest_id, name.size());
+                        }
+                        break;
+                    }
+                    case Driver::counter_type_t::spe: {
+                        result.spe_ids.insert(name);
+                        break;
+                    }
+                    default: {
+                        throw std::runtime_error("Unexpected counter_type_t");
+                    }
+                }
+            });
+        }
+
+        return result;
+    }
+
+    struct mapped_ids_t {
+        std::map<events_xml::EventCategory const *,
+                 std::set<std::pair<std::string_view, events_xml::EventDescriptor const *>, event_order_t>,
+                 category_order_t>
+            category_events {};
+    };
+
+    [[nodiscard]] mapped_ids_t map_counter_ids_to_descriptions(raw_ids_t const & raw_ids,
+                                                               events_xml::EventsContents const & all_events_categories)
+    {
+        mapped_ids_t result {};
+
+        // map PMU counters to categories
+        for (auto const & [cset, ids] : raw_ids.pmu_counter_ids) {
+            auto const * category = find_category_for_cset(all_events_categories, cset);
+            if (category == nullptr) {
+                continue;
+            }
+
+            auto & id_set = result.category_events[category];
+
+            for (auto const & id : ids) {
+                id_set.insert(std::make_pair(std::string_view(id), nullptr));
+            }
+        }
+
+        // map freestanding counters to categories
+        for (auto const & id : raw_ids.counter_ids) {
+            auto const it = all_events_categories.named_events.find(id);
+
+            if (it == all_events_categories.named_events.end()) {
+                continue;
+            }
+
+            auto const * descriptor = &(it->second.get());
+            auto const * category = &(descriptor->category.get());
+
+            result.category_events[category].insert(std::make_pair(std::string_view(id), descriptor));
+        }
+
+        return result;
+    }
+
+    void print_counters(raw_ids_t const & raw_ids, mapped_ids_t const & mapped_categories, bool descriptions)
+    {
+        if (!mapped_categories.category_events.empty()) {
+            std::cout << "The following counters are available (for use with -C):\n\n";
+
+            for (auto const & [category_ptr, ids] : mapped_categories.category_events) {
+                if (category_ptr->cluster != nullptr) {
+                    std::string_view const cn = category_ptr->cluster->getCoreName();
+                    if ((cn == category_ptr->name) || (cn == "Other")) {
+                        std::cout << "  * CPU Performance counters for " << category_ptr->name << ":\n\n";
+                    }
+                    else {
+                        std::cout << "  * CPU Performance counters for " << category_ptr->cluster->getCoreName() << " ("
+                                  << category_ptr->name << "):\n\n";
+                    }
+                }
+                else if (category_ptr->uncore != nullptr) {
+                    std::string_view const cn = category_ptr->uncore->getCoreName();
+                    if ((cn == category_ptr->name) || (cn == "Other")) {
+                        std::cout << "  * Uncore Performance counters for " << category_ptr->name << ":\n\n";
+                    }
+                    else {
+                        std::cout << "  * Uncore Performance counters for " << category_ptr->uncore->getCoreName()
+                                  << " (" << category_ptr->name << "):\n\n";
+                    }
+                }
+                else {
+                    std::cout << "  * Category " << category_ptr->name << ":\n\n";
+                }
+
+                bool log_event_codes = false;
+                bool log_named_events = false;
+
+                //
+                // Print all the named counters (ones with unique IDs) first, alongside their descriptions
+                //
+                {
+                    std::string_view last_prefix {};
+                    std::string_view last_title {};
+
+                    for (auto const & [id, descriptor_ptr] : ids) {
+                        if (descriptor_ptr != nullptr) {
+                            log_named_events = true;
+
+                            // insert a new line between each new unique title/prefix to aid readability
+                            auto const new_prefix = get_id_prefix(id);
+                            if ((!last_title.empty() && (last_title != descriptor_ptr->title))
+                                || (!last_prefix.empty() && (last_prefix != new_prefix))) {
+                                std::cout << "\n";
+                            }
+                            last_title = descriptor_ptr->title;
+                            last_prefix = new_prefix;
+
+                            // output the event id and its details
+                            std::cout << "      * " << std::setfill(' ') << std::left << std::setw(raw_ids.longest_id)
+                                      << id << std::setw(0) << " - " << descriptor_ptr->title << ": "
+                                      << descriptor_ptr->name;
+
+                            if (descriptions && !descriptor_ptr->description.empty()) {
+                                std::cout << " - " << descriptor_ptr->description;
+                            }
+
+                            if (descriptor_ptr->uses_option_set) {
+                                std::cout << " (Additional event modifiers may be specified.)";
+                            }
+
+                            std::cout << "\n";
+                        }
+                    }
+                }
+
+                // insert a newline between the named events and the programable events
+                if (log_named_events) {
+                    std::cout << "\n";
+                }
+
+                //
+                // output the programmable events (where they require an event code to be specified)
+                //
+                for (auto const & [id, descriptor_ptr] : ids) {
+                    if (descriptor_ptr == nullptr) {
+                        log_event_codes = true;
+
+                        std::cout << "      * " << id << ":<0x##>\n";
+                    }
+                }
+
+                //
+                // finally output the event codes and their details
+                //
+                if (log_event_codes) {
+                    // insert a new line between the programmable events and the codes
+                    std::cout << "\n";
+
+                    // print each event
+                    for (auto const & event_ptr : category_ptr->events) {
+                        if (!event_ptr->eventCode.isValid() || !event_ptr->id.empty()) {
+                            continue;
+                        }
+
+                        std::cout << "          * 0x" << std::hex << std::setfill('0') << std::setw(4) << std::right
+                                  << event_ptr->eventCode.asU64() << std::setw(0) << std::dec << ": "
+                                  << event_ptr->title << ": " << event_ptr->name;
+
+                        if (descriptions && !event_ptr->description.empty()) {
+                            std::cout << " - " << event_ptr->description;
+                        }
+
+                        if (event_ptr->uses_option_set) {
+                            std::cout << " (Additional event modifiers may be specified.)";
+                        }
+
+                        std::cout << "\n";
+                    }
+
+                    // and ensure there is a new line at the end of the category
+                    std::cout << "\n";
+                }
+            }
+        }
+    }
+
+    void print_spes(raw_ids_t const & raw_ids)
+    {
+        if (!raw_ids.spe_ids.empty()) {
+            std::cout << "The following SPE PMUs are available (for use with -X):\n\n";
+
+            for (auto const & id : raw_ids.spe_ids) {
+                std::cout << "    " << id << "\n";
+            }
+
+            std::cout << "\n";
+        }
+    }
+
+    void dumpCountersForUser(Drivers const & drivers, bool descriptions)
+    {
+        // collect all the counter IDs
+        auto const raw_ids = collect_counterids_from_drivers(drivers);
+
+        // get all the possible defined events
+        auto const all_events_categories =
+            events_xml::getEventDescriptors(drivers.getAllConst(),
+                                            drivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
+                                            drivers.getPrimarySourceProvider().getDetectedUncorePmus());
+
+        // map to categories
+        auto const mapped_categories = map_counter_ids_to_descriptions(raw_ids, all_events_categories);
+
+        // output the SPEs
+        print_spes(raw_ids);
+
+        // output the counters
+        print_counters(raw_ids, mapped_categories, descriptions);
+
+        std::cout << std::flush;
+    }
 }
 
 void setDefaults()
 {
     //default system wide.
-    gSessionData.mSystemWide = false;
+    gSessionData.mCaptureOperationMode = CaptureOperationMode::application_inherit;
     // buffer_mode is normal
     gSessionData.mOneShot = false;
     gSessionData.mTotalBufferSize = 4;
@@ -75,6 +468,7 @@ void setDefaults()
     gSessionData.mDuration = 0;
     //use_efficient_ftrace default is yes
     gSessionData.mFtraceRaw = true;
+    gSessionData.mOverrideNoPmuSlots = -1;
 #if defined(WIN32)
     //TODO
     gSessionData.mCaptureUser = nullptr;
@@ -97,12 +491,11 @@ void setDefaults()
 void updateSessionData(const ParserResult & result)
 {
     gSessionData.mLocalCapture = result.mode == ParserResult::ExecutionMode::LOCAL_CAPTURE;
-    gSessionData.mAndroidApiLevel = result.mAndroidApiLevel;
     gSessionData.mConfigurationXMLPath = result.mConfigurationXMLPath;
     gSessionData.mEventsXMLAppend = result.mEventsXMLAppend;
     gSessionData.mEventsXMLPath = result.mEventsXMLPath;
     gSessionData.mSessionXMLPath = result.mSessionXMLPath;
-    gSessionData.mSystemWide = result.mSystemWide;
+    gSessionData.mCaptureOperationMode = result.mCaptureOperationMode;
     gSessionData.mExcludeKernelEvents = result.mExcludeKernelEvents;
     gSessionData.mWaitForProcessCommand = result.mWaitForCommand;
     gSessionData.mPids = result.mPids;
@@ -124,6 +517,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mAndroidActivity = result.mAndroidActivity;
     gSessionData.mAndroidActivityFlags = (result.mAndroidActivityFlags == nullptr) ? "" : result.mAndroidActivityFlags;
     gSessionData.smmu_identifiers = result.smmu_identifiers;
+    gSessionData.mOverrideNoPmuSlots = result.mOverrideNoPmuSlots;
 
     // when profiling an android package, use the package name as the '--wait-process' value
     if ((gSessionData.mAndroidPackage != nullptr) && (gSessionData.mWaitForProcessCommand == nullptr)) {
@@ -157,36 +551,54 @@ void updateSessionData(const ParserResult & result)
 
 void dumpCounterDetails(const ParserResult & result, const logging::log_access_ops_t & log_ops)
 {
-    Drivers drivers {result.mSystemWide,
+    Drivers drivers {result.mCaptureOperationMode,
                      readPmuXml(result.pmuPath),
                      result.mDisableCpuOnlining,
                      result.mDisableKernelAnnotations,
                      TraceFsConstants::detect()};
 
-    if (result.printables.count(ParserResult::Printable::EVENTS_XML) == 1) {
-        std::cout << events_xml::getDynamicXML(drivers.getAllConst(),
-                                               drivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
-                                               drivers.getPrimarySourceProvider().getDetectedUncorePmus())
-                         .get();
-    }
-    if (result.printables.count(ParserResult::Printable::COUNTERS_XML) == 1) {
-        std::cout << counters_xml::getXML(drivers.getPrimarySourceProvider().supportsMultiEbs(),
-                                          drivers.getAllConst(),
-                                          drivers.getPrimarySourceProvider().getCpuInfo(),
-                                          log_ops)
-                         .get();
-    }
-    if (result.printables.count(ParserResult::Printable::DEFAULT_CONFIGURATION_XML) == 1) {
-        std::cout << configuration_xml::getDefaultConfigurationXml(
-                         drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
-                         .get();
+    for (auto printable : result.printables) {
+        switch (printable) {
+            case ParserResult::Printable::EVENTS_XML: {
+                std::cout << events_xml::getDynamicXML(drivers.getAllConst(),
+                                                       drivers.getPrimarySourceProvider().getCpuInfo().getClusters(),
+                                                       drivers.getPrimarySourceProvider().getDetectedUncorePmus())
+                                 .get();
+                break;
+            }
+            case ParserResult::Printable::COUNTERS_XML: {
+                std::cout << counters_xml::getXML(drivers.getPrimarySourceProvider().supportsMultiEbs(),
+                                                  drivers.getAllConst(),
+                                                  drivers.getPrimarySourceProvider().getCpuInfo(),
+                                                  log_ops)
+                                 .get();
+                break;
+            }
+            case ParserResult::Printable::DEFAULT_CONFIGURATION_XML: {
+                std::cout << configuration_xml::getDefaultConfigurationXml(
+                                 drivers.getPrimarySourceProvider().getCpuInfo().getClusters())
+                                 .get();
+                break;
+            }
+            case ParserResult::Printable::COUNTERS: {
+                dumpCountersForUser(drivers, false);
+                break;
+            }
+            case ParserResult::Printable::COUNTERS_DETAILED: {
+                dumpCountersForUser(drivers, true);
+                break;
+            }
+            default: {
+                break;
+            }
+        }
     }
 }
 
 int start_capture_process(const ParserResult & result, logging::log_access_ops_t & log_ops)
 {
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
-    Drivers drivers {result.mSystemWide,
+    Drivers drivers {result.mCaptureOperationMode,
                      readPmuXml(result.pmuPath),
                      result.mDisableCpuOnlining,
                      result.mDisableKernelAnnotations,

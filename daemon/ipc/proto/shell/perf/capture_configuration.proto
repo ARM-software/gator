@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 syntax = "proto3";
 
@@ -8,14 +8,25 @@ option optimize_for = LITE_RUNTIME;
 
 /* Capture configuration for the perf agent. */
 message capture_configuration_t {
+
+    /** See CaptureOperationMode */
+    enum capture_operation_mode_t {
+        system_wide = 0;
+        application_inherit = 1;
+        application_no_inherit = 2;
+        application_poll = 3;
+        application_experimental_patch = 4;
+    }
+
     /** Select parts of SessionData */
     message session_data_t {
         uint64 live_rate = 1;                   // Equivalent to SessionData::mLiveRate
         int32 total_buffer_size = 2;            // Equivalent to SessionData::mTotalBufferSize, in MBs
         int32 sample_rate = 3;                  // Equivalent to SessionData::mSampleRate
-        bool one_shot = 4;                      // Equivalent to SessionData::mOneShot
-        bool exclude_kernel_events = 5;         // Equivalent to SessionData::mExcludeKernelEvents
-        bool stop_on_exit = 6;                  // Equivalent to SessionData::mStopOnExit
+        capture_operation_mode_t capture_operation_mode = 4; // Equivalent to SessionData::mCaptureOperationMode
+        bool one_shot = 5;                      // Equivalent to SessionData::mOneShot
+        bool exclude_kernel_events = 6;         // Equivalent to SessionData::mExcludeKernelEvents
+        bool stop_on_exit = 7;                  // Equivalent to SessionData::mStopOnExit
     }
 
     /** Equivalent to PerfConfig */
@@ -31,13 +42,12 @@ message capture_configuration_t {
         bool has_aux_support = 9;
         bool has_exclude_callchain_kernel = 10;
 
-        bool is_system_wide = 11;
-        bool exclude_kernel = 12;
-        bool can_access_tracepoints = 13;
+        bool exclude_kernel = 11;
+        bool can_access_tracepoints = 12;
 
-        bool has_armv7_pmu_driver = 14;
-        bool has_64bit_uname = 15;
-        bool use_64bit_register_set = 16;
+        bool has_armv7_pmu_driver = 13;
+        bool has_64bit_uname = 14;
+        bool use_64bit_register_set = 15;
     }
 
     /** Equivalent to perf_ringbuffer_config_t */
@@ -156,15 +166,19 @@ message capture_configuration_t {
         repeated perf_event_definition_t events = 1;
     }
 
+    /** A map of id/index->event list */
+    message perf_event_definition_map_t {
+        map<uint32, perf_event_definition_list_t> events_map = 1;
+    }
 
     /** Equivalent to event_configuration_t */
     message perf_event_configuration_t {
         perf_event_definition_t header_event = 1;
         perf_event_definition_list_t global_events = 2;
         perf_event_definition_list_t spe_events = 3;
-        map<uint32, perf_event_definition_list_t> cluster_specific_events = 4;
-        map<uint32, perf_event_definition_list_t> cpu_specific_events = 5;
-        map<uint32, perf_event_definition_list_t> uncore_specific_events = 6;
+        map<uint32, perf_event_definition_map_t> cluster_specific_events = 4;
+        perf_event_definition_map_t cpu_specific_events = 5;
+        perf_event_definition_map_t uncore_specific_events = 6;
     }
 
     // -------------------------------------------

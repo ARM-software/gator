@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_SIMPLEDRIVER_H_
 #define NATIVE_GATOR_DAEMON_SIMPLEDRIVER_H_
@@ -16,20 +16,20 @@ public:
     SimpleDriver(SimpleDriver &&) = delete;
     SimpleDriver & operator=(SimpleDriver &&) = delete;
 
-    bool claimCounter(Counter & counter) const override;
-    bool countersEnabled() const;
+    [[nodiscard]] bool claimCounter(Counter & counter) const override;
+    [[nodiscard]] bool countersEnabled() const;
     void resetCounters() override;
     void setupCounter(Counter & counter) override;
-    int writeCounters(mxml_node_t * root) const override;
+    [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
 
 protected:
     SimpleDriver(const char * name) : Driver(name), mCounters(nullptr) {}
 
-    DriverCounter * getCounters() const { return mCounters; }
+    [[nodiscard]] DriverCounter * getCounters() const { return mCounters; }
 
     void setCounters(DriverCounter * const counter) { mCounters = counter; }
 
-    DriverCounter * findCounter(Counter & counter) const;
+    [[nodiscard]] DriverCounter * findCounter(Counter & counter) const;
 
 private:
     DriverCounter * mCounters;

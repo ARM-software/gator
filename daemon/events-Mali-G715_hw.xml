@@ -1,6 +1,6 @@
-<!-- Copyright (C) 2017-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2024 by Arm Limited. All rights reserved. -->
 <category name="Mali CSF" per_cpu="no">
-	<event counter="ARM_Mali-G715_GPU_ACTIVE" description="The number of cycles where the GPU has a workload of any type queued for processing" name="GPU active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-G715_GPU_ACTIVE" description="The number of cycles where the GPU has a workload of any type queued for processing" name="GPU active2" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G715_MCU_ACTIVE" description="The number of cycles where the CSF front-end MCU is actively processing" name="MCU active" title="Mali CSF Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G715_GPU_ITER_ACTIVE" description="The number of cycles where any GPU queue is active" name="Any queue active" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G715_GPU_IRQ_ACTIVE" description="The number of cycles where the GPU has a pending interrupt" name="GPU interrupt active" title="Mali GPU Cycles" units="cycles"/>
@@ -102,14 +102,14 @@
 	<event counter="ARM_Mali-G715_FRAG_PTILES" description="The number of tiles processed by the shader core" name="Tiles" title="Mali Shader Core Tiles" units="tiles"/>
 	<event counter="ARM_Mali-G715_FRAG_TRANS_ELIM" description="The number of tiles killed by transaction elimination" name="Killed unchanged tiles" title="Mali Shader Core Tiles" units="tiles"/>
 	<event counter="ARM_Mali-G715_QUAD_FPK_KILLER" description="The number of quads that are valid occluders for hidden surface removal" name="Occluding quads" title="Mali Fragment FPK Quads" units="quads"/>
-	<event counter="ARM_Mali-G715_FULL_QUAD_WARPS" description="The number of warps that are fully populated with quads" name="Full quad warps" title="Mali Shader Warps" units="warps"/>
+	<event counter="ARM_Mali-G715_FULL_QUAD_WARPS" description="The number of warps that have a full thread slot allocation" name="Full warps" title="Mali Shader Warps" units="warps"/>
 	<event counter="ARM_Mali-G715_COMPUTE_ACTIVE" description="The number of cycles where the shader core is processing some non-fragment workload" name="Non-fragment active" title="Mali Shader Core Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G715_COMPUTE_TASKS" description="The number of non-fragment tasks issued to the shader core" name="Non-fragment tasks" title="Mali Shader Core Tasks" units="tasks"/>
 	<event counter="ARM_Mali-G715_COMPUTE_WARPS" description="The number of non-fragment warps created" name="Non-fragment warps" title="Mali Shader Warps" units="warps"/>
 	<event counter="ARM_Mali-G715_EXEC_CORE_ACTIVE" description="The number of cycles where the shader core is processing at least one warp" name="Execution core active" title="Mali Shader Core Cycles" units="cycles"/>
-	<event counter="ARM_Mali-G715_EXEC_INSTR_FMA" description="The number of instructions issued to the FMA pipe" name="FMA instructions" title="Mali ALU Instructions" units="instructions"/>
-	<event counter="ARM_Mali-G715_EXEC_INSTR_CVT" description="The number of instructions issued to the CVT pipe" name="CVT instructions" title="Mali ALU Instructions" units="instructions"/>
-	<event counter="ARM_Mali-G715_EXEC_INSTR_SFU" description="The number of instructions issued to the SFU pipe" name="SFU instructions" title="Mali ALU Instructions" units="instructions"/>
+	<event counter="ARM_Mali-G715_EXEC_INSTR_FMA" description="The number of instructions issued to the FMA pipe" name="FMA pipe instructions" title="Mali ALU Instructions" units="instructions"/>
+	<event counter="ARM_Mali-G715_EXEC_INSTR_CVT" description="The number of instructions issued to the CVT pipe" name="CVT pipe instructions" title="Mali ALU Instructions" units="instructions"/>
+	<event counter="ARM_Mali-G715_EXEC_INSTR_SFU" description="The number of instructions issued to the SFU pipe" name="SFU pipe instructions" title="Mali ALU Instructions" units="instructions"/>
 	<event counter="ARM_Mali-G715_EXEC_INSTR_DIVERGED" description="The number of instructions executed per warp, that have control flow divergence" name="Diverged instructions" title="Mali ALU Instructions" units="instructions"/>
 	<event advanced="yes" counter="ARM_Mali-G715_EXEC_ICACHE_MISS" description="The number of instruction cache misses" name="Cache misses" title="Mali Shader Core Cache" units="requests"/>
 	<event advanced="yes" counter="ARM_Mali-G715_EXEC_STARVE_ARITH" description="The number of cycles where the processing unit is starved of work" name="Execution engine starvation" title="Mali Shader Core Stall Cycles" units="cycles"/>
@@ -157,8 +157,8 @@
 	<event counter="ARM_Mali-G715_RT_RAY_BOX_BIN_13_16" description="The number of acceleration structure box nodes with 13 to 16 active rays in the warp" name="Box nodes with 13-16 rays" title="Mali Ray Tracing Unit Box Test" units="nodes"/>
 	<event counter="ARM_Mali-G715_RT_OPAQUE_HIT" description="The number of opaque triangle hits" name="Opaque triangle hits" title="Mali Ray Tracing Unit Triangle Workload" units="tests"/>
 	<event counter="ARM_Mali-G715_RT_NON_OPAQUE_HIT" description="The number of non-opaque triangle hits" name="Non-opaque triangle hits" title="Mali Ray Tracing Unit Triangle Workload" units="tests"/>
-	<event counter="ARM_Mali-G715_RT_TERM_FIRST_HIT" description="The number rays that terminate on their first hit" name="First hit terminated rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
-	<event counter="ARM_Mali-G715_RT_MISS" description="The number rays that miss during triangle intersection tests" name="Missed rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
+	<event counter="ARM_Mali-G715_RT_TERM_FIRST_HIT" description="The number of rays that terminate on their first hit" name="First hit terminated rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
+	<event counter="ARM_Mali-G715_RT_MISS" description="The number of rays that miss during triangle intersection tests" name="Missed rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
 	<event counter="ARM_Mali-G715_RT_RAYS_STARTED" description="The number of rays started" name="Started rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
 	<event counter="ARM_Mali-G715_RT_RAY_BOX_ISSUED" description="The number of active issue cycles for the ray tracing unit box test data path" name="Box tester active" title="Mali Ray Tracing Unit Cycles" units="cycles"/>
 	<event counter="ARM_Mali-G715_RT_RAY_TRI_ISSUED" description="The number of active issue cycles for the ray tracing unit triangle test data path" name="Triangle tester active" title="Mali Ray Tracing Unit Cycles" units="cycles"/>

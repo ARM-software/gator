@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -132,19 +132,12 @@ namespace async {
             {
             }
 
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             Executor executor;
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             strand_type strand;
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             boost::asio::steady_timer timer;
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::string_view command;
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::optional<std::string_view> android_pkg;
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::optional<lib::FsEntry> real_path;
-            // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
             std::atomic_bool cancel;
         };
 

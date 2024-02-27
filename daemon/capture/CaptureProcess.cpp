@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #include "capture/CaptureProcess.h"
 
@@ -211,11 +211,13 @@ namespace {
         StreamlineCommandHandler commandHandler;
         const auto result = streamlineSetupCommandIteration(client, commandHandler, [](bool) -> void {});
 
+        auto const isSystemWide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
+
         if (result == IStreamlineCommandHandler::State::PROCESS_COMMANDS_CONFIG) {
             auto currentConfigXML =
                 current_config_xml::generateCurrentConfigXML(getpid(), // since its main get the pid, instead of ppid
                                                              getuid(),
-                                                             gSessionData.mSystemWide,
+                                                             isSystemWide,
                                                              gSessionData.mWaitingOnCommand,
                                                              gSessionData.mWaitForProcessCommand,
                                                              gSessionData.mCaptureWorkingDir,
@@ -237,19 +239,21 @@ namespace {
 
     std::array<std::unique_ptr<agents::i_agent_spawner_t>, 2> create_spawners()
     {
+        auto const isSystemWide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
+
         auto high_privilege_spawner = std::make_unique<agents::simple_agent_spawner_t>();
         std::unique_ptr<agents::i_agent_spawner_t> low_privilege_spawner {};
 
         // If running as root, never use run-as, just fork directly
         const auto is_root = lib::geteuid() == 0;
-        if (!is_root && !gSessionData.mSystemWide && (gSessionData.mAndroidPackage != nullptr)) {
+        if (!is_root && !isSystemWide && (gSessionData.mAndroidPackage != nullptr)) {
             low_privilege_spawner = std::make_unique<agents::android_pkg_agent_spawner_t>(gSessionData.mAndroidPackage);
         }
         else {
             // If a package has been specified, check that it exists (error logging comes from AndroidActivityManager).
             // This is done as a part of android_pkg_agent_spawner_t's construction so doesn't need to be specified
             // above
-            if (!gSessionData.mSystemWide && (gSessionData.mAndroidPackage != nullptr)
+            if (!isSystemWide && (gSessionData.mAndroidPackage != nullptr)
                 && !AndroidActivityManager::has_package(gSessionData.mAndroidPackage)) {
                 handleException();
             }
@@ -401,7 +405,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
     signal(SIGPIPE, SIG_IGN);
 
     // only enable when running in system-wide mode
-    bool enable_annotation_listener = result.mSystemWide;
+    bool enable_annotation_listener = isCaptureOperationModeSystemWide(result.mCaptureOperationMode);
 
     StateAndPid stateAndChildPid = {.state = State::IDLE, .pid = -1};
 

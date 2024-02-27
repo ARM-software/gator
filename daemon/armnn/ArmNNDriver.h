@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Config.h"
@@ -36,7 +36,7 @@ namespace armnn {
         void setupCounter(Counter & counter) override;
 
         // Emits available counters
-        int writeCounters(mxml_node_t * root) const override;
+        int writeCounters(available_counter_consumer_t const & consumer) const override;
 
         // Emits possible dynamically generated events/counters
         void writeEvents(mxml_node_t * const /*unused*/) const override;

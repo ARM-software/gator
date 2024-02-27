@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PARSERRESULT_H_
 #define PARSERRESULT_H_
@@ -29,6 +29,8 @@ public:
         EVENTS_XML,
         COUNTERS_XML,
         DEFAULT_CONFIGURATION_XML,
+        COUNTERS,
+        COUNTERS_DETAILED,
     };
 
     std::vector<SpeConfiguration> mSpeConfigs {};
@@ -58,14 +60,15 @@ public:
     int mBacktraceDepth {0};
     int mSampleRate {0};
     int mDuration {0};
-    int mAndroidApiLevel {0};
     int mPerfMmapSizeInPages {-1};
     int mSpeSampleRate {-1};
+    int mOverrideNoPmuSlots {-1};
     int port {DEFAULT_PORT};
+
+    CaptureOperationMode mCaptureOperationMode = CaptureOperationMode::system_wide;
 
     bool mFtraceRaw {false};
     bool mStopGator {false};
-    bool mSystemWide {true};
     bool mAllowCommands {false};
     bool mDisableCpuOnlining {false};
     bool mDisableKernelAnnotations {false};

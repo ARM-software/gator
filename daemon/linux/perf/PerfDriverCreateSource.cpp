@@ -1,5 +1,6 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
+#include "Configuration.h"
 #include "DynBuf.h"
 #include "ICpuInfo.h"
 #include "ISender.h"
@@ -25,6 +26,7 @@
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfGroups.h"
 #include "linux/perf/attr_to_key_mapping_tracker.h"
+#include "linux/perf/metric_key_to_event_key_tracker.h"
 #include "xml/PmuXML.h"
 
 #include <chrono>
@@ -122,9 +124,9 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(
         // it should probably be independent of EBS though
         gSessionData.mBacktraceDepth,
         gSessionData.mSampleRate,
+        gSessionData.mCaptureOperationMode,
         !gSessionData.mIsEBS,
-        gSessionData.mEnableOffCpuSampling,
-    };
+        gSessionData.mEnableOffCpuSampling};
 
     perf_groups_configurer_state_t event_configurer_state {};
 
@@ -138,9 +140,10 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(
     }
 
     {
+        metric_key_to_event_key_tracker_t metrics_tracker {*attrs_buffer};
         attr_to_key_mapping_tracker_t wrapper {*attrs_buffer};
         perf_groups_configurer_t groups_builder {wrapper, event_configurer_config, event_configurer_state};
-        if (!enable(groups_builder, wrapper)) {
+        if (!enable(groups_builder, wrapper, metrics_tracker)) {
             LOG_WARNING("perf setup failed, are you running Linux 3.4 or later?");
             return {};
         }
@@ -151,7 +154,9 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(
     attrs_buffer->write(sender);
 
     // add the tracepoint formats
-    send_tracepoint_formats(ftraceDriver, *attrs_buffer, mConfig.config.is_system_wide);
+    send_tracepoint_formats(ftraceDriver,
+                            *attrs_buffer,
+                            isCaptureOperationModeSystemWide(event_configurer_config.captureOperationMode));
     // write directly to the sender
     attrs_buffer->flush();
     attrs_buffer->write(sender);

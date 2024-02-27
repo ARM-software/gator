@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2011-2024 by Arm Limited. All rights reserved. */
 
 #include "StreamlineSetup.h"
 
@@ -189,13 +189,14 @@ IStreamlineCommandHandler::State StreamlineSetup::handleDeliver(char * xml)
 IStreamlineCommandHandler::State StreamlineSetup::handleRequestCurrentConfig()
 {
     // Use ppid because StreamlineSetup is part of gator-child, need gator-main pid
-    auto currentConfigXML = current_config_xml::generateCurrentConfigXML(getppid(),
-                                                                         getuid(),
-                                                                         gSessionData.mSystemWide,
-                                                                         gSessionData.mWaitingOnCommand,
-                                                                         gSessionData.mWaitForProcessCommand,
-                                                                         gSessionData.mCaptureWorkingDir,
-                                                                         gSessionData.mPids);
+    auto currentConfigXML = current_config_xml::generateCurrentConfigXML(
+        getppid(),
+        getuid(),
+        isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode),
+        gSessionData.mWaitingOnCommand,
+        gSessionData.mWaitForProcessCommand,
+        gSessionData.mCaptureWorkingDir,
+        gSessionData.mPids);
     sendString(currentConfigXML, ResponseType::CURRENT_CONFIG);
     return State::PROCESS_COMMANDS;
 }

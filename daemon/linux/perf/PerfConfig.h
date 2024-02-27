@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PERFCONFIG_H
 #define PERFCONFIG_H
@@ -14,8 +14,9 @@ struct PerfConfig {
     bool has_ioctl_read_id = false;            // >= 3.12
     bool has_aux_support = false;              // >= 4.1
     bool has_exclude_callchain_kernel = false; // >= 3.7
+    bool has_perf_format_lost = false;         // >= 6.0
+    bool supports_strobing = false;            // requires additional patches
 
-    bool is_system_wide = false;
     bool exclude_kernel = false;
 
     // can access tracepoints

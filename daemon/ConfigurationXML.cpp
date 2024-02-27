@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXML.h"
 
@@ -16,6 +16,7 @@
 #include "lib/Span.h"
 #include "lib/String.h"
 #include "xml/EventsXML.h"
+#include "xml/EventsXMLHelpers.h"
 #include "xml/MxmlUtils.h"
 
 #include <algorithm>

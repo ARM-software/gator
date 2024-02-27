@@ -1,8 +1,7 @@
-<!-- Copyright (C) 2022-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2022-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv9_Neoverse_V2_cnt"/>
 <category counter_set="ARMv9_Neoverse_V2_cnt" name="Neoverse-V2" per_cpu="yes" supports_event_based_sampling="yes">
-    <event counter="ARMv9_Neoverse_V2_ccnt" event="0x11" title="Cycles" name="CPU Cycles" description="The counter increments on every cycle" units="cycles"/>
     <event event="0x00" title="Instructions (Executed)" name="Increment PMSWINC Register" description="The counter increments on writes to the PMSWINC register" units="instructions"/>
     <event event="0x01" title="L1 Instruction Cache" name="Refill" description="Counts any instruction fetch which misses in the cache. This does not count; cache maintenance instructions and non-cacheable accesses."/>
     <event event="0x02" title="L1 Instruction TLB" name="Refill" description="This event counts any refill of the L1 instruction TLB from the MMU Translation Cache (MMUTC). This includes refills that result in a translation fault. TLB maintenance instructions are not counted. This event counts regardless of whether the MMU is enabled."/>
@@ -14,6 +13,7 @@
     <event event="0x0a" title="Instructions (Executed)" name="Exception Returns" description="The counter increments for each executed exception return instruction" units="instructions"/>
     <event event="0x0b" title="Instructions (Executed)" name="Write to CONTEXTIDR" description="The counter increments for every write to the CONTEXTIDR" units="instructions"/>
     <event event="0x10" title="Branch Predictor" name="Mispredictions" description="The counter counts each correction to the predicted program flow that occurs because of a misprediction from, or no prediction from, a change in control flow that the branch prediction resources are capable of predicting"/>
+    <event counter="ARMv9_Neoverse_V2_ccnt" event="0x11" title="Cycles" name="CPU Cycles" description="The counter increments on every cycle" units="cycles"/>
     <event event="0x12" title="Branch Predictor" name="Possible Predictions" description="The counter counts every branch or other change in the program flow that the branch prediction resources are capable of predicting"/>
     <event event="0x13" title="Memory" name="Access" description="This event counts memory accesses due to load or store instructions. The following instructions are not counted; Instruction fetches, Cache maintenance instructions, Translation table walks or prefetches. This event counts the sum of &apos;Memory: Access (due to read)&apos; and &apos;Memory: Access (due to write)&apos;."/>
     <event event="0x14" title="L1 Instruction Cache" name="Access" description="This event counts any instruction fetch which accesses the L1 instruction cache or MOP cache. The following instructions are not counted; cache maintenance instructions, non-cacheable accesses."/>
@@ -47,8 +47,8 @@
     <event event="0x3a" title="Operations" name="Executed" description="Micro-operation architecturally executed"/>
     <event event="0x3b" title="Operations" name="Speculated" description="Micro-operation speculatively executed"/>
     <event event="0x3c" title="Stalls" name="All" description="No operation sent for execution"/>
-    <event event="0x3d" title="Stalls (Slots)" name="Frontend" description="No operation sent for execution on a slot due to the backend"/>
-    <event event="0x3e" title="Stalls (Slots)" name="Backend" description="No operation sent for execution on a slot due to the frontend"/>
+    <event event="0x3d" title="Stalls (Slots)" name="Backend" description="No operation sent for execution on a slot due to the backend"/>
+    <event event="0x3e" title="Stalls (Slots)" name="Frontend" description="No operation sent for execution on a slot due to the frontend"/>
     <event event="0x3f" title="Stalls (Slots)" name="All" description="No operation sent for execution on a slot"/>
     <event event="0x40" title="L1 Data Cache" name="Access (due to read)" description="This event counts any load operation or page table walk access which looks up in the L1 data cache. In particular, any access which could count the &apos;L1 Data Cache: Refill (due to read)&apos; event causes this event to count. The following instructions are not counted; cache maintenance instructions and prefetches, non-cacheable accesses."/>
     <event event="0x41" title="L1 Data Cache" name="Access (due to write)" description="This event counts any store operation which looks up in the L1 data cache. In particular, any access which could count the &apos;L1 Data Cache: Refill (due to write)&apos; event causes this event to count. The following instructions are not counted; cache maintenance instructions and prefetches, non-cacheable accesses."/>

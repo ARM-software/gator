@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -23,5 +23,6 @@ namespace agents::perf {
     };
 
     std::optional<perf_driver_summary_state_t> create_perf_driver_summary_state(PerfConfig const & perf_config,
-                                                                                std::uint64_t monotonic_start);
+                                                                                std::uint64_t monotonic_start,
+                                                                                bool system_wide);
 }

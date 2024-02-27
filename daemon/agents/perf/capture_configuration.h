@@ -1,7 +1,8 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
+#include "Configuration.h"
 #include "ICpuInfo.h"
 #include "SessionData.h"
 #include "agents/perf/events/event_configuration.hpp"
@@ -21,11 +22,13 @@ namespace agents::perf {
         using perf_config_t = PerfConfig;
         using gator_cpu_t = GatorCpu;
         using uncore_pmu_t = UncorePmu;
+        using capture_operation_mode_t = CaptureOperationMode;
 
         struct session_data_t {
             std::uint64_t live_rate;
             std::int32_t total_buffer_size;
             std::int32_t sample_rate;
+            capture_operation_mode_t capture_operation_mode;
             bool one_shot;
             bool exclude_kernel_events;
             bool stop_on_exit;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -12,12 +12,15 @@
 #include "async/continuations/operations.h"
 #include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
+#include "lib/String.h"
 
 #include <memory>
 #include <set>
 
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/io_context_strand.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
 
 namespace agents::perf {
     /**
@@ -169,6 +172,8 @@ namespace agents::perf {
 
             auto coalescing_cpu_monitor = st->coalescing_cpu_monitor;
 
+            LOG_DEBUG("Starting CPU coalescing monitor");
+
             // repeatedly consume online/offline events from the underlying monitor and inject them into the coalescing monitor
             spawn("cpu monitoring (from raw)",
                   repeatedly(
@@ -191,30 +196,35 @@ namespace agents::perf {
                   });
 
             // repeatedly consume online/offline events from the coalescing monitor
-            spawn("cpu monitoring (from coalescer)",
-                  repeatedly(
-                      [st]() {
-                          return start_on(st->strand) //
-                               | then([st]() { return !st->is_terminated(); });
-                      }, //
-                      [st, coalescing_cpu_monitor, monotonic_start]() mutable {
-                          return coalescing_cpu_monitor->async_receive_one(use_continuation) //
-                               | map_error()                                                 //
-                               | then([st, monotonic_start](auto event) mutable {
-                                     return st->async_update_cpu_state(monotonic_start,
-                                                                       event.cpu_no,
-                                                                       event.online,
-                                                                       use_continuation) //
-                                          | post_on(st->strand)                          //
-                                          | then([st, cpu_no = event.cpu_no]() {
-                                                st->check_cores_having_received_initial_event(cpu_no);
-                                            });
-                                 });
-                      }),
-                  [st](bool) {
-                      // make sure to terminate
-                      st->terminate();
-                  });
+
+            LOG_DEBUG("Spawning CPU state tracking monitors");
+
+            for (std::size_t n = 0; n < st->num_cpu_cores; ++n) {
+                spawn(lib::dyn_printf_str_t("cpu monitoring (from coalescer) for cpu %zu", n),
+                      repeatedly(
+                          [st]() {
+                              return start_on(st->strand) //
+                                   | then([st]() { return !st->is_terminated(); });
+                          }, //
+                          [n, st, coalescing_cpu_monitor, monotonic_start]() mutable {
+                              return coalescing_cpu_monitor->async_receive_one(n, use_continuation) //
+                                   | map_error()                                                    //
+                                   | then([st, monotonic_start](auto event) mutable {
+                                         return st->async_update_cpu_state(monotonic_start,
+                                                                           event.cpu_no,
+                                                                           event.online,
+                                                                           use_continuation) //
+                                              | post_on(st->strand)                          //
+                                              | then([st, cpu_no = event.cpu_no]() {
+                                                    st->check_cores_having_received_initial_event(cpu_no);
+                                                });
+                                     });
+                          }),
+                      [st](bool) {
+                          // make sure to terminate
+                          st->terminate();
+                      });
+            }
         }
 
         /**

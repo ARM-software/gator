@@ -1,9 +1,8 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXML.h"
 
 #include "Driver.h"
-#include "EventCode.h"
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SessionData.h"
@@ -14,12 +13,8 @@
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
-#include <climits>
-#include <cstdio>
 #include <cstdlib>
-#include <map>
 #include <memory>
-#include <string>
 #include <string_view>
 #include <utility>
 
@@ -74,9 +69,9 @@ namespace events_xml {
         return mainXml;
     }
 
-    static std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getDynamicTree(lib::Span<const Driver * const> drivers,
-                                                                                lib::Span<const GatorCpu> clusters,
-                                                                                lib::Span<const UncorePmu> uncores)
+    std::unique_ptr<mxml_node_t, void (*)(mxml_node_t *)> getDynamicTree(lib::Span<const Driver * const> drivers,
+                                                                         lib::Span<const GatorCpu> clusters,
+                                                                         lib::Span<const UncorePmu> uncores)
     {
         auto xml = getStaticTree(clusters, uncores);
         // Add dynamic events from the drivers
@@ -101,38 +96,6 @@ namespace events_xml {
     {
         const auto xml = getDynamicTree(drivers, clusters, uncores);
         return {mxmlSaveAllocString(xml.get(), mxmlWhitespaceCB), &free};
-    }
-
-    std::map<std::string, EventCode> getCounterToEventMap(lib::Span<const Driver * const> drivers,
-                                                          lib::Span<const GatorCpu> clusters,
-                                                          lib::Span<const UncorePmu> uncores)
-    {
-        std::map<std::string, EventCode> counterToEventMap {};
-
-        auto xml = events_xml::getDynamicTree(drivers, clusters, uncores);
-
-        // build map of counter->event
-        mxml_node_t * node = xml.get();
-        while (true) {
-            node = mxmlFindElement(node, xml.get(), "event", nullptr, nullptr, MXML_DESCEND);
-            if (node == nullptr) {
-                break;
-            }
-            const char * counter = mxmlElementGetAttr(node, "counter");
-            const char * event = mxmlElementGetAttr(node, "event");
-            if (counter == nullptr) {
-                continue;
-            }
-
-            if (event != nullptr) {
-                const auto eventNo = strtoull(event, nullptr, 0);
-                counterToEventMap[counter] = EventCode(eventNo);
-            }
-            else {
-                counterToEventMap[counter] = EventCode();
-            }
-        }
-        return counterToEventMap;
     }
 
     void write(const char * path,

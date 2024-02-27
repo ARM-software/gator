@@ -1,10 +1,11 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVERS_H
 #define DRIVERS_H
 
 #include "AtraceDriver.h"
 #include "CCNDriver.h"
+#include "Configuration.h"
 #include "ExternalDriver.h"
 #include "FtraceDriver.h"
 #include "MidgardDriver.h"
@@ -20,7 +21,7 @@
 
 class Drivers {
 public:
-    Drivers(bool systemWide,
+    Drivers(CaptureOperationMode captureOperationMode,
             PmuXML && pmuXml,
             bool disableCpuOnlining,
             bool disableKernelAnnotations,

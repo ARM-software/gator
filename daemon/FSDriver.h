@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #ifndef FSDRIVER_H
 #define FSDRIVER_H
@@ -16,7 +16,7 @@ public:
 
     void readEvents(mxml_node_t * xml) override;
 
-    int writeCounters(mxml_node_t * root) const override;
+    [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
 };
 
 #endif // FSDRIVER_H

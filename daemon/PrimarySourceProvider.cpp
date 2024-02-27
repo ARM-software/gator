@@ -1,8 +1,9 @@
-/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #include "PrimarySourceProvider.h"
 
 #include "Config.h"
+#include "Configuration.h"
 #include "CpuUtils.h"
 #include "DiskIODriver.h"
 #include "FSDriver.h"
@@ -111,7 +112,7 @@ namespace {
         /**
          * @param pmuXml consumes this on success
          */
-        static std::unique_ptr<PrimarySourceProvider> tryCreate(bool systemWide,
+        static std::unique_ptr<PrimarySourceProvider> tryCreate(CaptureOperationMode captureOperationMode,
                                                                 const TraceFsConstants & traceFsConstants,
                                                                 PmuXML & pmuXml,
                                                                 const char * maliFamilyName,
@@ -121,7 +122,7 @@ namespace {
                                                                 bool disableKernelAnnotations)
         {
             std::unique_ptr<PerfDriverConfiguration> configuration =
-                PerfDriverConfiguration::detect(systemWide,
+                PerfDriverConfiguration::detect(captureOperationMode,
                                                 traceFsConstants.path__events,
                                                 ids.getCpuIds(),
                                                 gSessionData.smmu_identifiers,
@@ -373,7 +374,7 @@ const std::vector<PolledDriver *> & PrimarySourceProvider::getAdditionalPolledDr
     return polledDrivers;
 }
 
-std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool systemWide,
+std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(CaptureOperationMode captureOperationMode,
                                                                      const TraceFsConstants & traceFsConstants,
                                                                      PmuXML && pmuXml,
                                                                      const char * maliFamilyName,
@@ -402,7 +403,7 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(bool system
         LOG_FINE("Trying perf API as non-root...");
     }
 
-    result = PerfPrimarySource::tryCreate(systemWide,
+    result = PerfPrimarySource::tryCreate(captureOperationMode,
                                           traceFsConstants,
                                           pmuXml,
                                           maliFamilyName,

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -68,14 +68,26 @@ namespace agents::perf {
             std::map<pid_t, lnx::sig_continuer_t> paused_pids;
         };
 
+        /** Returned by scan_for_new_tids */
+        struct scan_for_new_tids_result_t {
+            /** The set of newly added pids/tids*/
+            std::set<pid_t> new_pids {};
+            /** The mapping from event id to key */
+            id_to_key_mappings_t id_to_key_mappings {};
+            /** The stream descriptors to monitor */
+            std::vector<core_no_fd_pair_t> event_fds {};
+            /** The stream descriptors to monitor (but that don't count towards the traced process total) */
+            std::vector<core_no_fd_pair_t> supplimentary_event_fds {};
+        };
+
         /** Constructor */
         perf_capture_events_helper_t(std::shared_ptr<perf_capture_configuration_t> const & configuration,
                                      event_binding_manager_t && event_binding_manager,
                                      std::set<pid_t> && monitored_pids)
             : event_binding_manager(std::forward<event_binding_manager_t>(event_binding_manager)),
               monitored_pids(std::move(monitored_pids)),
-              is_system_wide(configuration->perf_config.is_system_wide),
-              stop_on_exit(configuration->session_data.stop_on_exit || !configuration->perf_config.is_system_wide),
+              is_system_wide(isCaptureOperationModeSystemWide(configuration->session_data.capture_operation_mode)),
+              stop_on_exit(configuration->session_data.stop_on_exit || !is_system_wide),
 #if (defined(GATOR_SELF_PROFILE) && GATOR_SELF_PROFILE)
               profile_gator(true),
 #else
@@ -84,12 +96,12 @@ namespace agents::perf {
               profile_gator(remove_pid_zero()),
 #endif
               // older kernels require monitoring of the sync-thread
-              requires_process_events_from_self((!configuration->perf_config.is_system_wide)
+              requires_process_events_from_self((!is_system_wide)
                                                 && (!configuration->perf_config.has_attr_clockid_support)),
               // was perf_config.enable_on_exec but this causes us to miss the exec comm record associated with the initial command, plus
               // enable on exec doesn't work for cpu-wide events.
               // additionally, when profiling gator, must be turned off
-              enable_on_exec(configuration->enable_on_exec && !configuration->perf_config.is_system_wide
+              enable_on_exec(configuration->enable_on_exec && !is_system_wide
                              && configuration->perf_config.has_attr_clockid_support
                              && configuration->perf_config.has_attr_comm_exec && !profile_gator),
               // should we pause pids using SIGSTOP when preparing pids or bringing a core online
@@ -202,7 +214,7 @@ namespace agents::perf {
             std::vector<core_no_fd_pair_t> supplimentary_event_fds {};
 
             // collect the monitored pids and their tids
-            auto monitored_tids = find_monitored_tids();
+            auto monitored_tids = find_monitored_tids(true);
 
             // get the perf agent pids
             auto [just_agent_tids, all_gatord_tids] = find_gatord_tids();
@@ -311,6 +323,106 @@ namespace agents::perf {
             return ((n_started > 0) || (!stop_on_exit));
         }
 
+        /** Scan for and add any newly detected pids to the monitor */
+        [[nodiscard]] lib::error_code_or_t<scan_for_new_tids_result_t> scan_for_new_tids()
+        {
+            id_to_key_mappings_t mappings {};
+            std::set<pid_t> new_pids {};
+            std::set<pid_t> terminated_pids {};
+            std::vector<core_no_fd_pair_t> event_fds {};
+
+            // collect the monitored pids and their tids
+            auto monitored_tids = find_monitored_tids(false);
+
+            // get the perf agent pids
+            auto [just_agent_tids, all_gatord_tids] = find_gatord_tids();
+            (void) just_agent_tids; // gcc 7 :-()
+
+            // collect the set of tids that are new
+            for (pid_t tid : monitored_tids) {
+                if (all_gatord_tids.count(tid) != 0) {
+                    continue;
+                }
+
+                // and add to the set of tracked pids
+                if (!monitored_pids.insert(tid).second) {
+                    continue;
+                }
+
+                LOG_DEBUG("scan_for_new_tids detected new tid %d", tid);
+
+                // add it to the event bindiing manager
+                auto result = event_binding_manager.pid_track_prepare(tid);
+
+                switch (result.state) {
+                    case aggregate_state_t::failed: {
+                        return {boost::system::error_code {boost::asio::error::bad_descriptor}};
+                    }
+                    case aggregate_state_t::offline:
+                    case aggregate_state_t::terminated: {
+                        terminated_pids.insert(tid);
+                        break;
+                    }
+                    case aggregate_state_t::usable: {
+                        new_pids.insert(tid);
+                        mappings.insert(mappings.end(), result.mappings.begin(), result.mappings.end());
+                        event_fds.insert(event_fds.end(),
+                                         result.event_fds_by_core_no.begin(),
+                                         result.event_fds_by_core_no.end());
+                        break;
+                    }
+                    default: {
+                        throw std::runtime_error("what aggregate_state_t is this?");
+                    }
+                };
+            }
+
+            if (remove_terminated(terminated_pids) && stop_on_exit) {
+                return {boost::system::error_code {boost::asio::error::eof}};
+            }
+
+            return scan_for_new_tids_result_t {
+                std::move(new_pids),
+                std::move(mappings),
+                std::move(event_fds),
+                {},
+            };
+        }
+
+        /** Activate newly scanned tids */
+        [[nodiscard]] boost::system::error_code enable_new_tids(std::set<pid_t> const & tids)
+        {
+            std::set<pid_t> terminated_pids {};
+
+            for (auto tid : tids) {
+                auto result = event_binding_manager.pid_track_start(tid);
+
+                switch (result.state) {
+                    case aggregate_state_t::failed: {
+                        return {boost::system::error_code {boost::asio::error::bad_descriptor}};
+                    }
+                    case aggregate_state_t::offline:
+                    case aggregate_state_t::terminated: {
+                        terminated_pids.insert(tid);
+                        break;
+                    }
+                    case aggregate_state_t::usable: {
+                        LOG_DEBUG("Enabled new tid %d", tid);
+                        break;
+                    }
+                    default: {
+                        throw std::runtime_error("what aggregate_state_t is this?");
+                    }
+                };
+            }
+
+            if (remove_terminated(terminated_pids) && stop_on_exit) {
+                return boost::system::error_code {boost::asio::error::eof};
+            }
+
+            return {};
+        }
+
         /**
          * Prepare any events when a cpu core comes online
          *
@@ -334,7 +446,7 @@ namespace agents::perf {
             // but not for any cores that are already online as it is assumed the tid will be tracked via the 'inherit' bit
             if (!is_system_wide) {
                 // collect the monitored pids and their tids
-                auto monitored_tids = find_monitored_tids();
+                auto monitored_tids = find_monitored_tids(true);
 
                 // get the perf agent pids
                 auto [just_agent_tids, all_gatord_tids] = find_gatord_tids();
@@ -622,11 +734,11 @@ namespace agents::perf {
         }
 
         /** collect the monitored pids and their tids */
-        [[nodiscard]] std::set<pid_t> find_monitored_tids()
+        [[nodiscard]] std::set<pid_t> find_monitored_tids(bool include_forked_children)
         {
             std::set<pid_t> result {};
             for (pid_t pid : monitored_pids) {
-                lnx::addTidsRecursively(result, pid, true);
+                lnx::addTidsRecursively(result, pid, include_forked_children);
             }
             return result;
         }

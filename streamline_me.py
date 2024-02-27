@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2019-2023 by Arm Limited
+# Copyright (C) 2019-2024 by Arm Limited
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -682,7 +682,9 @@ def get_package_name(device, pkgName, showAllPackages, interactive):
             return None, None
 
         if matchesSinglePackage:
-            print("Matched package: %s" % pkgName)
+            # Match the output format of the menu when a single package listed
+            print("\nSelect a package:")
+            print("    Auto-selected %s" % pkgName)
             return pkgName, is_debuggable
 
     # In interactive mode without named package then find one, with prompt ...
@@ -1045,7 +1047,7 @@ def disable_gles_debug_layer(device, args):
     device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
-def clean_gatord(device, package):
+def clean_gatord(device, package, removeConfigXml=False):
     """
     Cleanup gatord and test process on the device.
 
@@ -1063,8 +1065,11 @@ def clean_gatord(device, package):
 
     # Remove any data files in both temp directory and app directory
     device.adb_quiet("shell", "rm", "-f", "%sgatord" % ANDROID_TMP_DIR)
-    device.adb_quiet("shell", "rm", "-f",
-                     "%sconfiguration.xml" % ANDROID_TMP_DIR)
+
+    if removeConfigXml:
+        device.adb_quiet("shell", "rm", "-f",
+                         "%sconfiguration.xml" % ANDROID_TMP_DIR)
+
     device.adb_quiet("shell", "rm", "-rf", "%s%s.apc" %
                      (ANDROID_TMP_DIR, package))
 
@@ -1143,6 +1148,15 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
                  "--android-pkg", package, "--stop-on-exit", "yes",
                  "--max-duration", "%u" % timeout, "--capture-log", "--output", remoteApcPath]
 
+    # Try to find MAIN activity, if no activity specified
+    if not activity:
+        activity = get_main_activity(device, package)
+
+    if activity:
+        gator_cmd += ["--android-activity", activity]
+        if activityArgs:
+            gator_cmd += ["--activity-args", activityArgs]
+
     is_root = device.has_root_access()
     if is_root:
         gatorProcess = device.adb_async("shell", "su", "0", *gator_cmd)
@@ -1152,10 +1166,6 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
     # Short sleep just to give time for gator to start
     # TODO: Would be better to programmatically wait for a message that gator is ready
     time.sleep(2)
-
-    # Try to find MAIN activity, if no activity specified
-    if not activity:
-        activity = get_main_activity(device, package)
 
     # If we have an activity, start it
     if activity:
@@ -1267,46 +1277,46 @@ def parse_cli(parser):
     """
     parser.add_argument(
         "--device", "-E", default=None,
-        help="the target device name (default=auto-detected)")
+        help="The target device name (default=auto-detected)")
 
     parser.add_argument(
         "--package", "-P", default=None,
-        help="the application package name or pattern (default=auto-detected) (e.g. com.arm.application.*)")
+        help="The application package name or pattern, e.g. com.arm.application.* (default=auto-detected)")
 
     parser.add_argument(
         "--package-activity", dest="packageActivity", default=None,
-        help="the application package activity to start (default=None)")
+        help="The application package activity to start (default=None)")
 
     parser.add_argument(
         "--package-arguments",  dest="packageArguments", default=None,
-        help="the application package argument string (default=None)")
+        help="The application package argument string (default=None)")
 
     parser.add_argument(
         "--headless", "-H", default=None, metavar="CAPTURE_PATH",
-        help="perform a headless capture, writing the result to the path "
+        help="Perform a headless capture, writing the result to the path "
              "CAPTURE_PATH (default=perform interactive capture)")
 
     parser.add_argument(
         "--headless-timeout", "-T", dest="timeout", type=int, default=0,
-        help="exit the headless timeout after this many seconds "
+        help="Exit the headless timeout after this many seconds "
              "(default=wait for process exit)")
 
     parser.add_argument(
         "--config", "-C",  dest="config", default=None, type=ap.FileType('r'),
-        help="the capture counter config XML file to use (default=None for "
+        help="The capture counter config XML file to use (default=None for "
              "interactive, configuration.xml for headless)")
 
     parser.add_argument(
         "--daemon", "-D", default=None,
-        help="the path to the gatord binary to use (default=gatord)")
+        help="The path to the gatord binary to use (default=gatord)")
 
     parser.add_argument(
         "--overwrite", action="store_true", default=False,
-        help="overwrite an earlier headless output (default=disabled)")
+        help="Overwrite an earlier headless output (default=disabled)")
 
     parser.add_argument(
         "--verbose", "-v", action="store_true", default=False,
-        help="enable verbose logging (default=disabled)")
+        help="Enable verbose logging (default=disabled)")
 
     parser.add_argument(
         "--lwi-mode", "-M", dest="lwiMode", default="off",
@@ -1324,51 +1334,51 @@ def parse_cli(parser):
 
     parser.add_argument(
         "--lwi-api", dest="lwiApi", default="gles", choices=["gles", "vulkan"],
-        help=("The API to listen to. Possible values are 'gles'"
-              "or 'vulkan' (default=gles)."))
+        help="The API to monitor. Possible values are 'gles'"
+             "or 'vulkan' (default=gles)")
 
     parser.add_argument(
         "--lwi-gles-layer-lib-path", dest="glesLayerLibPath", default="",
-        help="The OpenGL ES layer library path.")
+        help="The OpenGL ES layer library path (default=use standard layer)")
 
     parser.add_argument(
         "--lwi-vk-layer-lib-path", dest="vkLayerLibPath", default="",
-        help="The Vulkan layer library path.")
+        help="The Vulkan layer library path (default=use standard layer)")
 
     parser.add_argument(
         "--lwi-fps-window", "-W", dest="fpsWindow", type=int, default=6,
-        help="Size (in frames) of the sliding window used for FPS calculation")
+        help="The number of frames in the sliding window used for FPS calculation (default=6)")
 
     parser.add_argument(
         "--lwi-fps-threshold", "-Th", dest="fpsThreshold",
-        type=int, default=30,
-        help="Perform capture if FPS goes under this threshold. Default is 30")
+        type=int, default=55,
+        help="Capture screenshots when FPS drops below this threshold (default=55)")
 
     parser.add_argument(
         "--lwi-frame-start", "-S", dest="frameStart", type=int, default=1,
-        help="Start tracking from frame number.")
+        help="Start tracking from frame number (default=start when app starts)")
 
     parser.add_argument(
         "--lwi-frame-end", "-N", dest="frameEnd", type=int, default=-1,
-        help="End tracking at frame number.")
+        help="End tracking at frame number (default=stop when app exits)")
 
     parser.add_argument(
         "--lwi-frame-gap", "-G", dest="frameGap", type=int, default=200,
-        help="Minimum number of frames between two captures.")
+        help="Minimum number of frames between two captures (default=200)")
 
     parser.add_argument(
         "--lwi-out-dir", "-o", dest="outDir", default=None,
-        help="Directory where the LWI capture is output.")
+        help="Directory where the LWI capture is output")
 
     parser.add_argument(
         "--lwi-compress-img", "-X", dest="compress",
         action="store_true", default=False,
-        help="The layer will store compressed frame captures.")
+        help="The layer will store compressed frame captures (default=no compression)")
 
     parser.add_argument(
         "--show-all-packages", "-A", dest="showAllPackages",
         action="store_true", default=False,
-        help="Displays all packages installed, including non-debuggable.")
+        help="Displays all packages installed, including non-debuggable")
 
     # Internal development option that allows Khronos validation
     # to be enabled underneath LWI
@@ -1713,7 +1723,7 @@ def main():
     get_gpu_name(device)
 
     # Remove any old files
-    clean_gatord(device, package)
+    clean_gatord(device, package, removeConfigXml=args.headless)
 
     # If gatord is needed, install it
     if args.headless:
@@ -1806,7 +1816,7 @@ def main():
         atexit.unregister(exit_handler)
 
         # Remove any new files if requested to do so
-        clean_gatord(device, package)
+        clean_gatord(device, package, removeConfigXml=args.headless)
 
     except sp.CalledProcessError as e:
         atexit.unregister(exit_handler)

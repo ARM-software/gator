@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #include "agents/agent_environment.h"
 
 #include "Logging.h"
@@ -113,7 +113,7 @@ namespace agents {
             auto ipc_out = dup_and_close(STDOUT_FILENO);
 
             // setup asio context
-            boost::asio::io_context io_context {};
+            boost::asio::io_context io_context {n_threads + 1};
 
             // process monitor
             async::proc::process_monitor_t process_monitor {io_context};

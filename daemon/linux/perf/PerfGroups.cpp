@@ -1,7 +1,8 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfGroups.h"
 
+#include "Configuration.h"
 #include "Logging.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
@@ -55,6 +56,7 @@ void perf_groups_configurer_t::initHeader(attr_to_key_mapping_tracker_t & mappin
                                                            mapping_tracker,
                                                            perf_event_group_configurer_t::nextDummyKey(configuration),
                                                            attr,
+                                                           false,
                                                            false);
 
     runtime_assert(result, "Failed to init header event");
@@ -62,15 +64,22 @@ void perf_groups_configurer_t::initHeader(attr_to_key_mapping_tracker_t & mappin
 
 bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_tracker,
                                    const PerfEventGroupIdentifier & groupIdentifier,
-                                   const int key,
+                                   int key,
                                    const IPerfGroups::Attr & attr,
                                    bool hasAuxData)
 {
+    if ((groupIdentifier.getType() == PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED)
+        && (!isCaptureOperationModeSupportingMetrics(configuration.captureOperationMode))) {
+        LOG_ERROR("Per-function metrics are not supported in application tracing mode when `--inherit yes` (the "
+                  "default) is used.");
+        return false;
+    }
 
     auto eventGroup = getGroup(mapping_tracker, groupIdentifier);
+
     LOG_FINE("Adding event: group='%s', key=%i, type=%" PRIu32 ", config=%" PRIu64 ", config1=%" PRIu64
-             ", config2=%" PRIu64 ", period=%" PRIu64 ", sampleType=0x%" PRIx64
-             ", mmap=%d, comm=%d, freq=%d, task=%d, context_switch=%d, hasAuxData=%d",
+             ", config2=%" PRIu64 ", period=%" PRIu64 ", strobePeriod=0x%" PRIx64 ", sampleType=0x%" PRIx64
+             ", mmap=%d, comm=%d, freq=%d, task=%d, context_switch=%d, userspace_only=%d, hasAuxData=%d",
              std::string(groupIdentifier).c_str(),
              key,
              attr.type,
@@ -78,12 +87,14 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
              attr.config1,
              attr.config2,
              attr.periodOrFreq,
+             attr.strobePeriod,
              attr.sampleType,
              attr.mmap,
              attr.comm,
              attr.freq,
              attr.task,
              attr.context_switch,
+             attr.userspace_only,
              hasAuxData);
 
     IPerfGroups::Attr newAttr {attr};
@@ -96,7 +107,8 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
 
     // If we are not system wide the group leader can't read counters for us
     // so we need to add sample them individually periodically
-    if (((!configuration.perfConfig.is_system_wide) || (!eventGroup.requiresLeader())) && (attr.periodOrFreq == 0)) {
+    if ((!isCaptureOperationModeSupportingCounterGroups(configuration.captureOperationMode))
+        && eventGroup.requiresLeader() && (attr.periodOrFreq == 0)) {
         LOG_DEBUG("    Forcing as freq counter");
         newAttr.periodOrFreq =
             configuration.sampleRate > 0 && configuration.enablePeriodicSampling ? configuration.sampleRate : 10UL;

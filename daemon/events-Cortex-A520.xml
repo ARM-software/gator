@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2023-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv9_Cortex_A520_cnt"/>
 <category counter_set="ARMv9_Cortex_A520_cnt" name="Cortex-A520" per_cpu="yes" supports_event_based_sampling="yes">
@@ -50,8 +50,8 @@
     <event event="0x3a" title="Operations" name="Executed" description="Micro-operation architecturally executed"/>
     <event event="0x3b" title="Operations" name="Speculated" description="Micro-operation speculatively executed"/>
     <event event="0x3c" title="Stalls" name="All" description="No operation sent for execution"/>
-    <event event="0x3d" title="Stalls (Slots)" name="Frontend" description="No operation sent for execution on a slot due to the backend"/>
-    <event event="0x3e" title="Stalls (Slots)" name="Backend" description="No operation sent for execution on a slot due to the frontend"/>
+    <event event="0x3d" title="Stalls (Slots)" name="Backend" description="No operation sent for execution on a slot due to the backend"/>
+    <event event="0x3e" title="Stalls (Slots)" name="Frontend" description="No operation sent for execution on a slot due to the frontend"/>
     <event event="0x3f" title="Stalls (Slots)" name="All" description="No operation sent for execution on a slot"/>
     <event event="0x40" title="L1 Data Cache" name="Access (due to read)" description="This event counts any load operation or page table walk access which looks up in the L1 data cache. In particular, any access which could count the &apos;L1 Data Cache: Refill (due to read)&apos; event causes this event to count. The following instructions are not counted; cache maintenance instructions and prefetches, non-cacheable accesses."/>
     <event event="0x41" title="L1 Data Cache" name="Access (due to write)" description="This event counts any store operation which looks up in the L1 data cache. In particular, any access which could count the &apos;L1 Data Cache: Refill (due to write)&apos; event causes this event to count. The following instructions are not counted; cache maintenance instructions and prefetches, non-cacheable accesses."/>

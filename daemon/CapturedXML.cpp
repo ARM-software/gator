@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "CapturedXML.h"
 
@@ -123,6 +123,15 @@ static mxml_node_t * getTree(bool includeTime,
     if (gSessionData.mWaitForProcessCommand != nullptr) {
         mxml_node_t * const process_data = mxmlNewElement(captured, "process");
         mxmlElementSetAttrf(process_data, "process_name", "%s", gSessionData.mWaitForProcessCommand);
+        if (gSessionData.mAndroidPackage != nullptr) {
+            mxmlElementSetAttrf(process_data, "package_name", "%s", gSessionData.mAndroidPackage);
+        }
+        if (gSessionData.mAndroidActivity != nullptr) {
+            mxmlElementSetAttrf(process_data, "activity_name", "%s", gSessionData.mAndroidActivity);
+        }
+        if (gSessionData.mAndroidActivityFlags != nullptr) {
+            mxmlElementSetAttrf(process_data, "activity_arguments", "%s", gSessionData.mAndroidActivityFlags);
+        }
     }
 
     auto * const target = mxmlNewElement(captured, "target");

@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #include "GatorCLIParser.h"
 
@@ -37,10 +37,12 @@ namespace {
     constexpr int GATOR_ANNOTATION_PORT2 = 8083;
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
 
-    constexpr std::string_view OPTSTRING_SHORT = "ac:d::e:f:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:LN:O:P:Q:R:S:TVX:Y:Z:";
+    constexpr std::string_view OPTSTRING_SHORT =
+        "ac:d::e:f:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:I:LN:O:P:Q:R:S:TVX:Y:Z:";
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
+                                             // Remaining free letters are: bgjqyzBGHJKMUW
         {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
         {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
         {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
@@ -67,8 +69,9 @@ namespace {
         {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
         {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
         {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
+        {"inherit", /****************/ required_argument, nullptr, 'I'}, //
         {"capture-log", /************/ no_argument, /***/ nullptr, 'L'}, //
-        /********************************************************* 'N' ***/
+        {"num-pmu-counters", /*******/ required_argument, nullptr, 'N'}, //
         {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
         {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
         WAIT_PROCESS,                                                    //
@@ -363,6 +366,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
     if (indexApp > 0) {
         argc = indexApp;
     }
+    bool inheritSet = false;
     bool systemWideSet = false;
     bool userSetIncludeKernelEvents = false;
     optind = 1;
@@ -377,8 +381,13 @@ void GatorCLIParser::parseCLIArguments(int argc,
                                                   : std::nullopt});
         switch (c) {
             case 'N':
-                if (!stringToInt(&result.mAndroidApiLevel, optarg, 10)) {
-                    LOG_ERROR("-N must be followed by an int");
+                if (!stringToInt(&result.mOverrideNoPmuSlots, optarg, 10)) {
+                    LOG_ERROR("-N must be followed by an non-zero positive number");
+                    result.parsingFailed();
+                    return;
+                }
+                if (result.mOverrideNoPmuSlots <= 0) {
+                    LOG_ERROR("-N must be followed by an non-zero positive number");
                     result.parsingFailed();
                     return;
                 }
@@ -475,14 +484,28 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.mFtraceRaw = optionInt == 1;
                 break;
             case 'S': //--system-wide
+            {
                 if (optionInt < 0) {
                     LOG_ERROR("Invalid value for --system-wide (%s), 'yes' or 'no' expected.", optarg);
                     result.parsingFailed();
                     return;
                 }
-                result.mSystemWide = optionInt == 1;
+                auto const is_system_wide = (optionInt == 1);
+                if (inheritSet) {
+                    if ((is_system_wide && !isCaptureOperationModeSystemWide(result.mCaptureOperationMode))
+                        || (!is_system_wide && isCaptureOperationModeSystemWide(result.mCaptureOperationMode))) {
+                        LOG_ERROR("Invalid combination for --system-wide and --inherit arguments");
+                        result.parsingFailed();
+                        return;
+                    }
+                    // no change in state
+                    break;
+                }
+                result.mCaptureOperationMode = (is_system_wide ? CaptureOperationMode::system_wide //
+                                                               : CaptureOperationMode::application_inherit);
                 systemWideSet = true;
                 break;
+            }
             case 'w': //app-pwd
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_CAPTURE_WORKING_DIR;
 
@@ -596,10 +619,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        applicable when --allow-command is\n"
                     "                                        specified, but a command must be entered\n"
                     "                                        in the Capture and Analysis Options of\n"
-                    "                                        Streamline. Requires kernel events to \n"
-                    "                                        be enabled in Capture and Analysis\n"
-                    "                                        Options of Streamline, or by setting\n"
-                    "                                        '--exclude-kernel no'.\n"
+                    "                                        Streamline.\n"
                     "                                        (Defaults to 'yes' unless --app, --pid\n"
                     "                                        or--wait-process is specified).\n"
                     "  -u|--call-stack-unwinding (yes|no)    Enable or disable call stack unwinding\n"
@@ -653,8 +673,36 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        model's IIDR number  either\n"
                     "                                        fully (e.g., 4832243b) or\n"
                     "                                        partially (e.g., 483_43b).\n"
-                    "  -Y|--off-cpu-time (yes|no)            Enable collecting Off-CPU time\n"
-                    "                                        statistics.\n"
+                    "  -Y|--off-cpu-time (yes|no)            Collect Off-CPU time statistics.\n"
+                    "                                        Detailed statistics require 'root' permission.\n"
+                    "  -I|--inherit (yes|no|poll)            When profiling an application, gatord\n"
+                    "                                        monitors all threads and child processes.\n"
+                    "                                        Specify 'no' to monitor only the initial\n"
+                    "                                        thread of the application. Specify 'poll' to\n"
+                    "                                        periodically poll for new processes/threads.\n"
+                    "                                        NB: Per-function metrics are only supported in\n"
+                    "                                        system-wide mode, or when '--inherit' is set to\n"
+                    "                                        'no' or 'poll'. The default is 'yes'.\n"
+                    "  -N|--num-pmu-counters <n>             Override the number of programmable PMU\n"
+                    "                                        counters that are available.\n"
+                    "                                        This option reduces the number of programmable\n"
+                    "                                        PMU counters available for profiling.\n"
+                    "                                        Use this option when the default is\n"
+                    "                                        incorrect, or because some programmable\n"
+                    "                                        counters are unavailable because they are\n"
+                    "                                        consumed by the OS, or other processes, or by\n"
+                    "                                        a hypervisor.\n"
+                    "                                        NB: The Arm PMU typically exposes 6\n"
+                    "                                        programmable counters, and one fixed function\n"
+                    "                                        cycle counter. This argument assumes the fixed\n"
+                    "                                        cycle counter is not part of the reduced set\n"
+                    "                                        of counters. If your target exposes 2\n"
+                    "                                        programmable counters and the fixed cycle\n"
+                    "                                        counter, then pass '2' for the value\n"
+                    "                                        of '<n>'. However, if your target exposes 2\n"
+                    "                                        programmable counters and no fixed cycle\n"
+                    "                                        counter, then pass '1' for the value\n"
+                    "                                        of '<n>'.\n"
                     "\n"
                     "* Arguments available only on Android targets:\n"
                     "\n"
@@ -790,6 +838,12 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     else if (strcasecmp(part.c_str(), "defaults.xml") == 0) {
                         result.printables.insert(ParserResult::Printable::DEFAULT_CONFIGURATION_XML);
                     }
+                    else if (strcasecmp(part.c_str(), "counters") == 0) {
+                        result.printables.insert(ParserResult::Printable::COUNTERS);
+                    }
+                    else if (strcasecmp(part.c_str(), "detailed-counters") == 0) {
+                        result.printables.insert(ParserResult::Printable::COUNTERS_DETAILED);
+                    }
                     else {
                         LOG_ERROR("Invalid value for --print (%s)", optarg);
                         result.parsingFailed();
@@ -835,6 +889,38 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_OFF_CPU_PROFILING;
                 break;
             }
+            case 'I': {
+                CaptureOperationMode newMode;
+
+                if (optionInt > 0) {
+                    newMode = CaptureOperationMode::application_inherit;
+                }
+                else if (optionInt == 0) {
+                    newMode = CaptureOperationMode::application_no_inherit;
+                }
+                else if (strcasecmp(optarg, "poll") == 0) {
+                    newMode = CaptureOperationMode::application_poll;
+                }
+                else if (strcasecmp(optarg, "experimental") == 0) {
+                    newMode = CaptureOperationMode::application_experimental_patch;
+                }
+                else {
+                    LOG_ERROR("Invalid value for --inherit (%s), 'yes', 'no', 'poll', or 'experimental' expected.",
+                              optarg);
+                    result.parsingFailed();
+                    return;
+                }
+
+                if (systemWideSet && isCaptureOperationModeSystemWide(result.mCaptureOperationMode)) {
+                    LOG_ERROR("Invalid combination for --system-wide and --inherit arguments");
+                    result.parsingFailed();
+                    return;
+                }
+
+                inheritSet = true;
+                result.mCaptureOperationMode = newMode;
+                break;
+            }
             case 'l': // android-pkg
             {
                 result.mAndroidPackage = optarg;
@@ -876,27 +962,22 @@ void GatorCLIParser::parseCLIArguments(int argc,
             USE_CMDLINE_ARG_STOP_GATOR; // must be set, otherwise session.xml will override during live mode (which leads to counter-intuitive behaviour)
     }
 
-    if (!systemWideSet) {
+    if (!systemWideSet && !inheritSet) {
 #if CONFIG_PREFER_SYSTEM_WIDE_MODE
         // default to system-wide mode unless a process option was specified
-        result.mSystemWide = !haveProcess;
+        result.mCaptureOperationMode =
+            (!haveProcess ? CaptureOperationMode::system_wide : CaptureOperationMode::application_inherit);
 #else
         // user must explicitly request system-wide mode
-        result.mSystemWide = false;
+        result.mCaptureOperationMode = CaptureOperationMode::application_inherit;
 #endif
     }
 
-    //If the the capture isn't system wide and the user didn't explicitly include kernel events, we exclude them by default.
-    if (!result.mSystemWide && !userSetIncludeKernelEvents) {
-        result.mExcludeKernelEvents = true;
-    }
+    auto const is_system_wide = isCaptureOperationModeSystemWide(result.mCaptureOperationMode);
 
-    // Error checking
-    if (result.mSystemWide && result.mExcludeKernelEvents) {
-        LOG_ERROR("Kernel events are currently required for system-wide mode. "
-                  "Either restart gatord with '--exclude-kernel no' or specify a process to profile.");
-        result.parsingFailed();
-        return;
+    //If the the capture isn't system wide and the user didn't explicitly include kernel events, we exclude them by default.
+    if (!is_system_wide && !userSetIncludeKernelEvents) {
+        result.mExcludeKernelEvents = true;
     }
 
     if (result.mode == ExecutionMode::LOCAL_CAPTURE) {
@@ -911,7 +992,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
             return;
         }
 
-        if (!result.mSystemWide && result.mSessionXMLPath == nullptr && !haveProcess) {
+        if (!is_system_wide && result.mSessionXMLPath == nullptr && !haveProcess) {
             LOG_ERROR("In local capture mode, without --system-wide=yes, a process to profile must be specified "
                       "with --session-xml, --app, --wait-process, --pid, or --android-pkg.");
             result.parsingFailed();
@@ -923,7 +1004,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
         }
     }
     else if (result.mode == ExecutionMode::DAEMON) {
-        if (!result.mSystemWide && !result.mAllowCommands && !haveProcess) {
+        if (!is_system_wide && !result.mAllowCommands && !haveProcess) {
             LOG_ERROR("In daemon mode, without --system-wide=yes, a process to profile must be specified with "
                       "--allow-command, --app, --wait-process, --pid, or --android-pkg.");
             result.parsingFailed();

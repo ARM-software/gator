@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "Logging.h"
 
@@ -7,45 +7,27 @@
 #include "logging/parameters.h"
 
 #include <cstdarg>
-#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <memory>
-#include <string>
 #include <string_view>
 #include <utility>
 
-#include <google/protobuf/stubs/logging.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#if __has_include(<google/protobuf/stubs/logging.h>)
+#include "logging/protobuf_log_adapter.h"
+#elif __has_include(<absl/log/absl_log.h>)
+#include "logging/absl_log_adapter.h"
+#else
+#error "Protobuf logging backend could not be detected. No log handler will be installed"
+#endif
+
 namespace logging {
     namespace {
         std::shared_ptr<logger_t> current_logger {};
-
-        void protobuf_log_handler(google::protobuf::LogLevel level,
-                                  const char * filename,
-                                  int line,
-                                  const std::string & message)
-        {
-            auto remapped_level = log_level_t::info;
-            switch (level) {
-                case google::protobuf::LOGLEVEL_WARNING:
-                    remapped_level = log_level_t::warning;
-                    break;
-                case google::protobuf::LOGLEVEL_ERROR:
-                    remapped_level = log_level_t::error;
-                    break;
-                case google::protobuf::LOGLEVEL_FATAL:
-                    remapped_level = log_level_t::fatal;
-                    break; //
-                default:
-                    break;
-            }
-
-            log_item(remapped_level, {filename, static_cast<unsigned>(line)}, message);
-        }
     }
 
     namespace detail {
@@ -116,10 +98,9 @@ namespace logging {
                   source_loc_t const & location,
                   std::string_view message)
     {
-        std::shared_ptr<logger_t> sink = current_logger;
+        const std::shared_ptr<logger_t> sink = current_logger;
 
         if (sink != nullptr) {
-
             sink->log_item(tid, level, timestamp, location, message);
         }
     }
@@ -127,8 +108,12 @@ namespace logging {
     void set_logger(std::shared_ptr<logger_t> sink)
     {
         current_logger = std::move(sink);
-
-        google::protobuf::SetLogHandler(current_logger ? protobuf_log_handler : nullptr);
+        if (current_logger) {
+            install_protobuf_log_handler();
+        }
+        else {
+            remove_protobuf_log_handler();
+        }
     }
 
     /** @return true if trace logging is enabled */

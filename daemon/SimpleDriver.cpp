@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "SimpleDriver.h"
 
@@ -53,12 +53,11 @@ void SimpleDriver::setupCounter(Counter & counter)
     counter.setKey(driverCounter->getKey());
 }
 
-int SimpleDriver::writeCounters(mxml_node_t * root) const
+int SimpleDriver::writeCounters(available_counter_consumer_t const & consumer) const
 {
     int count = 0;
     for (DriverCounter * counter = mCounters; counter != nullptr; counter = counter->getNext()) {
-        mxml_node_t * node = mxmlNewElement(root, "counter");
-        mxmlElementSetAttr(node, "name", counter->getName());
+        consumer(counter_type_t::counter, counter->getName());
         ++count;
     }
 

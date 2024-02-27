@@ -1,7 +1,8 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "SessionXML.h"
 
+#include "Configuration.h"
 #include "GatorCLIFlags.h"
 #include "Logging.h"
 #include "OlyUtility.h"
@@ -62,7 +63,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
         handleException();
     }
 
-    // Version 2 has only enum-like 'resolution_mode' attribute instead of boolean 'high_resolution' attribute taht version 1 has
+    // Version 2 has only enum-like 'resolution_mode' attribute instead of boolean 'high_resolution' attribute that version 1 has
     // but none of these are used by gator, so both versions are correctly supported by this implementation.
     if (version < 1 || version > 2) {
         LOG_ERROR("Invalid session.xml version: %d", version);
@@ -160,7 +161,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     }
 
     //If user hasn't explicitly included kernel events and its not system wide, default to excluding them.
-    if (!userSetIncludeKernelEvents && !gSessionData.mSystemWide) {
+    if (!userSetIncludeKernelEvents && !isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode)) {
         gSessionData.mExcludeKernelEvents = true;
     }
 }

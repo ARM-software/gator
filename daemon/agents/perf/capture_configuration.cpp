@@ -1,7 +1,8 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/capture_configuration.h"
 
+#include "Configuration.h"
 #include "ICpuInfo.h"
 #include "SessionData.h"
 #include "agents/perf/events/event_configuration.hpp"
@@ -39,7 +40,37 @@ namespace agents::perf {
             msg.set_sample_rate(session_data.mSampleRate);
             msg.set_one_shot(session_data.mOneShot);
             msg.set_exclude_kernel_events(session_data.mExcludeKernelEvents);
-            msg.set_stop_on_exit(session_data.mStopOnExit);
+
+            switch (session_data.mCaptureOperationMode) {
+
+                case CaptureOperationMode::system_wide:
+                    msg.set_capture_operation_mode(
+                        ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
+                            capture_configuration_t_capture_operation_mode_t_system_wide);
+                    break;
+                case CaptureOperationMode::application_inherit:
+                    msg.set_capture_operation_mode(
+                        ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
+                            capture_configuration_t_capture_operation_mode_t_application_inherit);
+                    break;
+                case CaptureOperationMode::application_no_inherit:
+                    msg.set_capture_operation_mode(
+                        ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
+                            capture_configuration_t_capture_operation_mode_t_application_no_inherit);
+                    break;
+                case CaptureOperationMode::application_poll:
+                    msg.set_capture_operation_mode(
+                        ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
+                            capture_configuration_t_capture_operation_mode_t_application_poll);
+                    break;
+                case CaptureOperationMode::application_experimental_patch:
+                    msg.set_capture_operation_mode(
+                        ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
+                            capture_configuration_t_capture_operation_mode_t_application_experimental_patch);
+                    break;
+                default:
+                    throw std::runtime_error("Unexpected CaptureOperationMode");
+            }
         }
 
         void add_perf_config(ipc::proto::shell::perf::capture_configuration_t::perf_config_t & msg,
@@ -54,7 +85,6 @@ namespace agents::perf {
             msg.set_has_attr_context_switch(perf_config.has_attr_context_switch);
             msg.set_has_ioctl_read_id(perf_config.has_ioctl_read_id);
             msg.set_has_aux_support(perf_config.has_aux_support);
-            msg.set_is_system_wide(perf_config.is_system_wide);
             msg.set_exclude_kernel(perf_config.exclude_kernel);
             msg.set_can_access_tracepoints(perf_config.can_access_tracepoints);
             msg.set_has_armv7_pmu_driver(perf_config.has_armv7_pmu_driver);
@@ -224,19 +254,21 @@ namespace agents::perf {
                 case PerfEventGroupIdentifier::Type::SPE: {
                     return *msg.mutable_spe_events();
                 }
-                case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU: {
+                case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_PINNED:
+                case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED: {
                     auto index = find_pmu_index(cpu_info.getClusters(), identifier.getCluster());
-                    auto * map = msg.mutable_cluster_specific_events();
-                    return (*map)[index];
+                    auto * cluster_map = msg.mutable_cluster_specific_events();
+                    auto * group_map = (*cluster_map)[index].mutable_events_map();
+                    return (*group_map)[identifier.getClusterGroupNo()];
                 }
                 case PerfEventGroupIdentifier::Type::UNCORE_PMU: {
                     auto index = find_pmu_index(uncore_pmus, identifier.getUncorePmu());
-                    auto * map = msg.mutable_uncore_specific_events();
+                    auto * map = msg.mutable_uncore_specific_events()->mutable_events_map();
                     return (*map)[index];
                 }
                 case PerfEventGroupIdentifier::Type::SPECIFIC_CPU: {
                     auto index = static_cast<std::uint32_t>(identifier.getCpuNumber());
-                    auto * map = msg.mutable_cpu_specific_events();
+                    auto * map = msg.mutable_cpu_specific_events()->mutable_events_map();
                     return (*map)[index];
                 }
                 default: {
@@ -298,6 +330,27 @@ namespace agents::perf {
             session_data.one_shot = msg.one_shot();
             session_data.exclude_kernel_events = msg.exclude_kernel_events();
             session_data.stop_on_exit = msg.stop_on_exit();
+
+            switch (msg.capture_operation_mode()) {
+                case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_system_wide:
+                    session_data.capture_operation_mode = CaptureOperationMode::system_wide;
+                    break;
+                case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_application_inherit:
+                    session_data.capture_operation_mode = CaptureOperationMode::application_inherit;
+                    break;
+                case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_application_no_inherit:
+                    session_data.capture_operation_mode = CaptureOperationMode::application_no_inherit;
+                    break;
+                case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_application_poll:
+                    session_data.capture_operation_mode = CaptureOperationMode::application_poll;
+                    break;
+                case ipc::proto::shell::perf::
+                    capture_configuration_t_capture_operation_mode_t_application_experimental_patch:
+                    session_data.capture_operation_mode = CaptureOperationMode::application_experimental_patch;
+                    break;
+                default:
+                    throw std::runtime_error("Unexpected capture_operation_mode_t");
+            }
         }
 
         void extract_perf_config(ipc::proto::shell::perf::capture_configuration_t::perf_config_t const & msg,
@@ -312,7 +365,6 @@ namespace agents::perf {
             perf_config.has_attr_context_switch = msg.has_attr_context_switch();
             perf_config.has_ioctl_read_id = msg.has_ioctl_read_id();
             perf_config.has_aux_support = msg.has_aux_support();
-            perf_config.is_system_wide = msg.is_system_wide();
             perf_config.exclude_kernel = msg.exclude_kernel();
             perf_config.can_access_tracepoints = msg.can_access_tracepoints();
             perf_config.has_armv7_pmu_driver = msg.has_armv7_pmu_driver();
@@ -472,17 +524,20 @@ namespace agents::perf {
 
             for (auto const & entry : msg.cluster_specific_events()) {
                 runtime_assert(entry.first < clusters.size(), "Invalid cluster id received");
-                auto id = cpu_cluster_id_t(entry.first);
-                extract_event_definition_list(entry.second, event_configuration.cluster_specific_events[id]);
+                auto const id = cpu_cluster_id_t(entry.first);
+                auto & cluster_map = event_configuration.cluster_specific_events[id];
+                for (auto const & [ndx, events] : entry.second.events_map()) {
+                    extract_event_definition_list(events, cluster_map[ndx]);
+                }
             }
 
-            for (auto const & entry : msg.uncore_specific_events()) {
+            for (auto const & entry : msg.uncore_specific_events().events_map()) {
                 runtime_assert(entry.first < uncore_pmus.size(), "Invalid uncore id received");
                 auto id = uncore_pmu_id_t(entry.first);
                 extract_event_definition_list(entry.second, event_configuration.uncore_specific_events[id]);
             }
 
-            for (auto const & entry : msg.cpu_specific_events()) {
+            for (auto const & entry : msg.cpu_specific_events().events_map()) {
                 runtime_assert(entry.first < num_cores, "Invalid core no received");
                 auto id = core_no_t(entry.first);
                 extract_event_definition_list(entry.second, event_configuration.cpu_specific_events[id]);

@@ -142,12 +142,17 @@
   <configuration counter="ARMv8_Cortex_A35_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Cortex_A35_cnt5" event="0x1b" /><!-- INST_SPEC -->
   <configuration counter="ARMv8_Cortex_A510_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_A510_cnt0" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_A510_cnt1" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A510_cnt1" event="0x04" /><!-- L1D_CACHE -->
   <configuration counter="ARMv8_Cortex_A510_cnt2" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_A510_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_A510_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_A510_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A510_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A510_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A510_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A510_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A510_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_A510_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Cortex_A53_ccnt" event="0x11" />
   <configuration counter="ARMv8_Cortex_A53_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Cortex_A53_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -161,6 +166,8 @@
   <configuration counter="ARMv8_Cortex_A55_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Cortex_A55_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Cortex_A55_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A55_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A55_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Cortex_A57_ccnt" event="0x11" />
   <configuration counter="ARMv8_Cortex_A57_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Cortex_A57_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -175,13 +182,20 @@
   <configuration counter="ARMv8_Cortex_A65AE_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Cortex_A65AE_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Cortex_A65AE_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A65AE_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Cortex_A710_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_A710_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_A710_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_A710_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_A710_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_A710_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_A710_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A710_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A710_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A710_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A710_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A710_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A710_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A710_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_A710_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Cortex_A72_ccnt" event="0x11" />
   <configuration counter="ARMv8_Cortex_A72_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Cortex_A72_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -203,6 +217,8 @@
   <configuration counter="ARMv8_Cortex_A75_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Cortex_A75_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Cortex_A75_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A75_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A75_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Cortex_A76_ccnt" event="0x11" />
   <configuration counter="ARMv8_Cortex_A76_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Cortex_A76_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -210,6 +226,8 @@
   <configuration counter="ARMv8_Cortex_A76_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Cortex_A76_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Cortex_A76_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A76_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A76_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Cortex_A77_ccnt" event="0x11" />
   <configuration counter="ARMv8_Cortex_A77_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Cortex_A77_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -217,48 +235,80 @@
   <configuration counter="ARMv8_Cortex_A77_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Cortex_A77_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Cortex_A77_cnt5" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_A78_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_A78_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_A78_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_A78_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_A78_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_A78_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_A78_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A77_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A77_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Cortex_A78AE_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_A78AE_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_A78AE_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_A78AE_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_A78AE_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_A78AE_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_A78AE_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78AE_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Cortex_A78C_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_A78C_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_A78C_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_A78C_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_A78C_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_A78C_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_A78C_cnt5" event="0x24" /><!-- STALL_BACKEND -->
-  <configuration counter="ARMv8_Cortex_X1_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_X1_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_X1_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_X1_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_X1_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_X1_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_X1_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78C_cnt10" event="0x3c" /><!-- STALL -->
+  <configuration counter="ARMv8_Cortex_A78_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_A78_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_A78_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_A78_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_A78_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_A78_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_A78_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_A78_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Cortex_X1C_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_X1C_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_X1C_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_X1C_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_X1C_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_X1C_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_X1C_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_X1C_cnt10" event="0x3c" /><!-- STALL -->
+  <configuration counter="ARMv8_Cortex_X1_ccnt" event="0x11" />
+  <configuration counter="ARMv8_Cortex_X1_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_X1_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_X1_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_X1_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_X1_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X1_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X1_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_X1_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Cortex_X2_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Cortex_X2_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Cortex_X2_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Cortex_X2_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Cortex_X2_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Cortex_X2_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Cortex_X2_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X2_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Cortex_X2_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Cortex_X2_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Cortex_X2_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Cortex_X2_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Cortex_X2_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Cortex_X2_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Cortex_X2_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Exynos_M1_M2_ccnt" event="0x11" />
   <configuration counter="ARMv8_Exynos_M1_M2_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Exynos_M1_M2_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -273,6 +323,8 @@
   <configuration counter="ARMv8_Exynos_M3_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Exynos_M3_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Exynos_M3_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Exynos_M3_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Exynos_M3_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Neoverse_E1_ccnt" event="0x11" />
   <configuration counter="ARMv8_Neoverse_E1_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Neoverse_E1_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -280,6 +332,8 @@
   <configuration counter="ARMv8_Neoverse_E1_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Neoverse_E1_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Neoverse_E1_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Neoverse_E1_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Neoverse_N1_ccnt" event="0x11" />
   <configuration counter="ARMv8_Neoverse_N1_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
   <configuration counter="ARMv8_Neoverse_N1_cnt1" event="0x04" /><!-- L1D_CACHE -->
@@ -287,64 +341,123 @@
   <configuration counter="ARMv8_Neoverse_N1_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
   <configuration counter="ARMv8_Neoverse_N1_cnt4" event="0x12" /><!-- BR_PRED -->
   <configuration counter="ARMv8_Neoverse_N1_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Neoverse_N1_cnt7" event="0x24" /><!-- STALL_BACKEND -->
   <configuration counter="ARMv8_Neoverse_N2_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Neoverse_N2_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Neoverse_N2_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Neoverse_N2_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Neoverse_N2_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Neoverse_N2_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Neoverse_N2_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Neoverse_N2_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv8_Neoverse_V1_ccnt" event="0x11" />
-  <configuration counter="ARMv8_Neoverse_V1_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv8_Neoverse_V1_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv8_Neoverse_V1_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv8_Neoverse_V1_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv8_Neoverse_V1_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv8_Neoverse_V1_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8_Neoverse_V1_cnt10" event="0x3c" /><!-- STALL -->
+  <configuration counter="ARMv8R_Cortex_R52X_ccnt" event="0x11" />
+  <configuration counter="ARMv8R_Cortex_R52X_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8R_Cortex_R52X_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8R_Cortex_R82_ccnt" event="0x11" />
+  <configuration counter="ARMv8R_Cortex_R82_cnt0" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt1" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt2" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv8R_Cortex_R82_cnt10" event="0x3c" /><!-- STALL -->
+  <configuration counter="ARMv9_Cortex_A520_ccnt" event="0x11" />
+  <configuration counter="ARMv9_Cortex_A520_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv9_Cortex_A520_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv9_Cortex_A520_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A520_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_A520_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_A520_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_A520_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_A520_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_A520_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A520_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv9_Cortex_A520_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv9_Cortex_A715_ccnt" event="0x11" />
-  <configuration counter="ARMv9_Cortex_A715_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv9_Cortex_A715_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv9_Cortex_A715_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv9_Cortex_A715_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv9_Cortex_A715_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv9_Cortex_A715_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_A715_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv9_Cortex_A715_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv9_Cortex_A715_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_A715_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_A715_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_A715_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A715_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv9_Cortex_A715_cnt10" event="0x3c" /><!-- STALL -->
+  <configuration counter="ARMv9_Cortex_A720_ccnt" event="0x11" />
+  <configuration counter="ARMv9_Cortex_A720_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv9_Cortex_A720_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv9_Cortex_A720_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A720_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_A720_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_A720_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_A720_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_A720_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_A720_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv9_Cortex_A720_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv9_Cortex_A720_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv9_Cortex_X3_ccnt" event="0x11" />
-  <configuration counter="ARMv9_Cortex_X3_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv9_Cortex_X3_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv9_Cortex_X3_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv9_Cortex_X3_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv9_Cortex_X3_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv9_Cortex_X3_cnt5" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_X3_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv9_Cortex_X3_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv9_Cortex_X3_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_X3_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_X3_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_X3_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv9_Cortex_X3_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv9_Cortex_X3_cnt10" event="0x3c" /><!-- STALL -->
+  <configuration counter="ARMv9_Cortex_X4_ccnt" event="0x11" />
+  <configuration counter="ARMv9_Cortex_X4_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv9_Cortex_X4_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv9_Cortex_X4_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Cortex_X4_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Cortex_X4_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Cortex_X4_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Cortex_X4_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Cortex_X4_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Cortex_X4_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv9_Cortex_X4_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv9_Cortex_X4_cnt10" event="0x3c" /><!-- STALL -->
   <configuration counter="ARMv9_Neoverse_V2_ccnt" event="0x11" />
-  <configuration counter="ARMv9_Neoverse_V2_cnt0" event="0x08" /><!-- INST_RETIRED -->
-  <configuration counter="ARMv9_Neoverse_V2_cnt1" event="0x10" /><!-- BR_MIS_PRED -->
-  <configuration counter="ARMv9_Neoverse_V2_cnt2" event="0x12" /><!-- BR_PRED -->
-  <configuration counter="ARMv9_Neoverse_V2_cnt3" event="0x1b" /><!-- INST_SPEC -->
-  <configuration counter="ARMv9_Neoverse_V2_cnt4" event="0x23" /><!-- STALL_FRONTEND -->
-  <configuration counter="ARMv9_Neoverse_V2_cnt5" event="0x24" /><!-- STALL_BACKEND -->
-  <configuration counter="Perf_Hardware_ccnt" />
-  <configuration counter="Perf_Hardware_cnt0" event="1" />
-  <configuration counter="Perf_Hardware_cnt1" event="2" />
-  <configuration counter="Perf_Hardware_cnt2" event="3" />
-  <configuration counter="Perf_Hardware_cnt3" event="7" />
-  <configuration counter="Perf_Hardware_cnt4" event="8" />
-  <configuration counter="Linux_block_rq_wr" />
-  <configuration counter="Linux_block_rq_rd" />
-  <configuration counter="Linux_meminfo_memused2" />
-  <configuration counter="Linux_meminfo_memfree" />
-  <configuration counter="${cluster}_freq" />
-  <configuration counter="${cluster}_system" />
-  <configuration counter="${cluster}_user" />
-  <configuration counter="Android_ThermalState" />
-  <configuration counter="MaliTimeline_Perfetto" />
-  <configuration counter="ARM_Mali-Midgard_fragment" cores="1" />
-  <configuration counter="ARM_Mali-Midgard_vertex" cores="1" />
-  <configuration counter="ARM_Mali-Midgard_opencl" cores="1" />
-  <configuration counter="ARM_Mali-Bifrost_fragment" cores="1" />
-  <configuration counter="ARM_Mali-Bifrost_vertex" cores="1" />
-  <configuration counter="ARM_Mali-Bifrost_opencl" cores="1" />
-  <configuration counter="ARM_Mali-Valhall_fragment" cores="1" />
-  <configuration counter="ARM_Mali-Valhall_vertex" cores="1" />
-  <configuration counter="ARM_Mali-Valhall_opencl" cores="1" />
-  <configuration counter="L2C-310_cnt0" event="0x1" />
+  <configuration counter="ARMv9_Neoverse_V2_cnt0" event="0x03" /><!-- L1D_CACHE_REFILL -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt1" event="0x04" /><!-- L1D_CACHE -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt2" event="0x08" /><!-- INST_RETIRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt3" event="0x10" /><!-- BR_MIS_PRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt4" event="0x12" /><!-- BR_PRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt5" event="0x1b" /><!-- INST_SPEC -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt6" event="0x23" /><!-- STALL_FRONTEND -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt7" event="0x24" /><!-- STALL_BACKEND -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt8" event="0x3a" /><!-- OP_RETIRED -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt9" event="0x3b" /><!-- OP_SPEC -->
+  <configuration counter="ARMv9_Neoverse_V2_cnt10" event="0x3c" /><!-- STALL -->
 </configurations>

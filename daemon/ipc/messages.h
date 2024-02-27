@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -35,6 +35,7 @@ namespace ipc {
     enum class capture_failed_reason_t : std::uint8_t {
         /** Capture failed due to command exec failure */
         command_exec_failed,
+        wait_for_cores_ready_failed,
     };
 
     /**

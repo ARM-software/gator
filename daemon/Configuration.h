@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATION_H_
 #define CONFIGURATION_H_
@@ -7,9 +7,66 @@
 
 #include <set>
 #include <string>
-#include <vector>
 
 enum SampleRate { high = 10007, normal = 1009, low = 101, none = 0, invalid = -1 };
+
+enum class CaptureOperationMode {
+    system_wide = 0,
+    application_inherit = 1,
+    application_no_inherit = 2,
+    application_poll = 3,
+    application_experimental_patch = 4,
+};
+
+[[nodiscard]] constexpr bool isCaptureOperationModeSystemWide(CaptureOperationMode mode)
+{
+    switch (mode) {
+
+        case CaptureOperationMode::system_wide:
+            return true;
+        case CaptureOperationMode::application_inherit:
+        case CaptureOperationMode::application_no_inherit:
+        case CaptureOperationMode::application_poll:
+        case CaptureOperationMode::application_experimental_patch:
+        default:
+            return false;
+    }
+}
+
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingCounterGroups(CaptureOperationMode mode)
+{
+    switch (mode) {
+
+        case CaptureOperationMode::system_wide:
+        case CaptureOperationMode::application_no_inherit:
+        case CaptureOperationMode::application_poll:
+        case CaptureOperationMode::application_experimental_patch:
+            return true;
+        case CaptureOperationMode::application_inherit:
+        default:
+            return false;
+    }
+}
+
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingMetrics(CaptureOperationMode mode)
+{
+    return isCaptureOperationModeSupportingCounterGroups(mode);
+}
+
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingUsesInherit(CaptureOperationMode mode)
+{
+    switch (mode) {
+
+        case CaptureOperationMode::application_inherit:
+        case CaptureOperationMode::application_experimental_patch:
+            return true;
+        case CaptureOperationMode::system_wide:
+        case CaptureOperationMode::application_no_inherit:
+        case CaptureOperationMode::application_poll:
+        default:
+            return false;
+    }
+}
 
 enum class SpeOps {
     LOAD,  //load

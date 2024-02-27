@@ -1,8 +1,9 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroupIdentifier.h"
 
 #include "lib/Format.h"
+#include "lib/String.h"
 #include "xml/PmuXML.h"
 
 #include <algorithm>
@@ -11,29 +12,22 @@
 #include <map>
 #include <string>
 
-PerfEventGroupIdentifier::PerfEventGroupIdentifier()
-    : cluster(nullptr), pmu(nullptr), cpuNumber(-1), cpuNumberToType(nullptr)
+PerfEventGroupIdentifier::PerfEventGroupIdentifier(const GatorCpu & cluster, std::uint32_t groupNo)
+    : cluster(&cluster), groupNo(groupNo)
 {
 }
 
-PerfEventGroupIdentifier::PerfEventGroupIdentifier(const GatorCpu & cluster)
-    : cluster(&cluster), pmu(nullptr), cpuNumber(-1), cpuNumberToType(nullptr)
+PerfEventGroupIdentifier::PerfEventGroupIdentifier(const UncorePmu & pmu) : pmu(&pmu)
 {
 }
 
-PerfEventGroupIdentifier::PerfEventGroupIdentifier(const UncorePmu & pmu)
-    : cluster(nullptr), pmu(&pmu), cpuNumber(-1), cpuNumberToType(nullptr)
-{
-}
-
-PerfEventGroupIdentifier::PerfEventGroupIdentifier(int cpuNumber)
-    : cluster(nullptr), pmu(nullptr), cpuNumber(cpuNumber), cpuNumberToType(nullptr)
+PerfEventGroupIdentifier::PerfEventGroupIdentifier(int cpuNumber) : cpuNumber(cpuNumber)
 {
     assert(cpuNumber >= 0);
 }
 
 PerfEventGroupIdentifier::PerfEventGroupIdentifier(const std::map<int, int> & cpuToTypeMap)
-    : cluster(nullptr), pmu(nullptr), cpuNumber(-1), cpuNumberToType(&cpuToTypeMap)
+    : cpuNumberToType(&cpuToTypeMap)
 {
 }
 
@@ -46,7 +40,15 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
         }
         const int minThis = *std::min_element(cluster->getCpuIds().begin(), cluster->getCpuIds().end());
         const int minThat = *std::min_element(that.cluster->getCpuIds().begin(), that.cluster->getCpuIds().end());
-        return minThis < minThat;
+        if (minThis < minThat) {
+            return true;
+        }
+
+        if (minThis > minThat) {
+            return false;
+        }
+
+        return groupNo < that.groupNo;
     }
     if (that.cluster != nullptr) {
         return false;
@@ -82,7 +84,11 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
 PerfEventGroupIdentifier::operator std::string() const
 {
     if (cluster != nullptr) {
-        return cluster->getId();
+        auto result = std::string(cluster->getId());
+        if (groupNo > 0) {
+            result += lib::printf_str_t<32>("##%u", groupNo);
+        }
+        return result;
     }
     if (pmu != nullptr) {
         return pmu->getId();

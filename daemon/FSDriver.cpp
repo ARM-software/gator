@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #include "FSDriver.h"
 
@@ -154,14 +154,13 @@ void FSDriver::readEvents(mxml_node_t * const xml)
     }
 }
 
-int FSDriver::writeCounters(mxml_node_t * root) const
+int FSDriver::writeCounters(available_counter_consumer_t const & consumer) const
 {
     int count = 0;
     for (auto * counter = static_cast<FSCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<FSCounter *>(counter->getNext())) {
         if (access(counter->getPath(), R_OK) == 0) {
-            mxml_node_t * node = mxmlNewElement(root, "counter");
-            mxmlElementSetAttr(node, "name", counter->getName());
+            consumer(counter_type_t::counter, counter->getName());
             ++count;
         }
     }

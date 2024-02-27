@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2023 by Arm Limited. All rights reserved.
+# Copyright (C) 2010-2024 by Arm Limited. All rights reserved.
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16 FATAL_ERROR)
 
 OPTION(ENABLE_VCPKG "Pull in dependencies using vcpkg" ON)
@@ -107,16 +107,17 @@ FIND_PACKAGE(Boost 1.78 REQUIRED COMPONENTS
 ADD_DEFINITIONS(-DBOOST_FILESYSTEM_NO_DEPRECATED)
 
 ADD_DEFINITIONS(-DETCDIR="/etc")
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/libsensors
-    ${CMAKE_CURRENT_BINARY_DIR})
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+INCLUDE_DIRECTORIES(SYSTEM
+    ${CMAKE_CURRENT_SOURCE_DIR}/extheaders
+    ${CMAKE_CURRENT_SOURCE_DIR}/libsensors)
 
 # This file is generated and contains a hash of the source files
 SET(GENERATED_MD5_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/SrcMd5.cpp)
 SET(GENERATED_MD5_FILE ${CMAKE_CURRENT_BINARY_DIR}/SrcMd5.md5)
 
 # The source files to build
-SET(GATORD_3RD_PARTY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/k/perf_event.h
+SET(GATORD_3RD_PARTY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/extheaders/k/perf_event.h
     ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/access.c
     ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/conf-lex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/libsensors/conf-parse.c
@@ -563,6 +564,10 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/std_log_sink.h
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/logging/suppliers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/metrics/definitions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metrics/definitions.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metrics/group_generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metrics/group_generator.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h
@@ -606,6 +611,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStatsTracker.h
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/CurrentConfigXML.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/CurrentConfigXML.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXMLHelpers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXMLHelpers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXML.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXML.h
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXMLProcessor.cpp

@@ -1,8 +1,9 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfEventGroup.h"
 
 #include "Config.h"
+#include "Configuration.h"
 #include "Logging.h"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
@@ -22,8 +23,8 @@
 namespace {
     constexpr unsigned long NANO_SECONDS_IN_ONE_SECOND = 1000000000UL;
     constexpr unsigned long NANO_SECONDS_IN_100_MS = 100000000UL;
-    constexpr std::uint32_t MAX_SPE_WATERMARK = 2048U * 1024U;
-    constexpr std::uint32_t MIN_SPE_WATERMARK = 4096U;
+    constexpr std::uint32_t MAX_SPE_WATERMARK = 67108864U; // 64Mb
+    constexpr std::uint32_t MIN_SPE_WATERMARK = 1048576U;  // 1Mb
 
     /**
      * Dynamically adjust the aux_matermark value based on the sample frequency so that
@@ -37,10 +38,15 @@ namespace {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     constexpr std::uint32_t calculate_aux_watermark(std::size_t mmap_size, std::uint64_t count)
     {
-        constexpr std::uint64_t fraction_of_second = 10; // 1/10s
+        // 1/10s
+        constexpr std::uint64_t fraction_of_second = 10U;
+        // assume an average of 64 bytes per sample
+        constexpr std::uint64_t avg_bytes_per_sample = 64U;
+        // assume big core, can do 4x ops per cycle, and runs at 3GHz
+        constexpr std::uint64_t avg_ops_per_cycle = 4U * 3U;
 
         auto const frequency = std::max<std::uint64_t>(NANO_SECONDS_IN_ONE_SECOND / count, 1);
-        auto const bps = (24 * frequency); // assume an average of 24 bytes per sample
+        auto const bps = (avg_bytes_per_sample * frequency * avg_ops_per_cycle);
 
         // wake up after ~(1/fraction) seconds worth of data, or 50% of buffer is full
         auto const pref_watermark = std::min<std::uint64_t>(mmap_size / 2, bps / fraction_of_second);
@@ -68,7 +74,15 @@ namespace {
 
         // but should also not exclude for certain events
         if (type == PERF_TYPE_SOFTWARE) {
-            return (config != PERF_COUNT_SW_CONTEXT_SWITCHES);
+            // these software events can't exclude_kernel
+            return (config != PERF_COUNT_SW_CONTEXT_SWITCHES) //
+                && (config != PERF_COUNT_SW_CPU_CLOCK)        //
+                && (config != PERF_COUNT_SW_TASK_CLOCK);
+        }
+
+        // all tracepoints can't exclude_kernel
+        if (type == PERF_TYPE_TRACEPOINT) {
+            return false;
         }
 
         return true;
@@ -84,16 +98,20 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
                                               attr_to_key_mapping_tracker_t & mapping_tracker,
                                               const int key,
                                               const IPerfGroups::Attr & attr,
-                                              bool hasAuxData)
+                                              bool has_aux_data,
+                                              bool uses_strobe_period)
 {
     event.attr.size = sizeof(event.attr);
     /* Emit time, read_format below, group leader id, and raw tracepoint info */
     const uint64_t sampleReadMask =
-        (config.perfConfig.is_system_wide
+        (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode)
+                 && (type != PerfEventGroupIdentifier::Type::SPE)
              ? 0
              : PERF_SAMPLE_READ); // Unfortunately PERF_SAMPLE_READ is not allowed with inherit
     event.attr.sample_type =
         PERF_SAMPLE_TIME
+        | PERF_SAMPLE_STREAM_ID
+        // limit which sample fields are supported
         | (attr.sampleType & ~sampleReadMask)
         // required fields for reading 'id'
         | (config.perfConfig.has_sample_identifier ? PERF_SAMPLE_IDENTIFIER
@@ -101,9 +119,12 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
         // see https://lkml.org/lkml/2012/7/18/355
         | (attr.type == PERF_TYPE_TRACEPOINT ? PERF_SAMPLE_PERIOD : 0)
         // always sample TID for application mode; we use it to attribute counter values to their processes
-        | (config.perfConfig.is_system_wide && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
-        // must sample PERIOD is used if 'freq' to read the actual period value
-        | (attr.freq ? PERF_SAMPLE_PERIOD : 0);
+        | (isCaptureOperationModeSystemWide(config.captureOperationMode) && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
+        // must sample PERIOD is used if 'freq' or non-zero period to read the actual period value
+        | (attr.periodOrFreq != 0
+               ? (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode) ? PERF_SAMPLE_READ
+                                                                                             : PERF_SAMPLE_PERIOD)
+               : 0);
 
 #if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
     // collect the user mode registers if sampling the callchain
@@ -125,14 +146,21 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
 #endif
 
     // make sure all new children are counted too
-    const bool use_inherit = !(config.perfConfig.is_system_wide || is_header);
+    const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode) && !is_header;
     // group doesn't require a leader (so all events are stand alone)
-    const bool every_attribute_in_own_group = use_inherit || (!requires_leader) || is_header;
+    const bool every_attribute_in_own_group =
+        (!requires_leader) || is_header || !isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode);
     // use READ_FORMAT_GROUP; for any item that overflows, but not for inherit (which cannot support groups) and not a stand alone event
-    const bool use_read_format_group = (!use_inherit) && (!every_attribute_in_own_group) && (!is_header);
+    const bool use_read_format_group = (!every_attribute_in_own_group) && (!is_header);
 
     // filter kernel events?
-    const bool exclude_kernel = should_exclude_kernel(attr.type, attr.config, config.excludeKernelEvents);
+    const bool exclude_kernel = should_exclude_kernel(attr.type, //
+                                                      attr.config,
+                                                      config.excludeKernelEvents || attr.userspace_only);
+
+    const bool strobe = (!attr.freq) && (attr.strobePeriod != 0) && uses_strobe_period;
+
+    runtime_assert(!strobe || config.perfConfig.supports_strobing, "Strobing is requested but not supported");
 
     // when running in application mode, inherit must always be set, in system wide mode, inherit must always be clear
     event.attr.inherit = use_inherit;
@@ -140,7 +168,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     /* Emit emit value in group format */
     // Unfortunately PERF_FORMAT_GROUP is not allowed with inherit
     event.attr.read_format = (use_read_format_group ? PERF_FORMAT_ID | PERF_FORMAT_GROUP //
-                                                    : PERF_FORMAT_ID);
+                                                    : PERF_FORMAT_ID)                    //
+                           | PERF_FORMAT_TOTAL_TIME_RUNNING | PERF_FORMAT_TOTAL_TIME_ENABLED;
     // Always be on the CPU but only a perf_event_open group leader can be pinned
     // We can only use perf_event_open groups if PERF_FORMAT_GROUP is used to sample group members
     // If the group has no leader, then all members are in separate perf_event_open groups (and hence their own leader)
@@ -157,7 +186,7 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.type = attr.type;
     event.attr.config = attr.config;
     event.attr.config1 = attr.config1;
-    event.attr.config2 = attr.config2;
+    event.attr.config2 = (strobe ? attr.strobePeriod : attr.config2);
     event.attr.sample_period = attr.periodOrFreq;
     event.attr.mmap = attr.mmap;
     event.attr.comm = attr.comm;
@@ -171,11 +200,13 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.exclude_hv = (exclude_kernel ? 1 : 0);
     event.attr.exclude_idle = (exclude_kernel ? 1 : 0);
     event.attr.exclude_callchain_kernel =
-        (config.excludeKernelEvents && config.perfConfig.has_exclude_callchain_kernel ? 1 : 0);
-    event.attr.aux_watermark = (hasAuxData ? calculate_aux_watermark(config.ringbuffer_config.aux_buffer_size, //
-                                                                     event.attr.sample_period)                 //
-                                           : 0);
+        ((config.excludeKernelEvents || attr.userspace_only) && config.perfConfig.has_exclude_callchain_kernel ? 1 : 0);
+    event.attr.aux_watermark = (has_aux_data ? calculate_aux_watermark(config.ringbuffer_config.aux_buffer_size, //
+                                                                       event.attr.sample_period)                 //
+                                             : 0);
     event.key = key;
+
+    event.attr.sample_max_stack = (event.attr.exclude_callchain_kernel ? 4 : 0);
 
     // [SDDAP-10625] - trace context switch information for SPE attributes.
     // it is required (particularly in system-wide mode) to be able to see
@@ -212,6 +243,8 @@ bool perf_event_group_configurer_t::addEvent(const bool leader,
     state.events.emplace_back();
     perf_event_t & event = state.events.back();
 
+    auto const uses_strobe_period = (identifier.getType() == PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED);
+
     return initEvent(config,
                      event,
                      false,
@@ -221,14 +254,18 @@ bool perf_event_group_configurer_t::addEvent(const bool leader,
                      mapping_tracker,
                      key,
                      attr,
-                     hasAuxData);
+                     hasAuxData,
+                     uses_strobe_period);
 }
 
 bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
     switch (identifier.getType()) {
-        case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU:
-            return createCpuGroupLeader(mapping_tracker);
+        case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_PINNED:
+            return createCpuGroupLeaderPinned(mapping_tracker);
+
+        case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED:
+            return createCpuGroupLeaderMuxed(mapping_tracker);
 
         case PerfEventGroupIdentifier::Type::UNCORE_PMU:
             return createUncoreGroupLeader(mapping_tracker);
@@ -242,9 +279,10 @@ bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracke
     }
 }
 
-bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
+bool perf_event_group_configurer_t::createCpuGroupLeaderPinned(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
-    const bool enableCallChain = (config.backtraceDepth > 0);
+    auto const enableCallChain = (config.backtraceDepth > 0);
+    auto const canReadGroups = isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode);
 
     IPerfGroups::Attr attr {};
     attr.sampleType = PERF_SAMPLE_TID | PERF_SAMPLE_READ;
@@ -254,7 +292,7 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
     bool enableTaskClock = false;
 
     // [SDDAP-10028] Do not use sched_switch in app tracing mode as it only triggers on switch-out (even when tracing as root)
-    if (config.perfConfig.can_access_tracepoints && config.perfConfig.is_system_wide) {
+    if (config.perfConfig.can_access_tracepoints && isCaptureOperationModeSystemWide(config.captureOperationMode)) {
         // Use sched switch to drive the sampling so that event counts are
         // exactly attributed to each thread in system-wide mode
         if (config.schedSwitchId == UNKNOWN_TRACEPOINT_ID) {
@@ -274,11 +312,13 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
                                                         : 0);
     }
     else {
+
         // all subsequent options use software type
         attr.type = PERF_TYPE_SOFTWARE;
 
         // does the user want off-cpu profiling?
-        if (config.enableOffCpuSampling) {
+        if (config.enableOffCpuSampling
+            || (canReadGroups && config.perfConfig.has_attr_context_switch && !config.perfConfig.exclude_kernel)) {
             if ((!config.perfConfig.has_attr_context_switch) || config.perfConfig.exclude_kernel) {
                 LOG_ERROR("Off-CPU profiling is not supported in this configuration");
                 return false;
@@ -294,9 +334,9 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
                                                 : 0);
             // and collect PERF_RECORD_SWITCH for the switch-in events
             attr.context_switch = true;
-            enableTaskClock = true;
+            enableTaskClock = false;
         }
-        // if we have context switch events, then use dummy as the leader as something to hange process related records off of
+        // if we have context switch events, then use dummy as the leader as something to hang process related records off of
         else if (config.perfConfig.has_attr_context_switch) {
             // attr_context_switch implies dummy
             runtime_assert(config.perfConfig.has_count_sw_dummy, "What configuration is this??");
@@ -355,11 +395,24 @@ bool perf_event_group_configurer_t::createCpuGroupLeader(attr_to_key_mapping_tra
         IPerfGroups::Attr taskClockAttr {};
         taskClockAttr.type = PERF_TYPE_SOFTWARE;
         taskClockAttr.config = PERF_COUNT_SW_TASK_CLOCK;
-        taskClockAttr.periodOrFreq = 100000UL; // equivalent to 100us
-        taskClockAttr.sampleType = PERF_SAMPLE_TID;
+        taskClockAttr.periodOrFreq = (canReadGroups ? 0 : 100000UL); // equivalent to 100us
+        taskClockAttr.sampleType = PERF_SAMPLE_TID | PERF_SAMPLE_READ;
         if (!addEvent(false, mapping_tracker, nextDummyKey(), taskClockAttr, false)) {
             return false;
         }
+    }
+
+    return true;
+}
+
+bool perf_event_group_configurer_t::createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker)
+{
+    (void) mapping_tracker;
+
+    if (!isCaptureOperationModeSupportingMetrics(config.captureOperationMode)) {
+        LOG_ERROR("Multiplexed CPU counters currently only work in system-wide mode, or when inherit is "
+                  "no/poll/experimental");
+        return false;
     }
 
     return true;

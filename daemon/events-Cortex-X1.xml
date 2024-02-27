@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2020-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2020-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Cortex_X1_cnt"/>
 <category counter_set="ARMv8_Cortex_X1_cnt" name="Cortex-X1" per_cpu="yes" supports_event_based_sampling="yes">
@@ -47,8 +47,8 @@
     <event event="0x3a" title="Operations" name="Executed" description="The counter counts each operation counted by &apos;Operations: Speculated&apos; that would be executed in a Simple sequential execution of the program"/>
     <event event="0x3b" title="Operations" name="Speculated" description="The counter counts the number of operations executed by the PE, including those that are executed speculatively and would not be executed in a Simple sequential execution of the program"/>
     <event event="0x3c" title="Stalls" name="All" description="The counter counts every attributable cycle on which no attributable instruction or operation was sent for execution on this processing element"/>
-    <event event="0x3d" title="Stalls (Slots)" name="Frontend" description="Counts each Slot counted by &apos;Stalls (Slots): All&apos; where no attributable instruction or operation was sent for execution because the backend is unable to accept it"/>
-    <event event="0x3e" title="Stalls (Slots)" name="Backend" description="Counts each Slot counted by &apos;Stalls (Slots): All&apos; where no attributable instruction or operation was sent for execution because there was no attributable instruction or operation available to issue from the PE from the frontend for the Slot"/>
+    <event event="0x3d" title="Stalls (Slots)" name="Backend" description="Counts each Slot counted by &apos;Stalls (Slots): All&apos; where no attributable instruction or operation was sent for execution because the backend is unable to accept it"/>
+    <event event="0x3e" title="Stalls (Slots)" name="Frontend" description="Counts each Slot counted by &apos;Stalls (Slots): All&apos; where no attributable instruction or operation was sent for execution because there was no attributable instruction or operation available to issue from the PE from the frontend for the Slot"/>
     <event event="0x3f" title="Stalls (Slots)" name="All" description="The counter counts on each attributable cycle the number of instruction or operation Slots that were not occupied by an instruction or operation attributable to the processing element"/>
     <event event="0x40" title="L1 Data Cache" name="Access (due to read)" description="As &apos;L1 Data Cache: Access&apos;, but counts only memory read accesses"/>
     <event event="0x41" title="L1 Data Cache" name="Access (due to write)" description="As &apos;L1 Data Cache: Access&apos;, but counts only memory write accesses"/>

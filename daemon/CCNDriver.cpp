@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #include "CCNDriver.h"
 
@@ -254,7 +254,7 @@ void CCNDriver::readEvents(mxml_node_t * const /*unused*/)
     }
 }
 
-int CCNDriver::writeCounters(mxml_node_t * const /*root*/) const
+int CCNDriver::writeCounters(available_counter_consumer_t const & /*consumer*/) const
 {
     // Handled by PerfDriver
     return 0;

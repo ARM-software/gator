@@ -1,8 +1,9 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_CONFIGURATION_H
 #define PERFDRIVER_CONFIGURATION_H
 
+#include "Configuration.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/smmu_identifier.h"
@@ -35,7 +36,7 @@ struct PerfDriverConfiguration {
     PerfConfig config {};
 
     static std::unique_ptr<PerfDriverConfiguration> detect(
-        bool systemWide,
+        CaptureOperationMode captureOperationMode,
         const char * tracefsEventsPath,
         lib::Span<const int> cpuIds,
         const gator::smmuv3::default_identifiers_t & smmu_identifiers,

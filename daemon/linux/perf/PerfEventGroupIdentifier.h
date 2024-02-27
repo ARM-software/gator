@@ -1,8 +1,9 @@
-/* Copyright (C) 2018-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H
 
+#include <cstdint>
 #include <cstring>
 #include <map>
 #include <string>
@@ -16,13 +17,20 @@ class UncorePmu;
 /// perf_event_open group leaders
 class PerfEventGroupIdentifier {
 public:
-    enum class Type { PER_CLUSTER_CPU, UNCORE_PMU, SPECIFIC_CPU, GLOBAL, SPE };
+    enum class Type {
+        PER_CLUSTER_CPU_PINNED,
+        PER_CLUSTER_CPU_MUXED,
+        UNCORE_PMU,
+        SPECIFIC_CPU,
+        GLOBAL,
+        SPE,
+    };
 
     /** Constructor, for global events on all CPUs */
-    PerfEventGroupIdentifier();
+    PerfEventGroupIdentifier() = default;
 
     /** Constructor, for each CPU PMU in a specific cluster */
-    PerfEventGroupIdentifier(const GatorCpu & cluster);
+    PerfEventGroupIdentifier(const GatorCpu & cluster, std::uint32_t groupNo = 0);
 
     /** Constructor, for a given UncorePmu */
     PerfEventGroupIdentifier(const UncorePmu & pmu);
@@ -34,35 +42,35 @@ public:
     PerfEventGroupIdentifier(const std::map<int, int> & cpuToTypeMap);
 
     /** Equality operator, are they the same group? */
-    inline bool operator==(const PerfEventGroupIdentifier & that) const
+    [[nodiscard]] bool operator==(const PerfEventGroupIdentifier & that) const
     {
         return (cluster == that.cluster) && (pmu == that.pmu) && (cpuNumber == that.cpuNumber)
             && (cpuNumberToType == that.cpuNumberToType);
     }
 
     /** Inequality operator, are they not the same group? */
-    inline bool operator!=(const PerfEventGroupIdentifier & that) const { return !(*this == that); }
+    [[nodiscard]] bool operator!=(const PerfEventGroupIdentifier & that) const { return !(*this == that); }
 
     /** Less operator, to allow use in std::map as key */
-    bool operator<(const PerfEventGroupIdentifier & that) const;
+    [[nodiscard]] bool operator<(const PerfEventGroupIdentifier & that) const;
 
     /** Convert to string for logging purposes */
-    operator std::string() const;
+    [[nodiscard]] operator std::string() const;
 
     /* Accessors */
 
-    inline const GatorCpu * getCluster() const { return cluster; }
+    [[nodiscard]] const GatorCpu * getCluster() const { return cluster; }
 
-    inline const UncorePmu * getUncorePmu() const { return pmu; }
+    [[nodiscard]] const UncorePmu * getUncorePmu() const { return pmu; }
 
-    inline const std::map<int, int> * getSpeTypeMap() const { return cpuNumberToType; }
+    [[nodiscard]] const std::map<int, int> * getSpeTypeMap() const { return cpuNumberToType; }
 
-    inline int getCpuNumber() const { return cpuNumber; }
+    [[nodiscard]] int getCpuNumber() const { return (cluster != nullptr ? invalid_cpu_number : cpuNumber); }
 
-    inline Type getType() const
+    [[nodiscard]] Type getType() const
     {
         if (cluster != nullptr) {
-            return Type::PER_CLUSTER_CPU;
+            return (groupNo > 0 ? Type::PER_CLUSTER_CPU_MUXED : Type::PER_CLUSTER_CPU_PINNED);
         }
         if (pmu != nullptr) {
             return Type::UNCORE_PMU;
@@ -76,11 +84,18 @@ public:
         return Type::GLOBAL;
     }
 
+    [[nodiscard]] std::uint32_t getClusterGroupNo() const { return (cluster != nullptr ? groupNo : 0); }
+
 private:
-    const GatorCpu * const cluster;
-    const UncorePmu * const pmu;
-    const int cpuNumber;
-    const std::map<int, int> * const cpuNumberToType;
+    static constexpr int invalid_cpu_number = -1;
+
+    const GatorCpu * const cluster = nullptr;
+    const UncorePmu * const pmu = nullptr;
+    const union {
+        int cpuNumber = invalid_cpu_number;
+        std::uint32_t groupNo;
+    };
+    const std::map<int, int> * const cpuNumberToType = nullptr;
 };
 
 #endif /* INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_IDENTIFIER_H */

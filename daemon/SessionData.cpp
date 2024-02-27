@@ -1,7 +1,8 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "SessionData.h"
 
+#include "Configuration.h"
 #include "GatorCLIFlags.h"
 #include "Logging.h"
 #include "SessionXML.h"
@@ -24,7 +25,7 @@ void SessionData::initialize()
     mOneShot = false;
     mAllowCommands = false;
     mFtraceRaw = false;
-    mSystemWide = false;
+    mCaptureOperationMode = CaptureOperationMode::application_inherit;
     mExcludeKernelEvents = false;
     mEnableOffCpuSampling = false;
     mImages.clear();
@@ -110,7 +111,8 @@ void SessionData::parseSessionXML(char * xmlString)
             mLiveRate = session.parameters.live_rate * 1000000ULL;
         }
     }
-    if ((!mSystemWide) && (mWaitForProcessCommand == nullptr) && mCaptureCommand.empty() && mPids.empty()) {
+    if ((!isCaptureOperationModeSystemWide(mCaptureOperationMode)) && (mWaitForProcessCommand == nullptr)
+        && mCaptureCommand.empty() && mPids.empty()) {
         LOG_ERROR("No command specified in Capture and Analysis Options.");
         handleException();
     }
@@ -119,12 +121,6 @@ void SessionData::parseSessionXML(char * xmlString)
         && ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_COMMAND) == 0)) {
         LOG_ERROR(
             "Running a command during a capture is not currently allowed. Please restart gatord with the -a flag.");
-        handleException();
-    }
-
-    if (mSystemWide && mExcludeKernelEvents) {
-        LOG_ERROR("Kernel events are currently required for system-wide mode. Please either include kernel events "
-                  "or disable system-wide mode.");
         handleException();
     }
 }

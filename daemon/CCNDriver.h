@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #ifndef CCNDRIVER_H
 #define CCNDRIVER_H
@@ -18,12 +18,12 @@ public:
     CCNDriver(CCNDriver &&) = delete;
     CCNDriver & operator=(CCNDriver &&) = delete;
 
-    bool claimCounter(Counter & counter) const override;
+  [[nodiscard]]  bool claimCounter(Counter & counter) const override;
     void resetCounters() override;
     void setupCounter(Counter & counter) override;
 
     void readEvents(mxml_node_t * const /*unused*/) override;
-    int writeCounters(mxml_node_t * root) const override;
+    [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
     void writeEvents(mxml_node_t * const /*unused*/) const override;
 
     static std::string validateCounters();

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_GROUPS_H
 #define PERF_GROUPS_H
@@ -35,11 +35,13 @@ public:
         initHeader(mapping_tracker);
     }
 
-    bool add(attr_to_key_mapping_tracker_t & mapping_tracker,
-             const PerfEventGroupIdentifier & groupIdentifier,
-             int key,
-             const Attr & attr,
-             bool hasAuxData = false) override;
+    [[nodiscard]] int nextDummyKey() override { return perf_event_group_configurer_t::nextDummyKey(configuration); }
+
+    [[nodiscard]] bool add(attr_to_key_mapping_tracker_t & mapping_tracker,
+                           const PerfEventGroupIdentifier & groupIdentifier,
+                           int key,
+                           const Attr & attr,
+                           bool hasAuxData = false) override;
 
     void addGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker,
                         const PerfEventGroupIdentifier & groupIdentifier) override

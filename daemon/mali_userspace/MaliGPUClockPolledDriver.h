@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2024 by Arm Limited. All rights reserved. */
 
 #ifndef MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
 #define MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_
@@ -30,7 +30,7 @@ namespace mali_userspace {
 
         void readEvents(mxml_node_t * const /*root*/) override;
 
-        int writeCounters(mxml_node_t * root) const override;
+        [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
 
         void start() override {}
         void read(IBlockCounterFrameBuilder & buffer) override;
@@ -52,8 +52,8 @@ namespace mali_userspace {
         uint64_t mClockValue {0};
         DynBuf mBuf {};
 
-        bool doRead();
-        static uint64_t clockValueInHz(uint64_t rawClockValue);
+        [[nodiscard]] bool doRead();
+        [[nodiscard]] static uint64_t clockValueInHz(uint64_t rawClockValue);
     };
 }
 #endif /* MALI_USERSPACE_MALIGPUCLOCKPOLLEDDRIVER_H_ */

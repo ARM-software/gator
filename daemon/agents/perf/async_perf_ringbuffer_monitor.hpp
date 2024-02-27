@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -167,10 +167,10 @@ namespace agents::perf {
                                  supplimentary_fds = std::move(supplimentary_fds),
                                  cpu]() {
                                for (const auto & pair : primary_fds) {
-                                   st->do_observer_perf_fd(cpu, pair.first, true, pair.second);
+                                   st->spawn_observer_perf_fd(cpu, pair.first, true, pair.second);
                                }
                                for (const auto & pair : supplimentary_fds) {
-                                   st->do_observer_perf_fd(cpu, pair.first, false, pair.second);
+                                   st->spawn_observer_perf_fd(cpu, pair.first, false, pair.second);
                                }
                            });
                 },
@@ -180,38 +180,16 @@ namespace agents::perf {
         /**
          * Add a new ring buffer to the set of monitored ringbuffers
          */
-        template<typename CompletionToken>
-        auto async_add_additional_event_fds(std::vector<std::pair<core_no_t, fd_aux_flag_pair_t>> primary_fds,
-                                            std::vector<std::pair<core_no_t, fd_aux_flag_pair_t>> supplimentary_fds,
-                                            CompletionToken && token)
+        void add_additional_event_fds(std::vector<std::pair<core_no_t, fd_aux_flag_pair_t>> primary_fds,
+                                      std::vector<std::pair<core_no_t, fd_aux_flag_pair_t>> supplimentary_fds)
         {
-            using namespace async::continuations;
-
-            LOG_TRACE("async_add_additional_event_fds(%zu, %zu)", primary_fds.size(), supplimentary_fds.size());
-
-            return async_initiate_cont(
-                [st = this->shared_from_this(),
-                 primary_fds = std::move(primary_fds),
-                 supplimentary_fds = std::move(supplimentary_fds)]() mutable {
-                    return start_on(st->strand) //
-                         | then([st,
-                                 primary_fds = std::move(primary_fds),
-                                 supplimentary_fds = std::move(supplimentary_fds)]() {
-                               for (const auto & pair : primary_fds) {
-                                   st->do_observer_perf_fd(lib::toEnumValue(pair.first),
-                                                           pair.second.first,
-                                                           true,
-                                                           pair.second.second);
-                               }
-                               for (const auto & pair : supplimentary_fds) {
-                                   st->do_observer_perf_fd(lib::toEnumValue(pair.first),
-                                                           pair.second.first,
-                                                           false,
-                                                           pair.second.second);
-                               }
-                           });
-                },
-                std::forward<CompletionToken>(token));
+            LOG_TRACE("add_additional_event_fds(%zu, %zu)", primary_fds.size(), supplimentary_fds.size());
+            for (auto const & pair : primary_fds) {
+                spawn_observer_perf_fd(lib::toEnumValue(pair.first), pair.second.first, true, pair.second.second);
+            }
+            for (auto const & pair : supplimentary_fds) {
+                spawn_observer_perf_fd(lib::toEnumValue(pair.first), pair.second.first, false, pair.second.second);
+            }
         }
 
         /**
@@ -510,17 +488,18 @@ namespace agents::perf {
         }
 
         /** Observe the file descriptor for read events */
-        void do_observer_perf_fd(int cpu_no,
-                                 std::shared_ptr<stream_descriptor_t> stream_descriptor,
-                                 bool primary,
-                                 bool is_aux)
+        void spawn_observer_perf_fd(int cpu_no,
+                                    std::shared_ptr<stream_descriptor_t> stream_descriptor,
+                                    bool primary,
+                                    bool is_aux)
         {
+
             using namespace async::continuations;
 
             auto st = this->shared_from_this();
             auto nh = stream_descriptor->native_handle();
 
-            LOG_TRACE("Observing new fd %d %d %u", cpu_no, stream_descriptor->native_handle(), primary);
+            LOG_TRACE("Observing new fd %d %d %u", cpu_no, nh, primary);
 
             // and wait for data to be available
             spawn("perf buffer monitor for event fd",
@@ -542,19 +521,17 @@ namespace agents::perf {
                               return start_on(st->strand) //
                                    | then([st]() { return (!st->is_terminate_requested()); });
                           },
-                          [st, cpu_no, stream_descriptor, is_aux]() {
-                              LOG_TRACE("waiting for notification on %d / %d",
-                                        cpu_no,
-                                        stream_descriptor->native_handle());
+                          [st, nh, cpu_no, stream_descriptor, is_aux]() {
+                              LOG_TRACE("waiting for notification on %d / %d", cpu_no, nh);
 
                               return stream_descriptor->async_wait(boost::asio::posix::stream_descriptor::wait_read,
                                                                    use_continuation)
                                    | post_on(st->strand)
-                                   | then([st, cpu_no, stream_descriptor, is_aux](
+                                   | then([st, nh, cpu_no, stream_descriptor, is_aux](
                                               boost::system::error_code const & ec) -> polymorphic_continuation_t<> {
                                          LOG_TRACE("Received file descriptor notification for cpu=%d, fd=%d, ec=%s",
                                                    cpu_no,
-                                                   stream_descriptor->native_handle(),
+                                                   nh,
                                                    ec.message().c_str());
 
                                          auto const already_contained =
@@ -639,15 +616,16 @@ namespace agents::perf {
                   [st, stream_descriptor, nh](bool f) {
                       // spawn this on the strand so that it's serialized with respect to the reader.
                       spawn("perf buffer monitor stream close",
-                            start_on(st->strand) | then([stream_descriptor, nh, f]() {
-                                LOG_TRACE("Received close notification for %d was %u", nh, f);
-                                if (stream_descriptor->is_open()) {
-                                    stream_descriptor->close();
-                                }
-                                else {
-                                    LOG_TRACE("Stream descriptor already closed");
-                                }
-                            }));
+                            start_on(st->strand) //
+                                | then([stream_descriptor, nh, f]() {
+                                      LOG_TRACE("Received close notification for %d was %u", nh, f);
+                                      if (stream_descriptor->is_open()) {
+                                          stream_descriptor->close();
+                                      }
+                                      else {
+                                          LOG_TRACE("Stream descriptor already closed");
+                                      }
+                                  }));
                   });
         }
 

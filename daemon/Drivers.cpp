@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "Drivers.h"
 
@@ -13,7 +13,7 @@
 #include <memory>
 #include <utility>
 
-static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool systemWide,
+static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(CaptureOperationMode captureOperationMode,
                                                                           const TraceFsConstants & traceFsConstants,
                                                                           PmuXML && pmuXml,
                                                                           const char * maliFamilyName,
@@ -21,7 +21,7 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
                                                                           bool disableKernelAnnotations)
 {
     std::unique_ptr<PrimarySourceProvider> primarySourceProvider =
-        PrimarySourceProvider::detect(systemWide,
+        PrimarySourceProvider::detect(captureOperationMode,
                                       traceFsConstants,
                                       std::move(pmuXml),
                                       maliFamilyName,
@@ -37,12 +37,12 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(bool s
     return primarySourceProvider;
 }
 
-Drivers::Drivers(bool systemWide,
+Drivers::Drivers(CaptureOperationMode captureOperationMode,
                  PmuXML && pmuXml,
                  bool disableCpuOnlining,
                  bool disableKernelAnnotations,
                  const TraceFsConstants & traceFsConstants)
-    : mPrimarySourceProvider {createPrimarySourceProvider(systemWide,
+    : mPrimarySourceProvider {createPrimarySourceProvider(captureOperationMode,
                                                           traceFsConstants,
                                                           std::move(pmuXml),
                                                           mMaliHwCntrs.getSupportedDeviceFamilyName(),

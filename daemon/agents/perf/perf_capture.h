@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -94,14 +94,16 @@ namespace agents::perf {
                       configuration->session_data.live_rate,
                       (configuration->session_data.one_shot ? configuration->session_data.total_buffer_size * MEGABYTES
                                                             : 0)),
-                  perf_capture_events_helper_t(configuration,
-                                               event_binding_manager_t(perf_activator,
-                                                                       configuration->event_configuration,
-                                                                       configuration->uncore_pmus,
-                                                                       configuration->per_core_spe_type,
-                                                                       configuration->perf_config.is_system_wide,
-                                                                       configuration->enable_on_exec),
-                                               std::move(configuration->pids)),
+                  perf_capture_events_helper_t(
+                      configuration,
+                      event_binding_manager_t(
+                          perf_activator,
+                          configuration->event_configuration,
+                          configuration->uncore_pmus,
+                          configuration->per_core_spe_type,
+                          isCaptureOperationModeSystemWide(configuration->session_data.capture_operation_mode),
+                          configuration->enable_on_exec),
+                      std::move(configuration->pids)),
                   std::make_shared<cpu_info_t>(configuration),
                   ipc_sink)),
               perf_capture_cpu_monitor(std::make_shared<perf_capture_cpu_monitor_t>(context,
@@ -193,6 +195,7 @@ namespace agents::perf {
                                    st->perf_capture_cpu_monitor->async_wait_for_all_cores_ready(use_continuation)
                                        | then([st](bool ready) -> polymorphic_continuation_t<> {
                                              if (!ready) {
+                                                 st->perf_capture_helper->on_perf_error();
                                                  return {};
                                              }
 

@@ -1,8 +1,9 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
 #include "Config.h"
+#include "Configuration.h"
 #include "Logging.h"
 #include "SessionData.h"
 #include "capture/Environment.h"
@@ -112,6 +113,19 @@ static bool isValidCpuId(int cpuId)
     return ((cpuId != PerfDriverConfiguration::UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0));
 }
 
+[[nodiscard]] static bool pmu_supports_strobing(lib::FsEntry const & entry)
+{
+    auto const format_path = lib::FsEntry::create(entry, "format");
+    auto const strobe_period_path = lib::FsEntry::create(format_path, "strobe_period");
+
+    if (strobe_period_path.exists()) {
+        LOG_DEBUG("Target supports event strobing.");
+        return true;
+    }
+
+    return false;
+}
+
 void logCpuNotFound()
 {
 #if defined(__arm__) || defined(__aarch64__)
@@ -122,7 +136,7 @@ void logCpuNotFound()
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool systemWide,
+std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(CaptureOperationMode captureOperationMode,
                                                                          const char * tracefsEventsPath,
                                                                          lib::Span<const int> cpuIds,
                                                                          const default_identifiers_t & smmu_identifiers,
@@ -135,6 +149,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     }
 
     LOG_DEBUG("Kernel version: %s", utsname.release);
+
+    auto const systemWide = isCaptureOperationModeSystemWide(captureOperationMode);
 
     // Check the kernel version
     auto const kernelVersion = lib::parseLinuxVersion(utsname);
@@ -285,8 +301,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
     configuration->config.has_ioctl_read_id = (kernelVersion >= KERNEL_VERSION(3U, 12U, 0U));
     configuration->config.has_aux_support = (kernelVersion >= KERNEL_VERSION(4U, 1U, 0U));
     configuration->config.has_exclude_callchain_kernel = (kernelVersion >= KERNEL_VERSION(3U, 7U, 0U));
+    configuration->config.has_perf_format_lost = (kernelVersion >= KERNEL_VERSION(6U, 0U, 0U));
+    configuration->config.supports_strobing = false;
 
-    configuration->config.is_system_wide = systemWide;
     configuration->config.exclude_kernel = !can_collect_kernel_data;
     configuration->config.can_access_tracepoints = can_access_raw_tracepoints;
 
@@ -324,6 +341,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                     }
                     continue;
                 }
+
+                configuration->config.supports_strobing |= pmu_supports_strobing(*dirent);
             }
 
             const UncorePmu * uncorePmu = pmuXml.findUncoreByName(name);
@@ -332,12 +351,18 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
                     LOG_DEBUG("    ... is uncore pmu %s", uncorePmu->getCoreName());
-                    configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
+                    if (!systemWide && beginsWith(name, "arm_cmn_")) {
+                        LOG_SETUP("CMN detected but CMN events not enabled. CMN events are only available on "
+                                  "system-wide captures.");
+                    }
+                    else {
+                        configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
+                    }
                     continue;
                 }
             }
 
-            if (gator::smmuv3::detect_smmuv3_pmus(pmuXml, smmu_identifiers, *configuration, name)) {
+            if (gator::smmuv3::detect_smmuv3_pmus(pmuXml, smmu_identifiers, *configuration, name, systemWide)) {
                 LOG_DEBUG("    ... is SMMUv3 PMU");
                 continue;
             }
@@ -355,6 +380,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(bool sy
                 const std::string typePath(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 const std::string maskPath(lib::Format() << PERF_DEVICES << "/" << name << "/cpus");
                 if (lib::readIntFromFile(typePath.c_str(), type) == 0) {
+                    configuration->config.supports_strobing |= pmu_supports_strobing(*dirent);
+
                     const std::set<int> cpuNumbers = lib::readCpuMaskFromFile(maskPath.c_str());
                     if (!cpuNumbers.empty()) {
                         int cpuIdForType = 0;

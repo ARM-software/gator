@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -14,7 +14,7 @@
 #include "ipc/raw_ipc_channel_sink.h"
 
 #include <atomic>
-#include <deque>
+#include <map>
 #include <memory>
 #include <set>
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -30,7 +30,7 @@ namespace agents::perf {
         /** The SPE events, defining the events that may be activated for every CPU that supports SPE */
         std::vector<event_definition_t> spe_events {};
         /** The map from cluster index to set of events, defining the events that may be activated for any CPU matching a given type */
-        std::map<cpu_cluster_id_t, std::vector<event_definition_t>> cluster_specific_events {};
+        std::map<cpu_cluster_id_t, std::map<std::uint32_t, std::vector<event_definition_t>>> cluster_specific_events {};
         /** The map from uncore pmu index to set of events, defining the events that may be activated for that uncore */
         std::map<uncore_pmu_id_t, std::vector<event_definition_t>> uncore_specific_events {};
         /** The map of CPU specific events, defining the events that may be activated for a specific CPU */

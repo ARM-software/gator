@@ -1,7 +1,8 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
+#include "Configuration.h"
 #include "Logging.h"
 #include "Time.h"
 #include "agents/agent_environment.h"
@@ -181,14 +182,17 @@ namespace agents::perf {
                                          }
                                      });
 
+                               auto paused_pids = std::move(result->paused_pids);
+
                                // then track buffer
-                               return st->async_perf_ringbuffer_monitor->async_add_additional_event_fds(
-                                          std::move(result->event_fds),
-                                          std::move(result->supplimentary_event_fds),
-                                          use_continuation)
-                                    | map_error()
+                               return start_on(st->strand.context()) //
+                                    | then([st, result = std::move(result)]() mutable {
+                                          st->async_perf_ringbuffer_monitor->add_additional_event_fds(
+                                              std::move(result->event_fds),
+                                              std::move(result->supplimentary_event_fds));
+                                      }) //
                                     // now possibly start the events
-                                    | then([st, paused_pids = std::move(result->paused_pids)]() mutable {
+                                    | then([st, paused_pids = std::move(paused_pids)]() mutable {
                                           // ensure that the pids are resumed after we return
                                           std::map<pid_t, lnx::sig_continuer_t> pp {std::move(paused_pids)};
                                           // then start the events
@@ -196,6 +200,9 @@ namespace agents::perf {
                                               LOG_DEBUG("start_all_pid_trackers returned false, terminating");
                                               st->terminate(false);
                                           }
+
+                                          // finally, spawn something to monitor for new pids
+                                          spawn_pid_monitor(st);
                                       });
                            });
                 },
@@ -302,7 +309,8 @@ namespace agents::perf {
                     return async::async_read_proc_sys_dependencies(
                                st->strand,
                                st->misc_apc_frame_ipc_sender,
-                               [sw = st->configuration->perf_config.is_system_wide,
+                               [sw = isCaptureOperationModeSystemWide(
+                                    st->configuration->session_data.capture_operation_mode),
                                 pids = st->perf_capture_events_helper.get_monitored_pids(),
                                 gatord_pids = st->perf_capture_events_helper.get_monitored_gatord_pids()](int pid,
                                                                                                           int tid) {
@@ -330,7 +338,8 @@ namespace agents::perf {
                     return async::async_read_proc_maps(
                                st->strand,
                                st->misc_apc_frame_ipc_sender,
-                               [sw = st->configuration->perf_config.is_system_wide,
+                               [sw = isCaptureOperationModeSystemWide(
+                                    st->configuration->session_data.capture_operation_mode),
                                 pids = st->perf_capture_events_helper.get_monitored_pids(),
                                 gatord_pids = st->perf_capture_events_helper.get_monitored_gatord_pids()](int pid) {
                                    return sw || (pids.count(pid) > 0) || (gatord_pids.count(pid) > 0);
@@ -435,8 +444,11 @@ namespace agents::perf {
                 [st = this->shared_from_this(), monotonic_start]() {
                     return start_on(st->strand) //
                          | then([st, monotonic_start]() -> polymorphic_continuation_t<> {
-                               auto state =
-                                   create_perf_driver_summary_state(st->configuration->perf_config, monotonic_start);
+                               auto state = create_perf_driver_summary_state(
+                                   st->configuration->perf_config,
+                                   monotonic_start,
+                                   isCaptureOperationModeSystemWide(
+                                       st->configuration->session_data.capture_operation_mode));
 
                                if (!state) {
                                    return start_with(boost::asio::error::make_error_code(
@@ -861,7 +873,108 @@ namespace agents::perf {
             });
         }
 
+        void on_perf_error()
+        {
+            using namespace async::continuations;
+
+            spawn("perf error handler",
+                  ipc_sink->async_send_message(
+                      ipc::msg_capture_failed_t {ipc::capture_failed_reason_t::wait_for_cores_ready_failed},
+                      use_continuation),
+                  [st = this->shared_from_this()](bool) { st->terminate(false); });
+        }
+
     private:
+        static void spawn_pid_monitor(std::shared_ptr<perf_capture_helper_t> st)
+        {
+            using namespace async::continuations;
+
+            switch (st->configuration->session_data.capture_operation_mode) {
+                case perf_capture_configuration_t::capture_operation_mode_t::application_poll:
+                    break;
+                case perf_capture_configuration_t::capture_operation_mode_t::application_no_inherit:
+                case perf_capture_configuration_t::capture_operation_mode_t::system_wide:
+                case perf_capture_configuration_t::capture_operation_mode_t::application_inherit:
+                case perf_capture_configuration_t::capture_operation_mode_t::application_experimental_patch:
+                default:
+                    return;
+            }
+
+            auto poll_delay_timer = std::make_shared<boost::asio::deadline_timer>(st->strand.context());
+
+            spawn("process scanner",
+                  repeatedly(
+                      [st]() { return !st->is_terminate_requested(); }, //
+                      [st, poll_delay_timer]() -> polymorphic_continuation_t<> {
+                          LOG_DEBUG("SCANNING PIDS");
+
+                          // perform the scan
+                          auto error_or_result = st->perf_capture_events_helper.scan_for_new_tids();
+
+                          if (boost::system::error_code const * error = lib::get_error(error_or_result)) {
+                              LOG_ERROR("Got an error in process scanner: %s", error->what().c_str());
+                              if (!st->is_terminate_requested()) {
+                                  st->terminate(false);
+                              }
+                              return {};
+                          }
+
+                          auto result = lib::get_value(std::move(error_or_result));
+
+                          // and send all the mappings (asynchronously)
+                          if (!result.id_to_key_mappings.empty()) {
+                              spawn("process key->id mapping task",
+                                    st->misc_apc_frame_ipc_sender->async_send_keys_frame(result.id_to_key_mappings,
+                                                                                         use_continuation)
+                                        | map_error(),
+                                    [st](bool failed) {
+                                        if (failed) {
+                                            st->terminate(false);
+                                        }
+                                    });
+                          }
+
+                          auto const any_new = !result.new_pids.empty();
+
+                          // then track buffer
+                          return start_on(st->strand.context()) //
+                               | then([st,
+                                       new_pids = std::move(result.new_pids),
+                                       event_fds = std::move(result.event_fds),
+                                       supplimentary_event_fds = std::move(result.supplimentary_event_fds)]() mutable {
+                                     // add the events
+                                     st->async_perf_ringbuffer_monitor->add_additional_event_fds(
+                                         std::move(event_fds),
+                                         std::move(supplimentary_event_fds));
+
+                                     // now enable all
+                                     return st->perf_capture_events_helper.enable_new_tids(new_pids);
+                                 })
+                               | map_error() //
+                               | do_if([any_new]() { return any_new; },
+                                       [st]() {
+                                           return st->async_read_process_properties(use_continuation) //
+                                                | st->async_read_process_maps(use_continuation);
+                                       }) //
+                               | then([poll_delay_timer]() {
+                                     // delay to use when deferring scanning
+                                     constexpr auto defer_delay_ms = boost::posix_time::milliseconds(100);
+
+                                     poll_delay_timer->expires_from_now(defer_delay_ms);
+                                     return poll_delay_timer->async_wait(use_continuation);
+                                 })
+                               | then([](auto /*ec*/) {
+                                     // ignored ec
+                                 });
+                      }),
+                  [st, poll_delay_timer](bool failed) {
+                      if (failed) {
+                          st->terminate(false);
+                          poll_delay_timer->cancel();
+                      }
+                  });
+        }
+
         std::shared_ptr<perf_capture_configuration_t> configuration;
         boost::asio::io_context::strand strand;
         process_monitor_t & process_monitor;

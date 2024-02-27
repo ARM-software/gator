@@ -168,10 +168,17 @@ namespace gator::smmuv3 {
     bool detect_smmuv3_pmus(const PmuXML & pmu_xml,
                             const default_identifiers_t & default_identifiers,
                             PerfDriverConfiguration & config,
-                            std::string_view pmu_name)
+                            std::string_view pmu_name,
+                            bool systemWide)
     {
         // check that this is actually an SMMUv3 device of some kind
         if (pmu_name.rfind(smmuv3_device_prefix) == std::string::npos) {
+            return false;
+        }
+
+        if (!systemWide) {
+            LOG_SETUP(
+                "SMMU detected but SMMU events not enabled. SMMU events are only available on system-wide captures");
             return false;
         }
 

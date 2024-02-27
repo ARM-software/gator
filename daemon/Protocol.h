@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
@@ -36,6 +36,7 @@ enum class CodeType : int {
     COUNTERS = 10,
     HEADER_PAGE = 11,
     HEADER_EVENT = 12,
+    METRIC_EVENT_KEY = 13,
 };
 
 // Summary Frame Messages

@@ -1,7 +1,8 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXML.h"
 
+#include "SessionData.h"
 #include "lib/Assert.h"
 
 #include <algorithm>
@@ -24,11 +25,42 @@ GatorCpu::GatorCpu(std::string coreName,
       mDtName(dtName != nullptr ? dtName : ""),
       mSpeName(speName != nullptr ? speName : ""),
       mCpuIds(cpuIds.begin(), cpuIds.end()),
-      mPmncCounters(pmncCounters),
+      mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
 {
     runtime_assert(!mCpuIds.empty(), "got pmu without cpuids");
     std::sort(mCpuIds.begin(), mCpuIds.end());
+}
+
+GatorCpu::GatorCpu(std::string coreName,
+                   std::string id,
+                   std::string counterSet,
+                   std::string dtName,
+                   std::string speName,
+                   std::vector<int> cpuIds,
+                   int pmncCounters,
+                   bool isV8)
+    : mCoreName(std::move(coreName)),
+      mId(std::move(id)),
+      mCounterSet(std::move(counterSet)),
+      mDtName(std::move(dtName)),
+      mSpeName(std::move(speName)),
+      mCpuIds(std::move(cpuIds)),
+      mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
+      mIsV8(isV8)
+{
+}
+
+GatorCpu::GatorCpu(const GatorCpu & that, const char * speName)
+    : mCoreName(that.mCoreName),
+      mId(that.mId),
+      mCounterSet(that.mCounterSet),
+      mDtName(that.mDtName),
+      mSpeName(speName),
+      mCpuIds(that.mCpuIds),
+      mPmncCounters(that.mPmncCounters),
+      mIsV8(that.mIsV8)
+{
 }
 
 bool GatorCpu::hasCpuId(int cpuId) const

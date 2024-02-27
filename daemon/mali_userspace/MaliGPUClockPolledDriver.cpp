@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
 
 #include "MaliGPUClockPolledDriver.h"
 
@@ -35,12 +35,11 @@ namespace mali_userspace {
         }
     }
 
-    int MaliGPUClockPolledDriver::writeCounters(mxml_node_t * root) const
+    int MaliGPUClockPolledDriver::writeCounters(available_counter_consumer_t const & consumer) const
     {
         int count = 0;
         if (access(mClockPath.c_str(), R_OK) == 0) {
-            mxml_node_t * node = mxmlNewElement(root, "counter");
-            mxmlElementSetAttr(node, "name", counterName.c_str());
+            consumer(counter_type_t::counter, counterName);
             count++;
         }
         else {

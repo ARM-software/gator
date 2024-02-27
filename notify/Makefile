@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2020 by Arm Limited. All rights reserved.
+# Copyright (C) 2016-2023 by Arm Limited. All rights reserved.
 
 # Find the oldest SDK Platform installed >= 16
 SDK_PLATFORM := $(shell ls -d $(SDKDIR)/platforms/android-1[6-9] $(SDKDIR)/platforms/android-[2-9][0-9] 2> /dev/null | head -1)
@@ -12,7 +12,7 @@ ifneq ($(LAYOUTLIB),)
 all: notify.dex
 
 notify.dex: Notify.java
-	javac -cp $(LAYOUTLIB) -source 1.6 -target 1.6 $^
+	javac -cp $(LAYOUTLIB) -source 1.8 -target 1.8 $^
 	$(DX) --dex --output=$@ $(^:%.java=%.class)
 
 else

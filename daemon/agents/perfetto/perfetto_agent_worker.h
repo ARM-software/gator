@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "agents/agent_worker_base.h"
@@ -90,13 +90,13 @@ namespace agents {
                                             boost::asio::buffer(data, msg.suffix.size()), //
                                             use_continuation)                             //
                  | then([self = this->shared_from_this(),
-                         msg = std::move(msg)](const auto & err, auto n) -> polymorphic_continuation_t<> {
+                         msg = std::move(msg)](const auto & err, std::size_t n) -> polymorphic_continuation_t<> {
                        if (err) {
                            LOG_DEBUG("Error while forwarding perfetto source bytes: %s", err.message().c_str());
                            return self->cont_shutdown();
                        }
                        if (n != msg.suffix.size()) {
-                           LOG_ERROR("Incorrect size written");
+                           LOG_ERROR("Incorrect size written: %zu vs %zu", n, msg.suffix.size());
                            return self->cont_shutdown();
                        }
                        return {};

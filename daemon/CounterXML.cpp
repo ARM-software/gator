@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "CounterXML.h"
 
@@ -18,6 +18,7 @@
 #include <memory>
 #include <ostream>
 #include <sstream>
+#include <stdexcept>
 
 #include <mxml.h>
 
@@ -35,12 +36,27 @@ static mxml_node_t * getTree(bool supportsMultiEbs,
 
     int count = 0;
     for (const Driver * driver : drivers) {
-        count += driver->writeCounters(counters);
+        count += driver->writeCounters([counters](Driver::counter_type_t type, std::string const & name) {
+            switch (type) {
+                case Driver::counter_type_t::counter: {
+                    mxml_node_t * node = mxmlNewElement(counters, "counter");
+                    mxmlElementSetAttr(node, "name", name.c_str());
+                    break;
+                }
+                case Driver::counter_type_t::spe: {
+                    mxml_node_t * node = mxmlNewElement(counters, "spe");
+                    mxmlElementSetAttr(node, "id", name.c_str());
+                    break;
+                }
+                default: {
+                    throw std::runtime_error("Unexpected counter_type_t");
+                }
+            }
+        });
     }
 
     if (count == 0) {
-        LOG_ERROR("No counters found, this could be because /dev/gator/events can not be read or because perf is "
-                  "not working correctly");
+        LOG_ERROR("No counters found.");
         handleException();
     }
 

@@ -1,8 +1,9 @@
-/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
 
+#include "Configuration.h"
 #include "ISender.h"
 #include "agents/agent_workers_process_holder.h"
 #include "lib/Span.h"
@@ -38,7 +39,7 @@ public:
     /**
      * Static initialization / detection
      */
-    static std::unique_ptr<PrimarySourceProvider> detect(bool systemWide,
+    static std::unique_ptr<PrimarySourceProvider> detect(CaptureOperationMode captureOperationMode,
                                                          const TraceFsConstants & traceFsConstants,
                                                          PmuXML && pmuXml,
                                                          const char * maliFamilyName,

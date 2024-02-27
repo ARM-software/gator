@@ -160,6 +160,11 @@ namespace agents::perf {
                 handleException();
                 break;
             }
+            case ipc::capture_failed_reason_t::wait_for_cores_ready_failed: {
+                LOG_ERROR("Perf agent failed. Invalid event and/or could not online CPUs");
+                handleException();
+                break;
+            }
             default: {
                 LOG_ERROR("Unexpected capture failure reason");
                 handleException();

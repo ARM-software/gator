@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/events/perf_activator.hpp"
 
@@ -74,7 +74,7 @@ namespace agents::perf {
                                                                      bool supports_cloexec,
                                                                      lib::Span<std::array<bool, 2> const> patterns)
         {
-            for (auto const pattern : patterns) {
+            for (auto const & pattern : patterns) {
                 // set
                 attr.exclude_kernel = pattern[0];
                 attr.exclude_hv = pattern[1];
@@ -106,6 +106,7 @@ namespace agents::perf {
                 if ((peo_errno != boost::system::errc::errc_t::permission_denied)
                     && (peo_errno != boost::system::errc::errc_t::operation_not_permitted)
                     && (peo_errno != boost::system::errc::errc_t::operation_not_supported)) {
+
                     return {peo_errno};
                 }
             }
@@ -302,7 +303,11 @@ namespace agents::perf {
                  lib::toEnumValue(core_no),
                  lib::toEnumValue(event.key),
                  perf_event_printer.perf_attr_to_string(attr, core_no, "    ", "\n").c_str());
-        LOG_FINE("perf_event_open: cpu: %d, pid: %d, leader = %d", lib::toEnumValue(core_no), pid, group_fd);
+        LOG_FINE("perf_event_open: cpu: %d, pid: %d, leader = %d, enable_state = %d",
+                 lib::toEnumValue(core_no),
+                 pid,
+                 group_fd,
+                 int(enable_state));
 
         lib::AutoClosingFd fd {};
         boost::system::error_code peo_errno {};
@@ -355,7 +360,7 @@ namespace agents::perf {
             error_message << " on CPU " << int(core_no);
             error_message << ". Failure given was errno=" << peo_errno.value() << " (" << peo_errno.message() << ").";
 
-            if (capture_configuration->perf_config.is_system_wide) {
+            if (isCaptureOperationModeSystemWide(capture_configuration->session_data.capture_operation_mode)) {
                 if (peo_errno == boost::system::errc::errc_t::invalid_argument) {
                     switch (event.attr.type) {
                         case PERF_TYPE_BREAKPOINT:

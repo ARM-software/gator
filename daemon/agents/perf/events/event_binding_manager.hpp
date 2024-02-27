@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -714,11 +714,14 @@ namespace agents::perf {
                                                            core_properties_t & properties,
                                                            pid_t pid)
         {
-            LOG_DEBUG("Create binding set %d :: %d :: %d :: %zu",
+            LOG_DEBUG("Create binding set no=%d :: pid=%d :: cluster=%d :: #events=%zu :: enable_on_exec=%u :: "
+                      "capture_started=%u",
                       lib::toEnumValue(properties.no),
                       pid,
                       lib::toEnumValue(properties.cluster_id),
-                      configuration.cluster_specific_events.size());
+                      configuration.cluster_specific_events.size(),
+                      enable_on_exec,
+                      capture_started);
 
             // check the header fd and mmap
             runtime_assert(properties.mmap != nullptr, "Invalid mmap value");
@@ -772,10 +775,15 @@ namespace agents::perf {
 
             // then add the cluster events
             if (cluster_events != nullptr) {
-                auto result = binding_set.add_mixed(*cluster_events);
-                // this should be impossible since the group is new
-                runtime_assert(result,
-                               "Failed to add a cluster event configuration, perhaps the binding set is not offline");
+                for (auto const & [ndx, events] : *cluster_events) {
+                    (void) ndx; // gcc7 :-(
+                    runtime_assert(!events.empty(), "Cluster sub-group is unexpectedly empty");
+                    auto result = binding_set.add_mixed(events);
+                    // this should be impossible since the group is new
+                    runtime_assert(
+                        result,
+                        "Failed to add a cluster event configuration, perhaps the binding set is not offline");
+                }
             }
 
             if (core_events != nullptr) {

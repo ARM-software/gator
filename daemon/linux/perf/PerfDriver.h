@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_H
 #define PERFDRIVER_H
@@ -11,6 +11,7 @@
 #include "linux/Tracepoints.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfDriverConfiguration.h"
+#include "linux/perf/metric_key_to_event_key_tracker.h"
 
 #include <cstdint>
 #include <functional>
@@ -66,22 +67,25 @@ public:
     PerfDriver(PerfDriver &&) = delete;
     PerfDriver & operator=(PerfDriver &&) = delete;
 
-    const PerfConfig & getConfig() const { return mConfig.config; }
+    [[nodiscard]] const PerfConfig & getConfig() const { return mConfig.config; }
 
     void readEvents(mxml_node_t * xml) override;
-    int writeCounters(mxml_node_t * root) const override;
-    std::optional<std::uint64_t> summary(ISummaryConsumer & consumer,
+    [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
+    void writeEvents(mxml_node_t * root) const override;
+    [[nodiscard]] std::optional<std::uint64_t> summary(ISummaryConsumer & consumer,
                                          const std::function<uint64_t()> & getMonotonicTime);
     void coreName(ISummaryConsumer & consumer, int cpu);
     void setupCounter(Counter & counter) override;
-    std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
-    bool enable(IPerfGroups & group, attr_to_key_mapping_tracker_t & mapping_tracker) const;
+    [[nodiscard]] std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
+    [[nodiscard]] bool enable(IPerfGroups & group,
+                attr_to_key_mapping_tracker_t & mapping_tracker,
+                metric_key_to_event_key_tracker_t & metric_tracker) const;
     void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
-    bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);
+    [[nodiscard]] bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);
 
-    const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
+    [[nodiscard]] const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
 
-    std::shared_ptr<PrimarySource> create_source(sem_t & senderSem,
+    [[nodiscard]] std::shared_ptr<PrimarySource> create_source(sem_t & senderSem,
                                                  ISender & sender,
                                                  std::function<bool()> session_ended_callback,
                                                  std::function<void()> exec_target_app_callback,
@@ -104,9 +108,15 @@ private:
     void addCpuCounters(const PerfCpu & cpu);
     void addUncoreCounters(const PerfUncore & uncore);
     void addMidgardHwTracepoints(const char * maliFamilyName);
-    bool enableGatorTracePoint(IPerfGroups & group,
-                               attr_to_key_mapping_tracker_t & mapping_tracker,
-                               long long id) const;
+    [[nodiscard]] bool enableGatorTracePoint(IPerfGroups & group,
+                                             attr_to_key_mapping_tracker_t & mapping_tracker,
+                                             long long id) const;
+    [[nodiscard]] bool enableGatorTracepoints(IPerfGroups & group,
+                                              attr_to_key_mapping_tracker_t & mapping_tracker) const;
+    [[nodiscard]] bool enableTimelineCounters(IPerfGroups & group,
+                                              attr_to_key_mapping_tracker_t & mapping_tracker,
+                                              std::map<PerfEventGroupIdentifier, std::size_t> & cpu_event_counts,
+                                              std::unordered_map<std::string, int> & metric_ids) const;
 
     std::vector<agents::perf::perf_capture_configuration_t::cpu_freq_properties_t>
     get_cpu_cluster_keys_for_cpu_frequency_counter();

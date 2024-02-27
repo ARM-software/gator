@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #include "armnn/ArmNNDriver.h"
 
@@ -66,13 +66,12 @@ namespace armnn {
     }
 
     // Emits available counters
-    int Driver::writeCounters(mxml_node_t * const root) const
+    int Driver::writeCounters(available_counter_consumer_t const & consumer) const
     {
         int count = 0;
         std::vector<std::string> counterNames = mGlobalState.getAllCounterNames();
         for (auto & counterName : counterNames) {
-            mxml_node_t * node = mxmlNewElement(root, "counter");
-            mxmlElementSetAttr(node, "name", counterName.c_str());
+            consumer(counter_type_t::counter, counterName);
             ++count;
         }
 

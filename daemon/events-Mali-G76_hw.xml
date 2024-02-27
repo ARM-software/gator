@@ -68,7 +68,7 @@
 	<event counter="ARM_Mali-G76_FRAG_PTILES" description="The number of tiles processed by the shader core" name="Tiles" title="Mali Shader Core Tiles" units="tiles"/>
 	<event counter="ARM_Mali-G76_FRAG_TRANS_ELIM" description="The number of tiles killed by transaction elimination" name="Killed unchanged tiles" title="Mali Shader Core Tiles" units="tiles"/>
 	<event counter="ARM_Mali-G76_QUAD_FPK_KILLER" description="The number of quads that are valid occluders for hidden surface removal" name="Occluding quads" title="Mali Fragment FPK Quads" units="quads"/>
-	<event counter="ARM_Mali-G76_FULL_QUAD_WARPS" description="The number of warps that are fully populated with quads" name="Full quad warps" title="Mali Shader Warps" units="warps"/>
+	<event counter="ARM_Mali-G76_FULL_QUAD_WARPS" description="The number of warps that have a full thread slot allocation" name="Full warps" title="Mali Shader Warps" units="warps"/>
 	<event counter="ARM_Mali-G76_COMPUTE_ACTIVE" description="The number of cycles where the shader core is processing some non-fragment workload" name="Non-fragment active" title="Mali Shader Core Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-G76_COMPUTE_TASKS" description="The number of non-fragment tasks issued to the shader core" name="Non-fragment tasks" title="Mali Shader Core Tasks" units="tasks"/>
 	<event counter="ARM_Mali-G76_COMPUTE_WARPS" description="The number of non-fragment warps created" name="Non-fragment warps" title="Mali Shader Warps" units="warps"/>

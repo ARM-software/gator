@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -800,7 +800,6 @@ namespace async::continuations {
             return es(err);
         }
 
-        // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
         char const * name;
 
         bool operator()(std::nullptr_t) const { return false; }

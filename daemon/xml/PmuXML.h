@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PMUXML_H
 #define PMUXML_H
@@ -29,29 +29,9 @@ public:
              std::string speName,
              std::vector<int> cpuIds,
              int pmncCounters,
-             bool isV8)
-        : mCoreName(std::move(coreName)),
-          mId(std::move(id)),
-          mCounterSet(std::move(counterSet)),
-          mDtName(std::move(dtName)),
-          mSpeName(std::move(speName)),
-          mCpuIds(std::move(cpuIds)),
-          mPmncCounters(pmncCounters),
-          mIsV8(isV8)
-    {
-    }
+             bool isV8);
 
-    GatorCpu(const GatorCpu & that, const char * speName)
-        : mCoreName(that.mCoreName),
-          mId(that.mId),
-          mCounterSet(that.mCounterSet),
-          mDtName(that.mDtName),
-          mSpeName(speName),
-          mCpuIds(that.mCpuIds),
-          mPmncCounters(that.mPmncCounters),
-          mIsV8(that.mIsV8)
-    {
-    }
+    GatorCpu(const GatorCpu & that, const char * speName);
 
     GatorCpu(const GatorCpu &) = default;
     GatorCpu & operator=(const GatorCpu &) = default;

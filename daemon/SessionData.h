@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
@@ -79,7 +79,6 @@ public:
     const char * mAndroidActivityFlags {nullptr};
     uint64_t mLiveRate {0};
     uint64_t parameterSetFlag {0};
-    int mAndroidApiLevel {0};
     int mBacktraceDepth {0};
     // number of MB to use for the entire collection buffer
     int mTotalBufferSize {0};
@@ -89,6 +88,10 @@ public:
     int mAnnotateStart {0};
     int mPerfMmapSizeInPages {0};
     int mSpeSampleRate {-1};
+    int mOverrideNoPmuSlots {-1};
+
+    CaptureOperationMode mCaptureOperationMode = CaptureOperationMode::system_wide;
+
     bool mStopOnExit {false};
     bool mWaitingOnCommand {false};
     bool mLocalCapture {false};
@@ -97,7 +100,6 @@ public:
     bool mIsEBS {false};
     bool mAllowCommands {false};
     bool mFtraceRaw {false};
-    bool mSystemWide {false};
     bool mExcludeKernelEvents {false};
     bool mEnableOffCpuSampling {false};
     bool mLogToFile {false};

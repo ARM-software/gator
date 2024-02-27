@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef IPERF_ATTRS_CONSUMER_H
 #define IPERF_ATTRS_CONSUMER_H
@@ -10,6 +10,13 @@ struct perf_event_attr;
 class IPerfAttrsConsumer {
 public:
     virtual ~IPerfAttrsConsumer() = default;
+
+    enum class MetricEventType {
+        // these numeric values are used by the apc from so don't change the ordnanal...
+        event = 0,
+        cycle_counter = 1,
+        return_counter = 2,
+    };
 
     virtual void marshalPea(const struct perf_event_attr * pea, int key) = 0;
     virtual void marshalKeys(int count, const uint64_t * ids, const int * keys) = 0;
@@ -25,6 +32,7 @@ public:
     virtual void perfCounterFooter() = 0;
     virtual void marshalHeaderPage(const char * headerPage) = 0;
     virtual void marshalHeaderEvent(const char * headerEvent) = 0;
+    virtual void marshalMetricKey(int metric_key, std::uint16_t event_code, int event_key, MetricEventType type) = 0;
 };
 
 #endif // PERF_ATTRS_CONSUMER_H

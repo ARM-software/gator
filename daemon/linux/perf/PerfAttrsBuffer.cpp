@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 // Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
@@ -12,6 +12,7 @@
 #include "Logging.h"
 #include "Protocol.h"
 #include "k/perf_event.h"
+#include "linux/perf/IPerfAttrsConsumer.h"
 
 #include <cstdint>
 #include <cstring>
@@ -203,4 +204,21 @@ void PerfAttrsBuffer::marshalHeaderEvent(const char * const headerEvent)
     waitForSpace(buffer_utils::MAXSIZE_PACK32 + headerEventLen);
     buffer.packInt(static_cast<int32_t>(CodeType::HEADER_EVENT));
     buffer.writeBytes(headerEvent, headerEventLen);
+}
+
+void PerfAttrsBuffer::marshalMetricKey(int metric_key,
+                                       std::uint16_t event_code,
+                                       int event_key,
+                                       IPerfAttrsConsumer::MetricEventType type)
+{
+    constexpr int num_fields = 5;
+
+    waitForSpace(buffer_utils::MAXSIZE_PACK32 * num_fields);
+
+    // the fields
+    buffer.packInt(static_cast<int32_t>(CodeType::METRIC_EVENT_KEY));
+    buffer.packInt(metric_key);
+    buffer.packInt(event_code);
+    buffer.packInt(event_key);
+    buffer.packInt(static_cast<int>(type));
 }

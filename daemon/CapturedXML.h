@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef __CAPTURED_XML_H__
 #define __CAPTURED_XML_H__
@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <vector>
 
 class PrimarySourceProvider;
 struct CapturedSpe;

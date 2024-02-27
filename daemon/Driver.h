@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVER_H
 #define DRIVER_H
@@ -7,6 +7,7 @@
 #include "Constant.h"
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <set>
 #include <string>
@@ -19,6 +20,12 @@ struct SpeConfiguration;
 
 class Driver {
 public:
+    enum class counter_type_t {
+        counter,
+        spe,
+    };
+    using available_counter_consumer_t = std::function<void(counter_type_t, std::string const &)>;
+
     /// @param name held by reference, not copied
     Driver(const char * name) : name(name) {}
     virtual ~Driver() = default;
@@ -37,7 +44,8 @@ public:
     virtual void insertConstants(std::set<Constant> &) {}
 
     // Claims and prepares the SPE for capture
-    virtual std::optional<CapturedSpe> setupSpe(int /* sampleRate */, const SpeConfiguration & /* configuration */)
+    [[nodiscard]] virtual std::optional<CapturedSpe> setupSpe(int /* sampleRate */,
+                                                              const SpeConfiguration & /* configuration */)
     {
         return {};
     }
@@ -47,12 +55,12 @@ public:
 
     // Emits available counters
     // @return number of counters added
-    virtual int writeCounters(mxml_node_t * root) const = 0;
+    [[nodiscard]] virtual int writeCounters(available_counter_consumer_t const & consumer) const = 0;
 
     // Emits possible dynamically generated events/counters
     virtual void writeEvents(mxml_node_t * const /*unused*/) const {}
 
-    inline const char * getName() const { return name; }
+    [[nodiscard]] inline const char * getName() const { return name; }
 
     /// Called before the gator-child process is forked
     virtual void preChildFork() {}
@@ -63,7 +71,7 @@ public:
     /// Called in the parent after the gator-child process exits
     virtual void postChildExitInParent() {}
     //Any warning messages to be displayed in Streamline post analysis of a capture.
-    virtual std::vector<std::string> get_other_warnings() const { return {}; }
+    [[nodiscard]] virtual std::vector<std::string> get_other_warnings() const { return {}; }
 
     // name pointer is not owned by this so should just be copied
     Driver(const Driver &) = default;
