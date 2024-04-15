@@ -13,6 +13,22 @@ SHARE_MODE_NONE = 1
 SHARE_MODE_DISCARD = 2
 
 
+CNTR_CYCLES = 0x11
+CNTR_INST_RETIRED = 0x08
+CNTR_BR_MISPRED = 0x10
+CNTR_L1D_MISSES = 0x03
+CNTR_L1D_ACCESS = 0x04
+
+
+CNTR_NAME_LUT = {
+    'cycles': CNTR_CYCLES,
+    'instructions': CNTR_INST_RETIRED,
+    'branch-misses': CNTR_BR_MISPRED,
+    'cache-misses': CNTR_L1D_MISSES,
+    'cache-references':CNTR_L1D_ACCESS,
+}
+
+
 # Command line parsing.
 def get_options():
     share_modes = {
@@ -201,8 +217,10 @@ def map_event_name(name, event=None):
         return int(name[1:], 16)
     if name.startswith('armv') and event is not None:
         return event
+    result = CNTR_NAME_LUT.get(name)
+    if result is not None:
+        return result
     raise ValueError(f"Unexpected event {name}, {event}")
-
 
 def split_event_params(params):
     for p in params:
@@ -215,6 +233,8 @@ def split_event_params(params):
 
 
 def parse_event(index, evsel_name):
+    global options
+
     parts = evsel_name.split('/')
 
     if len(parts) == 1:
@@ -225,17 +245,29 @@ def parse_event(index, evsel_name):
     assert (len(parts) == 2) or (len(parts) == 3)
 
     event_name = parts[0].strip()
-    params = {k: v for (k, v) in split_event_params(parts[1].split(','))}
+    split_params = parts[1].split(',')
+
+    is_cpu_pmu = (event_name == 'cpu') or event_name.startswith('armv8_')
+
+    # support formats like "cpu/instructions..." or "armv8_pmuv3/r0008..."
+    if is_cpu_pmu and (len(split_params) > 0):
+        event_name = split_params[0].strip()
+        split_params = split_params[1:]
+
+    params = {k: v for (k, v) in split_event_params(split_params)}
 
     event = (int(params['event'], 0) if 'event' in params else None)
     period = (int(params['period'], 0) if 'period' in params else None)
     config1 = int(params.get('config1', '0'), 0)
     config2 = int(params.get('config2', '0'), 0)
-    strobe = int(params.get('strobe', '0'), 0)
-    strobe_period = int(params.get('strobe_period', '0'), 0)
+    strobe_period = int(params.get('alt-period', params.get('strobe_period', params.get('config2', '0'))), 0)
 
-    strobe_period = (strobe_period if strobe_period >
-                     0 else (config2 if config2 > 0 else None))
+    strobe_period = (strobe_period if (strobe_period > 0) else None)
+
+    if (period is None) and (strobe_period is not None):
+        period = options.sample_period
+
+    period = (period if (period is not None) and (period > 0) else None)
 
     return Event(index, map_event_name(event_name, event), period, strobe_period)
 
@@ -258,9 +290,9 @@ class EventGroup(object):
             update_strobe_event = False
             if (self.strobe_event is None):
                 update_strobe_event = True
-            elif (event.event == 0x11) and (self.strobe_event.event != 0x11):
+            elif (event.event == CNTR_CYCLES) and (self.strobe_event.event != CNTR_CYCLES):
                 update_strobe_event = True
-            elif (event.event == 0x08) and (self.strobe_event.event != 0x11) and (self.strobe_event.event != 0x08):
+            elif (event.event == CNTR_INST_RETIRED) and (self.strobe_event.event != CNTR_CYCLES) and (self.strobe_event.event != CNTR_INST_RETIRED):
                 update_strobe_event = True
             if update_strobe_event:
                 self.strobe_event = event
@@ -671,14 +703,14 @@ class SampleProcessor(object):
 
     def add_group_columns_single(self, columns, sort_columns, group):
         # common
-        ndx_cycles = group.find_event_column_index(0x11)
-        ndx_br_mispred = group.find_event_column_index(0x10)
-        ndx_l1d_access = group.find_event_column_index(0x04)
+        ndx_cycles = group.find_event_column_index(CNTR_CYCLES)
+        ndx_br_mispred = group.find_event_column_index(CNTR_BR_MISPRED)
+        ndx_l1d_access = group.find_event_column_index(CNTR_L1D_ACCESS)
 
         # n1
-        ndx_inst_ret = group.find_event_column_index(0x08)
+        ndx_inst_ret = group.find_event_column_index(CNTR_INST_RETIRED)
         ndx_inst_spec = group.find_event_column_index(0x1b)
-        ndx_l1d_refill = group.find_event_column_index(0x03)
+        ndx_l1d_refill = group.find_event_column_index(CNTR_L1D_MISSES)
         ndx_backed_stall = group.find_event_column_index(0x24)
 
         # v1
@@ -803,6 +835,7 @@ class SampleProcessor(object):
                 lambda v: (((100 * v[ndx_l1d_miss]) / v[ndx_l1d_access])
                            if v[ndx_l1d_access] > 0 else 0)
             ))
+
 
     #
     # Support for the N1 topdown metrics multiplexed groups
