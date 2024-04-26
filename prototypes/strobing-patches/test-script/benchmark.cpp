@@ -10,23 +10,26 @@
 #include <span>
 #include <vector>
 
-static constexpr std::size_t total_iterations = 800000;
+#include <sched.h>
+
+static constexpr std::size_t num_items = 7;
+static constexpr std::size_t total_iterations = 800000 * 4;
 
 struct constants_single_t {
-    static constexpr long branch_mispredicts_iterations = 8;
-    static constexpr long divider_stalls_iterations = 2048;
-    static constexpr long double_to_int_iterations = 3000;
-    static constexpr long isb_iterations = 256;
-    static constexpr long dcache_miss_iterations = 96;
-    static constexpr long nop_counter = 1500ULL;
+    static constexpr long branch_mispredicts_iterations = 2;
+    static constexpr long divider_stalls_iterations = 64;
+    static constexpr long double_to_int_iterations = 64;
+    static constexpr long isb_iterations = 32;
+    static constexpr long dcache_miss_iterations = 16;
+    static constexpr long nop_counter = 500ULL;
 };
 
 struct constants_outer_t {
     static constexpr long branch_mispredicts_iterations = 4;
-    static constexpr long divider_stalls_iterations = 256;
-    static constexpr long double_to_int_iterations = 256;
-    static constexpr long isb_iterations = 256;
-    static constexpr long dcache_miss_iterations = 64;
+    static constexpr long divider_stalls_iterations = 128;
+    static constexpr long double_to_int_iterations = 128;
+    static constexpr long isb_iterations = 128;
+    static constexpr long dcache_miss_iterations = 16;
     static constexpr long nop_counter = 10000ULL;
 };
 
@@ -34,8 +37,8 @@ struct constants_inner_t {
     static constexpr long branch_mispredicts_iterations = 2;
     static constexpr long divider_stalls_iterations = 64;
     static constexpr long double_to_int_iterations = 64;
-    static constexpr long isb_iterations = 64;
-    static constexpr long dcache_miss_iterations = 16;
+    static constexpr long isb_iterations = 32;
+    static constexpr long dcache_miss_iterations = 8;
     static constexpr long nop_counter = 10000ULL;
 };
 
@@ -65,9 +68,9 @@ public:
                   << ", double_divider=" << double_divider << ", sum=" << sum << std::endl;
     }
 
-    constexpr void operator()(std::size_t n)
+    constexpr void operator()(std::size_t n, int only_do_this)
     {
-        switch (n % 7) {
+        switch ((only_do_this >= 0 ? std::size_t(only_do_this) : n) % num_items) {
             case 0: {
                 lfsr += std::uint16_t(branch_mispredicts(lfsr, Constants::branch_mispredicts_iterations) + 1);
                 break;
@@ -388,36 +391,58 @@ class inner_loop_t {
 public:
     std::size_t n = 0;
 
-    constexpr void operator()() { inner(n); }
+    inner_loop_t(int only_do_this) : only_do_this(only_do_this) {}
+    constexpr void operator()() { inner(n, only_do_this); }
 
 private:
     benchmarks_t<constants_final_t, no_op_t> inner {no_op_t {}};
+    int only_do_this;
 };
 
 class outer_loop_t {
 public:
     std::size_t n = 0;
 
-    outer_loop_t(inner_loop_t & inner)
-        : inner(inner)
+    outer_loop_t(inner_loop_t & inner, int only_do_this)
+        : inner(inner),
+          only_do_this(only_do_this)
     {
     }
 
-    constexpr void operator()() { inner(n); }
+    constexpr void operator()() { inner(n, only_do_this); }
 
 private:
     benchmarks_t<constants_inner_t, inner_loop_t &> inner;
+    int only_do_this;
 };
 
 int main(int argc, char ** argv)
 {
-    static constexpr std::size_t num_items = 7;
-
     auto const seed = argc > 1 ? std::strtoul(argv[1], nullptr, 0) //
                                : std::chrono::system_clock::now().time_since_epoch().count();
 
     auto const mode = (argc > 2 ? std::strtoul(argv[2], nullptr, 0) //
                                 : 0);
+
+    if ((argc > 3) && (argv[3][0] != '-')) {
+        auto const cpu = std::strtoul(argv[3], nullptr, 0);
+
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu, &cpuset);
+
+        // try and set affinity
+        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) != 0) {
+            std::cerr << "Failed to set affinity" << std::endl;
+            return 0;
+        }
+    }
+
+    int only_do_this = -1;
+
+    if (argc > 4) {
+        only_do_this = std::strtoul(argv[4], nullptr, 0);
+    }
 
     std::random_device random_dev {};
     std::mt19937 randomizer(random_dev());
@@ -449,7 +474,7 @@ int main(int argc, char ** argv)
             benchmarks_t<constants_single_t, no_op_t> outer_benchmark {no_op_t {}};
 
             for (std::size_t n = 0; n < total_iterations; ++n) {
-                outer_benchmark(sequence_outer[n % sequence_outer.size()]);
+                outer_benchmark(sequence_outer[n % sequence_outer.size()], only_do_this);
 
                 if (seed == 0) {
                     std::shuffle(sequence_outer.begin(), sequence_outer.end(), randomizer);
@@ -459,12 +484,12 @@ int main(int argc, char ** argv)
         }
 
         case 2: {
-            inner_loop_t inner_loop_wrapper {};
+            inner_loop_t inner_loop_wrapper {only_do_this};
             benchmarks_t<constants_inner_t, inner_loop_t &> outer_benchmark {inner_loop_wrapper};
 
             for (std::size_t n = 0; n < total_iterations; ++n) {
                 inner_loop_wrapper.n = sequence_final[n % sequence_final.size()];
-                outer_benchmark(sequence_outer[n % sequence_outer.size()]);
+                outer_benchmark(sequence_outer[n % sequence_outer.size()], only_do_this);
 
                 if (seed == 0) {
                     std::shuffle(sequence_outer.begin(), sequence_outer.end(), randomizer);
@@ -475,14 +500,14 @@ int main(int argc, char ** argv)
         }
 
         default: {
-            inner_loop_t inner_loop_wrapper {};
-            outer_loop_t outer_loop_wrapper {inner_loop_wrapper};
+            inner_loop_t inner_loop_wrapper {only_do_this};
+            outer_loop_t outer_loop_wrapper {inner_loop_wrapper, only_do_this};
             benchmarks_t<constants_outer_t, outer_loop_t &> outer_benchmark {outer_loop_wrapper};
 
             for (std::size_t n = 0; n < total_iterations; ++n) {
                 inner_loop_wrapper.n = sequence_final[n % sequence_final.size()];
                 outer_loop_wrapper.n = sequence_inner[n % sequence_inner.size()];
-                outer_benchmark(sequence_outer[n % sequence_outer.size()]);
+                outer_benchmark(sequence_outer[n % sequence_outer.size()], only_do_this);
 
                 if (seed == 0) {
                     std::shuffle(sequence_outer.begin(), sequence_outer.end(), randomizer);

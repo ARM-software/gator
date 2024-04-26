@@ -29,6 +29,10 @@ CNTR_NAME_LUT = {
 }
 
 
+ALL_DATA_NO = 0
+ALL_DATA_EXCEPT_THOTTLES = 1
+ALL_DATA_YES = 2
+
 # Command line parsing.
 def get_options():
     share_modes = {
@@ -41,6 +45,8 @@ def get_options():
                     help="One of [auto, none, discard]."),
         make_option("-p", "--period", dest="sample_period", default=None,
                     help="Specify the sample period, if not explicit in the attribute name"),
+        make_option("-a", "--all-data", dest="all_data", default=None,
+                    help="Include all samples that would otherwise be discarded in the cumulative total"),
     ])
 
     (options, args) = parser.parse_args()
@@ -50,6 +56,7 @@ def get_options():
     options.share_mode = share_modes[options.share_mode]
     options.sample_period = (
         0 if options.sample_period is None else int(options.sample_period))
+    options.all_data = (ALL_DATA_EXCEPT_THOTTLES if options.all_data == 'y' else (ALL_DATA_YES if options.all_data == 't' else ALL_DATA_NO))
 
     return (options, args)
 
@@ -624,6 +631,10 @@ class SampleProcessor(object):
         if self.throttle_tracker.is_sample_throttled(sample.timestamp, sample.raw_ids):
             self.throttle_counter += 1
             self.strobed_samples[sample.thread] = None
+            if options.all_data == ALL_DATA_YES:
+                extend(self.total_values, len(self.state_tracker.columns))
+                for (e, v) in sample.values.items():
+                    self.total_values[e.index] += v
             return
 
         # Discard it if it is above the strobe threshold - the cycle count is way too large. discard the counters
@@ -633,11 +644,19 @@ class SampleProcessor(object):
                 self.strobed_samples[sample.thread] = sample
             else:
                 self.strobed_samples[sample.thread] = None
+            if options.all_data != ALL_DATA_NO:
+                extend(self.total_values, len(self.state_tracker.columns))
+                for (e, v) in sample.values.items():
+                    self.total_values[e.index] += v
             return
 
         # Discard it if it has no symbol
         if sample.symbol is None:
             self.strobed_samples[sample.thread] = None
+            if options.all_data != ALL_DATA_NO:
+                extend(self.total_values, len(self.state_tracker.columns))
+                for (e, v) in sample.values.items():
+                    self.total_values[e.index] += v
             return
 
         # is it the same symbol as the last sample
@@ -651,6 +670,11 @@ class SampleProcessor(object):
             self.discard_counter += 1
             # but also increment the samples sample count
             self.accumulate_sample(sample, {}, 1, True)
+            # and increment the totals
+            if options.all_data != ALL_DATA_NO:
+                extend(self.total_values, len(self.state_tracker.columns))
+                for (e, v) in sample.values.items():
+                    self.total_values[e.index] += v
         else:
             # assign all to the current sample
             self.accumulate_sample(sample,
@@ -834,6 +858,19 @@ class SampleProcessor(object):
                 '% L1D Misses / Access',
                 lambda v: (((100 * v[ndx_l1d_miss]) / v[ndx_l1d_access])
                            if v[ndx_l1d_access] > 0 else 0)
+            ))
+
+        if ndx_cycles is not None:
+            columns.append((
+                'Avg Cycles / Sample',
+                lambda v: ((v[ndx_cycles] / v[self.state_tracker.column_sample_count.index])
+                           if v[self.state_tracker.column_sample_count.index] > 0 else 0)
+            ))
+        if ndx_inst_ret is not None:
+            columns.append((
+                'Avg Insns / Sample',
+                lambda v: ((v[ndx_inst_ret] / v[self.state_tracker.column_sample_count.index])
+                           if v[self.state_tracker.column_sample_count.index] > 0 else 0)
             ))
 
 
@@ -1169,6 +1206,12 @@ class SampleProcessor(object):
                 str(l(extend(v, n_i))) for (n, l) in columns
             ])
             print('\t'.join(rcols))
+
+        rcols = ['Cumulative']
+        rcols.extend([
+            str(l(extend(self.total_values, n_i))) for (n, l) in columns
+        ])
+        print('\t'.join(rcols))
 
     def create_rows(self, sort_columns):
         result = list(self.accumulated_values.items())
