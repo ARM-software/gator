@@ -109,7 +109,7 @@ namespace agents {
             ::prctl(PR_SET_PDEATHSIG, SIGKILL);
 
             // duplicate stdin/stdout, then close them so that some spurious read/write doesn't corrupt the IPC channel
-            auto ipc_in = dup_and_close(STDIN_FILENO);
+            auto ipc_in = lib::AutoClosingFd(STDIN_FILENO);
             auto ipc_out = dup_and_close(STDOUT_FILENO);
 
             // setup asio context

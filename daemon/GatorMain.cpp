@@ -464,6 +464,7 @@ void setDefaults()
     gSessionData.mBacktraceDepth = 128;
     //sample rate is normal
     gSessionData.mSampleRate = normal;
+    gSessionData.mSampleRateGpu = normal_x2;
     //duration default to 0
     gSessionData.mDuration = 0;
     //use_efficient_ftrace default is yes
@@ -528,6 +529,7 @@ void updateSessionData(const ParserResult & result)
     //and hence cannot be modified during parse session
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) != 0) {
         gSessionData.mSampleRate = result.mSampleRate;
+        gSessionData.mSampleRateGpu = result.mSampleRateGpu;
     }
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) != 0) {
         gSessionData.mBacktraceDepth = result.mBacktraceDepth;

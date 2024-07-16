@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -37,8 +37,9 @@ namespace apc {
         builder.packInt64(state.clock_realtime);
         builder.packInt64(state.clock_boottime);
         builder.packInt64(state.clock_monotonic_raw);
+        builder.packInt64(state.clock_monotonic);
         builder.writeString("uname");
-        builder.writeString(state.uname.c_str());
+        builder.writeString(state.uname);
         builder.writeString("PAGESIZE");
         builder.writeString(page_size_str.c_str());
         if (state.nosync) {
@@ -48,7 +49,7 @@ namespace apc {
         for (const auto & pair : state.additional_attributes) {
             if (!pair.first.empty()) {
                 builder.writeString(pair.first.c_str());
-                builder.writeString(pair.second.c_str());
+                builder.writeString(pair.second);
             }
         }
         builder.writeString("");

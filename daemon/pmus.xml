@@ -91,7 +91,10 @@
 
     <pmu id="ARMv8_Neoverse_E1" cpuid="0x41d4a" core_name="Neoverse-E1" dt_name="arm,neoverse-e1" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu"/>
-    <pmu id="ARMv8_Neoverse_N2" cpuid="0x41d49" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu"/>
+    <pmu id="ARMv8_Neoverse_N2" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu">
+        <cpuid id="0x41d49" />
+        <cpuid id="0x6dd49" />
+    </pmu>
     <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu"/>
     <pmu id="ARMv9_Neoverse_V2" cpuid="0x41d4f" core_name="Neoverse-V2" dt_name="arm,neoverse-v2" pmnc_counters="6" profile="9a" spe="arm_neoverse_v2_spe_pmu"/>
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -58,7 +58,9 @@ namespace agents::perf {
 
         async::continuations::polymorphic_continuation_t<> co_receive_message(ipc::msg_start_t msg)
         {
-            return capture->async_on_received_start_message(msg.header, async::continuations::use_continuation);
+            return capture->async_on_received_start_message(msg.header.monotonic_raw,
+                                                            msg.header.monotonic,
+                                                            async::continuations::use_continuation);
         }
 
         async::continuations::polymorphic_continuation_t<> co_receive_message(ipc::msg_capture_configuration_t msg)

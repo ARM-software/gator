@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 // Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
@@ -24,6 +24,7 @@
 #include "lib/AutoClosingFd.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Syscall.h"
+#include "monotonic_pair.h"
 
 #include <array>
 #include <atomic>
@@ -170,7 +171,7 @@ public:
         return true;
     }
 
-    void run(std::uint64_t monotonicStart, std::function<void()> endSession) override
+    void run(monotonic_pair_t monotonicStart, std::function<void()> endSession) override
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-external"), 0, 0, 0);
 
@@ -292,7 +293,7 @@ public:
                      * starve out the gator data.
                      */
                     while (mSessionIsActive) {
-                        if (!transfer(monotonicStart, fd, endSession)) {
+                        if (!transfer(monotonicStart.monotonic_raw, fd, endSession)) {
                             break;
                         }
                     }
@@ -308,7 +309,7 @@ public:
                     LOG_WARNING("Failed to change ftrace pipe to blocking reads. Ftrace data may be truncated");
                 }
 
-                while (transfer(monotonicStart, fd, endSession)) {
+                while (transfer(monotonicStart.monotonic_raw, fd, endSession)) {
                 }
 
                 close(fd);

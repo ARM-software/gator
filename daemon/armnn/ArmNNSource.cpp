@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 // Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
@@ -12,8 +12,8 @@
 #include "armnn/FrameBuilderFactory.h"
 #include "armnn/ICaptureController.h"
 #include "armnn/TimestampCorrector.h"
+#include "monotonic_pair.h"
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -27,10 +27,10 @@ namespace armnn {
         {
         }
 
-        void run(std::uint64_t monotonicStarted, std::function<void()> endSession) override
+        void run(monotonic_pair_t monotonicStarted, std::function<void()> endSession) override
         {
             auto builder = FrameBuilderFactory {buffer, gSessionData.mLiveRate};
-            TimestampCorrector timestampCorrector {builder, monotonicStarted};
+            TimestampCorrector timestampCorrector {builder, monotonicStarted.monotonic_raw};
             std::function<unsigned int(void)> f_bufferBytesAvailable = [&] {
                 return (unsigned int) buffer.bytesAvailable();
             };

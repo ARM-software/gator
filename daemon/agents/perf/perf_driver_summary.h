@@ -18,11 +18,13 @@ namespace agents::perf {
         std::uint64_t clock_realtime;
         std::uint64_t clock_boottime;
         std::uint64_t clock_monotonic_raw;
+        std::uint64_t clock_monotonic;
         long page_size;
         bool nosync;
     };
 
     std::optional<perf_driver_summary_state_t> create_perf_driver_summary_state(PerfConfig const & perf_config,
-                                                                                std::uint64_t monotonic_start,
+                                                                                std::uint64_t clock_monotonic_raw,
+                                                                                std::uint64_t clock_monotonic,
                                                                                 bool system_wide);
 }

@@ -171,22 +171,22 @@ namespace {
 
 using ExecutionMode = ParserResult::ExecutionMode;
 
-SampleRate getSampleRate(const std::string & value)
+std::pair<SampleRate, SampleRate> getSampleRate(const std::string & value)
 {
     if (value == "high") {
-        return high;
+        return {high, high};
     }
     if (value == "normal") {
-        return normal;
+        return {normal, normal_x2};
     }
     if (value == "low") {
-        return low;
+        return {low, low};
     }
     if (value == "none") {
 
-        return none;
+        return {none, none};
     }
-    return invalid;
+    return {invalid, invalid};
 }
 
 void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
@@ -374,7 +374,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
     int c;
     while ((c = getopt_long(argc, argv, OPTSTRING_SHORT.data(), OPTSTRING_LONG, nullptr)) != -1) {
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
-        SampleRate sampleRate;
+        std::pair<SampleRate, SampleRate> sampleRate;
         std::string value;
         result.addArgValuePair({std::string(1, char(c)),                               //
                                 optarg != nullptr ? std::optional<std::string>(optarg) //
@@ -456,8 +456,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_SAMPLE_RATE;
                 value = std::string(optarg);
                 sampleRate = getSampleRate(value);
-                if (sampleRate != invalid) {
-                    result.mSampleRate = sampleRate;
+                if (sampleRate.first != invalid) {
+                    result.mSampleRate = sampleRate.first;
+                    result.mSampleRateGpu = sampleRate.second;
                 }
                 else {
                     LOG_ERROR("Invalid sample rate (%s).", optarg);
@@ -627,7 +628,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "  -r|--sample-rate (none|low|normal|high)\n"
                     "                                        Specify sample rate for capture. The\n"
                     "                                        frequencies for each sample rate are: \n"
-                    "                                        high=10kHz, normal=1kHz, low=100Hz.\n"
+                    "                                        high=10kHz, normal=1kHz (2kHz in GPU), \n"
+                    "                                        low=100Hz.\n"
                     "                                        Setting the sample rate to none will\n"
                     "                                        sample at the lowest possible rate.\n"
                     "                                        (defaults to 'normal')\n"

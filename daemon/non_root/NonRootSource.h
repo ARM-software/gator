@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_NONROOTSOURCE_H
 #define INCLUDE_NON_ROOT_NONROOTSOURCE_H
@@ -14,6 +14,7 @@
 #include <semaphore.h>
 
 class ICpuInfo;
+struct monotonic_pair_t;
 
 namespace non_root {
     class NonRootDriver;
@@ -29,8 +30,8 @@ namespace non_root {
                       std::function<void()> profilingStartedCallback,
                       const ICpuInfo & cpuInfo);
 
-        std::optional<std::uint64_t> sendSummary() override;
-        void run(std::uint64_t, std::function<void()> endSession) override;
+        std::optional<monotonic_pair_t> sendSummary() override;
+        void run(monotonic_pair_t, std::function<void()> endSession) override;
         void interrupt() override;
         bool write(ISender & sender) override;
 
@@ -40,7 +41,8 @@ namespace non_root {
         Buffer mProcessCounterBuffer;
         Buffer mMiscBuffer;
         std::atomic<bool> interrupted;
-        lib::TimestampSource timestampSource;
+        lib::TimestampSource timestampSourceClockMonotonicRaw;
+        lib::TimestampSource timestampSourceClockMonotonic;
         NonRootDriver & driver;
         std::function<void()> execTargetAppCallback;
         std::function<void()> profilingStartedCallback;

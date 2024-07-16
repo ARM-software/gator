@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
 
 #include "lib/forked_process.h"
 
@@ -50,7 +50,8 @@ namespace lib {
         lib::Span<std::string const> args,
         boost::filesystem::path const & cwd,
         std::optional<std::pair<uid_t, gid_t>> const & uid_gid,
-        stdio_fds_t stdio_fds)
+        stdio_fds_t stdio_fds,
+        bool create_process_group)
     {
         prepend_command |= args.empty();
 
@@ -113,6 +114,10 @@ namespace lib {
 
         // child
 
+        if (create_process_group) {
+            setpgid(0, 0);
+        }
+
         // clear any signal handlers
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
@@ -120,9 +125,6 @@ namespace lib {
         signal(SIGALRM, SIG_DFL);
         signal(SIGCHLD, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
-
-        // Need to change the GPID so that all children of this process will have this processes PID as their GPID.
-        setpgid(pid, pid);
 
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-command"), 0, 0, 0);
 

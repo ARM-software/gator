@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -16,6 +16,7 @@ enum class monotonic_delta_t : std::uint64_t;
 
 #if defined(GATOR_UNIT_TESTS) && (GATOR_UNIT_TESTS != 0)
 std::uint64_t getTime();
+std::uint64_t getClockMonotonicTime();
 #else
 
 /** The getTime function reads the current value of CLOCK_MONOTONIC_RAW as a u64 in nanoseconds */
@@ -23,6 +24,16 @@ inline std::uint64_t getTime()
 {
     struct timespec ts;
     if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0) {
+        LOG_ERROR("Failed to get uptime");
+        handleException();
+    }
+    return (NS_PER_S * ts.tv_sec + ts.tv_nsec);
+}
+
+inline std::uint64_t getClockMonotonicTime()
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
         LOG_ERROR("Failed to get uptime");
         handleException();
     }

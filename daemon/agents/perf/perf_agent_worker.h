@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "agents/agent_worker_base.h"
@@ -28,13 +28,16 @@ namespace agents::perf {
          * agent.
          */
         template<typename CompletionToken>
-        auto async_start_capture(std::uint64_t monotonic_start, CompletionToken && token)
+        auto async_start_capture(std::uint64_t monotonic_raw_start,
+                                 std::uint64_t monotonic_start,
+                                 CompletionToken && token)
         {
             using namespace async::continuations;
 
             return async_initiate_explicit<void(bool)>(
-                [this, monotonic_start](auto && sc) {
-                    this->async_start_capture(monotonic_start,
+                [this, monotonic_raw_start, monotonic_start](auto && sc) {
+                    this->async_start_capture(monotonic_raw_start,
+                                              monotonic_start,
                                               stored_continuation_t<bool> {std::forward<decltype(sc)>(sc)});
                 },
                 std::forward<CompletionToken>(token));
@@ -58,7 +61,8 @@ namespace agents::perf {
         }
 
     protected:
-        virtual void async_start_capture(std::uint64_t monotonic_start,
+        virtual void async_start_capture(std::uint64_t monotonic_raw_start,
+                                         std::uint64_t monotonic_start,
                                          async::continuations::stored_continuation_t<bool> handler_ref) = 0;
 
         virtual void async_stop_capture(async::continuations::stored_continuation_t<> handler_ref) = 0;
@@ -116,11 +120,12 @@ namespace agents::perf {
             ~capture_controller_t() override = default;
 
         protected:
-            void async_start_capture(std::uint64_t monotonic_start,
+            void async_start_capture(std::uint64_t monotonic_raw_start,
+                                     std::uint64_t monotonic_start,
                                      async::continuations::stored_continuation_t<bool> sc) override
             {
                 parent->sink().async_send_message(
-                    ipc::msg_start_t {monotonic_start},
+                    ipc::msg_start_t {monotonic_raw_start, monotonic_start},
                     [sc = std::move(sc), p = parent](const auto & ec, const auto & /*msg*/) mutable {
                         if (ec) {
                             LOG_ERROR("Error starting perf capture: %s", ec.message().c_str());

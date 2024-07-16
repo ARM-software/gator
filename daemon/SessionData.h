@@ -82,7 +82,9 @@ public:
     int mBacktraceDepth {0};
     // number of MB to use for the entire collection buffer
     int mTotalBufferSize {0};
-    int mSampleRate {0};
+    SampleRate mSampleRate {none};
+    // sampling rate overriden for some GPUs (see mali_userspace::maliGpuSampleRateIsUpgradeable function)
+    SampleRate mSampleRateGpu {none};
     int mDuration {0};
     int mPageSize {0};
     int mAnnotateStart {0};

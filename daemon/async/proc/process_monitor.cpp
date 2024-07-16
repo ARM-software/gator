@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #include "async/proc/process_monitor.hpp"
 
@@ -151,7 +151,7 @@ namespace async::proc {
     {
         // fork the process and check for any errors
         auto result =
-            lib::forked_process_t::fork_process(prepend_command, cmd, args, cwd, uid_gid, std::move(stdio_fds));
+            lib::forked_process_t::fork_process(prepend_command, cmd, args, cwd, uid_gid, std::move(stdio_fds), true);
         auto const * error = lib::get_error(result);
         if (error != nullptr) {
             return {*error, fork_result_t {}};

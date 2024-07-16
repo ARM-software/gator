@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2024 by Arm Limited. All rights reserved. */
 
 #include "MaliHwCntrTask.h"
 
@@ -59,13 +59,15 @@ namespace mali_userspace {
                                    std::int32_t deviceNumber,
                                    IMaliDeviceCounterDumpCallback & callback_,
                                    const MaliDevice & device,
-                                   std::map<CounterKey, int64_t> constantValues)
+                                   std::map<CounterKey, int64_t> constantValues,
+                                   std::uint32_t sampleRate)
         : mBuffer(std::move(buffer)),
           mFrameBuilder(std::move(frameBuilder)),
           mCallback(callback_),
           mDevice(device),
           deviceNumber(deviceNumber),
-          mConstantValues(std::move(constantValues))
+          mConstantValues(std::move(constantValues)),
+          mSampleRate(sampleRate)
     {
         handle = dev::handle::create(deviceNumber);
         if (!handle) {
@@ -94,12 +96,12 @@ namespace mali_userspace {
         }
     }
 
-    void MaliHwCntrTask::execute(int sampleRate,
-                                 bool isOneShot,
+    void MaliHwCntrTask::execute(bool isOneShot,
                                  std::uint64_t monotonicStarted,
                                  const std::function<void()> & endSession)
     {
         // set sample interval, if sample rate == 0, then sample at 100Hz as currently the job dumping based sampling does not work... (driver issue?)
+        const uint32_t sampleRate = mSampleRate;
         const uint32_t sampleIntervalNs =
             (sampleRate > 0 ? (sampleRate < 1000000000 ? (1000000000U / sampleRate) : 1U) : 10000000U);
 

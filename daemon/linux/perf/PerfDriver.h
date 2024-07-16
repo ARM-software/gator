@@ -28,7 +28,6 @@ static constexpr const char * GATOR_COUNTER = "gator/gator_counter";
 static constexpr const char * GATOR_TEXT = "gator/gator_text";
 
 class Child;
-class ISummaryConsumer;
 class GatorCpu;
 class IPerfGroups;
 class IPerfAttrsConsumer;
@@ -72,9 +71,6 @@ public:
     void readEvents(mxml_node_t * xml) override;
     [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
     void writeEvents(mxml_node_t * root) const override;
-    [[nodiscard]] std::optional<std::uint64_t> summary(ISummaryConsumer & consumer,
-                                         const std::function<uint64_t()> & getMonotonicTime);
-    void coreName(ISummaryConsumer & consumer, int cpu);
     void setupCounter(Counter & counter) override;
     [[nodiscard]] std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
     [[nodiscard]] bool enable(IPerfGroups & group,

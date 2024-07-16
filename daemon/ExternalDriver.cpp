@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "ExternalDriver.h"
 
@@ -11,6 +11,7 @@
 #include "SessionData.h"
 #include "SimpleDriver.h"
 #include "Time.h"
+#include "lib/Assert.h"
 #include "lib/FileDescriptor.h"
 
 #include <cstdint>
@@ -229,13 +230,19 @@ void ExternalDriver::start()
 
     buf[0] = HEADER_START;
     pos = HEADER_SIZE;
+
     // ns/sec / samples/sec = ns/sample
     // For sample rate of none, sample every 100ms
     static constexpr std::uint64_t min_rate = 10UL;
+
+    runtime_assert(gSessionData.mSampleRate != invalid, "Invalid value");
+
     buffer_utils::packInt(
         buf,
         pos,
-        static_cast<int32_t>(NS_PER_S / (gSessionData.mSampleRate == 0 ? min_rate : gSessionData.mSampleRate)));
+        static_cast<int32_t>(
+            NS_PER_S
+            / (gSessionData.mSampleRate == none ? min_rate : static_cast<std::uint64_t>(gSessionData.mSampleRate))));
     buffer_utils::packInt(buf, pos, static_cast<int32_t>(gSessionData.mLiveRate));
     buffer_utils::writeLEInt(buf + 1, pos);
     if (!lib::writeAll(mUds, buf, pos)) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
@@ -12,12 +12,14 @@
 
 #include "BlockCounterFrameBuilder.h"
 #include "Buffer.h"
+#include "Logging.h"
 #include "MaliHwCntrTask.h"
 #include "SessionData.h"
 #include "Source.h"
 #include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/MaliHwCntrDriver.h"
 #include "mali_userspace/MaliHwCntrTask.h"
+#include "monotonic_pair.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -40,6 +42,17 @@ namespace mali_userspace {
             for (const auto & pair : mDriver.getDevices()) {
                 const auto deviceNumber = static_cast<std::int32_t>(pair.first);
                 const MaliDevice & device = *pair.second;
+                const uint32_t gpuId = device.getGpuId();
+
+                int sampleRate = gSessionData.mSampleRate;
+
+                // For some supported GPU families, override the sample rate.
+                // This value is set to twice the CPU sample rate in 'normal' mode (see SessionData::parseSessionXML)
+                if (maliGpuSampleRateIsUpgradeable(gpuId)) {
+                    sampleRate = gSessionData.mSampleRateGpu;
+                }
+
+                LOG_FINE("GPU id = 0x%x, sampling rate = %d\n", gpuId, sampleRate);
 
                 // NOLINTNEXTLINE(readability-magic-numbers)
                 std::unique_ptr<Buffer> taskBuffer(new Buffer(gSessionData.mTotalBufferSize * 1024 * 1024, mSenderSem));
@@ -51,24 +64,24 @@ namespace mali_userspace {
                                                                         deviceNumber,
                                                                         *this,
                                                                         device,
-                                                                        device.getConstantValues()));
+                                                                        device.getConstantValues(),
+                                                                        sampleRate));
                 tasks.push_back(std::move(task));
             }
         }
 
         bool prepare() { return mDriver.start(); }
 
-        void run(std::uint64_t monotonicStarted, std::function<void()> endSession) override
+        void run(monotonic_pair_t monotonicStarted, std::function<void()> endSession) override
         {
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-malihwc"), 0, 0, 0);
             std::vector<std::thread> threadsCreated;
-            const int sampleRate = gSessionData.mSampleRate;
             const bool isOneShot = gSessionData.mOneShot;
             for (auto const & task : tasks) {
                 MaliHwCntrTask * const taskPtr = task.get();
                 threadsCreated.emplace_back([=]() -> void {
                     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-malihtsk"), 0, 0, 0);
-                    taskPtr->execute(sampleRate, isOneShot, monotonicStarted, endSession);
+                    taskPtr->execute(isOneShot, monotonicStarted.monotonic_raw, endSession);\
                 });
             }
             std::for_each(threadsCreated.begin(), threadsCreated.end(), std::mem_fn(&std::thread::join));

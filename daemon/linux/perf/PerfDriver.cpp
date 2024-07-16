@@ -10,14 +10,11 @@
 #include "EventCode.h"
 #include "GetEventKey.h"
 #include "ICpuInfo.h"
-#include "ISummaryConsumer.h"
 #include "Logging.h"
 #include "SessionData.h"
 #include "SimpleDriver.h"
 #include "agents/perf/capture_configuration.h"
-#include "agents/perf/perf_driver_summary.h"
 #include "k/perf_event.h"
-#include "lib/Span.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
 #include "linux/Tracepoints.h"
@@ -1048,55 +1045,6 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         buf.printf("ARM_Mali-%s_opencl", maliFamilyName);
         addCounter(buf, id);
         mTracepoints = new PerfTracepoint(mTracepoints, getCounters(), MALI_TRC_PNT_PATH[MALI_JOB_SLOT]);
-    }
-}
-
-std::optional<std::uint64_t> PerfDriver::summary(ISummaryConsumer & consumer,
-                                                 const std::function<uint64_t()> & getMonotonicTime)
-{
-    auto monotonic_started = getMonotonicTime();
-    auto state = agents::perf::create_perf_driver_summary_state(
-        mConfig.config,
-        monotonic_started,
-        isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode));
-    if (!state) {
-        return {};
-    }
-
-    consumer.summary(state->clock_realtime,
-                     state->clock_boottime,
-                     state->clock_monotonic_raw,
-                     state->uname.c_str(),
-                     state->page_size,
-                     state->nosync,
-                     state->additional_attributes);
-
-    for (size_t i = 0; i < mCpuInfo.getCpuIds().size(); ++i) {
-        coreName(consumer, i);
-    }
-
-    consumer.flush();
-
-    return {state->clock_monotonic_raw};
-}
-
-void PerfDriver::coreName(ISummaryConsumer & consumer, const int cpu)
-{
-    // Don't send information on a cpu we know nothing about
-    const int cpuId = mCpuInfo.getCpuIds()[cpu];
-    if (cpuId == -1) {
-        return;
-    }
-
-    // we use PmuXml here for look up rather than clusters because it maybe a cluster
-    // that wasn't known at start up
-    const GatorCpu * gatorCpu = mPmuXml.findCpuById(cpuId);
-    if (gatorCpu != nullptr) {
-        consumer.coreName(cpu, cpuId, gatorCpu->getCoreName());
-    }
-    else {
-        lib::printf_str_t<32> buf {"Unknown (0x%.3x)", cpuId};
-        consumer.coreName(cpu, cpuId, buf);
     }
 }
 

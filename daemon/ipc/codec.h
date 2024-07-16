@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 /**
  * Encode/Decode related functions for preparing IPC messages for transmit/receive.
@@ -70,7 +70,8 @@ namespace ipc {
             using member_type = std::decay_t<decltype(*buffer.data())>;
             static_assert(
                 (std::is_array_v<member_type> && is_valid_message_header_v<std::remove_all_extents_t<member_type>>)
-                || std::is_pod_v<member_type> || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
+                || (std::is_trivial_v<member_type> && std::is_standard_layout_v<member_type>)
+                || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
 
             return {reinterpret_cast<char const *>(buffer.data()), buffer.size() * sizeof(member_type)};
         }
@@ -106,7 +107,8 @@ namespace ipc {
             using member_type = std::decay_t<decltype(*buffer.data())>;
             static_assert(
                 (std::is_array_v<member_type> && is_valid_message_header_v<std::remove_all_extents_t<member_type>>)
-                || std::is_pod_v<member_type> || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
+                || (std::is_trivial_v<member_type> && std::is_standard_layout_v<member_type>)
+                || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
 
             auto n = bytes.size() / sizeof(member_type);
 
@@ -136,7 +138,8 @@ namespace ipc {
             using member_type = std::decay_t<decltype(*buffer.data())>;
             static_assert(
                 (std::is_array_v<member_type> && is_valid_message_header_v<std::remove_all_extents_t<member_type>>)
-                || std::is_pod_v<member_type> || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
+                || (std::is_trivial_v<member_type> && std::is_standard_layout_v<member_type>)
+                || std::is_integral_v<member_type> || std::is_enum_v<member_type>);
 
             auto n = helper.length / sizeof(member_type);
 

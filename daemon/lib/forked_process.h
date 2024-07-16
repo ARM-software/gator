@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -89,7 +89,8 @@ namespace lib {
                                                               lib::Span<std::string const> args,
                                                               boost::filesystem::path const & cwd,
                                                               std::optional<std::pair<uid_t, gid_t>> const & uid_gid,
-                                                              stdio_fds_t stdio_fds);
+                                                              stdio_fds_t stdio_fds,
+                                                              bool create_process_group = false);
 
         /** Constructor */
         forked_process_t(AutoClosingFd && stdin_write,

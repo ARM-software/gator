@@ -8,7 +8,7 @@
 #include <set>
 #include <string>
 
-enum SampleRate { high = 10007, normal = 1009, low = 101, none = 0, invalid = -1 };
+enum SampleRate { high = 10007, normal = 1009, normal_x2 = 2003, low = 101, none = 0, invalid = -1 };
 
 enum class CaptureOperationMode {
     system_wide = 0,

@@ -1,3 +1,7 @@
+# Gator 9.1
+
+Support for CLOCK_MONOTONIC in the gator protocol for jitdump support in Streamline.
+
 # Gator 8.9
 
 Adds the ability to pass command-line arguments to Android activity manager when running an Android package.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 // Define to get format macros from inttypes.h
 #define __STDC_FORMAT_MACROS
@@ -18,6 +18,7 @@
 #include "Source.h"
 #include "Time.h"
 #include "lib/Span.h"
+#include "monotonic_pair.h"
 
 #include <atomic>
 #include <cinttypes>
@@ -37,7 +38,7 @@ public:
     {
     }
 
-    void run(std::uint64_t monotonicStart, std::function<void()> endSession) override
+    void run(monotonic_pair_t monotonicStart, std::function<void()> endSession) override
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-counters"), 0, 0, 0);
 
@@ -50,11 +51,12 @@ public:
             }
         }
 
+        constexpr uint64_t tenPerSecond = 10; // Sample ten times a second ignoring gSessionData.mSampleRate
         uint64_t nextTime = 0;
         while (mSessionIsActive) {
-            const uint64_t currTime = getTime() - monotonicStart;
-            // Sample ten times a second ignoring gSessionData.mSampleRate
-            nextTime += NS_PER_S / 10; //gSessionData.mSampleRate;
+            const uint64_t currTime = getTime() - monotonicStart.monotonic_raw;
+
+            nextTime += NS_PER_S / tenPerSecond; //gSessionData.mSampleRate;
             if (nextTime < currTime) {
                 LOG_WARNING("Too slow, currTime: %" PRIi64 " nextTime: %" PRIi64, currTime, nextTime);
                 nextTime = currTime;

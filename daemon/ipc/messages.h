@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -7,6 +7,7 @@
 #include "ipc/message_traits.h"
 #include "ipc/proto/generated/capture_configuration.pb.h"
 #include "message_key.h"
+#include "monotonic_pair.h"
 
 #include <string_view>
 #include <variant>
@@ -81,8 +82,8 @@ namespace ipc {
     using msg_shutdown_t = message_t<message_key_t::shutdown, void, void>;
     DEFINE_NAMED_MESSAGE(msg_shutdown_t);
 
-    /** Sent from shell->agent carrying the monotonic_raw start value and indicating that capture should start */
-    using msg_start_t = message_t<message_key_t::start, std::uint64_t, void>;
+    /** Sent from shell->agent carrying the monotonic_raw and monotonic start value and indicating that capture should start */
+    using msg_start_t = message_t<message_key_t::start, monotonic_pair_t, void>;
     DEFINE_NAMED_MESSAGE(msg_start_t);
 
     /** Sent from the shell to all agents notifying them of the monitored PIDs */

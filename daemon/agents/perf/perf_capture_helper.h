@@ -436,16 +436,19 @@ namespace agents::perf {
          * @param token The completion token for the async operation
          */
         template<typename CompletionToken>
-        [[nodiscard]] auto async_send_summary_frame(std::uint64_t monotonic_start, CompletionToken && token)
+        [[nodiscard]] auto async_send_summary_frame(std::uint64_t monotonic_raw_start,
+                                                    std::uint64_t monotonic_start,
+                                                    CompletionToken && token)
         {
             using namespace async::continuations;
 
             return async_initiate_cont(
-                [st = this->shared_from_this(), monotonic_start]() {
+                [st = this->shared_from_this(), monotonic_raw_start, monotonic_start]() {
                     return start_on(st->strand) //
-                         | then([st, monotonic_start]() -> polymorphic_continuation_t<> {
+                         | then([st, monotonic_raw_start, monotonic_start]() -> polymorphic_continuation_t<> {
                                auto state = create_perf_driver_summary_state(
                                    st->configuration->perf_config,
+                                   monotonic_raw_start,
                                    monotonic_start,
                                    isCaptureOperationModeSystemWide(
                                        st->configuration->session_data.capture_operation_mode));

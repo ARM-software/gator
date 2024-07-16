@@ -136,6 +136,8 @@ static mxml_node_t * getTree(bool includeTime,
 
     auto * const target = mxmlNewElement(captured, "target");
     mxmlElementSetAttrf(target, "sample_rate", "%d", gSessionData.mSampleRate);
+    mxmlElementSetAttrf(target, "sample_rate_gpu", "%d", gSessionData.mSampleRateGpu);
+
     const auto & cpuInfo = primarySourceProvider.getCpuInfo();
     mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
     const auto cpuIds = cpuInfo.getCpuIds();

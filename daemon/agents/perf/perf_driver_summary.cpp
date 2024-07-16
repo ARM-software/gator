@@ -21,7 +21,8 @@
 namespace agents::perf {
 
     std::optional<perf_driver_summary_state_t> create_perf_driver_summary_state(PerfConfig const & perf_config,
-                                                                                std::uint64_t monotonic_start,
+                                                                                std::uint64_t clock_monotonic_raw,
+                                                                                std::uint64_t clock_monotonic,
                                                                                 bool system_wide)
     {
         struct utsname utsname;
@@ -72,7 +73,8 @@ namespace agents::perf {
             std::move(buf),
             clock_realtime,
             clock_boottime,
-            monotonic_start,
+            clock_monotonic_raw,
+            clock_monotonic,
             page_size,
             perf_config.has_attr_clockid_support,
         };

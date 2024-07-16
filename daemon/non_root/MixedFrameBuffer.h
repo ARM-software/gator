@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
 #define INCLUDE_NON_ROOT_MIXEDFRAMEBUFFER_H
@@ -68,6 +68,7 @@ namespace non_root {
                                         std::uint64_t timestamp,
                                         std::uint64_t uptime,
                                         std::uint64_t monotonicDelta,
+                                        std::uint64_t clockMonotonicStart,
                                         const char * uname,
                                         unsigned long pageSize,
                                         bool nosync);

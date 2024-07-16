@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 // Define to adjust Buffer.h interface,
 #define BUFFER_USE_SESSION_DATA
@@ -15,6 +15,7 @@
 #include "Time.h"
 #include "lib/String.h"
 #include "lib/TimestampSource.h"
+#include "monotonic_pair.h"
 #include "non_root/GlobalPoller.h"
 #include "non_root/GlobalStateChangeHandler.h"
 #include "non_root/GlobalStatsTracker.h"
@@ -54,7 +55,8 @@ namespace non_root {
           mProcessCounterBuffer(default_buffer_size, senderSem_),
           mMiscBuffer(default_buffer_size, senderSem_),
           interrupted(false),
-          timestampSource(CLOCK_MONOTONIC_RAW),
+          timestampSourceClockMonotonicRaw(CLOCK_MONOTONIC_RAW),
+          timestampSourceClockMonotonic(CLOCK_MONOTONIC),
           driver(driver_),
           execTargetAppCallback(std::move(execTargetAppCallback_)),
           profilingStartedCallback(std::move(profilingStartedCallback_)),
@@ -63,7 +65,7 @@ namespace non_root {
     {
     }
 
-    void NonRootSource::run(std::uint64_t /* monotonicStarted */, std::function<void()> endSession)
+    void NonRootSource::run(monotonic_pair_t /* monotonicStarted */, std::function<void()> endSession)
     {
         prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-nrsrc"), 0, 0, 0);
 
@@ -78,7 +80,7 @@ namespace non_root {
         BlockCounterMessageConsumer globalCounterConsumer {globalCounterBuilder};
         GlobalStateChangeHandler globalChangeHandler(globalCounterConsumer, enabledCounters);
         GlobalStatsTracker globalStatsTracker(globalChangeHandler);
-        GlobalPoller globalPoller(globalStatsTracker, timestampSource);
+        GlobalPoller globalPoller(globalStatsTracker, timestampSourceClockMonotonicRaw);
 
         // process related stuff
         BlockCounterFrameBuilder processCounterBuilder {mProcessCounterBuffer, gSessionData.mLiveRate};
@@ -88,7 +90,7 @@ namespace non_root {
                                                        mSwitchBuffers,
                                                        enabledCounters);
         ProcessStateTracker processStateTracker(processChangeHandler, getBootTimeTicksBase(), clktck, pageSize);
-        ProcessPoller processPoller(processStateTracker, timestampSource);
+        ProcessPoller processPoller(processStateTracker, timestampSourceClockMonotonicRaw);
 
         profilingStartedCallback();
         execTargetAppCallback();
@@ -113,7 +115,7 @@ namespace non_root {
 
             // sleep an amount of time to align to the next 1 or 10 millisecond boundary depending on rate
             const unsigned long long timestampNowUs =
-                (timestampSource.getTimestampNS() + 500) / 1000; // round to nearest uS
+                (timestampSourceClockMonotonicRaw.getTimestampNS() + 500) / 1000; // round to nearest uS
             const useconds_t sleepUs = sleepIntervalUs - (timestampNowUs % sleepIntervalUs);
 
             usleep(sleepUs);
@@ -143,7 +145,7 @@ namespace non_root {
         return gcbw && pcbw && mbw && sbw;
     }
 
-    std::optional<std::uint64_t> NonRootSource::sendSummary()
+    std::optional<monotonic_pair_t> NonRootSource::sendSummary()
     {
         struct utsname utsname;
         if (uname(&utsname) != 0) {
@@ -170,14 +172,21 @@ namespace non_root {
             return {};
         }
         const uint64_t timestamp = ts.tv_sec * NS_PER_S + ts.tv_nsec;
-        const uint64_t monotonicStarted = timestampSource.getBaseTimestampNS();
+        const uint64_t clockMonotonicRawStarted = timestampSourceClockMonotonicRaw.getBaseTimestampNS();
+        const uint64_t clockMonotonicStarted = timestampSourceClockMonotonic.getBaseTimestampNS();
         const uint64_t currTime = 0;
 
         MixedFrameBuffer miscBuffer(mMiscBuffer, {gSessionData.mLiveRate});
 
         // send summary message
-        miscBuffer
-            .summaryFrameSummaryMessage(currTime, timestamp, monotonicStarted, monotonicStarted, buf, pageSize, true);
+        miscBuffer.summaryFrameSummaryMessage(currTime,
+                                              timestamp,
+                                              clockMonotonicRawStarted,
+                                              clockMonotonicRawStarted,
+                                              clockMonotonicStarted,
+                                              buf,
+                                              pageSize,
+                                              true);
 
         for (size_t cpu = 0; cpu < cpuInfo.getNumberOfCores(); ++cpu) {
             const int cpuId = cpuInfo.getCpuIds()[cpu];
@@ -196,14 +205,15 @@ namespace non_root {
             }
         }
 
-        return {monotonicStarted};
+        monotonic_pair_t pair {.monotonic_raw = clockMonotonicRawStarted, .monotonic = clockMonotonicStarted};
+        return {pair};
     }
 
     unsigned long long NonRootSource::getBootTimeTicksBase()
     {
         lib::TimestampSource bootTime(CLOCK_BOOTTIME);
 
-        const auto monotonicRelNs = timestampSource.getTimestampNS();
+        const auto monotonicRelNs = timestampSourceClockMonotonicRaw.getTimestampNS();
         const auto bootTimeNowNS = bootTime.getAbsTimestampNS();
 
         return bootTimeNowNS - monotonicRelNs;

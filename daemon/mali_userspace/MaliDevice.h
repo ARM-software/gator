@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
@@ -25,6 +25,14 @@
 #include <string>
 
 namespace mali_userspace {
+
+    /**
+     * Checks if GPU supports an increased sampling rate in "normal" mode.
+     *
+     * @return True for Valhall and onwards, but there may be some exceptions. False otherwise.
+     */
+    [[nodiscard]] bool maliGpuSampleRateIsUpgradeable(uint32_t gpuId);
+
     /* forward declarations */
     class MaliDevice;
     enum class MaliCounterBlockName : uint32_t;

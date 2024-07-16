@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 // Define to adjust Buffer.h interface,
@@ -18,6 +18,8 @@
 
 #include <semaphore.h>
 
+struct monotonic_pair_t;
+
 namespace agents::perf {
 
     class perf_source_adapter_t : public PrimarySource {
@@ -35,10 +37,10 @@ namespace agents::perf {
          * perf agent at the start of capture. This method is required by the legacy code as it is
          * the point at which the monotonic start time is established for all sources.
          */
-        std::optional<std::uint64_t> sendSummary() override;
+        std::optional<monotonic_pair_t> sendSummary() override;
 
         /** The main blocking body of the source which runs and waits for the capture to complete */
-        void run(std::uint64_t monotonicStart, std::function<void()> endSession) override;
+        void run(monotonic_pair_t monotonicStart, std::function<void()> endSession) override;
 
         /**
          * Called by Child to stop the capture from the "shell" side. We need to ask the agent

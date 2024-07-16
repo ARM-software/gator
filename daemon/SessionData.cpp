@@ -37,7 +37,8 @@ void SessionData::initialize()
     mAPCDir = nullptr;
     mCaptureWorkingDir = nullptr;
     mCaptureUser = nullptr;
-    mSampleRate = 0;
+    mSampleRate = none;
+    mSampleRateGpu = none;
     mLiveRate = 0;
     mDuration = 0;
     mBacktraceDepth = 0;
@@ -60,24 +61,31 @@ void SessionData::parseSessionXML(char * xmlString)
     // Set session data values - use prime numbers just below the desired value to reduce the chance of events firing at the same time
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0) {
         if (strcmp(session.parameters.sample_rate, "high") == 0) {
-            mSampleRate = 10007; // 10000
+            mSampleRate = high;
+            mSampleRateGpu = mSampleRate;
         }
         else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
-            mSampleRate = 1009; // 1000
+            mSampleRate = normal;
+
+            // sample rate will be doubled in normal mode for gpuid >= Valhall
+            mSampleRateGpu = normal_x2;
         }
         else if (strcmp(session.parameters.sample_rate, "low") == 0) {
-            mSampleRate = 101; // 100
+            mSampleRate = low;
+            mSampleRateGpu = mSampleRate;
         }
         else if (strcmp(session.parameters.sample_rate, "none") == 0) {
-            mSampleRate = 0;
+            mSampleRate = none;
+            mSampleRateGpu = mSampleRate;
         }
         else {
-
             LOG_ERROR("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
             handleException();
         }
     }
+
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CALL_STACK_UNWINDING) == 0) {
+        // NOLINTNEXTLINE(readability-magic-numbers)
         mBacktraceDepth = session.parameters.call_stack_unwinding ? 128 : 0;
     }
 

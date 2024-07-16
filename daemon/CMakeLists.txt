@@ -205,7 +205,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/IMonitor.h
     ${CMAKE_CURRENT_SOURCE_DIR}/IRawFrameBuilder.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ISender.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/ISummaryConsumer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/LocalCapture.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/LocalCapture.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Logging.h
@@ -216,6 +215,7 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/MidgardDriver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Monitor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Monitor.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/monotonic_pair.h
     ${CMAKE_CURRENT_SOURCE_DIR}/NetDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/NetDriver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/OlySocket.cpp
@@ -250,8 +250,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetup.h
     ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetupLoop.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/StreamlineSetupLoop.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SummaryBuffer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Time.h
     ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/TtraceDriver.h

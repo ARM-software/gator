@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #include "non_root/MixedFrameBuffer.h"
 
@@ -202,6 +202,7 @@ namespace non_root {
                                                       std::uint64_t timestamp,
                                                       std::uint64_t uptime,
                                                       std::uint64_t monotonicDelta,
+                                                      std::uint64_t clockMonotonicStart,
                                                       const char * uname,
                                                       unsigned long pageSize,
                                                       bool nosync)
@@ -213,6 +214,7 @@ namespace non_root {
         frame.packInt64(timestamp);
         frame.packInt64(uptime);
         frame.packInt64(monotonicDelta);
+        frame.packInt64(clockMonotonicStart);
         frame.writeString("uname");
         frame.writeString(uname);
         frame.writeString("PAGESIZE");

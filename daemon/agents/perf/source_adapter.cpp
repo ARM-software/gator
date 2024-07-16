@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #include "agents/perf/source_adapter.h"
 
 #include "ISender.h"
@@ -7,9 +7,9 @@
 #include "agents/perf/perf_agent_worker.h"
 #include "ipc/messages.h"
 #include "lib/Assert.h"
+#include "monotonic_pair.h"
 
 #include <atomic>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -37,12 +37,15 @@ namespace agents::perf {
     {
     }
 
-    std::optional<std::uint64_t> perf_source_adapter_t::sendSummary()
+    std::optional<monotonic_pair_t> perf_source_adapter_t::sendSummary()
     {
-        return {getTime()};
+        monotonic_pair_t pair;
+        pair.monotonic_raw = getTime();
+        pair.monotonic = getClockMonotonicTime();
+        return {pair};
     }
 
-    void perf_source_adapter_t::run(std::uint64_t monotonicStart, std::function<void()> endSession)
+    void perf_source_adapter_t::run(monotonic_pair_t monotonicStart, std::function<void()> endSession)
     {
         {
             auto lock = std::unique_lock(event_mutex);
@@ -51,7 +54,9 @@ namespace agents::perf {
         }
 
         // ask the agent to start capturing
-        auto started_success = capture_controller->async_start_capture(monotonicStart, boost::asio::use_future);
+        auto started_success = capture_controller->async_start_capture(monotonicStart.monotonic_raw,
+                                                                       monotonicStart.monotonic,
+                                                                       boost::asio::use_future);
 
         // release the lock while we wait for this to happen
         if (!started_success.get()) {

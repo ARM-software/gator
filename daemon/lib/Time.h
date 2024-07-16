@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_TIME_H
 #define INCLUDE_LIB_TIME_H
@@ -12,6 +12,9 @@
 #endif
 #ifndef CLOCK_BOOTTIME
 #define CLOCK_BOOTTIME 7
+#endif
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
 #endif
 
 #endif // INCLUDE_LIB_TIME_H

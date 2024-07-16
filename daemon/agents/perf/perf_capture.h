@@ -146,30 +146,36 @@ namespace agents::perf {
         /**
          * Called once the 'msg_start_t' message is received
          *
-         * @param monotonic_start The monotonic start time
+         * @param monotonic_raw_start The monotonic start time (in CLOCK_MONOTONIC_RAW)
+         * @param monotonic_start The monotonic start time (in CLOCK_MONOTONIC)
          */
         template<typename CompletionToken>
-        auto async_on_received_start_message(std::uint64_t monotonic_start, CompletionToken && token)
+        auto async_on_received_start_message(std::uint64_t monotonic_raw_start,
+                                             std::uint64_t monotonic_start,
+                                             CompletionToken && token)
         {
             using namespace async::continuations;
 
             return async_initiate_cont(
-                [st = shared_from_this(), monotonic_start]() {
+                [st = shared_from_this(), monotonic_raw_start, monotonic_start]() {
                     return start_on(st->strand)
                          // send the summary frame
-                         | st->perf_capture_helper->async_send_summary_frame(monotonic_start, use_continuation)
+                         | st->perf_capture_helper->async_send_summary_frame(monotonic_raw_start,
+                                                                             monotonic_start,
+                                                                             use_continuation)
                          // start generating sync events and set misc ready parts for the helper
-                         | then([st, monotonic_start]() {
+                         | then([st, monotonic_raw_start]() {
                                st->perf_capture_helper->enable_counters();
                                st->perf_capture_helper->observe_one_shot_event();
-                               st->start_sync_thread(monotonic_start);
+                               st->start_sync_thread(monotonic_raw_start);
                            })
                          // Start any pid monitoring
                          | st->perf_capture_helper->async_start_pids(use_continuation)
                          // bring online the core monitoring (after setting start_counters, as this enables the buffer monitor and tells the event binding set to activate in a started state)
-                         | st->perf_capture_cpu_monitor->async_start_monitoring(monotonic_start, use_continuation)
+                         | st->perf_capture_cpu_monitor->async_start_monitoring(monotonic_raw_start, use_continuation)
                          // send any manually read initial counter values
-                         | st->perf_capture_helper->async_read_initial_counter_values(monotonic_start, use_continuation)
+                         | st->perf_capture_helper->async_read_initial_counter_values(monotonic_raw_start,
+                                                                                      use_continuation)
                          // Spawn a separate async 'threads' to send various system-wide bits of data whilst the rest of the capture process continues
                          | then([st]() {
                                // the process initial properties

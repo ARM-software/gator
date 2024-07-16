@@ -58,7 +58,8 @@ public:
     gator::smmuv3::default_identifiers_t smmu_identifiers;
 
     int mBacktraceDepth {0};
-    int mSampleRate {0};
+    SampleRate mSampleRate {none};
+    SampleRate mSampleRateGpu {none};
     int mDuration {0};
     int mPerfMmapSizeInPages {-1};
     int mSpeSampleRate {-1};

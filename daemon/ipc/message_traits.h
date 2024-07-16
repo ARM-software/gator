@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -20,17 +20,17 @@ namespace ipc {
     /** Check if the message header type is valid fixed size type */
     template<typename T>
     static constexpr bool is_valid_message_header_v =
-        std::is_void_v<T>        //
-        || std::is_pod_v<T>      //
-        || std::is_integral_v<T> //
-        || std::is_enum_v<T>     //
+        std::is_void_v<T>                                         //
+        || (std::is_trivial_v<T> && std::is_standard_layout_v<T>) //
+        || std::is_integral_v<T>                                  //
+        || std::is_enum_v<T>                                      //
         || (std::is_array_v<T> && is_valid_message_header_v<std::remove_all_extents_t<T>>);
 
     /** True if @a T is a Protobuf message. */
     template<typename T>
     constexpr bool is_protobuf_message_v = std::is_base_of_v<google::protobuf::MessageLite, T>;
 
-    /** Helper for testing equality of pb messages (since we cannot use MessageDifferencer with MessageLite). 
+    /** Helper for testing equality of pb messages (since we cannot use MessageDifferencer with MessageLite).
      * This method serializes the message and then compares the strings. It is primarily intended for unit testing. */
     template<typename T>
     constexpr bool same_pb_message(T const & a, T const & b)
