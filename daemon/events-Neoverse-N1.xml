@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2019-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2019-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Neoverse_N1_cnt"/>
 <category counter_set="ARMv8_Neoverse_N1_cnt" name="Neoverse-N1" per_cpu="yes" supports_event_based_sampling="yes">
@@ -108,6 +108,10 @@
     <event event="0x90" title="Instructions (Speculated)" name="Load (Acquire)" description="The counter counts memory-read operations with acquire or acquirepc semantics that are speculatively executed" units="instructions"/>
     <event event="0x91" title="Instructions (Speculated)" name="Store (Release)" description="The counter counts memory-write operations with release semantics that are speculatively executed" units="instructions"/>
     <event event="0xa0" title="L3 Data Cache" name="Access (due to read)" description="As &apos;L3 Data Cache: Access&apos;, but counts only attributable memory-read operations that cause a cache access to at least the Level 3 data or unified cache"/>
+    <event event="0x4000" title="Statistical Profiling" name="Sample Population" description="The counter increments for each operation that might be sampled, whether or not the operation was sampled. Operations that are executed at an Exception level or Security state in which the Statistical Profiling Extension is disabled are not counted."/>
+    <event event="0x4001" title="Statistical Profiling" name="Sample Feed" description="The counter increments each time the sample interval counter reaches zero and is reloaded, and the sample does not collide with the previous sample. Samples that are removed by filtering, or discarded, and not written to the Profiling Buffer are counted."/>
+    <event event="0x4002" title="Statistical Profiling" name="Sample Filtered" description="The counter increments each time that a completed sample record is checked against the filters and not removed. Sample records that are not removed by filtering, but are discarded before being written to the Profiling Buffer because of a Profiling Buffer management event, are counted."/>
+    <event event="0x4003" title="Statistical Profiling" name="Sample Collision" description="The counter increments for each sample record that is taken when the previous sampled operation has not completed generating its sample record"/>
 </category>
 <spe name="Arm Neoverse-N1 Statistical Profiling Extension" id="arm_neoverse_n1_spe_pmu" extends="armv8.2_spe">
     <!-- Define data source packet source types [5.3.5 Data Source packet] -->

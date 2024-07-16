@@ -126,6 +126,7 @@ namespace {
             case metrics::metric_priority_t::ipc:
                 return "Basic";
             case metrics::metric_priority_t::l2:
+            case metrics::metric_priority_t::l2i:
                 return "L2 Cache";
             case metrics::metric_priority_t::l3:
                 return "L3 Cache";

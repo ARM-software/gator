@@ -1,3 +1,19 @@
+# Gator 9.2.1
+
+Updated metrics/SPE support for recently released CPUs
+
+Fix crash on CPUs with high core count.
+
+# Gator 9.2.0
+
+Add support for Cortex-A725, Cortex-X925
+
+Add support for Immortalis G925, Mali G725, G625 GPUs
+
+Add Neoverse N3, V3 support
+
+Add support for metrics
+
 # Gator 9.1
 
 Support for CLOCK_MONOTONIC in the gator protocol for jitdump support in Streamline.

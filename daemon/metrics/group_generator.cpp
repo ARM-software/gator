@@ -99,6 +99,7 @@ namespace metrics {
                 case metric_priority_t::instruction:
                     return metric_priority_simplified_t::instruction;
                 case metric_priority_t::l2:
+                case metric_priority_t::l2i:
                     return metric_priority_simplified_t::l2;
                 case metric_priority_t::l3:
                     return metric_priority_simplified_t::l3;

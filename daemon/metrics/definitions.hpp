@@ -33,6 +33,7 @@ namespace metrics {
         instruction,
         ipc,
         l2,
+        l2i,
         l3,
         ll,
         ls,
@@ -41,9 +42,9 @@ namespace metrics {
     };
 
     enum class metric_group_id_t : std::uint8_t {
+        basic,
         atomics_effectiveness,
         average_latency,
-        basic,
         branch_effectiveness,
         bus_effectiveness,
         cycle_accounting,
@@ -54,6 +55,7 @@ namespace metrics {
         l1i_cache_effectiveness,
         l2_cache_effectiveness,
         l2d_cache_effectiveness,
+        l2i_cache_effectiveness,
         l3_cache_effectiveness,
         ll_cache_effectiveness,
         miss_ratio,

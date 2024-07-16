@@ -46,7 +46,7 @@ while getopts ":hp:g:c:o:l:sdv" arg; do
             cmake_generator="${OPTARG}"
             ;;
         o)
-            build_path="${OPTARGS}"
+            build_path="${OPTARG}"
             ;;
         c)
             cmake_exe="${OPTARG}"
