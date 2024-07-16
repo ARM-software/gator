@@ -1,9 +1,9 @@
-/* Copyright (C) 2013-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 #define NATIVE_GATOR_DAEMON_DRIVERCOUNTER_H_
 
-#include "Driver.h"
+#include "metrics/metric_group_set.hpp"
 
 #include <string>
 
@@ -27,6 +27,10 @@ public:
     bool isEnabled() const { return mEnabled; }
     void setEnabled(const bool enabled) { mEnabled = enabled; }
     virtual int64_t read() { return -1; }
+    [[nodiscard]] virtual bool supportsAtLeastOne(metrics::metric_group_set_t const & /*unused*/) const
+    {
+        return false;
+    }
 
 private:
     DriverCounter * const mNext;

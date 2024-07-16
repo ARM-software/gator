@@ -44,6 +44,7 @@ SET(HWCPIPE_ENABLE_SYMBOLS_VISIBILITY OFF CACHE BOOL "")
 SET(HWCPIPE_ENABLE_RTTI OFF CACHE BOOL "")
 SET(HWCPIPE_WERROR OFF CACHE BOOL "")
 SET(HWCPIPE_WALL OFF CACHE BOOL "")
+SET(HWCPIPE_ENABLE_NEURAL_ENGINE OFF CACHE BOOL "")
 SET(HWCPIPE_ENABLE_END_TO_END_TESTS OFF CACHE BOOL "")
 ADD_SUBDIRECTORY(hwcpipe2)
 
@@ -69,7 +70,7 @@ ENDIF()
 
 MESSAGE(STATUS "GATORD_BUILD_ID = ${GATORD_BUILD_ID}")
 
-SET(GATORD_C_CXX_FLAGS "${GATORD_C_CXX_FLAGS} -DCONFIG_SUPPORT_PROC_POLLING=0")
+SET(GATORD_C_CXX_FLAGS "${GATORD_C_CXX_FLAGS}")
 
 IF(NOT CONFIG_PREFER_SYSTEM_WIDE_MODE)
     SET(GATORD_C_CXX_FLAGS "${GATORD_C_CXX_FLAGS} -DCONFIG_PREFER_SYSTEM_WIDE_MODE=0")
@@ -111,6 +112,12 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 INCLUDE_DIRECTORIES(SYSTEM
     ${CMAKE_CURRENT_SOURCE_DIR}/extheaders
     ${CMAKE_CURRENT_SOURCE_DIR}/libsensors)
+
+#Get copyright year from git
+find_package(Git REQUIRED)
+execute_process(COMMAND ${GIT_EXECUTABLE} log -1 --format=%cd --date=format:%Y
+                OUTPUT_VARIABLE COPYRIGHT_YEAR
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # This file is generated and contains a hash of the source files
 SET(GENERATED_MD5_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/SrcMd5.cpp)
@@ -566,6 +573,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metrics/definitions.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metrics/group_generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metrics/group_generator.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metrics/metric_group_set.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metrics/metric_group_set.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliDevice.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliGPUClockPolledDriverCounter.h
@@ -581,32 +590,6 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliHwCntrTask.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliInstanceLocator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mali_userspace/MaliInstanceLocator.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/CounterHelpers.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalCounter.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalPoller.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalPoller.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStateChangeHandler.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStateChangeHandler.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStatsTracker.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/GlobalStatsTracker.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/MixedFrameBuffer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/MixedFrameBuffer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootCounter.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootDriver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootDriver.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootSource.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/NonRootSource.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/PerCoreMixedFrameBuffer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/PerCoreMixedFrameBuffer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessCounter.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessPoller.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessPoller.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateChangeHandler.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateChangeHandler.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateTracker.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStateTracker.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStatsTracker.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/non_root/ProcessStatsTracker.h
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/CurrentConfigXML.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/CurrentConfigXML.h
     ${CMAKE_CURRENT_SOURCE_DIR}/xml/EventsXMLHelpers.cpp
@@ -663,7 +646,7 @@ SET(FILES_TO_HASH ${FILES_TO_HASH}
     ${CMAKE_CURRENT_SOURCE_DIR}/defaults.xml)
 LIST(FILTER FILES_TO_HASH EXCLUDE REGEX "/ipc/proto/generated/|SrcMd5\\.cpp|_xml\\.h|events\\.xml")
 
-CREATE_SRC_MD5("gSrcMd5" "gBuildId" "${GATORD_BUILD_ID}" "${GENERATED_MD5_SOURCE}" "${GENERATED_MD5_FILE}" ${FILES_TO_HASH})
+CREATE_SRC_MD5("gSrcMd5" "gBuildId" "gCopyrightYear" "${GATORD_BUILD_ID}" "${COPYRIGHT_YEAR}" "${GENERATED_MD5_SOURCE}" "${GENERATED_MD5_FILE}" ${FILES_TO_HASH})
 
 # Build the merged events.xml
 FILE(GLOB EVENTS_XML_FILES

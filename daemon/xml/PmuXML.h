@@ -38,6 +38,20 @@ public:
     GatorCpu(GatorCpu &&) = default;
     GatorCpu & operator=(GatorCpu &&) = default;
 
+    [[nodiscard]] GatorCpu withUpdatedPmncCount(int pmncCount) const
+    {
+        return {
+            mCoreName,
+            mId,
+            mCounterSet,
+            mDtName,
+            mSpeName,
+            mCpuIds,
+            pmncCount,
+            mIsV8,
+        };
+    }
+
     const char * getCoreName() const { return mCoreName.c_str(); }
 
     const char * getId() const { return mId.c_str(); }

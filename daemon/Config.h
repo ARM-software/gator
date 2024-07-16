@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -8,13 +8,11 @@
 
 #define ARRAY_LENGTH(A) static_cast<int>(sizeof(A) / sizeof((A)[0]))
 
+#define MAX_PERFORMANCE_COUNTERS 256
+
 // feature control options
 #ifndef CONFIG_PREFER_SYSTEM_WIDE_MODE
 #define CONFIG_PREFER_SYSTEM_WIDE_MODE 1
-#endif
-
-#ifndef CONFIG_SUPPORT_PROC_POLLING
-#define CONFIG_SUPPORT_PROC_POLLING 0
 #endif
 
 #if CONFIG_SUPPORT_PROC_POLLING
@@ -34,8 +32,8 @@
 #define CONFIG_ASSUME_PERF_HIGH_PARANOIA 1
 #endif
 
-#if !CONFIG_SUPPORT_PERF && !CONFIG_SUPPORT_PROC_POLLING
-#error "at least one of CONFIG_SUPPORT_PERF and CONFIG_SUPPORT_PROC_POLLING must be set"
+#if !CONFIG_SUPPORT_PERF
+#error "CONFIG_SUPPORT_PERF must be set"
 #endif
 
 #ifndef CONFIG_PERF_SUPPORT_REGISTER_UNWINDING

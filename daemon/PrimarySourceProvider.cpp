@@ -32,10 +32,6 @@
 #include "linux/perf/PerfDriver.h"
 #include "linux/perf/PerfDriverConfiguration.h"
 #endif
-#if CONFIG_SUPPORT_PROC_POLLING
-#include "non_root/NonRootDriver.h"
-#include "non_root/NonRootSource.h"
-#endif
 
 #include <algorithm>
 #include <utility>
@@ -242,119 +238,6 @@ namespace {
         std::vector<UncorePmu> uncorePmus;
     };
 #endif /* CONFIG_SUPPORT_PERF */
-
-#if CONFIG_SUPPORT_PROC_POLLING
-    /**
-     * Primary source that reads from top-like information from /proc and works in non-root environment
-     */
-    class NonRootPrimarySource : public PrimarySourceProvider {
-    public:
-        static std::unique_ptr<PrimarySourceProvider> tryCreate(PmuXML && pmuXml,
-                                                                Ids & ids,
-                                                                const char * modelName,
-                                                                bool disableCpuOnlining)
-        {
-            // detect clusters so we can generate activity events
-            std::set<int> added;
-            std::vector<GatorCpu> clusters;
-            for (int cpuId : ids.getClusterIds()) {
-                if (cpuId >= 0 && added.count(cpuId) != 0) {
-                    const GatorCpu * gatorCpu = pmuXml.findCpuById(cpuId);
-                    if (gatorCpu != nullptr) {
-                        // create the cluster
-                        added.insert(cpuId);
-                        clusters.push_back(*gatorCpu);
-                    }
-                }
-            }
-
-            if (clusters.empty()) {
-#if defined(__aarch64__)
-                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int> {0xfffff}, 6, true);
-#elif defined(__arm__)
-                clusters.emplace_back("Other", "Other", "Other", nullptr, nullptr, std::set<int> {0xfffff}, 6, false);
-#else
-                clusters.emplace_back("Other",
-                                      "Perf_Hardware",
-                                      "Perf_Hardware",
-                                      nullptr,
-                                      nullptr,
-                                      std::set<int> {0xfffff},
-                                      6,
-                                      false);
-#endif
-            }
-
-            return std::unique_ptr<PrimarySourceProvider>(
-                new NonRootPrimarySource(std::move(pmuXml),
-                                         {std::move(ids), std::move(clusters), modelName, disableCpuOnlining}));
-        }
-
-        [[nodiscard]] const char * getCaptureXmlTypeValue() const override
-        {
-            // Sends data in gator format
-            return "Gator";
-        }
-
-        [[nodiscard]] const char * getBacktraceProcessingMode() const override { return "none"; }
-
-        [[nodiscard]] bool supportsTracepointCapture() const override { return false; }
-
-        [[nodiscard]] bool useFtraceDriverForCpuFrequency() const override { return true; }
-
-        [[nodiscard]] bool supportsMultiEbs() const override { return false; }
-
-        [[nodiscard]] const char * getPrepareFailedMessage() const override
-        {
-            return "Could not initialize /proc data capture";
-        }
-
-        [[nodiscard]] const Driver & getPrimaryDriver() const override { return driver; }
-
-        Driver & getPrimaryDriver() override { return driver; }
-
-        [[nodiscard]] const ICpuInfo & getCpuInfo() const override { return cpuInfo; }
-
-        ICpuInfo & getCpuInfo() override { return cpuInfo; }
-
-        [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return {}; }
-
-        std::unique_ptr<PrimarySource> createPrimarySource(
-            sem_t & senderSem,
-            ISender & /*sender*/,
-            std::function<bool()> /*session_ended_callback*/,
-            std::function<void()> execTargetAppCallback,
-            std::function<void()> profilingStartedCallback,
-            const std::set<int> & /*appTids*/,
-            FtraceDriver & /*ftraceDriver*/,
-            bool /*enableOnCommandExec*/,
-            agents::agent_workers_process_default_t & /*agent_workers_process*/) override
-        {
-            return std::unique_ptr<PrimarySource>(new non_root::NonRootSource(driver,
-                                                                              senderSem,
-                                                                              std::move(execTargetAppCallback),
-                                                                              std::move(profilingStartedCallback),
-                                                                              cpuInfo));
-        }
-
-    private:
-        static std::vector<PolledDriver *> createPolledDrivers()
-        {
-            return std::vector<PolledDriver *> {
-                {new HwmonDriver(), new FSDriver(), new DiskIODriver(), new MemInfoDriver(), new NetDriver()}};
-        }
-
-        NonRootPrimarySource(PmuXML && pmuXml, CpuInfo && cpuInfo)
-            : PrimarySourceProvider(createPolledDrivers()),
-              cpuInfo(std::move(cpuInfo)),
-              driver(std::move(pmuXml), this->cpuInfo.getClusters())
-        {
-        }
-
-        CpuInfo cpuInfo;
-        non_root::NonRootDriver driver;
-    };
-#endif /* CONFIG_SUPPORT_PROC_POLLING */
 }
 
 PrimarySourceProvider::PrimarySourceProvider(std::vector<PolledDriver *> polledDrivers_)
@@ -419,26 +302,6 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(CaptureOper
     LOG_ERROR("...Perf API is not available.");
 
 #endif /* CONFIG_SUPPORT_PERF */
-
-    // fall back to proc mode
-#if CONFIG_SUPPORT_PROC_POLLING
-    if (isRoot) {
-        LOG_FINE("Trying /proc counters as root...");
-    }
-    else {
-        LOG_FINE("Trying /proc counters as non-root; limited system profiling information available...");
-    }
-
-    result = NonRootPrimarySource::tryCreate(std::move(pmuXml), ids, modelNameToUse, disableCpuOnlining);
-    if (result != nullptr) {
-        LOG_FINE("...Success");
-        LOG_SETUP("Profiling Source\nUsing /proc polling for primary data source");
-        LOG_ERROR("Using deprecated /proc polling for primary data source. In future only perf API will be supported.");
-        return result;
-    }
-    LOG_WARNING("...Unable to set /proc counters");
-
-#endif /* CONFIG_SUPPORT_PROC_POLLING */
 
     return result;
 }

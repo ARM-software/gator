@@ -8,6 +8,7 @@
 #include "SessionData.h"
 #include "capture/Environment.h"
 #include "k/perf_event.h"
+#include "lib/AutoClosingFd.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
@@ -17,113 +18,392 @@
 #include "lib/Utils.h"
 #include "linux/smmu_identifier.h"
 #include "linux/smmu_support.h"
+#include "xml/PmuXML.h"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
+#include <cinttypes>
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#include <sched.h>
+#undef _GNU_SOURCE
+#else
+#include <sched.h>
+#endif
 
 #include <sys/utsname.h>
 #include <unistd.h>
 
 #define PERF_DEVICES "/sys/bus/event_source/devices"
 
-static constexpr std::string_view securityPerfHardenPropString = "security.perf_harden";
-
 using namespace gator::smmuv3;
 using lib::FsEntry;
 
-static bool getPerfHarden()
-{
-    const char * const command[] = {"getprop", securityPerfHardenPropString.data(), nullptr};
-    const lib::PopenResult getprop = lib::popen(command);
-    if (getprop.pid < 0) {
-        LOG_DEBUG("lib::popen(%s %s) failed: %s. Probably not android", command[0], command[1], strerror(-getprop.pid));
+namespace {
+    constexpr std::string_view securityPerfHardenPropString = "security.perf_harden";
+
+    [[nodiscard]] bool getPerfHarden()
+    {
+        const char * const command[] = {"getprop", securityPerfHardenPropString.data(), nullptr};
+        const lib::PopenResult getprop = lib::popen(command);
+        if (getprop.pid < 0) {
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("lib::popen(%s %s) failed: %s. Probably not android",
+                      command[0],
+                      command[1],
+                      std::strerror(-getprop.pid));
+            return false;
+        }
+
+        char value = '0';
+        lib::readAll(getprop.out, &value, 1);
+        lib::pclose(getprop);
+        return value == '1';
+    }
+
+    void setProp(std::string_view prop, const std::string & value)
+    {
+        const char * const command[] = {"setprop", prop.data(), value.c_str(), nullptr};
+
+        const lib::PopenResult setPropResult = lib::popen(command);
+        //setprop not found, probably not Android.
+        if (setPropResult.pid == -ENOENT) {
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("lib::popen(%s %s %s) failed: %s",
+                      command[0],
+                      command[1],
+                      command[2],
+                      std::strerror(-setPropResult.pid));
+            return;
+        }
+        if (setPropResult.pid < 0) {
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_ERROR("lib::popen(%s %s %s) failed: %s",
+                      command[0],
+                      command[1],
+                      command[2],
+                      std::strerror(-setPropResult.pid));
+            return;
+        }
+
+        const int status = lib::pclose(setPropResult);
+        if (!WIFEXITED(status)) {
+            LOG_ERROR("'%s %s %s' exited abnormally", command[0], command[1], command[2]);
+            return;
+        }
+
+        const int exitCode = WEXITSTATUS(status);
+        if (exitCode != 0) {
+            LOG_ERROR("'%s %s %s' failed: %d", command[0], command[1], command[2], exitCode);
+        }
+    }
+
+    void setPerfHarden(bool on)
+    {
+        setProp(securityPerfHardenPropString, on ? "1" : "0");
+    }
+
+    /**
+     * @return true if perf harden in now off
+     */
+    [[nodiscard]] bool disablePerfHarden()
+    {
+        if (!getPerfHarden()) {
+            return true;
+        }
+
+        LOG_WARNING("disabling property %s", securityPerfHardenPropString.data());
+
+        setPerfHarden(false);
+
+        sleep(1);
+
+        return !getPerfHarden();
+    }
+
+    [[nodiscard]] bool beginsWith(const char * string, const char * prefix)
+    {
+        return strncmp(string, prefix, strlen(prefix)) == 0;
+    }
+
+    [[nodiscard]] bool isValidCpuId(int cpuId)
+    {
+        return ((cpuId != PerfDriverConfiguration::UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0));
+    }
+
+    [[nodiscard]] bool pmu_supports_strobing_patches(lib::FsEntry const & entry)
+    {
+        auto const format_path = lib::FsEntry::create(entry, "format");
+        auto const strobe_period_path = lib::FsEntry::create(format_path, "strobe_period");
+
+        if (strobe_period_path.exists()) {
+            LOG_DEBUG("Target supports event strobing.");
+            return true;
+        }
+
         return false;
     }
 
-    char value = '0';
-    lib::readAll(getprop.out, &value, 1);
-    lib::pclose(getprop);
-    return value == '1';
-}
+    [[nodiscard]] GatorCpu with_max_counters_value(
+        GatorCpu const & gatorCpu,
+        std::unordered_map<int, std::size_t> const & max_event_count_by_cpuid)
+    {
+        std::size_t value {};
+        bool all_invalid = false;
+        bool any_values = false;
 
-static void setProp(std::string_view prop, const std::string & value)
-{
-    const char * const command[] = {"setprop", prop.data(), value.c_str(), nullptr};
+        // Don't override the user; assume they know best
+        if (gSessionData.mOverrideNoPmuSlots > 0) {
+            return gatorCpu;
+        }
 
-    const lib::PopenResult setPropResult = lib::popen(command);
-    //setprop not found, probably not Android.
-    if (setPropResult.pid == -ENOENT) {
-        LOG_DEBUG("lib::popen(%s %s %s) failed: %s", command[0], command[1], command[2], strerror(-setPropResult.pid));
-        return;
-    }
-    if (setPropResult.pid < 0) {
-        LOG_ERROR("lib::popen(%s %s %s) failed: %s", command[0], command[1], command[2], strerror(-setPropResult.pid));
-        return;
-    }
+        for (auto cpuId : gatorCpu.getCpuIds()) {
+            if (auto const it = max_event_count_by_cpuid.find(cpuId); it != max_event_count_by_cpuid.end()) {
+                // the number includes the cycle counter, so the number of programmable is one less
+                auto const avail = (it->second > 1 ? it->second - 1 : 0);
 
-    const int status = lib::pclose(setPropResult);
-    if (!WIFEXITED(status)) {
-        LOG_ERROR("'%s %s %s' exited abnormally", command[0], command[1], command[2]);
-        return;
-    }
+                if (any_values) {
+                    // assume any zero values are errors, but otherwise find the smallest non-zero value
+                    if (avail > 0) {
+                        if (value == 0) {
+                            value = avail;
+                        }
+                        else {
+                            value = std::min(value, avail);
+                        }
+                    }
 
-    const int exitCode = WEXITSTATUS(status);
-    if (exitCode != 0) {
-        LOG_ERROR("'%s %s %s' failed: %d", command[0], command[1], command[2], exitCode);
-    }
-}
+                    // if not even the cycle counter is open then assume some other error
+                    all_invalid &= (it->second == 0);
+                }
+                else {
+                    any_values = true;
+                    value = avail;
 
-static void setPerfHarden(bool on)
-{
-    setProp(securityPerfHardenPropString, on ? "1" : "0");
-}
+                    // if not even the cycle counter is open then assume some other error
+                    all_invalid = (it->second == 0);
+                }
+            }
+        }
 
-/**
- * @return true if perf harden in now off
- */
-static bool disablePerfHarden()
-{
-    if (!getPerfHarden()) {
-        return true;
-    }
+        if (!any_values) {
+            LOG_SETUP("CPU Counters\nCould not determine the number of supported programmable events for %s, using the "
+                      "provided default: %d",
+                      gatorCpu.getCoreName(),
+                      gatorCpu.getPmncCounters());
+            return gatorCpu;
+        }
 
-    LOG_WARNING("disabling property %s", securityPerfHardenPropString.data());
+        if (all_invalid) {
+            LOG_SETUP("CPU Counters\nCould not determine the number of supported programmable events for %s, probing "
+                      "indicates that there are no counters available, using the provided default: %d",
+                      gatorCpu.getCoreName(),
+                      gatorCpu.getPmncCounters());
+            return gatorCpu;
+        }
 
-    setPerfHarden(false);
+        if (static_cast<int>(value) < gatorCpu.getPmncCounters()) {
+            LOG_WARNING("Detected %zu programmable event counters for %s PMU", value, gatorCpu.getCoreName());
+        }
 
-    sleep(1);
-
-    return !getPerfHarden();
-}
-
-static bool beginsWith(const char * string, const char * prefix)
-{
-    return strncmp(string, prefix, strlen(prefix)) == 0;
-}
-
-static bool isValidCpuId(int cpuId)
-{
-    return ((cpuId != PerfDriverConfiguration::UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0));
-}
-
-[[nodiscard]] static bool pmu_supports_strobing(lib::FsEntry const & entry)
-{
-    auto const format_path = lib::FsEntry::create(entry, "format");
-    auto const strobe_period_path = lib::FsEntry::create(format_path, "strobe_period");
-
-    if (strobe_period_path.exists()) {
-        LOG_DEBUG("Target supports event strobing.");
-        return true;
+        LOG_SETUP("CPU Counters\nDetected %zu programmable events for %s", value, gatorCpu.getCoreName());
+        return gatorCpu.withUpdatedPmncCount(static_cast<int>(value));
     }
 
-    return false;
+    template<std::size_t max_possible_events>
+    [[nodiscard]] std::size_t counter_valid_readable_counters(int fd)
+    {
+        std::array<std::uint64_t, (2 * max_possible_events) + 1> buffer {};
+
+        auto const res = lib::read(fd, buffer.data(), buffer.size() * sizeof(std::uint64_t));
+        auto const n_ints = res / sizeof(std::uint64_t);
+
+        std::size_t result = 0;
+
+        if (n_ints > 0) {
+            LOG_DEBUG("Successfully read %zd bytes of data from counters.", res);
+            auto const count = buffer[0];
+            auto const avail = (n_ints - 1) / 2;
+            LOG_DEBUG("...count=%" PRIu64 ", avail=%zi", count, avail);
+            auto const limit = std::min<std::size_t>(count, avail);
+
+            for (std::size_t i = 0; i < limit; ++i) {
+                auto const va = buffer[i * 2 + 1];
+                auto const id = buffer[i * 2 + 2];
+
+                LOG_DEBUG("...[%zu] = %" PRIu64 ": %" PRIu64, i, id, va);
+
+                // all counters should give a non-zero value, assume some issue if it is
+                // (this happens on android, for example, when the performance governer steals some counters)
+                if (va != 0) {
+                    result += 1;
+                }
+            }
+        }
+        else {
+            auto const e = errno;
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("Failed to read data from counters due to res=%zd, errno=%d (%s)", res, e, std::strerror(e));
+        }
+
+        return result;
+    }
+
+    [[nodiscard]] std::size_t calculate_max_event_count_for(std::size_t cpuNo)
+    {
+        constexpr std::size_t max_possible_events = 32;
+        constexpr unsigned affine_loop_count = 5;
+
+        auto const cpu_set_size = CPU_ALLOC_SIZE(cpuNo + 1);
+
+        std::vector<lib::AutoClosingFd> event_fds {};
+
+        LOG_DEBUG("Determining max events for #%zu", cpuNo);
+
+        // Set the affinity to just that CPU so that it is online, and so that there are some events generated by perf
+        std::unique_ptr<cpu_set_t, std::function<void(cpu_set_t *)>> cpuset {CPU_ALLOC(cpu_set_size),
+                                                                             [](cpu_set_t * ptr) { CPU_FREE(ptr); }};
+
+        CPU_ZERO_S(cpu_set_size, cpuset.get());
+        CPU_SET_S(cpuNo, cpu_set_size, cpuset.get());
+
+        // try and set affinity
+        bool affinitySucceeded = false;
+        for (unsigned count = 0; count < affine_loop_count && !affinitySucceeded; ++count) {
+            if (sched_setaffinity(0, cpu_set_size, cpuset.get()) == 0) {
+                affinitySucceeded = true;
+            }
+        }
+
+        if (!affinitySucceeded) {
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_WARNING("Error calling sched_setaffinity on %zu: %d (%s)", cpuNo, errno, strerror(errno));
+        }
+
+        // make sure we are definitely running on the CPU...
+        sched_yield();
+
+        // count the supported counters
+        std::size_t actual_count = 0;
+        for (std::size_t n = 0; n < max_possible_events; ++n) {
+            perf_event_attr attr {};
+
+            attr.type = PERF_TYPE_HARDWARE;
+            attr.size = sizeof(perf_event_attr);
+            attr.config = (n == 0 ? PERF_COUNT_HW_CPU_CYCLES : PERF_COUNT_HW_INSTRUCTIONS);
+            attr.sample_period = 1000000 + n; //NOLINT(readability-magic-numbers)
+            //NOLINTNEXTLINE(hicpp-signed-bitwise)
+            attr.sample_type = PERF_SAMPLE_READ | PERF_SAMPLE_IDENTIFIER | PERF_SAMPLE_TIME;
+            attr.read_format = PERF_FORMAT_ID | PERF_FORMAT_GROUP;
+            attr.disabled = 0;
+            attr.pinned = (n == 0);
+            attr.exclude_kernel = 1;
+
+            lib::AutoClosingFd fd {
+                lib::perf_event_open(&attr, 0, cpuNo, (n == 0 ? -1 : event_fds[0].get()), 0),
+            };
+
+            if (fd.get() >= 0) {
+                auto const n_valid = counter_valid_readable_counters<max_possible_events>(fd.get());
+
+                if (n_valid > event_fds.size()) {
+                    event_fds.emplace_back(std::move(fd));
+                    actual_count = n_valid;
+                }
+                else {
+                    break;
+                }
+            }
+            else {
+                auto const e = errno;
+                //NOLINTNEXTLINE(concurrency-mt-unsafe)
+                LOG_DEBUG("Failed to open test event# %zu due to %d (%s)", n, e, std::strerror(e));
+                break;
+            }
+        }
+
+        LOG_DEBUG("Finished loop for #%zu", cpuNo);
+
+        return actual_count;
+    }
+
+    [[nodiscard]] std::unordered_map<int, std::size_t> calculate_max_event_count_by_cpuid(lib::Span<const int> cpuIds)
+    {
+        constexpr unsigned affine_loop_count = 5;
+
+        std::unordered_map<int, std::size_t> max_event_count_by_cpuid {};
+
+        if (gSessionData.mOverrideNoPmuSlots > 0) {
+            return max_event_count_by_cpuid;
+        }
+
+        // record the current thread affinity so it can be restored later
+        auto const cpu_set_size = CPU_ALLOC_SIZE(cpuIds.size());
+
+        std::unique_ptr<cpu_set_t, std::function<void(cpu_set_t *)>> original_cpuset {
+            CPU_ALLOC(cpuIds.size()),
+            [](cpu_set_t * ptr) { CPU_FREE(ptr); }};
+
+        CPU_ZERO_S(cpu_set_size, original_cpuset.get());
+
+        if (sched_getaffinity(0, cpu_set_size, original_cpuset.get()) < 0) {
+            auto const e = errno;
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_WARNING("Error calling sched_getaffinity to get current mask: %d (%s)", e, strerror(e));
+
+            CPU_ZERO_S(cpu_set_size, original_cpuset.get());
+
+            for (std::size_t cpuNo = 0; cpuNo < cpuIds.size(); ++cpuNo) {
+                CPU_SET_S(cpuNo, cpu_set_size, original_cpuset.get());
+            }
+        }
+
+        // for each CPU, determine how many events can be supported
+        for (std::size_t cpuNo = 0; cpuNo < cpuIds.size(); ++cpuNo) {
+            auto const actual_count = calculate_max_event_count_for(cpuNo);
+            auto [it, inserted] = max_event_count_by_cpuid.try_emplace(cpuIds[cpuNo], actual_count);
+            if (!inserted) {
+                it->second = std::max(it->second, actual_count);
+            }
+        }
+
+        for (auto const & [cpuId, count] : max_event_count_by_cpuid) {
+            LOG_DEBUG("Determined CPUs with ID 0x%05x can support at most %zu events.", cpuId, count);
+        }
+
+        // restore affinity
+        {
+
+            // try and set affinity
+            bool affinitySucceeded = false;
+            for (unsigned count = 0; count < affine_loop_count && !affinitySucceeded; ++count) {
+                if (sched_setaffinity(0, cpu_set_size, original_cpuset.get()) == 0) {
+                    affinitySucceeded = true;
+                }
+            }
+
+            if (!affinitySucceeded) {
+                auto const e = errno;
+                //NOLINTNEXTLINE(concurrency-mt-unsafe)
+                LOG_WARNING("Error calling sched_setaffinity to restore all: %d (%s)", e, strerror(e));
+            }
+        }
+
+        return max_event_count_by_cpuid;
+    }
 }
 
 void logCpuNotFound()
@@ -302,7 +582,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     configuration->config.has_aux_support = (kernelVersion >= KERNEL_VERSION(4U, 1U, 0U));
     configuration->config.has_exclude_callchain_kernel = (kernelVersion >= KERNEL_VERSION(3U, 7U, 0U));
     configuration->config.has_perf_format_lost = (kernelVersion >= KERNEL_VERSION(6U, 0U, 0U));
-    configuration->config.supports_strobing = false;
+    configuration->config.supports_strobing_patches = false;
+    configuration->config.supports_strobing_core = false;
+    configuration->config.supports_inherit_sample_read = false;
 
     configuration->config.exclude_kernel = !can_collect_kernel_data;
     configuration->config.can_access_tracepoints = can_access_raw_tracepoints;
@@ -313,6 +595,68 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     configuration->config.use_64bit_register_set = use_64bit_register_set;
 
     configuration->config.use_ftrace_for_cpu_frequency = use_ftrace_for_cpu_frequency;
+
+    // detect supports_strobing_core
+    {
+        perf_event_attr attr {};
+
+        attr.type = PERF_TYPE_SOFTWARE;
+        attr.size = sizeof(perf_event_attr);
+        attr.config = PERF_COUNT_SW_TASK_CLOCK;
+        attr.sample_period = 1000000; // NOLINT(readability-magic-numbers)
+        //NOLINTNEXTLINE(hicpp-signed-bitwise)
+        attr.sample_type = PERF_SAMPLE_READ | PERF_SAMPLE_IDENTIFIER | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME;
+        attr.read_format = PERF_FORMAT_ID;
+        attr.disabled = 1;
+        attr.inherit = 0;
+        attr.exclude_kernel = 1;
+        attr.alternative_sample_period = 10000; // NOLINT(readability-magic-numbers)
+
+        auto const fd = lib::perf_event_open(&attr, 0, 0, -1, 0);
+
+        if (fd >= 0) {
+            LOG_DEBUG("Detected support for alternative sample period features");
+            configuration->config.supports_strobing_core = true;
+            close(fd);
+        }
+        else {
+            auto const e = errno;
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("No support for alternative sample period features, error was %d (%s)", e, std::strerror(e));
+        }
+    }
+
+    // detect supports_inherit_sample_read
+    {
+        perf_event_attr attr {};
+
+        attr.type = PERF_TYPE_SOFTWARE;
+        attr.size = sizeof(perf_event_attr);
+        attr.config = PERF_COUNT_SW_TASK_CLOCK;
+        attr.sample_period = 1000000; // NOLINT(readability-magic-numbers)
+        //NOLINTNEXTLINE(hicpp-signed-bitwise)
+        attr.sample_type = PERF_SAMPLE_READ | PERF_SAMPLE_IDENTIFIER | PERF_SAMPLE_TIME | PERF_SAMPLE_TID;
+        attr.read_format = PERF_FORMAT_ID | PERF_FORMAT_GROUP;
+        attr.disabled = 1;
+        attr.inherit = 1;
+        attr.exclude_kernel = 1;
+
+        auto const fd = lib::perf_event_open(&attr, 0, 0, -1, 0);
+
+        if (fd >= 0) {
+            LOG_DEBUG("Detected support for inheritable counter groups");
+            configuration->config.supports_inherit_sample_read = true;
+            close(fd);
+        }
+        else {
+            auto const e = errno;
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("No support for inheritable counter groups, error was %d (%s)", e, std::strerror(e));
+        }
+    }
+
+    // detect max number of events per PMU
+    auto const max_event_count_by_cpuid = calculate_max_event_count_by_cpuid(cpuIds);
 
     // detect the PMUs
     std::set<const GatorCpu *> cpusDetectedViaSysFs;
@@ -334,7 +678,10 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
                     LOG_DEBUG("    ... using pmu type %d for %s cores", type, gatorCpu->getCoreName());
-                    configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
+                    configuration->cpus.push_back(PerfCpu {
+                        with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
+                        type,
+                    });
                     cpusDetectedViaSysFs.insert(gatorCpu);
                     if (gatorCpu->getSpeName() != nullptr) {
                         haveFoundKnownCpuWithSpe = true;
@@ -342,7 +689,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                     continue;
                 }
 
-                configuration->config.supports_strobing |= pmu_supports_strobing(*dirent);
+                configuration->config.supports_strobing_patches |= pmu_supports_strobing_patches(*dirent);
             }
 
             const UncorePmu * uncorePmu = pmuXml.findUncoreByName(name);
@@ -380,7 +727,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                 const std::string typePath(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 const std::string maskPath(lib::Format() << PERF_DEVICES << "/" << name << "/cpus");
                 if (lib::readIntFromFile(typePath.c_str(), type) == 0) {
-                    configuration->config.supports_strobing |= pmu_supports_strobing(*dirent);
+                    configuration->config.supports_strobing_patches |= pmu_supports_strobing_patches(*dirent);
 
                     const std::set<int> cpuNumbers = lib::readCpuMaskFromFile(maskPath.c_str());
                     if (!cpuNumbers.empty()) {
@@ -408,7 +755,10 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                                 LOG_DEBUG("    ... using generic pmu type %d for %s cores",
                                           type,
                                           gatorCpu->getCoreName());
-                                configuration->cpus.push_back(PerfCpu {*gatorCpu, type});
+                                configuration->cpus.push_back(PerfCpu {
+                                    with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
+                                    type,
+                                });
                                 cpusDetectedViaSysFs.insert(gatorCpu);
                                 if (gatorCpu->getSpeName() != nullptr) {
                                     haveFoundKnownCpuWithSpe = true;
@@ -452,7 +802,10 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         }
         else if ((cpusDetectedViaSysFs.count(gatorCpu) == 0) && (cpusDetectedViaCpuid.count(gatorCpu) == 0)) {
             LOG_DEBUG("generic pmu: %s", gatorCpu->getCoreName());
-            configuration->cpus.push_back(PerfCpu {*gatorCpu, PERF_TYPE_RAW});
+            configuration->cpus.push_back(PerfCpu {
+                with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
+                PERF_TYPE_RAW,
+            });
             cpusDetectedViaCpuid.insert(gatorCpu);
             if (gatorCpu->getSpeName() != nullptr) {
                 haveFoundKnownCpuWithSpe = true;
@@ -487,7 +840,10 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     if (haveUnknownSpe && !configuration->cpus.empty()) {
         for (auto & cpu : configuration->cpus) {
             const auto & currentValue = cpu;
-            cpu = PerfCpu {GatorCpu(currentValue.gator_cpu, ARMV82_SPE), currentValue.pmu_type};
+            cpu = PerfCpu {
+                with_max_counters_value(GatorCpu(currentValue.gator_cpu, ARMV82_SPE), max_event_count_by_cpuid),
+                currentValue.pmu_type,
+            };
         }
     }
 
@@ -501,15 +857,53 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         const char * const speName = (addOtherForUnknownSpe ? ARMV82_SPE : nullptr);
 
 #if defined(__aarch64__)
-        configuration->cpus.push_back(
-            PerfCpu {{"Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, true}, PERF_TYPE_RAW});
+        configuration->cpus.push_back(PerfCpu {
+            with_max_counters_value(
+                GatorCpu {
+                    "Other",
+                    "Other",
+                    "Other",
+                    nullptr,
+                    speName,
+                    unrecognisedCpuIds,
+                    6,
+                    true,
+                },
+                max_event_count_by_cpuid),
+            PERF_TYPE_RAW,
+        });
 #elif defined(__arm__)
-        configuration->cpus.push_back(
-            PerfCpu {{"Other", "Other", "Other", nullptr, speName, unrecognisedCpuIds, 6, anyV8}, PERF_TYPE_RAW});
+        configuration->cpus.push_back(PerfCpu {
+            with_max_counters_value(
+                GatorCpu {
+                    "Other",
+                    "Other",
+                    "Other",
+                    nullptr,
+                    speName,
+                    unrecognisedCpuIds,
+                    6,
+                    anyV8,
+                },
+                max_event_count_by_cpuid),
+            PERF_TYPE_RAW,
+        });
 #else
-        configuration->cpus.push_back(
-            PerfCpu {{"Other", "Perf_Hardware", "Perf_Hardware", nullptr, speName, unrecognisedCpuIds, 6, false},
-                     PERF_TYPE_HARDWARE});
+        configuration->cpus.push_back(PerfCpu {
+            with_max_counters_value(
+                GatorCpu {
+                    "Other",
+                    "Perf_Hardware",
+                    "Perf_Hardware",
+                    nullptr,
+                    speName,
+                    unrecognisedCpuIds,
+                    6,
+                    false,
+                },
+                max_event_count_by_cpuid),
+            PERF_TYPE_HARDWARE,
+        });
 #endif
     }
 

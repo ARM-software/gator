@@ -96,11 +96,11 @@ namespace agents::perf {
                     return {std::move(fd)};
                 }
 
-                LOG_WARNING("Failed when exclude_kernel=%u, exclude_hv=%u, exclude_idle=%u with %s",
-                            bool(attr.exclude_kernel),
-                            bool(attr.exclude_hv),
-                            bool(attr.exclude_idle),
-                            peo_errno.message().c_str());
+                LOG_DEBUG("Failed when exclude_kernel=%u, exclude_hv=%u, exclude_idle=%u with %s",
+                          bool(attr.exclude_kernel),
+                          bool(attr.exclude_hv),
+                          bool(attr.exclude_idle),
+                          peo_errno.message().c_str());
 
                 // not an error we can retry?
                 if ((peo_errno != boost::system::errc::errc_t::permission_denied)

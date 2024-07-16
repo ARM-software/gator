@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/events/perf_event_utils.hpp"
 
@@ -68,28 +68,29 @@ namespace agents::perf {
                                                           char const * indentation,
                                                           char const * separator)
     {
-        return (lib::Format() << indentation << "type: " << attr.type                                          //
-                              << " (" << map_attr_type(attr.type, core_no) << ")" << separator                 //
-                              << indentation << "config: " << attr.config << separator                         //
-                              << indentation << "config1: " << attr.config1 << separator                       //
-                              << indentation << "config2: " << attr.config2 << separator                       //
-                              << indentation << "sample: " << attr.sample_period << separator << std::hex      //
-                              << indentation << "sample_type: 0x" << attr.sample_type << separator             //
-                              << indentation << "read_format: 0x" << attr.read_format << separator << std::dec //
-                              << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator    //
-                              << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator        //
-                              << indentation << "comm: " << (attr.comm ? "true" : "false") << separator        //
-                              << indentation << "freq: " << (attr.freq ? "true" : "false") << separator        //
-                              << indentation << "task: " << (attr.task ? "true" : "false") << separator        //
-                              << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false")
-                              << separator //
-                              << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")
-                              << separator                                                                    //
-                              << indentation << "inherit: " << (attr.inherit ? "true" : "false") << separator //
-                              << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false")
-                              << separator //
-                              << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator
-                              << std::dec //
-                              << indentation << "aux_watermark: " << attr.aux_watermark << separator);
+        return (
+            lib::Format() << indentation << "type: " << attr.type                                                     //
+                          << " (" << map_attr_type(attr.type, core_no) << ")" << separator                            //
+                          << indentation << "config: " << attr.config << separator                                    //
+                          << indentation << "config1: " << attr.config1 << separator                                  //
+                          << indentation << "config2: " << attr.config2 << separator                                  //
+                          << indentation << "sample: " << attr.sample_period << separator                             //
+                          << indentation << "alt_sample: " << attr.alternative_sample_period << separator << std::hex //
+                          << indentation << "sample_type: 0x" << attr.sample_type << separator                        //
+                          << indentation << "read_format: 0x" << attr.read_format << separator << std::dec            //
+                          << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator               //
+                          << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator                   //
+                          << indentation << "comm: " << (attr.comm ? "true" : "false") << separator                   //
+                          << indentation << "freq: " << (attr.freq ? "true" : "false") << separator                   //
+                          << indentation << "task: " << (attr.task ? "true" : "false") << separator                   //
+                          << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false")
+                          << separator //
+                          << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")
+                          << separator                                                                                //
+                          << indentation << "inherit: " << (attr.inherit ? "true" : "false") << separator             //
+                          << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false") << separator //
+                          << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator
+                          << std::dec //
+                          << indentation << "aux_watermark: " << attr.aux_watermark << separator);
     }
 }

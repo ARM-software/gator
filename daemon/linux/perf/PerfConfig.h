@@ -15,7 +15,9 @@ struct PerfConfig {
     bool has_aux_support = false;              // >= 4.1
     bool has_exclude_callchain_kernel = false; // >= 3.7
     bool has_perf_format_lost = false;         // >= 6.0
-    bool supports_strobing = false;            // requires additional patches
+    bool supports_strobing_patches = false;    // requires additional patches
+    bool supports_strobing_core = false;       // requires as yet unreleased kernel version
+    bool supports_inherit_sample_read = false; // requires additional patches / as yet unreleased kernel version
 
     bool exclude_kernel = false;
 

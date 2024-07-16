@@ -5,6 +5,8 @@
 
 #include "Configuration.h"
 #include "linux/smmu_identifier.h"
+#include "metrics/definitions.hpp"
+#include "metrics/metric_group_set.hpp"
 
 #include <map>
 #include <optional>
@@ -38,6 +40,9 @@ public:
     std::set<int> mPids {};
     std::map<std::string, EventCode> events {};
     std::set<Printable> printables {};
+
+    // Each entry in this set dictates some metrics to record
+    metrics::metric_group_set_t enabled_metric_groups {};
 
     std::uint64_t parameterSetFlag {0};
 

@@ -1,28 +1,28 @@
-<!-- Copyright (C) 2017-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2024 by Arm Limited. All rights reserved. -->
 <category name="Mali Job Manager" per_cpu="no">
-	<event counter="ARM_Mali-T860_GPU_ACTIVE" description="The number of cycles where the GPU has a workload of any type queued for processing" name="GPU active" title="Mali GPU Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_IRQ_ACTIVE" description="The number of cycles where the GPU has a pending interrupt" name="GPU interrupt active" title="Mali GPU Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_GPU_ACTIVE" description="The number of cycles when the GPU has a workload of any type queued for processing" name="GPU active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_IRQ_ACTIVE" description="The number of cycles when the GPU has a pending interrupt" name="GPU interrupt active" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-T860_JS0_JOBS" description="The number of jobs processed by the GPU fragment queue" name="Fragment jobs" title="Mali GPU Jobs" units="jobs"/>
 	<event counter="ARM_Mali-T860_JS0_TASKS" description="The number of fragment tasks processed" name="Fragment tasks" title="Mali GPU Tasks" units="tasks"/>
-	<event counter="ARM_Mali-T860_JS0_ACTIVE" description="The number of cycles where work is queued for processing in the GPU fragment queue" name="Fragment queue active" title="Mali GPU Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_READ" description="The number of cycles where queued fragment work is waiting for a descriptor load" name="Fragment queue descriptor read stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_ISSUE" description="The number of cycles where queued fragment work is waiting for an available processor" name="Fragment queue job issue stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_DEPEND" description="The number of cycles where queued fragment work is waiting for dependent work to complete" name="Fragment queue job dependency stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_FINISH" description="The number of cycles where the GPU is waiting for issued fragment work to complete" name="Fragment queue job finish stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_JS0_ACTIVE" description="The number of cycles when work is queued for processing in the GPU fragment queue" name="Fragment queue active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_READ" description="The number of cycles when queued fragment work is waiting for a descriptor load" name="Fragment queue descriptor read stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_ISSUE" description="The number of cycles when queued fragment work is waiting for an available processor" name="Fragment queue job issue stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_DEPEND" description="The number of cycles when queued fragment work is waiting for dependent work to complete" name="Fragment queue job dependency stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS0_WAIT_FINISH" description="The number of cycles when the GPU is waiting for issued fragment work to complete" name="Fragment queue job finish stall" title="Mali GPU Wait Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-T860_JS1_JOBS" description="The number of jobs processed by the GPU non-fragment queue" name="Non-fragment jobs" title="Mali GPU Jobs" units="jobs"/>
 	<event advanced="yes" counter="ARM_Mali-T860_JS1_TASKS" description="The number of non-fragment tasks processed" name="Non-fragment tasks" title="Mali GPU Tasks" units="tasks"/>
-	<event counter="ARM_Mali-T860_JS1_ACTIVE" description="The number of cycles where work is queued in the GPU non-fragment queue" name="Non-fragment queue active" title="Mali GPU Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_JS1_ACTIVE" description="The number of cycles when work is queued in the GPU non-fragment queue" name="Non-fragment queue active" title="Mali GPU Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_READ" description="The number number of cycles where queued non-fragment work is waiting for a descriptor load" name="Non-fragment queue descriptor read stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_ISSUE" description="The number of cycles where queued non-fragment work is waiting for an available processor" name="Non-fragment queue job issue stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_DEPEND" description="The number of cycles where queued non-fragment work is waiting for dependent work to complete" name="Non-fragment queue job dependency stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_FINISH" description="The number of cycles where the GPU is waiting for issued non-fragment work to complete" name="Non-fragment queue job finish stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_ISSUE" description="The number of cycles when queued non-fragment work is waiting for an available processor" name="Non-fragment queue job issue stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_DEPEND" description="The number of cycles when queued non-fragment work is waiting for dependent work to complete" name="Non-fragment queue job dependency stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS1_WAIT_FINISH" description="The number of cycles when the GPU is waiting for issued non-fragment work to complete" name="Non-fragment queue job finish stall" title="Mali GPU Wait Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-T860_JS2_JOBS" description="The number of jobs processed by the GPU reserved queue" name="Reserved jobs" title="Mali GPU Jobs" units="jobs"/>
 	<event advanced="yes" counter="ARM_Mali-T860_JS2_TASKS" description="The number of reserved tasks processed" name="Reserved tasks" title="Mali GPU Tasks" units="tasks"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS2_ACTIVE" description="The number of cycles where work is queued in the GPU reserved queue" name="Reserved queue active" title="Mali GPU Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_READ" description="The number of cycles where queued reserved work is waiting for a descriptor load" name="Reserved queue descriptor read stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_ISSUE" description="The number of cycles where queued reserved work is waiting for an available processor" name="Reserved queue job issue stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_DEPEND" description="The number of cycles where queued reserved work is waiting for dependent work to complete" name="Reserved queue job dependency stall" title="Mali GPU Wait Cycles" units="cycles"/>
-	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_FINISH" description="The number of cycles where the GPU is waiting for issued reserved work to complete" name="Reserved queue job finish stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS2_ACTIVE" description="The number of cycles when work is queued in the GPU reserved queue" name="Reserved queue active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_READ" description="The number of cycles when queued reserved work is waiting for a descriptor load" name="Reserved queue descriptor read stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_ISSUE" description="The number of cycles when queued reserved work is waiting for an available processor" name="Reserved queue job issue stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_DEPEND" description="The number of cycles when queued reserved work is waiting for dependent work to complete" name="Reserved queue job dependency stall" title="Mali GPU Wait Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_JS2_WAIT_FINISH" description="The number of cycles when the GPU is waiting for issued reserved work to complete" name="Reserved queue job finish stall" title="Mali GPU Wait Cycles" units="cycles"/>
 </category>
 <category name="Mali Memory System" per_cpu="no">
 	<event advanced="yes" counter="ARM_Mali-T860_MMU_HIT" description="The number of level 2 translation table reads that hit in the main MMU TLB" name="L2 table read hits" title="Mali Stage 1 MMU Translations" units="requests"/>
@@ -33,13 +33,13 @@
 	<event advanced="yes" counter="ARM_Mali-T860_L2_ANY_LOOKUP" description="The number of L2 cache lookups performed" name="Any lookups" title="Mali L2 Cache Lookups" units="requests"/>
 	<event counter="ARM_Mali-T860_L2_READ_LOOKUP" description="The number of L2 cache read lookups performed" name="Read lookups" title="Mali L2 Cache Lookups" units="requests"/>
 	<event counter="ARM_Mali-T860_L2_WRITE_LOOKUP" description="The number of L2 cache write lookups performed" name="Write lookups" title="Mali L2 Cache Lookups" units="requests"/>
-	<event counter="ARM_Mali-T860_L2_EXT_AR_STALL" description="The number of cycles where a read is stalled waiting for the external bus" name="Read stall" title="Mali External Bus Stall Cycles" units="cycles"/>
-	<event counter="ARM_Mali-T860_L2_EXT_W_STALL" description="The number of cycles where a write is stalled waiting for the external bus" name="Write stall" title="Mali External Bus Stall Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_L2_EXT_AR_STALL" description="The number of cycles when a read is stalled waiting for the external bus" name="Read stall" title="Mali External Bus Stall Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_L2_EXT_W_STALL" description="The number of cycles when a write is stalled waiting for the external bus" name="Write stall" title="Mali External Bus Stall Cycles" units="cycles"/>
 </category>
 <category name="Mali Shader Core" per_cpu="no">
-	<event counter="ARM_Mali-T860_FRAG_ACTIVE" description="The number of cycles where the shader core is processing a fragment workload" name="Fragment active" title="Mali Shader Core Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_FRAG_ACTIVE" description="The number of cycles when the shader core is processing a fragment workload" name="Fragment active" title="Mali Shader Core Cycles" units="cycles"/>
 	<event advanced="yes" counter="ARM_Mali-T860_FRAG_PRIMITIVES" description="The number of primitives loaded from the tile list by the fragment front-end" name="Loaded primitives" title="Mali Fragment Primitives" units="primitives"/>
-	<event counter="ARM_Mali-T860_FRAG_FPK_ACTIVE" description="The number of cycles where at least one quad is present in the pre-pipe quad queue" name="Fragment FPK buffer active" title="Mali Shader Core Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_FRAG_FPK_ACTIVE" description="The number of cycles when at least one quad is present in the pre-pipe quad queue" name="Fragment FPK buffer active" title="Mali Shader Core Cycles" units="cycles"/>
 	<event counter="ARM_Mali-T860_FRAG_THREADS" description="The number of fragment threads started" name="Fragment threads" title="Mali Shader Threads" units="threads"/>
 	<event counter="ARM_Mali-T860_FRAG_DUMMY_THREADS" description="The number of fragment helper threads started" name="Fragment helper threads" title="Mali Shader Threads" units="threads"/>
 	<event counter="ARM_Mali-T860_FRAG_QUADS_RAST" description="The number of fine quads generated by the rasterization phase" name="Rasterized fine quads" title="Mali Fragment Quads" units="quads"/>
@@ -49,10 +49,10 @@
 	<event counter="ARM_Mali-T860_FRAG_THREADS_LZS_KILL" description="The number of threads killed by late depth and stencil testing" name="Late ZS killed threads" title="Mali Shader Threads" units="threads"/>
 	<event counter="ARM_Mali-T860_FRAG_PTILES" description="The number of tiles processed by the shader core" name="Tiles" title="Mali Shader Core Tiles" units="tiles"/>
 	<event counter="ARM_Mali-T860_FRAG_TRANS_ELIM" description="The number of tiles killed by transaction elimination" name="Killed unchanged tiles" title="Mali Shader Core Tiles" units="tiles"/>
-	<event counter="ARM_Mali-T860_COMPUTE_ACTIVE" description="The number of cycles where the shader core is processing some non-fragment workload" name="Non-fragment active" title="Mali Shader Core Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_COMPUTE_ACTIVE" description="The number of cycles when the shader core is processing some non-fragment workload" name="Non-fragment active" title="Mali Shader Core Cycles" units="cycles"/>
 	<event counter="ARM_Mali-T860_COMPUTE_THREADS" description="The number of non-fragment threads started" name="Non-fragment threads" title="Mali Shader Threads" units="threads"/>
-	<event counter="ARM_Mali-T860_TRIPIPE_ACTIVE" description="The number of cycles where the shader core is processing at least one warp" name="Execution core active" title="Mali Shader Core Cycles" units="cycles"/>
-	<event counter="ARM_Mali-T860_ARITH_WORDS" description="The number of instructions executed per warp" name="Executed instructions" title="Mali ALU Instructions" units="instructions"/>
+	<event counter="ARM_Mali-T860_TRIPIPE_ACTIVE" description="The number of cycles when the shader core is processing at least one warp" name="Execution core active" title="Mali Shader Core Cycles" units="cycles"/>
+	<event counter="ARM_Mali-T860_ARITH_WORDS" description="The number of instructions run per warp" name="Executed instructions" title="Mali ALU Instructions" units="instructions"/>
 	<event counter="ARM_Mali-T860_LS_ISSUES" description="The total number of load/store issue cycles" name="Load/store unit issue" title="Mali Load/Store Unit Cycles" units="cycles"/>
 	<event counter="ARM_Mali-T860_TEX_WORDS" description="The number of thread-width texture operations processed" name="Texture requests" title="Mali Texture Unit Requests" units="requests"/>
 	<event counter="ARM_Mali-T860_TEX_ISSUES" description="The number of texture filtering issue cycles" name="Filtering active" title="Mali Texture Unit Cycles" units="cycles"/>
@@ -73,5 +73,5 @@
 	<event counter="ARM_Mali-T860_PRIM_VISIBLE" description="The number of primitives that are visible after culling" name="Visible primitives" title="Mali Primitive Culling" units="primitives"/>
 	<event counter="ARM_Mali-T860_PRIM_CULLED" description="The number of primitives that are culled by facing or frustum XY plane tests" name="Facing or XY plane test culled primitives" title="Mali Primitive Culling" units="primitives"/>
 	<event counter="ARM_Mali-T860_PRIM_CLIPPED" description="The number of primitives that are culled by frustum Z plane tests" name="Z plane test culled primitives" title="Mali Primitive Culling" units="primitives"/>
-	<event advanced="yes" counter="ARM_Mali-T860_TILER_ACTIVE" description="The number of cycles where the tiler has a workload queued for processing" name="Tiler active" title="Mali GPU Cycles" units="cycles"/>
+	<event advanced="yes" counter="ARM_Mali-T860_TILER_ACTIVE" description="The number of cycles when the tiler has a workload queued for processing" name="Tiler active" title="Mali GPU Cycles" units="cycles"/>
 </category>

@@ -24,6 +24,7 @@
 #include <memory>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -39,16 +40,19 @@ namespace mali_userspace {
         {
             using namespace hwcpipe::device::hwcnt;
 
+            auto block_extents = instance.get_hwcnt_block_extents();
+
             sampler::configuration::enable_map_type enable_map {};
             enable_map.set();
 
-            constexpr auto num_configs = static_cast<std::uint32_t>(block_extents::num_block_types);
-            std::array<sampler::configuration, num_configs> configs {{
-                {block_type::fe, prfcnt_set::primary, enable_map},
-                {block_type::tiler, prfcnt_set::primary, enable_map},
-                {block_type::memory, prfcnt_set::primary, enable_map},
-                {block_type::core, prfcnt_set::primary, enable_map},
-            }};
+            std::vector<sampler::configuration> configs {};
+
+            for (int type = static_cast<int>(block_type::first); type <= static_cast<int>(block_type::last); type++) {
+                auto enum_type = static_cast<block_type>(type);
+                if (block_extents.num_blocks_of_type(enum_type) > 0) {
+                    configs.push_back(sampler::configuration {enum_type, hwcnt::prfcnt_set::primary, enable_map});
+                }
+            }
 
             return {instance, sample_period, configs.data(), configs.size()};
         }
@@ -178,12 +182,7 @@ namespace mali_userspace {
 
         const std::uint64_t sample_time = sample.get_metadata().timestamp_ns_end - monotonic_start;
         if (mFrameBuilder->eventHeader(sample_time) && mFrameBuilder->eventCore(deviceNumber)) {
-
-            mDevice.dumpCounters(counter_list,
-                                 sample,
-                                 reader.get_features().has_block_state,
-                                 *mFrameBuilder,
-                                 mCallback);
+            mDevice.dumpCounters(counter_list, sample, reader.get_features(), *mFrameBuilder, mCallback);
             mFrameBuilder->check(sample_time);
         }
 

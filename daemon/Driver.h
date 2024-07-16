@@ -5,8 +5,8 @@
 
 #include "CapturedSpe.h"
 #include "Constant.h"
+#include "metrics/metric_group_set.hpp"
 
-#include <cstdint>
 #include <functional>
 #include <optional>
 #include <set>
@@ -72,6 +72,8 @@ public:
     virtual void postChildExitInParent() {}
     //Any warning messages to be displayed in Streamline post analysis of a capture.
     [[nodiscard]] virtual std::vector<std::string> get_other_warnings() const { return {}; }
+
+    virtual std::set<std::string_view> metricsSupporting(metrics::metric_group_set_t const & /*unused*/) { return {}; };
 
     // name pointer is not owned by this so should just be copied
     Driver(const Driver &) = default;

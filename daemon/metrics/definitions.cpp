@@ -25,6 +25,10 @@ namespace metrics {
             0,
             metric_priority_t::backend_bound,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_bound_1 {
             {
@@ -39,20 +43,10 @@ namespace metrics {
             1,
             metric_priority_t::backend_bound,
             metric_arch_t::v8,
-        };
-        [[maybe_unused]] const metric_events_set_t backend_bound_2 {
             {
-                std::uint16_t(0x003d),
-                std::uint16_t(0x0010),
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
             },
-            "backend_bound",
-            "Backend Bound",
-            "This metric is the percentage of total slots that were stalled due to resource constraints in the backend "
-            "of the processor.",
-            "percent of slots",
-            2,
-            metric_priority_t::backend_bound,
-            metric_arch_t::v8,
         };
         [[maybe_unused]] const metric_events_set_t backend_busy_bound {
             {
@@ -67,6 +61,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_cache_l1d_bound {
             {
@@ -81,6 +79,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_cache_l2d_bound {
             {
@@ -95,6 +97,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_core_bound {
             {
@@ -109,6 +115,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_core_rename_bound {
             {
@@ -123,6 +133,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_bound_0 {
             {
@@ -137,6 +151,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_bound_1 {
             {
@@ -151,6 +169,10 @@ namespace metrics {
             1,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cache_bound_0 {
             {
@@ -166,6 +188,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cache_bound_1 {
             {
@@ -181,22 +207,12 @@ namespace metrics {
             1,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_store_bound_0 {
-            {
-                std::uint16_t(0x8168),
-                std::uint16_t(0x8164),
-            },
-            "backend_mem_store_bound",
-            "Backend Mem Store Bound",
-            "This metric is the percentage of total cycles stalled in the frontend due to memory write pending caused "
-            "by stores stalled in the pre-commit stage.",
-            "percent of cycles",
-            0,
-            metric_priority_t::backend,
-            metric_arch_t::any,
-        };
-        [[maybe_unused]] const metric_events_set_t backend_mem_store_bound_1 {
             {
                 std::uint16_t(0x8168),
                 std::uint16_t(0x8164),
@@ -206,9 +222,31 @@ namespace metrics {
             "This metric is the percentage of total cycles stalled in the frontend due to memory write pending caused "
             "by stores stalled in the pre-commit stage.",
             "percent of cycles",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_mem_store_bound_1 {
+            {
+                std::uint16_t(0x8168),
+                std::uint16_t(0x8164),
+            },
+            "backend_mem_store_bound",
+            "Backend Mem Store Bound",
+            "This metric is the percentage of total cycles stalled in the frontend due to memory write pending caused "
+            "by stores stalled in the pre-commit stage.",
+            "percent of cycles",
             1,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_tlb_bound_0 {
             {
@@ -223,6 +261,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_tlb_bound_1 {
             {
@@ -237,6 +279,10 @@ namespace metrics {
             1,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_bound_0 {
             {
@@ -252,6 +298,10 @@ namespace metrics {
             0,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_bound_1 {
             {
@@ -267,6 +317,10 @@ namespace metrics {
             1,
             metric_priority_t::backend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t backend_stalled_cycles {
             {
@@ -280,6 +334,10 @@ namespace metrics {
             0,
             metric_priority_t::backend_stalled_cycles,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::cycle_accounting,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t bad_speculation_0 {
             {
@@ -296,6 +354,10 @@ namespace metrics {
             0,
             metric_priority_t::bad_speculation,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t bad_speculation_1 {
             {
@@ -312,24 +374,12 @@ namespace metrics {
             1,
             metric_priority_t::bad_speculation,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t bad_speculation_2 {
-            {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
-                std::uint16_t(0x0010),
-            },
-            "bad_speculation",
-            "Bad Speculation",
-            "This metric is the percentage of total slots that executed operations and didn't retire due to a pipeline "
-            "flush.\nThis indicates cycles that were utilized but inefficiently.",
-            "percent of slots",
-            2,
-            metric_priority_t::bad_speculation,
-            metric_arch_t::v8,
-        };
-        [[maybe_unused]] const metric_events_set_t bad_speculation_3 {
             {
                 std::uint16_t(0x003a),
                 std::uint16_t(0x003f),
@@ -341,9 +391,13 @@ namespace metrics {
             "This metric is the percentage of total slots that executed operations and didn't retire due to a pipeline "
             "flush.\nThis indicates cycles that were utilized but inefficiently.",
             "percent of slots",
-            3,
+            2,
             metric_priority_t::bad_speculation,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_direct_ratio {
             {
@@ -358,6 +412,10 @@ namespace metrics {
             0,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::branch_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_indirect_ratio {
             {
@@ -372,6 +430,10 @@ namespace metrics {
             0,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::branch_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_misprediction_ratio {
             {
@@ -386,6 +448,11 @@ namespace metrics {
             0,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::basic,
+                metric_group_id_t::branch_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_mpki_0 {
             {
@@ -399,6 +466,11 @@ namespace metrics {
             0,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+                metric_group_id_t::branch_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_mpki_1 {
             {
@@ -412,6 +484,11 @@ namespace metrics {
             1,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+                metric_group_id_t::branch_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_percentage {
             {
@@ -426,6 +503,9 @@ namespace metrics {
             0,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
         };
         [[maybe_unused]] const metric_events_set_t branch_return_ratio {
             {
@@ -440,6 +520,10 @@ namespace metrics {
             0,
             metric_priority_t::branch,
             metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::branch_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t bus_read_requests_average_latency {
             {
@@ -454,6 +538,11 @@ namespace metrics {
             0,
             metric_priority_t::bus,
             metric_arch_t::any,
+            {
+                metric_group_id_t::bus_effectiveness,
+                metric_group_id_t::average_latency,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t cas_near_fail_ratio {
             {
@@ -468,6 +557,9 @@ namespace metrics {
             0,
             metric_priority_t::cas,
             metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t cas_near_pass_ratio {
             {
@@ -482,6 +574,9 @@ namespace metrics {
             0,
             metric_priority_t::cas,
             metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t cpi {
             {
@@ -494,6 +589,10 @@ namespace metrics {
             0,
             metric_priority_t::cpi,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::general,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t crypto_percentage {
             {
@@ -507,6 +606,9 @@ namespace metrics {
             0,
             metric_priority_t::numeric,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_mpki {
             {
@@ -520,6 +622,10 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_average_depth_0 {
             {
@@ -533,6 +639,9 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_average_depth_1 {
             {
@@ -546,6 +655,9 @@ namespace metrics {
             1,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_average_latency {
             {
@@ -559,6 +671,10 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::average_latency,
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_large_ratio {
             {
@@ -573,6 +689,9 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_ratio {
             {
@@ -587,6 +706,10 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_small_ratio {
             {
@@ -601,22 +724,11 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_bound_0 {
-            {
-                std::uint16_t(0x003e),
-                std::uint16_t(0x0010),
-            },
-            "frontend_bound",
-            "Frontend Bound",
-            "This metric is the percentage of total slots that were stalled due to resource constraints in the "
-            "frontend of the processor.",
-            "percent of slots",
-            0,
-            metric_priority_t::frontend_bound,
-            metric_arch_t::v8,
-        };
-        [[maybe_unused]] const metric_events_set_t frontend_bound_1 {
             {
                 std::uint16_t(0x003e),
                 std::uint16_t(0x8162),
@@ -626,9 +738,31 @@ namespace metrics {
             "This metric is the percentage of total slots that were stalled due to resource constraints in the "
             "frontend of the processor.",
             "percent of slots",
+            0,
+            metric_priority_t::frontend_bound,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t frontend_bound_1 {
+            {
+                std::uint16_t(0x003e),
+                std::uint16_t(0x0010),
+            },
+            "frontend_bound",
+            "Frontend Bound",
+            "This metric is the percentage of total slots that were stalled due to resource constraints in the "
+            "frontend of the processor.",
+            "percent of slots",
             1,
             metric_priority_t::frontend_bound,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_bound_2 {
             {
@@ -643,34 +777,10 @@ namespace metrics {
             2,
             metric_priority_t::frontend_bound,
             metric_arch_t::v8,
-        };
-        [[maybe_unused]] const metric_events_set_t frontend_bound_3 {
             {
-                std::uint16_t(0x003e),
-                std::uint16_t(0x0010),
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
             },
-            "frontend_bound",
-            "Frontend Bound",
-            "This metric is the percentage of total slots that were stalled due to resource constraints in the "
-            "frontend of the processor.",
-            "percent of slots",
-            3,
-            metric_priority_t::frontend_bound,
-            metric_arch_t::v8,
-        };
-        [[maybe_unused]] const metric_events_set_t frontend_bound_4 {
-            {
-                std::uint16_t(0x003e),
-                std::uint16_t(0x0010),
-            },
-            "frontend_bound",
-            "Frontend Bound",
-            "This metric is the percentage of total slots that were stalled due to resource constraints in the "
-            "frontend of the processor.",
-            "percent of slots",
-            4,
-            metric_priority_t::frontend_bound,
-            metric_arch_t::v8,
         };
         [[maybe_unused]] const metric_events_set_t frontend_cache_l1i_bound {
             {
@@ -685,6 +795,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_cache_l2i_bound {
             {
@@ -699,6 +813,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_bound {
             {
@@ -713,6 +831,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_flow_bound {
             {
@@ -727,6 +849,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_flush_bound {
             {
@@ -741,6 +867,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_mem_bound {
             {
@@ -755,6 +885,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_mem_cache_bound {
             {
@@ -770,6 +904,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_mem_tlb_bound {
             {
@@ -784,6 +922,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend,
             metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t frontend_stalled_cycles {
             {
@@ -797,6 +939,10 @@ namespace metrics {
             0,
             metric_priority_t::frontend_stalled_cycles,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::cycle_accounting,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t instruction_fetch_average_latency {
             {
@@ -810,6 +956,10 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::average_latency,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t integer_dp_percentage {
             {
@@ -823,6 +973,10 @@ namespace metrics {
             0,
             metric_priority_t::numeric,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t ipc {
             {
@@ -835,6 +989,10 @@ namespace metrics {
             0,
             metric_priority_t::ipc,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::general,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_mpki {
             {
@@ -848,6 +1006,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_average_depth_0 {
             {
@@ -861,6 +1024,10 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_average_depth_1 {
             {
@@ -874,6 +1041,10 @@ namespace metrics {
             1,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_average_latency {
             {
@@ -887,6 +1058,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::average_latency,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_large_ratio {
             {
@@ -901,6 +1077,10 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_ratio {
             {
@@ -915,6 +1095,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_small_ratio {
             {
@@ -929,6 +1114,10 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_miss_ratio {
             {
@@ -943,6 +1132,11 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::basic,
+                metric_group_id_t::l1d_cache_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_mpki_0 {
             {
@@ -956,6 +1150,11 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+                metric_group_id_t::l1d_cache_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_mpki_1 {
             {
@@ -970,6 +1169,11 @@ namespace metrics {
             1,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+                metric_group_id_t::l1d_cache_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_mpki_2 {
             {
@@ -983,6 +1187,11 @@ namespace metrics {
             2,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+                metric_group_id_t::l1d_cache_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1d_tlb_miss_ratio {
             {
@@ -997,6 +1206,10 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1d_tlb_mpki {
             {
@@ -1010,6 +1223,10 @@ namespace metrics {
             0,
             metric_priority_t::data,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1i_cache_miss_ratio {
             {
@@ -1025,6 +1242,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::basic,
+                metric_group_id_t::l1i_cache_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1i_cache_mpki {
             {
@@ -1039,6 +1261,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+                metric_group_id_t::l1i_cache_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1i_tlb_miss_ratio {
             {
@@ -1053,6 +1280,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l1i_tlb_mpki {
             {
@@ -1067,6 +1299,11 @@ namespace metrics {
             0,
             metric_priority_t::instruction,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::mpki,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_miss_ratio {
             {
@@ -1083,23 +1320,13 @@ namespace metrics {
             0,
             metric_priority_t::l2,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::l2_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_mpki_0 {
-            {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0008),
-            },
-            "l2_cache_mpki",
-            "L2 Cache MPKI",
-            "This metric measures the number of level 2 unified cache accesses missed per thousand instructions "
-            "executed. Note that cache accesses in this cache are either data memory access or instruction fetch as "
-            "this is a unified cache.",
-            "MPKI",
-            0,
-            metric_priority_t::l2,
-            metric_arch_t::any,
-        };
-        [[maybe_unused]] const metric_events_set_t l2_cache_mpki_1 {
             {
                 std::uint16_t(0x0052),
                 std::uint16_t(0x0008),
@@ -1111,9 +1338,34 @@ namespace metrics {
             "executed. Note that cache accesses in this cache are either data memory access or instruction fetch as "
             "this is a unified cache.",
             "MPKI",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::l2_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_cache_mpki_1 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x0008),
+            },
+            "l2_cache_mpki",
+            "L2 Cache MPKI",
+            "This metric measures the number of level 2 unified cache accesses missed per thousand instructions "
+            "executed. Note that cache accesses in this cache are either data memory access or instruction fetch as "
+            "this is a unified cache.",
+            "MPKI",
             1,
             metric_priority_t::l2,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::l2_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l2_tlb_miss_ratio {
             {
@@ -1128,6 +1380,11 @@ namespace metrics {
             0,
             metric_priority_t::l2,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::dtlb_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l2_tlb_mpki {
             {
@@ -1142,6 +1399,73 @@ namespace metrics {
             0,
             metric_priority_t::l2,
             metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+                metric_group_id_t::mpki,
+                metric_group_id_t::dtlb_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2d_cache_miss_ratio {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x0016),
+            },
+            "l2d_cache_miss_ratio",
+            "L2D Cache Miss Percentage",
+            "This metric measures the ratio of level 2 cache data accesses missed to the total number of level 2 data "
+            "cache accesses. This gives an indication of the effectiveness of data accesses in the level 2 cache, "
+            "which is a unified cache that stores both data and instruction. Note that cache accesses in this cache "
+            "are either data memory access or instruction fetch as this is a unified cache.",
+            "per cache access",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::l2d_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2d_cache_mpki_0 {
+            {
+                std::uint16_t(0x0052),
+                std::uint16_t(0x0008),
+                std::uint16_t(0x0053),
+            },
+            "l2d_cache_mpki",
+            "L2D Cache MPKI",
+            "This metric measures the number of level 2 unified cache data accesses missed per thousand instructions "
+            "executed. Note that cache accesses in this cache are either data memory access or instruction fetch as "
+            "this is a unified cache.",
+            "MPKI",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::l2d_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2d_cache_mpki_1 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x0008),
+            },
+            "l2d_cache_mpki",
+            "L2D Cache MPKI",
+            "This metric measures the number of level 2 unified cache data accesses missed per thousand instructions "
+            "executed. Note that cache accesses in this cache are either data memory access or instruction fetch as "
+            "this is a unified cache.",
+            "MPKI",
+            1,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::l2d_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l3_cache_miss_ratio {
             {
@@ -1158,6 +1482,11 @@ namespace metrics {
             0,
             metric_priority_t::l3,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::l3_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t l3_cache_mpki {
             {
@@ -1173,6 +1502,11 @@ namespace metrics {
             0,
             metric_priority_t::l3,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::l3_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t ldrex_percentage {
             {
@@ -1186,6 +1520,10 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t ll_cache_read_hit_ratio {
             {
@@ -1202,6 +1540,10 @@ namespace metrics {
             0,
             metric_priority_t::ll,
             metric_arch_t::any,
+            {
+                metric_group_id_t::ll_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t ll_cache_read_miss_ratio {
             {
@@ -1218,6 +1560,11 @@ namespace metrics {
             0,
             metric_priority_t::ll,
             metric_arch_t::any,
+            {
+                metric_group_id_t::miss_ratio,
+                metric_group_id_t::ll_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t ll_cache_read_mpki {
             {
@@ -1232,6 +1579,11 @@ namespace metrics {
             0,
             metric_priority_t::ll,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::ll_cache_effectiveness,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t load_average_latency {
             {
@@ -1245,6 +1597,26 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::average_latency,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t load_ls_percentage {
+            {
+                std::uint16_t(0x0070),
+                std::uint16_t(0x0072),
+            },
+            "load_ls_percentage",
+            "Load as Load/Store Operations Percentage",
+            "This metric measures load operations as a percentage of load and store operations speculatively executed.",
+            "percent of load/store operations",
+            0,
+            metric_priority_t::ls,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
         };
         [[maybe_unused]] const metric_events_set_t load_percentage {
             {
@@ -1258,6 +1630,26 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t load_store_percentage {
+            {
+                std::uint16_t(0x001b),
+                std::uint16_t(0x0072),
+            },
+            "load_store_percentage",
+            "Load/Store Operations Percentage",
+            "This metric measures load and store operations as a percentage of operations speculatively executed.",
+            "percent of operations",
+            0,
+            metric_priority_t::ls,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
         };
         [[maybe_unused]] const metric_events_set_t rc_ld_percentage {
             {
@@ -1272,6 +1664,10 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t rc_st_percentage {
             {
@@ -1286,6 +1682,10 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t retired_insns_percent {
             {
@@ -1299,6 +1699,10 @@ namespace metrics {
             0,
             metric_priority_t::retiring,
             metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t retired_ops_percent {
             {
@@ -1312,6 +1716,10 @@ namespace metrics {
             0,
             metric_priority_t::retiring,
             metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t retiring_0 {
             {
@@ -1327,6 +1735,10 @@ namespace metrics {
             0,
             metric_priority_t::retiring,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t retiring_1 {
             {
@@ -1342,6 +1754,10 @@ namespace metrics {
             1,
             metric_priority_t::retiring,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t retiring_2 {
             {
@@ -1357,6 +1773,10 @@ namespace metrics {
             2,
             metric_priority_t::retiring,
             metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::topdown_l1,
+            },
         };
         [[maybe_unused]] const metric_events_set_t scalar_fp_percentage {
             {
@@ -1371,6 +1791,10 @@ namespace metrics {
             0,
             metric_priority_t::numeric,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t simd_percentage {
             {
@@ -1384,6 +1808,27 @@ namespace metrics {
             0,
             metric_priority_t::numeric,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::basic,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t store_ls_percentage {
+            {
+                std::uint16_t(0x0071),
+                std::uint16_t(0x0072),
+            },
+            "store_ls_percentage",
+            "Store as Load/Store Operations Percentage",
+            "This metric measures store operations as a percentage of load and store operations speculatively "
+            "executed.",
+            "percent of load/store operations",
+            0,
+            metric_priority_t::ls,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
         };
         [[maybe_unused]] const metric_events_set_t store_percentage {
             {
@@ -1397,6 +1842,10 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::basic,
+            },
         };
         [[maybe_unused]] const metric_events_set_t strex_fail_mpki {
             {
@@ -1411,6 +1860,10 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::mpki,
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t strex_fail_percent {
             {
@@ -1425,6 +1878,9 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
         };
         [[maybe_unused]] const metric_events_set_t strex_percentage {
             {
@@ -1438,6 +1894,27 @@ namespace metrics {
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+                metric_group_id_t::atomics_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t sve_all_percentage {
+            {
+                std::uint16_t(0x001b),
+                std::uint16_t(0x8006),
+            },
+            "sve_all_percentage",
+            "Scalable Vector Operations (Load/Store Inclusive) Percentage",
+            "This metric measures scalable vector operations, including loads and stores, as a percentage of "
+            "operations speculatively executed.",
+            "percent of operations",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
         };
         const metric_cpu_events_t armv8_cortex_a32_cnt {
             branch_mpki_1,
@@ -1504,17 +1981,21 @@ namespace metrics {
             l1i_cache_mpki,
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
-            l2_cache_mpki_1,
+            l2_cache_mpki_0,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_mpki_0,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
         };
         const metric_cpu_events_t armv8_cortex_a53_cnt {
@@ -1553,27 +2034,33 @@ namespace metrics {
             l1i_cache_mpki,
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
-            l2_cache_mpki_1,
+            l2_cache_mpki_0,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_mpki_0,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
         };
         const metric_cpu_events_t armv8_cortex_a57_cnt {
-            branch_mpki_1,         branch_percentage,     cpi,
-            crypto_percentage,     integer_dp_percentage, ipc,
-            l1d_cache_miss_ratio,  l1d_cache_mpki_2,      l1d_tlb_mpki,
-            l1i_cache_miss_ratio,  l1i_cache_mpki,        l1i_tlb_mpki,
-            l2_cache_miss_ratio,   l2_cache_mpki_0,       ldrex_percentage,
-            load_percentage,       rc_ld_percentage,      rc_st_percentage,
-            retired_insns_percent, scalar_fp_percentage,  simd_percentage,
-            store_percentage,      strex_fail_mpki,
+            branch_mpki_1,        branch_percentage,     cpi,
+            crypto_percentage,    integer_dp_percentage, ipc,
+            l1d_cache_miss_ratio, l1d_cache_mpki_2,      l1d_tlb_mpki,
+            l1i_cache_miss_ratio, l1i_cache_mpki,        l1i_tlb_mpki,
+            l2_cache_miss_ratio,  l2_cache_mpki_1,       l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,     ldrex_percentage,      load_ls_percentage,
+            load_percentage,      load_store_percentage, rc_ld_percentage,
+            rc_st_percentage,     retired_insns_percent, scalar_fp_percentage,
+            simd_percentage,      store_ls_percentage,   store_percentage,
+            strex_fail_mpki,
         };
         const metric_cpu_events_t armv8_cortex_a65ae_cnt {
             backend_stalled_cycles,
@@ -1600,18 +2087,23 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
         };
         const metric_cpu_events_t armv8_cortex_a710_cnt {
@@ -1639,9 +2131,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -1652,23 +2146,26 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv8_cortex_a72_cnt {
-            branch_mpki_1,         branch_percentage,     cpi,
-            crypto_percentage,     integer_dp_percentage, ipc,
-            l1d_cache_miss_ratio,  l1d_cache_mpki_2,      l1d_tlb_mpki,
-            l1i_cache_miss_ratio,  l1i_cache_mpki,        l1i_tlb_mpki,
-            l2_cache_miss_ratio,   l2_cache_mpki_0,       ldrex_percentage,
-            load_percentage,       rc_ld_percentage,      rc_st_percentage,
-            retired_insns_percent, scalar_fp_percentage,  simd_percentage,
-            store_percentage,      strex_fail_mpki,
+            branch_mpki_1,        branch_percentage,     cpi,
+            crypto_percentage,    integer_dp_percentage, ipc,
+            l1d_cache_miss_ratio, l1d_cache_mpki_2,      l1d_tlb_mpki,
+            l1i_cache_miss_ratio, l1i_cache_mpki,        l1i_tlb_mpki,
+            l2_cache_miss_ratio,  l2_cache_mpki_1,       l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,     ldrex_percentage,      load_ls_percentage,
+            load_percentage,      load_store_percentage, rc_ld_percentage,
+            rc_st_percentage,     retired_insns_percent, scalar_fp_percentage,
+            simd_percentage,      store_ls_percentage,   store_percentage,
+            strex_fail_mpki,
         };
         const metric_cpu_events_t armv8_cortex_a73_cnt {
             branch_mpki_1,
@@ -1683,12 +2180,17 @@ namespace metrics {
             l1i_cache_mpki,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             ldrex_percentage,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
         };
@@ -1715,19 +2217,24 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
@@ -1756,21 +2263,26 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             rc_ld_percentage,
             rc_st_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
@@ -1799,21 +2311,26 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             rc_ld_percentage,
             rc_st_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
@@ -1844,9 +2361,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -1857,7 +2376,7 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
@@ -1890,9 +2409,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -1903,7 +2424,7 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
@@ -1936,9 +2457,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -1949,7 +2472,7 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
@@ -1982,9 +2505,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -1995,7 +2520,7 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
@@ -2028,9 +2553,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2041,7 +2568,7 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
@@ -2074,9 +2601,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2087,13 +2616,14 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv8_neoverse_e1_cnt {
             backend_stalled_cycles,
@@ -2120,18 +2650,23 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
         };
         const metric_cpu_events_t armv8_neoverse_n1_cnt {
@@ -2157,28 +2692,33 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             rc_ld_percentage,
             rc_st_percentage,
             retired_insns_percent,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
         };
         const metric_cpu_events_t armv8_neoverse_n2_cnt {
-            backend_bound_2,
+            backend_bound_1,
             backend_mem_bound_1,
             backend_stalled_cycles,
             bad_speculation_0,
@@ -2204,9 +2744,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2217,19 +2759,20 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_2,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv8_neoverse_v1_cnt {
             backend_bound_0,
             backend_mem_bound_1,
             backend_stalled_cycles,
-            bad_speculation_2,
+            bad_speculation_0,
             branch_misprediction_ratio,
             branch_mpki_0,
             branch_percentage,
@@ -2237,7 +2780,7 @@ namespace metrics {
             crypto_percentage,
             dtlb_mpki,
             dtlb_walk_ratio,
-            frontend_bound_0,
+            frontend_bound_1,
             frontend_stalled_cycles,
             integer_dp_percentage,
             ipc,
@@ -2252,9 +2795,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2265,7 +2810,7 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
@@ -2280,11 +2825,11 @@ namespace metrics {
             backend_cache_l2d_bound,
             backend_mem_bound_0,
             backend_mem_cache_bound_1,
-            backend_mem_store_bound_0,
+            backend_mem_store_bound_1,
             backend_mem_tlb_bound_0,
             backend_stall_interlock_bound_0,
             backend_stalled_cycles,
-            bad_speculation_3,
+            bad_speculation_2,
             branch_direct_ratio,
             branch_indirect_ratio,
             branch_misprediction_ratio,
@@ -2300,7 +2845,7 @@ namespace metrics {
             dtlb_walk_large_ratio,
             dtlb_walk_ratio,
             dtlb_walk_small_ratio,
-            frontend_bound_1,
+            frontend_bound_0,
             frontend_cache_l1i_bound,
             frontend_cache_l2i_bound,
             frontend_core_bound,
@@ -2327,18 +2872,22 @@ namespace metrics {
             l1i_cache_mpki,
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
-            l2_cache_mpki_1,
+            l2_cache_mpki_0,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_mpki_0,
             ll_cache_read_hit_ratio,
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
             load_average_latency,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
@@ -2369,9 +2918,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2382,13 +2933,14 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv9_cortex_a720_cnt {
             backend_bound_0,
@@ -2399,10 +2951,10 @@ namespace metrics {
             backend_core_rename_bound,
             backend_mem_bound_0,
             backend_mem_cache_bound_0,
-            backend_mem_store_bound_1,
+            backend_mem_store_bound_0,
             backend_mem_tlb_bound_1,
             backend_stalled_cycles,
-            bad_speculation_3,
+            bad_speculation_2,
             branch_direct_ratio,
             branch_indirect_ratio,
             branch_misprediction_ratio,
@@ -2418,7 +2970,7 @@ namespace metrics {
             dtlb_walk_large_ratio,
             dtlb_walk_ratio,
             dtlb_walk_small_ratio,
-            frontend_bound_1,
+            frontend_bound_0,
             frontend_cache_l1i_bound,
             frontend_cache_l2i_bound,
             frontend_core_bound,
@@ -2445,9 +2997,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ll_cache_read_hit_ratio,
@@ -2458,13 +3012,14 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv9_cortex_x3_cnt {
             backend_bound_0,
@@ -2491,9 +3046,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2504,13 +3061,14 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv9_cortex_x4_cnt {
             backend_bound_0,
@@ -2521,10 +3079,10 @@ namespace metrics {
             backend_core_rename_bound,
             backend_mem_bound_0,
             backend_mem_cache_bound_0,
-            backend_mem_store_bound_1,
+            backend_mem_store_bound_0,
             backend_mem_tlb_bound_1,
             backend_stalled_cycles,
-            bad_speculation_3,
+            bad_speculation_2,
             branch_direct_ratio,
             branch_indirect_ratio,
             branch_misprediction_ratio,
@@ -2539,7 +3097,7 @@ namespace metrics {
             dtlb_walk_large_ratio,
             dtlb_walk_ratio,
             dtlb_walk_small_ratio,
-            frontend_bound_1,
+            frontend_bound_0,
             frontend_cache_l1i_bound,
             frontend_cache_l2i_bound,
             frontend_core_bound,
@@ -2567,9 +3125,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2577,23 +3137,27 @@ namespace metrics {
             ll_cache_read_miss_ratio,
             ll_cache_read_mpki,
             load_average_latency,
+            load_ls_percentage,
             load_percentage,
+            load_store_percentage,
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_0,
+            retiring_1,
             scalar_fp_percentage,
             simd_percentage,
+            store_ls_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
         const metric_cpu_events_t armv9_neoverse_v2_cnt {
             backend_bound_1,
             backend_mem_bound_1,
             backend_stalled_cycles,
-            bad_speculation_2,
+            bad_speculation_0,
             branch_misprediction_ratio,
             branch_mpki_0,
             branch_percentage,
@@ -2601,7 +3165,7 @@ namespace metrics {
             crypto_percentage,
             dtlb_mpki,
             dtlb_walk_ratio,
-            frontend_bound_4,
+            frontend_bound_1,
             frontend_stalled_cycles,
             integer_dp_percentage,
             ipc,
@@ -2616,9 +3180,11 @@ namespace metrics {
             l1i_tlb_miss_ratio,
             l1i_tlb_mpki,
             l2_cache_miss_ratio,
-            l2_cache_mpki_0,
+            l2_cache_mpki_1,
             l2_tlb_miss_ratio,
             l2_tlb_mpki,
+            l2d_cache_miss_ratio,
+            l2d_cache_mpki_1,
             l3_cache_miss_ratio,
             l3_cache_mpki,
             ldrex_percentage,
@@ -2629,13 +3195,14 @@ namespace metrics {
             rc_ld_percentage,
             rc_st_percentage,
             retired_ops_percent,
-            retiring_1,
+            retiring_0,
             scalar_fp_percentage,
             simd_percentage,
             store_percentage,
             strex_fail_mpki,
             strex_fail_percent,
             strex_percentage,
+            sve_all_percentage,
         };
     }
     metric_cpu_events_map_t const cpu_metrics_table {

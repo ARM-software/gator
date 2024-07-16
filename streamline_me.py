@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# Copyright (C) 2019-2024 by Arm Limited
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (C) 2019-2024 by Arm Limited.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

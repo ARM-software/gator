@@ -1,19 +1,11 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIPARSER_H_
 #define GATORCLIPARSER_H_
 
-#include "Configuration.h"
-#include "GatorCLIFlags.h"
-#include "OlyUtility.h"
 #include "ParserResult.h"
 
-#include <cstring>
-#include <map>
-#include <optional>
-#include <set>
 #include <string>
-#include <vector>
 
 #include <getopt.h>
 #include <sys/stat.h>
@@ -53,7 +45,8 @@ public:
 private:
     int perfCounterCount {0};
 
-    void addCounter(int startpos, int pos, std::string & counters);
+    void handleCounterList(const std::string & value);
+    void addCounter(std::string_view counter);
     int findAndUpdateCmndLineCmnd(int argc, char ** argv);
     void parseAndUpdateSpe();
 };

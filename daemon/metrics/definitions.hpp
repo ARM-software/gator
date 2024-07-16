@@ -40,6 +40,30 @@ namespace metrics {
         retiring,
     };
 
+    enum class metric_group_id_t : std::uint8_t {
+        atomics_effectiveness,
+        average_latency,
+        basic,
+        branch_effectiveness,
+        bus_effectiveness,
+        cycle_accounting,
+        dtlb_effectiveness,
+        general,
+        itlb_effectiveness,
+        l1d_cache_effectiveness,
+        l1i_cache_effectiveness,
+        l2_cache_effectiveness,
+        l2d_cache_effectiveness,
+        l3_cache_effectiveness,
+        ll_cache_effectiveness,
+        miss_ratio,
+        mpki,
+        operation_mix,
+        topdown_backend,
+        topdown_frontend,
+        topdown_l1,
+    };
+
     /** Definition of a single metric */
     struct metric_events_set_t {
         std::initializer_list<std::uint16_t> event_codes;
@@ -50,6 +74,7 @@ namespace metrics {
         std::uint16_t instance_no;
         metric_priority_t priority_group;
         metric_arch_t arch;
+        std::initializer_list<metric_group_id_t> groups;
     };
 
     /** The list of metrics associated with some CPU */

@@ -38,6 +38,7 @@ namespace mali_userspace {
     enum class MaliCounterBlockName : uint32_t;
 
     struct MaliProductVersion {
+        uint64_t mGpuId;
         hwcpipe::device::product_id product_id;
         const char * mName;
         const char * mProductFamilyName;
@@ -131,6 +132,9 @@ namespace mali_userspace {
             std::size_t num_counters_per_block;
             unsigned int num_counters_per_enable_group;
             unsigned int num_enable_groups;
+            // number of different block types supported by this GPU (most don't have the
+            // neural engine type).
+            unsigned int num_block_types;
             static constexpr unsigned int block_enable_bits_counter_index = 2;
         };
 
@@ -205,7 +209,7 @@ namespace mali_userspace {
          */
         void dumpCounters(const MaliDeviceCounterList & counter_list,
                           const hwcpipe::device::hwcnt::sample & sample,
-                          bool has_block_state_feature,
+                          const hwcpipe::device::hwcnt::features & features,
                           IBlockCounterFrameBuilder & buffer_data,
                           IMaliDeviceCounterDumpCallback & callback) const;
 

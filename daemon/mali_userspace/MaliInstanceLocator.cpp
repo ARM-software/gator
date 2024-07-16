@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliInstanceLocator.h"
 
@@ -78,9 +78,15 @@ namespace mali_userspace {
         for (unsigned int i = 0; i < MAX_DEV_MALI_TOO_SCAN_FOR; ++i) {
             auto probed_handle = hwcpipe::device::handle::create(i);
             if (probed_handle) {
+                LOG_DEBUG("Tried /dev/mali%u success", i);
                 detectedDevices[i] = std::move(probed_handle);
             }
+            else {
+                LOG_DEBUG("Tried /dev/mali%u failed", i);
+            }
         }
+
+        LOG_DEBUG("Number of mali files: %zu", detectedDevices.size());
 
         if (!detectedDevices.empty()) {
             // now scan /sys to find the 'clock' metadata files from which we read gpu frequency

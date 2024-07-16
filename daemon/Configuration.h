@@ -4,6 +4,7 @@
 #define CONFIGURATION_H_
 
 #include "EventCode.h"
+#include "linux/perf/PerfEventGroupIdentifier.h"
 
 #include <set>
 #include <string>
@@ -12,10 +13,11 @@ enum SampleRate { high = 10007, normal = 1009, normal_x2 = 2003, low = 101, none
 
 enum class CaptureOperationMode {
     system_wide = 0,
-    application_inherit = 1,
-    application_no_inherit = 2,
-    application_poll = 3,
-    application_experimental_patch = 4,
+    application_default = 1,
+    application_inherit = 2,
+    application_no_inherit = 3,
+    application_poll = 4,
+    application_experimental_patch = 5,
 };
 
 [[nodiscard]] constexpr bool isCaptureOperationModeSystemWide(CaptureOperationMode mode)
@@ -24,6 +26,7 @@ enum class CaptureOperationMode {
 
         case CaptureOperationMode::system_wide:
             return true;
+        case CaptureOperationMode::application_default:
         case CaptureOperationMode::application_inherit:
         case CaptureOperationMode::application_no_inherit:
         case CaptureOperationMode::application_poll:
@@ -33,7 +36,8 @@ enum class CaptureOperationMode {
     }
 }
 
-[[nodiscard]] constexpr bool isCaptureOperationModeSupportingCounterGroups(CaptureOperationMode mode)
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingCounterGroups(CaptureOperationMode mode,
+                                                                           bool supports_inherit_sample_read)
 {
     switch (mode) {
 
@@ -42,21 +46,25 @@ enum class CaptureOperationMode {
         case CaptureOperationMode::application_poll:
         case CaptureOperationMode::application_experimental_patch:
             return true;
+        case CaptureOperationMode::application_default:
+            return supports_inherit_sample_read;
         case CaptureOperationMode::application_inherit:
         default:
             return false;
     }
 }
 
-[[nodiscard]] constexpr bool isCaptureOperationModeSupportingMetrics(CaptureOperationMode mode)
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingMetrics(CaptureOperationMode mode,
+                                                                     bool supports_inherit_sample_read)
 {
-    return isCaptureOperationModeSupportingCounterGroups(mode);
+    return isCaptureOperationModeSupportingCounterGroups(mode, supports_inherit_sample_read);
 }
 
-[[nodiscard]] constexpr bool isCaptureOperationModeSupportingUsesInherit(CaptureOperationMode mode)
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingUsesInherit(CaptureOperationMode mode,
+                                                                         bool /*supports_inherit_sample_read*/)
 {
     switch (mode) {
-
+        case CaptureOperationMode::application_default:
         case CaptureOperationMode::application_inherit:
         case CaptureOperationMode::application_experimental_patch:
             return true;
@@ -79,6 +87,16 @@ struct SpeConfiguration {
     uint64_t event_filter_mask {}; // if 0 filtering is disabled, else equals PMSEVFR_EL1 (ref doc).
     std::set<SpeOps> ops {};
     int min_latency = 0;
+
+    static constexpr std::string_view workflow_spe {"workflow_spe"};
+
+    [[nodiscard]] bool applies_to_counter(std::string_view const counter_name,
+                                          PerfEventGroupIdentifier const & pegi) const
+    {
+        return id == counter_name ||  //
+               (id == workflow_spe && //
+                pegi.getType() == PerfEventGroupIdentifier::Type::SPE);
+    }
 };
 
 inline bool operator==(const SpeConfiguration & lhs, const SpeConfiguration & rhs)

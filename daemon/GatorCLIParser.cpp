@@ -15,18 +15,23 @@
 #include "lib/Utils.h"
 #include "linux/smmu_identifier.h"
 #include "logging/configuration.h"
+#include "metrics/definitions.hpp"
+#include "metrics/metric_group_set.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include <getopt.h>
 
 namespace {
     constexpr int DECIMAL_BASE = 10;
@@ -42,7 +47,7 @@ namespace {
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
-                                             // Remaining free letters are: bgjqyzBGHJKMUW
+                                             // Remaining free letters are: bgjqyBGHJKMUW
         {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
         {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
         {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
@@ -60,7 +65,7 @@ namespace {
         {"session-xml", /************/ required_argument, nullptr, 's'}, //
         {"max-duration", /***********/ required_argument, nullptr, 't'}, //
         {"call-stack-unwinding", /***/ required_argument, nullptr, 'u'}, //
-        {"version", /****************/ required_argument, nullptr, 'v'}, //
+        {"version", /****************/ no_argument, /***/ nullptr, 'v'}, //
         {"app-cwd", /****************/ required_argument, nullptr, 'w'}, //
         {"stop-on-exit", /***********/ required_argument, nullptr, 'x'}, //
         {"smmuv3-model", /***********/ required_argument, nullptr, 'z'}, //
@@ -167,6 +172,68 @@ namespace {
 
         return false;
     }
+
+    // Returns true if the string represented a metric group and this function
+    // handled it.
+    bool handle_metric_group_option(ParserResult & result, std::string_view arg_value)
+    {
+        using metrics::metric_group_set_t;
+        if (arg_value == "workflow_topdown_basic") {
+            metric_group_set_t const s {{metrics::metric_group_id_t::basic}};
+            result.enabled_metric_groups = result.enabled_metric_groups.set_union(s);
+            return true;
+        }
+        if (arg_value == "workflow_all") {
+            metric_group_set_t const s {true};
+            result.enabled_metric_groups = result.enabled_metric_groups.set_union(s);
+            return true;
+        }
+        return false;
+    }
+
+    std::string_view slice(std::string const & src, int startpos, int pos)
+    {
+        std::size_t const len = pos - startpos;
+
+        return {src.c_str() + startpos, len};
+    }
+
+    std::pair<std::string_view, std::string_view> split_one(std::string_view data, char delimiter)
+    {
+        if (auto offset = data.find(delimiter); offset != std::string_view::npos) {
+            return {data.substr(0, offset), data.substr(offset + 1)};
+        }
+        return {data, ""};
+    }
+
+    EventCode parseEvent(std::string_view event)
+    {
+        if (event.empty()) {
+            return {};
+        }
+        long long eventCode;
+        std::string eventStr {event};
+        if (!stringToLongLong(&eventCode, eventStr.data(), DECIMAL_BASE)) { //check for decimal
+            if (!stringToLongLong(&eventCode, eventStr.data(), HEX_BASE)) { //check for hex
+                LOG_ERROR("event must be an integer");
+                return {};
+            }
+        }
+        return EventCode {eventCode};
+    }
+
+    bool tryInsert(std::map<std::string, EventCode> & events, std::string const & counterName, EventCode eventCode)
+    {
+        for (auto const & kv_pair : events) {
+            auto const & key = kv_pair.first;
+            if (strcasecmp(key.c_str(), counterName.c_str()) == 0) {
+                return false;
+            }
+        }
+        auto const ins_result = events.insert(std::make_pair(counterName, eventCode));
+        return ins_result.second;
+    }
+
 }
 
 using ExecutionMode = ParserResult::ExecutionMode;
@@ -189,44 +256,27 @@ std::pair<SampleRate, SampleRate> getSampleRate(const std::string & value)
     return {invalid, invalid};
 }
 
-void GatorCLIParser::addCounter(int startpos, int pos, std::string & counters)
+void GatorCLIParser::addCounter(std::string_view counter)
 {
-    std::string counterType;
-    std::string subStr = counters.substr(startpos, pos - startpos);
-    EventCode event;
-    size_t eventpos = 0;
-
-    //TODO : support for A53:Cycles:1:2:8:0x1
-    if ((eventpos = subStr.find(':')) != std::string::npos) {
-        auto eventStr = subStr.substr(eventpos + 1, subStr.size());
-        long long eventCode;
-        if (!stringToLongLong(&eventCode, eventStr.c_str(), DECIMAL_BASE)) { //check for decimal
-            if (!stringToLongLong(&eventCode, eventStr.c_str(), HEX_BASE)) { //check for hex
-                LOG_ERROR("event must be an integer");
-                result.parsingFailed();
-                return;
-            }
-        }
-        event = EventCode(eventCode);
-    }
-    if (eventpos == std::string::npos) {
-        counterType = subStr;
-    }
-    else {
-        counterType = subStr.substr(0, eventpos);
+    if (handle_metric_group_option(result, counter)) {
+        return;
     }
 
-    auto it = result.events.begin();
+    auto const [counterNameView, eventStrView] = split_one(counter, ':');
 
-    while (it != result.events.end()) {
-        if (strcasecmp(it->first.c_str(), counterType.c_str()) == 0) {
-            LOG_ERROR("Counter already added. %s ", counterType.c_str());
-            result.parsingFailed();
-            return;
-        }
-        ++it;
+    EventCode const event = parseEvent(eventStrView);
+    if (!eventStrView.empty() && !event.isValid()) {
+        result.parsingFailed();
+        return;
     }
-    result.events.insert(std::make_pair(counterType, event));
+
+    std::string counterName {counterNameView};
+    bool const inserted = tryInsert(result.events, counterName, event);
+
+    if (!inserted) {
+        LOG_ERROR("Counter already added. %s ", counterName.data());
+        result.parsingFailed();
+    }
 }
 
 int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
@@ -355,13 +405,24 @@ void GatorCLIParser::parseAndUpdateSpe()
     }
 }
 
+void GatorCLIParser::handleCounterList(const std::string & value)
+{
+    int startpos = -1;
+    size_t counterSplitPos = 0;
+
+    while ((counterSplitPos = value.find(',', startpos + 1)) != std::string::npos) {
+        addCounter(slice(value, startpos + 1, counterSplitPos));
+        startpos = counterSplitPos;
+    }
+    addCounter(slice(value, startpos + 1, value.length()));
+}
+
 void GatorCLIParser::parseCLIArguments(int argc,
                                        char * argv[],
                                        const char * version_string,
                                        const char * gSrcMd5,
                                        const char * gBuildId)
 {
-    LOG_INFO("%s", version_string);
     const int indexApp = findAndUpdateCmndLineCmnd(argc, argv);
     if (indexApp > 0) {
         argc = indexApp;
@@ -503,7 +564,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     break;
                 }
                 result.mCaptureOperationMode = (is_system_wide ? CaptureOperationMode::system_wide //
-                                                               : CaptureOperationMode::application_inherit);
+                                                               : CaptureOperationMode::application_default);
                 systemWideSet = true;
                 break;
             }
@@ -545,16 +606,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 break;
             case 'C': //counter
             {
-                int startpos = -1;
-                size_t counterSplitPos = 0;
                 value = std::string(optarg);
-
-                while ((counterSplitPos = value.find(',', startpos + 1)) != std::string::npos) {
-                    addCounter(startpos + 1, counterSplitPos, value);
-                    startpos = counterSplitPos;
-                }
-                //adding last counter in list
-                addCounter(startpos + 1, value.length(), value);
+                handleCounterList(value);
                 break;
             }
             case 'D': // disable kernel annotations
@@ -757,9 +810,14 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                        after capture finished.\n"
                     "  -i|--pid <pids...>                    Comma separated list of process IDs to\n"
                     "                                        profile\n"
-                    "  -C|--counters <counters>              A comma separated list of counters to\n"
-                    "                                        enable. This option may be specified\n"
-                    "                                        multiple times.\n"
+                    "  -C|--counters <counters>              A comma separated list of counters or\n"
+                    "                                        metrics to enable. This option may be\n"
+                    "                                        specified multiple times.  The name\n"
+                    "                                        'workflow_topdown_basic' is used to\n"
+                    "                                        enable metrics related to topdown\n"
+                    "                                        analysis.  The name 'workflow_all'\n"
+                    "                                        is used to enable all available\n"
+                    "                                        metrics.\n"
                     "  -X|--spe <id>[:events=<indexes>][:ops=<types>][:min_latency=<lat>]\n"
                     "                                        Enable Statistical Profiling Extension\n"
                     "                                        (SPE). Where:\n"
@@ -767,7 +825,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     "                                          specified in the events.xml or \n"
                     "                                          pmus.xml file. It uniquely identifies\n"
                     "                                          the available events and counters for\n"
-                    "                                          the SPE hardware.\n"
+                    "                                          the SPE hardware.  An <id> of\n"
+                    "                                          'workflow_spe' is treated specially to\n"
+                    "                                          enable SPE on any capable processor.\n"
                     "                                        * <indexes> are a comma separated list\n"
                     "                                          of event indexes to filter the\n"
                     "                                          sampling by, a sample will only be\n"
@@ -968,10 +1028,10 @@ void GatorCLIParser::parseCLIArguments(int argc,
 #if CONFIG_PREFER_SYSTEM_WIDE_MODE
         // default to system-wide mode unless a process option was specified
         result.mCaptureOperationMode =
-            (!haveProcess ? CaptureOperationMode::system_wide : CaptureOperationMode::application_inherit);
+            (!haveProcess ? CaptureOperationMode::system_wide : CaptureOperationMode::application_default);
 #else
         // user must explicitly request system-wide mode
-        result.mCaptureOperationMode = CaptureOperationMode::application_inherit;
+        result.mCaptureOperationMode = CaptureOperationMode::application_default;
 #endif
     }
 
@@ -1001,7 +1061,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             return;
         }
 
-        if (result.events.empty() && (result.mConfigurationXMLPath == nullptr)) {
+        if ((result.events.empty() && result.enabled_metric_groups.empty())
+            && (result.mConfigurationXMLPath == nullptr)) {
             LOG_WARNING("No counters (--counters) specified, default counters will be used");
         }
     }
@@ -1017,7 +1078,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
             result.parsingFailed();
             return;
         }
-        if (!result.events.empty()) {
+        if (!result.events.empty() || !result.enabled_metric_groups.empty()) {
             LOG_ERROR("--counters is not applicable in daemon mode.");
             result.parsingFailed();
             return;

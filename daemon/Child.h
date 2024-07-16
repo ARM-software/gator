@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef __CHILD_H__
 #define __CHILD_H__
@@ -10,6 +10,7 @@
 #include "handleException.h"
 #include "lib/AutoClosingFd.h"
 #include "logging/suppliers.h"
+#include "metrics/metric_group_set.hpp"
 
 #include <atomic>
 #include <memory>
@@ -31,6 +32,7 @@ public:
     struct Config {
         std::set<CounterConfiguration> events;
         std::set<SpeConfiguration> spes;
+        metrics::metric_group_set_t metric_groups;
     };
 
     static std::unique_ptr<Child> createLocal(agents::i_agent_spawner_t & hi_priv_spawner,

@@ -74,24 +74,27 @@ public:
     void setupCounter(Counter & counter) override;
     [[nodiscard]] std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
     [[nodiscard]] bool enable(IPerfGroups & group,
-                attr_to_key_mapping_tracker_t & mapping_tracker,
-                metric_key_to_event_key_tracker_t & metric_tracker) const;
+                              attr_to_key_mapping_tracker_t & mapping_tracker,
+                              metric_key_to_event_key_tracker_t & metric_tracker) const;
     void read(IPerfAttrsConsumer & attrsConsumer, int cpu);
     [[nodiscard]] bool sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer);
 
     [[nodiscard]] const TraceFsConstants & getTraceFsConstants() const { return traceFsConstants; };
 
-    [[nodiscard]] std::shared_ptr<PrimarySource> create_source(sem_t & senderSem,
-                                                 ISender & sender,
-                                                 std::function<bool()> session_ended_callback,
-                                                 std::function<void()> exec_target_app_callback,
-                                                 std::function<void()> profilingStartedCallback,
-                                                 const std::set<int> & appTids,
-                                                 FtraceDriver & ftraceDriver,
-                                                 bool enableOnCommandExec,
-                                                 ICpuInfo & cpuInfo,
-                                                 lib::Span<UncorePmu> uncore_pmus,
-                                                 agents::agent_workers_process_default_t & agent_workers_process);
+    [[nodiscard]] std::shared_ptr<PrimarySource> create_source(
+        sem_t & senderSem,
+        ISender & sender,
+        std::function<bool()> session_ended_callback,
+        std::function<void()> exec_target_app_callback,
+        std::function<void()> profilingStartedCallback,
+        const std::set<int> & appTids,
+        FtraceDriver & ftraceDriver,
+        bool enableOnCommandExec,
+        ICpuInfo & cpuInfo,
+        lib::Span<UncorePmu> uncore_pmus,
+        agents::agent_workers_process_default_t & agent_workers_process);
+
+    std::set<std::string_view> metricsSupporting(metrics::metric_group_set_t const & desired) override;
 
 private:
     const TraceFsConstants & traceFsConstants;

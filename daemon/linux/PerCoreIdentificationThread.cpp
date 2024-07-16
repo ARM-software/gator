@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/PerCoreIdentificationThread.h"
 
@@ -51,14 +51,18 @@ bool PerCoreIdentificationThread::configureAffinity()
 
     const pid_t tid = lib::gettid();
 
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);
+    auto const cpu_set_size = CPU_ALLOC_SIZE(cpu + 1);
+
+    std::unique_ptr<cpu_set_t, std::function<void(cpu_set_t *)>> cpuset {CPU_ALLOC(cpu + 1),
+                                                                         [](cpu_set_t * ptr) { CPU_FREE(ptr); }};
+
+    CPU_ZERO_S(cpu_set_size, cpuset.get());
+    CPU_SET_S(cpu, cpu_set_size, cpuset.get());
 
     // try and set affinity
     bool affinitySucceeded = false;
     for (unsigned count = 0; count < AFFINE_LOOP_COUNT && !affinitySucceeded; ++count) {
-        if (sched_setaffinity(tid, sizeof(cpu_set_t), &cpuset) == 0) {
+        if (sched_setaffinity(tid, cpu_set_size, cpuset.get()) == 0) {
             affinitySucceeded = true;
         }
     }

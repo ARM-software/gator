@@ -48,6 +48,11 @@ namespace agents::perf {
                         ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
                             capture_configuration_t_capture_operation_mode_t_system_wide);
                     break;
+                case CaptureOperationMode::application_default:
+                    msg.set_capture_operation_mode(
+                        ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
+                            capture_configuration_t_capture_operation_mode_t_application_default);
+                    break;
                 case CaptureOperationMode::application_inherit:
                     msg.set_capture_operation_mode(
                         ::ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t::
@@ -193,6 +198,7 @@ namespace agents::perf {
             msg.set_type(attr.type);
             msg.set_config(attr.config);
             msg.set_sample_period_or_freq(attr.freq ? attr.sample_freq : attr.sample_period);
+            msg.set_alternative_sample_period(attr.alternative_sample_period);
             msg.set_sample_type(attr.sample_type);
             msg.set_read_format(attr.read_format);
             msg.set_disabled(attr.disabled);
@@ -334,6 +340,9 @@ namespace agents::perf {
             switch (msg.capture_operation_mode()) {
                 case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_system_wide:
                     session_data.capture_operation_mode = CaptureOperationMode::system_wide;
+                    break;
+                case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_application_default:
+                    session_data.capture_operation_mode = CaptureOperationMode::application_default;
                     break;
                 case ipc::proto::shell::perf::capture_configuration_t_capture_operation_mode_t_application_inherit:
                     session_data.capture_operation_mode = CaptureOperationMode::application_inherit;
@@ -484,6 +493,7 @@ namespace agents::perf {
             result.sample_stack_user = msg.sample_stack_user();
             result.clockid = msg.clockid();
             result.aux_watermark = msg.aux_watermark();
+            result.alternative_sample_period = msg.alternative_sample_period();
             set_one_of(result.freq, result.sample_freq, result.sample_period, msg.sample_period_or_freq());
             set_one_of(result.watermark,
                        result.wakeup_watermark,

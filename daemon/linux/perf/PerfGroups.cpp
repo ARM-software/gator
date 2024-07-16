@@ -69,7 +69,8 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
                                    bool hasAuxData)
 {
     if ((groupIdentifier.getType() == PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED)
-        && (!isCaptureOperationModeSupportingMetrics(configuration.captureOperationMode))) {
+        && (!isCaptureOperationModeSupportingMetrics(configuration.captureOperationMode,
+                                                     configuration.perfConfig.supports_inherit_sample_read))) {
         LOG_ERROR("Per-function metrics are not supported in application tracing mode when `--inherit yes` (the "
                   "default) is used.");
         return false;
@@ -107,7 +108,8 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
 
     // If we are not system wide the group leader can't read counters for us
     // so we need to add sample them individually periodically
-    if ((!isCaptureOperationModeSupportingCounterGroups(configuration.captureOperationMode))
+    if ((!isCaptureOperationModeSupportingCounterGroups(configuration.captureOperationMode,
+                                                        configuration.perfConfig.supports_inherit_sample_read))
         && eventGroup.requiresLeader() && (attr.periodOrFreq == 0)) {
         LOG_DEBUG("    Forcing as freq counter");
         newAttr.periodOrFreq =

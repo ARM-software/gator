@@ -12,10 +12,11 @@ message capture_configuration_t {
     /** See CaptureOperationMode */
     enum capture_operation_mode_t {
         system_wide = 0;
-        application_inherit = 1;
-        application_no_inherit = 2;
-        application_poll = 3;
-        application_experimental_patch = 4;
+        application_default = 1;
+        application_inherit = 2;
+        application_no_inherit = 3;
+        application_poll = 4;
+        application_experimental_patch = 5;
     }
 
     /** Select parts of SessionData */
@@ -153,6 +154,7 @@ message capture_configuration_t {
         uint32 sample_stack_user = 36;
         int32 clockid = 37;
         uint32 aux_watermark = 38;
+        uint64 alternative_sample_period = 39;
     }
 
     /** Equivalent to event_definition_t */

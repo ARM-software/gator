@@ -25,7 +25,7 @@ void SessionData::initialize()
     mOneShot = false;
     mAllowCommands = false;
     mFtraceRaw = false;
-    mCaptureOperationMode = CaptureOperationMode::application_inherit;
+    mCaptureOperationMode = CaptureOperationMode::application_default;
     mExcludeKernelEvents = false;
     mEnableOffCpuSampling = false;
     mImages.clear();

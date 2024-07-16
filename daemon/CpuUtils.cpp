@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils.h"
 
@@ -262,20 +262,6 @@ namespace cpu_utils {
                     LOG_WARNING("Could not identify all CPU cores within the timeout period. Activated %zu of %zu",
                                 identificationThreadCallbackCounter,
                                 cpuIds.size());
-                }
-            }
-            //
-            // when we don't care about onlining the cores, just read them directly, one by one, any that are offline will be ignored anyway
-            //
-            else {
-                for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
-                    if (collected_properties.count(cpu) == 0) {
-                        auto const properties = PerCoreIdentificationThread::detectFor(cpu);
-                        auto const it = collected_properties.emplace(cpu, properties).first;
-                        for (auto const sibling : it->second.core_siblings) {
-                            collected_properties.try_emplace(sibling, properties);
-                        }
-                    }
                 }
             }
 

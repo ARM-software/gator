@@ -110,6 +110,7 @@ public:
 extern SessionData gSessionData;
 extern const char * const gSrcMd5;
 extern const char * const gBuildId;
+extern const char * const gCopyrightYear;
 
 void logCpuNotFound();
 

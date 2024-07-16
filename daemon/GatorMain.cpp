@@ -455,7 +455,7 @@ namespace {
 void setDefaults()
 {
     //default system wide.
-    gSessionData.mCaptureOperationMode = CaptureOperationMode::application_inherit;
+    gSessionData.mCaptureOperationMode = CaptureOperationMode::application_default;
     // buffer_mode is normal
     gSessionData.mOneShot = false;
     gSessionData.mTotalBufferSize = 4;
@@ -719,6 +719,11 @@ int gator_main(int argc, char ** argv)
 
         versionString
             .printf(formatString, PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion, protocolDevTag);
+
+        //Print Arm standard header to stdout
+        std::cout << "Streamline Data Recorder v" << majorVersion << '.' << minorVersion << '.' << revisionVersion
+                  << " (Build " << gBuildId << " - Tag " << protocolDevTag << ")\n"
+                  << "Copyright (c) 2010-" << gCopyrightYear << " Arm Limited. All rights reserved.\n\n";
     }
     // Parse the command line parameters
     GatorCLIParser parser;

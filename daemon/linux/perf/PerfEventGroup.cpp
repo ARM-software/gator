@@ -104,7 +104,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.size = sizeof(event.attr);
     /* Emit time, read_format below, group leader id, and raw tracepoint info */
     const uint64_t sampleReadMask =
-        (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode)
+        (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
+                                                       config.perfConfig.supports_inherit_sample_read)
                  && (type != PerfEventGroupIdentifier::Type::SPE)
              ? 0
              : PERF_SAMPLE_READ); // Unfortunately PERF_SAMPLE_READ is not allowed with inherit
@@ -122,8 +123,10 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
         | (isCaptureOperationModeSystemWide(config.captureOperationMode) && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
         // must sample PERIOD is used if 'freq' or non-zero period to read the actual period value
         | (attr.periodOrFreq != 0
-               ? (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode) ? PERF_SAMPLE_READ
-                                                                                             : PERF_SAMPLE_PERIOD)
+               ? (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
+                                                                config.perfConfig.supports_inherit_sample_read)
+                      ? PERF_SAMPLE_READ
+                      : PERF_SAMPLE_PERIOD)
                : 0);
 
 #if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
@@ -146,10 +149,14 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
 #endif
 
     // make sure all new children are counted too
-    const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode) && !is_header;
+    const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode,
+                                                                         config.perfConfig.supports_inherit_sample_read)
+                          && !is_header;
     // group doesn't require a leader (so all events are stand alone)
     const bool every_attribute_in_own_group =
-        (!requires_leader) || is_header || !isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode);
+        (!requires_leader) || is_header
+        || !isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
+                                                          config.perfConfig.supports_inherit_sample_read);
     // use READ_FORMAT_GROUP; for any item that overflows, but not for inherit (which cannot support groups) and not a stand alone event
     const bool use_read_format_group = (!every_attribute_in_own_group) && (!is_header);
 
@@ -160,7 +167,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
 
     const bool strobe = (!attr.freq) && (attr.strobePeriod != 0) && uses_strobe_period;
 
-    runtime_assert(!strobe || config.perfConfig.supports_strobing, "Strobing is requested but not supported");
+    runtime_assert(!strobe || config.perfConfig.supports_strobing_patches || config.perfConfig.supports_strobing_core,
+                   "Strobing is requested but not supported");
 
     // when running in application mode, inherit must always be set, in system wide mode, inherit must always be clear
     event.attr.inherit = use_inherit;
@@ -186,7 +194,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.type = attr.type;
     event.attr.config = attr.config;
     event.attr.config1 = attr.config1;
-    event.attr.config2 = (strobe ? attr.strobePeriod : attr.config2);
+    event.attr.config2 = (strobe && !config.perfConfig.supports_strobing_core ? attr.strobePeriod : attr.config2);
+    event.attr.alternative_sample_period = (strobe && config.perfConfig.supports_strobing_core ? attr.strobePeriod : 0);
     event.attr.sample_period = attr.periodOrFreq;
     event.attr.mmap = attr.mmap;
     event.attr.comm = attr.comm;
@@ -282,7 +291,9 @@ bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracke
 bool perf_event_group_configurer_t::createCpuGroupLeaderPinned(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
     auto const enableCallChain = (config.backtraceDepth > 0);
-    auto const canReadGroups = isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode);
+    auto const canReadGroups =
+        isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
+                                                      config.perfConfig.supports_inherit_sample_read);
 
     IPerfGroups::Attr attr {};
     attr.sampleType = PERF_SAMPLE_TID | PERF_SAMPLE_READ;
@@ -409,7 +420,8 @@ bool perf_event_group_configurer_t::createCpuGroupLeaderMuxed(attr_to_key_mappin
 {
     (void) mapping_tracker;
 
-    if (!isCaptureOperationModeSupportingMetrics(config.captureOperationMode)) {
+    if (!isCaptureOperationModeSupportingMetrics(config.captureOperationMode,
+                                                 config.perfConfig.supports_inherit_sample_read)) {
         LOG_ERROR("Multiplexed CPU counters currently only work in system-wide mode, or when inherit is "
                   "no/poll/experimental");
         return false;

@@ -28,4 +28,4 @@ FILE(WRITE ${HASH_FILE}
 MESSAGE(STATUS "Generated hash value in ${OUTPUT_FILE} with constant name ${CONSTANT_NAME}, hash = ${HASH_STRING}")
 MESSAGE(STATUS "Generated id value in ${OUTPUT_FILE} with constant name ${ID_NAME}, text = ${ID_VALUE}")
 FILE(WRITE ${OUTPUT_FILE}
-    "extern const char * const ${CONSTANT_NAME} = \"${HASH_STRING}\";\nextern const char * const ${ID_NAME} = \"${ID_VALUE}\";\n")
+    "extern const char * const ${CONSTANT_NAME} = \"${HASH_STRING}\";\nextern const char * const ${ID_NAME} = \"${ID_VALUE}\";\nextern const char * const ${COPYRIGHT_NAME} = \"${COPYRIGHT_VALUE}\";\n")

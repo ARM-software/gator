@@ -34,6 +34,7 @@
 #include "lib/Waiter.h"
 #include "logging/suppliers.h"
 #include "mali_userspace/MaliHwCntrSource.h"
+#include "metrics/metric_group_set.hpp"
 #include "xml/EventsXML.h"
 
 #include <algorithm>
@@ -50,10 +51,12 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
 
+#include <linux/prctl.h>
 #include <mxml.h>
 #include <semaphore.h>
 #include <sys/epoll.h>
@@ -157,11 +160,38 @@ Child::~Child()
     runtime_assert(prevSingleton == this, "Exchanged Child::gSingleton with something other than this");
 }
 
+namespace {
+    CounterConfiguration counterConfigFromName(std::string_view name)
+    {
+        CounterConfiguration result {};
+        result.counterName = name;
+        return result;
+    }
+
+    std::set<CounterConfiguration> metricsToBeEnabled(metrics::metric_group_set_t const & metricGroups,
+                                                      Drivers & drivers)
+    {
+        std::set<CounterConfiguration> metrics {};
+        for (Driver * const driver : drivers.getAll()) {
+            std::set<std::string_view> const metricIds = driver->metricsSupporting(metricGroups);
+            for (auto const & id : metricIds) {
+                metrics.insert(counterConfigFromName(id));
+            }
+        }
+        return metrics;
+    }
+
+    bool userSpecifiedNoCountersOnCmdLine(Child::Config const & config)
+    {
+        static const metrics::metric_group_set_t empty {};
+        return config.events.empty() && config.spes.empty() && config.metric_groups == empty;
+    }
+}
+
 void Child::run()
 {
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-child"), 0, 0, 0);
 
-    // TODO: better place for this
     agent_workers_process->start();
 
     // Disable line wrapping when generating xml files; carriage returns and indentation to be added manually
@@ -175,6 +205,9 @@ void Child::run()
 
     std::set<SpeConfiguration> speConfigs = config.spes;
     std::set<CounterConfiguration> counterConfigs = config.events;
+    std::set<CounterConfiguration> metrics = metricsToBeEnabled(config.metric_groups, drivers);
+    counterConfigs.insert(metrics.begin(), metrics.end());
+
     bool countersAreDefaults = false;
     const auto checkError = [](const std::string & error) {
         if (!error.empty()) {
@@ -184,7 +217,7 @@ void Child::run()
 
     // Only read the configuration.xml if no counters were already given (via cmdline) or the configuration.xml
     // was explicitly given. Given counters take priority.
-    if ((config.events.empty() && config.spes.empty()) || gSessionData.mConfigurationXMLPath != nullptr) {
+    if (userSpecifiedNoCountersOnCmdLine(config) || gSessionData.mConfigurationXMLPath != nullptr) {
         auto && result = configuration_xml::getConfigurationXML(primarySourceProvider.getCpuInfo().getClusters());
         countersAreDefaults = result.isDefault;
         for (auto && counter : result.counterConfigurations) {

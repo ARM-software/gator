@@ -895,9 +895,10 @@ namespace agents::perf {
             switch (st->configuration->session_data.capture_operation_mode) {
                 case perf_capture_configuration_t::capture_operation_mode_t::application_poll:
                     break;
-                case perf_capture_configuration_t::capture_operation_mode_t::application_no_inherit:
                 case perf_capture_configuration_t::capture_operation_mode_t::system_wide:
+                case perf_capture_configuration_t::capture_operation_mode_t::application_default:
                 case perf_capture_configuration_t::capture_operation_mode_t::application_inherit:
+                case perf_capture_configuration_t::capture_operation_mode_t::application_no_inherit:
                 case perf_capture_configuration_t::capture_operation_mode_t::application_experimental_patch:
                 default:
                     return;

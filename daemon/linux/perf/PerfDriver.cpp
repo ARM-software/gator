@@ -25,6 +25,7 @@
 #include "linux/perf/metric_key_to_event_key_tracker.h"
 #include "metrics/definitions.hpp"
 #include "metrics/group_generator.hpp"
+#include "metrics/metric_group_set.hpp"
 #include "xml/PmuXML.h"
 
 #include <algorithm>
@@ -36,6 +37,8 @@
 #include <initializer_list>
 #include <map>
 #include <optional>
+#include <set>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -387,6 +390,7 @@ namespace {
 class PerfCounter : public DriverCounter {
 public:
     static constexpr uint64_t noConfigId2 = ~0ULL;
+    static constexpr bool fixUpClockCyclesEventDefault = false;
 
     PerfCounter(DriverCounter * next,
                 const PerfEventGroupIdentifier & groupIdentifier,
@@ -394,7 +398,7 @@ public:
                 const IPerfGroups::Attr & attr,
                 bool usesAux,
                 uint64_t config_id2 = noConfigId2,
-                bool fixUpClockCyclesEvent = false)
+                bool fixUpClockCyclesEvent = fixUpClockCyclesEventDefault)
         : DriverCounter(next, name),
           eventGroupIdentifier(groupIdentifier),
           attr(attr),
@@ -412,13 +416,15 @@ public:
                 uint64_t sampleType,
                 uint64_t count,
                 uint64_t config_id2 = noConfigId2,
-                bool fixUpClockCyclesEvent = false)
+                bool fixUpClockCyclesEvent = fixUpClockCyclesEventDefault,
+                std::set<metrics::metric_group_id_t> && metricGroups = {})
         : PerfCounter(next, groupIdentifier, name, IPerfGroups::Attr {}, false, config_id2, fixUpClockCyclesEvent)
     {
         attr.type = type;
         attr.config = config;
         attr.periodOrFreq = count;
         attr.sampleType = sampleType;
+        mMetricGroups = std::move(metricGroups);
     }
 
     // Intentionally undefined
@@ -472,12 +478,25 @@ public:
 
     inline void setSampleType(uint64_t sampleType) { attr.sampleType = sampleType; }
 
+    [[nodiscard]] bool supportsAtLeastOne(metrics::metric_group_set_t const & desired) const override
+    {
+        for (auto const & metric_group_id : mMetricGroups) {
+            if (desired.has_member(metric_group_id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     const PerfEventGroupIdentifier eventGroupIdentifier;
     IPerfGroups::Attr attr;
     const uint64_t mConfigId2;
     bool mFixUpClockCyclesEvent;
     bool mUsesAux;
+    // Where this PerfCounter represents a metric, this member represents
+    // the groups it is a part of.
+    std::set<metrics::metric_group_id_t> mMetricGroups {};
 };
 
 class CPUFreqDriver : public PerfCounter {
@@ -854,13 +873,18 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
 
                 LOG_DEBUG("Adding metric %s", metric_id.c_str());
 
+                std::set<metrics::metric_group_id_t> groups {metrics_set.groups};
+
                 setCounters(new PerfCounter(getCounters(),
                                             PerfEventGroupIdentifier(cpu, 1),
                                             metric_id.c_str(),
                                             TYPE_METRIC,
                                             -1,
                                             0,
-                                            0));
+                                            0,
+                                            PerfCounter::noConfigId2,
+                                            PerfCounter::fixUpClockCyclesEventDefault,
+                                            std::move(groups)));
             }
         }
     }
@@ -1078,7 +1102,7 @@ std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
 {
     for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<PerfCounter *>(counter->getNext())) {
-        if (spe.id == counter->getName()) {
+        if (spe.applies_to_counter(counter->getName(), counter->getPerfEventGroupIdentifier())) {
             uint64_t config = 0;
             uint64_t config1 = 0;
             uint64_t config2 = 0;
@@ -1119,8 +1143,8 @@ std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
                 counter->setCount(sampleRate);
             }
             counter->setEnabled(true);
-
-            return {{spe.id, counter->getKey()}};
+            LOG_DEBUG("Enabled SPE counter %s %d", counter->getName(), counter->getKey());
+            return {{counter->getName(), counter->getKey()}};
         }
     }
 
@@ -1253,6 +1277,14 @@ bool PerfDriver::enable(IPerfGroups & group,
         return false;
     }
 
+    if (!metric_ids.empty()) {
+        std::stringstream strm {};
+        for (auto const & [key, value] : metric_ids) {
+            strm << key << ", " << value << "\n";
+        }
+        LOG_FINE("Desired metrics:\n%s", strm.str().c_str());
+    }
+
     // enable metrics
     for (const PerfCpu & cluster : mConfig.cpus) {
         std::string_view const counter_set = cluster.gator_cpu.getCounterSet();
@@ -1265,7 +1297,7 @@ bool PerfDriver::enable(IPerfGroups & group,
                                  cpu_event_counts,
                                  metric_ids,
                                  cpu_cycles_event,
-                                 mConfig.config.supports_strobing,
+                                 mConfig.config.supports_strobing_core || mConfig.config.supports_strobing_patches,
                                  cluster,
                                  *cpu_metrics)) {
                 return false;
@@ -1348,7 +1380,8 @@ bool PerfDriver::sendTracepointFormats(IPerfAttrsConsumer & attrsConsumer)
 void PerfDriver::writeEvents(mxml_node_t * root) const
 {
     // do not expose per-function metrics if they are not able to be supported
-    if (!isCaptureOperationModeSupportingMetrics(gSessionData.mCaptureOperationMode)) {
+    if (!isCaptureOperationModeSupportingMetrics(gSessionData.mCaptureOperationMode,
+                                                 mConfig.config.supports_inherit_sample_read)) {
         return;
     }
 
@@ -1434,4 +1467,16 @@ PerfDriver::get_cpu_cluster_keys_for_cpu_frequency_counter()
         result.emplace_back(agents::perf::perf_capture_configuration_t::cpu_freq_properties_t {key, use_cpuinfo});
     }
     return result;
+}
+
+std::set<std::string_view> PerfDriver::metricsSupporting(metrics::metric_group_set_t const & desired)
+{
+    std::set<std::string_view> metricIds {};
+    DriverCounter * current = getCounters();
+    for (; current != nullptr; current = current->getNext()) {
+        if (current->supportsAtLeastOne(desired)) {
+            metricIds.insert(current->getName());
+        }
+    }
+    return metricIds;
 }

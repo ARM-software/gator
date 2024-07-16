@@ -434,7 +434,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
 
         // If the command line argument is a session xml file, no need to open a socket
         if (gSessionData.mLocalCapture) {
-            Child::Config childConfig {{}, {}};
+            Child::Config childConfig {{}, {}, {}};
             for (const auto & event : result.events) {
                 CounterConfiguration config;
                 config.counterName = event.first;
@@ -444,6 +444,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
             for (const auto & spe : result.mSpeConfigs) {
                 childConfig.spes.insert(spe);
             }
+            childConfig.metric_groups = result.enabled_metric_groups;
             stateAndChildPid = doLocalCapture(drivers, childConfig, event_listener, log_ops);
         }
         else {
