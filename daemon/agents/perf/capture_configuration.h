@@ -9,6 +9,7 @@
 #include "agents/perf/events/types.hpp"
 #include "agents/perf/record_types.h"
 #include "ipc/messages.h"
+#include "lib/midr.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
@@ -52,10 +53,10 @@ namespace agents::perf {
         std::vector<gator_cpu_t> clusters {};
         std::vector<cpu_freq_properties_t> cluster_keys_for_cpu_frequency_counter {};
         std::vector<std::int32_t> per_core_cluster_index {};
-        std::vector<std::int32_t> per_core_cpuids {};
+        std::vector<cpu_utils::midr_t> per_core_midrs {};
         std::map<core_no_t, std::uint32_t> per_core_spe_type {};
         std::vector<uncore_pmu_t> uncore_pmus {};
-        std::map<std::uint32_t, std::string> cpuid_to_core_name {};
+        std::map<cpu_utils::cpuid_t, std::string> cpuid_to_core_name {};
         std::map<std::uint32_t, std::string> perf_pmu_type_to_name {};
         event_configuration_t event_configuration {};
         buffer_config_t ringbuffer_config {};

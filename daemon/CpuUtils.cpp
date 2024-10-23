@@ -12,7 +12,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
-#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -20,6 +19,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -38,6 +38,7 @@ namespace cpu_utils {
 
         long maxCoreNum = -1;
         struct dirent * dirent;
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
         while ((dirent = readdir(dir)) != nullptr) {
             if (strncmp(dirent->d_name, "cpu", 3) == 0) {
                 long coreNum;
@@ -57,47 +58,18 @@ namespace cpu_utils {
     }
 
     namespace {
-        constexpr const uint64_t IMPLEMENTER_MASK = 0xff000000;
-        constexpr const uint64_t IMPLEMENTER_SHIFT = 24;
-        constexpr const uint64_t PART_NUM_MASK = 0xfff0;
-        constexpr const uint64_t PART_NUM_SHIFT = 4;
-        constexpr const uint64_t PART_NUM_SIZE = 12;
-        // Shift implementer, leaving space for part num
-        constexpr const uint64_t IMPLEMENTER_PARTIAL_SHIFT = IMPLEMENTER_SHIFT - PART_NUM_SIZE;
+        constexpr const std::string_view CPU_ARCHITECTURE {"CPU architecture"};
+        constexpr const std::string_view CPU_IMPLEMENTER {"CPU implementer"};
+        constexpr const std::string_view CPU_PART {"CPU part"};
+        constexpr const std::string_view CPU_REVISION {"CPU revision"};
+        constexpr const std::string_view CPU_VARIANT {"CPU variant"};
+        constexpr const std::string_view HARDWARE {"Hardware"};
+        constexpr const std::string_view PROCESSOR {"processor"};
 
-        void setImplementer(int & cpuId, const int implementer)
-        {
-            if (cpuId == -1) {
-                cpuId = 0;
-            }
-            cpuId |= implementer << PART_NUM_SIZE;
-        }
-
-        void setPart(int & cpuId, const int part)
-        {
-            if (cpuId == -1) {
-                cpuId = 0;
-            }
-            cpuId |= part;
-        }
-
-        constexpr unsigned makeCpuId(std::uint64_t midr)
-        {
-
-            return ((midr & IMPLEMENTER_MASK) >> IMPLEMENTER_PARTIAL_SHIFT)
-                 | ((midr & PART_NUM_MASK) >> PART_NUM_SHIFT);
-        }
-
-        constexpr const char * HARDWARE = "Hardware";
-        constexpr const char * CPU_IMPLEMENTER = "CPU implementer";
-        constexpr const char * CPU_PART = "CPU part";
-        constexpr const char * PROCESSOR = "processor";
-
-        std::string parseProcCpuInfo(bool justGetHardwareName, lib::Span<int> cpuIds)
+        std::string parseProcCpuInfo(bool justGetHardwareName, lib::Span<midr_t> midrs)
         {
             std::string hardwareName;
-            // NOLINTNEXTLINE(modernize-avoid-c-arrays,readability-magic-numbers)
-            char temp[256]; // arbitrarily large amount
+            char temp[256]; // NOLINT(modernize-avoid-c-arrays,readability-magic-numbers) - arbitrarily large amount
 
             FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
             if (f == nullptr) {
@@ -109,10 +81,10 @@ namespace cpu_utils {
             bool foundCoreName = false;
             constexpr size_t UNKNOWN_PROCESSOR = -1;
             size_t processor = UNKNOWN_PROCESSOR;
-            size_t minProcessor = cpuIds.size();
+            size_t minProcessor = midrs.size();
             size_t maxProcessor = 0;
             bool foundProcessorInSection = false;
-            int outOfPlaceCpuId = -1;
+            midr_t outOfPlaceCpuId {};
             bool invalidFormat = false;
             while (fgets(temp, sizeof(temp), f) != nullptr) {
                 const size_t len = strlen(temp);
@@ -131,11 +103,16 @@ namespace cpu_utils {
                     continue;
                 }
 
-                const bool foundHardware = !foundCoreName && strncmp(temp, HARDWARE, strlen(HARDWARE)) == 0;
-                const bool foundCPUImplementer = strncmp(temp, CPU_IMPLEMENTER, strlen(CPU_IMPLEMENTER)) == 0;
-                const bool foundCPUPart = strncmp(temp, CPU_PART, strlen(CPU_PART)) == 0;
-                const bool foundProcessor = strncmp(temp, PROCESSOR, strlen(PROCESSOR)) == 0;
-                if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
+                const bool foundHardware = !foundCoreName && strncmp(temp, HARDWARE.data(), HARDWARE.size()) == 0;
+                const bool foundCPUArchitecture = strncmp(temp, CPU_ARCHITECTURE.data(), CPU_ARCHITECTURE.size()) == 0;
+                const bool foundCPUImplementer = strncmp(temp, CPU_IMPLEMENTER.data(), CPU_IMPLEMENTER.size()) == 0;
+                const bool foundCPUPart = strncmp(temp, CPU_PART.data(), CPU_PART.size()) == 0;
+                const bool foundCPURevision = strncmp(temp, CPU_REVISION.data(), CPU_REVISION.size()) == 0;
+                const bool foundCPUVariant = strncmp(temp, CPU_VARIANT.data(), CPU_VARIANT.size()) == 0;
+                const bool foundProcessor = strncmp(temp, PROCESSOR.data(), PROCESSOR.size()) == 0;
+
+                if (foundHardware || foundProcessor || foundCPUArchitecture || foundCPUImplementer || foundCPUPart
+                    || foundCPURevision || foundCPUVariant) {
                     char * position = strchr(temp, ':');
                     if (position == nullptr || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
                         LOG_WARNING("Unknown format of /proc/cpuinfo\n"
@@ -152,17 +129,38 @@ namespace cpu_utils {
                         foundCoreName = true;
                     }
 
+                    if (foundCPUArchitecture) {
+                        int architecture;
+                        if (!stringToInt(&architecture, position, 0)) {
+                            // Do nothing
+                        }
+                        else {
+                            LOG_DEBUG("   architecture = 0x%x", architecture);
+                            if (processor != UNKNOWN_PROCESSOR) {
+
+                                midrs[processor].set_architecture(architecture);
+                            }
+                            else {
+                                outOfPlaceCpuId.set_architecture(architecture);
+                                invalidFormat = true;
+                            }
+                        }
+                    }
+
                     if (foundCPUImplementer) {
                         int implementer;
                         if (!stringToInt(&implementer, position, 0)) {
                             // Do nothing
                         }
-                        else if (processor != UNKNOWN_PROCESSOR) {
-                            setImplementer(cpuIds[processor], implementer);
-                        }
                         else {
-                            setImplementer(outOfPlaceCpuId, implementer);
-                            invalidFormat = true;
+                            LOG_DEBUG("   implementer = 0x%x", implementer);
+                            if (processor != UNKNOWN_PROCESSOR) {
+                                midrs[processor].set_implementer(implementer);
+                            }
+                            else {
+                                outOfPlaceCpuId.set_implementer(implementer);
+                                invalidFormat = true;
+                            }
                         }
                     }
 
@@ -171,12 +169,49 @@ namespace cpu_utils {
                         if (!stringToInt(&part_num, position, 0)) {
                             // Do nothing
                         }
-                        else if (processor != UNKNOWN_PROCESSOR) {
-                            setPart(cpuIds[processor], part_num);
+                        else {
+                            LOG_DEBUG("   part_num = 0x%x", part_num);
+                            if (processor != UNKNOWN_PROCESSOR) {
+                                midrs[processor].set_partnum(part_num);
+                            }
+                            else {
+                                outOfPlaceCpuId.set_partnum(part_num);
+                                invalidFormat = true;
+                            }
+                        }
+                    }
+
+                    if (foundCPURevision) {
+                        int revision;
+                        if (!stringToInt(&revision, position, 0)) {
+                            // Do nothing
                         }
                         else {
-                            setPart(outOfPlaceCpuId, part_num);
-                            invalidFormat = true;
+                            LOG_DEBUG("   revision = 0x%x", revision);
+                            if (processor != UNKNOWN_PROCESSOR) {
+                                midrs[processor].set_revision(revision);
+                            }
+                            else {
+                                outOfPlaceCpuId.set_revision(revision);
+                                invalidFormat = true;
+                            }
+                        }
+                    }
+
+                    if (foundCPUVariant) {
+                        int variant;
+                        if (!stringToInt(&variant, position, 0)) {
+                            // Do nothing
+                        }
+                        else {
+                            LOG_DEBUG("   variant = 0x%x", variant);
+                            if (processor != UNKNOWN_PROCESSOR) {
+                                midrs[processor].set_variant(variant);
+                            }
+                            else {
+                                outOfPlaceCpuId.set_variant(variant);
+                                invalidFormat = true;
+                            }
                         }
                     }
 
@@ -198,9 +233,11 @@ namespace cpu_utils {
                             invalidFormat = true;
                         }
                         else if (converted) {
+                            LOG_DEBUG("   processorId = %d", processorId);
+
                             processor = processorId;
-                            if (processor >= cpuIds.size()) {
-                                LOG_ERROR("Found processor %zu but max is %zu", processor, cpuIds.size());
+                            if (processor >= midrs.size()) {
+                                LOG_ERROR("Found processor %zu but max is %zu", processor, midrs.size());
                                 handleException();
                             }
                             foundProcessorInSection = true;
@@ -212,14 +249,16 @@ namespace cpu_utils {
                 LOG_WARNING("Failed to close /proc/cpuinfo");
             };
 
-            if (invalidFormat && (outOfPlaceCpuId != -1) && (minProcessor <= maxProcessor)) {
+            if (invalidFormat && (outOfPlaceCpuId.valid()) && (minProcessor <= maxProcessor)) {
                 minProcessor = (minProcessor > 0 ? minProcessor : 0);
-                maxProcessor = (maxProcessor < cpuIds.size() ? maxProcessor + 1 : cpuIds.size());
+                maxProcessor = (maxProcessor < midrs.size() ? maxProcessor + 1 : midrs.size());
 
                 for (size_t processor = minProcessor; processor < maxProcessor; ++processor) {
-                    if (cpuIds[processor] == -1) {
-                        LOG_DEBUG("Setting global CPUID 0x%x for processors %zu ", outOfPlaceCpuId, processor);
-                        cpuIds[processor] = outOfPlaceCpuId;
+                    if (!midrs[processor].valid()) {
+                        LOG_DEBUG("Setting global MIDR 0x%08x for processors %zu ",
+                                  outOfPlaceCpuId.to_raw_value(),
+                                  processor);
+                        midrs[processor] = outOfPlaceCpuId;
                     }
                 }
             }
@@ -233,11 +272,11 @@ namespace cpu_utils {
         }
     }
 
-    std::string readCpuInfo(bool ignoreOffline, bool wantsHardwareName, lib::Span<int> cpuIds)
+    std::string readCpuInfo(bool ignoreOffline, bool wantsHardwareName, lib::Span<midr_t> midrs)
     {
         std::map<unsigned, unsigned> cpuToCluster;
-        std::map<unsigned, std::set<unsigned>> clusterToCpuIds;
-        std::map<unsigned, unsigned> cpuToCpuIds;
+        std::map<unsigned, std::set<midr_t>> clusterToMidrs;
+        std::map<unsigned, midr_t> cpuToMidrs;
 
         // first collect the detailed state using the identifier if available
         {
@@ -254,12 +293,12 @@ namespace cpu_utils {
             // - the threads remain online until this function finishes (they are disposed of / terminated by destructor); this is so as
             //   to ensure that the cores remain online until cpuinfo is read
             if (!ignoreOffline) {
-                for (unsigned cpu = 0; cpu < cpuIds.size(); ++cpu) {
+                for (unsigned cpu = 0; cpu < midrs.size(); ++cpu) {
                     perCoreThreads.emplace_back(new PerCoreIdentificationThread(
                         false,
                         cpu,
                         [&](unsigned c, PerCoreIdentificationThread::properties_t && properties) -> void {
-                            std::lock_guard<std::mutex> guard {mutex};
+                            std::lock_guard<std::mutex> const guard {mutex};
 
                             // store it for later processing
                             collected_properties.emplace(c, std::move(properties));
@@ -273,24 +312,33 @@ namespace cpu_utils {
                 // wait until all threads are online
                 std::unique_lock<std::mutex> lock {mutex};
                 auto succeeded = cv.wait_for(lock, std::chrono::seconds(10), [&] {
-                    return identificationThreadCallbackCounter >= cpuIds.size();
+                    return identificationThreadCallbackCounter >= midrs.size();
                 });
                 if (!succeeded) {
                     LOG_WARNING("Could not identify all CPU cores within the timeout period. Activated %zu of %zu",
                                 identificationThreadCallbackCounter,
-                                cpuIds.size());
+                                midrs.size());
+                }
+            }
+            //
+            // when we don't care about onlining the cores, just read them directly, one by one, any that are offline will be ignored anyway
+            //
+            else {
+                for (unsigned cpu = 0; cpu < midrs.size(); ++cpu) {
+                    if (collected_properties.count(cpu) == 0) {
+                        auto const properties = PerCoreIdentificationThread::detectFor(cpu);
+                        collected_properties.emplace(cpu, properties);
+                    }
                 }
             }
 
             // lock to prevent concurrent access to maps if one of the threads stalls
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard<std::mutex> const lock(mutex);
 
             // process the collected properties
             for (auto const & entry : collected_properties) {
                 auto c = entry.first;
                 auto const & properties = entry.second;
-
-                const unsigned cpuId = makeCpuId(properties.midr_el1);
 
                 // store the cluster / core mappings to allow us to fill in any gaps by assuming the same core type per cluster
                 if (properties.physical_package_id != PerCoreIdentificationThread::INVALID_PACKAGE_ID) {
@@ -298,7 +346,7 @@ namespace cpu_utils {
 
                     // also map cluster to MIDR value if read
                     if (properties.midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                        clusterToCpuIds[properties.physical_package_id].insert(cpuId);
+                        clusterToMidrs[properties.physical_package_id].insert(midr_t::from_raw(properties.midr_el1));
                     }
 
                     for (int sibling : properties.core_siblings) {
@@ -312,35 +360,35 @@ namespace cpu_utils {
 
                 // map cpu to MIDR value if read
                 if (properties.midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                    cpuToCpuIds[c] = cpuId;
+                    cpuToMidrs[c] = midr_t::from_raw(properties.midr_el1);
                 }
             }
         }
 
         // log what we learnt
-        for (const auto & pair : cpuToCpuIds) {
-            LOG_FINE("Read CPU %u CPUID from MIDR_EL1 -> 0x%05x", pair.first, pair.second);
+        for (const auto & pair : cpuToMidrs) {
+            LOG_FINE("Read CPU %u MIDR_EL1 -> 0x%08x", pair.first, pair.second.to_raw_value());
         }
         for (const auto & pair : cpuToCluster) {
             LOG_FINE("Read CPU %u CLUSTER %u", pair.first, pair.second);
         }
-        for (const auto & pair : clusterToCpuIds) {
-            LOG_FINE("Read CLUSTER %u CPUIDs:", pair.first);
-            for (auto cpuId : pair.second) {
-                LOG_FINE("    0x%05x", cpuId);
+        for (const auto & pair : clusterToMidrs) {
+            LOG_FINE("Read CLUSTER %u MIDRs:", pair.first);
+            for (auto const & midr : pair.second) {
+                LOG_FINE("    0x%08x", midr.to_raw_value());
             }
         }
 
         // did we successfully read all MIDR values from all cores?
-        const bool knowAllMidrValues = (cpuToCpuIds.size() == cpuIds.size());
+        const bool knowAllMidrValues = (cpuToMidrs.size() == midrs.size());
 
         // do we need to read /proc/cpuinfo
         std::string hardwareName = (wantsHardwareName || (!knowAllMidrValues && !ignoreOffline)
-                                        ? parseProcCpuInfo(/* justGetHardwareName = */ knowAllMidrValues, cpuIds)
+                                        ? parseProcCpuInfo(/* justGetHardwareName = */ knowAllMidrValues, midrs)
                                         : "");
 
         // update/set known items from MIDR map and topology information. This will override anything read from /proc/cpuinfo
-        updateCpuIdsFromTopologyInformation(cpuIds, cpuToCpuIds, cpuToCluster, clusterToCpuIds);
+        updateCpuIdsFromTopologyInformation(midrs, cpuToMidrs, cpuToCluster, clusterToMidrs);
 
         return hardwareName;
     }

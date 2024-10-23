@@ -5,6 +5,7 @@
 #include "agents/perf/async_buffer_builder.h"
 #include "agents/perf/perf_driver_summary.h"
 #include "lib/String.h"
+#include "lib/midr.h"
 
 #include <string_view>
 #include <vector>
@@ -15,21 +16,22 @@ namespace apc {
 
     namespace detail {
         inline void make_summary_frame_header(MessageType type,
-                                              agents::perf::apc_buffer_builder_t<std::vector<char>> & buffer)
+                                              agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> & buffer)
         {
             buffer.packInt(static_cast<int32_t>(FrameType::SUMMARY));
             buffer.packInt(static_cast<int32_t>(type));
         }
     }
 
-    [[nodiscard]] inline std::vector<char> make_summary_message(agents::perf::perf_driver_summary_state_t const & state)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_summary_message(
+        agents::perf::perf_driver_summary_state_t const & state)
     {
         constexpr std::size_t max_page_size_chars = 32;
 
         lib::printf_str_t<max_page_size_chars> page_size_str {"%li", state.page_size};
 
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> builder {frame};
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> builder {frame};
 
         detail::make_summary_frame_header(MessageType::SUMMARY, builder);
 
@@ -48,7 +50,7 @@ namespace apc {
         }
         for (const auto & pair : state.additional_attributes) {
             if (!pair.first.empty()) {
-                builder.writeString(pair.first.c_str());
+                builder.writeString(pair.first);
                 builder.writeString(pair.second);
             }
         }
@@ -58,15 +60,17 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_core_name_message(int core, int cpuid, std::string_view name)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_core_name_message(int core,
+                                                                          cpu_utils::cpuid_t cpuid,
+                                                                          std::string_view name)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> builder {frame};
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> builder {frame};
 
         detail::make_summary_frame_header(MessageType::CORE_NAME, builder);
 
         builder.packInt(core);
-        builder.packInt(cpuid);
+        builder.packInt(cpuid.to_raw_value());
         builder.writeString(name);
         builder.endFrame();
 

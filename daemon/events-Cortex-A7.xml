@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2012-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2012-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="4" name="ARMv7_Cortex_A7_cnt"/>
 <category counter_set="ARMv7_Cortex_A7_cnt" name="Cortex-A7" per_cpu="yes" supports_event_based_sampling="yes">
@@ -28,7 +28,7 @@
     <event event="0x17" title="L2 Data Cache" name="Refill" description="The counter counts memory-read or memory-write operations, that the processor made, that access at least the Level 2 data or unified cache and cause a refill of a Level 1 data , instruction, or unified cache or of the Level 2 data or unified cache. Each read from or write to the cache that causes a refill from outside the Level 1 and Level 2 caches is counted."/>
     <event event="0x18" title="L2 Data Cache" name="Write-back" description="The counter counts every write-back of data from the Level 2 data or unified cache that occurs as a result of an operation by this processor. It counts each write-back that causes data to be written from the Level 2 cache to outside the Level 1 and Level 2 caches."/>
     <event event="0x19" title="Bus" name="Access" description="The counter counts memory-read or memory-write operations that access outside of the boundary of the processor and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED. It must count accesses beyond the cache furthest from the processor for which accesses can be counted."/>
-    <event event="0x1d" title="Cycles" name="Bus Cycles" description="The counter increments on every cycle of the external memory interface of the processor"/>
+    <event event="0x1d" title="Cycles" name="Bus Cycles" description="The counter increments on every cycle of the external memory interface of the processor" units="cycles"/>
     <event event="0x60" title="Bus" name="Access (due to read)" description="As &apos;Bus: Access&apos;, but counts only memory-read operations that access outside the boundary of the processor and its closely-coupled caches"/>
     <event event="0x61" title="Bus" name="Access (due to write)" description="As &apos;Bus: Access&apos;, but counts only memory-write operations that access outside the boundary of the processor and its closely-coupled caches"/>
     <event event="0x86" title="Exceptions" name="IRQ" description="As &apos;Exceptions: Taken&apos;, but counts only those exceptions taken locally that are IRQ or Virtual IRQ exceptions" units="exceptions"/>
@@ -37,8 +37,8 @@
     <event event="0xc1" title="Memory" name="External Request (non-cacheable)" description="Non-cacheable external memory request"/>
     <event event="0xc2" title="Data Cache" name="Refill (due to prefetch)" description="Linefill because of prefetch"/>
     <event event="0xc3" title="Data Cache" name="Refill (due to prefetch, dropped)" description="Prefetch linefill dropped"/>
-    <event event="0xc4" title="L1 Data Cache" name="Enter Read Allocate Mode" description="Entering read allocate mode"/>
-    <event event="0xc5" title="L1 Data Cache" name="Read Allocate Mode" description="Read allocate mode"/>
+    <event event="0xc4" title="L1 Data Cache" name="Enter read allocate mode" description="Entering read allocate mode"/>
+    <event event="0xc5" title="L1 Data Cache" name="Read allocate mode" description="Read allocate mode"/>
     <event event="0xc7" title="ETM" name="Ext Out [0]" description="ETM Ext Out[0]"/>
     <event event="0xc8" title="ETM" name="Ext Out [1]" description="ETM Ext Out[1]"/>
     <event event="0xc9" title="Stalls" name="Backend (Interlock, Store, STB full)" description="No operation issued due to the backend, store, STB full" units="cycles"/>

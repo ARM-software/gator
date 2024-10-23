@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -156,14 +156,14 @@ namespace agents::perf {
         /** Write a 32-bit unsigned int in little endian form */
         void writeLeUint32(std::uint32_t n)
         {
-            std::array<char, 4> const buffer {char(n), char(n >> 8U), char(n >> 16U), char(n >> 24U)};
+            std::array<uint8_t, 4> const buffer {uint8_t(n), uint8_t(n >> 8U), uint8_t(n >> 16U), uint8_t(n >> 24U)};
             writeBytes(buffer.data(), buffer.size());
         }
 
         /** Write a 32-bit unsigned int in little endian form */
         void writeLeUint32At(std::size_t index, std::uint32_t n)
         {
-            std::array<char, 4> const buffer {char(n), char(n >> 8U), char(n >> 16U), char(n >> 24U)};
+            std::array<uint8_t, 4> const buffer {uint8_t(n), uint8_t(n >> 8U), uint8_t(n >> 16U), uint8_t(n >> 24U)};
             writeDirect(index, buffer.data(), buffer.size());
         }
 

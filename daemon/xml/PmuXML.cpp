@@ -4,6 +4,7 @@
 
 #include "SessionData.h"
 #include "lib/Assert.h"
+#include "lib/midr.h"
 
 #include <algorithm>
 #include <cstring>
@@ -18,7 +19,7 @@ GatorCpu::GatorCpu(std::string coreName,
                    const char * dtName,
                    const char * speName,
                    const char * speVersion,
-                   const std::set<int> & cpuIds,
+                   const std::set<cpu_utils::cpuid_t> & cpuIds,
                    int pmncCounters,
                    bool isV8)
     : mCoreName(std::move(coreName)),
@@ -32,7 +33,6 @@ GatorCpu::GatorCpu(std::string coreName,
       mIsV8(isV8)
 {
     runtime_assert(!mCpuIds.empty(), "got pmu without cpuids");
-    std::sort(mCpuIds.begin(), mCpuIds.end());
 }
 
 GatorCpu::GatorCpu(std::string coreName,
@@ -41,7 +41,28 @@ GatorCpu::GatorCpu(std::string coreName,
                    std::string dtName,
                    std::string speName,
                    std::string speVersion,
-                   std::vector<int> cpuIds,
+                   std::set<cpu_utils::cpuid_t> const & cpuIds,
+                   int pmncCounters,
+                   bool isV8)
+    : mCoreName(std::move(coreName)),
+      mId(std::move(id)),
+      mCounterSet(std::move(counterSet)),
+      mDtName(std::move(dtName)),
+      mSpeName(std::move(speName)),
+      mSpeVersion(std::move(speVersion)),
+      mCpuIds(cpuIds.begin(), cpuIds.end()),
+      mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
+      mIsV8(isV8)
+{
+}
+
+GatorCpu::GatorCpu(std::string coreName,
+                   std::string id,
+                   std::string counterSet,
+                   std::string dtName,
+                   std::string speName,
+                   std::string speVersion,
+                   std::vector<cpu_utils::cpuid_t> cpuIds,
                    int pmncCounters,
                    bool isV8)
     : mCoreName(std::move(coreName)),
@@ -54,6 +75,8 @@ GatorCpu::GatorCpu(std::string coreName,
       mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
 {
+    runtime_assert(!mCpuIds.empty(), "got pmu without cpuids");
+    std::sort(mCpuIds.begin(), mCpuIds.end());
 }
 
 GatorCpu::GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion)
@@ -67,9 +90,10 @@ GatorCpu::GatorCpu(const GatorCpu & that, const char * speName, const char * spe
       mPmncCounters(that.mPmncCounters),
       mIsV8(that.mIsV8)
 {
+    std::sort(mCpuIds.begin(), mCpuIds.end());
 }
 
-bool GatorCpu::hasCpuId(int cpuId) const
+bool GatorCpu::hasCpuId(cpu_utils::cpuid_t cpuId) const
 {
     return (std::find(mCpuIds.begin(), mCpuIds.end(), cpuId) != mCpuIds.end());
 }
@@ -108,7 +132,7 @@ const GatorCpu * PmuXML::findCpuByName(const char * const name) const
     return nullptr;
 }
 
-const GatorCpu * PmuXML::findCpuById(const int cpuid) const
+const GatorCpu * PmuXML::findCpuById(cpu_utils::cpuid_t cpuid) const
 {
     for (const GatorCpu & gatorCpu : cpus) {
         if (gatorCpu.hasCpuId(cpuid)) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "ISender.h"
@@ -27,12 +27,12 @@ namespace ipc {
         payload_type payload;
     };
 
-    using response_apc_data_t = response_t<response_type::apc_data, std::vector<char>>;
-    using response_xml_t = response_t<response_type::xml, std::vector<char>>;
-    using response_current_config_t = response_t<response_type::current_config, std::vector<char>>;
-    using response_error_t = response_t<response_type::error, std::vector<char>>;
-    using response_ack_t = response_t<response_type::ack, std::vector<char>>;
-    using response_nak_t = response_t<response_type::nak, std::vector<char>>;
+    using response_apc_data_t = response_t<response_type::apc_data, std::vector<uint8_t>>;
+    using response_xml_t = response_t<response_type::xml, std::vector<std::uint8_t>>;
+    using response_current_config_t = response_t<response_type::current_config, std::vector<std::uint8_t>>;
+    using response_error_t = response_t<response_type::error, std::vector<std::uint8_t>>;
+    using response_ack_t = response_t<response_type::ack, std::vector<std::uint8_t>>;
+    using response_nak_t = response_t<response_type::nak, std::vector<std::uint8_t>>;
 
     /** Traits object for response types */
     template<typename RepsonseType>
@@ -51,6 +51,6 @@ namespace ipc {
 
     /** Helper trait to validate some response type */
     template<typename Response_type>
-    static constexpr bool is_response_message_type_v = (repsonse_traits_t<Response_type>::key
-                                                        != response_type::unknown);
+    static constexpr bool is_response_message_type_v =
+        (repsonse_traits_t<Response_type>::key != response_type::unknown);
 }

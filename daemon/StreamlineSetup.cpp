@@ -147,7 +147,7 @@ IStreamlineCommandHandler::State StreamlineSetup::handleRequest(char * xml)
         LOG_FINE("Sent default configuration xml response");
     }
     else {
-        char error[] = "Unknown request";
+        constexpr const char * error = "Unknown request";
         sendData(error, strlen(error), ResponseType::NAK);
         LOG_WARNING("Received unknown request:\n%s", xml);
     }
@@ -203,11 +203,11 @@ IStreamlineCommandHandler::State StreamlineSetup::handleRequestCurrentConfig()
 
 void StreamlineSetup::sendData(const char * data, uint32_t length, ResponseType type)
 {
-    char header[5];
-    header[0] = static_cast<char>(type);
+    uint8_t header[5];
+    header[0] = static_cast<uint8_t>(type);
     buffer_utils::writeLEInt(header + 1, length);
     mSocket.send(header, sizeof(header));
-    mSocket.send(data, length);
+    mSocket.send(reinterpret_cast<const uint8_t *>(data), length);
 }
 
 void StreamlineSetup::sendDefaults()

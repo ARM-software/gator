@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "lib/Span.h"
 #include "metrics/definitions.hpp"
 
 #include <cstddef>
@@ -16,8 +17,8 @@ namespace metrics {
     using score_t = std::uint64_t;
 
     struct combination_t {
-        std::unordered_set<metric_events_set_t const *> contains_sets {};
-        std::set<std::uint16_t> event_codes {};
+        std::unordered_set<metric_events_set_t const *> contains_sets;
+        std::set<std::uint16_t> event_codes;
         metric_arch_t arch = metric_arch_t::any;
 
         combination_t(std::unordered_set<metric_events_set_t const *> contains_sets,
@@ -32,6 +33,6 @@ namespace metrics {
 
     [[nodiscard]] std::vector<combination_t> make_combinations(
         std::size_t max_events,
-        metric_cpu_events_t const & metric_events,
+        lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> events,
         std::function<bool(metric_events_set_t const &)> const & filter_predicate = [](auto const &) { return true; });
 }

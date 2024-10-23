@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "Buffer.h"
 
@@ -26,7 +26,7 @@
 constexpr int FRACTION_TO_KEEP_FREE = 4;
 
 Buffer::Buffer(const int size, sem_t & readerSem, bool includeResponseType)
-    : mBuf(new char[size]),
+    : mBuf(new uint8_t[size]),
       mReaderSem(readerSem),
       mWriterSem(),
       mSize(size),
@@ -68,9 +68,9 @@ bool Buffer::write(ISender & sender)
 
     // determine the size of two halves
     int length1 = commitPos - readPos;
-    char * buffer1 = mBuf + readPos;
+    uint8_t * buffer1 = mBuf + readPos;
     int length2 = 0;
-    char * buffer2 = mBuf;
+    uint8_t * buffer2 = mBuf;
     // possible wrap around
     if (length1 < 0) {
         length1 = mSize - readPos;
@@ -80,7 +80,7 @@ bool Buffer::write(ISender & sender)
     LOG_DEBUG("Sending data length1: %i length2: %i", length1, length2);
 
     constexpr std::size_t numberOfParts = 2;
-    const lib::Span<const char, int> parts[numberOfParts] = {{buffer1, length1}, {buffer2, length2}};
+    const lib::Span<const uint8_t, int> parts[numberOfParts] = {{buffer1, length1}, {buffer2, length2}};
     sender.writeDataParts({parts, numberOfParts}, ResponseType::RAW);
 
     // release the space only after we have finished reading the data
@@ -200,7 +200,7 @@ void Buffer::beginFrame(FrameType frameType)
     packInt(static_cast<int32_t>(frameType));
 }
 
-void Buffer::writeRawFrame(lib::Span<const char> frame)
+void Buffer::writeRawFrame(lib::Span<const uint8_t> frame)
 {
     if (mIncludeResponseType) {
         packInt(static_cast<int32_t>(ResponseType::APC_DATA));

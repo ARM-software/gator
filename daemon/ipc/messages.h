@@ -100,12 +100,12 @@ namespace ipc {
 
     /** Sent from the annotation agent to the shell when some data is received from an annotations connection */
     using msg_annotation_recv_bytes_t =
-        message_t<message_key_t::annotation_recv_bytes, annotation_uid_t, std::vector<char>>;
+        message_t<message_key_t::annotation_recv_bytes, annotation_uid_t, std::vector<uint8_t>>;
     DEFINE_NAMED_MESSAGE(msg_annotation_recv_bytes_t);
 
     /** Sent from the shell to the annotation agent when some data is to be sent to the annotation connection */
     using msg_annotation_send_bytes_t =
-        message_t<message_key_t::annotation_send_bytes, annotation_uid_t, std::vector<char>>;
+        message_t<message_key_t::annotation_send_bytes, annotation_uid_t, std::vector<uint8_t>>;
     DEFINE_NAMED_MESSAGE(msg_annotation_send_bytes_t);
 
     /** Sent from shell to perfetto agent to create a new connection */
@@ -117,7 +117,7 @@ namespace ipc {
     DEFINE_NAMED_MESSAGE(msg_perfetto_close_conn_t);
 
     /** Sent from the Perfetto agent to the shell when some data is received from the Perfetto connection */
-    using msg_perfetto_recv_bytes_t = message_t<message_key_t::perfetto_recv_bytes, void, std::vector<char>>;
+    using msg_perfetto_recv_bytes_t = message_t<message_key_t::perfetto_recv_bytes, void, std::vector<uint8_t>>;
     DEFINE_NAMED_MESSAGE(msg_perfetto_recv_bytes_t);
 
     /** Sent by the shell to configure the perf capture */
@@ -137,11 +137,11 @@ namespace ipc {
      * The APC data must not have the response type or length header fields,
      * these will be added by the receiver.
      */
-    using msg_apc_frame_data_t = message_t<message_key_t::apc_frame_data, void, std::vector<char>>;
+    using msg_apc_frame_data_t = message_t<message_key_t::apc_frame_data, void, std::vector<uint8_t>>;
     DEFINE_NAMED_MESSAGE(msg_apc_frame_data_t);
 
     // this version is R/O send only object allowing send from span owned externally
-    using msg_apc_frame_data_from_span_t = message_t<message_key_t::apc_frame_data, void, lib::Span<char const>>;
+    using msg_apc_frame_data_from_span_t = message_t<message_key_t::apc_frame_data, void, lib::Span<uint8_t const>>;
     DEFINE_NAMED_MESSAGE(msg_apc_frame_data_from_span_t);
 
     /** Sent by the perf agent to the shell once it is ready to capture the newly exec-d process */

@@ -88,7 +88,7 @@ namespace agents::perf {
          *
          * CALLED FROM THE ASIO THREAD POOL
          */
-        void on_apc_frame_received(const std::vector<char> & frame);
+        void on_apc_frame_received(const std::vector<uint8_t> & frame);
 
         /**
          * Called by the worker when the capture fails

@@ -1,18 +1,19 @@
-/* Copyright (C) 2010-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef I_CPU_INFO_H
 #define I_CPU_INFO_H
 
 #include "lib/Span.h"
+#include "lib/midr.h"
 #include "xml/PmuXML.h"
 
 class ICpuInfo {
 public:
     virtual ~ICpuInfo() = default;
 
-    [[nodiscard]] size_t getNumberOfCores() const { return getCpuIds().size(); }
+    [[nodiscard]] size_t getNumberOfCores() const { return getMidrs().size(); }
 
-    [[nodiscard]] virtual lib::Span<const int> getCpuIds() const = 0;
+    [[nodiscard]] virtual lib::Span<const cpu_utils::midr_t> getMidrs() const = 0;
     [[nodiscard]] virtual lib::Span<const GatorCpu> getClusters() const = 0;
     [[nodiscard]] virtual lib::Span<const int> getClusterIds() const = 0;
     [[nodiscard]] virtual const char * getModelName() const = 0;
@@ -27,15 +28,15 @@ public:
     }
 
 protected:
-    static void updateClusterIds(lib::Span<const int> cpuIds,
+    static void updateClusterIds(lib::Span<const cpu_utils::midr_t> midrs,
                                  lib::Span<const GatorCpu> clusters,
                                  lib::Span<int> cluserIds)
     {
         int lastClusterId = 0;
-        for (size_t i = 0; i < cpuIds.size(); ++i) {
+        for (size_t i = 0; i < midrs.size(); ++i) {
             int clusterId = -1;
             for (size_t j = 0; j < clusters.size(); ++j) {
-                if (clusters[j].hasCpuId(cpuIds[i])) {
+                if (clusters[j].hasCpuId(midrs[i].to_cpuid())) {
                     clusterId = j;
                 }
             }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -83,7 +83,7 @@ namespace agents::perf {
                                                           + buffer_utils::MAXSIZE_PACK64;           // vcnt
 
         std::shared_ptr<ipc::raw_ipc_channel_sink_t> sink;
-        std::vector<char> buffer;
+        std::vector<uint8_t> buffer;
         SyncThread thread;
 
         void write(pid_t pid, pid_t tid, std::uint64_t freq, std::uint64_t monotonic_raw, std::uint64_t vcnt)

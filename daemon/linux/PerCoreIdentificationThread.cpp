@@ -94,7 +94,13 @@ void PerCoreIdentificationThread::run() noexcept
         // attempt to read the online state of the core and then set it online
         coreOnliner = CoreOnliner(cpu);
         // affine the thread to a single CPU
-        configureAffinity();
+
+        if (!coreOnliner->isOnline()) {
+            LOG_DEBUG("Could not bring core %u online. Not configuring affinity.", cpu);
+        }
+        else {
+            configureAffinity();
+        }
     }
 
     // inform callback (this is done regardless of whether or not configureAffinity succeeded

@@ -81,7 +81,7 @@ namespace agents::perf {
      *
      *     // called when an APC frame message is received from the agent. the data
      *     // buffer is passed to the function.
-     *     void on_apc_frame_received(const std::vector<char>&);
+     *     void on_apc_frame_received(const std::vector<uint8_t>&);
      * };
      *
      */

@@ -32,7 +32,6 @@ struct TraceFsConstants;
  * Primary source types currently are:
  *
  *    - Linux perf API
- *    - Non-root proc polling
  */
 class PrimarySourceProvider {
 public:

@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2016-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2016-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Cortex_A73_cnt"/>
 <category counter_set="ARMv8_Cortex_A73_cnt" name="Cortex-A73" per_cpu="yes" supports_event_based_sampling="yes">
@@ -27,7 +27,7 @@
     <event event="0x19" title="Bus" name="Access" description="The counter counts memory read operations and memory write operations that access outside of the boundary of the PE and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED."/>
     <event event="0x1b" title="Instructions (Speculated)" name="All" description="The counter counts instructions that are speculatively executed by the PE. This includes instructions that are subsequently not architecturally executed." units="instructions"/>
     <event event="0x1c" title="Instructions (Executed)" name="Write to TTBR" description="The counter counts writes to the translation table base registers, TTBR0 and TTBR1" units="instructions"/>
-    <event event="0x1d" title="Cycles" name="Bus Cycles" description="The counter increments on every cycle of the interface at the boundary of the PE and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED."/>
+    <event event="0x1d" title="Cycles" name="Bus Cycles" description="The counter increments on every cycle of the interface at the boundary of the PE and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED." units="cycles"/>
     <event event="0x40" title="L1 Data Cache" name="Access (due to read)" description="As &apos;L1 Data Cache: Access&apos;, but counts only memory read accesses"/>
     <event event="0x41" title="L1 Data Cache" name="Access (due to write)" description="As &apos;L1 Data Cache: Access&apos;, but counts only memory write accesses"/>
     <event event="0x50" title="L2 Data Cache" name="Access (due to read)" description="As &apos;L2 Data Cache: Access&apos;, but counts only memory-read operations that access at least the Level 2 data or unified cache"/>
@@ -75,7 +75,7 @@
     <event event="0xe4" title="MMU" name="Translation Table Walk (due to Instruction)" description="Duration during which the MMU handle a translation table walk requested by the Instruction side" units="cycles"/>
     <event event="0xe5" title="MMU" name="Translation Table Walk (due to Preload/Prefetch)" description="Duration during which the MMU handle a translation table walk requested by a Preload instruction or Prefetch request" units="cycles"/>
     <event event="0xe6" title="MMU" name="Translation Table Walk (due to CP15 insn)" description="Duration during which the MMU handle a translation table walk requested by a CP15 operation (maintenance by MVA and VA-to-PA operation)" units="cycles"/>
-    <event event="0xe7" title="L1 TLB" name="Refill (Preload)" description="Level 1 Preload TLB refill"/>
+    <event event="0xe7" title="L1 TLB" name="Refill (prefetched)" description="Level 1 Preload TLB refill"/>
     <event event="0xe8" title="L1 TLB" name="Refill (CP15)" description="Level 1 CP15 TLB refill"/>
     <event event="0xe9" title="L1 TLB" name="Flush" description="Level 1 TLB flush"/>
     <event event="0xea" title="L2 Data/Unified TLB" name="Access" description="Level 2 TLB access"/>

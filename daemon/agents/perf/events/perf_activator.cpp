@@ -12,10 +12,9 @@
 #include "lib/AutoClosingFd.h"
 #include "lib/EnumUtils.h"
 #include "lib/Span.h"
-#include "lib/String.h"
 #include "lib/Syscall.h"
-#include "lib/Utils.h"
 #include "lib/error_code_or.hpp"
+#include "linux/CoreOnliner.h"
 #include "linux/perf/PerfUtils.h"
 
 #include <array>
@@ -164,12 +163,12 @@ namespace agents::perf {
                               mm_errno.value(),
                               config.data_buffer_size / config.page_size);
 
-                    // log online state for core
-                    lib::dyn_printf_str_t online_path {"/sys/devices/system/cpu/cpu%d/online",
-                                                       lib::toEnumValue(core_no)};
-                    std::int64_t online_status = 0;
-                    lib::readInt64FromFile(online_path.c_str(), online_status);
-                    LOG_DEBUG("Online status for cpu%d is %" PRId64, lib::toEnumValue(core_no), online_status);
+                    auto online_status = CoreOnliner::isCoreOnline(lib::toEnumValue(core_no));
+                    const char * online_str = "unknown";
+                    if (online_status.has_value()) {
+                        online_str = online_status.value() ? "true" : "false";
+                    }
+                    LOG_DEBUG("Online status for cpu%d is %s", lib::toEnumValue(core_no), online_str);
 
                     // and mlock value
                     std::optional<std::int64_t> file_value = perf_utils::readPerfEventMlockKb();

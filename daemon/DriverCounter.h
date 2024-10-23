@@ -22,9 +22,9 @@ public:
     DriverCounter & operator=(DriverCounter &&) = delete;
 
     DriverCounter * getNext() const { return mNext; }
-    const char * getName() const { return mName.c_str(); }
-    int getKey() const { return mKey; }
-    bool isEnabled() const { return mEnabled; }
+    [[nodiscard]] const char * getName() const { return mName.c_str(); }
+    [[nodiscard]] int getKey() const { return mKey; }
+    [[nodiscard]] bool isEnabled() const { return mEnabled; }
     void setEnabled(const bool enabled) { mEnabled = enabled; }
     virtual int64_t read() { return -1; }
     [[nodiscard]] virtual bool supportsAtLeastOne(metrics::metric_group_set_t const & /*unused*/) const

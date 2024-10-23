@@ -236,7 +236,7 @@ namespace ipc {
 
         struct sg_read_helper_type {
             std::size_t length = 0;
-            std::vector<char> buffer;
+            std::vector<uint8_t> buffer;
         };
 
         static constexpr std::size_t sg_writer_buffers_count = 2;

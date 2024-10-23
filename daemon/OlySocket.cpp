@@ -1,10 +1,12 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "OlySocket.h"
 
 #include <cerrno>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -14,6 +16,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 #endif
@@ -36,7 +39,7 @@ int socket_cloexec(int domain, int type, int protocol)
 
 #ifdef SOCK_CLOEXEC
     /* Try create socket as SOCK_CLOEXEC */
-    sock = socket(domain, type | SOCK_CLOEXEC, protocol);
+    sock = socket(domain, type | SOCK_CLOEXEC, protocol); // NOLINT(hicpp-signed-bitwise)
     if (sock >= 0) {
         return sock;
     }
@@ -61,7 +64,7 @@ int socket_cloexec(int domain, int type, int protocol)
     /* Try to set CLOEXEC */
 #ifdef FD_CLOEXEC
     int fdf = fcntl(sock, F_GETFD);
-    if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
+    if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) { // NOLINT(hicpp-signed-bitwise)
         LOG_WARNING("Failed FD_CLOEXEC on {domain = %i, type = %i, protocol = %i, socket = %i, fd = %i} due to %i (%s)",
                     domain,
                     type,
@@ -95,7 +98,7 @@ int accept_cloexec(int sockfd, struct sockaddr * addr, socklen_t * addrlen)
         return -1;
     }
     int fdf = fcntl(sock, F_GETFD);
-    if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) {
+    if ((fdf == -1) || (fcntl(sock, F_SETFD, fdf | FD_CLOEXEC) != 0)) { // NOLINT(hicpp-signed-bitwise)
         close(sock);
         return -1;
     }
@@ -116,9 +119,8 @@ OlyServerSocket::OlyServerSocket(int port) : mFDServer(0)
     createServerSocket(port);
 }
 
-OlySocket::OlySocket(int socketID) : mSocketID(socketID)
-{
-}
+OlySocket::OlySocket(int socketID)
+    : mSocketID(socketID) {}
 
 #ifndef WIN32
 
@@ -129,7 +131,8 @@ OlySocket::OlySocket(int socketID) : mSocketID(socketID)
         __a > __b ? __b : __a;                                                                                         \
     })
 
-OlyServerSocket::OlyServerSocket(const char * path, const size_t pathSize, const bool calculateAddrlen) : mFDServer(0)
+      OlyServerSocket::OlyServerSocket(const char * path, const size_t pathSize, const bool calculateAddrlen)
+    : mFDServer(0)
 {
     // Create socket
     mFDServer = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
@@ -165,7 +168,7 @@ OlyServerSocket::OlyServerSocket(const char * path, const size_t pathSize, const
     }
 }
 
-int OlySocket::connect(const char * path, const size_t pathSize, const bool calculateAddrlen)
+int OlySocket::connect(const char * path, const size_t pathSize)
 {
     int fd = socket_cloexec(PF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -179,10 +182,7 @@ int OlySocket::connect(const char * path, const size_t pathSize, const bool calc
     memcpy(sockaddr.sun_path, path, MIN(pathSize, sizeof(sockaddr.sun_path)));
     sockaddr.sun_path[sizeof(sockaddr.sun_path) - 1] = '\0';
 
-    if (::connect(fd,
-                  reinterpret_cast<const struct sockaddr *>(&sockaddr),
-                  calculateAddrlen ? offsetof(struct sockaddr_un, sun_path) + pathSize - 1 : sizeof(sockaddr))
-        < 0) {
+    if (::connect(fd, reinterpret_cast<const struct sockaddr *>(&sockaddr), sizeof(sockaddr)) < 0) {
         close(fd);
         return -1;
     }
@@ -206,7 +206,7 @@ OlyServerSocket::~OlyServerSocket()
     }
 }
 
-void OlySocket::shutdownConnection()
+void OlySocket::shutdownConnection() // NOLINT(readability-make-member-function-const)
 {
     // Shutdown is primarily used to unblock other threads that are blocking on send/receive functions
     shutdown(mSocketID, SHUTDOWN_RX_TX);
@@ -282,7 +282,7 @@ void OlyServerSocket::createServerSocket(int port)
 
 // mSocketID is always set to the most recently accepted connection
 // The user of this class should maintain the different socket connections, e.g. by forking the process
-int OlyServerSocket::acceptConnection()
+int OlyServerSocket::acceptConnection() // NOLINT(readability-make-member-function-const)
 {
     int socketID;
     if (mFDServer <= 0) {
@@ -300,7 +300,7 @@ int OlyServerSocket::acceptConnection()
     return socketID;
 }
 
-void OlySocket::send(const char * buffer, int size)
+void OlySocket::send(const uint8_t * buffer, int size) // NOLINT(readability-make-member-function-const)
 {
     if (size <= 0 || buffer == nullptr) {
         return;
@@ -318,7 +318,7 @@ void OlySocket::send(const char * buffer, int size)
 }
 
 // Returns the number of bytes received
-int OlySocket::receive(char * buffer, int size)
+int OlySocket::receive(uint8_t * buffer, int size) // NOLINT(readability-make-member-function-const)
 {
     if (size <= 0 || buffer == nullptr) {
         return 0;
@@ -337,7 +337,7 @@ int OlySocket::receive(char * buffer, int size)
 }
 
 // Receive exactly size bytes of data. Note, this function will block until all bytes are received
-int OlySocket::receiveNBytes(char * buffer, int size)
+int OlySocket::receiveNBytes(uint8_t * buffer, int size) // NOLINT(readability-make-member-function-const)
 {
     int bytes = 0;
     while (size > 0 && buffer != nullptr) {
@@ -357,7 +357,7 @@ int OlySocket::receiveNBytes(char * buffer, int size)
 }
 
 // Receive data until a carriage return, line feed, or null is encountered, or the buffer fills
-int OlySocket::receiveString(char * buffer, int size)
+int OlySocket::receiveString(uint8_t * buffer, int size) // NOLINT(readability-make-member-function-const)
 {
     int bytes_received = 0;
     bool found = false;

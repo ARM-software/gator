@@ -1,5 +1,6 @@
-/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
 #pragma once
+#include <cstdint>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -81,7 +82,7 @@ namespace lib {
         int fd;
         std::size_t capacity;
         std::size_t read_array_size;
-        std::vector<char> read_array;
+        std::vector<uint8_t> read_array;
         std::string line_buffer;
 
         LineReaderResult readMoreBytes();

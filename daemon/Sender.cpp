@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "Sender.h"
 
@@ -14,11 +14,12 @@
 #include "lib/String.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <thread>
 
+#include <pthread.h>
 #include <unistd.h>
 
 Sender::Sender(OlySocket * socket)
@@ -26,12 +27,12 @@ Sender::Sender(OlySocket * socket)
 {
     // Set up the socket connection
     if (socket != nullptr) {
-        char streamline[64] = {0};
+        uint8_t streamline[64] = {0};
         mDataSocket = socket;
 
         // Receive magic sequence - can wait forever
         // Streamline will send data prior to the magic sequence for legacy support, which should be ignored for v4+
-        while (strcmp("STREAMLINE", streamline) != 0) {
+        while (strcmp("STREAMLINE", reinterpret_cast<const char *>(streamline)) != 0) {
             if (mDataSocket->receiveString(streamline, sizeof(streamline)) == -1) {
                 LOG_ERROR("Socket disconnected");
                 handleException();
@@ -40,7 +41,7 @@ Sender::Sender(OlySocket * socket)
 
         // Send magic sequence - must be done first, after which error messages can be sent
         lib::printf_str_t<32> magic {"GATOR %i\n", PROTOCOL_VERSION};
-        mDataSocket->send(magic, strlen(magic));
+        mDataSocket->send(reinterpret_cast<const uint8_t *>(magic.c_str()), strlen(magic));
 
         gSessionData.mWaitingOnCommand = true;
         LOG_DEBUG("Completed magic sequence");
@@ -78,7 +79,7 @@ void Sender::createDataFile(const char * apcDir)
     }
 }
 
-void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts,
+void Sender::writeDataParts(lib::Span<const lib::Span<const uint8_t, int>> dataParts,
                             ResponseType type,
                             bool ignoreLockErrors)
 {
@@ -119,7 +120,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
         // Send data over the socket, sending the type and size first
         LOG_DEBUG("Sending data with length %d", length);
         if (type != ResponseType::RAW) {
-            char header[5];
+            uint8_t header[5];
             header[0] = static_cast<char>(type);
             buffer_utils::writeLEInt(header + 1, length);
             mDataSocket->send(header, sizeof(header));
@@ -160,7 +161,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
     if (mDataFile && (type == ResponseType::APC_DATA || type == ResponseType::RAW)) {
         LOG_DEBUG("Writing data with length %d", length);
         // Send data to the data file
-        auto writeData = [this](lib::Span<const char, int> data) {
+        auto writeData = [this](lib::Span<const uint8_t, int> data) {
             if (fwrite(data.data(), 1, data.size(), mDataFile.get()) != static_cast<size_t>(data.size())) {
                 LOG_ERROR("Failed writing binary file %s", mDataFileName.get());
                 handleException();
@@ -168,7 +169,7 @@ void Sender::writeDataParts(lib::Span<const lib::Span<const char, int>> dataPart
         };
 
         if (type != ResponseType::RAW) {
-            char header[4];
+            uint8_t header[4];
             buffer_utils::writeLEInt(header, length);
             writeData(header);
         }

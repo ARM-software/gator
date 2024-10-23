@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 // SPDX-License-Identifier: GPL-2.0-only
 
 /**
@@ -17,6 +17,7 @@
 #define _TRACE_GATOR_H
 
 #include <linux/tracepoint.h>
+#include <linux/version.h>
 
 #if !defined(TRACEPOINTS_ENABLED) && !defined(CONFIG_TRACEPOINTS)
 #error "No tracepoints"
@@ -95,6 +96,18 @@
     trace_gator_counter(GATOR_KERNEL_WIDE_PID, (title), (name), (units), false, (value))
 
 /**
+ * Check to use the right version of __assign_str().
+ *
+ * From 6.10.0 onwards __assign_str signature has changed.
+ * https://github.com/torvalds/linux/commit/2c92ca849fcc6ee7d0c358e9959abc9f58661aea
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
+#define k__assign_str(a) __assign_str(a)
+#else
+#define k__assign_str(a) __assign_str(a, a)
+#endif
+
+/**
  * To add a trace point that will create a bookmark in
  * Streamline use the TRACE_EVENT  gator_bookmark
  *
@@ -112,8 +125,9 @@ TRACE_EVENT(gator_bookmark,
             TP_PROTO(int tid, int color, const char * label),
             TP_ARGS(tid, color, label),
             TP_STRUCT__entry(__field(int, tid) __field(int, color) __string(label, label)),
-            TP_fast_assign(__entry->tid = tid; __entry->color = color; __assign_str(label, label);),
+            TP_fast_assign(__entry->tid = tid; __entry->color = color; k__assign_str(label);),
             TP_printk("tid=%d color=0x%06x  label=%s", __entry->tid, __entry->color, __get_str(label)));
+
 /**
  * To add a trace point that will create an annotation in
  * Streamline use the TRACE_EVENT  gator_text.
@@ -134,13 +148,13 @@ TRACE_EVENT(gator_text,
             TP_PROTO(int tid, int color, const char * channel, const char * label),
             TP_ARGS(tid, color, channel, label),
             TP_STRUCT__entry(__field(int, tid) __field(int, color) __string(channel, channel) __string(label, label)),
-            TP_fast_assign(__entry->tid = tid; __entry->color = color; __assign_str(channel, channel);
-                           __assign_str(label, label);),
+            TP_fast_assign(__entry->tid = tid; __entry->color = color; k__assign_str(channel); k__assign_str(label);),
             TP_printk("tid=%d color=0x%06x channel=%s label=%s",
                       __entry->tid,
                       __entry->color,
                       __get_str(channel),
                       __get_str(label)));
+
 /**
  * To add a trace point that creates a counter in
  * Streamline use the TRACE_EVENT  gator_counter.
@@ -169,10 +183,9 @@ TRACE_EVENT(gator_counter,
             TP_ARGS(tid, title, name, units, isdelta, value),
             TP_STRUCT__entry(__field(int, tid) __field(bool, isdelta) __field(unsigned long long, value)
                                  __string(title, title) __string(name, name) __string(units, units)),
-            TP_fast_assign(__entry->tid = tid; __entry->isdelta = isdelta; __entry->value = value;
-                           __assign_str(title, title);
-                           __assign_str(name, name);
-                           __assign_str(units, units);),
+            TP_fast_assign(__entry->tid = tid; __entry->isdelta = isdelta; __entry->value = value; k__assign_str(title);
+                           k__assign_str(name);
+                           k__assign_str(units);),
             TP_printk("tid=%d isdelta=%d value=%llu title=%s name=%s units=%s",
                       __entry->tid,
                       __entry->isdelta,
@@ -183,9 +196,10 @@ TRACE_EVENT(gator_counter,
 
 #endif /* _TRACE_GATOR_H */
 
+#undef k__assign_str
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../include
 // clang-format off
+#define TRACE_INCLUDE_PATH ../include
 #define TRACE_INCLUDE_FILE gator_annotate
 // clang-format on
 #include <trace/define_trace.h>

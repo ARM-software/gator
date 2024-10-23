@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_SYSCALL_H
 #define INCLUDE_LIB_SYSCALL_H
@@ -44,7 +44,7 @@ namespace lib {
 
     pid_t waitpid(pid_t pid, int * wstatus, int options);
 
-    int poll(struct pollfd * __fds, nfds_t __nfds, int __timeout);
+    int poll(struct pollfd * fds, nfds_t nfds, int timeout);
     int access(const char * filename, int how);
     void exit(int status);
 

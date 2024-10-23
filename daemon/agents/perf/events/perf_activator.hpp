@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -97,7 +97,7 @@ namespace agents::perf {
             : capture_configuration(std::move(conf)),
               context(context),
               perf_event_printer(capture_configuration->cpuid_to_core_name,
-                                 capture_configuration->per_core_cpuids,
+                                 capture_configuration->per_core_midrs,
                                  capture_configuration->perf_pmu_type_to_name)
         {
         }

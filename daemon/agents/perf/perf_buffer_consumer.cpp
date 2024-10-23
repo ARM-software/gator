@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/perf_buffer_consumer.h"
 
@@ -44,7 +44,7 @@ namespace agents::perf {
     async::continuations::polymorphic_continuation_t<std::uint64_t, std::uint64_t, boost::system::error_code>
     perf_buffer_consumer_t::do_send_msg(std::shared_ptr<perf_buffer_consumer_t> const & st,
                                         int cpu,
-                                        std::vector<char> buffer,
+                                        std::vector<uint8_t> buffer,
                                         std::uint64_t head,
                                         std::uint64_t tail)
     {

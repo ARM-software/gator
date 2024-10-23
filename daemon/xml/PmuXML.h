@@ -3,6 +3,7 @@
 #ifndef PMUXML_H
 #define PMUXML_H
 
+#include "lib/midr.h"
 #include "linux/smmu_identifier.h"
 
 #include <optional>
@@ -19,7 +20,7 @@ public:
              const char * dtName,
              const char * speName,
              const char * speVersion,
-             std::set<int> const & cpuIds,
+             std::set<cpu_utils::cpuid_t> const & cpuIds,
              int pmncCounters,
              bool isV8);
 
@@ -29,7 +30,7 @@ public:
              std::string dtName,
              std::string speName,
              std::string speVersion,
-             std::vector<int> cpuIds,
+             std::set<cpu_utils::cpuid_t> const & cpuIds,
              int pmncCounters,
              bool isV8);
 
@@ -69,15 +70,15 @@ public:
 
     [[nodiscard]] bool getIsV8() const { return mIsV8; }
 
-    [[nodiscard]] const std::vector<int> & getCpuIds() const { return mCpuIds; }
+    [[nodiscard]] const std::vector<cpu_utils::cpuid_t> & getCpuIds() const { return mCpuIds; }
 
-    [[nodiscard]] int getMinCpuId() const { return mCpuIds.front(); }
+    [[nodiscard]] cpu_utils::cpuid_t getMinCpuId() const { return mCpuIds.front(); }
 
-    [[nodiscard]] int getMaxCpuId() const { return mCpuIds.back(); }
+    [[nodiscard]] cpu_utils::cpuid_t getMaxCpuId() const { return mCpuIds.back(); }
 
     [[nodiscard]] int getPmncCounters() const { return mPmncCounters; }
 
-    [[nodiscard]] bool hasCpuId(int cpuId) const;
+    [[nodiscard]] bool hasCpuId(cpu_utils::cpuid_t cpuId) const;
 
 private:
     std::string mCoreName;
@@ -86,9 +87,19 @@ private:
     std::string mDtName;
     std::string mSpeName;
     std::string mSpeVersion;
-    std::vector<int> mCpuIds;
+    std::vector<cpu_utils::cpuid_t> mCpuIds;
     int mPmncCounters;
     bool mIsV8;
+
+    GatorCpu(std::string coreName,
+             std::string id,
+             std::string counterSet,
+             std::string dtName,
+             std::string speName,
+             std::string speVersion,
+             std::vector<cpu_utils::cpuid_t> cpuIds,
+             int pmncCounters,
+             bool isV8);
 };
 
 bool operator==(const GatorCpu & a, const GatorCpu & b);
@@ -174,9 +185,9 @@ private:
 struct PmuXML {
     static const std::string_view DEFAULT_XML;
 
-    const GatorCpu * findCpuByName(const char * name) const;
-    const GatorCpu * findCpuById(int cpuid) const;
-    const UncorePmu * findUncoreByName(const char * name) const;
+    [[nodiscard]] const GatorCpu * findCpuByName(const char * name) const;
+    [[nodiscard]] const GatorCpu * findCpuById(cpu_utils::cpuid_t cpuid) const;
+    [[nodiscard]] const UncorePmu * findUncoreByName(const char * name) const;
 
     std::vector<GatorCpu> cpus;
     std::vector<UncorePmu> uncores;

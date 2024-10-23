@@ -145,7 +145,7 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(
         attr_to_key_mapping_tracker_t wrapper {*attrs_buffer};
         perf_groups_configurer_t groups_builder {wrapper, event_configurer_config, event_configurer_state};
         if (!enable(groups_builder, wrapper, metrics_tracker)) {
-            LOG_WARNING("perf setup failed, are you running Linux 3.4 or later?");
+            LOG_WARNING("perf setup failed");
             return {};
         }
     }

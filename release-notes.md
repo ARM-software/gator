@@ -1,3 +1,7 @@
+# Gator 9.3.1
+
+Detect CPU revision and correctly select metrics based on that (for Neoverse-N2 in particular)
+
 # Gator 9.3.0
 
 Adds support for SPE 1.2, including 'Not taken' event filter and the ability to invert the event filter

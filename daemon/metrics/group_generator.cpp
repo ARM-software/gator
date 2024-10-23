@@ -3,14 +3,19 @@
 #include "metrics/group_generator.hpp"
 
 #include "lib/Assert.h"
+#include "lib/Span.h"
 #include "metrics/definitions.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <set>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <unordered_set>
+#include <vector>
 
 namespace metrics {
     namespace {
@@ -20,16 +25,19 @@ namespace metrics {
             stall_cycles,
             backend,
             branch,
+            frontend,
+            instruction,
             bus,
             cas,
             data,
-            frontend,
-            instruction,
             l2,
             l3,
             ll,
             ls,
             numeric,
+            barrier,
+            latency,
+            iq,
         };
 
         struct raw_combination_t {
@@ -52,11 +60,14 @@ namespace metrics {
 
         [[nodiscard]] bool is_cycle_counter(std::uint16_t code, metric_arch_t arch)
         {
+            constexpr std::uint16_t arm32_linux_cycle_counter = 0xff;
+            constexpr std::uint16_t arm64_linux_cycle_counter = 0x11;
+
             switch (arch) {
                 case metric_arch_t::v7:
-                    return (code == 0xffU);
+                    return (code == arm32_linux_cycle_counter);
                 case metric_arch_t::v8:
-                    return (code == 0x11U);
+                    return (code == arm64_linux_cycle_counter);
                 case metric_arch_t::any:
                 default:
                     return false;
@@ -109,6 +120,12 @@ namespace metrics {
                     return metric_priority_simplified_t::ls;
                 case metric_priority_t::numeric:
                     return metric_priority_simplified_t::numeric;
+                case metrics::metric_priority_t::barrier:
+                    return metric_priority_simplified_t::barrier;
+                case metrics::metric_priority_t::latency:
+                    return metric_priority_simplified_t::latency;
+                case metrics::metric_priority_t::iq:
+                    return metric_priority_simplified_t::iq;
                 default:
                     throw std::runtime_error("What is this?");
             }
@@ -167,20 +184,15 @@ namespace metrics {
             return result;
         }
 
-        [[nodiscard]] std::vector<raw_combination_t> make_initial_combinations(
+        void make_initial_combinations_inner(
             std::size_t max_events,
-            metric_cpu_events_t const & metric_events,
-            std::function<bool(metric_events_set_t const &)> filter_predicate,
+            lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> const & metric_events,
+            std::function<bool(metric_events_set_t const &)> const & filter_predicate,
             bool & has_boundness,
-            bool & has_stalled_cycles)
+            bool & has_stalled_cycles,
+            std::vector<raw_combination_t> & result,
+            std::unordered_set<metric_events_set_t const *> & consumed_metrics)
         {
-            std::vector<raw_combination_t> result {};
-
-            std::unordered_set<metric_events_set_t const *> consumed_metrics {};
-
-            has_boundness = false;
-            has_stalled_cycles = false;
-
             for (metric_events_set_t const & metric_a : metric_events) {
                 // filter metric based on predicate
                 if (!filter_predicate(metric_a)) {
@@ -247,6 +259,29 @@ namespace metrics {
 
                 result.emplace_back(std::move(current_combination));
             }
+        }
+
+        [[nodiscard]] std::vector<raw_combination_t> make_initial_combinations(
+            std::size_t max_events,
+            lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> events,
+            std::function<bool(metric_events_set_t const &)> const & filter_predicate,
+            bool & has_boundness,
+            bool & has_stalled_cycles)
+        {
+            std::vector<raw_combination_t> result {};
+
+            std::unordered_set<metric_events_set_t const *> consumed_metrics {};
+
+            has_boundness = false;
+            has_stalled_cycles = false;
+
+            make_initial_combinations_inner(max_events,
+                                            events,
+                                            filter_predicate,
+                                            has_boundness,
+                                            has_stalled_cycles,
+                                            result,
+                                            consumed_metrics);
 
             return result;
         }
@@ -378,7 +413,7 @@ namespace metrics {
 
     std::vector<combination_t> make_combinations(
         std::size_t max_events,
-        metric_cpu_events_t const & metric_events,
+        lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> events,
         std::function<bool(metric_events_set_t const &)> const & filter_predicate)
     {
         bool has_boundness = false;
@@ -386,7 +421,7 @@ namespace metrics {
 
         // make the initial set
         auto raw_combinations =
-            make_initial_combinations(max_events, metric_events, filter_predicate, has_boundness, has_stalled_cycles);
+            make_initial_combinations(max_events, events, filter_predicate, has_boundness, has_stalled_cycles);
 
         // merge boundness and top_level if possible
         raw_combinations = combine_combinations(

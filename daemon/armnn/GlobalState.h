@@ -68,7 +68,7 @@ namespace armnn {
         struct CategoryEvents {
             std::map<std::string, std::optional<EventProperties>> events;
             std::uint16_t counterSetCount;
-            std::map<int, std::string> eventsByNumber;
+            std::map<uint16_t, std::string> eventsByNumber;
         };
 
         struct CounterNameKeyAndEventNumber {
@@ -88,7 +88,7 @@ namespace armnn {
                                                         const CategoryEvents & categoryEvents);
         static std::vector<Event> createXmlEvents(const CategoryId & catId, const CategoryEvents & category);
 
-        void insertEventNumber(std::map<int, std::string> & eventNumberToName, const std::string & name) const;
+        void insertEventNumber(std::map<uint16_t, std::string> & eventNumberToName, const std::string & name) const;
 
         int getKey(const std::string & counterName);
         void addEvent(const EventId & id, const EventProperties & properties);
@@ -96,14 +96,14 @@ namespace armnn {
 
         std::function<int(void)> keyAllocator;
         std::function<std::size_t(std::string)> nameHasher;
-        mutable std::mutex eventsMutex {};
-        std::map<std::string, int> keysByCounterName {};
-        std::map<CategoryId, CategoryEvents> categories {};
-        std::map<std::string, EventId> fixedCountersToEvent {};
-        std::map<std::string, CategoryId> programmableCountersToCategory {};
+        mutable std::mutex eventsMutex;
+        std::map<std::string, int> keysByCounterName;
+        std::map<CategoryId, CategoryEvents> categories;
+        std::map<std::string, EventId> fixedCountersToEvent;
+        std::map<std::string, CategoryId> programmableCountersToCategory;
         // Any references to elements in this set will be valid forever if they're not removed
         // so only references added before fork should be passed to the other process
-        std::set<std::string> permanentCounterNameReferences {};
+        std::set<std::string> permanentCounterNameReferences;
         // StaticVector and IdKeyAndEventNumber don't dynamically allocate so we can safely use them in shared memory
         shared_memory::unique_ptr<lib::StaticVector<CounterNameKeyAndEventNumber, 1000>> enabledIdKeyAndEventNumbers =
             shared_memory::make_unique<lib::StaticVector<CounterNameKeyAndEventNumber, 1000>>();

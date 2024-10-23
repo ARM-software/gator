@@ -140,8 +140,8 @@ static mxml_node_t * getTree(bool includeTime,
 
     const auto & cpuInfo = primarySourceProvider.getCpuInfo();
     mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
-    const auto cpuIds = cpuInfo.getCpuIds();
-    mxmlElementSetAttrf(target, "cores", "%zu", cpuIds.size());
+    const auto midrs = cpuInfo.getMidrs();
+    mxmlElementSetAttrf(target, "cores", "%zu", midrs.size());
     //GPU cores
     mxmlElementSetAttrf(target, "gpu_cores", "%zu", maliGpuIds.size());
     //gatord src md5
@@ -149,8 +149,11 @@ static mxml_node_t * getTree(bool includeTime,
     //gatord build commit id
     mxmlElementSetAttrf(target, "gatord_build_id", "%s", gBuildId);
 
-    assert(cpuIds.size() > 0); // gatord should've died earlier if there were no cpus
-    mxmlElementSetAttrf(target, "cpuid", "0x%x", *std::max_element(std::begin(cpuIds), std::end(cpuIds)));
+    assert(midrs.size() > 0); // gatord should've died earlier if there were no cpus
+    mxmlElementSetAttrf(target,
+                        "cpuid",
+                        "0x%x",
+                        std::max_element(std::begin(midrs), std::end(midrs))->to_cpuid().to_raw_value());
 
     /* SDDAP-10049: Removed `&& (gSessionData.mSampleRate > 0)` - this allows sample rate: none
          * to work with live mode, at the risk that live display is 'jittery' as data sending is dependent

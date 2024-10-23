@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -66,10 +66,10 @@ namespace agents::perf {
             return reinterpret_cast<T const *>(mmap);
         }
 
-        [[nodiscard]] lib::Span<char const> as_span() const { return {data(), size()}; }
+        [[nodiscard]] lib::Span<uint8_t const> as_span() const { return {data(), size()}; }
 
-        [[nodiscard]] char * data() { return reinterpret_cast<char *>(mmap); }
-        [[nodiscard]] char const * data() const { return reinterpret_cast<char const *>(mmap); }
+        [[nodiscard]] uint8_t * data() { return reinterpret_cast<uint8_t *>(mmap); }
+        [[nodiscard]] uint8_t const * data() const { return reinterpret_cast<uint8_t const *>(mmap); }
         [[nodiscard]] size_type size() const { return length; }
 
         [[nodiscard]] bool operator==(std::nullptr_t) const { return (mmap == nullptr) || (length == 0); }
@@ -100,15 +100,16 @@ namespace agents::perf {
             return data_mapping.get_as<perf_event_mmap_page>();
         }
 
-        [[nodiscard]] lib::Span<char const> aux_span() const { return aux_mapping.as_span(); }
+        [[nodiscard]] lib::Span<uint8_t const> aux_span() const { return aux_mapping.as_span(); }
 
-        [[nodiscard]] lib::Span<char const> data_span() const
+        [[nodiscard]] lib::Span<uint8_t const> data_span() const
         {
             if (!data_mapping) {
                 return {};
             }
 
-            return {reinterpret_cast<char const *>(data_mapping.data() + page_size), data_mapping.size() - page_size};
+            return {reinterpret_cast<uint8_t const *>(data_mapping.data() + page_size),
+                    data_mapping.size() - page_size};
         }
 
         void set_aux_mapping(mmap_ptr_t mapping)
@@ -119,7 +120,7 @@ namespace agents::perf {
 
     private:
         std::size_t page_size = 0;
-        mmap_ptr_t data_mapping {};
-        mmap_ptr_t aux_mapping {};
+        mmap_ptr_t data_mapping;
+        mmap_ptr_t aux_mapping;
     };
 }

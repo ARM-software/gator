@@ -320,7 +320,7 @@ void Child::run()
         LOG_DEBUG("Received exec_target callback");
         if (!event_listener.waiting_for_target()) {
             auto last_error = log_ops.get_last_log_error();
-            sender->writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
+            sender->writeData(last_error, ResponseType::ERROR, true);
             handleException();
         }
         if (!gSessionData.mLocalCapture) {
@@ -406,8 +406,8 @@ void Child::run()
         !gSessionData.mCaptureCommand.empty(),
         *agent_workers_process);
     if (newPrimarySource == nullptr) {
-        LOG_ERROR(
-            "Unable to communicate with the perf API. Please refer to streamline/gator/README.md for more information.");
+        LOG_ERROR("Unable to communicate with the perf API. Please refer to streamline/gator/README.md for more "
+                  "information.");
         handleException();
     }
 
@@ -557,12 +557,16 @@ void Child::sendGatorLogAndApcEndSequence()
             auto const & stream = log_file.open_for_reading();
             std::array<char, LOG_FILE_READ_SIZE> buffer {};
             while (stream->read(buffer.data(), buffer.size())) {
-                sender->writeData(buffer.data(), buffer.size(), ResponseType::GATOR_LOG);
+                sender->writeData(reinterpret_cast<const std::uint8_t *>(buffer.data()),
+                                  buffer.size(),
+                                  ResponseType::GATOR_LOG);
             }
             //stream might have failed because eofbit
             if (stream->eof() && stream->gcount() > 0) {
                 //write the last few bytes
-                sender->writeData(buffer.data(), stream->gcount(), ResponseType::GATOR_LOG);
+                sender->writeData(reinterpret_cast<const std::uint8_t *>(buffer.data()),
+                                  stream->gcount(),
+                                  ResponseType::GATOR_LOG);
             }
             //null bytes indicates we have reached end of log
             sender->writeData(nullptr, 0, ResponseType::GATOR_LOG);
@@ -634,11 +638,11 @@ void Child::cleanupException()
             sendGatorLogAndApcEndSequence();
             // send the error, regardless of the command sent by Streamline
             auto last_error = log_ops.get_last_log_error();
-            sender->writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
+            sender->writeData(last_error, ResponseType::ERROR, true);
 
             // cannot close the socket before Streamline issues the command, so wait for the command before exiting
             if (gSessionData.mWaitingOnCommand) {
-                char discard;
+                std::uint8_t discard;
                 socket->receiveNBytes(&discard, 1);
             }
 
@@ -651,6 +655,7 @@ void Child::cleanupException()
     }
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void Child::durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd)
 {
     if (sessionEnded) {
@@ -679,7 +684,7 @@ namespace {
             LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
             return State::PROCESS_COMMANDS;
         }
-        State handleDeliver(char *) override
+        State handleDeliver(char * /* unused */) override
         {
             LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_DELIVER_XML");
             return State::PROCESS_COMMANDS;

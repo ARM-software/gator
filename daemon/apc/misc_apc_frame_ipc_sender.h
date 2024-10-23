@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -14,6 +14,7 @@
 #include "ipc/messages.h"
 #include "ipc/raw_ipc_channel_sink.h"
 #include "k/perf_event.h"
+#include "lib/midr.h"
 
 #include <cstdint>
 #include <memory>
@@ -232,7 +233,7 @@ namespace apc {
         }
 
         template<typename CompletionToken>
-        auto async_send_core_name(int core, int cpuid, std::string_view name, CompletionToken && token)
+        auto async_send_core_name(int core, cpu_utils::cpuid_t cpuid, std::string_view name, CompletionToken && token)
         {
             using namespace async::continuations;
 

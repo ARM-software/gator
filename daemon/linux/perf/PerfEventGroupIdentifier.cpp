@@ -38,13 +38,13 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
         if (that.cluster == nullptr) {
             return true;
         }
-        const int minThis = *std::min_element(cluster->getCpuIds().begin(), cluster->getCpuIds().end());
-        const int minThat = *std::min_element(that.cluster->getCpuIds().begin(), that.cluster->getCpuIds().end());
+        const auto minThis = *std::min_element(cluster->getCpuIds().begin(), cluster->getCpuIds().end());
+        const auto minThat = *std::min_element(that.cluster->getCpuIds().begin(), that.cluster->getCpuIds().end());
         if (minThis < minThat) {
             return true;
         }
 
-        if (minThis > minThat) {
+        if (minThat < minThis) {
             return false;
         }
 

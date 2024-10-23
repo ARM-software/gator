@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef __SENDER_H__
 #define __SENDER_H__
@@ -22,7 +22,7 @@ public:
     Sender(Sender &&) = delete;
     Sender & operator=(Sender &&) = delete;
 
-    void writeDataParts(lib::Span<const lib::Span<const char, int>> dataParts,
+    void writeDataParts(lib::Span<const lib::Span<const uint8_t, int>> dataParts,
                         ResponseType type,
                         bool ignoreLockErrors = false) override;
     void createDataFile(const char * apcDir);

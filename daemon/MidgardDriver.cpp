@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "MidgardDriver.h"
 
@@ -193,7 +193,7 @@ void MidgardDriver::query() const
                                 handleException();
                             }
 
-                            char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
+                            uint8_t * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
                             if (!lib::readAll(uds, buf, header.mDataLength)) {
                                 LOG_ERROR("Unable to read Hardware Counter Directory Packet");
                                 handleException();
@@ -228,7 +228,7 @@ void MidgardDriver::query() const
         }
     }
 
-    char * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
+    uint8_t * const buf = gSessionData.mSharedData->mMaliMidgardCounters;
     const size_t size = gSessionData.mSharedData->mMaliMidgardCountersSize;
     CounterData cd;
     cd.mType = CounterData::PERF;

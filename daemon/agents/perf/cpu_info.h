@@ -1,10 +1,11 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "CpuUtils.h"
 #include "ICpuInfo.h"
 #include "agents/perf/capture_configuration.h"
+#include "lib/midr.h"
 
 namespace agents::perf {
     /** Implements the ICpuInfo interface, providing a thin wrapper around the data received in the configuration message and allowing simple rescan of properties */
@@ -15,7 +16,10 @@ namespace agents::perf {
         {
         }
 
-        [[nodiscard]] lib::Span<const int> getCpuIds() const override { return configuration->per_core_cpuids; }
+        [[nodiscard]] lib::Span<const cpu_utils::midr_t> getMidrs() const override
+        {
+            return configuration->per_core_midrs;
+        }
 
         [[nodiscard]] lib::Span<const GatorCpu> getClusters() const override { return configuration->clusters; }
 
@@ -28,8 +32,8 @@ namespace agents::perf {
 
         void updateIds(bool /*ignoreOffline*/) override
         {
-            cpu_utils::readCpuInfo(true, false, configuration->per_core_cpuids);
-            ICpuInfo::updateClusterIds(configuration->per_core_cpuids,
+            cpu_utils::readCpuInfo(true, false, configuration->per_core_midrs);
+            ICpuInfo::updateClusterIds(configuration->per_core_midrs,
                                        configuration->clusters,
                                        configuration->per_core_cluster_index);
         }

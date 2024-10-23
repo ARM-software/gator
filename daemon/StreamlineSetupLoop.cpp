@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #include "StreamlineSetupLoop.h"
 
@@ -26,18 +26,18 @@ namespace {
 
     struct ReadResult {
         int commandType;
-        std::vector<char> data;
+        std::vector<uint8_t> data;
     };
 
     ReadResult readCommand(OlySocket & socket, const std::function<void(bool)> & receivedOneByteCallback)
     {
         ReadResult result {COMMAND_ERROR, {}};
 
-        unsigned char header[5];
+        uint8_t header[5];
         int response;
 
         // receive type and length
-        response = socket.receiveNBytes(reinterpret_cast<char *>(&header), sizeof(header));
+        response = socket.receiveNBytes(header, sizeof(header));
 
         // After receiving a single byte, we are no longer waiting on a command
         receivedOneByteCallback(true);
@@ -106,9 +106,9 @@ IStreamlineCommandHandler::State streamlineSetupCommandIteration(
         case COMMAND_ERROR:
             return IStreamlineCommandHandler::State::EXIT_ERROR;
         case COMMAND_REQUEST_XML:
-            return handler.handleRequest(readResult.data.data());
+            return handler.handleRequest(reinterpret_cast<char *>(readResult.data.data()));
         case COMMAND_DELIVER_XML:
-            return handler.handleDeliver(readResult.data.data());
+            return handler.handleDeliver(reinterpret_cast<char *>(readResult.data.data()));
         case COMMAND_APC_START:
             if (!readResult.data.empty()) {
                 LOG_DEBUG("INVESTIGATE: Received APC_START command but with length = %zu", readResult.data.size());

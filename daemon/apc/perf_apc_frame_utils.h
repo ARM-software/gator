@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -20,7 +20,7 @@ namespace apc {
     namespace detail {
 
         inline void make_perf_attr_frame_header(CodeType type,
-                                                agents::perf::apc_buffer_builder_t<std::vector<char>> & buffer)
+                                                agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> & buffer)
         {
             buffer.packInt(static_cast<int32_t>(FrameType::PERF_ATTRS));
             buffer.packInt(0); // legacy, used to be core number
@@ -28,7 +28,7 @@ namespace apc {
         }
 
         inline void write_string_view(std::string_view sv,
-                                      agents::perf::apc_buffer_builder_t<std::vector<char>> & buffer)
+                                      agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> & buffer)
         {
             buffer.writeBytes(sv.data(), sv.size());
             bool string_is_not_null_terminated = sv.empty() || !(sv.back() == 0);
@@ -37,10 +37,12 @@ namespace apc {
             }
         }
 
-        [[nodiscard]] inline std::vector<char> make_cpu_frame(CodeType type, monotonic_delta_t timestamp, int32_t cpu)
+        [[nodiscard]] inline std::vector<uint8_t> make_cpu_frame(CodeType type,
+                                                                 monotonic_delta_t timestamp,
+                                                                 int32_t cpu)
         {
-            std::vector<char> frame {};
-            agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+            std::vector<uint8_t> frame {};
+            agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
             detail::make_perf_attr_frame_header(type, buffer);
             buffer.packMonotonicDelta(timestamp);
             buffer.packInt(cpu);
@@ -50,10 +52,10 @@ namespace apc {
 
     }
 
-    [[nodiscard]] inline std::vector<char> make_perf_events_attributes_frame(perf_event_attr const & pea, int key)
+    [[nodiscard]] inline std::vector<uint8_t> make_perf_events_attributes_frame(perf_event_attr const & pea, int key)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::PEA, buffer);
         buffer.writeBytes(reinterpret_cast<const char *>(&pea), pea.size);
         buffer.packInt(key);
@@ -61,12 +63,12 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_keys_frame(
+    [[nodiscard]] inline std::vector<uint8_t> make_keys_frame(
         lib::Span<std::pair<agents::perf::perf_event_id_t, agents::perf::gator_key_t> const> mappings)
     {
 
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::KEYS, buffer);
 
         auto const count = static_cast<int>(mappings.size());
@@ -80,20 +82,20 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_format_frame(std::string_view format)
+    [[nodiscard]] inline std::vector<uint8_t> make_format_frame(std::string_view format)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::FORMAT, buffer);
         detail::write_string_view(format, buffer);
         buffer.endFrame();
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_maps_frame(int pid, int tid, std::string_view maps)
+    [[nodiscard]] inline std::vector<uint8_t> make_maps_frame(int pid, int tid, std::string_view maps)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::MAPS, buffer);
         buffer.packInt(pid);
         buffer.packInt(tid);
@@ -102,13 +104,13 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_comm_frame(int pid,
-                                                           int tid,
-                                                           std::string_view image,
-                                                           std::string_view comm)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_comm_frame(int pid,
+                                                                   int tid,
+                                                                   std::string_view image,
+                                                                   std::string_view comm)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::COMM, buffer);
 
         buffer.packInt(pid);
@@ -120,31 +122,31 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_cpu_online_frame(monotonic_delta_t timestamp, int32_t cpu)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_cpu_online_frame(monotonic_delta_t timestamp, int32_t cpu)
     {
         return detail::make_cpu_frame(CodeType::ONLINE_CPU, timestamp, cpu);
     }
 
-    [[nodiscard]] inline std::vector<char> make_cpu_offline_frame(monotonic_delta_t timestamp, int32_t cpu)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_cpu_offline_frame(monotonic_delta_t timestamp, int32_t cpu)
     {
         return detail::make_cpu_frame(CodeType::OFFLINE_CPU, timestamp, cpu);
     }
 
-    [[nodiscard]] inline std::vector<char> make_kallsyms_frame(std::string_view kallsyms)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_kallsyms_frame(std::string_view kallsyms)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::KALLSYMS, buffer);
         detail::write_string_view(kallsyms, buffer);
         buffer.endFrame();
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_perf_counters_frame(monotonic_delta_t timestamp,
-                                                                    lib::Span<perf_counter_t const> counters)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_perf_counters_frame(monotonic_delta_t timestamp,
+                                                                            lib::Span<perf_counter_t const> counters)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::COUNTERS, buffer);
 
         buffer.packMonotonicDelta(timestamp);
@@ -158,20 +160,20 @@ namespace apc {
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_header_page_frame(std::string_view header_page)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_header_page_frame(std::string_view header_page)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::HEADER_PAGE, buffer);
         detail::write_string_view(header_page, buffer);
         buffer.endFrame();
         return frame;
     }
 
-    [[nodiscard]] inline std::vector<char> make_header_event_frame(std::string_view header_event)
+    [[nodiscard]] inline std::vector<std::uint8_t> make_header_event_frame(std::string_view header_event)
     {
-        std::vector<char> frame {};
-        agents::perf::apc_buffer_builder_t<std::vector<char>> buffer(frame);
+        std::vector<std::uint8_t> frame {};
+        agents::perf::apc_buffer_builder_t<std::vector<uint8_t>> buffer(frame);
         detail::make_perf_attr_frame_header(CodeType::HEADER_EVENT, buffer);
         detail::write_string_view(header_event, buffer);
         buffer.endFrame();

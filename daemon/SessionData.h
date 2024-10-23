@@ -31,9 +31,9 @@ public:
     SharedData & operator=(SharedData &&) = delete;
 
     size_t mMaliUtgardCountersSize {0};
-    char mMaliUtgardCounters[1 << 12];
+    uint8_t mMaliUtgardCounters[1 << 12];
     size_t mMaliMidgardCountersSize {0};
-    char mMaliMidgardCounters[1 << 13];
+    uint8_t mMaliMidgardCounters[1 << 13];
 };
 
 class SessionData {

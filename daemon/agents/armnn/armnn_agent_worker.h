@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "agents/agent_worker_base.h"
@@ -107,7 +107,7 @@ namespace agents {
             }
 
             /** Handle the 'recv' IPC message variant. The agent received data from a connection. */
-            void on_recv_bytes(std::vector<char> && buffer)
+            void on_recv_bytes(std::vector<std::uint8_t> && buffer)
             {
                 if (!buffer.empty()) {
                     std::unique_lock<std::mutex> lock {list_mutex};
@@ -175,7 +175,7 @@ namespace agents {
                 if (auto st = agent_worker.lock()) {
                     // close the external source pipe
                     const auto * p = static_cast<const unsigned char *>(buffer.data());
-                    std::vector<char> charBuffer(p, p + buffer.size());
+                    std::vector<std::uint8_t> charBuffer(p, p + buffer.size());
 
                     auto fut = async_initiate_cont(
                         [this, &result, st, charBuffer = std::move(charBuffer)]() {
@@ -214,7 +214,7 @@ namespace agents {
         private:
             std::mutex list_mutex {};
             std::condition_variable list_notifier {};
-            std::list<std::vector<char>> list_of_received_buffers {};
+            std::list<std::vector<std::uint8_t>> list_of_received_buffers {};
 
             weak_ptr_t agent_worker;
             ipc::annotation_uid_t id;

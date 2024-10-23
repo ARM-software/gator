@@ -396,32 +396,32 @@ namespace agents::perf {
                     return start_on(st->strand) //
                          | then([st, cpu_no]() -> polymorphic_continuation_t<> {
                                // Don't send information on a cpu we know nothing about
-                               auto const cpu_ids = st->cpu_info->getCpuIds();
+                               auto const midrs = st->cpu_info->getMidrs();
 
-                               if ((cpu_no < 0) || (std::size_t(cpu_no) >= cpu_ids.size())) {
+                               if ((cpu_no < 0) || (std::size_t(cpu_no) >= midrs.size())) {
                                    return {};
                                }
 
-                               const int cpu_id = cpu_ids[cpu_no];
-                               if (cpu_id == -1) {
+                               const auto & midr = midrs[cpu_no];
+                               if (midr.invalid_or_other()) {
                                    return {};
                                }
 
                                // we use cpuid lookup here for look up rather than clusters because it maybe a cluster
                                // that wasn't known at start up
-                               auto it = st->configuration->cpuid_to_core_name.find(cpu_id);
+                               auto it = st->configuration->cpuid_to_core_name.find(midr.to_cpuid());
                                if (it != st->configuration->cpuid_to_core_name.end()) {
                                    return st->misc_apc_frame_ipc_sender->async_send_core_name(cpu_no,
-                                                                                              cpu_id,
+                                                                                              midr.to_cpuid(),
                                                                                               it->second,
                                                                                               use_continuation)
                                         | map_error();
                                }
 
                                // create the core name string
-                               lib::printf_str_t<32> buf {"Unknown (0x%.3x)", cpu_id};
+                               lib::printf_str_t<32> buf {"Unknown (0x%.3x)", midr.to_cpuid().to_raw_value()};
                                return st->misc_apc_frame_ipc_sender->async_send_core_name(cpu_no,
-                                                                                          cpu_id,
+                                                                                          midr.to_cpuid(),
                                                                                           std::string(buf),
                                                                                           use_continuation)
                                     | map_error();

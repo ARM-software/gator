@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -86,14 +86,14 @@ namespace ipc {
                 //?? will the 000 file be incremented *000, *001 etc??
                 // Write data to disk as long as it is not meta data
                 if (message.key == response_type::apc_data) {
-                    auto buffer_ptr = std::make_shared<std::vector<char>>(std::move(message.payload));
+                    auto buffer_ptr = std::make_shared<std::vector<uint8_t>>(std::move(message.payload));
                     //payload length bytes
                     auto length = buffer_ptr->size();
-                    auto buffer_length = std::make_shared<std::array<char, 4>>(std::array<char, 4>({{
-                        (static_cast<char>(length)),
-                        (static_cast<char>(length >> 8)),
-                        (static_cast<char>(length >> 16)),
-                        (static_cast<char>(length >> 24)),
+                    auto buffer_length = std::make_shared<std::array<uint8_t, 4>>(std::array<uint8_t, 4>({{
+                        (static_cast<uint8_t>(length)),
+                        (static_cast<uint8_t>(length >> 8)),
+                        (static_cast<uint8_t>(length >> 16)),
+                        (static_cast<uint8_t>(length >> 24)),
                     }}));
                     //write payload length
                     boost::asio::async_write(

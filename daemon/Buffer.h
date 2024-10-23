@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef BUFFER_H
 #define BUFFER_H
@@ -43,7 +43,7 @@ public:
     void setDone() override;
 
     // Prefer a new member to using these functions if possible
-    [[nodiscard]] char * getWritePos() { return mBuf + mWritePos; }
+    [[nodiscard]] uint8_t * getWritePos() { return mBuf + mWritePos; }
 
     [[nodiscard]] int getWriteIndex() const override;
     void advanceWrite(int bytes) override;
@@ -57,7 +57,7 @@ public:
     int packInt64(int64_t x) override;
     void writeBytes(const void * data, std::size_t count) override;
     void writeString(std::string_view str) override;
-    void writeRawFrame(lib::Span<const char> frame);
+    void writeRawFrame(lib::Span<const uint8_t> frame);
 
     void beginFrame(FrameType frameType) override;
     void abortFrame() override;
@@ -70,7 +70,7 @@ public:
     [[nodiscard]] bool supportsWriteOfSize(int bytes) const override;
 
 private:
-    char * const mBuf;
+    uint8_t * const mBuf;
     sem_t & mReaderSem;
     sem_t mWriterSem;
     const int mSize;

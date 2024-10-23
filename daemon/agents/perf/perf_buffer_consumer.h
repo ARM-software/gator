@@ -259,7 +259,7 @@ namespace agents::perf {
         static async::continuations::polymorphic_continuation_t<std::uint64_t, std::uint64_t, boost::system::error_code>
         do_send_msg(std::shared_ptr<perf_buffer_consumer_t> const & st,
                     int cpu,
-                    std::vector<char> buffer,
+                    std::vector<uint8_t> buffer,
                     std::uint64_t head,
                     std::uint64_t tail);
 

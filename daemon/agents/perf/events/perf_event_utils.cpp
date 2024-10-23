@@ -18,9 +18,9 @@ namespace agents::perf {
     char const * perf_event_printer_t::map_core_cluster_name(core_no_t core_no)
     {
         auto index = lib::toEnumValue(core_no);
-        runtime_assert(((index >= 0) && (std::size_t(index) < per_core_cpuids.size())), "Unexpected core no");
-        auto cpuid = per_core_cpuids[index];
-        auto it = cpuid_to_core_name.find(cpuid);
+        runtime_assert(((index >= 0) && (std::size_t(index) < per_core_midrs.size())), "Unexpected core no");
+        auto const & midr = per_core_midrs[index];
+        auto it = cpuid_to_core_name.find(midr.to_cpuid());
         if (it == cpuid_to_core_name.end()) {
             return "Unknown";
         }

@@ -16,6 +16,8 @@
 #include "lib/Span.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
+#include "lib/midr.h"
+#include "linux/CoreOnliner.h"
 #include "linux/smmu_identifier.h"
 #include "linux/smmu_support.h"
 #include "xml/PmuXML.h"
@@ -35,6 +37,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -139,11 +142,6 @@ namespace {
         return strncmp(string, prefix, strlen(prefix)) == 0;
     }
 
-    [[nodiscard]] bool isValidCpuId(int cpuId)
-    {
-        return ((cpuId != PerfDriverConfiguration::UNKNOWN_CPUID) && (cpuId != -1) && (cpuId != 0));
-    }
-
     [[nodiscard]] bool pmu_supports_strobing_patches(lib::FsEntry const & entry)
     {
         auto const format_path = lib::FsEntry::create(entry, "format");
@@ -159,7 +157,7 @@ namespace {
 
     [[nodiscard]] GatorCpu with_max_counters_value(
         GatorCpu const & gatorCpu,
-        std::unordered_map<int, std::size_t> const & max_event_count_by_cpuid)
+        std::unordered_map<cpu_utils::cpuid_t, std::size_t> const & max_event_count_by_cpuid)
     {
         std::size_t value {};
         bool all_invalid = false;
@@ -216,7 +214,10 @@ namespace {
         }
 
         if (static_cast<int>(value) < gatorCpu.getPmncCounters()) {
-            LOG_WARNING("Detected %zu programmable event counters for %s PMU", value, gatorCpu.getCoreName());
+            LOG_WARNING("Detected %zu programmable event counters for %s PMU (expected %d)",
+                        value,
+                        gatorCpu.getCoreName(),
+                        gatorCpu.getPmncCounters());
         }
 
         LOG_SETUP("CPU Counters\nDetected %zu programmable events for %s", value, gatorCpu.getCoreName());
@@ -224,7 +225,7 @@ namespace {
     }
 
     template<std::size_t max_possible_events>
-    [[nodiscard]] std::size_t counter_valid_readable_counters(int fd)
+    [[nodiscard]] std::size_t count_valid_readable_counters(int fd)
     {
         std::array<std::uint64_t, (2 * max_possible_events) + 1> buffer {};
 
@@ -318,7 +319,7 @@ namespace {
             };
 
             if (fd.get() >= 0) {
-                auto const n_valid = counter_valid_readable_counters<max_possible_events>(fd.get());
+                auto const n_valid = count_valid_readable_counters<max_possible_events>(fd.get());
 
                 if (n_valid > event_fds.size()) {
                     event_fds.emplace_back(std::move(fd));
@@ -341,21 +342,22 @@ namespace {
         return actual_count;
     }
 
-    [[nodiscard]] std::unordered_map<int, std::size_t> calculate_max_event_count_by_cpuid(lib::Span<const int> cpuIds)
+    [[nodiscard]] std::unordered_map<cpu_utils::cpuid_t, std::size_t> calculate_max_event_count_by_cpuid(
+        lib::Span<cpu_utils::midr_t const> midrs)
     {
         constexpr unsigned affine_loop_count = 5;
 
-        std::unordered_map<int, std::size_t> max_event_count_by_cpuid {};
+        std::unordered_map<cpu_utils::cpuid_t, std::size_t> max_event_count_by_cpuid {};
 
         if (gSessionData.mOverrideNoPmuSlots > 0) {
             return max_event_count_by_cpuid;
         }
 
         // record the current thread affinity so it can be restored later
-        auto const cpu_set_size = CPU_ALLOC_SIZE(cpuIds.size());
+        auto const cpu_set_size = CPU_ALLOC_SIZE(midrs.size());
 
         std::unique_ptr<cpu_set_t, std::function<void(cpu_set_t *)>> original_cpuset {
-            CPU_ALLOC(cpuIds.size()),
+            CPU_ALLOC(midrs.size()),
             [](cpu_set_t * ptr) { CPU_FREE(ptr); }};
 
         CPU_ZERO_S(cpu_set_size, original_cpuset.get());
@@ -363,26 +365,31 @@ namespace {
         if (sched_getaffinity(0, cpu_set_size, original_cpuset.get()) < 0) {
             auto const e = errno;
             //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_WARNING("Error calling sched_getaffinity to get current mask: %d (%s)", e, strerror(e));
+            LOG_DEBUG("Error calling sched_getaffinity to get current mask: %d (%s)", e, strerror(e));
 
             CPU_ZERO_S(cpu_set_size, original_cpuset.get());
 
-            for (std::size_t cpuNo = 0; cpuNo < cpuIds.size(); ++cpuNo) {
+            for (std::size_t cpuNo = 0; cpuNo < midrs.size(); ++cpuNo) {
                 CPU_SET_S(cpuNo, cpu_set_size, original_cpuset.get());
             }
         }
 
         // for each CPU, determine how many events can be supported
-        for (std::size_t cpuNo = 0; cpuNo < cpuIds.size(); ++cpuNo) {
+        for (std::size_t cpuNo = 0; cpuNo < midrs.size(); ++cpuNo) {
+            if (!CoreOnliner::isCoreOnline(cpuNo).value_or(true)) {
+                LOG_DEBUG("Skipping max events detection for offline core %zu.", cpuNo);
+                continue;
+            }
+
             auto const actual_count = calculate_max_event_count_for(cpuNo);
-            auto [it, inserted] = max_event_count_by_cpuid.try_emplace(cpuIds[cpuNo], actual_count);
+            auto [it, inserted] = max_event_count_by_cpuid.try_emplace(midrs[cpuNo].to_cpuid(), actual_count);
             if (!inserted) {
                 it->second = std::max(it->second, actual_count);
             }
         }
 
         for (auto const & [cpuId, count] : max_event_count_by_cpuid) {
-            LOG_DEBUG("Determined CPUs with ID 0x%05x can support at most %zu events.", cpuId, count);
+            LOG_DEBUG("Determined CPUs with ID 0x%05x can support at most %zu events.", cpuId.to_raw_value(), count);
         }
 
         // restore affinity
@@ -419,7 +426,7 @@ void logCpuNotFound()
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(CaptureOperationMode captureOperationMode,
                                                                          const char * tracefsEventsPath,
-                                                                         lib::Span<const int> cpuIds,
+                                                                         lib::Span<const cpu_utils::midr_t> midrs,
                                                                          const default_identifiers_t & smmu_identifiers,
                                                                          const PmuXML & pmuXml)
 {
@@ -658,7 +665,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     }
 
     // detect max number of events per PMU
-    auto const max_event_count_by_cpuid = calculate_max_event_count_by_cpuid(cpuIds);
+    auto const max_event_count_by_cpuid = calculate_max_event_count_by_cpuid(midrs);
 
     // detect the PMUs
     std::set<const GatorCpu *> cpusDetectedViaSysFs;
@@ -680,10 +687,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                 const std::string path(lib::Format() << PERF_DEVICES << "/" << name << "/type");
                 if (lib::readIntFromFile(path.c_str(), type) == 0) {
                     LOG_DEBUG("    ... using pmu type %d for %s cores", type, gatorCpu->getCoreName());
-                    configuration->cpus.push_back(PerfCpu {
-                        with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
-                        type,
-                    });
+                    configuration->cpus.emplace_back(with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
+                                                     type);
                     cpusDetectedViaSysFs.insert(gatorCpu);
                     if (gatorCpu->getSpeName() != nullptr) {
                         haveFoundKnownCpuWithSpe = true;
@@ -705,7 +710,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                                   "system-wide captures.");
                     }
                     else {
-                        configuration->uncores.push_back(PerfUncore {*uncorePmu, type});
+                        configuration->uncores.emplace_back(*uncorePmu, type);
                     }
                     continue;
                 }
@@ -733,34 +738,33 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
 
                     const std::set<int> cpuNumbers = lib::readCpuMaskFromFile(maskPath.c_str());
                     if (!cpuNumbers.empty()) {
-                        int cpuIdForType = 0;
+                        cpu_utils::cpuid_t cpuIdForType;
                         for (int cpuNumber : cpuNumbers) {
                             // track generic pmu's type to the cpuId associated with it.
                             // if multiple different cpuIds are associated, then use -1 as cannot map to a unique pmu.
-                            const int cpuIdForCpu = cpuIds[cpuNumber];
-                            LOG_DEBUG("    ... cpu %d, with cpuid 0x%05x", cpuNumber, cpuIdForCpu);
-                            if (!isValidCpuId(cpuIdForCpu)) {
+                            const auto cpuIdForCpu = midrs[cpuNumber].to_cpuid();
+                            LOG_DEBUG("    ... cpu %d, with cpuid 0x%05x", cpuNumber, cpuIdForCpu.to_raw_value());
+                            if (cpuIdForCpu.invalid_or_other()) {
                                 // skip it as we don't know what it is. fair to assume
                                 // homogeneous clusters.
                                 continue;
                             }
-                            if (cpuIdForType == 0) {
+                            if (!cpuIdForType.valid()) {
                                 cpuIdForType = cpuIdForCpu;
                             }
                             else if (cpuIdForType != cpuIdForCpu) {
-                                cpuIdForType = -1;
+                                cpuIdForType = cpu_utils::cpuid_t::other;
                             }
                         }
-                        if (isValidCpuId(cpuIdForType)) {
+                        if (!cpuIdForType.invalid_or_other()) {
                             const GatorCpu * gatorCpu = pmuXml.findCpuById(cpuIdForType);
                             if (gatorCpu != nullptr) {
                                 LOG_DEBUG("    ... using generic pmu type %d for %s cores",
                                           type,
                                           gatorCpu->getCoreName());
-                                configuration->cpus.push_back(PerfCpu {
+                                configuration->cpus.emplace_back(
                                     with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
-                                    type,
-                                });
+                                    type);
                                 cpusDetectedViaSysFs.insert(gatorCpu);
                                 if (gatorCpu->getSpeName() != nullptr) {
                                     haveFoundKnownCpuWithSpe = true;
@@ -793,21 +797,20 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     }
 
     // additionally add any by CPUID
-    std::set<int> unrecognisedCpuIds;
-    for (int cpuId : cpuIds) {
+    std::set<cpu_utils::cpuid_t> unrecognisedCpuIds;
+    for (auto const & midr : midrs) {
+        auto const cpuId = midr.to_cpuid();
         const GatorCpu * gatorCpu = pmuXml.findCpuById(cpuId);
         if (gatorCpu == nullptr) {
             // track the unknown cpuid (filter out some junk values)
-            if (isValidCpuId(cpuId)) {
+            if (!cpuId.invalid_or_other()) {
                 unrecognisedCpuIds.insert(cpuId);
             }
         }
         else if ((cpusDetectedViaSysFs.count(gatorCpu) == 0) && (cpusDetectedViaCpuid.count(gatorCpu) == 0)) {
             LOG_DEBUG("generic pmu: %s", gatorCpu->getCoreName());
-            configuration->cpus.push_back(PerfCpu {
-                with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
-                PERF_TYPE_RAW,
-            });
+            configuration->cpus.emplace_back(with_max_counters_value(*gatorCpu, max_event_count_by_cpuid),
+                                             PERF_TYPE_RAW);
             cpusDetectedViaCpuid.insert(gatorCpu);
             if (gatorCpu->getSpeName() != nullptr) {
                 haveFoundKnownCpuWithSpe = true;
@@ -851,7 +854,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
 
     // insert 'Other' for unknown CPUIDs / no cpus found
     if ((hasNoCpus || addOtherForUnknownSpe) && unrecognisedCpuIds.empty()) {
-        unrecognisedCpuIds.insert(UNKNOWN_CPUID);
+        unrecognisedCpuIds.insert(cpu_utils::cpuid_t::other);
     }
 
     if (!unrecognisedCpuIds.empty()) {
@@ -862,56 +865,50 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         const int defaultPmncCounters = 6;
 
 #if defined(__aarch64__)
-        configuration->cpus.push_back(PerfCpu {
-            with_max_counters_value(
-                GatorCpu {
-                    "Other",
-                    "Other",
-                    "Other",
-                    nullptr,
-                    speName,
-                    speVersion,
-                    unrecognisedCpuIds,
-                    defaultPmncCounters,
-                    true,
-                },
-                max_event_count_by_cpuid),
-            PERF_TYPE_RAW,
-        });
+        configuration->cpus.emplace_back(with_max_counters_value(
+                                             GatorCpu {
+                                                 "Other",
+                                                 "Other",
+                                                 "Other",
+                                                 nullptr,
+                                                 speName,
+                                                 speVersion,
+                                                 unrecognisedCpuIds,
+                                                 defaultPmncCounters,
+                                                 true,
+                                             },
+                                             max_event_count_by_cpuid),
+                                         PERF_TYPE_RAW);
 #elif defined(__arm__)
-        configuration->cpus.push_back(PerfCpu {
-            with_max_counters_value(
-                GatorCpu {
-                    "Other",
-                    "Other",
-                    "Other",
-                    nullptr,
-                    speName,
-                    speVersion,
-                    unrecognisedCpuIds,
-                    defaultPmncCounters,
-                    anyV8,
-                },
-                max_event_count_by_cpuid),
-            PERF_TYPE_RAW,
-        });
+        configuration->cpus.emplace_back(with_max_counters_value(
+                                             GatorCpu {
+                                                 "Other",
+                                                 "Other",
+                                                 "Other",
+                                                 nullptr,
+                                                 speName,
+                                                 speVersion,
+                                                 unrecognisedCpuIds,
+                                                 defaultPmncCounters,
+                                                 anyV8,
+                                             },
+                                             max_event_count_by_cpuid),
+                                         PERF_TYPE_RAW);
 #else
-        configuration->cpus.push_back(PerfCpu {
-            with_max_counters_value(
-                GatorCpu {
-                    "Other",
-                    "Perf_Hardware",
-                    "Perf_Hardware",
-                    nullptr,
-                    speName,
-                    speVersion,
-                    unrecognisedCpuIds,
-                    defaultPmncCounters,
-                    false,
-                },
-                max_event_count_by_cpuid),
-            PERF_TYPE_HARDWARE,
-        });
+        configuration->cpus.emplace_back(with_max_counters_value(
+                                             GatorCpu {
+                                                 "Other",
+                                                 "Perf_Hardware",
+                                                 "Perf_Hardware",
+                                                 nullptr,
+                                                 speName,
+                                                 speVersion,
+                                                 unrecognisedCpuIds,
+                                                 defaultPmncCounters,
+                                                 false,
+                                             },
+                                             max_event_count_by_cpuid),
+                                         PERF_TYPE_HARDWARE);
 #endif
     }
 

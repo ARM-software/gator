@@ -1,9 +1,10 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "agents/perf/events/types.hpp"
 #include "k/perf_event.h"
+#include "lib/midr.h"
 
 #include <cstdint>
 #include <map>
@@ -17,10 +18,10 @@ namespace agents::perf {
      */
     class perf_event_printer_t {
     public:
-        constexpr perf_event_printer_t(std::map<std::uint32_t, std::string> const & cpuid_to_core_name,
-                                       std::vector<std::int32_t> const & per_core_cpuids,
+        constexpr perf_event_printer_t(std::map<cpu_utils::cpuid_t, std::string> const & cpuid_to_core_name,
+                                       std::vector<cpu_utils::midr_t> const & per_core_midrs,
                                        std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name)
-            : per_core_cpuids(per_core_cpuids),
+            : per_core_midrs(per_core_midrs),
               cpuid_to_core_name(cpuid_to_core_name),
               perf_pmu_type_to_name(perf_pmu_type_to_name)
         {
@@ -50,8 +51,8 @@ namespace agents::perf {
                                                       char const * separator);
 
     private:
-        std::vector<std::int32_t> const & per_core_cpuids;
-        std::map<std::uint32_t, std::string> const & cpuid_to_core_name;
+        std::vector<cpu_utils::midr_t> const & per_core_midrs;
+        std::map<cpu_utils::cpuid_t, std::string> const & cpuid_to_core_name;
         std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name;
 
         [[nodiscard]] char const * map_core_cluster_name(core_no_t core_no);

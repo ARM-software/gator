@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -139,7 +139,7 @@ namespace agents {
 
         std::shared_ptr<perfetto_sdk_helper_t> perfetto_sdk_helper {};
 
-        std::vector<char> buffer;
+        std::vector<uint8_t> buffer;
 
         static constexpr std::string_view GRAPHICS_PROFILER_PROPERTY = "debug.graphics.gpu.profiler.perfetto";
         static constexpr std::string_view GRAPHICS_PROFILER_PROPERTY_VALUE = "1";
@@ -159,8 +159,8 @@ namespace agents {
             using namespace async::continuations;
             return start_on(strand) //
                  | then([self = this->shared_from_this()]() {
-                       std::vector<char> payload(self->protocol_handshake_tag.begin(),
-                                                 self->protocol_handshake_tag.end());
+                       std::vector<uint8_t> payload(self->protocol_handshake_tag.begin(),
+                                                    self->protocol_handshake_tag.end());
                        return start_on(self->strand) //
                             | self->ipc_sink->async_send_message(ipc::msg_perfetto_recv_bytes_t {std::move(payload)},
                                                                  use_continuation)
@@ -184,7 +184,7 @@ namespace agents {
             auto range_start = buffer.begin();
             auto range_end = range_start + size;
 
-            std::vector<char> payload(range_start, range_end);
+            std::vector<uint8_t> payload(range_start, range_end);
             return ipc_sink->async_send_message(ipc::msg_perfetto_recv_bytes_t {std::move(payload)}, use_continuation)
                  | then([self = this->shared_from_this()](const auto & err,
                                                           auto /*msg*/) mutable -> polymorphic_continuation_t<> {

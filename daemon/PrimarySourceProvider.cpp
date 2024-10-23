@@ -18,6 +18,7 @@
 #include "lib/FsEntry.h"
 #include "lib/SharedMemory.h"
 #include "lib/Span.h"
+#include "lib/midr.h"
 #include "xml/PmuXML.h"
 
 #include <functional>
@@ -38,9 +39,9 @@
 
 #include <unistd.h>
 
-static const char CORE_NAME_UNKNOWN[] = "unknown";
-
 namespace {
+    const char * CORE_NAME_UNKNOWN = "unknown";
+
     /// array for cpuIds and clusterIds
     class Ids {
     public:
@@ -51,9 +52,15 @@ namespace {
             }
         }
 
-        [[nodiscard]] lib::Span<int> getCpuIds() { return {ids.get(), maxCoreNumber}; }
+        [[nodiscard]] lib::Span<cpu_utils::midr_t> getMidrs()
+        {
+            return {reinterpret_cast<cpu_utils::midr_t *>(ids.get()), maxCoreNumber};
+        }
 
-        [[nodiscard]] lib::Span<const int> getCpuIds() const { return {ids.get(), maxCoreNumber}; }
+        [[nodiscard]] lib::Span<const cpu_utils::midr_t> getMidrs() const
+        {
+            return {reinterpret_cast<cpu_utils::midr_t const *>(ids.get()), maxCoreNumber};
+        }
 
         [[nodiscard]] lib::Span<int> getClusterIds() { return {ids.get() + maxCoreNumber, maxCoreNumber}; }
 
@@ -76,7 +83,7 @@ namespace {
             updateClusterIds();
         }
 
-        [[nodiscard]] lib::Span<const int> getCpuIds() const override { return ids.getCpuIds(); }
+        [[nodiscard]] lib::Span<const cpu_utils::midr_t> getMidrs() const override { return ids.getMidrs(); }
 
         [[nodiscard]] lib::Span<const GatorCpu> getClusters() const override { return clusters; }
 
@@ -86,7 +93,7 @@ namespace {
 
         void updateIds(bool ignoreOffline) override
         {
-            cpu_utils::readCpuInfo(disableCpuOnlining || ignoreOffline, false, ids.getCpuIds());
+            cpu_utils::readCpuInfo(disableCpuOnlining || ignoreOffline, false, ids.getMidrs());
             updateClusterIds();
         }
 
@@ -96,7 +103,7 @@ namespace {
         std::string modelName;
         bool disableCpuOnlining;
 
-        void updateClusterIds() { ICpuInfo::updateClusterIds(ids.getCpuIds(), clusters, ids.getClusterIds()); }
+        void updateClusterIds() { ICpuInfo::updateClusterIds(ids.getMidrs(), clusters, ids.getClusterIds()); }
     };
 
 #if CONFIG_SUPPORT_PERF
@@ -120,14 +127,14 @@ namespace {
             std::unique_ptr<PerfDriverConfiguration> configuration =
                 PerfDriverConfiguration::detect(captureOperationMode,
                                                 traceFsConstants.path__events,
-                                                ids.getCpuIds(),
+                                                ids.getMidrs(),
                                                 gSessionData.smmu_identifiers,
                                                 pmuXml);
 
             if (configuration != nullptr) {
                 if (!configuration->config.supports_inherit_sample_read
                     && captureOperationMode == CaptureOperationMode::application_experimental_patch) {
-                    LOG_ERROR("Experimental inherit was requested, but your kernel does not support this.\n Please "
+                    LOG_ERROR("Your kernel does not support the requested experimental inherit.\n Please "
                               "install the required kernel patch or choose a different inherit mode. ");
                     handleException();
                 }
@@ -267,7 +274,7 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(CaptureOper
 {
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
-    const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, true, ids.getCpuIds());
+    const std::string hardwareName = cpu_utils::readCpuInfo(disableCpuOnlining, true, ids.getMidrs());
     const char * modelNameToUse = !modelName.empty()    ? modelName.c_str()
                                 : !hardwareName.empty() ? hardwareName.c_str()
                                                         : CORE_NAME_UNKNOWN;

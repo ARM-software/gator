@@ -26,14 +26,14 @@ namespace agents::perf {
         /** An empty (dummy) event used for the output event for a per-cpu mmap */
         event_definition_t header_event;
         /** The set of events that should be selected globally (i.e. on every active CPU, regardless of CPU type) */
-        std::vector<event_definition_t> global_events {};
+        std::vector<event_definition_t> global_events;
         /** The SPE events, defining the events that may be activated for every CPU that supports SPE */
-        std::map<cpu_cluster_id_t, std::vector<event_definition_t>> spe_events {};
+        std::map<cpu_cluster_id_t, std::vector<event_definition_t>> spe_events;
         /** The map from cluster index to set of events, defining the events that may be activated for any CPU matching a given type */
-        std::map<cpu_cluster_id_t, std::map<std::uint32_t, std::vector<event_definition_t>>> cluster_specific_events {};
+        std::map<cpu_cluster_id_t, std::map<std::uint32_t, std::vector<event_definition_t>>> cluster_specific_events;
         /** The map from uncore pmu index to set of events, defining the events that may be activated for that uncore */
-        std::map<uncore_pmu_id_t, std::vector<event_definition_t>> uncore_specific_events {};
+        std::map<uncore_pmu_id_t, std::vector<event_definition_t>> uncore_specific_events;
         /** The map of CPU specific events, defining the events that may be activated for a specific CPU */
-        std::map<core_no_t, std::vector<event_definition_t>> cpu_specific_events {};
+        std::map<core_no_t, std::vector<event_definition_t>> cpu_specific_events;
     };
 }

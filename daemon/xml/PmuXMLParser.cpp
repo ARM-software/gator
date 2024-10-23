@@ -5,6 +5,7 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "lib/FsEntry.h"
+#include "lib/midr.h"
 #include "linux/smmu_identifier.h"
 #include "xml/PmuXML.h"
 
@@ -51,8 +52,6 @@ namespace {
     constexpr auto SMMUV3_TCU_TOKEN = "TCU"sv;
     constexpr auto SMMUV3_DEFAULT_TBU_COUNTER_SET = "SMMUv3_TBU"sv;
     constexpr auto SMMUV3_DEFAULT_TCU_COUNTER_SET = "SMMUv3_TCU"sv;
-
-    constexpr unsigned int cpuid_mask = 0xfffff;
 
     constexpr auto perf_devices = "/sys/bus/event_source/devices"sv;
 
@@ -116,7 +115,7 @@ namespace {
         return strcasecmp(pmu_name, test_name) == 0;
     }
 
-    bool parseCpuId(std::set<int> & cpuIds,
+    bool parseCpuId(std::set<cpu_utils::cpuid_t> & cpuIds,
                     const char * const cpuIdStr,
                     bool required,
                     const char * const pmuId,
@@ -130,13 +129,15 @@ namespace {
             return true;
         }
 
-        int cpuid;
-        if (!stringToInt(&cpuid, cpuIdStr, 0)) {
+        int raw_cpuid;
+        if (!stringToInt(&raw_cpuid, cpuIdStr, 0)) {
             LOG_ERROR("The %s for '%s' in pmu XML is not an integer", locationStr, pmuId);
             return false;
         }
 
-        if ((cpuid != 0) && ((static_cast<unsigned int>(cpuid) & cpuid_mask) != cpuid_mask)) {
+        auto cpuid = cpu_utils::cpuid_t ::from_raw(raw_cpuid);
+
+        if (!cpuid.invalid_or_other()) {
             cpuIds.insert(cpuid);
             return true;
         }
@@ -252,7 +253,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         const char * const profileStr = mxmlElementGetAttr(node, ATTR_PROFILE.data());
 
         // read cpuid(s)
-        std::set<int> cpuIds;
+        std::set<cpu_utils::cpuid_t> cpuIds;
         {
             if (!parseCpuId(cpuIds, mxmlElementGetAttr(node, ATTR_CPUID.data()), false, id, "cpuid attribute")) {
                 return false;
@@ -304,7 +305,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                   ATTR_COUNTER_SET.data(),
                   counterSet,
                   ATTR_CPUID.data(),
-                  *cpuIds.begin(),
+                  cpuIds.begin()->to_raw_value(),
                   ATTR_PMNC_COUNTERS.data(),
                   pmncCounters);
 

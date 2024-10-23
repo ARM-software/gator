@@ -95,7 +95,7 @@ message capture_configuration_t {
     /** Per-core state */
     message cpu_properties_t {
         int32 cluster_index = 1;
-        int32 cpu_id = 2;
+        uint32 midr = 2;
         uint32 spe_type = 3;
     }
 

@@ -1,9 +1,10 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef __OLY_SOCKET_H__
 #define __OLY_SOCKET_H__
 
 #include <cstddef>
+#include <cstdint>
 
 #ifdef WIN32
 using socklen_t = int;
@@ -11,12 +12,17 @@ using socklen_t = int;
 #include <sys/socket.h>
 #endif
 
-#include "Config.h"
-
 class OlySocket {
 public:
 #ifndef WIN32
-    static int connect(const char * path, size_t pathSize, bool calculateAddrlen = false);
+    /**
+     * @brief Connect to a unix domain socket (as per libc's connect function)
+     *
+     * @param path Unix domain socket path (as per sockaddr_un::sun_path). An abstract socket can be specified with an initial null-byte
+     * @param pathSize Size of @a path including the null terminator
+     * @return int 0 for success, -1 for failure
+     */
+    static int connect(const char * path, size_t pathSize);
 #endif
 
     OlySocket(int socketID);
@@ -24,14 +30,14 @@ public:
 
     void closeSocket();
     void shutdownConnection();
-    void send(const char * buffer, int size);
-    int receive(char * buffer, int size);
-    int receiveNBytes(char * buffer, int size);
-    int receiveString(char * buffer, int size);
+    void send(const uint8_t * buffer, int size);
+    int receive(uint8_t * buffer, int size);
+    int receiveNBytes(uint8_t * buffer, int size);
+    int receiveString(uint8_t * buffer, int size);
 
-    bool isValid() const { return mSocketID >= 0; }
+    [[nodiscard]] bool isValid() const { return mSocketID >= 0; }
 
-    int getFd() const { return mSocketID; }
+    [[nodiscard]] int getFd() const { return mSocketID; }
 
 private:
     int mSocketID;

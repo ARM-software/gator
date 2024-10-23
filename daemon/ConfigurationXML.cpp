@@ -262,11 +262,11 @@ namespace configuration_xml {
         else if (printWarningIfUnclaimed) {
             if (strcasestr(counterName, "_cnt") != nullptr) {
                 LOG_WARNING(
-                    "Counter '%s' does not have an event code specified, PMU slot counters require an event code",
+                    "Counter \"%s\" does not have an event code specified, PMU slot counters require an event code",
                     counterName);
             }
             else {
-                LOG_WARNING("Counter '%s' was not recognized", counterName);
+                LOG_WARNING("Counter \"%s\" was not recognized", counterName);
             }
         }
         counter.setCount(count);
@@ -295,9 +295,9 @@ namespace configuration_xml {
             if (printWarningIfUnclaimed) {
                 const auto & optionalEventCode = counter.getEventCode();
 
-                LOG_WARNING("No driver has claimed %s:0x%" PRIxEventCode,
-                            counter.getType(),
-                            (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
+                LOG_DEBUG("No driver has claimed %s:0x%" PRIxEventCode,
+                          counter.getType(),
+                          (optionalEventCode.isValid() ? optionalEventCode.asU64() : 0));
             }
             counter.setEnabled(false);
         }

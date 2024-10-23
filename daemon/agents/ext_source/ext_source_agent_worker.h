@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "agents/agent_worker_base.h"
@@ -202,7 +202,7 @@ namespace agents {
             }
 
             // the buffer must be owned until it is fully sent
-            auto buffer_ptr = std::make_shared<std::vector<char>>(std::move(message.suffix));
+            auto buffer_ptr = std::make_shared<std::vector<std::uint8_t>>(std::move(message.suffix));
 
             LOG_DEBUG("Writing received data into APC");
 

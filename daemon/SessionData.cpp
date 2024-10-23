@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 const char MALI_GRAPHICS[] = "\0mali_thirdparty_server";
+// Size of the MALI_GRAPHICS socket path, including the null-terminator
 const size_t MALI_GRAPHICS_SIZE = sizeof(MALI_GRAPHICS);
 
 SessionData gSessionData;

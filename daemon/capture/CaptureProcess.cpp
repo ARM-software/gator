@@ -222,13 +222,13 @@ namespace {
                                                              gSessionData.mWaitForProcessCommand,
                                                              gSessionData.mCaptureWorkingDir,
                                                              gSessionData.mPids);
-            sender.writeData(currentConfigXML.data(), currentConfigXML.size(), ResponseType::CURRENT_CONFIG, true);
+            sender.writeData(currentConfigXML, ResponseType::CURRENT_CONFIG, true);
         }
         else if (result != IStreamlineCommandHandler::State::EXIT_DISCONNECT) {
             // the expectation is that the user sends COMMAND_DISCONNECT, so anything else is an error
             LOG_ERROR("Session already in progress");
             std::string last_error = log_ops->get_last_log_error();
-            sender.writeData(last_error.data(), last_error.size(), ResponseType::ERROR, true);
+            sender.writeData(last_error, ResponseType::ERROR, true);
         }
 
         // Ensure all data is flushed the host receive the data (not closing socket too quick)
@@ -397,7 +397,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
 {
     // Set to high priority
     if (setpriority(PRIO_PROCESS, lib::gettid(), high_priority) == -1) {
-        LOG_WARNING("setpriority() failed");
+        LOG_DEBUG("setpriority() failed: %s (%d)", std::strerror(errno), errno);
     }
 
     // Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal

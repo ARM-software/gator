@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #include "armnn/GlobalState.h"
 
@@ -247,7 +247,8 @@ namespace armnn {
         return true;
     }
 
-    void GlobalState::insertEventNumber(std::map<int, std::string> & eventNumberToName, const std::string & name) const
+    void GlobalState::insertEventNumber(std::map<uint16_t, std::string> & eventNumberToName,
+                                        const std::string & name) const
     {
         // use a hash of the name so it reproducible when events are removed or added
         // just use 16 bits to keep it small in case it need to be compressed
@@ -326,7 +327,7 @@ namespace armnn {
         auto catName = catId.toXmlName();
         std::vector<Event> xmlEvents;
 
-        std::map<std::string, int> eventNumberByName;
+        std::map<std::string, uint16_t> eventNumberByName;
         for (const auto & numberAndName : category.eventsByNumber) {
             eventNumberByName.insert({numberAndName.second, numberAndName.first});
         }

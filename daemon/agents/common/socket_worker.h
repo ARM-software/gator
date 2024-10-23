@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -67,7 +67,7 @@ namespace agents {
 
         /** Send some data to the socket */
         template<typename CompletionToken>
-        auto async_send_bytes(std::vector<char> && bytes, CompletionToken && token)
+        auto async_send_bytes(std::vector<std::uint8_t> && bytes, CompletionToken && token)
         {
             using namespace async::continuations;
 
@@ -97,7 +97,7 @@ namespace agents {
         boost::asio::io_context & context;
         ipc_sink_type ipc_sink;
         std::shared_ptr<socket_reference_base_t> socket_ref;
-        std::vector<char> receive_message_buffer {};
+        std::vector<std::uint8_t> receive_message_buffer;
 
         socket_read_worker_t(boost::asio::io_context & context,
                              ipc_sink_type && ipc_sink,
@@ -127,13 +127,13 @@ namespace agents {
 
         /** Perform the async send operation */
         template<typename R, typename E>
-        void do_async_send_bytes(std::vector<char> && bytes,
+        void do_async_send_bytes(std::vector<std::uint8_t> && bytes,
                                  async::continuations::raw_stored_continuation_t<R, E, boost::system::error_code> && sc)
         {
             using namespace async::continuations;
 
             socket_ref->with_socket([st = this->shared_from_this(),
-                                     bytes_ptr = std::make_unique<std::vector<char>>(std::move(bytes)),
+                                     bytes_ptr = std::make_unique<std::vector<std::uint8_t>>(std::move(bytes)),
                                      sc = std::move(sc)](auto & socket) mutable {
                 // make the buffer before the call to move(bytes_ptr) otherwise the move will happen before the deref
                 auto buffer = boost::asio::buffer(*bytes_ptr);

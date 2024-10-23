@@ -10,6 +10,7 @@
 #include "monotonic_pair.h"
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -146,7 +147,7 @@ namespace agents::perf {
         }
     }
 
-    void perf_source_adapter_t::on_apc_frame_received(const std::vector<char> & frame)
+    void perf_source_adapter_t::on_apc_frame_received(const std::vector<uint8_t> & frame)
     {
         auto const length = frame.size();
 

@@ -53,7 +53,7 @@ Drivers::Drivers(CaptureOperationMode captureOperationMode,
       mFtraceDriver {traceFsConstants,
                      !mPrimarySourceProvider->supportsTracepointCapture(),
                      mPrimarySourceProvider->useFtraceDriverForCpuFrequency(),
-                     mPrimarySourceProvider->getCpuInfo().getCpuIds().size()},
+                     mPrimarySourceProvider->getCpuInfo().getMidrs().size()},
       mAtraceDriver {mFtraceDriver},
       mTtraceDriver {mFtraceDriver},
       mPerfettoDriver {mMaliHwCntrs.getSupportedDeviceFamilyName()}

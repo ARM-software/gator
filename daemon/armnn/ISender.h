@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -9,6 +9,6 @@ namespace armnn {
     class ISender {
     public:
         virtual ~ISender() = default;
-        virtual bool send(std::vector<std::uint8_t> && data) = 0;
+        virtual bool send(std::vector<uint8_t> && data) = 0;
     };
 }

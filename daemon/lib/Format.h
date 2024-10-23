@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FORMAT_H
 #define INCLUDE_LIB_FORMAT_H
@@ -24,7 +24,7 @@ namespace lib {
 
     private:
         /** @brief  Stream we use as buffer */
-        std::ostringstream ss {};
+        std::ostringstream ss;
     };
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -16,7 +16,7 @@ namespace agents {
      */
     class ipc_annotations_sink_adapter_t {
     public:
-        static std::vector<char> reclaim_buffer(ipc::msg_annotation_recv_bytes_t && msg)
+        static std::vector<std::uint8_t> reclaim_buffer(ipc::msg_annotation_recv_bytes_t && msg)
         {
             return std::move(msg.suffix);
         }
@@ -35,7 +35,7 @@ namespace agents {
 
         /** Send the 'received bytes' IPC message */
         template<typename CompletionToken>
-        void async_send_received_bytes(std::vector<char> && bytes, CompletionToken && token)
+        void async_send_received_bytes(std::vector<std::uint8_t> && bytes, CompletionToken && token)
         {
             sink->async_send_message(ipc::msg_annotation_recv_bytes_t {id, std::move(bytes)},
                                      std::forward<CompletionToken>(token));

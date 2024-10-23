@@ -21,49 +21,50 @@
 
 #include <unistd.h>
 
-static const char MALI_UTGARD_SETUP[] = "\0mali-utgard-setup";
-static const char SETUP_VERSION[] = "ANNOTATE_SETUP 1\n";
-static const size_t HEADER_SIZE = 1 + sizeof(uint32_t);
+namespace {
+    constexpr const char * MALI_UTGARD_SETUP = "\0mali-utgard-setup";
+    constexpr const char * SETUP_VERSION = "ANNOTATE_SETUP 1\n";
+    const size_t HEADER_SIZE = 1 + sizeof(uint32_t);
 
-#define HEADER_ERROR (char(0x80))
-#define HEADER_ACK (char(0x81))
-#define HEADER_REQUEST_COUNTERS (char(0x82))
-#define HEADER_COUNTERS (char(0x83))
-#define HEADER_ENABLE_COUNTERS (char(0x84))
-#define HEADER_START (char(0x85))
+    constexpr uint8_t HEADER_ACK = 0x81;
+    constexpr uint8_t HEADER_REQUEST_COUNTERS = 0x82;
+    constexpr uint8_t HEADER_COUNTERS = 0x83;
+    constexpr uint8_t HEADER_ENABLE_COUNTERS = 0x84;
+    constexpr uint8_t HEADER_START = 0x85;
 
-static uint32_t readLEInt(const char * const buf)
-{
-    uint32_t v = 0;
+    uint32_t readLEInt(const uint8_t * const buf)
+    {
+        uint32_t v = 0;
 
-    for (size_t i = 0; i < sizeof(v); ++i) {
-        v |= uint32_t(buf[i]) << 8 * i;
-    }
-
-    return v;
-}
-
-static int readPackedInt(const char * const buf, const size_t bufSize, size_t * const pos, uint64_t * const l)
-{
-    uint8_t shift = 0;
-    uint8_t b = ~0;
-
-    *l = 0;
-    while ((b & 0x80) != 0) {
-        if (*pos >= bufSize) {
-            return -1;
+        for (size_t i = 0; i < sizeof(v); ++i) {
+            v |= uint32_t(buf[i]) << 8 * i;
         }
-        b = buf[*pos];
-        *pos += 1;
-        *l |= uint64_t(b & 0x7f) << shift;
-        shift += 7;
+
+        return v;
     }
 
-    if (shift < 8 * sizeof(*l) && (b & 0x40) != 0) {
-        *l |= -(1 << shift);
-    }
+    int readPackedInt(const uint8_t * const buf, const size_t bufSize, size_t * const pos, uint64_t * const l)
+    {
+        uint8_t shift = 0;
+        uint8_t b = ~0;
 
-    return 0;
+        *l = 0;
+        while ((b & 0x80) != 0) {
+            if (*pos >= bufSize) {
+                return -1;
+            }
+            b = buf[*pos];
+            *pos += 1;
+            *l |= uint64_t(b & 0x7f) << shift;
+            shift += 7;
+        }
+
+        if (shift < 8 * sizeof(*l) && (b & 0x40) != 0) {
+            *l |= -(1 << shift);
+        }
+
+        return 0;
+    }
 }
 
 class ExternalCounter : public DriverCounter {
@@ -92,8 +93,8 @@ ExternalDriver::ExternalDriver() : SimpleDriver("External"), mUds(-1), mQueried(
 bool ExternalDriver::connect() const
 {
     if (mUds < 0) {
-        mUds = OlySocket::connect(MALI_UTGARD_SETUP, sizeof(MALI_UTGARD_SETUP));
-        if (mUds >= 0 && !lib::writeAll(mUds, SETUP_VERSION, sizeof(SETUP_VERSION) - 1)) {
+        mUds = OlySocket::connect(MALI_UTGARD_SETUP, strlen(MALI_UTGARD_SETUP) + 1);
+        if (mUds >= 0 && !lib::writeAll(mUds, SETUP_VERSION, strlen(SETUP_VERSION))) {
             LOG_ERROR("Unable to send setup version");
             handleException();
         }
@@ -118,7 +119,7 @@ void ExternalDriver::query() const
     // Only try once even if it fails otherwise not all the possible counters may be shown
     mQueried = true;
 
-    char * const buf = gSessionData.mSharedData->mMaliUtgardCounters;
+    uint8_t * const buf = gSessionData.mSharedData->mMaliUtgardCounters;
     const size_t bufSize = sizeof(gSessionData.mSharedData->mMaliUtgardCounters);
     size_t size = 0;
 
@@ -161,7 +162,7 @@ void ExternalDriver::query() const
             ++pos;
         }
         if (pos > begin) {
-            name = strndup(buf + begin, pos - begin);
+            name = strndup(reinterpret_cast<const char *>(buf + begin), pos - begin);
         }
         if (pos < size && buf[pos] == '\0') {
             ++pos;
@@ -193,7 +194,7 @@ void ExternalDriver::start()
     // Only start once
     mStarted = true;
 
-    char buf[1 << 12];
+    uint8_t buf[1 << 12];
     buf[0] = HEADER_ENABLE_COUNTERS;
 
     int pos = HEADER_SIZE;

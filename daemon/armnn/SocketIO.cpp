@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2023 by Arm Limited. All rights reserved.
+ * Copyright (C) 2020-2024 by Arm Limited. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -71,7 +71,7 @@ namespace armnn {
     {
         const int flags = fcntl(fd, F_GETFL);
         if (flags >= 0) {
-            if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+            if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) { // NOLINT(hicpp-signed-bitwise)
                 // Unable to set socket flags, running in blocking mode
                 LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
                 return false;
@@ -134,11 +134,12 @@ namespace armnn {
             LOG_ERROR("Failed to poll socket due to %s (%d)", std::strerror(errno), errno);
         }
         else {
+            // NOLINTNEXTLINE(hicpp-signed-bitwise,misc-include-cleaner)
             if (((pollFds[0].revents & POLLERR) == POLLERR) || ((pollFds[0].revents & POLLNVAL) == POLLNVAL)) {
                 LOG_ERROR("Remote closed failed as error/invalid");
             }
             // can we perform action
-            else if ((pollFds[0].revents & pollFlag) == pollFlag) {
+            else if ((pollFds[0].revents & pollFlag) == pollFlag) { // NOLINT(hicpp-signed-bitwise)
                 return action(std::forward<ARGS>(args)...);
             }
             // timeout
@@ -275,14 +276,11 @@ namespace armnn {
 
     bool SocketIO::writeExact(lib::Span<const std::uint8_t> buf)
     {
-        const std::uint8_t * const buffer {buf.data()};
-        std::size_t length {buf.size()};
-        int timeoutMillis = 100;
-        int bytesRemaining = length;
-        int bytesWritten = 0;
+        constexpr const int TIMEOUT_MILLIS = 100;
 
-        while (bytesWritten < bytesRemaining) {
-            int wrote = write(buffer + bytesWritten, bytesRemaining - bytesWritten, timeoutMillis);
+        size_t bytesWritten = 0;
+        while (bytesWritten < buf.size()) {
+            const int wrote = write(buf.data() + bytesWritten, buf.size() - bytesWritten, TIMEOUT_MILLIS);
             if (wrote > 0) {
                 bytesWritten += wrote;
             }

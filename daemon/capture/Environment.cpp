@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 #include "capture/Environment.h"
 
 #include "GatorException.h"
@@ -116,9 +116,9 @@ namespace {
                 }
             }
 
-            LOG_INFO("Default perf mmap size set to %d pages (%llukb)",
-                     sessionData.mPerfMmapSizeInPages,
-                     sessionData.mPerfMmapSizeInPages * sessionData.mPageSize / 1024ULL);
+            LOG_DEBUG("Default perf mmap size set to %d pages (%llukb)",
+                      sessionData.mPerfMmapSizeInPages,
+                      sessionData.mPerfMmapSizeInPages * sessionData.mPageSize / 1024ULL);
         }
     }
 }

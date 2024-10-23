@@ -12,6 +12,7 @@
 #include "k/perf_event.h"
 #include "lib/Assert.h"
 #include "lib/Span.h"
+#include "lib/midr.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
@@ -126,7 +127,7 @@ namespace agents::perf {
                 cluster->set_pmnc_counters(cpu.getPmncCounters());
                 cluster->set_is_v8(cpu.getIsV8());
                 for (auto id : cpu.getCpuIds()) {
-                    cluster->add_cpu_ids(id);
+                    cluster->add_cpu_ids(id.to_raw_value());
                 }
                 // add misc
                 entry->set_keys_for_cpu_frequency_counter(freq_key.key);
@@ -140,12 +141,12 @@ namespace agents::perf {
                       std::map<int, std::uint32_t> const & cpu_number_to_spe_type)
         {
             auto clusterIds = cpu_info.getClusterIds();
-            auto cpuIds = cpu_info.getCpuIds();
+            auto midrs = cpu_info.getMidrs();
 
             for (std::size_t index = 0; index < cpu_info.getNumberOfCores(); ++index) {
                 auto * entry = msg.Add();
                 entry->set_cluster_index(clusterIds[index]);
-                entry->set_cpu_id(cpuIds[index]);
+                entry->set_midr(midrs[index].to_raw_value());
                 auto it = cpu_number_to_spe_type.find(int(index));
                 if (it != cpu_number_to_spe_type.end()) {
                     entry->set_spe_type(it->second);
@@ -173,7 +174,7 @@ namespace agents::perf {
         {
             for (auto const & pmu : all_known_cpu_pmus) {
                 for (auto cpuid : pmu.getCpuIds()) {
-                    map[cpuid] = pmu.getCoreName();
+                    map[cpuid.to_raw_value()] = pmu.getCoreName();
                 }
             }
         }
@@ -391,13 +392,19 @@ namespace agents::perf {
         {
             for (auto & entry : msg) {
                 auto * cluster = entry.mutable_properties();
+
+                std::set<cpu_utils::cpuid_t> cpuids {};
+                for (auto cpuid : cluster->cpu_ids()) {
+                    cpuids.insert(cpu_utils::cpuid_t::from_raw(cpuid));
+                }
+
                 clusters.emplace_back(std::move(*cluster->mutable_core_name()),
                                       std::move(*cluster->mutable_id()),
                                       std::move(*cluster->mutable_counter_set()),
                                       std::move(*cluster->mutable_dt_name()),
                                       std::move(*cluster->mutable_spe_name()),
                                       std::move(*cluster->mutable_spe_version()),
-                                      std::vector<int>(cluster->cpu_ids().begin(), cluster->cpu_ids().end()),
+                                      std::move(cpuids),
                                       cluster->pmnc_counters(),
                                       cluster->is_v8());
                 cluster_keys_for_cpu_frequency_counter.emplace_back(
@@ -409,13 +416,13 @@ namespace agents::perf {
         void extract_cpus(google::protobuf::RepeatedPtrField<
                               ipc::proto::shell::perf::capture_configuration_t::cpu_properties_t> const & msg,
                           std::vector<std::int32_t> & per_core_cluster_index,
-                          std::vector<std::int32_t> & per_core_cpuids,
+                          std::vector<cpu_utils::midr_t> & per_core_midrs,
                           std::map<core_no_t, std::uint32_t> & per_core_spe_type)
         {
             std::int32_t index = 0;
             for (auto const & cpu : msg) {
                 per_core_cluster_index.emplace_back(cpu.cluster_index());
-                per_core_cpuids.emplace_back(cpu.cpu_id());
+                per_core_midrs.emplace_back(cpu_utils::midr_t::from_raw(cpu.midr()));
                 per_core_spe_type[core_no_t(index)] = cpu.spe_type();
                 ++index;
             }
@@ -436,10 +443,10 @@ namespace agents::perf {
         }
 
         void extract_cpuid_to_core_name(google::protobuf::Map<::google::protobuf::uint32, std::string> & map,
-                                        std::map<std::uint32_t, std::string> & cpuid_to_core_name)
+                                        std::map<cpu_utils::cpuid_t, std::string> & cpuid_to_core_name)
         {
             for (auto & entry : map) {
-                cpuid_to_core_name.emplace(entry.first, std::move(entry.second));
+                cpuid_to_core_name.emplace(cpu_utils::cpuid_t::from_raw(entry.first), std::move(entry.second));
             }
         }
 
@@ -714,7 +721,7 @@ namespace agents::perf {
                          result->cluster_keys_for_cpu_frequency_counter);
         extract_cpus(msg.suffix.cpus(),
                      result->per_core_cluster_index,
-                     result->per_core_cpuids,
+                     result->per_core_midrs,
                      result->per_core_spe_type);
         extract_uncore_pmus(*msg.suffix.mutable_uncore_pmus(), result->uncore_pmus);
         extract_cpuid_to_core_name(*msg.suffix.mutable_cpuid_to_core_name(), result->cpuid_to_core_name);

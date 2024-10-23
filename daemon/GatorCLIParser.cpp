@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -222,7 +223,7 @@ namespace {
                 return {};
             }
         }
-        return EventCode {eventCode};
+        return EventCode {static_cast<uint64_t>(eventCode)};
     }
 
     bool tryInsert(std::map<std::string, EventCode> & events, std::string_view counterName, EventCode eventCode)

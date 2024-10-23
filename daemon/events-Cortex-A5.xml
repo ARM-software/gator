@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2011-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2011-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="2" name="ARMv7_Cortex_A5_cnt"/>
 <category counter_set="ARMv7_Cortex_A5_cnt" name="Cortex-A5" per_cpu="yes" supports_event_based_sampling="yes">
@@ -30,8 +30,8 @@
     <event event="0xc1" title="Memory" name="External Request (non-cacheable)" description="Non-cacheable external memory request"/>
     <event event="0xc2" title="Data Cache" name="Refill (due to prefetch)" description="Linefill because of prefetch"/>
     <event event="0xc3" title="Data Cache" name="Refill (due to prefetch, dropped)" description="Prefetch linefill dropped"/>
-    <event event="0xc4" title="L1 Data Cache" name="Enter Read Allocate Mode" description="Entering read allocate mode"/>
-    <event event="0xc5" title="L1 Data Cache" name="Read Allocate Mode" description="Read allocate mode"/>
+    <event event="0xc4" title="L1 Data Cache" name="Enter read allocate mode" description="Entering read allocate mode"/>
+    <event event="0xc5" title="L1 Data Cache" name="Read allocate mode" description="Read allocate mode"/>
     <event event="0xc7" title="ETM" name="Ext Out [0]" description="ETM Ext Out[0]"/>
     <event event="0xc8" title="ETM" name="Ext Out [1]" description="ETM Ext Out[1]"/>
     <event event="0xc9" title="Stalls" name="Backend (Interlock, Store, STB full)" description="No operation issued due to the backend, store, STB full" units="cycles"/>

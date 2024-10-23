@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/perf_frame_packer.hpp"
 
@@ -39,7 +39,7 @@ namespace agents::perf {
             std::min<std::size_t>(ISender::MAX_RESPONSE_LENGTH - max_aux_header_size,
                                   1024UL * 1024UL); // limit frame size
 
-        [[nodiscard]] bool append_data_record(apc_buffer_builder_t<std::vector<char>> & builder,
+        [[nodiscard]] bool append_data_record(apc_buffer_builder_t<std::vector<uint8_t>> & builder,
                                               lib::Span<sample_word_type const> data)
         {
             for (auto w : data) {
@@ -50,22 +50,22 @@ namespace agents::perf {
         }
 
         template<typename T>
-        [[nodiscard]] T const * ring_buffer_ptr(char const * base, std::size_t position_masked)
+        [[nodiscard]] T const * ring_buffer_ptr(uint8_t const * base, std::size_t position_masked)
         {
             return reinterpret_cast<const T *>(base + position_masked);
         }
 
         template<typename T>
-        [[nodiscard]] T const * ring_buffer_ptr(char const * base, std::size_t position, std::size_t size_mask)
+        [[nodiscard]] T const * ring_buffer_ptr(uint8_t const * base, std::size_t position, std::size_t size_mask)
         {
             return ring_buffer_ptr<T>(base, position & size_mask);
         }
 
     }
 
-    std::pair<std::uint64_t, std::vector<char>> extract_one_perf_data_apc_frame(
+    std::pair<std::uint64_t, std::vector<uint8_t>> extract_one_perf_data_apc_frame(
         int cpu,
-        lib::Span<char const> data_mmap,
+        lib::Span<uint8_t const> data_mmap,
         std::uint64_t const header_head, // NOLINT(bugprone-easily-swappable-parameters)
         std::uint64_t const header_tail)
     {
@@ -76,7 +76,7 @@ namespace agents::perf {
             return {header_tail, {}};
         }
 
-        std::vector<char> buffer {};
+        std::vector<uint8_t> buffer {};
         buffer.reserve(max_data_payload_size);
         apc_buffer_builder_t builder {buffer};
 
@@ -159,8 +159,8 @@ namespace agents::perf {
         return {current_tail, std::move(buffer)};
     }
 
-    std::pair<lib::Span<char const>, lib::Span<char const>> extract_one_perf_aux_apc_frame_data_span_pair(
-        lib::Span<char const> aux_mmap,
+    std::pair<lib::Span<uint8_t const>, lib::Span<uint8_t const>> extract_one_perf_aux_apc_frame_data_span_pair(
+        lib::Span<uint8_t const> aux_mmap,
         std::uint64_t const header_head,
         std::uint64_t const header_tail)
     {
@@ -203,15 +203,15 @@ namespace agents::perf {
         return {{aux_mmap.data() + tail_masked, first_size}, {aux_mmap.data(), second_size}};
     }
 
-    std::pair<std::uint64_t, std::vector<char>> encode_one_perf_aux_apc_frame(int cpu,
-                                                                              lib::Span<char const> first_span,
-                                                                              lib::Span<char const> second_span,
-                                                                              std::uint64_t const header_tail)
+    std::pair<std::uint64_t, std::vector<uint8_t>> encode_one_perf_aux_apc_frame(int cpu,
+                                                                                 lib::Span<uint8_t const> first_span,
+                                                                                 lib::Span<uint8_t const> second_span,
+                                                                                 std::uint64_t const header_tail)
     {
         auto const combined_size = first_span.size() + second_span.size();
 
         // create the message data
-        std::vector<char> buffer {};
+        std::vector<uint8_t> buffer {};
         buffer.reserve(combined_size);
 
         apc_buffer_builder_t builder {buffer};

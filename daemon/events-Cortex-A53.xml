@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2012-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2012-2024 by Arm Limited. All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Cortex_A53_cnt"/>
 <category counter_set="ARMv8_Cortex_A53_cnt" name="Cortex-A53" per_cpu="yes" supports_event_based_sampling="yes">
@@ -29,7 +29,7 @@
     <event event="0x18" title="L2 Data Cache" name="Write-back" description="The counter counts every write-back of data from the Level 2 data or unified cache that occurs as a result of an operation by this PE. It counts each write-back that causes data to be written from the Level 2 cache to outside the Level 1 and Level 2 caches."/>
     <event event="0x19" title="Bus" name="Access" description="The counter counts memory read operations and memory write operations that access outside of the boundary of the PE and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED."/>
     <event event="0x1a" title="Errors" name="Memory" description="The counter counts every occurrence of a memory error signaled by a memory closely coupled to this PE. The definition of local memories is IMPLEMENTATION DEFINED but includes caches, tightly-coupled memories, and TLB arrays."/>
-    <event event="0x1d" title="Cycles" name="Bus Cycles" description="The counter increments on every cycle of the interface at the boundary of the PE and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED."/>
+    <event event="0x1d" title="Cycles" name="Bus Cycles" description="The counter increments on every cycle of the interface at the boundary of the PE and its closely-coupled caches. Where this boundary lies with respect to any implemented caches is IMPLEMENTATION DEFINED." units="cycles"/>
     <event event="0x60" title="Bus" name="Access (due to read)" description="As &apos;Bus: Access&apos;, but counts only memory-read operations that access outside the boundary of the PE and its closely-coupled caches"/>
     <event event="0x61" title="Bus" name="Access (due to write)" description="As &apos;Bus: Access&apos;, but counts only memory-write operations that access outside the boundary of the PE and its closely-coupled caches"/>
     <event event="0x7a" title="Instructions (Speculated)" name="Branch (indirect)" description="The counter counts indirect branch instructions speculatively executed. This includes software change of the PC other than exception-generating instructions and immediate branch instructions." units="instructions"/>
@@ -39,8 +39,8 @@
     <event event="0xc1" title="Memory" name="External Request (non-cacheable)" description="Non-cacheable external memory request"/>
     <event event="0xc2" title="Data Cache" name="Refill (due to prefetch)" description="Linefill because of prefetch"/>
     <event event="0xc3" title="Instruction Cache" name="Throttle" description="Instruction Cache Throttle occurred"/>
-    <event event="0xc4" title="L1 Data Cache" name="Enter Read Allocate Mode" description="Entering read allocate mode"/>
-    <event event="0xc5" title="L1 Data Cache" name="Read Allocate Mode" description="Read allocate mode"/>
+    <event event="0xc4" title="L1 Data Cache" name="Enter read allocate mode" description="Entering read allocate mode"/>
+    <event event="0xc5" title="L1 Data Cache" name="Read allocate mode" description="Read allocate mode"/>
     <event event="0xc6" title="Errors" name="Pre-decode" description="Pre-decode error"/>
     <event event="0xc7" title="Stalls" name="Backend (Interlock, Store, STB full)" description="No operation issued due to the backend, store, STB full" units="cycles"/>
     <event event="0xc8" title="Snoop Control Unit" name="Data Snoop" description="SCU Snooped data from another core for this core"/>

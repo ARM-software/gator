@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -20,9 +20,9 @@ namespace agents::perf {
      * @param header_tail The data_tail value
      * @return A pair, being the new value for data_tail, and the encoded apc_frame message
      */
-    [[nodiscard]] std::pair<std::uint64_t, std::vector<char>> extract_one_perf_data_apc_frame(
+    [[nodiscard]] std::pair<std::uint64_t, std::vector<uint8_t>> extract_one_perf_data_apc_frame(
         int cpu,
-        lib::Span<char const> data_mmap,
+        lib::Span<uint8_t const> data_mmap,
         std::uint64_t header_head,
         std::uint64_t header_tail);
 
@@ -36,10 +36,10 @@ namespace agents::perf {
      * @param header_tail The aux_tail value
      * @return A pair, being the first and second parts of the aux data chunk.
      */
-    [[nodiscard]] std::pair<lib::Span<char const>, lib::Span<char const>> extract_one_perf_aux_apc_frame_data_span_pair(
-        lib::Span<char const> aux_mmap,
-        std::uint64_t header_head,
-        std::uint64_t header_tail);
+    [[nodiscard]] std::pair<lib::Span<uint8_t const>, lib::Span<uint8_t const>>
+    extract_one_perf_aux_apc_frame_data_span_pair(lib::Span<uint8_t const> aux_mmap,
+                                                  std::uint64_t header_head,
+                                                  std::uint64_t header_tail);
 
     /**
      * Given the pair of aux spans that were previously extracted by `extract_one_perf_aux_apc_frame_data_span_pair`,
@@ -51,9 +51,9 @@ namespace agents::perf {
      * @param header_tail The value of header_tail that was passed to extract_one_perf_aux_apc_frame_data_span_pair
      * @return A pair, being the new value for aux_tail, and the encoded apc_frame message
      */
-    [[nodiscard]] std::pair<std::uint64_t, std::vector<char>> encode_one_perf_aux_apc_frame(
+    [[nodiscard]] std::pair<std::uint64_t, std::vector<uint8_t>> encode_one_perf_aux_apc_frame(
         int cpu,
-        lib::Span<char const> first_span,
-        lib::Span<char const> second_span,
+        lib::Span<uint8_t const> first_span,
+        lib::Span<uint8_t const> second_span,
         std::uint64_t header_tail);
 }

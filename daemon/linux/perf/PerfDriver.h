@@ -8,16 +8,19 @@
 #include "agents/agent_workers_process_holder.h"
 #include "agents/perf/capture_configuration.h"
 #include "agents/perf/source_adapter.h"
+#include "lib/midr.h"
 #include "linux/Tracepoints.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfDriverConfiguration.h"
 #include "linux/perf/metric_key_to_event_key_tracker.h"
+#include "metrics/definitions.hpp"
 
 #include <cstdint>
 #include <functional>
 #include <list>
 #include <memory>
 #include <set>
+#include <unordered_map>
 
 static constexpr const char * SCHED_SWITCH = "sched/sched_switch";
 static constexpr const char * CPU_IDLE = "power/cpu_idle";
@@ -49,6 +52,14 @@ static std::map<const char *, const char *> MALI_TRC_PNT_PATH = { //
     {MALI_MMU_PAGE_FAULT, "mali/mali_page_fault_insert_pages"},   //
     {MALI_MMU_TOTAL_ALLOC, "mali/mali_total_alloc_pages_change"}, //
     {MALI_JOB_SLOT, "mali/mali_job_slots_event"}};
+
+struct combined_metrics_t {
+    std::vector<std::reference_wrapper<metrics::metric_events_set_t const>> events;
+    metrics::metric_cpu_version_t version;
+    std::size_t largest_metric_event_count = 0;
+
+    explicit combined_metrics_t(metrics::metric_cpu_version_t const & version) : version(version) {}
+};
 
 class PerfDriver : public SimpleDriver {
 public:
@@ -99,19 +110,24 @@ public:
     std::set<std::string_view> metricsSupporting(metrics::metric_group_set_t const & desired) override;
 
 private:
+    static void writeEventsFor(const PerfCpu & perfCpu, mxml_node_t * category, combined_metrics_t const & cpu_metrics);
+
+    static int writeCountersFor(const PerfCpu & perfCpu,
+                                combined_metrics_t const & cpu_metrics,
+                                available_counter_consumer_t const & consumer);
+
     const TraceFsConstants & traceFsConstants;
     PerfTracepoint * mTracepoints;
     PerfDriverConfiguration mConfig;
     PmuXML mPmuXml;
     const ICpuInfo & mCpuInfo;
+    std::unordered_map<cpu_utils::cpuid_t, metrics::metric_cpu_version_t> cpu_metric_versions {};
     bool mDisableKernelAnnotations;
 
-    void addCpuCounters(const PerfCpu & cpu);
+    void addCpuCounters(const PerfCpu & perfCpu);
+    void addCpuCounterMetrics(const PerfCpu & perfCpu, combined_metrics_t const & cpu_metrics);
     void addUncoreCounters(const PerfUncore & uncore);
     void addMidgardHwTracepoints(const char * maliFamilyName);
-    [[nodiscard]] bool enableGatorTracePoint(IPerfGroups & group,
-                                             attr_to_key_mapping_tracker_t & mapping_tracker,
-                                             long long id) const;
     [[nodiscard]] bool enableGatorTracepoints(IPerfGroups & group,
                                               attr_to_key_mapping_tracker_t & mapping_tracker) const;
     [[nodiscard]] bool enableTimelineCounters(IPerfGroups & group,
