@@ -39,7 +39,7 @@ public:
     PerfEventGroupIdentifier(int cpuNumber);
 
     /** Constructor, for SPE events that have a core specific type */
-    PerfEventGroupIdentifier(const std::map<int, int> & cpuToTypeMap);
+    PerfEventGroupIdentifier(const GatorCpu & cluster, const std::map<int, int> & cpuToTypeMap);
 
     /** Equality operator, are they the same group? */
     [[nodiscard]] bool operator==(const PerfEventGroupIdentifier & that) const
@@ -69,14 +69,14 @@ public:
 
     [[nodiscard]] Type getType() const
     {
+        if (cpuNumberToType != nullptr) {
+            return Type::SPE;
+        }
         if (cluster != nullptr) {
             return (groupNo > 0 ? Type::PER_CLUSTER_CPU_MUXED : Type::PER_CLUSTER_CPU_PINNED);
         }
         if (pmu != nullptr) {
             return Type::UNCORE_PMU;
-        }
-        if (cpuNumberToType != nullptr) {
-            return Type::SPE;
         }
         if (cpuNumber >= 0) {
             return Type::SPECIFIC_CPU;

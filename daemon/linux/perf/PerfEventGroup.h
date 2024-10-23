@@ -6,20 +6,14 @@
 #include "Configuration.h"
 #include "agents/perf/record_types.h"
 #include "k/perf_event.h" // Use a snapshot of perf_event.h as it may be more recent than what is on the target and if not newer features won't be supported anyways
-#include "lib/AutoClosingFd.h"
 #include "lib/Span.h"
-#include "linux/Tracepoints.h"
 #include "linux/perf/IPerfGroups.h"
 #include "linux/perf/PerfConfig.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "linux/perf/attr_to_key_mapping_tracker.h"
 
-#include <climits>
 #include <cstdint>
-#include <functional>
 #include <limits>
-#include <map>
-#include <set>
 #include <vector>
 
 class GatorCpu;
@@ -77,7 +71,7 @@ struct perf_event_t {
 struct perf_event_group_configurer_state_t {
     // list of events associated with the group, where the first must be the group leader
     // the list is held externally
-    std::vector<perf_event_t> events {};
+    std::vector<perf_event_t> events;
 };
 
 /** Like perf_groups_configurer_t, anages the construction / specification of the set of perf event attributes required for some capture */
@@ -118,7 +112,7 @@ public:
                                         attr_to_key_mapping_tracker_t & mapping_tracker,
                                         int key,
                                         const IPerfGroups::Attr & attr,
-                                        bool hasAuxData,
+                                        bool has_aux_data,
                                         bool uses_strobe_period);
 
     [[nodiscard]] static int nextDummyKey(perf_event_group_configurer_config_t & config);

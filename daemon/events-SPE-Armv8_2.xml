@@ -14,7 +14,7 @@
                                                     the extended object. In most cases users will want to extend 'armv8.2_spe' to pull in all of the architectural properties.
 
  -->
-<spe name="Armv8.2 Statistical Profiling Extension" id="armv8.2_spe">
+<spe name="Armv8.2 Statistical Profiling Extension" id="armv8.2_spe" version="v1p0">
     <!--    Defines address packet index types [D10.2.1 Address packet]
 
             Format:
@@ -165,7 +165,7 @@
            description="Load/store operation that causes a refill of a data or unified TLB, involving at least one translation table walk access. This includes each complete or partial translation table walk that causes an access to memory, including to data or translation table walk caches.">
         <valid-op-type class="load-store" />
     </event>
-    <event bit="6" ratio-label="Conditional Instruction" set-label="Not Taken" clear-label="Taken" set-mode="neutral"
+    <event bit="6" filter-bit="6" ratio-label="Conditional Instruction" set-label="Not Taken" clear-label="Taken" set-mode="neutral"
            name="Not taken"
            description="A conditional instruction that failed its condition code check. This includes conditional branches, compare-and-branch, conditional select, and conditional compares.">
         <valid-op-type class="branch" sub-class="conditional" />
@@ -193,7 +193,7 @@
     </event>
 </spe>
 
-<spe name="Armv8.3 Statistical Profiling Extension" id="armv8.3_spe" extends="armv8.2_spe">
+<spe name="Armv8.3 Statistical Profiling Extension" id="armv8.3_spe" version="v1p1" extends="armv8.2_spe">
     <!-- Define event packet event types [D10.2.6 Events packet] -->
     <event bit="11" ratio-label="Optimal Alignment" set-label="Poorly Aligned" clear-label="Optimally Aligned" show-by-default="set"
            name="Optimal Alignment"
@@ -202,7 +202,7 @@
     </event>
 </spe>
 
-<spe name="Armv8.3 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.3_spe_sve" extends="armv8.3_spe">
+<spe name="Armv8.3 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.3_spe_sve" version="v1p1" extends="armv8.3_spe">
     <!-- Define event packet event types [D10.2.6 Events packet] -->
     <event bit="17" ratio-label="SVE Partial Predicate" set-label="Partial Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
            name="SVE Partial Predicate"
@@ -218,12 +218,12 @@
     </event>
 </spe>
 
-<spe name="Armv8.7 Statistical Profiling Extension" id="armv8.7_spe" extends="armv8.3_spe">
+<spe name="Armv8.7 Statistical Profiling Extension" id="armv8.7_spe" version="v1p2" extends="armv8.3_spe">
     <!--    Defines address packet index types [D10.2.1 Address packet] -->
     <address index="0x04" name="Last Branch Target Address" description="The target virtual address of the most recently taken branch operation in program order before the sampled operation." type="instruction" />
 </spe>
 
-<spe name="Armv8.7 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.7_spe_sve" extends="armv8.7_spe">
+<spe name="Armv8.7 Statistical Profiling Extension + Scalable Vector Extension" id="armv8.7_spe_sve" version="v1p2" extends="armv8.7_spe">
     <!-- Define event packet event types [D10.2.6 Events packet] -->
     <event bit="17" ratio-label="SVE Partial Predicate" set-label="Partial Predicate" clear-label="Unpredicated / Predicate Fully Active" show-by-default="set"
            name="SVE Partial Predicate"

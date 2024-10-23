@@ -3,20 +3,14 @@
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
 
-#include "Config.h"
 #include "Configuration.h"
 #include "Constant.h"
 #include "Counter.h"
-#include "GatorCLIFlags.h"
-#include "Time.h"
 #include "lib/SharedMemory.h"
 #include "linux/smmu_identifier.h"
 
 #include <cstdint>
 #include <list>
-#include <map>
-#include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>

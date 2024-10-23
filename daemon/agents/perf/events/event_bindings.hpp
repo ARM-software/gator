@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -195,7 +195,7 @@ namespace agents::perf {
         }
 
         /** The attribute structure */
-        event_definition_t const & event;
+        event_definition_t event;
         /** The current state of the binding */
         event_binding_state_t state {event_binding_state_t::offline};
         /** The id allocated by perf */

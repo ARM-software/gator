@@ -20,12 +20,7 @@
 
 class ParserResult {
 public:
-    enum class ExecutionMode {
-        LOCAL_CAPTURE,
-        PRINT,
-        DAEMON,
-        EXIT,
-    };
+    enum class ExecutionMode { LOCAL_CAPTURE, PRINT, DAEMON, EXIT, USAGE };
 
     enum class Printable {
         EVENTS_XML,
@@ -35,14 +30,15 @@ public:
         COUNTERS_DETAILED,
     };
 
-    std::vector<SpeConfiguration> mSpeConfigs {};
-    std::vector<std::string> mCaptureCommand {};
-    std::set<int> mPids {};
-    std::map<std::string, EventCode> events {};
-    std::set<Printable> printables {};
+    std::vector<SpeConfiguration> mSpeConfigs;
+    std::vector<std::string> mCaptureCommand;
+    std::set<int> mPids;
+    std::map<std::string, EventCode> events;
+    std::set<Printable> printables;
+    std::vector<std::string> error_messages;
 
     // Each entry in this set dictates some metrics to record
-    metrics::metric_group_set_t enabled_metric_groups {};
+    metrics::metric_group_set_t enabled_metric_groups;
 
     std::uint64_t parameterSetFlag {0};
 
@@ -85,7 +81,7 @@ public:
     /**
      * @return - a list of argument-value pairs
      */
-    const std::vector<std::pair<std::string, std::optional<std::string>>> & getArgValuePairs() const;
+    [[nodiscard]] const std::vector<std::pair<std::string, std::optional<std::string>>> & getArgValuePairs() const;
 
     /**
      * Add a new argument value pair to the list of argument-value pairs
@@ -117,7 +113,7 @@ public:
     ParserResult & operator=(ParserResult &&) = delete;
 
 private:
-    std::vector<std::pair<std::string, std::optional<std::string>>> argValuePairs {};
+    std::vector<std::pair<std::string, std::optional<std::string>>> argValuePairs;
 };
 
 #endif /* PARSERRESULT_H_ */

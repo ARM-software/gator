@@ -26,8 +26,8 @@ PerfEventGroupIdentifier::PerfEventGroupIdentifier(int cpuNumber) : cpuNumber(cp
     assert(cpuNumber >= 0);
 }
 
-PerfEventGroupIdentifier::PerfEventGroupIdentifier(const std::map<int, int> & cpuToTypeMap)
-    : cpuNumberToType(&cpuToTypeMap)
+PerfEventGroupIdentifier::PerfEventGroupIdentifier(const GatorCpu & cluster, const std::map<int, int> & cpuToTypeMap)
+    : cluster(&cluster), cpuNumberToType(&cpuToTypeMap)
 {
 }
 
@@ -48,7 +48,25 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
             return false;
         }
 
-        return groupNo < that.groupNo;
+        if (groupNo < that.groupNo) {
+            return true;
+        }
+
+        // one without SPE should come before SPE
+
+        if (that.cpuNumberToType == nullptr) {
+            return (cpuNumberToType != nullptr);
+        }
+
+        if (cpuNumberToType == nullptr) {
+            return false;
+        }
+
+        if (that.cpuNumberToType->empty()) {
+            return !cpuNumberToType->empty();
+        }
+
+        return false;
     }
     if (that.cluster != nullptr) {
         return false;
@@ -67,13 +85,6 @@ bool PerfEventGroupIdentifier::operator<(const PerfEventGroupIdentifier & that) 
         return (that.cpuNumber >= 0 ? (cpuNumber < that.cpuNumber) : true);
     }
     if (that.cpuNumber >= 0) {
-        return false;
-    }
-
-    if (cpuNumberToType != nullptr) {
-        return (that.cpuNumberToType != nullptr ? (cpuNumberToType < that.cpuNumberToType) : true);
-    }
-    if (that.cpuNumberToType != nullptr) {
         return false;
     }
 

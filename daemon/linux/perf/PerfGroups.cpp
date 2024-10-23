@@ -79,7 +79,8 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
     auto eventGroup = getGroup(mapping_tracker, groupIdentifier);
 
     LOG_FINE("Adding event: group='%s', key=%i, type=%" PRIu32 ", config=%" PRIu64 ", config1=%" PRIu64
-             ", config2=%" PRIu64 ", period=%" PRIu64 ", strobePeriod=0x%" PRIx64 ", sampleType=0x%" PRIx64
+             ", config2=%" PRIu64 ", config3=%" PRIu64 ", period=%" PRIu64 ", strobePeriod=0x%" PRIx64
+             ", sampleType=0x%" PRIx64
              ", mmap=%d, comm=%d, freq=%d, task=%d, context_switch=%d, userspace_only=%d, hasAuxData=%d",
              std::string(groupIdentifier).c_str(),
              key,
@@ -87,6 +88,7 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
              attr.config,
              attr.config1,
              attr.config2,
+             attr.config3,
              attr.periodOrFreq,
              attr.strobePeriod,
              attr.sampleType,

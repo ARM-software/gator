@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessPollerBase.h"
 
@@ -8,6 +8,7 @@
 #include "linux/proc/ProcPidStatFileRecord.h"
 #include "linux/proc/ProcPidStatmFileRecord.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <optional>
@@ -79,13 +80,7 @@ namespace lnx {
 
         // name must be only digits
         const std::string name = entry.name();
-        for (char chr : name) {
-            if (std::isdigit(chr) == 0) {
-                return false;
-            }
-        }
-
-        return true;
+        return std::all_of(name.cbegin(), name.cend(), [](char c) { return std::isdigit(c); });
     }
 
     std::optional<std::string> getProcessExePath(const lib::FsEntry & entry)

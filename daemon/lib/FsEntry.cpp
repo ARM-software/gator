@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
 
 #include "lib/FsEntry.h"
 
@@ -56,7 +56,7 @@ namespace lib {
             }
         }
 
-        return std::optional<FsEntry>();
+        return {};
     }
 
     std::optional<FsEntry> FsEntry::create_unique_file(const FsEntry & parent)

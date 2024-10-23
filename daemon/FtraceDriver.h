@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #ifndef FTRACEDRIVER_H
 #define FTRACEDRIVER_H
@@ -50,7 +50,7 @@ public:
     void stop();
     bool readTracepointFormats(IPerfAttrsConsumer & attrsConsumer, DynBuf * printb, DynBuf * b);
 
-    bool isSupported() const { return mSupported; }
+    [[nodiscard]] bool isSupported() const { return mSupported; }
 
 private:
     const TraceFsConstants & traceFsConstants;

@@ -18,6 +18,7 @@ public:
              std::string counterSet,
              const char * dtName,
              const char * speName,
+             const char * speVersion,
              std::set<int> const & cpuIds,
              int pmncCounters,
              bool isV8);
@@ -27,11 +28,12 @@ public:
              std::string counterSet,
              std::string dtName,
              std::string speName,
+             std::string speVersion,
              std::vector<int> cpuIds,
              int pmncCounters,
              bool isV8);
 
-    GatorCpu(const GatorCpu & that, const char * speName);
+    GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion);
 
     GatorCpu(const GatorCpu &) = default;
     GatorCpu & operator=(const GatorCpu &) = default;
@@ -46,33 +48,36 @@ public:
             mCounterSet,
             mDtName,
             mSpeName,
+            mSpeVersion,
             mCpuIds,
             pmncCount,
             mIsV8,
         };
     }
 
-    const char * getCoreName() const { return mCoreName.c_str(); }
+    [[nodiscard]] const char * getCoreName() const { return mCoreName.c_str(); }
 
-    const char * getId() const { return mId.c_str(); }
+    [[nodiscard]] const char * getId() const { return mId.c_str(); }
 
-    const char * getCounterSet() const { return mCounterSet.c_str(); }
+    [[nodiscard]] const char * getCounterSet() const { return mCounterSet.c_str(); }
 
-    const char * getDtName() const { return (!mDtName.empty() ? mDtName.c_str() : nullptr); }
+    [[nodiscard]] const char * getDtName() const { return (!mDtName.empty() ? mDtName.c_str() : nullptr); }
 
-    const char * getSpeName() const { return (!mSpeName.empty() ? mSpeName.c_str() : nullptr); }
+    [[nodiscard]] const char * getSpeName() const { return (!mSpeName.empty() ? mSpeName.c_str() : nullptr); }
 
-    bool getIsV8() const { return mIsV8; }
+    [[nodiscard]] const char * getSpeVersion() const { return (!mSpeVersion.empty() ? mSpeVersion.c_str() : nullptr); }
 
-    const std::vector<int> & getCpuIds() const { return mCpuIds; }
+    [[nodiscard]] bool getIsV8() const { return mIsV8; }
 
-    int getMinCpuId() const { return mCpuIds.front(); }
+    [[nodiscard]] const std::vector<int> & getCpuIds() const { return mCpuIds; }
 
-    int getMaxCpuId() const { return mCpuIds.back(); }
+    [[nodiscard]] int getMinCpuId() const { return mCpuIds.front(); }
 
-    int getPmncCounters() const { return mPmncCounters; }
+    [[nodiscard]] int getMaxCpuId() const { return mCpuIds.back(); }
 
-    bool hasCpuId(int cpuId) const;
+    [[nodiscard]] int getPmncCounters() const { return mPmncCounters; }
+
+    [[nodiscard]] bool hasCpuId(int cpuId) const;
 
 private:
     std::string mCoreName;
@@ -80,6 +85,7 @@ private:
     std::string mCounterSet;
     std::string mDtName;
     std::string mSpeName;
+    std::string mSpeVersion;
     std::vector<int> mCpuIds;
     int mPmncCounters;
     bool mIsV8;
@@ -107,18 +113,21 @@ public:
     UncorePmu(UncorePmu &&) = default;
     UncorePmu & operator=(UncorePmu &&) = default;
 
-    const char * getCoreName() const { return mCoreName.c_str(); }
+    [[nodiscard]] const char * getCoreName() const { return mCoreName.c_str(); }
 
-    const char * getId() const { return mId.c_str(); }
+    [[nodiscard]] const char * getId() const { return mId.c_str(); }
 
-    const char * getCounterSet() const { return mCounterSet.c_str(); }
+    [[nodiscard]] const char * getCounterSet() const { return mCounterSet.c_str(); }
 
     /** Returns null if the uncore is not instanced */
-    const char * getDeviceInstance() const { return (mDeviceInstance.empty() ? nullptr : mDeviceInstance.c_str()); }
+    [[nodiscard]] const char * getDeviceInstance() const
+    {
+        return (mDeviceInstance.empty() ? nullptr : mDeviceInstance.c_str());
+    }
 
-    int getPmncCounters() const { return mPmncCounters; }
+    [[nodiscard]] int getPmncCounters() const { return mPmncCounters; }
 
-    bool getHasCyclesCounter() const { return mHasCyclesCounter; }
+    [[nodiscard]] bool getHasCyclesCounter() const { return mHasCyclesCounter; }
 
 private:
     std::string mCoreName;

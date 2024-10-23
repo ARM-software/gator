@@ -34,21 +34,21 @@
 
 #include <mxml.h>
 
-static const char TAG_CONFIGURATION[] = "configuration";
-
-static const char ATTR_COUNTER[] = "counter";
-
-static const char CLUSTER_VAR[] = "${cluster}";
-
 #define CONFIGURATION_REVISION 3
 
-static void appendError(std::ostream & error, const std::string & possibleError)
-{
-    if (!possibleError.empty()) {
-        if (error.tellp() != 0) {
-            error << "\n\n";
+namespace {
+    constexpr const char * TAG_CONFIGURATION = "configuration";
+    constexpr const char * ATTR_COUNTER = "counter";
+    constexpr const char * CLUSTER_VAR = "${cluster}";
+
+    void appendError(std::ostream & error, const std::string & possibleError)
+    {
+        if (!possibleError.empty()) {
+            if (error.tellp() != 0) {
+                error << "\n\n";
+            }
+            error << possibleError;
         }
-        error << possibleError;
     }
 }
 
@@ -162,13 +162,15 @@ namespace configuration_xml {
                        counterToEventMap);
         }
 
-        appendError(error, drivers.getCcnDriver().validateCounters());
+        appendError(error, CCNDriver::validateCounters());
 
         return error.str();
     }
 
     std::unique_ptr<char, void (*)(void *)> getDefaultConfigurationXml(lib::Span<const GatorCpu> clusters)
     {
+        constexpr const std::size_t BUFFER_SIZE = 128;
+
         // Resolve ${cluster}
         mxml_node_t * xml = mxmlLoadString(nullptr, DEFAULTS_XML.data(), MXML_NO_CALLBACK);
         for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND),
@@ -176,11 +178,11 @@ namespace configuration_xml {
              node != nullptr;
              node = next, next = mxmlFindElement(node, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND)) {
             const char * counter = mxmlElementGetAttr(node, ATTR_COUNTER);
-            if (counter != nullptr && strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0) {
+            if (counter != nullptr && strncmp(counter, CLUSTER_VAR, strlen(CLUSTER_VAR)) == 0) {
                 for (const GatorCpu & cluster : clusters) {
                     mxml_node_t * n = mxmlNewElement(mxmlGetParent(node), TAG_CONFIGURATION);
                     copyMxmlElementAttrs(n, node);
-                    lib::printf_str_t<1 << 7> buf {"%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1};
+                    lib::printf_str_t<BUFFER_SIZE> buf {"%s%s", cluster.getId(), counter + strlen(CLUSTER_VAR)};
                     mxmlElementSetAttr(n, ATTR_COUNTER, buf);
                 }
                 mxmlDelete(node);

@@ -231,6 +231,7 @@ namespace agents::perf {
             msg.set_wakeup_events_or_watermark(attr.watermark ? attr.wakeup_watermark : attr.wakeup_events);
             msg.set_config1(attr.config1);
             msg.set_config2(attr.config2);
+            msg.set_config3(attr.config3);
             msg.set_sample_regs_user(attr.sample_regs_user);
             msg.set_sample_stack_user(attr.sample_stack_user);
             msg.set_clockid(attr.clockid);
@@ -258,7 +259,8 @@ namespace agents::perf {
                     return *msg.mutable_global_events();
                 }
                 case PerfEventGroupIdentifier::Type::SPE: {
-                    return *msg.mutable_spe_events();
+                    auto index = find_pmu_index(cpu_info.getClusters(), identifier.getCluster());
+                    return (*msg.mutable_spe_events())[index];
                 }
                 case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_PINNED:
                 case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED: {
@@ -394,6 +396,7 @@ namespace agents::perf {
                                       std::move(*cluster->mutable_counter_set()),
                                       std::move(*cluster->mutable_dt_name()),
                                       std::move(*cluster->mutable_spe_name()),
+                                      std::move(*cluster->mutable_spe_version()),
                                       std::vector<int>(cluster->cpu_ids().begin(), cluster->cpu_ids().end()),
                                       cluster->pmnc_counters(),
                                       cluster->is_v8());
@@ -489,6 +492,7 @@ namespace agents::perf {
             result.context_switch = msg.context_switch();
             result.config1 = msg.config1();
             result.config2 = msg.config2();
+            result.config3 = msg.config3();
             result.sample_regs_user = msg.sample_regs_user();
             result.sample_stack_user = msg.sample_stack_user();
             result.clockid = msg.clockid();
@@ -530,7 +534,12 @@ namespace agents::perf {
             };
 
             extract_event_definition_list(msg.global_events(), event_configuration.global_events);
-            extract_event_definition_list(msg.spe_events(), event_configuration.spe_events);
+            for (auto const & spe_entry : msg.spe_events()) {
+                runtime_assert(spe_entry.first < clusters.size(), "Invalid cluster id received");
+                auto const id = cpu_cluster_id_t(spe_entry.first);
+                auto & events = event_configuration.spe_events[id];
+                extract_event_definition_list(spe_entry.second, events);
+            }
 
             for (auto const & entry : msg.cluster_specific_events()) {
                 runtime_assert(entry.first < clusters.size(), "Invalid cluster id received");

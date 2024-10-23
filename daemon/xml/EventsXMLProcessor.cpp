@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2024 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXMLProcessor.h"
 
@@ -6,41 +6,47 @@
 #include "Events.h"
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/Format.h"
 #include "lib/Span.h"
 #include "lib/String.h"
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <unordered_set>
 #include <utility>
 
 #include <mxml.h>
 
 namespace events_xml {
     namespace {
-        const char TAG_EVENTS[] = "events";
-        const char TAG_CATEGORY[] = "category";
-        const char TAG_COUNTER_SET[] = "counter_set";
-        const char TAG_EVENT[] = "event";
-        const char TAG_SPE[] = "spe";
+        constexpr const char * TAG_EVENTS = "events";
+        constexpr const char * TAG_CATEGORY = "category";
+        constexpr const char * TAG_COUNTER_SET = "counter_set";
+        constexpr const char * TAG_EVENT = "event";
+        constexpr const char * TAG_SPE = "spe";
 
-        const char ATTR_CLASS[] = "class";
-        const char ATTR_COUNT[] = "count";
-        const char ATTR_COUNTER[] = "counter";
-        const char ATTR_COUNTER_SET[] = "counter_set";
-        const char ATTR_DEVICE_INSTANCE[] = "device_instance";
-        const char ATTR_DESCRIPTION[] = "description";
-        const char ATTR_ID[] = "id";
-        const char ATTR_MULTIPLIER[] = "multiplier";
-        const char ATTR_NAME[] = "name";
-        const char ATTR_TITLE[] = "title";
-        const char ATTR_UNITS[] = "units";
-        const char ATTR_EVENT[] = "event";
+        constexpr const char * ATTR_CLASS = "class";
+        constexpr const char * ATTR_COUNT = "count";
+        constexpr const char * ATTR_COUNTER = "counter";
+        constexpr const char * ATTR_COUNTER_SET = "counter_set";
+        constexpr const char * ATTR_DEVICE_INSTANCE = "device_instance";
+        constexpr const char * ATTR_DESCRIPTION = "description";
+        constexpr const char * ATTR_ID = "id";
+        constexpr const char * ATTR_MULTIPLIER = "multiplier";
+        constexpr const char * ATTR_NAME = "name";
+        constexpr const char * ATTR_TITLE = "title";
+        constexpr const char * ATTR_UNITS = "units";
+        constexpr const char * ATTR_EVENT = "event";
 
-        const char CLUSTER_VAR[] = "${cluster}";
+        constexpr const char * CLUSTER_VAR = "${cluster}";
+
+        constexpr std::string_view counter_set_suffix {"_cnt"};
 
         const std::map<Event::Class, std::string> classToStringMap = {{Event::Class::DELTA, "delta"},
                                                                       {Event::Class::INCIDENT, "incident"},
@@ -58,10 +64,9 @@ namespace events_xml {
         };
 
         template<typename T, typename U>
-        static void addAllIdToCounterSetMappings(
-            lib::Span<const T> pmus,
-            std::map<std::string, CounterSetCoreNameAndInstance> & idToCounterSetAndName,
-            U instanceFn)
+        void addAllIdToCounterSetMappings(lib::Span<const T> pmus,
+                                          std::map<std::string, CounterSetCoreNameAndInstance> & idToCounterSetAndName,
+                                          U instanceFn)
         {
             for (const T & pmu : pmus) {
                 const char * instance = instanceFn(pmu);
@@ -74,7 +79,7 @@ namespace events_xml {
         }
 
         template<typename T>
-        static void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
+        void copyMxmlElementAttrs(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
         {
             if (dest == nullptr || mxmlGetType(dest) != MXML_ELEMENT || src == nullptr
                 || mxmlGetType(src) != MXML_ELEMENT) {
@@ -99,7 +104,7 @@ namespace events_xml {
         }
 
         template<typename T>
-        static void copyMxmlChildElements(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
+        void copyMxmlChildElements(mxml_node_t * dest, mxml_node_t * src, T attributeFilter)
         {
             for (mxml_node_t * child = mxmlGetFirstChild(src); child != nullptr; child = mxmlGetNextSibling(child)) {
                 const char * childName = mxmlGetElement(child);
@@ -148,7 +153,7 @@ namespace events_xml {
                 const std::string & instance = counterSetAndCoreName.instance;
 
                 // check for counter set and category
-                const std::string counterSetName = counterSet + "_cnt";
+                const std::string counterSetName = counterSet + counter_set_suffix.data();
                 const auto counterSetIt = counterSetNodes.find(counterSetName);
                 const auto categoryIt = categoryNodes.find(counterSetName);
 
@@ -162,7 +167,7 @@ namespace events_xml {
                     continue;
                 }
 
-                const std::string newCounterSetName = id + "_cnt";
+                const std::string newCounterSetName = id + counter_set_suffix.data();
                 const std::string oldEventPrefix = counterSet + "_";
                 const std::string newEventPrefix = id + "_";
 
@@ -235,7 +240,7 @@ namespace events_xml {
         }
 
         template<typename T, typename U>
-        static void addAdditionalPmusCounterSets(mxml_node_t * xml, lib::Span<const T> clusters, U instanceFn)
+        void addAdditionalPmusCounterSets(mxml_node_t * xml, lib::Span<const T> clusters, U instanceFn)
         {
             // build mapping from cluster id -> counter_set
             std::map<std::string, CounterSetCoreNameAndInstance> idToCounterSetAndName;
@@ -245,7 +250,7 @@ namespace events_xml {
         }
     }
 
-    static bool mergeSpes(mxml_node_t * mainParent, mxml_node_t * appendParent)
+    bool mergeSpes(mxml_node_t * mainParent, mxml_node_t * appendParent)
     {
         // Make list of all existing spes in main xml before we add new ones
         std::map<std::string, mxml_node_t *> existingSpesById {};
@@ -290,7 +295,7 @@ namespace events_xml {
     /**
      * parents can be <events> or <category>
      */
-    static bool mergeCounterSets(mxml_node_t * mainParent, mxml_node_t * appendParent)
+    bool mergeCounterSets(mxml_node_t * mainParent, mxml_node_t * appendParent)
     {
         // Make list of all existing counters set in main xml before we add new ones
         std::map<std::string, mxml_node_t *> existingCounterSetsByName {};
@@ -331,7 +336,7 @@ namespace events_xml {
         return true;
     }
 
-    static bool mergeEvents(mxml_node_t * mainParent, mxml_node_t * appendParent)
+    bool mergeEvents(mxml_node_t * mainParent, mxml_node_t * appendParent)
     {
         using TitleAndName = std::pair<std::string, std::string>;
 
@@ -376,7 +381,7 @@ namespace events_xml {
         return true;
     }
 
-    static bool mergeCategories(mxml_node_t * mainParent, mxml_node_t * appendParent)
+    bool mergeCategories(mxml_node_t * mainParent, mxml_node_t * appendParent)
     {
         // Make list of all existing categories in main xml before we add new ones
         std::map<std::string, mxml_node_t *> existingCategoriesByName {};
@@ -444,6 +449,8 @@ namespace events_xml {
 
     void processClusters(mxml_node_t * xml, lib::Span<const GatorCpu> clusters, lib::Span<const UncorePmu> uncores)
     {
+        constexpr const std::size_t BUFFER_SIZE = 128;
+
         addAdditionalPmusCounterSets(xml, clusters, [](const GatorCpu & /*cpu*/) { return nullptr; });
         addAdditionalPmusCounterSets(xml, uncores, [](const UncorePmu & pmu) { return pmu.getDeviceInstance(); });
 
@@ -461,14 +468,68 @@ namespace events_xml {
              node = next, next = mxmlFindElement(node, xml, TAG_EVENT, nullptr, nullptr, MXML_DESCEND)) {
             const char * const counter = mxmlElementGetAttr(node, ATTR_COUNTER);
 
-            if ((counter != nullptr) && (strncmp(counter, CLUSTER_VAR, sizeof(CLUSTER_VAR) - 1) == 0)) {
+            if ((counter != nullptr) && (strncmp(counter, CLUSTER_VAR, strlen(CLUSTER_VAR)) == 0)) {
                 for (const GatorCpu & cluster : clusters) {
                     mxml_node_t * n = mxmlNewElement(mxmlGetParent(node), TAG_EVENT);
                     copyMxmlElementAttrs(n, node, NOP_ATTR_MODIFICATION_FUNCTION);
-                    lib::printf_str_t<1 << 7> buf {"%s%s", cluster.getId(), counter + sizeof(CLUSTER_VAR) - 1};
+                    lib::printf_str_t<BUFFER_SIZE> buf {"%s%s", cluster.getId(), counter + strlen(CLUSTER_VAR)};
                     mxmlElementSetAttr(n, ATTR_COUNTER, buf);
                 }
                 mxmlDelete(node);
+            }
+        }
+
+        // Update the number of programmable counters
+        {
+            std::map<std::string, mxml_node_t *> counterSetNodes;
+            for (mxml_node_t * node = mxmlFindElement(xml, xml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND);
+                 node != nullptr;
+                 node = mxmlFindElement(node, xml, TAG_COUNTER_SET, nullptr, nullptr, MXML_DESCEND)) {
+                const char * const name = mxmlElementGetAttr(node, ATTR_NAME);
+                if (name != nullptr) {
+                    counterSetNodes.emplace(name, node);
+                }
+            }
+
+            std::unordered_set<mxml_node_t const *> modified_nodes {};
+            for (const GatorCpu & cluster : clusters) {
+                std::string const id_name = lib::Format() << cluster.getId() << counter_set_suffix;
+                std::string const cset_name = lib::Format() << cluster.getCounterSet() << counter_set_suffix;
+
+                mxml_node_t * node = nullptr;
+
+                if (auto it = counterSetNodes.find(id_name); it != counterSetNodes.end()) {
+                    node = it->second;
+                }
+                else if (auto it = counterSetNodes.find(cluster.getId()); it != counterSetNodes.end()) {
+                    node = it->second;
+                }
+                else if (auto it = counterSetNodes.find(cset_name); it != counterSetNodes.end()) {
+                    node = it->second;
+                }
+                else if (auto it = counterSetNodes.find(cluster.getCounterSet()); it != counterSetNodes.end()) {
+                    node = it->second;
+                }
+
+                if (node == nullptr) {
+                    continue;
+                }
+
+                auto const [it, inserted] = modified_nodes.insert(node);
+                (void) it;
+                const char * const count_str = mxmlElementGetAttr(node, ATTR_COUNT);
+                if (count_str == nullptr) {
+                    continue;
+                }
+
+                auto const count = strtol(count_str, nullptr, 0);
+
+                // always modify the node the first time (possibly making the set smaller)
+                // but otherwise, if it is modified multiple times, pick the largest of all possible clusters
+                // any mismatch would be handled by the cnt<n> event slots anyway.
+                if (inserted || (count < cluster.getPmncCounters())) {
+                    mxmlElementSetAttrf(node, ATTR_COUNT, "%i", cluster.getPmncCounters());
+                }
             }
         }
     }

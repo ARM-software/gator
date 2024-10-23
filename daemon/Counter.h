@@ -1,15 +1,11 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #ifndef COUNTER_H
 #define COUNTER_H
 
 #include "EventCode.h"
-#include "Events.h"
 
-#include <new>
-#include <optional>
 #include <string>
-#include <utility>
 
 class Driver;
 
@@ -39,15 +35,15 @@ public:
     void setKey(const int key) { mKey = key; }
     void setDriver(Driver * const driver) { mDriver = driver; }
 
-    const char * getType() const { return mType.c_str(); }
-    bool isEnabled() const { return mEnabled; }
-    EventCode getEventCode() const { return mEvent; }
-    int getCount() const { return mCount; }
-    int getCores() const { return mCores; }
-    int getKey() const { return mKey; }
-    Driver * getDriver() const { return mDriver; }
+    [[nodiscard]] const char * getType() const { return mType.c_str(); }
+    [[nodiscard]] bool isEnabled() const { return mEnabled; }
+    [[nodiscard]] EventCode getEventCode() const { return mEvent; }
+    [[nodiscard]] int getCount() const { return mCount; }
+    [[nodiscard]] int getCores() const { return mCores; }
+    [[nodiscard]] int getKey() const { return mKey; }
+    [[nodiscard]] Driver * getDriver() const { return mDriver; }
     void setExcludeFromCapturedXml() { mExcludeFromCapturedXml = true; }
-    bool excludeFromCapturedXml() const { return mExcludeFromCapturedXml; }
+    [[nodiscard]] bool excludeFromCapturedXml() const { return mExcludeFromCapturedXml; }
 
 private:
     std::string mType {};

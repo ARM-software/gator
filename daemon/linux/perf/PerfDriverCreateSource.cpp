@@ -2,6 +2,7 @@
 
 #include "Configuration.h"
 #include "DynBuf.h"
+#include "FtraceDriver.h"
 #include "ICpuInfo.h"
 #include "ISender.h"
 #include "Logging.h"

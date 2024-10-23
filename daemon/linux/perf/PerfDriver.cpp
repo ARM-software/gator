@@ -63,9 +63,11 @@ static constexpr std::uint32_t TYPE_METRIC = ~1U;
 #define SPE_pct_enable_CFG config /* PMSCR_EL1.PCT */
 #define SPE_pct_enable_LO 2
 #define SPE_pct_enable_HI 2
+
 #define SPE_jitter_CFG config /* PMSIRR_EL1.RND */
 #define SPE_jitter_LO 16
 #define SPE_jitter_HI 16
+
 #define SPE_branch_filter_CFG config /* PMSFCR_EL1.B */
 #define SPE_branch_filter_LO 32
 #define SPE_branch_filter_HI 32
@@ -83,6 +85,11 @@ static constexpr std::uint32_t TYPE_METRIC = ~1U;
 #define SPE_min_latency_CFG config2 /* PMSLATFR_EL1.MINLAT */
 #define SPE_min_latency_LO 0
 #define SPE_min_latency_HI 11
+
+#define SPE_inv_event_filter_CFG config3 /* PMSNEVFR_EL1 */
+#define SPE_inv_event_filter_LO 0
+#define SPE_inv_event_filter_HI 63
+
 // NOLINTEND(modernize-macro-to-enum)
 
 // An improved version would mask out old value be we assume 0
@@ -477,6 +484,8 @@ public:
 
     inline void setConfig2(const uint64_t config) { attr.config2 = config; }
 
+    inline void setConfig3(const uint64_t config) { attr.config3 = config; }
+
     inline void setSampleType(uint64_t sampleType) { attr.sampleType = sampleType; }
 
     [[nodiscard]] bool supportsAtLeastOne(metrics::metric_group_set_t const & desired) const override
@@ -855,8 +864,11 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
     if (speId != nullptr) {
         IPerfGroups::Attr attr;
         attr.sampleType |= PERF_SAMPLE_TID;
-        setCounters(
-            new PerfCounter(getCounters(), PerfEventGroupIdentifier(mConfig.cpuNumberToSpeType), speId, attr, true));
+        setCounters(new PerfCounter(getCounters(),
+                                    PerfEventGroupIdentifier(cpu, mConfig.cpuNumberToSpeType),
+                                    speId,
+                                    attr,
+                                    true));
     }
 
     auto const * cpu_metrics = metrics::find_events_for_cset(cpu.getCounterSet());
@@ -1099,7 +1111,7 @@ void PerfDriver::setupCounter(Counter & counter)
     counter.setKey(perfCounter->getKey());
 }
 
-std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfiguration & spe)
+std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfiguration & spe, bool supportsSpev1p2)
 {
     for (auto * counter = static_cast<PerfCounter *>(getCounters()); counter != nullptr;
          counter = static_cast<PerfCounter *>(counter->getNext())) {
@@ -1107,20 +1119,31 @@ std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
             uint64_t config = 0;
             uint64_t config1 = 0;
             uint64_t config2 = 0;
+            uint64_t config3 = 0;
 
-            SET_SPE_CFG(event_filter, spe.event_filter_mask);
-            LOG_DEBUG("Set Spe Event filter mask : 0x%jx\n ", spe.event_filter_mask);
             SET_SPE_CFG(min_latency, spe.min_latency);
             LOG_DEBUG("Set Spe Event min latency : %d\n ", spe.min_latency);
-            size_t branchCount = spe.ops.count(SpeOps::BRANCH);
+            const size_t branchCount = spe.ops.count(SpeOps::BRANCH);
             SET_SPE_CFG(branch_filter, branchCount);
             LOG_DEBUG("Set Spe branch ops count : %zu\n ", branchCount);
-            size_t loadCount = spe.ops.count(SpeOps::LOAD);
+            const size_t loadCount = spe.ops.count(SpeOps::LOAD);
             SET_SPE_CFG(load_filter, loadCount);
             LOG_DEBUG("Set Spe load ops count : %zu\n ", loadCount);
-            size_t storeCount = spe.ops.count(SpeOps::STORE);
+            const size_t storeCount = spe.ops.count(SpeOps::STORE);
             SET_SPE_CFG(store_filter, storeCount);
             LOG_DEBUG("Set Spe store ops count : %zu\n ", storeCount);
+
+            if (spe.inverse_event_filter_mask && supportsSpev1p2) {
+                SET_SPE_CFG(inv_event_filter, spe.event_filter_mask);
+                LOG_DEBUG("Set Inverse Spe Event filter mask : 0x%jx\n ", spe.event_filter_mask);
+            }
+            else {
+                if (spe.inverse_event_filter_mask && !supportsSpev1p2) {
+                    LOG_WARNING("Spe inverse filter enabled on unsupported device. Ignoring inverse flag.");
+                }
+                SET_SPE_CFG(event_filter, spe.event_filter_mask);
+                LOG_DEBUG("Set Spe Event filter mask : 0x%jx\n ", spe.event_filter_mask);
+            }
 
             // enable timestamps
             SET_SPE_CFG(ts_enable, 1);
@@ -1134,6 +1157,7 @@ std::optional<CapturedSpe> PerfDriver::setupSpe(int sampleRate, const SpeConfigu
             counter->setConfig(config);
             counter->setConfig1(config1);
             counter->setConfig2(config2);
+            counter->setConfig3(config3);
 
             if (sampleRate < 0) {
                 LOG_DEBUG("SPE: Using default sample rate");

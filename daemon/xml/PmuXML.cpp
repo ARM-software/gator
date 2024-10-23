@@ -10,12 +10,14 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 GatorCpu::GatorCpu(std::string coreName,
                    std::string id,
                    std::string counterSet,
                    const char * dtName,
                    const char * speName,
+                   const char * speVersion,
                    const std::set<int> & cpuIds,
                    int pmncCounters,
                    bool isV8)
@@ -24,6 +26,7 @@ GatorCpu::GatorCpu(std::string coreName,
       mCounterSet(std::move(counterSet)),
       mDtName(dtName != nullptr ? dtName : ""),
       mSpeName(speName != nullptr ? speName : ""),
+      mSpeVersion(speVersion != nullptr ? speVersion : ""),
       mCpuIds(cpuIds.begin(), cpuIds.end()),
       mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
@@ -37,6 +40,7 @@ GatorCpu::GatorCpu(std::string coreName,
                    std::string counterSet,
                    std::string dtName,
                    std::string speName,
+                   std::string speVersion,
                    std::vector<int> cpuIds,
                    int pmncCounters,
                    bool isV8)
@@ -45,18 +49,20 @@ GatorCpu::GatorCpu(std::string coreName,
       mCounterSet(std::move(counterSet)),
       mDtName(std::move(dtName)),
       mSpeName(std::move(speName)),
+      mSpeVersion(std::move(speVersion)),
       mCpuIds(std::move(cpuIds)),
       mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
 {
 }
 
-GatorCpu::GatorCpu(const GatorCpu & that, const char * speName)
+GatorCpu::GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion)
     : mCoreName(that.mCoreName),
       mId(that.mId),
       mCounterSet(that.mCounterSet),
       mDtName(that.mDtName),
       mSpeName(speName),
+      mSpeVersion(speVersion),
       mCpuIds(that.mCpuIds),
       mPmncCounters(that.mPmncCounters),
       mIsV8(that.mIsV8)

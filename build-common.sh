@@ -83,12 +83,12 @@ checkout_vcpkg() {
         echo "Fetching vcpkg git submodule"
         git submodule update --init
     # checkout manually?
-    elif [ ! -d "${root}/vcpkg/.git" ]; then
+    elif [ ! -e "${root}/vcpkg/.git" ]; then
         echo "Cloning vcpkg git repo into '${root}/vcpkg/'"
         git clone https://github.com/microsoft/vcpkg.git "${root}/vcpkg/"
         echo "Switching to correct commit"
         git -C "${root}/vcpkg/" clean -ffxd
-        git -C "${root}/vcpkg/" reset --hard "${vcpkg_commit}"
+        git -C "${root}/vcpkg/" reset --hard "${vcpkg_commit}" --
     fi
     # Now bootstrap it?
     if [ ! -f "${exe_path}" ] || [ ! -r "${exe_path}" ] || [ ! -x "${exe_path}" ]; then
@@ -114,7 +114,7 @@ checkout_perfetto() {
         echo "Fetching perfetto git submodule"
         git submodule update --init
     # checkout manually?
-    elif [ ! -d "${root}/ext/perfetto/.git" ]; then
+    elif [ ! -e "${root}/ext/perfetto/.git" ]; then
         echo "Cloning perfetto git repo into '${root}/ext/perfetto/'"
         git clone https://github.com/google/perfetto.git "${root}/ext/perfetto/"
         echo "Switching to correct commit"

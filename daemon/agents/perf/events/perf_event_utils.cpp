@@ -74,6 +74,7 @@ namespace agents::perf {
                           << indentation << "config: " << attr.config << separator                                    //
                           << indentation << "config1: " << attr.config1 << separator                                  //
                           << indentation << "config2: " << attr.config2 << separator                                  //
+                          << indentation << "config3: " << attr.config3 << separator                                  //
                           << indentation << "sample: " << attr.sample_period << separator                             //
                           << indentation << "alt_sample: " << attr.alternative_sample_period << separator << std::hex //
                           << indentation << "sample_type: 0x" << attr.sample_type << separator                        //

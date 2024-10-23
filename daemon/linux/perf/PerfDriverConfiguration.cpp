@@ -451,9 +451,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     const bool use_64bit_register_set = (sizeof(void *) == 8) || has_64bit_uname;
 
     if (kernelVersion < KERNEL_VERSION(3U, 4U, 0U)) {
-        const char error[] = "Unsupported kernel version\nPlease upgrade to 3.4 or later";
-        LOG_SETUP(error);
-        LOG_ERROR(error);
+        static const char * error_message = "Unsupported kernel version\nPlease upgrade to 3.4 or later";
+        LOG_SETUP("%s", error_message);
+        LOG_ERROR("%s", error_message);
         return nullptr;
     }
 
@@ -477,10 +477,10 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     int perf_event_paranoid;
     if (lib::readIntFromFile("/proc/sys/kernel/perf_event_paranoid", perf_event_paranoid) != 0) {
         if (isRoot) {
-            const char error[] = "perf_event_paranoid not accessible\n"
-                                 "Is CONFIG_PERF_EVENTS enabled?";
-            LOG_SETUP(error);
-            LOG_ERROR(error);
+            LOG_SETUP("perf_event_paranoid not accessible\n"
+                      "Is CONFIG_PERF_EVENTS enabled?");
+            LOG_ERROR("perf_event_paranoid not accessible\n"
+                      "Is CONFIG_PERF_EVENTS enabled?");
             return nullptr;
         }
 #if defined(CONFIG_ASSUME_PERF_HIGH_PARANOIA) && CONFIG_ASSUME_PERF_HIGH_PARANOIA
@@ -843,7 +843,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         for (auto & cpu : configuration->cpus) {
             const auto & currentValue = cpu;
             cpu = PerfCpu {
-                with_max_counters_value(GatorCpu(currentValue.gator_cpu, ARMV82_SPE), max_event_count_by_cpuid),
+                with_max_counters_value(GatorCpu(currentValue.gator_cpu, ARMV82_SPE, "v1p1"), max_event_count_by_cpuid),
                 currentValue.pmu_type,
             };
         }
@@ -857,6 +857,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     if (!unrecognisedCpuIds.empty()) {
         logCpuNotFound();
         const char * const speName = (addOtherForUnknownSpe ? ARMV82_SPE : nullptr);
+        const char * const speVersion = (addOtherForUnknownSpe ? "v1p1" : nullptr);
+
+        const int defaultPmncCounters = 6;
 
 #if defined(__aarch64__)
         configuration->cpus.push_back(PerfCpu {
@@ -867,8 +870,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                     "Other",
                     nullptr,
                     speName,
+                    speVersion,
                     unrecognisedCpuIds,
-                    6,
+                    defaultPmncCounters,
                     true,
                 },
                 max_event_count_by_cpuid),
@@ -883,8 +887,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                     "Other",
                     nullptr,
                     speName,
+                    speVersion,
                     unrecognisedCpuIds,
-                    6,
+                    defaultPmncCounters,
                     anyV8,
                 },
                 max_event_count_by_cpuid),
@@ -899,8 +904,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                     "Perf_Hardware",
                     nullptr,
                     speName,
+                    speVersion,
                     unrecognisedCpuIds,
-                    6,
+                    defaultPmncCounters,
                     false,
                 },
                 max_event_count_by_cpuid),

@@ -6,11 +6,10 @@
 #include "Configuration.h"
 #include "EventCode.h"
 #include "GatorCLIFlags.h"
-#include "Logging.h"
 #include "OlyUtility.h"
 #include "ParserResult.h"
 #include "android/Utils.h"
-#include "lib/Process.h"
+#include "lib/Format.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
 #include "linux/smmu_identifier.h"
@@ -31,6 +30,9 @@
 #include <utility>
 #include <vector>
 
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/config.hpp>
+
 #include <getopt.h>
 
 namespace {
@@ -41,9 +43,9 @@ namespace {
     constexpr int GATOR_ANNOTATION_PORT1 = 8082;
     constexpr int GATOR_ANNOTATION_PORT2 = 8083;
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
+    constexpr int SPE_MAX_SAMPLE_RATE = 1000000000;
 
-    constexpr std::string_view OPTSTRING_SHORT =
-        "ac:d::e:f:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:I:LN:O:P:Q:R:S:TVX:Y:Z:";
+    constexpr const char * OPTSTRING_SHORT = ":ac:de:f:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:I:LN:O:P:Q:R:S:TVX:Y:Z:";
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
@@ -101,6 +103,7 @@ namespace {
     const char * SPE_MIN_LATENCY_KEY = "min_latency";
     const char * SPE_EVENTS_KEY = "events";
     const char * SPE_OPS_KEY = "ops";
+    const char * SPE_INV_KEY = "inv";
 
     // trim
     void trim(std::string & data)
@@ -206,34 +209,33 @@ namespace {
         return {data, ""};
     }
 
-    EventCode parseEvent(std::string_view event)
+    EventCode parseEvent(std::string_view event, ParserResult & result)
     {
         if (event.empty()) {
             return {};
         }
         long long eventCode;
         std::string eventStr {event};
-        if (!stringToLongLong(&eventCode, eventStr.data(), DECIMAL_BASE)) { //check for decimal
-            if (!stringToLongLong(&eventCode, eventStr.data(), HEX_BASE)) { //check for hex
-                LOG_ERROR("event must be an integer");
+        if (!stringToLongLong(&eventCode, eventStr.c_str(), DECIMAL_BASE)) { //check for decimal
+            if (!stringToLongLong(&eventCode, eventStr.c_str(), HEX_BASE)) { //check for hex
+                result.error_messages.emplace_back("event must be an integer");
                 return {};
             }
         }
         return EventCode {eventCode};
     }
 
-    bool tryInsert(std::map<std::string, EventCode> & events, std::string const & counterName, EventCode eventCode)
+    bool tryInsert(std::map<std::string, EventCode> & events, std::string_view counterName, EventCode eventCode)
     {
         for (auto const & kv_pair : events) {
             auto const & key = kv_pair.first;
-            if (strcasecmp(key.c_str(), counterName.c_str()) == 0) {
+            if (boost::iequals(key, counterName)) {
                 return false;
             }
         }
         auto const ins_result = events.insert(std::make_pair(counterName, eventCode));
         return ins_result.second;
     }
-
 }
 
 using ExecutionMode = ParserResult::ExecutionMode;
@@ -264,17 +266,16 @@ void GatorCLIParser::addCounter(std::string_view counter)
 
     auto const [counterNameView, eventStrView] = split_one(counter, ':');
 
-    EventCode const event = parseEvent(eventStrView);
+    EventCode const event = parseEvent(eventStrView, result);
     if (!eventStrView.empty() && !event.isValid()) {
         result.parsingFailed();
         return;
     }
 
-    std::string counterName {counterNameView};
-    bool const inserted = tryInsert(result.events, counterName, event);
+    bool const inserted = tryInsert(result.events, counterNameView, event);
 
     if (!inserted) {
-        LOG_ERROR("Counter already added. %s ", counterName.data());
+        result.error_messages.emplace_back(lib::Format() << "Counter already added. " << counterNameView);
         result.parsingFailed();
     }
 }
@@ -325,15 +326,23 @@ void GatorCLIParser::parseAndUpdateSpe()
             for (const auto & spe_data_it : spe_data) {
                 std::vector<std::string> spe;
                 split(spe_data_it, SPE_KEY_VALUE_DELIMITER, spe);
+                if (spe[0] == SPE_INV_KEY) {
+                    // If the inverse toggle is included, enable the filter mask.
+                    data.inverse_event_filter_mask = true;
+                    continue;
+                }
                 if (spe.size() == 2) { //should be a key value pair to add
                     if (spe[0] == SPE_MIN_LATENCY_KEY) {
                         if (!stringToInt(&(data.min_latency), spe[1].c_str(), 0)) {
-                            LOG_ERROR("latency not an integer %s (%s)", data.id.c_str(), spe[1].c_str());
+                            result.error_messages.emplace_back(lib::Format() << "latency not an integer " << data.id
+                                                                             << " (" << spe[1] << ")");
                             result.parsingFailed();
                             return;
                         }
                         if (data.min_latency < 0 || data.min_latency >= MIN_LATENCY) {
-                            LOG_ERROR("Invalid minimum latency for %s (%d)", data.id.c_str(), data.min_latency);
+                            result.error_messages.emplace_back(lib::Format()
+                                                               << "Invalid minimum latency for " << data.id.c_str()
+                                                               << " (" << data.min_latency << ")");
                             result.parsingFailed();
                             return;
                         }
@@ -344,12 +353,15 @@ void GatorCLIParser::parseAndUpdateSpe()
                         for (const std::string & spe_event : spe_events) {
                             int event;
                             if (!stringToInt(&event, spe_event.c_str(), DECIMAL_BASE)) {
-                                LOG_ERROR("Event filter cannot be a non integer , failed for %s ", spe_event.c_str());
+                                result.error_messages.emplace_back(
+                                    lib::Format() << "Event filter cannot be a non integer , failed for " << spe_event);
                                 result.parsingFailed();
                                 return;
                             }
                             if ((event < 0 || event > MAX_EVENT_BIT_POSITION)) {
-                                LOG_ERROR("Event filter should be a bit position from 0 - 63 , failed for %d ", event);
+                                result.error_messages.emplace_back(
+                                    lib::Format()
+                                    << "Event filter should be a bit position from 0 - 63 , failed for " << event);
                                 result.parsingFailed();
                                 return;
                             }
@@ -375,7 +387,8 @@ void GatorCLIParser::parseAndUpdateSpe()
                                     data.ops.insert(SpeOps::BRANCH);
                                 }
                                 else {
-                                    LOG_ERROR("Not a valid Ops %s", spe_ops_it.c_str());
+                                    result.error_messages.emplace_back(lib::Format()
+                                                                       << "Not a valid Ops " << spe_ops_it);
                                     result.parsingFailed();
                                     return;
                                 }
@@ -383,22 +396,24 @@ void GatorCLIParser::parseAndUpdateSpe()
                         }
                     }
                     else { // invalid key
-                        LOG_ERROR("--spe arguments not in correct format %s ", spe_data_it.c_str());
+                        result.error_messages.emplace_back(lib::Format()
+                                                           << "--spe arguments not in correct format " << spe_data_it);
                         result.parsingFailed();
                         return;
                     }
                 }
                 else {
-                    LOG_ERROR("--spe arguments not in correct format %s ", spe_data_it.c_str());
+                    result.error_messages.emplace_back(lib::Format()
+                                                       << "--spe arguments not in correct format " << spe_data_it);
                     result.parsingFailed();
                     return;
                 }
             }
             result.mSpeConfigs.push_back(data);
-            LOG_DEBUG("Adding spe -> %s", data.id.c_str());
+            result.error_messages.emplace_back(lib::Format() << "Adding spe -> " << data.id);
         }
         else {
-            LOG_ERROR("No Id provided for --spe");
+            result.error_messages.emplace_back("No Id provided for --spe");
             result.parsingFailed();
             return;
         }
@@ -418,7 +433,7 @@ void GatorCLIParser::handleCounterList(const std::string & value)
 }
 
 void GatorCLIParser::parseCLIArguments(int argc,
-                                       char * argv[],
+                                       char * argv[], // NOLINT(modernize-avoid-c-arrays)
                                        const char * version_string,
                                        const char * gSrcMd5,
                                        const char * gBuildId)
@@ -431,9 +446,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
     bool systemWideSet = false;
     bool userSetIncludeKernelEvents = false;
     optind = 1;
-    opterr = 1;
+    opterr = 0; // Tell getopt_long not to report errors
     int c;
-    while ((c = getopt_long(argc, argv, OPTSTRING_SHORT.data(), OPTSTRING_LONG, nullptr)) != -1) {
+    while ((c = getopt_long(argc, argv, OPTSTRING_SHORT, OPTSTRING_LONG, nullptr)) != -1) {
         const int optionInt = optarg == nullptr ? -1 : parseBoolean(optarg);
         std::pair<SampleRate, SampleRate> sampleRate;
         std::string value;
@@ -443,12 +458,12 @@ void GatorCLIParser::parseCLIArguments(int argc,
         switch (c) {
             case 'N':
                 if (!stringToInt(&result.mOverrideNoPmuSlots, optarg, 10)) {
-                    LOG_ERROR("-N must be followed by an non-zero positive number");
+                    result.error_messages.emplace_back("-N must be followed by an non-zero positive number");
                     result.parsingFailed();
                     return;
                 }
                 if (result.mOverrideNoPmuSlots <= 0) {
-                    LOG_ERROR("-N must be followed by an non-zero positive number");
+                    result.error_messages.emplace_back("-N must be followed by an non-zero positive number");
                     result.parsingFailed();
                     return;
                 }
@@ -457,7 +472,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.mConfigurationXMLPath = optarg;
                 break;
             case 'd':
-                // Already handled
+                // Already handled - see references to GatorCLIParser::hasDebugFlag
                 break;
             case 'e': //event xml path
                 result.mEventsXMLPath = optarg;
@@ -474,21 +489,24 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 }
                 else {
                     if (!stringToInt(&result.port, optarg, DECIMAL_BASE)) {
-                        LOG_ERROR("Port must be an integer");
+                        result.error_messages.emplace_back("Port must be an integer");
                         result.parsingFailed();
                         return;
                     }
                     if ((result.port == GATOR_ANNOTATION_PORT1) || (result.port == GATOR_ANNOTATION_PORT2)) {
-                        LOG_ERROR("Gator can't use port %i, as it already uses ports 8082 and 8083 for "
-                                  "annotations. Please select a different port.",
-                                  result.port);
+                        result.error_messages.emplace_back(
+                            lib::Format()
+                            << "Gator can't use port" << result.port
+                            << "as it already uses ports 8082 and 8083 for annotations. Please select a different "
+                               "port.");
                         result.parsingFailed();
                         return;
                     }
                     if (result.port < 1 || result.port > GATOR_MAX_VALUE_PORT) {
-                        LOG_ERROR(
-                            "Gator can't use port %i, as it is not valid. Please pick a value between 1 and 65535",
-                            result.port);
+
+                        result.error_messages.emplace_back(
+                            lib::Format() << "Gator can't use port" << result.port
+                                          << ", as it is not valid. Please pick a value between 1 and 65535");
                         result.parsingFailed();
                         return;
                     }
@@ -507,7 +525,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'u': //-call-stack-unwinding
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_CALL_STACK_UNWINDING;
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --call-stack-unwinding (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --call-stack-unwinding ("
+                                                                     << optarg << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -522,7 +541,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     result.mSampleRateGpu = sampleRate.second;
                 }
                 else {
-                    LOG_ERROR("Invalid sample rate (%s).", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid sample rate (" << optarg << ").");
                     result.parsingFailed();
                     return;
                 }
@@ -531,7 +550,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_DURATION;
 
                 if (!stringToInt(&result.mDuration, optarg, 10)) {
-                    LOG_ERROR("Invalid max duration (%s).", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid max duration (" << optarg << ").");
                     result.parsingFailed();
                     return;
                 }
@@ -539,7 +558,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'f': //use-efficient-ftrace
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_FTRACE_RAW;
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --use-efficient-ftrace (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --use-efficient-ftrace ("
+                                                                     << optarg << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -548,7 +568,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'S': //--system-wide
             {
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --system-wide (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --system-wide (" << optarg
+                                                                     << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -556,7 +577,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 if (inheritSet) {
                     if ((is_system_wide && !isCaptureOperationModeSystemWide(result.mCaptureOperationMode))
                         || (!is_system_wide && isCaptureOperationModeSystemWide(result.mCaptureOperationMode))) {
-                        LOG_ERROR("Invalid combination for --system-wide and --inherit arguments");
+                        result.error_messages.emplace_back(
+                            "Invalid combination for --system-wide and --inherit arguments");
                         result.parsingFailed();
                         return;
                     }
@@ -579,7 +601,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'x': //stop on exit
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_STOP_GATOR;
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --stop-on-exit (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --stop-on-exit (" << optarg
+                                                                     << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -624,7 +647,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
             {
                 auto const pids = lib::parseCommaSeparatedNumbers<int>(optarg);
                 if (!pids) {
-                    LOG_ERROR("Invalid value for --pid (%s), comma separated and numeric list expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format()
+                                                       << "Invalid value for --pid (" << optarg
+                                                       << "), comma separated and numeric list expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -633,231 +658,20 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 break;
             }
             case 'h':
-            case '?':
-            default:
-                LOG_ERROR(
-                    /* ------------------------------------ last character before new line here ----+ */
-                    /*                                                                              | */
-                    /*                                                                              v */
-                    "\n"
-                    "Streamline has 2 modes of operation. Daemon mode (the default), and local\n"
-                    "capture mode, which will capture to disk and then exit. To enable local capture\n"
-                    "mode specify an output directory with --output.\n"
-                    "\n"
-                    "* Arguments available to all modes:\n"
-                    "  -h|--help                             This help page\n"
-                    "  -c|--config-xml <config_xml>          Specify path and filename of the\n"
-                    "                                        configuration XML. In daemon mode the\n"
-                    "                                        list of counters will be written to\n"
-                    "                                        this file. In local capture mode the\n"
-                    "                                        list of counters will be read from this\n"
-                    "                                        file.\n"
-                    "  -e|--events-xml <events_xml>          Specify path and filename of the events\n"
-                    "                                        XML to use\n"
-                    "  -E|--append-events-xml <events_xml>   Specify path and filename of events XML\n"
-                    "                                        to append\n"
-                    "  -P|--pmus-xml <pmu_xml>               Specify path and filename of pmu XML to\n"
-                    "                                        append\n"
-                    "  -v|--version                          Print version information\n"
-                    "  -d|--debug                            Enable debug messages\n"
-                    "  -A|--app <cmd> <args...>              Specify the command to execute once the\n"
-                    "                                        capture starts. Must be the last\n"
-                    "                                        argument passed to gatord as all\n"
-                    "                                        subsequent arguments are passed to the\n"
-                    "                                        launched application.\n"
-                    "  -D|--disable-kernel-annotations       Disable collection of kernel annotations\n"
-                    "  -k|--exclude-kernel (yes|no)          Specify whether kernel events should be\n"
-                    "                                        filtered out of perf results.\n"
-                    "  -S|--system-wide (yes|no)             Specify whether to capture the whole\n"
-                    "                                        system. In daemon mode, 'no' is only\n"
-                    "                                        applicable when --allow-command is\n"
-                    "                                        specified, but a command must be entered\n"
-                    "                                        in the Capture and Analysis Options of\n"
-                    "                                        Streamline.\n"
-                    "                                        (Defaults to 'yes' unless --app, --pid\n"
-                    "                                        or--wait-process is specified).\n"
-                    "  -u|--call-stack-unwinding (yes|no)    Enable or disable call stack unwinding\n"
-                    "                                        (defaults to 'yes')\n"
-                    "  -r|--sample-rate (none|low|normal|high)\n"
-                    "                                        Specify sample rate for capture. The\n"
-                    "                                        frequencies for each sample rate are: \n"
-                    "                                        high=10kHz, normal=1kHz (2kHz in GPU), \n"
-                    "                                        low=100Hz.\n"
-                    "                                        Setting the sample rate to none will\n"
-                    "                                        sample at the lowest possible rate.\n"
-                    "                                        (defaults to 'normal')\n"
-                    "  -t|--max-duration <s>                 Specify the maximum duration the capture\n"
-                    "                                        may run for in seconds or 0 for\n"
-                    "                                        unlimited (defaults to '0')\n"
-                    "  -f|--use-efficient-ftrace (yes|no)    Enable efficient ftrace data collection\n"
-                    "                                        mode (defaults to 'yes')\n"
-                    "  -w|--app-cwd <path>                   Specify the working directory for the\n"
-                    "                                        application launched by gatord (defaults\n"
-                    "                                        to current directory)\n"
-                    "  -x|--stop-on-exit (yes|no)            Stop capture when launched application\n"
-                    "                                        exits (defaults to 'no' unless --app,\n"
-                    "                                        --pid or --wait-process is specified).\n"
-                    "  -Q|--wait-process <command>           Wait for a process matching the\n"
-                    "                                        specified command to launch before\n"
-                    "                                        starting capture. Attach to the\n"
-                    "                                        specified process and profile it.\n"
-                    "  -Z|--mmap-pages <n>                   The maximum number of pages to map per\n"
-                    "                                        mmap'ed perf buffer is equal to <n+1>.\n"
-                    "                                        Must be a power of 2.\n"
-                    "  -O|--disable-cpu-onlining (yes|no)    Disables turning CPUs temporarily online\n"
-                    "                                        to read their information. This option\n"
-                    "                                        is useful for kernels that fail to\n"
-                    "                                        handle this correctly (e.g., they\n"
-                    "                                        reboot) (defaults to 'no').\n"
-                    "  -F|--spe-sample-rate <n>              Specify the SPE periodic sampling rate.\n"
-                    "                                        The rate, <n> is the number of \n"
-                    "                                        operations between each sample, and must\n"
-                    "                                        be a non-zero positive integer. The rate\n"
-                    "                                        is subject to certain minimum rate\n"
-                    "                                        specified by the hardware its self.\n"
-                    "                                        Values below this threshold are ignored\n"
-                    "                                        and the hardware minimum is used\n"
-                    "                                        instead.\n"
-                    "  -L|--capture-log                      Enable to generate a log file for\n"
-                    "                                        the capture in the capture's directory,\n"
-                    "                                        as well as sending the logs to 'stderr'.\n"
-                    "  --smmuv3-model <model_id>|<iidr>      Specify the SMMUv3 model.\n"
-                    "                                        The user can specify the model ID\n"
-                    "                                        string directly (e.g., mmu-600) or\n"
-                    "                                        the hex value representation for the\n"
-                    "                                        model's IIDR number  either\n"
-                    "                                        fully (e.g., 4832243b) or\n"
-                    "                                        partially (e.g., 483_43b).\n"
-                    "  -Y|--off-cpu-time (yes|no)            Collect Off-CPU time statistics.\n"
-                    "                                        Detailed statistics require 'root' permission.\n"
-                    "  -I|--inherit (yes|no|poll)            When profiling an application, gatord\n"
-                    "                                        monitors all threads and child processes.\n"
-                    "                                        Specify 'no' to monitor only the initial\n"
-                    "                                        thread of the application. Specify 'poll' to\n"
-                    "                                        periodically poll for new processes/threads.\n"
-                    "                                        NB: Per-function metrics are only supported in\n"
-                    "                                        system-wide mode, or when '--inherit' is set to\n"
-                    "                                        'no' or 'poll'. The default is 'yes'.\n"
-                    "  -N|--num-pmu-counters <n>             Override the number of programmable PMU\n"
-                    "                                        counters that are available.\n"
-                    "                                        This option reduces the number of programmable\n"
-                    "                                        PMU counters available for profiling.\n"
-                    "                                        Use this option when the default is\n"
-                    "                                        incorrect, or because some programmable\n"
-                    "                                        counters are unavailable because they are\n"
-                    "                                        consumed by the OS, or other processes, or by\n"
-                    "                                        a hypervisor.\n"
-                    "                                        NB: The Arm PMU typically exposes 6\n"
-                    "                                        programmable counters, and one fixed function\n"
-                    "                                        cycle counter. This argument assumes the fixed\n"
-                    "                                        cycle counter is not part of the reduced set\n"
-                    "                                        of counters. If your target exposes 2\n"
-                    "                                        programmable counters and the fixed cycle\n"
-                    "                                        counter, then pass '2' for the value\n"
-                    "                                        of '<n>'. However, if your target exposes 2\n"
-                    "                                        programmable counters and no fixed cycle\n"
-                    "                                        counter, then pass '1' for the value\n"
-                    "                                        of '<n>'.\n"
-                    "\n"
-                    "* Arguments available only on Android targets:\n"
-                    "\n"
-                    "  -l|--android-pkg <pkg>                Profiles the specified android package.\n"
-                    "                                        Waits for the package app to launch\n"
-                    "                                        before starting a capture unless\n"
-                    "                                        --android-activity is specified.\n"
-                    "  -m|--android-activity <activity>      Launch the specified activity of a\n"
-                    "                                        package and profile its process. You\n"
-                    "                                        must also specify --android-pkg.\n"
-                    "  -n|--activity-args <arguments>        Launch the package and activity \n"
-                    "                                        with the supplied activity manager (am)\n"
-                    "                                        arguments. \n."
-                    "                                        Must be used with --android-pkg and\n"
-                    "                                        --android-activity\n."
-                    "                                        Arguments should be supplied as a single string.\n"
-                    "\n"
-                    "* Arguments available in daemon mode only:\n"
-                    "\n"
-                    "  -p|--port <port_number>|uds           Port upon which the server listens;\n"
-                    "                                        default is 8080.\n"
-                    "                                        If the argument given here is 'uds' then\n"
-                    "                                        the TCP socket will be disabled and an \n"
-                    "                                        abstract unix domain socket will be\n"
-                    "                                        created named 'streamline-data'. This is\n"
-                    "                                        useful for Android users where gatord is\n"
-                    "                                        prevented from creating an TCP server\n"
-                    "                                        socket. Instead the user can use:\n"
-                    "\n"
-                    "                     adb forward tcp:<local_port> localabstract:streamline-data\n"
-                    "\n"
-                    "                                        and connect to localhost:<local_port>\n"
-                    "                                        in Streamline.\n"
-                    "  -a|--allow-command                    Allow the user to issue a command from\n"
-                    "                                        Streamline\n"
-                    "\n"
-                    "* Arguments available to local capture mode only:\n"
-                    "\n"
-                    "  -s|--session-xml <session_xml>        Take configuration from specified\n"
-                    "                                        session.xml file. Any additional\n"
-                    "                                        arguments will override values\n"
-                    "                                        specified in this file.\n"
-                    "  -o|--output <apc_dir>                 The path and name of the output for\n"
-                    "                                        a local capture.\n"
-                    "                                        If used with android options (-m, -l),\n"
-                    "                                        apc will be created inside the android\n"
-                    "                                        package. Eg if -o /data/local/tmp/test.apc,\n"
-                    "                                        apc will be at /data/data/<pkg>/test.apc\n"
-                    "                                        and copied to -o path \n"
-                    "                                        after capture finished.\n"
-                    "  -i|--pid <pids...>                    Comma separated list of process IDs to\n"
-                    "                                        profile\n"
-                    "  -C|--counters <counters>              A comma separated list of counters or\n"
-                    "                                        metrics to enable. This option may be\n"
-                    "                                        specified multiple times.  The name\n"
-                    "                                        'workflow_topdown_basic' is used to\n"
-                    "                                        enable metrics related to topdown\n"
-                    "                                        analysis.  The name 'workflow_all'\n"
-                    "                                        is used to enable all available\n"
-                    "                                        metrics.\n"
-                    "  -X|--spe <id>[:events=<indexes>][:ops=<types>][:min_latency=<lat>]\n"
-                    "                                        Enable Statistical Profiling Extension\n"
-                    "                                        (SPE). Where:\n"
-                    "                                        * <id> is the name of the SPE properties\n"
-                    "                                          specified in the events.xml or \n"
-                    "                                          pmus.xml file. It uniquely identifies\n"
-                    "                                          the available events and counters for\n"
-                    "                                          the SPE hardware.  An <id> of\n"
-                    "                                          'workflow_spe' is treated specially to\n"
-                    "                                          enable SPE on any capable processor.\n"
-                    "                                        * <indexes> are a comma separated list\n"
-                    "                                          of event indexes to filter the\n"
-                    "                                          sampling by, a sample will only be\n"
-                    "                                          recorded if all events are present.\n"
-                    "                                        * <types> are a comma separated list\n"
-                    "                                          of operation types to filter the\n"
-                    "                                          sampling by, a sample will be recorded\n"
-                    "                                          if it is any of the types in <types>.\n"
-                    "                                          Valid types are LD for load, ST for\n"
-                    "                                          store and B for branch.\n"
-                    "                                        * <lat> is the minimum latency, a sample\n"
-                    "                                          will only be recorded if its latency \n"
-                    "                                          is greater than or equal to this \n"
-                    "                                          value. The valid range is [0,4096).\n"
-                    /*                                                                              ^ */
-                    /*                                                                              | */
-                    /* ------------------------------------ last character before new line here ----+ */
-                );
-                result.parsingFailed();
+                result.mode = ExecutionMode::USAGE;
                 return;
             case 'v': // version is already printed/logged at the start of this function
                 result.parsingFailed();
                 return;
             case 'V':
-                LOG_ERROR("%s\nSRC_MD5: %s\nBUILD_ID: %s", version_string, gSrcMd5, gBuildId);
+                result.error_messages.emplace_back(lib::Format() << version_string << "\nSRC_MD5: " << gSrcMd5
+                                                                 << "\nBUILD_ID: " << gBuildId);
                 result.parsingFailed();
                 return;
             case 'O':
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --disable-cpu-onlining (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --disable-cpu-onlining ("
+                                                                     << optarg << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -869,19 +683,22 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'Z':
                 result.mPerfMmapSizeInPages = -1;
                 if (!stringToInt(&result.mPerfMmapSizeInPages, optarg, 0)) {
-                    LOG_ERROR("Invalid value for --mmap-pages (%s): not an integer", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --mmap-pages (" << optarg
+                                                                     << "): not an integer");
                     result.parsingFailed();
                     result.mPerfMmapSizeInPages = -1;
                 }
                 else if (result.mPerfMmapSizeInPages < 1) {
-                    LOG_ERROR("Invalid value for --mmap-pages (%s): not more than 0", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --mmap-pages (" << optarg
+                                                                     << "): not more than 0");
                     result.parsingFailed();
                     result.mPerfMmapSizeInPages = -1;
                 }
                 //FIXME
                 //NOLINTNEXTLINE(hicpp-signed-bitwise)
                 else if (((result.mPerfMmapSizeInPages - 1) & result.mPerfMmapSizeInPages) != 0) {
-                    LOG_ERROR("Invalid value for --mmap-pages (%s): not a power of 2", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --mmap-pages (" << optarg
+                                                                     << "): not a power of 2");
                     result.parsingFailed();
                     result.mPerfMmapSizeInPages = -1;
                 }
@@ -907,7 +724,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                         result.printables.insert(ParserResult::Printable::COUNTERS_DETAILED);
                     }
                     else {
-                        LOG_ERROR("Invalid value for --print (%s)", optarg);
+                        result.error_messages.emplace_back(lib::Format()
+                                                           << "Invalid value for --print (" << optarg << ")");
                         result.parsingFailed();
                         return;
                     }
@@ -917,19 +735,22 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'F': {
                 result.mSpeSampleRate = -1;
                 if (!stringToInt(&result.mSpeSampleRate, optarg, 0)) {
-                    LOG_ERROR("Invalid value for --spe-sample-rate (%s): not an integer", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --spe-sample-rate ("
+                                                                     << optarg << "): not an integer");
                     result.parsingFailed();
                     result.mSpeSampleRate = -1;
                 }
-                else if ((result.mSpeSampleRate < 1) || (result.mSpeSampleRate > 1000000000)) {
-                    LOG_WARNING("Invalid value for --spe-sample-rate (%s): default value will be used", optarg);
+                else if ((result.mSpeSampleRate < 1) || (result.mSpeSampleRate > SPE_MAX_SAMPLE_RATE)) {
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --spe-sample-rate ("
+                                                                     << optarg << "): default value will be used");
                     result.mSpeSampleRate = -1;
                 }
                 break;
             }
             case 'k': {
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --exclude-kernel (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --exclude-kernel (" << optarg
+                                                                     << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -943,7 +764,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
             }
             case 'Y': {
                 if (optionInt < 0) {
-                    LOG_ERROR("Invalid value for --off-cpu-time (%s), 'yes' or 'no' expected.", optarg);
+                    result.error_messages.emplace_back(lib::Format() << "Invalid value for --off-cpu-time (" << optarg
+                                                                     << "), 'yes' or 'no' expected.");
                     result.parsingFailed();
                     return;
                 }
@@ -967,14 +789,15 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     newMode = CaptureOperationMode::application_experimental_patch;
                 }
                 else {
-                    LOG_ERROR("Invalid value for --inherit (%s), 'yes', 'no', 'poll', or 'experimental' expected.",
-                              optarg);
+                    result.error_messages.emplace_back(lib::Format()
+                                                       << "Invalid value for --inherit (" << optarg
+                                                       << "), 'yes', 'no', 'poll', or 'experimental' expected.");
                     result.parsingFailed();
                     return;
                 }
 
                 if (systemWideSet && isCaptureOperationModeSystemWide(result.mCaptureOperationMode)) {
-                    LOG_ERROR("Invalid combination for --system-wide and --inherit arguments");
+                    result.error_messages.emplace_back("Invalid combination for --system-wide and --inherit arguments");
                     result.parsingFailed();
                     return;
                 }
@@ -1005,6 +828,20 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 'L': {
                 result.mLogToFile = true;
                 break;
+            }
+            case ':': // Missing argument
+            case '?': // Unrecognised
+            default: {
+                const char * opt_string = argv[optind - 1];
+                while (*opt_string == '-') {
+                    opt_string++;
+                }
+
+                result.error_messages.emplace_back(
+                    lib::Format() << (c == ':' ? "Missing argument for options: " : "Unrecognised option: ")
+                                  << opt_string << "\nSee --help for more information.");
+                result.parsingFailed();
+                return;
             }
         }
     }
@@ -1044,61 +881,64 @@ void GatorCLIParser::parseCLIArguments(int argc,
 
     if (result.mode == ExecutionMode::LOCAL_CAPTURE) {
         if (result.mAllowCommands) {
-            LOG_ERROR("--allow-command is not applicable in local capture mode.");
+            result.error_messages.emplace_back("--allow-command is not applicable in local capture mode.");
             result.parsingFailed();
             return;
         }
         if (result.port != DEFAULT_PORT) {
-            LOG_ERROR("--port is not applicable in local capture mode");
+            result.error_messages.emplace_back("--port is not applicable in local capture mode");
             result.parsingFailed();
             return;
         }
 
         if (!is_system_wide && result.mSessionXMLPath == nullptr && !haveProcess) {
-            LOG_ERROR("In local capture mode, without --system-wide=yes, a process to profile must be specified "
-                      "with --session-xml, --app, --wait-process, --pid, or --android-pkg.");
+            result.error_messages.emplace_back(
+                "In local capture mode, without --system-wide=yes, a process to profile must be specified "
+                "with --session-xml, --app, --wait-process, --pid, or --android-pkg.");
             result.parsingFailed();
             return;
         }
 
         if ((result.events.empty() && result.enabled_metric_groups.empty())
             && (result.mConfigurationXMLPath == nullptr)) {
-            LOG_WARNING("No counters (--counters) specified, default counters will be used");
+            result.error_messages.emplace_back("No counters (--counters) specified, default counters will be used");
         }
     }
     else if (result.mode == ExecutionMode::DAEMON) {
         if (!is_system_wide && !result.mAllowCommands && !haveProcess) {
-            LOG_ERROR("In daemon mode, without --system-wide=yes, a process to profile must be specified with "
-                      "--allow-command, --app, --wait-process, --pid, or --android-pkg.");
+            result.error_messages.emplace_back(
+                "In daemon mode, without --system-wide=yes, a process to profile must be specified with "
+                "--allow-command, --app, --wait-process, --pid, or --android-pkg.");
             result.parsingFailed();
             return;
         }
         if (result.mSessionXMLPath != nullptr) {
-            LOG_ERROR("--session-xml is not applicable in daemon mode.");
+            result.error_messages.emplace_back("--session-xml is not applicable in daemon mode.");
             result.parsingFailed();
             return;
         }
         if (!result.events.empty() || !result.enabled_metric_groups.empty()) {
-            LOG_ERROR("--counters is not applicable in daemon mode.");
+            result.error_messages.emplace_back("--counters is not applicable in daemon mode.");
             result.parsingFailed();
             return;
         }
         if (!result.mSpeConfigs.empty()) {
-            LOG_ERROR("--spe is not applicable in daemon mode.");
+            result.error_messages.emplace_back("--spe is not applicable in daemon mode.");
             result.parsingFailed();
             return;
         }
     }
 
     if ((result.mAndroidActivity != nullptr) && (result.mAndroidPackage == nullptr)) {
-        LOG_ERROR("--android-pkg must be specified when supplying --android-activity.");
+        result.error_messages.emplace_back("--android-pkg must be specified when supplying --android-activity.");
         result.parsingFailed();
         return;
     }
 
     if (result.mAndroidActivityFlags != nullptr
         && (result.mAndroidActivity == nullptr || result.mAndroidPackage == nullptr)) {
-        LOG_ERROR("--activity-args must be used together with --android-package and --android-activity");
+        result.error_messages.emplace_back(
+            "--activity-args must be used together with --android-package and --android-activity");
         result.parsingFailed();
         return;
     }
@@ -1106,7 +946,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
     const bool hasAnotherProcessArg = !result.mCaptureCommand.empty() || !result.mPids.empty()
                                    || result.mWaitForCommand != nullptr || result.mAllowCommands;
     if ((result.mAndroidPackage != nullptr) && hasAnotherProcessArg) {
-        LOG_ERROR("--android-pkg is not compatible with --allow-command, --app, --wait-process, or --pid.");
+        result.error_messages.emplace_back(
+            "--android-pkg is not compatible with --allow-command, --app, --wait-process, or --pid.");
         result.parsingFailed();
         return;
     }
@@ -1114,12 +955,12 @@ void GatorCLIParser::parseCLIArguments(int argc,
 #if !defined(__ANDROID__)
     if (result.mAndroidPackage != nullptr) {
         //__ANDROID__ will not be defined in case of static linking with musl, logging this only as a warning.
-        LOG_WARNING("--android-pkg will only work on Android OS.");
+        result.error_messages.emplace_back("--android-pkg will only work on Android OS.");
     }
 #endif
 
     if (result.mAndroidPackage != nullptr && !lib::isRootOrShell()) {
-        LOG_ERROR("--android-pkg requires to be run from a shell or root user.");
+        result.error_messages.emplace_back("--android-pkg requires to be run from a shell or root user.");
         result.parsingFailed();
         return;
     }
@@ -1128,37 +969,40 @@ void GatorCLIParser::parseCLIArguments(int argc,
         const bool packageFound = android_utils::packageExists(result.mAndroidPackage);
         if (!packageFound) {
             const std::string error_msg = "Android package, " + std::string(result.mAndroidPackage) + ", not found.";
-            LOG_ERROR(error_msg);
+            result.error_messages.emplace_back(error_msg);
             result.parsingFailed();
             return;
         }
     }
 
     if (result.mDuration < 0) {
-        LOG_ERROR("Capture duration cannot be a negative value : %d ", result.mDuration);
+        result.error_messages.emplace_back(lib::Format()
+                                           << "Capture duration cannot be a negative value : " << result.mDuration);
         result.parsingFailed();
         return;
     }
 
     if (indexApp > 0 && result.mCaptureCommand.empty()) {
-        LOG_ERROR("--app requires a command to be specified");
+        result.error_messages.emplace_back("--app requires a command to be specified");
         result.parsingFailed();
         return;
     }
 
     if ((indexApp > 0) && (result.mWaitForCommand != nullptr)) {
-        LOG_ERROR("--app and --wait-process are mutually exclusive");
+        result.error_messages.emplace_back("--app and --wait-process are mutually exclusive");
         result.parsingFailed();
         return;
     }
     if (indexApp > 0 && result.mAllowCommands) {
-        LOG_ERROR("Cannot allow command (--allow-command) from Streamline, if --app is specified.");
+        result.error_messages.emplace_back(
+            "Cannot allow command (--allow-command) from Streamline, if --app is specified.");
         result.parsingFailed();
         return;
     }
     // Error checking
     if (optind < argc) {
-        LOG_ERROR("Unknown argument: %s. Use --help to list valid arguments.", argv[optind]);
+        result.error_messages.emplace_back(lib::Format() << "Unknown argument:" << argv[optind]
+                                                         << ". Use --help to list valid arguments.");
         result.parsingFailed();
         return;
     }
@@ -1181,3 +1025,218 @@ bool GatorCLIParser::hasCaptureLogFlag(int argc, const char * const argv[])
 
     return checkBeforeApp(args, argc, argv);
 }
+
+/* ------------------------------------ last character before new line here ----+ */
+/*                                                                              | */
+/*                                                                              v */
+const char * GatorCLIParser::USAGE_MESSAGE = R"(
+Streamline has 2 modes of operation. Daemon mode (the default), and local
+capture mode, which will capture to disk and then exit. To enable local capture
+mode specify an output directory with --output.
+
+* Arguments available to all modes:
+  -h|--help                             This help page
+  -c|--config-xml <config_xml>          Specify path and filename of the
+                                        configuration XML. In daemon mode the
+                                        list of counters will be written to
+                                        this file. In local capture mode the
+                                        list of counters will be read from this
+                                        file.
+  -e|--events-xml <events_xml>          Specify path and filename of the events
+                                        XML to use
+  -E|--append-events-xml <events_xml>   Specify path and filename of events XML
+                                        to append
+  -P|--pmus-xml <pmu_xml>               Specify path and filename of pmu XML to
+                                        append
+  -v|--version                          Print version information
+  -d|--debug                            Enable debug messages
+  -A|--app <cmd> <args...>              Specify the command to execute once the
+                                        capture starts. Must be the last
+                                        argument passed to gatord as all
+                                        subsequent arguments are passed to the
+                                        launched application.
+  -D|--disable-kernel-annotations       Disable collection of kernel annotations
+  -k|--exclude-kernel (yes|no)          Specify whether kernel events should be
+                                        filtered out of perf results.
+  -S|--system-wide (yes|no)             Specify whether to capture the whole
+                                        system. In daemon mode, 'no' is only
+                                        applicable when --allow-command is
+                                        specified, but a command must be entered
+                                        in the Capture and Analysis Options of
+                                        Streamline.
+                                        (Defaults to 'yes' unless --app, --pid
+                                        or--wait-process is specified).
+  -u|--call-stack-unwinding (yes|no)    Enable or disable call stack unwinding
+                                        (defaults to 'yes')
+  -r|--sample-rate (none|low|normal|high)
+                                        Specify sample rate for capture. The
+                                        frequencies for each sample rate are:
+                                        high=10kHz, normal=1kHz (2kHz in GPU),
+                                        low=100Hz.
+                                        Setting the sample rate to none will
+                                        sample at the lowest possible rate.
+                                        (defaults to 'normal')
+  -t|--max-duration <s>                 Specify the maximum duration the capture
+                                        may run for in seconds or 0 for
+                                        unlimited (defaults to '0')
+  -f|--use-efficient-ftrace (yes|no)    Enable efficient ftrace data collection
+                                        mode (defaults to 'yes')
+  -w|--app-cwd <path>                   Specify the working directory for the
+                                        application launched by gatord (defaults
+                                        to current directory)
+  -x|--stop-on-exit (yes|no)            Stop capture when launched application
+                                        exits (defaults to 'no' unless --app,
+                                        --pid or --wait-process is specified).
+  -Q|--wait-process <command>           Wait for a process matching the
+                                        specified command to launch before
+                                        starting capture. Attach to the
+                                        specified process and profile it.
+  -Z|--mmap-pages <n>                   The maximum number of pages to map per
+                                        mmap'ed perf buffer is equal to <n+1>.
+                                        Must be a power of 2.
+  -O|--disable-cpu-onlining (yes|no)    Disables turning CPUs temporarily online
+                                        to read their information. This option
+                                        is useful for kernels that fail to
+                                        handle this correctly (e.g., they
+                                        reboot) (defaults to 'no').
+  -F|--spe-sample-rate <n>              Specify the SPE periodic sampling rate.
+                                        The rate, <n> is the number of
+                                        operations between each sample, and must
+                                        be a non-zero positive integer. The rate
+                                        is subject to certain minimum rate
+                                        specified by the hardware its self.
+                                        Values below this threshold are ignored
+                                        and the hardware minimum is used
+                                        instead.
+  -L|--capture-log                      Enable to generate a log file for
+                                        the capture in the capture's directory,
+                                        as well as sending the logs to 'stderr'.
+  --smmuv3-model <model_id>|<iidr>      Specify the SMMUv3 model.
+                                        The user can specify the model ID
+                                        string directly (e.g., mmu-600) or
+                                        the hex value representation for the
+                                        model's IIDR number  either
+                                        fully (e.g., 4832243b) or
+                                        partially (e.g., 483_43b).
+  -Y|--off-cpu-time (yes|no)            Collect Off-CPU time statistics.
+                                        Detailed statistics require 'root' permission.
+  -I|--inherit (yes|no|poll)            When profiling an application, gatord
+                                        monitors all threads and child processes.
+                                        Specify 'no' to monitor only the initial
+                                        thread of the application. Specify 'poll' to
+                                        periodically poll for new processes/threads.
+                                        NB: Per-function metrics are only supported in
+                                        system-wide mode, or when '--inherit' is set to
+                                        'no' or 'poll'. The default is 'yes'.
+  -N|--num-pmu-counters <n>             Override the number of programmable PMU
+                                        counters that are available.
+                                        This option reduces the number of programmable
+                                        PMU counters available for profiling.
+                                        Use this option when the default is
+                                        incorrect, or because some programmable
+                                        counters are unavailable because they are
+                                        consumed by the OS, or other processes, or by
+                                        a hypervisor.
+                                        NB: The Arm PMU typically exposes 6
+                                        programmable counters, and one fixed function
+                                        cycle counter. This argument assumes the fixed
+                                        cycle counter is not part of the reduced set
+                                        of counters. If your target exposes 2
+                                        programmable counters and the fixed cycle
+                                        counter, then pass '2' for the value
+                                        of '<n>'. However, if your target exposes 2
+                                        programmable counters and no fixed cycle
+                                        counter, then pass '1' for the value
+                                        of '<n>'.
+
+* Arguments available only on Android targets:
+
+  -l|--android-pkg <pkg>                Profiles the specified android package.
+                                        Waits for the package app to launch
+                                        before starting a capture unless
+                                        --android-activity is specified.
+  -m|--android-activity <activity>      Launch the specified activity of a
+                                        package and profile its process. You
+                                        must also specify --android-pkg.
+  -n|--activity-args <arguments>        Launch the package and activity
+                                        with the supplied activity manager (am)
+                                        arguments.
+                                        Must be used with --android-pkg and
+                                        --android-activity
+                                        Arguments should be supplied as a single string.
+
+* Arguments available in daemon mode only:
+
+  -p|--port <port_number>|uds           Port upon which the server listens;
+                                        default is 8080.
+                                        If the argument given here is 'uds' then
+                                        the TCP socket will be disabled and an
+                                        abstract unix domain socket will be
+                                        created named 'streamline-data'. This is
+                                        useful for Android users where gatord is
+                                        prevented from creating an TCP server
+                                        socket. Instead the user can use:
+
+                     adb forward tcp:<local_port> localabstract:streamline-data
+
+                                        and connect to localhost:<local_port>
+                                        in Streamline.
+  -a|--allow-command                    Allow the user to issue a command from
+                                        Streamline
+
+* Arguments available to local capture mode only:
+
+  -s|--session-xml <session_xml>        Take configuration from specified
+                                        session.xml file. Any additional
+                                        arguments will override values
+                                        specified in this file.
+  -o|--output <apc_dir>                 The path and name of the output for
+                                        a local capture.
+                                        If used with android options (-m, -l),
+                                        apc will be created inside the android
+                                        package. Eg if -o /data/local/tmp/test.apc,
+                                        apc will be at /data/data/<pkg>/test.apc
+                                        and copied to -o path
+                                        after capture finished.
+  -i|--pid <pids...>                    Comma separated list of process IDs to
+                                        profile
+  -C|--counters <counters>              A comma separated list of counters or
+                                        metrics to enable. This option may be
+                                        specified multiple times.  The name
+                                        'workflow_topdown_basic' is used to
+                                        enable metrics related to topdown
+                                        analysis.  The name 'workflow_all'
+                                        is used to enable all available
+                                        metrics.
+  -X|--spe <id>[:events=<indexes>][:ops=<types>][:min_latency=<lat>][:inv]
+                                        Enable Statistical Profiling Extension
+                                        (SPE). Where:
+                                        * <id> is the name of the SPE properties
+                                          specified in the events.xml or
+                                          pmus.xml file. It uniquely identifies
+                                          the available events and counters for
+                                          the SPE hardware.  An <id> of
+                                          'workflow_spe' is treated specially to
+                                          enable SPE on any capable processor.
+                                        * <indexes> are a comma separated list
+                                          of event indexes to filter the
+                                          sampling by, a sample will only be
+                                          recorded if all events are present.
+                                        * <types> are a comma separated list
+                                          of operation types to filter the
+                                          sampling by, a sample will be recorded
+                                          if it is any of the types in <types>.
+                                          Valid types are LD for load, ST for
+                                          store and B for branch.
+                                        * <lat> is the minimum latency, a sample
+                                          will only be recorded if its latency
+                                          is greater than or equal to this
+                                          value. The valid range is [0,4096).
+                                        * :inv include this flag if you would like to
+                                          invert the SPE event filter. This value is
+                                          ignored if the device does not support SPE 1.2
+                                          By default this is disabled.
+)";
+/*                                                                              ^ */
+/*                                                                              | */
+/* ------------------------------------ last character before new line here ----+ */

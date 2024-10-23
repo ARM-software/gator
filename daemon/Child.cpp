@@ -2,6 +2,7 @@
 
 #include "Child.h"
 
+#include "CapturedSpe.h"
 #include "CapturedXML.h"
 #include "Config.h"
 #include "Configuration.h"
@@ -254,12 +255,22 @@ void Child::run()
         }
     }
 
+    // Check if any of the PMUs have correct SPE version
+    auto supportsSpev1p2 = false;
+    for (const auto & cluster : primarySourceProvider.getCpuInfo().getClusters()) {
+        const auto * speVersion = cluster.getSpeVersion();
+        if (speVersion != nullptr && strcmp(speVersion, "v1p0") != 0 && strcmp(speVersion, "v1p1") != 0) {
+            // Assume the speVersion is a supported version.
+            supportsSpev1p2 = true;
+        }
+    }
+
     std::vector<CapturedSpe> capturedSpes;
     for (const auto & speConfig : speConfigs) {
         bool claimed = false;
 
         for (Driver * driver : drivers.getAll()) {
-            auto && capturedSpe = driver->setupSpe(gSessionData.mSpeSampleRate, speConfig);
+            auto && capturedSpe = driver->setupSpe(gSessionData.mSpeSampleRate, speConfig, supportsSpev1p2);
             if (capturedSpe) {
                 capturedSpes.push_back(std::move(*capturedSpe));
                 claimed = true;
@@ -395,7 +406,8 @@ void Child::run()
         !gSessionData.mCaptureCommand.empty(),
         *agent_workers_process);
     if (newPrimarySource == nullptr) {
-        LOG_ERROR("%s", primarySourceProvider.getPrepareFailedMessage());
+        LOG_ERROR(
+            "Unable to communicate with the perf API. Please refer to streamline/gator/README.md for more information.");
         handleException();
     }
 

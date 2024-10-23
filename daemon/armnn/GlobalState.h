@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2019-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "Events.h"
@@ -62,7 +62,7 @@ namespace armnn {
 
             bool operator<(const CategoryId & that) const;
 
-            std::string toXmlName() const;
+            [[nodiscard]] std::string toXmlName() const;
         };
 
         struct CategoryEvents {

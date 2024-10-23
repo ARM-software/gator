@@ -1,11 +1,10 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
 #include "Config.h"
 #include "logging/parameters.h"
 
-#include <cstddef>
 #include <string_view>
 
 #define LOG_ITEM(level, format, ...)                                                                                   \

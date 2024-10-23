@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2015-2024 by Arm Limited. All rights reserved. */
 
 #ifndef TTRACEDRIVER_H
 #define TTRACEDRIVER_H
@@ -23,7 +23,7 @@ public:
     void start();
     void stop();
 
-    bool isSupported() const { return mSupported; }
+    [[nodiscard]] bool isSupported() const { return mSupported; }
 
 private:
     static void setTtrace(int flags);

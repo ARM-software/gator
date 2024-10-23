@@ -21,7 +21,7 @@ public:
 
     void write(ISender & sender);
 
-    int bytesAvailable() const;
+    [[nodiscard]] int bytesAvailable() const;
     void flush();
 
     // Perf Attrs messages

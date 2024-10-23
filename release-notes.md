@@ -1,3 +1,17 @@
+# Gator 9.3.0
+
+Adds support for SPE 1.2, including 'Not taken' event filter and the ability to invert the event filter
+
+Adds support for AE variants of A520, A720, V3, R82
+
+Adds new virtual counter for ATrace events
+
+Fixes SPE data collection for devices with multiple SPE clusters
+
+# Gator 9.2.2
+
+Adds support for Kirin 980
+
 # Gator 9.2.1
 
 Updated metrics/SPE support for recently released CPUs

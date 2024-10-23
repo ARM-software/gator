@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
 #include "PolledDriver.h"
@@ -11,7 +11,7 @@ namespace agents::perfetto {
         explicit perfetto_driver_t(const char * maliFamilyName);
         void writeEvents(mxml_node_t * root) const override;
         void readEvents(mxml_node_t * root) override;
-        std::vector<std::string> get_other_warnings() const override;
+        [[nodiscard]] std::vector<std::string> get_other_warnings() const override;
         void setupCounter(Counter & counter) override;
         bool perfettoEnabled() const;
 

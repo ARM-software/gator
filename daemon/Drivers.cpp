@@ -20,6 +20,7 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(Captur
                                                                           bool disableCpuOnlining,
                                                                           bool disableKernelAnnotations)
 {
+
     std::unique_ptr<PrimarySourceProvider> primarySourceProvider =
         PrimarySourceProvider::detect(captureOperationMode,
                                       traceFsConstants,

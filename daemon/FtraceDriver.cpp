@@ -19,14 +19,12 @@
 #include <atomic>
 #include <cerrno>
 #include <chrono>
-#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <memory>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -357,7 +355,7 @@ namespace {
 
         {
             // Read any slop
-            std::array<char, 65536> buf {};
+            std::array<char, 65536> buf {}; // NOLINT(readability-magic-numbers)
             ssize_t bytes;
             size_t size;
 
@@ -395,7 +393,6 @@ FtraceDriver::FtraceDriver(const TraceFsConstants & traceFsConstants,
                            size_t numberOfCores)
     : SimpleDriver("Ftrace"),
       traceFsConstants(traceFsConstants),
-      mBarrier(),
       mTracingOn(0),
       mSupported(false),
       mMonotonicRawSupport(false),

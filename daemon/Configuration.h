@@ -60,8 +60,7 @@ enum class CaptureOperationMode {
     return isCaptureOperationModeSupportingCounterGroups(mode, supports_inherit_sample_read);
 }
 
-[[nodiscard]] constexpr bool isCaptureOperationModeSupportingUsesInherit(CaptureOperationMode mode,
-                                                                         bool /*supports_inherit_sample_read*/)
+[[nodiscard]] constexpr bool isCaptureOperationModeSupportingUsesInherit(CaptureOperationMode mode)
 {
     switch (mode) {
         case CaptureOperationMode::application_default:
@@ -83,11 +82,11 @@ enum class SpeOps {
 };
 
 struct SpeConfiguration {
-    std::string id {};
+    std::string id;
     uint64_t event_filter_mask {}; // if 0 filtering is disabled, else equals PMSEVFR_EL1 (ref doc).
-    std::set<SpeOps> ops {};
+    std::set<SpeOps> ops;
     int min_latency = 0;
-
+    bool inverse_event_filter_mask {false}; // When this is set event_filter_mask will be set for PMSNEVFR_EL1
     static constexpr std::string_view workflow_spe {"workflow_spe"};
 
     [[nodiscard]] bool applies_to_counter(std::string_view const counter_name,
@@ -122,8 +121,8 @@ namespace std {
 }
 
 struct CounterConfiguration {
-    std::string counterName {};
-    EventCode event {};
+    std::string counterName;
+    EventCode event;
     int count = 0;
     int cores = 0;
 };
@@ -151,7 +150,7 @@ namespace std {
 }
 
 struct TemplateConfiguration {
-    std::string raw {};
+    std::string raw;
 };
 
 #endif /* CONFIGURATION_H_ */

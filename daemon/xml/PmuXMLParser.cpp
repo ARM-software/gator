@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXMLParser.h"
 
@@ -39,6 +39,7 @@ namespace {
     constexpr auto ATTR_CORE_NAME = "core_name"sv;
     constexpr auto ATTR_DT_NAME = "dt_name"sv;
     constexpr auto ATTR_SPE_NAME = "spe"sv;
+    constexpr auto ATTR_SPE_VERSION = "spe_version"sv;
     constexpr auto ATTR_PMNC_COUNTERS = "pmnc_counters"sv;
     constexpr auto ATTR_PROFILE = "profile"sv;
     constexpr auto ATTR_HAS_CYCLES_COUNTER = "has_cycles_counter"sv;
@@ -246,6 +247,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         const char * const coreName = mxmlElementGetAttr(node, ATTR_CORE_NAME.data());
         const char * const dtName = mxmlElementGetAttr(node, ATTR_DT_NAME.data());
         const char * speName = mxmlElementGetAttr(node, ATTR_SPE_NAME.data());
+        const char * speVersion = mxmlElementGetAttr(node, ATTR_SPE_VERSION.data());
         const char * const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS.data());
         const char * const profileStr = mxmlElementGetAttr(node, ATTR_PROFILE.data());
 
@@ -321,10 +323,12 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
 
             if (!speDeviceFound) {
                 speName = nullptr;
+                speVersion = nullptr;
             }
         }
 
-        pmuXml.cpus.emplace_back(coreName, id, counterSet, dtName, speName, std::move(cpuIds), pmncCounters, isV8);
+        pmuXml.cpus
+            .emplace_back(coreName, id, counterSet, dtName, speName, speVersion, std::move(cpuIds), pmncCounters, isV8);
     }
 
     for (mxml_node_t * node = mxmlFindElement(root, root, TAG_UNCORE_PMU.data(), nullptr, nullptr, MXML_DESCEND);

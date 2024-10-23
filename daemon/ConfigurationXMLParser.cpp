@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXMLParser.h"
 
@@ -18,50 +18,56 @@
 
 #include <mxml.h>
 
-//NOLINTBEGIN(modernize-avoid-c-arrays)
-static const char TAG_CONFIGURATIONS[] = "configurations";
-static const char TAG_CONFIGURATION[] = "configuration";
-static const char TAG_TEMPLATE[] = "template";
-static const char TAG_SPE[] = "spe";
-
-static const char ATTR_COUNTER[] = "counter";
-static const char ATTR_REVISION[] = "revision";
-static const char ATTR_EVENT[] = "event";
-static const char ATTR_COUNT[] = "count";
-static const char ATTR_CORES[] = "cores";
-
-static const char * ATTR_ID = "id";
-static const char * ATTR_EVENT_FILTER = "event-filter";
-static const char * ATTR_LOAD_FILTER = "load-filter";
-static const char * ATTR_STORE_FILTER = "store-filter";
-static const char * ATTR_BRANCH_FILTER = "branch-filter";
-static const char * ATTR_MIN_LATENCY = "min-latency";
-//NOLINTEND(modernize-avoid-c-arrays)
-
 #define CONFIGURATION_REVISION 3
-int static configurationsTag(mxml_node_t * node)
-{
-    const char * revision_string;
 
-    revision_string = mxmlElementGetAttr(node, ATTR_REVISION);
-    if (revision_string == nullptr) {
-        return 1; //revision issue;
-    }
+namespace {
+    constexpr const char * TAG_CONFIGURATIONS = "configurations";
+    constexpr const char * TAG_CONFIGURATION = "configuration";
+    constexpr const char * TAG_TEMPLATE = "template";
+    constexpr const char * TAG_SPE = "spe";
 
-    int revision;
-    if (!stringToInt(&revision, revision_string, 10)) {
-        LOG_ERROR("Configuration XML revision must be an integer");
-        return VERSION_ERROR;
-    }
-    if (revision < CONFIGURATION_REVISION) {
-        LOG_ERROR("Revision issue, please check configuration XML v%d", revision);
-        return 1; // revision issue
-    }
-    // A revision >= CONFIGURATION_REVISION is okay
-    // Greater than can occur when Streamline is newer than gator
+    constexpr const char * ATTR_COUNTER = "counter";
+    constexpr const char * ATTR_REVISION = "revision";
+    constexpr const char * ATTR_EVENT = "event";
+    constexpr const char * ATTR_COUNT = "count";
+    constexpr const char * ATTR_CORES = "cores";
 
-    return 0;
+    constexpr const char * ATTR_ID = "id";
+    constexpr const char * ATTR_EVENT_FILTER = "event-filter";
+    constexpr const char * ATTR_LOAD_FILTER = "load-filter";
+    constexpr const char * ATTR_STORE_FILTER = "store-filter";
+    constexpr const char * ATTR_BRANCH_FILTER = "branch-filter";
+    constexpr const char * ATTR_MIN_LATENCY = "min-latency";
+    constexpr const char * ATTR_INV_EVENT_FILTER_FLAG = "inverse-event-filter";
+
+    constexpr const int BASE_10 = 10;
+    constexpr const int BASE_16 = 16;
+
+    int configurationsTag(mxml_node_t * node)
+    {
+        const char * revision_string;
+
+        revision_string = mxmlElementGetAttr(node, ATTR_REVISION);
+        if (revision_string == nullptr) {
+            return 1; //revision issue;
+        }
+
+        int revision;
+        if (!stringToInt(&revision, revision_string, BASE_10)) {
+            LOG_ERROR("Configuration XML revision must be an integer");
+            return VERSION_ERROR;
+        }
+        if (revision < CONFIGURATION_REVISION) {
+            LOG_ERROR("Revision issue, please check configuration XML v%d", revision);
+            return 1; // revision issue
+        }
+        // A revision >= CONFIGURATION_REVISION is okay
+        // Greater than can occur when Streamline is newer than gator
+
+        return 0;
+    }
 }
+
 /**
  * parse/read counter and update counter structure
  */
@@ -74,14 +80,14 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     CounterConfiguration counter;
     counter.counterName = counterName;
     if (mxmlElementGetAttr(node, ATTR_COUNT) != nullptr) {
-        if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), 10)) {
+        if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), BASE_10)) {
             LOG_ERROR("Configuration XML count must be an integer");
             return PARSER_ERROR;
         }
         counter.count = count;
     }
     if (mxmlElementGetAttr(node, ATTR_CORES) != nullptr) {
-        if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), 10)) {
+        if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), BASE_10)) {
             LOG_ERROR("Configuration XML cores must be an integer");
             return PARSER_ERROR;
         }
@@ -89,7 +95,7 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     }
     long long event;
     if (eventStr != nullptr) {
-        if (!stringToLongLong(&event, eventStr, 16)) {
+        if (!stringToLongLong(&event, eventStr, BASE_16)) {
             LOG_ERROR("Configuration XML event must be an integer");
             return PARSER_ERROR;
         }
@@ -159,12 +165,19 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
     }
     const char * attrMinLatency = mxmlElementGetAttr(node, ATTR_MIN_LATENCY);
     if (attrMinLatency != nullptr) {
-        if (!stringToInt(&minLatency, attrMinLatency, 10)) {
+        if (!stringToInt(&minLatency, attrMinLatency, BASE_10)) {
             LOG_ERROR("Configuration XML spe min-latency must be an integer");
             return PARSER_ERROR;
         }
         spe.min_latency = minLatency;
     }
+
+    // Check if the inverse SPE events flag is set.
+    const char * invAttrEventFilter = mxmlElementGetAttr(node, ATTR_INV_EVENT_FILTER_FLAG);
+    if (invAttrEventFilter != nullptr) {
+        spe.inverse_event_filter_mask = strcmp(invAttrEventFilter, "true") == 0;
+    }
+
     speConfigurations.push_back(spe);
     return 0;
 }

@@ -79,9 +79,10 @@ message capture_configuration_t {
         string counter_set = 3;
         string dt_name = 4;
         string spe_name = 5;
-        repeated uint32 cpu_ids = 6;
-        uint32 pmnc_counters = 7;
-        bool is_v8 = 8;
+        string spe_version = 6;
+        repeated uint32 cpu_ids = 7;
+        uint32 pmnc_counters = 8;
+        bool is_v8 = 9;
     }
 
     /** Per-cluster state */
@@ -150,11 +151,12 @@ message capture_configuration_t {
         uint32 wakeup_events_or_watermark = 32;
         uint64 config1 = 33;
         uint64 config2 = 34;
-        uint64 sample_regs_user = 35;
-        uint32 sample_stack_user = 36;
-        int32 clockid = 37;
-        uint32 aux_watermark = 38;
-        uint64 alternative_sample_period = 39;
+        uint64 config3 = 35;
+        uint64 sample_regs_user = 36;
+        uint32 sample_stack_user = 37;
+        int32 clockid = 38;
+        uint32 aux_watermark = 39;
+        uint64 alternative_sample_period = 40;
     }
 
     /** Equivalent to event_definition_t */
@@ -177,7 +179,7 @@ message capture_configuration_t {
     message perf_event_configuration_t {
         perf_event_definition_t header_event = 1;
         perf_event_definition_list_t global_events = 2;
-        perf_event_definition_list_t spe_events = 3;
+        map<uint32, perf_event_definition_list_t> spe_events = 3;
         map<uint32, perf_event_definition_map_t> cluster_specific_events = 4;
         perf_event_definition_map_t cpu_specific_events = 5;
         perf_event_definition_map_t uncore_specific_events = 6;

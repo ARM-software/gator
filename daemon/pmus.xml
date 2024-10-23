@@ -55,6 +55,7 @@
     <pmu id="ARMv8R_Cortex_R52" cpuid="0x41d13" core_name="Cortex-R52" dt_name="arm,cortex-r52" pmnc_counters="4" profile="8r"/>
     <pmu id="ARMv8R_Cortex_R52X" cpuid="0x41d16" core_name="Cortex-R52+" dt_name="arm,cortex-r52+" pmnc_counters="4" profile="8r"/>
     <pmu id="ARMv8R_Cortex_R82" cpuid="0x41d15" core_name="Cortex-R82" dt_name="arm,cortex-r82" pmnc_counters="6" profile="8r"/>
+    <pmu counter_set="ARMv8R_Cortex_R82" id="ARMv8R_Cortex_R82AE" cpuid="0x41d14" core_name="Cortex-R82AE" dt_name="arm,cortex-r82" pmnc_counters="6" profile="8r"/>
 
     <pmu counter_set="ARM_ARM11" id="ARMv6_1136" cpuid="0x41b36" core_name="ARM1136" dt_name="arm,arm1136" pmnc_counters="3" profile="6a"/>
     <pmu counter_set="ARM_ARM11" id="ARMv6_1156" cpuid="0x41b56" core_name="ARM1156" dt_name="arm,arm1156" pmnc_counters="3" profile="6a"/>
@@ -80,43 +81,46 @@
     <pmu id="ARMv8_Cortex_A75" cpuid="0x41d0a" core_name="Cortex-A75" dt_name="arm,cortex-a75" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A76" cpuid="0x41d0b" core_name="Cortex-A76" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv8_Cortex_A77" cpuid="0x41d0d" core_name="Cortex-A77" dt_name="arm,cortex-a77" pmnc_counters="6" profile="8a"/>
-    <pmu id="ARMv8_Cortex_A78" cpuid="0x41d41" core_name="Cortex-A78" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu"/>
+    <pmu id="ARMv8_Cortex_A78" cpuid="0x41d41" core_name="Cortex-A78" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu" spe_version="v1p1"/>
 
     <pmu id="ARMv8_Cortex_A65AE" cpuid="0x41d43" core_name="Cortex-A65AE" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A65AE" id="ARMv8_Cortex_A65" cpuid="0x41d06" core_name="Cortex-A65" dt_name="arm,cortex-a65" pmnc_counters="6" profile="8a"/>
     <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Cortex_A76AE" cpuid="0x41d0e" core_name="Cortex-A76AE" dt_name="arm,cortex-a76" pmnc_counters="6" profile="8a"/>
-    <pmu counter_set="ARMv8_Cortex_A78" id="ARMv8_Cortex_A78AE" cpuid="0x41d42" core_name="Cortex-A78AE" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu"/>
+    <pmu counter_set="ARMv8_Cortex_A78" id="ARMv8_Cortex_A78AE" cpuid="0x41d42" core_name="Cortex-A78AE" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu" spe_version="v1p1"/>
 
-    <pmu counter_set="ARMv8_Cortex_A78" id="ARMv8_Cortex_A78C" cpuid="0x41d4b" core_name="Cortex-A78C" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu"/>
+    <pmu counter_set="ARMv8_Cortex_A78" id="ARMv8_Cortex_A78C" cpuid="0x41d4b" core_name="Cortex-A78C" dt_name="arm,cortex-a78" pmnc_counters="6" profile="8a" spe="arm_cortex_a78_spe_pmu" spe_version="v1p1"/>
 
     <pmu id="ARMv8_Neoverse_E1" cpuid="0x41d4a" core_name="Neoverse-E1" dt_name="arm,neoverse-e1" pmnc_counters="6" profile="8a"/>
-    <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu"/>
-    <pmu id="ARMv8_Neoverse_N2" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu">
+    <pmu id="ARMv8_Neoverse_N1" cpuid="0x41d0c" core_name="Neoverse-N1" dt_name="arm,neoverse-n1" pmnc_counters="6" profile="8a" spe="arm_neoverse_n1_spe_pmu" spe_version="v1p0"/>
+    <pmu id="ARMv8_Neoverse_N2" core_name="Neoverse-N2" dt_name="arm,neoverse-n2" pmnc_counters="6" profile="8a" spe="arm_neoverse_n2_spe_pmu" spe_version="v1p1">
         <cpuid id="0x41d49" />
         <cpuid id="0x6dd49" />
     </pmu>
-    <pmu id="ARMv9_Neoverse_N3" cpuid="0x41d8e" core_name="Neoverse-N3" dt_name="arm,neoverse-n3" pmnc_counters="6" profile="9a" spe="arm_neoverse_n3_spe_pmu"/>
+    <pmu id="ARMv9_Neoverse_N3" cpuid="0x41d8e" core_name="Neoverse-N3" dt_name="arm,neoverse-n3" pmnc_counters="6" profile="9a" spe="arm_neoverse_n3_spe_pmu" spe_version="v1p2"/>
 
-    <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu"/>
-    <pmu id="ARMv9_Neoverse_V2" cpuid="0x41d4f" core_name="Neoverse-V2" dt_name="arm,neoverse-v2" pmnc_counters="6" profile="9a" spe="arm_neoverse_v2_spe_pmu"/>
-    <pmu id="ARMv9_Neoverse_V3" cpuid="0x41d84" core_name="Neoverse-V3" dt_name="arm,neoverse-v3" pmnc_counters="6" profile="9a" spe="arm_neoverse_v3_spe_pmu"/>
+    <pmu id="ARMv8_Neoverse_V1" cpuid="0x41d40" core_name="Neoverse-V1" dt_name="arm,neoverse-v1" pmnc_counters="6" profile="8a" spe="arm_neoverse_v1_spe_pmu" spe_version="v1p1"/>
+    <pmu id="ARMv9_Neoverse_V2" cpuid="0x41d4f" core_name="Neoverse-V2" dt_name="arm,neoverse-v2" pmnc_counters="6" profile="9a" spe="arm_neoverse_v2_spe_pmu" spe_version="v1p1"/>
+    <pmu id="ARMv9_Neoverse_V3" cpuid="0x41d84" core_name="Neoverse-V3" dt_name="arm,neoverse-v3" pmnc_counters="6" profile="9a" spe="arm_neoverse_v3_spe_pmu" spe_version="v1p2"/>
+    <pmu counter_set="ARMv9_Neoverse_V3" id="ARMv9_Neoverse_V3AE" cpuid="0x41d83" core_name="Neoverse-V3AE" dt_name="arm,neoverse-v3" pmnc_counters="6" profile="9a" spe="arm_neoverse_v3_spe_pmu" spe_version="v1p2"/>
 
-    <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu"/>
-    <pmu id="ARMv8_Cortex_X1C" cpuid="0x41d4c" core_name="Cortex-X1C" dt_name="arm,cortex-x1c" pmnc_counters="6" profile="8a" counter_set="ARMv8_Cortex_X1" spe="arm_cortex_x1_spe_pmu"/>
+    <pmu id="ARMv8_Cortex_X1" cpuid="0x41d44" core_name="Cortex-X1" dt_name="arm,cortex-x1" pmnc_counters="6" profile="8a" spe="arm_cortex_x1_spe_pmu" spe_version="v1p1"/>
+    <pmu id="ARMv8_Cortex_X1C" cpuid="0x41d4c" core_name="Cortex-X1C" dt_name="arm,cortex-x1c" pmnc_counters="6" profile="8a" counter_set="ARMv8_Cortex_X1" spe="arm_cortex_x1_spe_pmu" spe_version="v1p1"/>
     <pmu id="ARMv8_Cortex_X2" cpuid="0x41d48" core_name="Cortex-X2" dt_name="arm,cortex-x2" pmnc_counters="6" profile="8a"/>
 
     <pmu id="ARMv8_Cortex_A510" cpuid="0x41d46" core_name="Cortex-A510" dt_name="arm,cortex-a510" pmnc_counters="6" profile="8a"/>
     <pmu id="ARMv9_Cortex_A520" cpuid="0x41d80" core_name="Cortex-A520" dt_name="arm,cortex-a520" pmnc_counters="6" profile="9a"/>
+    <pmu counter_set="ARMv9_Cortex_A520" id="ARMv9_Cortex_A520AE" cpuid="0x41d88" core_name="Cortex-A520AE" dt_name="arm,cortex-a520" pmnc_counters="6" profile="9a"/>
     <pmu id="ARMv8_Cortex_A710" cpuid="0x41d47" core_name="Cortex-A710" dt_name="arm,cortex-a710" pmnc_counters="6" profile="8a"/>
 
-    <pmu id="ARMv9_Cortex_X3" cpuid="0x41d4e" core_name="Cortex-X3" dt_name="arm,cortex-x3" pmnc_counters="6" profile="9a" spe="arm_cortex_x3_spe_pmu"/>
-    <pmu id="ARMv9_Cortex_A715" cpuid="0x41d4d" core_name="Cortex-A715" dt_name="arm,cortex-a715" pmnc_counters="6" profile="9a" spe="arm_cortex_a715_spe_pmu"/>
+    <pmu id="ARMv9_Cortex_X3" cpuid="0x41d4e" core_name="Cortex-X3" dt_name="arm,cortex-x3" pmnc_counters="6" profile="9a" spe="arm_cortex_x3_spe_pmu" spe_version="v1p2"/>
+    <pmu id="ARMv9_Cortex_A715" cpuid="0x41d4d" core_name="Cortex-A715" dt_name="arm,cortex-a715" pmnc_counters="6" profile="9a" spe="arm_cortex_a715_spe_pmu" spe_version="v1p2"/>
 
-    <pmu id="ARMv9_Cortex_A720" cpuid="0x41d81" core_name="Cortex-A720" dt_name="arm,cortex-a720" pmnc_counters="6" profile="9a" spe="arm_cortex_a720_spe_pmu"/>
-    <pmu id="ARMv9_Cortex_X4" cpuid="0x41d82" core_name="Cortex-X4" dt_name="arm,cortex-x4" pmnc_counters="6" profile="9a" spe="arm_cortex_x4_spe_pmu" />
+    <pmu id="ARMv9_Cortex_A720" cpuid="0x41d81" core_name="Cortex-A720" dt_name="arm,cortex-a720" pmnc_counters="6" profile="9a" spe="arm_cortex_a720_spe_pmu" spe_version="v1p2"/>
+    <pmu counter_set="ARMv9_Cortex_A720" id="ARMv9_Cortex_A720AE" cpuid="0x41d89" core_name="Cortex-A720AE" dt_name="arm,cortex-a720" pmnc_counters="6" profile="9a" spe="arm_cortex_a720_spe_pmu" spe_version="v1p2"/>
+    <pmu id="ARMv9_Cortex_X4" cpuid="0x41d82" core_name="Cortex-X4" dt_name="arm,cortex-x4" pmnc_counters="6" profile="9a" spe="arm_cortex_x4_spe_pmu" spe_version="v1p2"/>
 
-    <pmu id="ARMv9_Cortex_X925" cpuid="0x41d85" core_name="Cortex-X925" dt_name="arm,cortex-x925" pmnc_counters="6" profile="9a" spe="arm_cortex_x925_spe_pmu"/>
-    <pmu id="ARMv9_Cortex_A725" cpuid="0x41d87" core_name="Cortex-A725" dt_name="arm,cortex-a725" pmnc_counters="6" profile="9a" spe="arm_cortex_a725_spe_pmu"/>
+    <pmu id="ARMv9_Cortex_X925" cpuid="0x41d85" core_name="Cortex-X925" dt_name="arm,cortex-x925" pmnc_counters="6" profile="9a" spe="arm_cortex_x925_spe_pmu" spe_version="v1p2"/>
+    <pmu id="ARMv9_Cortex_A725" cpuid="0x41d87" core_name="Cortex-A725" dt_name="arm,cortex-a725" pmnc_counters="6" profile="9a" spe="arm_cortex_a725_spe_pmu" spe_version="v1p2"/>
 
     <!-- Arm China -->
     <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>
@@ -165,7 +169,6 @@
 
     <!--  Huawei -->
     <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Kirin_980" cpuid="0x48d40" core_name="Kirin 980" pmnc_counters="6" profile="8a"/>
-
 
     <!-- =========================== UNCORES =========================== -->
 

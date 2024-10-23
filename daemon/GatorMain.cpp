@@ -15,6 +15,7 @@
 #include "android/AndroidActivityManager.h"
 #include "capture/CaptureProcess.h"
 #include "capture/Environment.h"
+#include "lib/Format.h"
 #include "lib/Process.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -211,9 +212,9 @@ namespace {
     };
 
     struct raw_ids_t {
-        std::set<std::string> counter_ids {};
-        std::map<std::string, std::set<std::string>> pmu_counter_ids {};
-        std::set<std::string> spe_ids {};
+        std::set<std::string> counter_ids;
+        std::map<std::string, std::set<std::string>> pmu_counter_ids;
+        std::set<std::string> spe_ids;
         std::size_t longest_id = 0;
     };
 
@@ -254,7 +255,7 @@ namespace {
         std::map<events_xml::EventCategory const *,
                  std::set<std::pair<std::string_view, events_xml::EventDescriptor const *>, event_order_t>,
                  category_order_t>
-            category_events {};
+            category_events;
     };
 
     [[nodiscard]] mapped_ids_t map_counter_ids_to_descriptions(raw_ids_t const & raw_ids,
@@ -461,7 +462,7 @@ void setDefaults()
     gSessionData.mTotalBufferSize = 4;
     gSessionData.mPerfMmapSizeInPages = -1;
     //callStack unwinding default is yes
-    gSessionData.mBacktraceDepth = 128;
+    gSessionData.mBacktraceDepth = 128; // NOLINT(readability-magic-numbers)
     //sample rate is normal
     gSessionData.mSampleRate = normal;
     gSessionData.mSampleRateGpu = normal_x2;
@@ -551,7 +552,9 @@ void updateSessionData(const ParserResult & result)
     }
 }
 
-void dumpCounterDetails(const ParserResult & result, const logging::log_access_ops_t & log_ops)
+void dumpCounterDetails(const ParserResult & result,
+                        const logging::log_access_ops_t & log_ops,
+                        const std::string & header)
 {
     Drivers drivers {result.mCaptureOperationMode,
                      readPmuXml(result.pmuPath),
@@ -583,10 +586,12 @@ void dumpCounterDetails(const ParserResult & result, const logging::log_access_o
                 break;
             }
             case ParserResult::Printable::COUNTERS: {
+                std::cout << header;
                 dumpCountersForUser(drivers, false);
                 break;
             }
             case ParserResult::Printable::COUNTERS_DETAILED: {
+                std::cout << header;
                 dumpCountersForUser(drivers, true);
                 break;
             }
@@ -606,7 +611,7 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
                      result.mDisableKernelAnnotations,
                      TraceFsConstants::detect()};
 
-    bool system_wide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
+    const bool system_wide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
     if (gSessionData.mLocalCapture && system_wide && !drivers.getFtraceDriver().isSupported()) {
         LOG_ERROR("System-wide capture requested, but tracefs is not available.%s",
                   geteuid() == 0 ? "" : " You may need to run as root.");
@@ -614,7 +619,9 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
     }
 
     // Handle child exit codes
-    signal(SIGCHLD, handler);
+    if (signal(SIGCHLD, handler) == SIG_ERR) {
+        LOG_ERROR("Error setting SIGCHLD signal handler");
+    }
 
     class local_event_handler_t : public capture::capture_process_event_listener_t {
     public:
@@ -644,7 +651,7 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
             // experiences is a successful socket connection, but when it attempts to read from the socket
             // it reads an empty line when attempting to read the gator protocol header, and terminates the
             // connection.
-            std::cout << gator_shell_ready.data() << std::endl;
+            std::cout << gator_shell_ready.data() << std::endl; // NOLINT(performance-avoid-endl)
         }
 
         [[nodiscard]] bool waiting_for_target() override
@@ -712,30 +719,45 @@ int gator_main(int argc, char ** argv)
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-main"), 0, 0, 0);
 
     lib::printf_str_t<VERSION_STRING_CHAR_SIZE> versionString;
-    {
-        const int baseProtocolVersion =
-            (PROTOCOL_VERSION >= 0 ? PROTOCOL_VERSION : -(PROTOCOL_VERSION % PROTOCOL_VERSION_DEV_MULTIPLIER));
-        const int protocolDevTag = (PROTOCOL_VERSION >= 0 ? 0 : -(PROTOCOL_VERSION / PROTOCOL_VERSION_DEV_MULTIPLIER));
-        const int majorVersion = baseProtocolVersion / 100;
-        const int minorVersion = (baseProtocolVersion / 10) % 10;
-        const int revisionVersion = baseProtocolVersion % 10;
-        const char * formatString =
-            (PROTOCOL_VERSION >= 0 ? (revisionVersion == 0 ? "Streamline gatord version %d (Streamline v%d.%d)"
-                                                           : "Streamline gatord version %d (Streamline v%d.%d.%d)")
-                                   : "Streamline gatord development version %d (Streamline v%d.%d.%d), tag %d");
 
-        versionString
-            .printf(formatString, PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion, protocolDevTag);
+    const int baseProtocolVersion =
+        (PROTOCOL_VERSION >= 0 ? PROTOCOL_VERSION : -(PROTOCOL_VERSION % PROTOCOL_VERSION_DEV_MULTIPLIER));
+    const int protocolDevTag = (PROTOCOL_VERSION >= 0 ? 0 : -(PROTOCOL_VERSION / PROTOCOL_VERSION_DEV_MULTIPLIER));
+    const int majorVersion = baseProtocolVersion / 100;
+    const int minorVersion = (baseProtocolVersion / 10) % 10;
+    const int revisionVersion = baseProtocolVersion % 10;
+    const char * formatString =
+        (PROTOCOL_VERSION >= 0 ? (revisionVersion == 0 ? "Streamline gatord version %d (Streamline v%d.%d)"
+                                                       : "Streamline gatord version %d (Streamline v%d.%d.%d)")
+                               : "Streamline gatord development version %d (Streamline v%d.%d.%d), tag %d");
 
-        //Print Arm standard header to stdout
-        std::cout << "Streamline Data Recorder v" << majorVersion << '.' << minorVersion << '.' << revisionVersion
-                  << " (Build " << gBuildId << " - Tag " << protocolDevTag << ")\n"
-                  << "Copyright (c) 2010-" << gCopyrightYear << " Arm Limited. All rights reserved.\n\n";
-    }
+    versionString.printf(formatString, PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion, protocolDevTag);
+
     // Parse the command line parameters
     GatorCLIParser parser;
     parser.parseCLIArguments(argc, argv, versionString, gSrcMd5, gBuildId);
     const ParserResult & result = parser.result;
+
+    const std::string header {lib::Format()
+                              << "Streamline Data Recorder v" << majorVersion << '.' << minorVersion << '.'
+                              << revisionVersion << " (Build " << gBuildId << ")\n"
+                              << "Copyright (c) 2010-" << gCopyrightYear << " Arm Limited. All rights reserved.\n\n"};
+
+    if (result.mode != ParserResult::ExecutionMode::PRINT) {
+        std::cout << header;
+    }
+
+    if (!result.error_messages.empty()) {
+        for (const auto & message : parser.result.error_messages) {
+            std::cerr << message << "\n";
+        }
+    }
+
+    if (result.mode == ParserResult::ExecutionMode::USAGE) {
+        std::cout << GatorCLIParser::USAGE_MESSAGE;
+        return 0;
+    }
+
     if (result.mode == ParserResult::ExecutionMode::EXIT) {
         handleException();
     }
@@ -748,7 +770,7 @@ int gator_main(int argc, char ** argv)
     environment->postInit(gSessionData);
 
     if (result.mode == ParserResult::ExecutionMode::PRINT) {
-        dumpCounterDetails(result, *global_logging);
+        dumpCounterDetails(result, *global_logging, header);
     }
     else {
         return start_capture_process(result, *global_logging);

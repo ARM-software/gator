@@ -623,7 +623,6 @@ namespace agents::perf {
         std::vector<perf_capture_configuration_t::uncore_pmu_t> const & uncore_pmus;
         std::map<core_no_t, std::uint32_t> const & core_no_to_spe_type;
         std::map<core_no_t, core_properties_t> core_properties {};
-        std::map<std::uint32_t, std::vector<event_definition_t>> spe_event_definitions_retyped {};
         bool is_system_wide;
         bool enable_on_exec;
         bool capture_started {false};
@@ -794,7 +793,8 @@ namespace agents::perf {
             }
 
             if ((!configuration.spe_events.empty()) && (spe_type > 0)) {
-                auto result = binding_set.add_mixed(get_retyped_spe_definitions(spe_type));
+                auto spe_defs = get_retyped_spe_definitions(properties.cluster_id, spe_type);
+                auto result = binding_set.add_mixed(spe_defs);
                 // this should be impossible since the group is new
                 runtime_assert(result,
                                "Failed to add an SPE event configuration, perhaps the binding set is not offline");
@@ -976,24 +976,25 @@ namespace agents::perf {
         }
 
         /**
-         * Get (first create) a copy of the event defintions in configuration.spe_events, but with the attr.type field changed to match
+         * Create a copy of the event defintions in configuration.spe_events, with the attr.type field changed to match
          * the provided type parameter.
          *
+         * @param id The cluster id for the SPE definitions
          * @param type The type parameter to set for the event definitions
-         * @return The vector of modified event definitions
+         * @return A vector of modified event definitions
          */
-        std::vector<event_definition_t> const & get_retyped_spe_definitions(std::uint32_t type)
+        std::vector<event_definition_t> get_retyped_spe_definitions(cpu_cluster_id_t id, std::uint32_t type)
         {
-            auto & result = spe_event_definitions_retyped[type];
+            std::vector<event_definition_t> retyped_events {};
 
-            if (result.empty()) {
-                for (auto const & event : configuration.spe_events) {
-                    auto & inserted = result.emplace_back(event);
+            if (auto it = configuration.spe_events.find(id); it != configuration.spe_events.end()) {
+                for (auto const & event : it->second) {
+                    auto & inserted = retyped_events.emplace_back(event);
                     inserted.attr.type = type;
                 }
             }
 
-            return result;
+            return retyped_events;
         }
 
         /** Common code for offlining and removing a core entry */

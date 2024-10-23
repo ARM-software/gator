@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef OLY_UTILITY_H
 #define OLY_UTILITY_H
@@ -7,14 +7,11 @@
 
 #ifdef WIN32
 #define PATH_SEPARATOR '\\'
-#define CAIMAN_PATH_MAX MAX_PATH
 #if !defined(_MSC_VER) || _MSC_VER < 1900
 #define snprintf _snprintf
 #endif
 #else
-#include <climits>
 #define PATH_SEPARATOR '/'
-#define CAIMAN_PATH_MAX PATH_MAX
 #endif
 
 bool stringToBool(const char * string, bool defValue);

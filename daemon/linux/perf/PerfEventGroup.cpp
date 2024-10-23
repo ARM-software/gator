@@ -20,6 +20,9 @@
 #include <cstdint>
 #include <ctime>
 
+// Ignore signed bitwise warnings - many of these are triggered by Linux perf enums (which don't include signed values)
+// NOLINTBEGIN(hicpp-signed-bitwise)
+
 namespace {
     constexpr unsigned long NANO_SECONDS_IN_ONE_SECOND = 1000000000UL;
     constexpr unsigned long NANO_SECONDS_IN_100_MS = 100000000UL;
@@ -109,6 +112,7 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
                  && (type != PerfEventGroupIdentifier::Type::SPE)
              ? 0
              : PERF_SAMPLE_READ); // Unfortunately PERF_SAMPLE_READ is not allowed with inherit
+
     event.attr.sample_type =
         PERF_SAMPLE_TIME
         | PERF_SAMPLE_STREAM_ID
@@ -149,9 +153,7 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
 #endif
 
     // make sure all new children are counted too
-    const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode,
-                                                                         config.perfConfig.supports_inherit_sample_read)
-                          && !is_header;
+    const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode) && !is_header;
     // group doesn't require a leader (so all events are stand alone)
     const bool every_attribute_in_own_group =
         (!requires_leader) || is_header
@@ -167,6 +169,7 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
 
     const bool strobe = (!attr.freq) && (attr.strobePeriod != 0) && uses_strobe_period;
 
+    // NOLINTNEXTLINE(readability-simplify-boolean-expr)
     runtime_assert(!strobe || config.perfConfig.supports_strobing_patches || config.perfConfig.supports_strobing_core,
                    "Strobing is requested but not supported");
 
@@ -175,7 +178,7 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.inherit_stat = event.attr.inherit;
     /* Emit emit value in group format */
     // Unfortunately PERF_FORMAT_GROUP is not allowed with inherit
-    event.attr.read_format = (use_read_format_group ? PERF_FORMAT_ID | PERF_FORMAT_GROUP //
+    event.attr.read_format = (use_read_format_group ? PERF_FORMAT_ID | PERF_FORMAT_GROUP // NOLINT(hicpp-signed-bitwise)
                                                     : PERF_FORMAT_ID)                    //
                            | PERF_FORMAT_TOTAL_TIME_RUNNING | PERF_FORMAT_TOTAL_TIME_ENABLED;
     // Always be on the CPU but only a perf_event_open group leader can be pinned
@@ -195,6 +198,7 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.config = attr.config;
     event.attr.config1 = attr.config1;
     event.attr.config2 = (strobe && !config.perfConfig.supports_strobing_core ? attr.strobePeriod : attr.config2);
+    event.attr.config3 = attr.config3;
     event.attr.alternative_sample_period = (strobe && config.perfConfig.supports_strobing_core ? attr.strobePeriod : 0);
     event.attr.sample_period = attr.periodOrFreq;
     event.attr.mmap = attr.mmap;
@@ -419,12 +423,11 @@ bool perf_event_group_configurer_t::createCpuGroupLeaderPinned(attr_to_key_mappi
 bool perf_event_group_configurer_t::createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker)
 {
     (void) mapping_tracker;
-
     if (!isCaptureOperationModeSupportingMetrics(config.captureOperationMode,
                                                  config.perfConfig.supports_inherit_sample_read)) {
         LOG_ERROR("Multiplexed CPU counters currently only work in system-wide mode, or when inherit is "
                   "no/poll/experimental");
-        return false;
+        handleException();
     }
 
     return true;
@@ -447,3 +450,5 @@ int perf_event_group_configurer_t::nextDummyKey(perf_event_group_configurer_conf
 {
     return config.dummyKeyCounter--;
 }
+
+// NOLINTEND(hicpp-signed-bitwise)

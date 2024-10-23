@@ -56,164 +56,181 @@ namespace cpu_utils {
         return maxCoreNum;
     }
 
-    static void setImplementer(int & cpuId, const int implementer)
-    {
-        if (cpuId == -1) {
-            cpuId = 0;
-        }
-        cpuId |= implementer << 12;
-    }
+    namespace {
+        constexpr const uint64_t IMPLEMENTER_MASK = 0xff000000;
+        constexpr const uint64_t IMPLEMENTER_SHIFT = 24;
+        constexpr const uint64_t PART_NUM_MASK = 0xfff0;
+        constexpr const uint64_t PART_NUM_SHIFT = 4;
+        constexpr const uint64_t PART_NUM_SIZE = 12;
+        // Shift implementer, leaving space for part num
+        constexpr const uint64_t IMPLEMENTER_PARTIAL_SHIFT = IMPLEMENTER_SHIFT - PART_NUM_SIZE;
 
-    static void setPart(int & cpuId, const int part)
-    {
-        if (cpuId == -1) {
-            cpuId = 0;
-        }
-        cpuId |= part;
-    }
-
-    static const char HARDWARE[] = "Hardware";
-    static const char CPU_IMPLEMENTER[] = "CPU implementer";
-    static const char CPU_PART[] = "CPU part";
-    static const char PROCESSOR[] = "processor";
-
-    static constexpr unsigned makeCpuId(std::uint64_t midr)
-    {
-        return ((midr & 0xff000000) >> 12) | ((midr & 0xfff0) >> 4);
-    }
-
-    static std::string parseProcCpuInfo(bool justGetHardwareName, lib::Span<int> cpuIds)
-    {
-        std::string hardwareName;
-        char temp[256]; // arbitrarily large amount
-
-        FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
-        if (f == nullptr) {
-            LOG_WARNING("Error opening /proc/cpuinfo\n"
-                        "The core name in the captured xml file will be 'unknown'.");
-            return hardwareName;
+        void setImplementer(int & cpuId, const int implementer)
+        {
+            if (cpuId == -1) {
+                cpuId = 0;
+            }
+            cpuId |= implementer << PART_NUM_SIZE;
         }
 
-        bool foundCoreName = false;
-        constexpr size_t UNKNOWN_PROCESSOR = -1;
-        size_t processor = UNKNOWN_PROCESSOR;
-        size_t minProcessor = cpuIds.size();
-        size_t maxProcessor = 0;
-        bool foundProcessorInSection = false;
-        int outOfPlaceCpuId = -1;
-        bool invalidFormat = false;
-        while (fgets(temp, sizeof(temp), f) != nullptr) {
-            const size_t len = strlen(temp);
+        void setPart(int & cpuId, const int part)
+        {
+            if (cpuId == -1) {
+                cpuId = 0;
+            }
+            cpuId |= part;
+        }
 
-            if (len > 0) {
-                // Replace the line feed with a null
-                temp[len - 1] = '\0';
+        constexpr unsigned makeCpuId(std::uint64_t midr)
+        {
+
+            return ((midr & IMPLEMENTER_MASK) >> IMPLEMENTER_PARTIAL_SHIFT)
+                 | ((midr & PART_NUM_MASK) >> PART_NUM_SHIFT);
+        }
+
+        constexpr const char * HARDWARE = "Hardware";
+        constexpr const char * CPU_IMPLEMENTER = "CPU implementer";
+        constexpr const char * CPU_PART = "CPU part";
+        constexpr const char * PROCESSOR = "processor";
+
+        std::string parseProcCpuInfo(bool justGetHardwareName, lib::Span<int> cpuIds)
+        {
+            std::string hardwareName;
+            // NOLINTNEXTLINE(modernize-avoid-c-arrays,readability-magic-numbers)
+            char temp[256]; // arbitrarily large amount
+
+            FILE * f = lib::fopen_cloexec("/proc/cpuinfo", "r");
+            if (f == nullptr) {
+                LOG_WARNING("Error opening /proc/cpuinfo\n"
+                            "The core name in the captured xml file will be 'unknown'.");
+                return hardwareName;
             }
 
-            LOG_DEBUG("cpuinfo: %s", temp);
+            bool foundCoreName = false;
+            constexpr size_t UNKNOWN_PROCESSOR = -1;
+            size_t processor = UNKNOWN_PROCESSOR;
+            size_t minProcessor = cpuIds.size();
+            size_t maxProcessor = 0;
+            bool foundProcessorInSection = false;
+            int outOfPlaceCpuId = -1;
+            bool invalidFormat = false;
+            while (fgets(temp, sizeof(temp), f) != nullptr) {
+                const size_t len = strlen(temp);
 
-            if (len == 1) {
-                // New section, clear the processor. Streamline will not know the cpus if the pre Linux 3.8 format of cpuinfo is encountered but also that no incorrect information will be transmitted.
-                processor = UNKNOWN_PROCESSOR;
-                foundProcessorInSection = false;
-                continue;
-            }
-
-            const bool foundHardware = !foundCoreName && strncmp(temp, HARDWARE, sizeof(HARDWARE) - 1) == 0;
-            const bool foundCPUImplementer = strncmp(temp, CPU_IMPLEMENTER, sizeof(CPU_IMPLEMENTER) - 1) == 0;
-            const bool foundCPUPart = strncmp(temp, CPU_PART, sizeof(CPU_PART) - 1) == 0;
-            const bool foundProcessor = strncmp(temp, PROCESSOR, sizeof(PROCESSOR) - 1) == 0;
-            if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
-                char * position = strchr(temp, ':');
-                if (position == nullptr || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
-                    LOG_WARNING("Unknown format of /proc/cpuinfo\n"
-                                "The core name in the captured xml file will be 'unknown'.");
-                    return hardwareName;
+                if (len > 0) {
+                    // Replace the line feed with a null
+                    temp[len - 1] = '\0';
                 }
-                position += 2;
 
-                if (foundHardware) {
-                    hardwareName = position;
-                    if (justGetHardwareName) {
+                LOG_DEBUG("cpuinfo: %s", temp);
+
+                if (len == 1) {
+                    // New section, clear the processor. Streamline will not know the cpus if the pre Linux 3.8 format of cpuinfo is encountered but also that no incorrect information will be transmitted.
+                    processor = UNKNOWN_PROCESSOR;
+                    foundProcessorInSection = false;
+                    continue;
+                }
+
+                const bool foundHardware = !foundCoreName && strncmp(temp, HARDWARE, strlen(HARDWARE)) == 0;
+                const bool foundCPUImplementer = strncmp(temp, CPU_IMPLEMENTER, strlen(CPU_IMPLEMENTER)) == 0;
+                const bool foundCPUPart = strncmp(temp, CPU_PART, strlen(CPU_PART)) == 0;
+                const bool foundProcessor = strncmp(temp, PROCESSOR, strlen(PROCESSOR)) == 0;
+                if (foundHardware || foundCPUImplementer || foundCPUPart || foundProcessor) {
+                    char * position = strchr(temp, ':');
+                    if (position == nullptr || static_cast<unsigned int>(position - temp) + 2 >= strlen(temp)) {
+                        LOG_WARNING("Unknown format of /proc/cpuinfo\n"
+                                    "The core name in the captured xml file will be 'unknown'.");
                         return hardwareName;
                     }
-                    foundCoreName = true;
-                }
+                    position += 2;
 
-                if (foundCPUImplementer) {
-                    int implementer;
-                    if (!stringToInt(&implementer, position, 0)) {
-                        // Do nothing
-                    }
-                    else if (processor != UNKNOWN_PROCESSOR) {
-                        setImplementer(cpuIds[processor], implementer);
-                    }
-                    else {
-                        setImplementer(outOfPlaceCpuId, implementer);
-                        invalidFormat = true;
-                    }
-                }
-
-                if (foundCPUPart) {
-                    int cpuId;
-                    if (!stringToInt(&cpuId, position, 0)) {
-                        // Do nothing
-                    }
-                    else if (processor != UNKNOWN_PROCESSOR) {
-                        setPart(cpuIds[processor], cpuId);
-                    }
-                    else {
-                        setPart(outOfPlaceCpuId, cpuId);
-                        invalidFormat = true;
-                    }
-                }
-
-                if (foundProcessor) {
-                    int processorId = -1;
-                    const bool converted = stringToInt(&processorId, position, 0);
-
-                    // update min and max processor ids
-                    if (converted) {
-                        minProcessor = (static_cast<size_t>(processorId) < minProcessor ? processorId : minProcessor);
-                        maxProcessor = (static_cast<size_t>(processorId) > maxProcessor ? processorId : maxProcessor);
-                    }
-
-                    if (foundProcessorInSection) {
-                        // Found a second processor in this section, ignore them all
-                        processor = UNKNOWN_PROCESSOR;
-                        invalidFormat = true;
-                    }
-                    else if (converted) {
-                        processor = processorId;
-                        if (processor >= cpuIds.size()) {
-                            LOG_ERROR("Found processor %zu but max is %zu", processor, cpuIds.size());
-                            handleException();
+                    if (foundHardware) {
+                        hardwareName = position;
+                        if (justGetHardwareName) {
+                            return hardwareName;
                         }
-                        foundProcessorInSection = true;
+                        foundCoreName = true;
+                    }
+
+                    if (foundCPUImplementer) {
+                        int implementer;
+                        if (!stringToInt(&implementer, position, 0)) {
+                            // Do nothing
+                        }
+                        else if (processor != UNKNOWN_PROCESSOR) {
+                            setImplementer(cpuIds[processor], implementer);
+                        }
+                        else {
+                            setImplementer(outOfPlaceCpuId, implementer);
+                            invalidFormat = true;
+                        }
+                    }
+
+                    if (foundCPUPart) {
+                        int part_num;
+                        if (!stringToInt(&part_num, position, 0)) {
+                            // Do nothing
+                        }
+                        else if (processor != UNKNOWN_PROCESSOR) {
+                            setPart(cpuIds[processor], part_num);
+                        }
+                        else {
+                            setPart(outOfPlaceCpuId, part_num);
+                            invalidFormat = true;
+                        }
+                    }
+
+                    if (foundProcessor) {
+                        int processorId = -1;
+                        const bool converted = stringToInt(&processorId, position, 0);
+
+                        // update min and max processor ids
+                        if (converted) {
+                            minProcessor =
+                                (static_cast<size_t>(processorId) < minProcessor ? processorId : minProcessor);
+                            maxProcessor =
+                                (static_cast<size_t>(processorId) > maxProcessor ? processorId : maxProcessor);
+                        }
+
+                        if (foundProcessorInSection) {
+                            // Found a second processor in this section, ignore them all
+                            processor = UNKNOWN_PROCESSOR;
+                            invalidFormat = true;
+                        }
+                        else if (converted) {
+                            processor = processorId;
+                            if (processor >= cpuIds.size()) {
+                                LOG_ERROR("Found processor %zu but max is %zu", processor, cpuIds.size());
+                                handleException();
+                            }
+                            foundProcessorInSection = true;
+                        }
                     }
                 }
             }
-        }
-        fclose(f);
+            if (fclose(f) == EOF) {
+                LOG_WARNING("Failed to close /proc/cpuinfo");
+            };
 
-        if (invalidFormat && (outOfPlaceCpuId != -1) && (minProcessor <= maxProcessor)) {
-            minProcessor = (minProcessor > 0 ? minProcessor : 0);
-            maxProcessor = (maxProcessor < cpuIds.size() ? maxProcessor + 1 : cpuIds.size());
+            if (invalidFormat && (outOfPlaceCpuId != -1) && (minProcessor <= maxProcessor)) {
+                minProcessor = (minProcessor > 0 ? minProcessor : 0);
+                maxProcessor = (maxProcessor < cpuIds.size() ? maxProcessor + 1 : cpuIds.size());
 
-            for (size_t processor = minProcessor; processor < maxProcessor; ++processor) {
-                if (cpuIds[processor] == -1) {
-                    LOG_DEBUG("Setting global CPUID 0x%x for processors %zu ", outOfPlaceCpuId, processor);
-                    cpuIds[processor] = outOfPlaceCpuId;
+                for (size_t processor = minProcessor; processor < maxProcessor; ++processor) {
+                    if (cpuIds[processor] == -1) {
+                        LOG_DEBUG("Setting global CPUID 0x%x for processors %zu ", outOfPlaceCpuId, processor);
+                        cpuIds[processor] = outOfPlaceCpuId;
+                    }
                 }
             }
-        }
 
-        if (!foundCoreName) {
-            LOG_FINE("Could not determine core name from /proc/cpuinfo\n"
-                     "The core name in the captured xml file will be 'unknown'.");
-        }
+            if (!foundCoreName) {
+                LOG_FINE("Could not determine core name from /proc/cpuinfo\n"
+                         "The core name in the captured xml file will be 'unknown'.");
+            }
 
-        return hardwareName;
+            return hardwareName;
+        }
     }
 
     std::string readCpuInfo(bool ignoreOffline, bool wantsHardwareName, lib::Span<int> cpuIds)

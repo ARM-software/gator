@@ -123,7 +123,15 @@ namespace {
                                                 ids.getCpuIds(),
                                                 gSessionData.smmu_identifiers,
                                                 pmuXml);
+
             if (configuration != nullptr) {
+                if (!configuration->config.supports_inherit_sample_read
+                    && captureOperationMode == CaptureOperationMode::application_experimental_patch) {
+                    LOG_ERROR("Experimental inherit was requested, but your kernel does not support this.\n Please "
+                              "install the required kernel patch or choose a different inherit mode. ");
+                    handleException();
+                }
+
                 // build the cpuinfo
                 std::vector<GatorCpu> clusters;
                 for (const auto & perfCpu : configuration->cpus) {
@@ -161,13 +169,6 @@ namespace {
         }
 
         [[nodiscard]] bool supportsMultiEbs() const override { return true; }
-
-        [[nodiscard]] const char * getPrepareFailedMessage() const override
-        {
-            return "Unable to communicate with the perf API, please ensure that CONFIG_TRACING and "
-                   "CONFIG_CONTEXT_SWITCH_TRACER are enabled. Please refer to streamline/gator/README.md for more "
-                   "information.";
-        }
 
         [[nodiscard]] const Driver & getPrimaryDriver() const override { return driver; }
 

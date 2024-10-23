@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATIONXMLPARSER_H_
 #define CONFIGURATIONXMLPARSER_H_
@@ -26,9 +26,9 @@ public:
     const std::vector<TemplateConfiguration> & getTemplateConfiguration();
 
 private:
-    std::vector<CounterConfiguration> counterConfigurations {};
-    std::vector<SpeConfiguration> speConfigurations {};
-    std::vector<TemplateConfiguration> templateConfigurations {};
+    std::vector<CounterConfiguration> counterConfigurations;
+    std::vector<SpeConfiguration> speConfigurations;
+    std::vector<TemplateConfiguration> templateConfigurations;
 
     int readSpe(mxml_node_t * node);
     int readCounter(mxml_node_t * node);

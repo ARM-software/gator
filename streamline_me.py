@@ -895,9 +895,16 @@ def write_capture(device, outDir, package):
     return True
 
 
-# Download the capture from the target to the host
-# TODO: Move this into docstring.
-def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
+def pull_screenshots(device, lwiOutDir, package, cleanUp=True):
+    """
+    Download slow frame screenshots from the target to the host.
+
+    Args:
+        device:  The device to connect to.
+        lwiOutDir: The destination directory.
+        package: The package on the device.
+        cleanUp: Should we clean up the device after downloading?
+    """
 
     # Check if capture exists
     adb_stdout = ""
@@ -908,8 +915,7 @@ def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
         pass
 
     if "No such file" in adb_stdout or adb_stdout == "":
-        if headless:
-            print("    INFO: No screen captures found")
+        print("    INFO: No screen captures found")
         return True
 
     # Also copy config into pa_lwi dir
@@ -920,7 +926,7 @@ def pull_capture(device, lwiOutDir, package, cleanUp=True, headless=False):
     except sp.CalledProcessError:
         print("    WARNING: No configuration file found")
 
-    # Write in host
+    # Download from the device
     if not write_capture(device, lwiOutDir, package):
         return False
 
@@ -956,8 +962,7 @@ def enable_vulkan_debug_layer(device, args):
     vkLayerBaseName = os.path.basename(os.path.normpath(args.vkLayerLibPath))
 
     if vkLayerBaseName != EXPECTED_VULKAN_LAYER_FILE:
-        print("\nWARNING: The provided Vulkan layer does not match the expected Vulkan layer name (given: %s, expected: %s); is this correct?\n" % (
-            vkLayerBaseName, EXPECTED_VULKAN_LAYER_FILE,))
+        print("\nWARNING: The Vulkan layer is not the default layer")
 
     if args.androidVersion < ANDROID_MIN_VULKAN_SDK:
         device.adb("shell", "setprop", "debug.vulkan.layers",
@@ -991,8 +996,7 @@ def enable_gles_debug_layer(device, args):
         os.path.normpath(args.glesLayerLibPath))
 
     if glesLayerBaseName != EXPECTED_GLES_LAYER_FILE_NAME:
-        print("\nWARNING: The provided GLES layer does not match the expected GLES layer name (given: %s, expected: %s); is this correct?\n" % (
-            glesLayerBaseName, EXPECTED_GLES_LAYER_FILE_NAME,))
+        print("\nWARNING: The OpenGL ES layer is not the default layer")
 
     device.adb("push", args.glesLayerLibPath, ANDROID_TMP_DIR)
     device.adb_run_as(args.package, "cp",
@@ -1020,11 +1024,14 @@ def disable_vulkan_debug_layer(device, args):
     if args.androidVersion < ANDROID_MIN_VULKAN_SDK:
         device.adb("shell", "setprop", "debug.vulkan.layers", "''")
     else:
-        device.adb("shell", "settings", "delete",
-                   "global", "enable_gpu_debug_layers")
-        device.adb("shell", "settings", "delete", "global gpu_debug_app")
-        device.adb("shell", "settings", "delete", "global gpu_debug_layers")
+        device.adb("shell", "settings", "delete", "global",
+                   "enable_gpu_debug_layers")
+        device.adb("shell", "settings", "delete", "global",
+                   "gpu_debug_app")
+        device.adb("shell", "settings", "delete", "global",
+                   "gpu_debug_layers")
 
+    device.adb("shell", "rm", ANDROID_TMP_DIR + layerBaseName, quiet=True)
     device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
@@ -1041,11 +1048,14 @@ def disable_gles_debug_layer(device, args):
 
     layerBaseName = os.path.basename(os.path.normpath(args.glesLayerLibPath))
 
-    device.adb("shell", "settings", "delete",
-               "global", "enable_gpu_debug_layers")
-    device.adb("shell", "settings", "delete", "global gpu_debug_app")
-    device.adb("shell", "settings", "delete", "global gpu_debug_layers_gles")
+    device.adb("shell", "settings", "delete", "global",
+               "enable_gpu_debug_layers")
+    device.adb("shell", "settings", "delete", "global",
+               "gpu_debug_app")
+    device.adb("shell", "settings", "delete", "global",
+               "gpu_debug_layers_gles")
 
+    device.adb("shell", "rm", ANDROID_TMP_DIR + layerBaseName, quiet=True)
     device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
@@ -1114,7 +1124,7 @@ def run_gatord_interactive(_device, _package):
         package: The package name.
     """
     # Wait for user to do the manual test
-    print("\nManual steps:\n")
+    print("\nManual steps:")
     print("    1) Configure and profile using Streamline")
     print("    2) Press <Enter> here after capture has completed to finish.")
     input("\nWaiting for data capture ...")
@@ -1235,12 +1245,12 @@ def exit_handler(device, args):
     if args.lwiMode != "off":
         try:
             # Disable vulkan layer debug if necessary
-            if args.lwiApi == "vulkan":
+            if "vulkan" in args.lwiApi:
                 disable_vulkan_debug_layer(device, args)
 
             # Disable gles layer if necessary
-            elif (args.lwiApi == "gles" and
-                  args.androidVersion >= ANDROID_MIN_OPENGLES_SDK):
+            elif "gles" in args.lwiApi and \
+                 args.androidVersion >= ANDROID_MIN_OPENGLES_SDK:
                 disable_gles_debug_layer(device, args)
         except sp.CalledProcessError as e:
             handle_disconnect_error(e)
@@ -1334,10 +1344,11 @@ def parse_cli(parser):
              "  - screenshots: Use an interceptor to provide frame "
              + "boundaries, counters, and screenshots.\n")
 
+    choices = ["all", "gles", "vulkan"]
     parser.add_argument(
-        "--lwi-api", dest="lwiApi", default="gles", choices=["gles", "vulkan"],
-        help="The API to monitor. Possible values are 'gles'"
-             "or 'vulkan' (default=gles)")
+        "--lwi-api", dest="lwiApi", default="all", choices=choices,
+        help="The API to monitor. Possible values are 'all', 'gles', "
+             "or 'vulkan' (default=all)")
 
     parser.add_argument(
         "--lwi-gles-layer-lib-path", dest="glesLayerLibPath", default="",
@@ -1389,6 +1400,12 @@ def parse_cli(parser):
         help=ap.SUPPRESS)
 
     args = parser.parse_args()
+
+    # Always turn API into a list of enabled APIs
+    if args.lwiApi == "all":
+        args.lwiApi = ("gles", "vulkan")
+    else:
+        args.lwiApi = (args.lwiApi, )
 
     # Validate the numeric args
     if args.fpsWindow < 1:
@@ -1674,14 +1691,14 @@ def main():
 
     # Test if this is a supported device and fail early if it's not
     if args.lwiMode != "off":
-        if args.lwiApi == "vulkan" and args.androidVersion < ANDROID_MIN_VULKAN_SDK:
+        if "vulkan" in args.lwiApi and args.androidVersion < ANDROID_MIN_VULKAN_SDK:
             print(
                 "\nERROR: Using the Vulkan layer requires a device with Android 9 or higher.")
             print(
                 "       For older devices, custom annotations in the application can be used")
             print("       with --lwi=off to generate the frame boundaries needed.")
             return 4
-        if args.lwiApi == "gles" and args.androidVersion < ANDROID_MIN_OPENGLES_SDK:
+        if "gles" in args.lwiApi and args.androidVersion < ANDROID_MIN_OPENGLES_SDK:
             print(
                 "\nERROR: Using the OpenGL ES layer requires a device with Android 10 or higher.")
             print(
@@ -1757,7 +1774,7 @@ def main():
             return 4
 
         # If we are tracing vulkan
-        if args.lwiApi == "vulkan":
+        if "vulkan" in args.lwiApi:
             # We need vulkan layer when device running Android >= 9
             if args.androidVersion >= ANDROID_MIN_VULKAN_SDK:
                 vkLayerLibPath = args.vkLayerLibPath
@@ -1772,7 +1789,8 @@ def main():
 
                 args.vkLayerLibPath = vkLayerLibPath
                 enable_vulkan_debug_layer(device, args)
-        else:
+
+        if "gles" in args.lwiApi:
             # We need gles layer when device running Android >= 10
             if args.androidVersion >= ANDROID_MIN_OPENGLES_SDK:
                 glesLayerLibPath = args.glesLayerLibPath
@@ -1798,21 +1816,24 @@ def main():
             run_gatord_headless(device, package, args.headless, args.timeout,
                                 args.packageActivity, args.packageArguments)
 
-        # Clean and download LWI capture
+        # Download LWI screenshots if we enabled them
+        if args.lwiMode == "screenshots":
+            # Copy screenshots from the device
+            print("\nDownloading screen captures from device")
+            if not pull_screenshots(device, args.outDir, package):
+                print("\nERROR: Failed to download screen captures.")
+
+        # Disable layers if we enabled them
         if args.lwiMode != "off":
-            # Pulling the capture from device
-            print("\nPulling capture from device")
-            if not pull_capture(device, args.outDir, package,
-                                headless=args.headless):
-                print("\nERROR: Failed to pull capture from the device.")
+            # Remove config file
             device.adb_quiet("shell", "rm", ANDROID_TMP_DIR + CONFIG_FILE)
 
             # Disable vulkan layer debug if necessary
-            if args.lwiApi == "vulkan":
+            if "vulkan" in args.lwiApi:
                 disable_vulkan_debug_layer(device, args)
 
             # Disable gles layer if necessary
-            if args.lwiApi == "gles":
+            if "gles" in args.lwiApi:
                 disable_gles_debug_layer(device, args)
 
         atexit.unregister(exit_handler)

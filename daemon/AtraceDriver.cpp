@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #include "AtraceDriver.h"
 
@@ -7,14 +7,18 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "SimpleDriver.h"
+#include "capture/Environment.h"
 #include "lib/String.h"
 
 #include <cstdlib>
 #include <cstring>
+#include <string_view>
 
 #include <mxml.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+constexpr std::string_view ATRACE_ENABLE_TAG {"atrace_enable"};
 
 class AtraceCounter : public DriverCounter {
 public:
@@ -48,10 +52,20 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
         //LOG_SETUP("Atrace is disabled\nUnable to find setprop, this is not an Android target");
         return;
     }
+
     if (!mFtraceDriver.isSupported()) {
         LOG_SETUP("Atrace is disabled\nSupport for ftrace is required");
         return;
     }
+
+    const auto os_type = capture::detectOs();
+    const bool is_android = (os_type == capture::OsType::Android);
+
+    // Add this whenever ftrace is supported.
+    if (is_android) {
+        setCounters(new AtraceCounter(getCounters(), ATRACE_ENABLE_TAG.data(), 0));
+    }
+
     if (getApplicationFullPath(mNotifyPath, sizeof(mNotifyPath)) != 0) {
         LOG_DEBUG("Unable to determine the full path of gatord, the cwd will be used");
     }
@@ -74,7 +88,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
             continue;
         }
 
-        if (strncmp(counter, "atrace_", 7) != 0) {
+        if (strncmp(counter, "atrace_", 7) != 0 || strcmp(counter, ATRACE_ENABLE_TAG.data()) == 0) {
             continue;
         }
 
@@ -122,7 +136,14 @@ void AtraceDriver::start()
         if (!counter->isEnabled()) {
             continue;
         }
+        if (strcmp(counter->getName(), ATRACE_ENABLE_TAG.data()) == 0) {
+            isATraceEnabled = true;
+        }
         flags |= counter->getFlag();
+    }
+
+    if (!isATraceEnabled) {
+        return;
     }
 
     setAtrace(flags);
@@ -130,7 +151,7 @@ void AtraceDriver::start()
 
 void AtraceDriver::stop()
 {
-    if (!mSupported) {
+    if (!mSupported || !isATraceEnabled) {
         return;
     }
 

@@ -18,13 +18,13 @@ public:
     CCNDriver(CCNDriver &&) = delete;
     CCNDriver & operator=(CCNDriver &&) = delete;
 
-  [[nodiscard]]  bool claimCounter(Counter & counter) const override;
+    [[nodiscard]] bool claimCounter(Counter & counter) const override;
     void resetCounters() override;
     void setupCounter(Counter & counter) override;
 
-    void readEvents(mxml_node_t * const /*unused*/) override;
+    void readEvents(mxml_node_t * root) override;
     [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
-    void writeEvents(mxml_node_t * const /*unused*/) const override;
+    void writeEvents(mxml_node_t * root) const override;
 
     static std::string validateCounters();
 

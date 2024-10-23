@@ -18,6 +18,7 @@ public:
         std::uint64_t config = 0;
         std::uint64_t config1 = 0;
         std::uint64_t config2 = 0;
+        std::uint64_t config3 = 0;
         std::uint64_t periodOrFreq = 0;
         std::uint64_t strobePeriod = 0;
         std::uint64_t sampleType = 0;

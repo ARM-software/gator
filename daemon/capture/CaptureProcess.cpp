@@ -109,7 +109,7 @@ namespace {
             // add 64 for signal to differentiate from normal exit.
             // can't use 128 to 255 because that would be used by a shell
             // if this process (gator-main) signalled.
-            exitStatus = 64 + signal;
+            exitStatus = 64 + signal; //NOLINT(readability-magic-numbers)
         }
 
         assert(currentStateAndChildPid.state != State::IDLE);
@@ -150,12 +150,12 @@ namespace {
 
     class StreamlineCommandHandler : public IStreamlineCommandHandler {
     public:
-        State handleRequest(char *) override
+        State handleRequest(char * /*xml*/) override
         {
             LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_REQUEST_XML");
             return State::PROCESS_COMMANDS;
         }
-        State handleDeliver(char *) override
+        State handleDeliver(char * /*xml*/) override
         {
             LOG_DEBUG("INVESTIGATE: Received unknown command type COMMAND_DELIVER_XML");
             return State::PROCESS_COMMANDS;
@@ -349,7 +349,7 @@ namespace {
             ss << errno;
             throw GatorException(ss.str());
         }
-        else if (pid == 0) {
+        if (pid == 0) {
             // Child
             for (const auto & driver : drivers.getAll()) {
                 driver->postChildForkInChild();
@@ -402,7 +402,9 @@ int capture::beginCaptureProcess(const ParserResult & result,
 
     // Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal
     // Handling the error at the send function call is much easier than trying to do anything intelligent in the sig handler
-    signal(SIGPIPE, SIG_IGN);
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        LOG_ERROR("Error ignoring SIGPIPE");
+    }
 
     // only enable when running in system-wide mode
     bool enable_annotation_listener = isCaptureOperationModeSystemWide(result.mCaptureOperationMode);

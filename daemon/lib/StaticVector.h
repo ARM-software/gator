@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -49,13 +49,13 @@ namespace lib {
 
         // Capacity
 
-        bool empty() const { return size_ == 0; }
+        [[nodiscard]] bool empty() const { return size_ == 0; }
 
-        bool full() const { return size_ == N; }
+        [[nodiscard]] bool full() const { return size_ == N; }
 
-        size_type size() const { return size_; }
+        [[nodiscard]] size_type size() const { return size_; }
 
-        constexpr size_type capacity() const { return N; }
+        [[nodiscard]] constexpr size_type capacity() const { return N; }
 
         // Modifiers
 

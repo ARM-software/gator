@@ -45,20 +45,21 @@ public:
 
     // Claims and prepares the SPE for capture
     [[nodiscard]] virtual std::optional<CapturedSpe> setupSpe(int /* sampleRate */,
-                                                              const SpeConfiguration & /* configuration */)
+                                                              const SpeConfiguration & /* configuration */,
+                                                              bool /* supportsSpev1p2*/)
     {
         return {};
     }
 
     // Performs any actions needed for setup or based on eventsXML
-    virtual void readEvents(mxml_node_t * const /*unused*/) {}
+    virtual void readEvents(mxml_node_t * /*unused*/) {}
 
     // Emits available counters
     // @return number of counters added
     [[nodiscard]] virtual int writeCounters(available_counter_consumer_t const & consumer) const = 0;
 
     // Emits possible dynamically generated events/counters
-    virtual void writeEvents(mxml_node_t * const /*unused*/) const {}
+    virtual void writeEvents(mxml_node_t * /*unused*/) const {}
 
     [[nodiscard]] inline const char * getName() const { return name; }
 

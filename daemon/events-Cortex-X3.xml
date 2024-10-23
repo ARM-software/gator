@@ -145,7 +145,7 @@
     <event event="0x80ef" title="Instructions (Speculated)" name="Integer, 64-bit (Advanced SIMD and SVE)" description="The counter counts each operation counted by &apos;Instructions (Speculated): Integer (Advanced SIMD and SVE)&apos; where the largest type is an 64-bit integer" units="instructions"/>
 </category>
 
-<spe name="Arm Cortex-X3 Statistical Profiling Extension" id="arm_cortex_x3_spe_pmu" extends="armv8.7_spe_sve">
+<spe name="Arm Cortex-X3 Statistical Profiling Extension" id="arm_cortex_x3_spe_pmu" extends="armv8.3_spe_sve">
     <!-- Define data source packet source types [21.2 SPE Data Source Packet] -->
     <data-source index="0x0" name="Level 1 data cache" />
     <data-source index="0x8" name="Level 2 cache" />

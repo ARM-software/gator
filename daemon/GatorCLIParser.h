@@ -26,7 +26,9 @@ static const struct option APP = {"app", /********************/ required_argumen
  */
 class GatorCLIParser {
 public:
-    ParserResult result {};
+    static const char * USAGE_MESSAGE;
+
+    ParserResult result;
 
     // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     static bool hasDebugFlag(int argc, const char * const argv[]);

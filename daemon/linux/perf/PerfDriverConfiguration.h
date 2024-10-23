@@ -30,9 +30,9 @@ struct PerfUncore {
  * Contains the detected parameters of perf
  */
 struct PerfDriverConfiguration {
-    std::vector<PerfCpu> cpus {};
-    std::vector<PerfUncore> uncores {};
-    std::map<int, int> cpuNumberToSpeType {};
+    std::vector<PerfCpu> cpus;
+    std::vector<PerfUncore> uncores;
+    std::map<int, int> cpuNumberToSpeType;
     PerfConfig config {};
 
     static std::unique_ptr<PerfDriverConfiguration> detect(
@@ -43,7 +43,7 @@ struct PerfDriverConfiguration {
         const PmuXML & pmuXml);
 
     static constexpr int UNKNOWN_CPUID = 0xfffff;
-    static constexpr char ARMV82_SPE[] = "armv8.2_spe";
+    static constexpr const char * ARMV82_SPE = "armv8.2_spe";
 };
 
 #endif // PERFDRIVER_CONFIGURATION_H

@@ -71,9 +71,6 @@ public:
     /** Return list of additional polled drivers required for source */
     [[nodiscard]] virtual const std::vector<PolledDriver *> & getAdditionalPolledDrivers() const;
 
-    /** Some driver specific message to show if prepare failed */
-    [[nodiscard]] virtual const char * getPrepareFailedMessage() const = 0;
-
     /** Return the primary driver object */
     [[nodiscard]] virtual const Driver & getPrimaryDriver() const = 0;
 

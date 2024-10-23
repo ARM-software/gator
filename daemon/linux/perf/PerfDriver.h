@@ -72,7 +72,9 @@ public:
     [[nodiscard]] int writeCounters(available_counter_consumer_t const & consumer) const override;
     void writeEvents(mxml_node_t * root) const override;
     void setupCounter(Counter & counter) override;
-    [[nodiscard]] std::optional<CapturedSpe> setupSpe(int sampleRate, const SpeConfiguration & spe) override;
+    [[nodiscard]] std::optional<CapturedSpe> setupSpe(int sampleRate,
+                                                      const SpeConfiguration & spe,
+                                                      bool supportsSpev1p2) override;
     [[nodiscard]] bool enable(IPerfGroups & group,
                               attr_to_key_mapping_tracker_t & mapping_tracker,
                               metric_key_to_event_key_tracker_t & metric_tracker) const;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2015-2024 by Arm Limited. All rights reserved. */
 
 #ifndef ATRACEDRIVER_H
 #define ATRACEDRIVER_H
@@ -24,12 +24,13 @@ public:
     void start();
     void stop();
 
-    bool isSupported() const { return mSupported; }
+    [[nodiscard]] bool isSupported() const { return mSupported; }
 
 private:
     void setAtrace(int flags);
 
     bool mSupported;
+    bool isATraceEnabled {false};
     char mNotifyPath[256];
     const FtraceDriver & mFtraceDriver;
 };
