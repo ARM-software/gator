@@ -1083,6 +1083,11 @@ void GatorCLIParser::parseCLIArguments(int argc,
             result.parsingFailed();
             return;
         }
+        if (!result.mSpeConfigs.empty()) {
+            LOG_ERROR("--spe is not applicable in daemon mode.");
+            result.parsingFailed();
+            return;
+        }
     }
 
     if ((result.mAndroidActivity != nullptr) && (result.mAndroidPackage == nullptr)) {

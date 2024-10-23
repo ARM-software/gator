@@ -163,6 +163,10 @@
     <!-- nvidia -->
     <pmu counter_set="Other" id="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6" profile="8a"/>
 
+    <!--  Huawei -->
+    <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Kirin_980" cpuid="0x48d40" core_name="Kirin 980" pmnc_counters="6" profile="8a"/>
+
+
     <!-- =========================== UNCORES =========================== -->
 
     <!-- Arm -->

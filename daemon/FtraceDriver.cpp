@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #include "FtraceDriver.h"
 
@@ -430,6 +430,13 @@ void FtraceDriver::readEvents(mxml_node_t * const xml)
     if (::access(traceFsConstants.path, R_OK) != 0) {
         mSupported = false;
         LOG_SETUP("Ftrace is disabled\nUnable to locate the tracing directory");
+        return;
+    }
+
+    // Can the trace events be enabled? (may be restricted by container)
+    if (::access(traceFsConstants.path__events__enable, W_OK) != 0) {
+        mSupported = false;
+        LOG_SETUP("Ftrace is disabled\nUnable to write to \"%s\"", traceFsConstants.path__events__enable);
         return;
     }
 

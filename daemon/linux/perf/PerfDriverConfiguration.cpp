@@ -640,6 +640,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         attr.read_format = PERF_FORMAT_ID | PERF_FORMAT_GROUP;
         attr.disabled = 1;
         attr.inherit = 1;
+        attr.inherit_stat = 1; // the original kernel patches require this, the later ones do not (they ignore)
         attr.exclude_kernel = 1;
 
         auto const fd = lib::perf_event_open(&attr, 0, 0, -1, 0);

@@ -606,6 +606,13 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
                      result.mDisableKernelAnnotations,
                      TraceFsConstants::detect()};
 
+    bool system_wide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
+    if (gSessionData.mLocalCapture && system_wide && !drivers.getFtraceDriver().isSupported()) {
+        LOG_ERROR("System-wide capture requested, but tracefs is not available.%s",
+                  geteuid() == 0 ? "" : " You may need to run as root.");
+        handleException();
+    }
+
     // Handle child exit codes
     signal(SIGCHLD, handler);
 

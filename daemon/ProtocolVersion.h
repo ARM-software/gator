@@ -3,8 +3,8 @@
 
 /* Define the product release version / protocol version */
 
-// Protocol version Streamline v9.2.1
-#define PROTOCOL_VERSION 921
+// Protocol version Streamline v9.2.2
+#define PROTOCOL_VERSION 922
 // Differentiates development versions from release code
 #define PROTOCOL_VERSION_DEV_MULTIPLIER 100000
 
