@@ -1,0 +1,58 @@
+﻿---
+Language: Cpp
+BasedOnStyle: Mozilla
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AlignOperands: AlignAfterOperator
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: InlineOnly
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBraces: Stroustrup
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+ColumnLimit: 120
+CompactNamespaces: true
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+Cpp11BracedListStyle: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:          '^"[^"]+"$'
+    Priority:       2
+    SortPriority:   2
+  - Regex:          '^<[0-9A-Za-z_/]+>$'
+    Priority:       3
+    SortPriority:   3
+  - Regex:          '^<[Ww]indows.h>$'
+    Priority:       4
+    SortPriority:   4
+  - Regex:          '^<boost/[^>]+\.(h|hh|hpp)>$'
+    Priority:       5
+    SortPriority:   5
+  - Regex:          '^<(gtest|gmock)/[^>]+\.(h|hh|hpp)>$'
+    Priority:       6
+    SortPriority:   6
+  - Regex:          '^<[^>]+\.(h|hh|hpp)>$'
+    Priority:       7
+    SortPriority:   7
+IndentWidth: 4
+NamespaceIndentation: All
+ObjCBlockIndentWidth: 4
+PointerAlignment: Middle
+ReflowComments: false
+SortIncludes: true
+SortUsingDeclarations: true
+SpaceAfterCStyleCast: true
+SpaceBeforeCpp11BracedList: true
+Standard: c++17
+TabWidth: 4
+UseTab: Never
+
+...
