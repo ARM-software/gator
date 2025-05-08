@@ -178,6 +178,9 @@ EXPECTED_VULKAN_LAYER_FILE = "libVkLayerLWI.so"
 EXPECTED_GLES_LAYER_FILE_NAME = "libGLESLayerLWI.so"
 EXPECTED_VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation"
 
+# ADB output encoding. Should be specified explicitly as this may not match the host locale
+ADB_ENCODING = "utf-8"
+
 
 class ArgFormatter(ap.HelpFormatter):
     """
@@ -234,13 +237,9 @@ class Device:
         # Note do not use shell=True; arguments are not safely escaped
         # Sink inputs to DEVNULL to stop the child process stealing keyboard
         # Sink outputs to DEVNULL to stop full output buffers blocking child
-        if DEBUG_GATORD:
-            stde = sys.stderr
-            process = sp.Popen(commands, text=True,
-                               stdin=stde, stdout=stde)
-        else:
-            process = sp.Popen(commands, text=True, stdin=sp.DEVNULL, stdout=sp.DEVNULL,  # pylint: disable=consider-using-with
-                               stderr=sp.DEVNULL)
+        stdo = sys.stdout if DEBUG_GATORD else sp.DEVNULL
+        stde = sys.stderr if DEBUG_GATORD else sp.DEVNULL
+        process = sp.Popen(commands, encoding=ADB_ENCODING, stdin=sp.DEVNULL, stdout=stdo, stderr=stde)  # pylint: disable=consider-using-with
 
         return process
 
@@ -257,8 +256,7 @@ class Device:
         commands.extend(args)
 
         # Note do not use shell=True; arguments are not safely escaped
-        sp.run(commands, stdout=sp.DEVNULL,
-               stderr=sp.DEVNULL, check=False)
+        sp.run(commands, stdout=sp.DEVNULL, stderr=sp.DEVNULL, check=False)
 
     def adb(self, *args: str, **kwargs: bool):
         """
@@ -281,7 +279,7 @@ class Device:
             commands.extend(["-s", self.device])
         commands.extend(args)
 
-        text = kwargs.get("text", True)
+        encoding = ADB_ENCODING if kwargs.get("text", True) else None
         shell = kwargs.get("shell", False)
         quote = kwargs.get("quote", False)
 
@@ -303,7 +301,7 @@ class Device:
             command_args = commands
 
         rep = sp.run(command_args, check=True, shell=shell, stdout=sp.PIPE,
-                     stderr=sp.PIPE, text=text)
+                     stderr=sp.PIPE, encoding=encoding)
 
         return rep.stdout
 
@@ -1130,7 +1128,7 @@ def run_gatord_interactive():
     input("\nWaiting for data capture ...")
 
 
-# pylint: disable-msg=too-many-locals
+# pylint: disable-msg=too-many-locals,too-many-positional-arguments
 def run_gatord_headless(device: Device, package: str, outputName: str, timeout: int, activity: str, activityArgs: str):
     """
     Run gatord for a headless capture session.
