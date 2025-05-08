@@ -70,25 +70,25 @@ namespace logging {
 
     void log_item(log_level_t level, source_loc_t const & location, std::string_view message)
     {
-        std::shared_ptr<logger_t> sink = current_logger;
+        std::shared_ptr<logger_t> logger = current_logger;
 
-        if (sink != nullptr) {
+        if (logger != nullptr) {
             struct timespec t;
             clock_gettime(CLOCK_MONOTONIC, &t);
 
-            sink->log_item(thread_id_t(syscall(SYS_gettid)), level, {t.tv_sec, t.tv_nsec}, location, message);
+            logger->log_item(thread_id_t(syscall(SYS_gettid)), level, {t.tv_sec, t.tv_nsec}, location, message);
         }
     }
 
     void log_item(thread_id_t tid, log_level_t level, source_loc_t const & location, std::string_view message)
     {
-        std::shared_ptr<logger_t> sink = current_logger;
+        std::shared_ptr<logger_t> logger = current_logger;
 
-        if (sink != nullptr) {
+        if (logger != nullptr) {
             struct timespec t;
             clock_gettime(CLOCK_MONOTONIC, &t);
 
-            sink->log_item(tid, level, {t.tv_sec, t.tv_nsec}, location, message);
+            logger->log_item(tid, level, {t.tv_sec, t.tv_nsec}, location, message);
         }
     }
 
@@ -98,16 +98,16 @@ namespace logging {
                   source_loc_t const & location,
                   std::string_view message)
     {
-        const std::shared_ptr<logger_t> sink = current_logger;
+        const std::shared_ptr<logger_t> logger = current_logger;
 
-        if (sink != nullptr) {
-            sink->log_item(tid, level, timestamp, location, message);
+        if (logger != nullptr) {
+            logger->log_item(tid, level, timestamp, location, message);
         }
     }
 
-    void set_logger(std::shared_ptr<logger_t> sink)
+    void set_logger(std::shared_ptr<logger_t> logger)
     {
-        current_logger = std::move(sink);
+        current_logger = std::move(logger);
         if (current_logger) {
             install_protobuf_log_handler();
         }

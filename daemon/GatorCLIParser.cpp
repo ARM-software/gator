@@ -37,8 +37,6 @@
 #include <getopt.h>
 
 namespace {
-    constexpr int DECIMAL_BASE = 10;
-    constexpr int HEX_BASE = 16;
     constexpr int MIN_LATENCY = 4096;
     constexpr int MAX_EVENT_BIT_POSITION = 63;
     constexpr int GATOR_ANNOTATION_PORT1 = 8082;
@@ -217,8 +215,8 @@ namespace {
         }
         long long eventCode;
         std::string eventStr {event};
-        if (!stringToLongLong(&eventCode, eventStr.c_str(), DECIMAL_BASE)) { //check for decimal
-            if (!stringToLongLong(&eventCode, eventStr.c_str(), HEX_BASE)) { //check for hex
+        if (!stringToLongLong(&eventCode, eventStr.c_str(), OlyBase::Decimal)) {         //check for decimal
+            if (!stringToLongLong(&eventCode, eventStr.c_str(), OlyBase::Hexadecimal)) { //check for hex
                 result.error_messages.emplace_back("event must be an integer");
                 return {};
             }
@@ -334,7 +332,7 @@ void GatorCLIParser::parseAndUpdateSpe()
                 }
                 if (spe.size() == 2) { //should be a key value pair to add
                     if (spe[0] == SPE_MIN_LATENCY_KEY) {
-                        if (!stringToInt(&(data.min_latency), spe[1].c_str(), 0)) {
+                        if (!stringToInt(&(data.min_latency), spe[1].c_str())) {
                             result.error_messages.emplace_back(lib::Format() << "latency not an integer " << data.id
                                                                              << " (" << spe[1] << ")");
                             result.parsingFailed();
@@ -353,7 +351,7 @@ void GatorCLIParser::parseAndUpdateSpe()
                         split(spe[1], SPES_KEY_VALUE_DELIMITER, spe_events);
                         for (const std::string & spe_event : spe_events) {
                             int event;
-                            if (!stringToInt(&event, spe_event.c_str(), DECIMAL_BASE)) {
+                            if (!stringToInt(&event, spe_event.c_str(), OlyBase::Decimal)) {
                                 result.error_messages.emplace_back(
                                     lib::Format() << "Event filter cannot be a non integer , failed for " << spe_event);
                                 result.parsingFailed();
@@ -458,7 +456,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                                                   : std::nullopt});
         switch (c) {
             case 'N':
-                if (!stringToInt(&result.mOverrideNoPmuSlots, optarg, 10)) {
+                if (!stringToInt(&result.mOverrideNoPmuSlots, optarg, OlyBase::Decimal)) {
                     result.error_messages.emplace_back("-N must be followed by an non-zero positive number");
                     result.parsingFailed();
                     return;
@@ -489,7 +487,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     result.port = DISABLE_TCP_USE_UDS_PORT;
                 }
                 else {
-                    if (!stringToInt(&result.port, optarg, DECIMAL_BASE)) {
+                    if (!stringToInt(&result.port, optarg, OlyBase::Decimal)) {
                         result.error_messages.emplace_back("Port must be an integer");
                         result.parsingFailed();
                         return;
@@ -550,7 +548,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
             case 't': //max-duration
                 result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_DURATION;
 
-                if (!stringToInt(&result.mDuration, optarg, 10)) {
+                if (!stringToInt(&result.mDuration, optarg, OlyBase::Decimal)) {
                     result.error_messages.emplace_back(lib::Format() << "Invalid max duration (" << optarg << ").");
                     result.parsingFailed();
                     return;
@@ -683,7 +681,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 break;
             case 'Z':
                 result.mPerfMmapSizeInPages = -1;
-                if (!stringToInt(&result.mPerfMmapSizeInPages, optarg, 0)) {
+                if (!stringToInt(&result.mPerfMmapSizeInPages, optarg)) {
                     result.error_messages.emplace_back(lib::Format() << "Invalid value for --mmap-pages (" << optarg
                                                                      << "): not an integer");
                     result.parsingFailed();
@@ -735,7 +733,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
             }
             case 'F': {
                 result.mSpeSampleRate = -1;
-                if (!stringToInt(&result.mSpeSampleRate, optarg, 0)) {
+                if (!stringToInt(&result.mSpeSampleRate, optarg)) {
                     result.error_messages.emplace_back(lib::Format() << "Invalid value for --spe-sample-rate ("
                                                                      << optarg << "): not an integer");
                     result.parsingFailed();

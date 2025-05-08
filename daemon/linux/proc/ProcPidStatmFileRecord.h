@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2020 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PROC_PROCPIDSTATMFILERECORD_H
 #define INCLUDE_LINUX_PROC_PROCPIDSTATMFILERECORD_H
@@ -34,19 +34,13 @@ namespace lnx {
                                unsigned long data,
                                unsigned long dt);
 
-        unsigned long getData() const { return data; }
-
-        unsigned long getDt() const { return dt; }
-
-        unsigned long getLib() const { return lib; }
-
-        unsigned long getResident() const { return resident; }
-
-        unsigned long getShared() const { return shared; }
-
-        unsigned long getSize() const { return size; }
-
-        unsigned long getText() const { return text; }
+        [[nodiscard]] unsigned long getData() const { return data; }
+        [[nodiscard]] unsigned long getDt() const { return dt; }
+        [[nodiscard]] unsigned long getLib() const { return lib; }
+        [[nodiscard]] unsigned long getResident() const { return resident; }
+        [[nodiscard]] unsigned long getShared() const { return shared; }
+        [[nodiscard]] unsigned long getSize() const { return size; }
+        [[nodiscard]] unsigned long getText() const { return text; }
 
     private:
         unsigned long size;

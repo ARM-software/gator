@@ -130,7 +130,7 @@ namespace {
         }
 
         int raw_cpuid;
-        if (!stringToInt(&raw_cpuid, cpuIdStr, 0)) {
+        if (!stringToInt(&raw_cpuid, cpuIdStr)) {
             LOG_ERROR("The %s for '%s' in pmu XML is not an integer", locationStr, pmuId);
             return false;
         }
@@ -179,7 +179,7 @@ namespace {
         }
 
         int pmnc_counters;
-        if (!stringToInt(&pmnc_counters, pmnc_counters_attr, 0)) {
+        if (!stringToInt(&pmnc_counters, pmnc_counters_attr)) {
             LOG_ERROR("The pmnc_counters for '%s' in pmu XML is not an integer", id_attr);
             return false;
         }
@@ -274,7 +274,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
         }
 
         int pmncCounters;
-        if (!stringToInt(&pmncCounters, pmncCountersStr, 0)) {
+        if (!stringToInt(&pmncCounters, pmncCountersStr)) {
             LOG_ERROR("The pmnc_counters for '%s' in pmu XML is not an integer", id);
             return false;
         }
@@ -342,7 +342,7 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
             (counterSetAttr != nullptr ? counterSetAttr : coreName); // uses core name as default
         const char * const pmncCountersStr = mxmlElementGetAttr(node, ATTR_PMNC_COUNTERS.data());
         int pmncCounters;
-        if (!stringToInt(&pmncCounters, pmncCountersStr, 0)) {
+        if (!stringToInt(&pmncCounters, pmncCountersStr)) {
             LOG_ERROR("The pmnc_counters for '%s' in pmu XML is not an integer", id);
             return false;
         }

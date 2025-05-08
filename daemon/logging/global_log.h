@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -99,7 +99,7 @@ namespace logging {
 
         /** Formats a long message and sends it to the sinks */
         void output_item(bool verbose,
-                         char const * level,
+                         log_level_t level,
                          thread_id_t tid,
                          log_timestamp_t const & timestamp,
                          source_loc_t const & location,

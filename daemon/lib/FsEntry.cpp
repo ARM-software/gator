@@ -24,17 +24,18 @@
 #include <boost/filesystem/path.hpp>
 
 #include <dirent.h>
+#include <linux/limits.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 namespace fs = boost::filesystem;
 
 namespace lib {
-    FsEntryDirectoryIterator::FsEntryDirectoryIterator(const FsEntry & parent)
+    FsEntryDirectoryIterator::FsEntryDirectoryIterator(const FsEntry & parent) // NOLINT(modernize-pass-by-value)
         : parent_(parent), directory_(nullptr, ::closedir)
     {
-        if (parent_->read_stats().type() == FsEntry::Type::DIR) {
-            directory_.reset(::opendir(parent_->path().c_str()));
+        if (parent_.read_stats().type() == FsEntry::Type::DIR) {
+            directory_.reset(::opendir(parent_.path().c_str()));
         }
     }
 
@@ -52,7 +53,7 @@ namespace lib {
                     return next();
                 }
 
-                return FsEntry(parent_->path().append("/").append(entry->d_name));
+                return FsEntry(parent_.path().append("/").append(entry->d_name));
             }
         }
 
@@ -94,7 +95,7 @@ namespace lib {
     FsEntry::FsEntry(std::string p) : path_(std::move(p)), name_offset(std::string::npos)
     {
         // add CWD if not starting with '/'
-        if ((path_.length() == 0) || (path_[0] != '/')) {
+        if (path_.empty() || path_[0] != '/') {
             std::string buffer(PATH_MAX, '\0');
             const char * const cwd = getcwd(&buffer.front(), PATH_MAX);
 
@@ -113,7 +114,7 @@ namespace lib {
             path_.resize(path_.length() - 1);
         }
 
-        runtime_assert((path_.length() > 0) && (path_[0] == '/'), "Invalid absolute path");
+        runtime_assert(!path_.empty() && path_[0] == '/', "Invalid absolute path");
 
         // save location of last '/'
         name_offset = path_.rfind('/');
@@ -129,7 +130,7 @@ namespace lib {
             return FsEntry(path_.substr(0, name_offset));
         }
 
-        return std::optional<FsEntry>();
+        return {};
     }
 
     std::string FsEntry::name() const
@@ -154,7 +155,7 @@ namespace lib {
 
     FsEntryDirectoryIterator FsEntry::children() const
     {
-        return FsEntryDirectoryIterator(*this);
+        return {*this};
     }
 
     std::optional<FsEntry> FsEntry::readlink() const
@@ -180,13 +181,14 @@ namespace lib {
 
     std::optional<FsEntry> FsEntry::realpath() const
     {
+        // NOLINTNEXTLINE(modernize-avoid-c-arrays)
         std::unique_ptr<char[], void (*)(void *)> real_path {::realpath(path_.c_str(), nullptr), std::free};
 
         if (real_path != nullptr) {
             return FsEntry(real_path.get());
         }
 
-        return std::optional<FsEntry>();
+        return {};
     }
 
     bool FsEntry::operator==(const FsEntry & that) const
@@ -249,6 +251,7 @@ namespace lib {
 
     bool FsEntry::canAccess(bool read, bool write, bool exec) const
     {
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
         const int mode = F_OK | (read ? R_OK : 0) | (write ? W_OK : 0) | (exec ? X_OK : 0);
 
         return access(path_.c_str(), mode) == 0;

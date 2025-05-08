@@ -15,9 +15,7 @@
 #include "linux/perf/metric_key_to_event_key_tracker.h"
 #include "metrics/definitions.hpp"
 
-#include <cstdint>
 #include <functional>
-#include <list>
 #include <memory>
 #include <set>
 #include <unordered_map>
@@ -53,10 +51,25 @@ static std::map<const char *, const char *> MALI_TRC_PNT_PATH = { //
     {MALI_MMU_TOTAL_ALLOC, "mali/mali_total_alloc_pages_change"}, //
     {MALI_JOB_SLOT, "mali/mali_job_slots_event"}};
 
+/** Represents a single entry in the combined hierarchy */
+struct combined_metrics_hierarchy_entry_t {
+    std::reference_wrapper<metrics::metric_events_set_t const> metric;
+    std::vector<combined_metrics_hierarchy_entry_t> children;
+    metrics::metric_group_id_t group;
+    bool top_down;
+
+    combined_metrics_hierarchy_entry_t(metrics::metric_hierarchy_entry_t const & entry)
+        : metric(entry.metric), group(entry.group), top_down(entry.top_down)
+    {
+    }
+};
+
+/** Represents root details for the combined hierarchy */
 struct combined_metrics_t {
-    std::vector<std::reference_wrapper<metrics::metric_events_set_t const>> events;
+    std::vector<combined_metrics_hierarchy_entry_t> root_events;
     metrics::metric_cpu_version_t version;
     std::size_t largest_metric_event_count = 0;
+    std::size_t total_num_events = 0;
 
     explicit combined_metrics_t(metrics::metric_cpu_version_t const & version) : version(version) {}
 };
@@ -110,14 +123,23 @@ public:
     std::set<std::string_view> metricsSupporting(metrics::metric_group_set_t const & desired) override;
 
 private:
-    static void writeEventsFor(const PerfCpu & perfCpu, mxml_node_t * category, combined_metrics_t const & cpu_metrics);
+    static void writeEventsFor(const PerfCpu & perfCpu,
+                               mxml_node_t * root,
+                               std::string const & category_name,
+                               metrics::metric_cpu_version_t const & version,
+                               lib::Span<combined_metrics_hierarchy_entry_t const> events);
 
     static int writeCountersFor(const PerfCpu & perfCpu,
                                 combined_metrics_t const & cpu_metrics,
                                 available_counter_consumer_t const & consumer);
 
+    static int writeCountersForRecursive(const PerfCpu & perfCpu,
+                                         metrics::metric_cpu_version_t const & version,
+                                         lib::Span<combined_metrics_hierarchy_entry_t const> events,
+                                         available_counter_consumer_t const & consumer);
+
     const TraceFsConstants & traceFsConstants;
-    PerfTracepoint * mTracepoints;
+    PerfTracepoint * mTracepoints = nullptr;
     PerfDriverConfiguration mConfig;
     PmuXML mPmuXml;
     const ICpuInfo & mCpuInfo;
@@ -126,6 +148,9 @@ private:
 
     void addCpuCounters(const PerfCpu & perfCpu);
     void addCpuCounterMetrics(const PerfCpu & perfCpu, combined_metrics_t const & cpu_metrics);
+    void addCpuCounterMetricsRecursive(const PerfCpu & perfCpu,
+                                       metrics::metric_cpu_version_t const & version,
+                                       lib::Span<combined_metrics_hierarchy_entry_t const> events);
     void addUncoreCounters(const PerfUncore & uncore);
     void addMidgardHwTracepoints(const char * maliFamilyName);
     [[nodiscard]] bool enableGatorTracepoints(IPerfGroups & group,

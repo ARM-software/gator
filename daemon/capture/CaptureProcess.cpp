@@ -104,7 +104,7 @@ namespace {
             // NOLINTNEXTLINE(hicpp-signed-bitwise)
             int signal = WTERMSIG(status);
             //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_FINE("Child process %d was terminated by signal %s (%d)", pid, strsignal(signal), signal);
+            LOG_ERROR("Child process %d was terminated by signal %s (%d)", pid, strsignal(signal), signal);
             // child exit codes start from 1 so should be less than 64.
             // add 64 for signal to differentiate from normal exit.
             // can't use 128 to 255 because that would be used by a shell

@@ -128,31 +128,25 @@ from __future__ import print_function
 
 import sys
 
-try:
-    import argparse as ap
-    import atexit
-    import datetime
-    import math
-    import os
-    import re
-    import shlex
-    import shutil
-    import subprocess as sp
-    import tarfile
-    import tempfile
-    import textwrap
-    import time
-
-# Standard library import failure implies old Python
-except ImportError:
-    print("ERROR: Script requires Python 3.8 or newer")
+if sys.version_info < (3, 8, 17):
+    print("ERROR: Script requires Python 3.8.17 or newer", file=sys.stderr)
     sys.exit(1)
 
-# We know we have an API break with Python 3.4 or older
-if (sys.version_info[0] < 3) or \
-   (sys.version_info[0] == 3 and sys.version_info[1] < 8):
-    print("ERROR: Script requires Python 3.8 or newer")
-    sys.exit(1)
+# pylint: disable=wrong-import-position
+import argparse as ap
+import atexit
+import datetime
+import math
+import os
+import re
+import shlex
+import shutil
+import subprocess as sp
+import tarfile
+import tempfile
+import textwrap
+import time
+from typing import Optional
 
 
 DEBUG_GATORD = False
@@ -221,7 +215,7 @@ class Device:
         self.device = deviceName
         self.is_root = None
 
-    def adb_async(self, *args):
+    def adb_async(self, *args: str):
         """
         Call `adb` to start a command, but do not wait for it to complete.
 
@@ -242,16 +236,15 @@ class Device:
         # Sink outputs to DEVNULL to stop full output buffers blocking child
         if DEBUG_GATORD:
             stde = sys.stderr
-            process = sp.Popen(commands, universal_newlines=True,
+            process = sp.Popen(commands, text=True,
                                stdin=stde, stdout=stde)
         else:
-            devn = sp.DEVNULL
-            process = sp.Popen(commands, stdin=devn, stdout=devn,  # pylint: disable=consider-using-with
-                               stderr=devn)
+            process = sp.Popen(commands, text=True, stdin=sp.DEVNULL, stdout=sp.DEVNULL,  # pylint: disable=consider-using-with
+                               stderr=sp.DEVNULL)
 
         return process
 
-    def adb_quiet(self, *args):
+    def adb_quiet(self, *args: str):
         """
         Call `adb` to run a command, but ignore output and errors.
 
@@ -267,7 +260,7 @@ class Device:
         sp.run(commands, stdout=sp.DEVNULL,
                stderr=sp.DEVNULL, check=False)
 
-    def adb(self, *args, **kwargs):
+    def adb(self, *args: str, **kwargs: bool):
         """
         Call `adb` to run command, and capture output and results.
 
@@ -292,28 +285,29 @@ class Device:
         shell = kwargs.get("shell", False)
         quote = kwargs.get("quote", False)
 
-        # Run on the host shell
-        if shell:
-            # Unix shells need a flattened command for shell commands
-            if os.name != 'nt':
-                quotedCommands = []
-                for command in commands:
-                    if command != ">":
-                        command = shlex.quote(command)
-                    quotedCommands.append(command)
-                commands = " ".join(quotedCommands)
+        command_args: str | list[str]
 
+        # Run on the host shell (Unix shells need a flattened command for shell commands)
+        if shell and os.name != 'nt':
+            quotedCommands = []
+            for command in commands:
+                if command != ">":
+                    command = shlex.quote(command)
+                quotedCommands.append(command)
+
+            command_args = " ".join(quotedCommands)
         # Run on the device but with shell argument quoting
-        if quote:
-            for i, command in enumerate(commands):
-                commands[i] = shlex.quote(command)
+        elif quote:
+            command_args = [shlex.quote(arg) for arg in commands]
+        else:
+            command_args = commands
 
-        rep = sp.run(commands, check=True, shell=shell, stdout=sp.PIPE,
-                     stderr=sp.PIPE, universal_newlines=text)
+        rep = sp.run(command_args, check=True, shell=shell, stdout=sp.PIPE,
+                     stderr=sp.PIPE, text=text)
 
         return rep.stdout
 
-    def adb_run_as(self, package, *args, quiet=False):
+    def adb_run_as(self, package: Optional[str], *args: str, quiet=False):
         """
         Call `adb` to run command as a package using `run-as` or as root,
         if root is accessible. If command will be run as root, this function
@@ -333,7 +327,7 @@ class Device:
         global PKG_DATA_DIR  # pylint: disable=global-statement
         if package is None or PKG_DATA_DIR is None:
             PKG_DATA_DIR = ""
-            return self.adb("shell", args)
+            return self.adb("shell", *args)
 
         command = []
         if self.has_root_access():
@@ -442,7 +436,7 @@ def get_device_model(device):
         return None
 
 
-def is_package_32bit_abi(device, package):
+def is_package_32bit_abi(device: Device, package: str):
     """
     Get the target ABI of a given package.
 
@@ -473,7 +467,7 @@ def is_package_32bit_abi(device, package):
     return preferredABI in ["armeabi-v7a", "armeabi"]
 
 
-def is_gatord_running(device):
+def is_gatord_running(device: Device):
     """
     Returns true if an instance of gatord is running on the remote device.
 
@@ -535,7 +529,7 @@ def get_connected_devices():
     return (goodDevices, badDevices)
 
 
-def get_device_name(devName, interactive):
+def get_device_name(devName: Optional[str], interactive: bool):
     """
     Helper function to determine which device name to use.
 
@@ -603,7 +597,7 @@ def get_device_name(devName, interactive):
     return goodDvs[deviceIndex][0]
 
 
-def get_gpu_name(device):
+def get_gpu_name(device: Device):
     """
     Determine the GPU name from dumpsys queries.
 
@@ -628,7 +622,7 @@ def get_gpu_name(device):
         print("    Failed to query device")
 
 
-def get_package_name(device, pkgName, showAllPackages, interactive):
+def get_package_name(device: Device, pkgName: Optional[str], showAllPackages: bool, interactive: bool):
     """
     Helper function to determine which package to use.
 
@@ -678,12 +672,12 @@ def get_package_name(device, pkgName, showAllPackages, interactive):
             print("\n".join(goodPkg))
             return None, None
 
-        is_debuggable = is_package_debuggable(device, pkgName)
-        if not is_debuggable and matchesSinglePackage and not showAllPackages:
-            print("ERROR: Package '%s' not debuggable" % pkgName)
-            return None, None
-
         if matchesSinglePackage:
+            is_debuggable = is_package_debuggable(device, pkgName)
+            if not is_debuggable and matchesSinglePackage and not showAllPackages:
+                print("ERROR: Package '%s' not debuggable" % pkgName)
+                return None, None
+
             # Match the output format of the menu when a single package listed
             print("\nSelect a package:")
             print("    Auto-selected %s" % pkgName)
@@ -705,7 +699,7 @@ def get_package_name(device, pkgName, showAllPackages, interactive):
     template = "\r%%-%us" % len(pleaseWait)
     print(template % message)
 
-    if len(goodPkg) < 1:
+    if not goodPkg:
         print("\nERROR: No packages with MAIN activities found")
         return None, None
 
@@ -725,7 +719,7 @@ def get_package_name(device, pkgName, showAllPackages, interactive):
     return goodPkg[pkgIndex], is_debuggable
 
 
-def get_main_activity(device, package):
+def get_main_activity(device: Device, package: str):
     cmd = (f"dumpsys package {package} " +
            r"| grep -A1 'android.intent.action.MAIN:' " +
            r'| tr " " "\n" ' +
@@ -737,7 +731,7 @@ def get_main_activity(device, package):
     return str(output).replace(f"{package}/", "").strip()
 
 
-def is_package_debuggable(device, package):
+def is_package_debuggable(device: Device, package: str):
     """
     Test if a package is debuggable.
 
@@ -749,14 +743,15 @@ def is_package_debuggable(device, package):
         `True` if the package is debuggable, else `False`.
     """
     try:
-        subCmd = "if run-as %s true ; then echo %s ; fi" % (package, package)
+        subCmd = "if run-as %s true ; then echo %s ; fi" % (
+            shlex.quote(package), shlex.quote(package))
         logFile = device.adb("shell", subCmd)
         return logFile.strip() == package
     except sp.CalledProcessError:
         return False
 
 
-def get_package_data_dir(device, package):
+def get_package_data_dir(device: Device, package: str):
     """
     Gets the package data directory in Android system
 
@@ -768,14 +763,14 @@ def get_package_data_dir(device, package):
         package data directory or None on error.
     """
     try:
-        subCmd = "dumpsys package %s | grep dataDir" % package
+        subCmd = "dumpsys package %s | grep dataDir" % shlex.quote(package)
         dumpsysOutput = device.adb("shell", subCmd)
         return dumpsysOutput.replace("dataDir=", "").strip()
     except sp.CalledProcessError:
         return None
 
 
-def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
+def get_package_list(device: Device, showDebuggableOnly: bool, showMainIntentOnly: bool = True) -> list[str]:
     """
     Fetch the list of packages on the target device.
 
@@ -795,13 +790,13 @@ def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
     if showDebuggableOnly:
         # Test if the package is debuggable on the device
         subCmd0 = "if run-as $0 true ; then echo $0 ; fi"
-        command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd0
+        command += " | xargs -n1 sh -c %s 2> /dev/null" % shlex.quote(subCmd0)
 
     if showMainIntentOnly:
         # Test if the package has a MAIN activity
         subCmd1 = ("dumpsys package $0 | if grep "
                    "-q \"android.intent.action.MAIN\" ; then echo $0 ; fi")
-        command += " | xargs -n1 sh -c '%s' 2> /dev/null" % subCmd1
+        command += " | xargs -n1 sh -c %s 2> /dev/null" % shlex.quote(subCmd1)
 
     try:
         package_list = device.adb("shell", command).splitlines()
@@ -815,12 +810,13 @@ def get_package_list(device, showDebuggableOnly, showMainIntentOnly=True):
         return []
 
 
-def push_lwi_config(device, args, _package):
+def push_lwi_config(device: Device, args: ap.Namespace):
     """
     Create a configuration file for LWI and push it onto the device.
 
     Args:
-        args: struct of parameters
+        device: The device instance.
+        args: command line arguments (from argparse).
     """
     # Semantics are different in the LWI
     tempFileDescriptor, tempPath = tempfile.mkstemp()
@@ -842,7 +838,7 @@ def push_lwi_config(device, args, _package):
         return False
 
     # Push the file onto target
-    device_config_file = ANDROID_TMP_DIR + CONFIG_FILE
+    device_config_file = os.path.join(ANDROID_TMP_DIR, CONFIG_FILE)
     device.adb("shell", "rm", "-f", device_config_file)
     device.adb("push", tempPath, device_config_file)
     os.remove(tempPath)
@@ -859,9 +855,15 @@ def push_lwi_config(device, args, _package):
     return True
 
 
-# Write the screenshots into output directory
-# TODO: Move this into docstring.
-def write_capture(device, outDir, package):
+def write_capture(device: Device, outDir: str, package: str):
+    """
+    Write the screenshots into output directory
+
+    Args:
+        device: The device instance.
+        outDir: The local output directory.
+        package: The package on the device.
+    """
 
     captureName = "pa_lwi"
 
@@ -883,9 +885,12 @@ def write_capture(device, outDir, package):
 
         # Repack the tar file into the required output format
         with tempfile.TemporaryDirectory() as tempDir:
-            with tarfile.TarFile(tempName) as tarHandle:
+            with tarfile.open(tempName) as tarHandle:
                 # Extract the tar file
-                tarHandle.extractall(tempDir)
+                if hasattr(tarfile, 'data_filter'):
+                    tarHandle.extractall(tempDir, filter="data")
+                else:
+                    tarHandle.extractall(tempDir)
 
                 # Rename to the required name
                 oldName = os.path.join(tempDir, captureName)
@@ -895,7 +900,7 @@ def write_capture(device, outDir, package):
     return True
 
 
-def pull_screenshots(device, lwiOutDir, package, cleanUp=True):
+def pull_screenshots(device: Device, lwiOutDir: str, package: str, cleanUp: bool = True):
     """
     Download slow frame screenshots from the target to the host.
 
@@ -920,7 +925,7 @@ def pull_screenshots(device, lwiOutDir, package, cleanUp=True):
 
     # Also copy config into pa_lwi dir
     try:
-        device_config_file = ANDROID_TMP_DIR + CONFIG_FILE
+        device_config_file = os.path.join(ANDROID_TMP_DIR, CONFIG_FILE)
         device.adb_run_as(package, "ls", device_config_file)
         device.adb_run_as(package, "cp", device_config_file, "pa_lwi")
     except sp.CalledProcessError:
@@ -938,7 +943,7 @@ def pull_screenshots(device, lwiOutDir, package, cleanUp=True):
     return True
 
 
-def enable_vulkan_debug_layer(device, args):
+def enable_vulkan_debug_layer(device: Device, args: ap.Namespace):
     """
     How to load/enable vulkan here will be determined by two things:
 
@@ -969,8 +974,7 @@ def enable_vulkan_debug_layer(device, args):
                    EXPECTED_VULKAN_LAYER_NAME)
     else:
         device.adb("push", args.vkLayerLibPath, ANDROID_TMP_DIR)
-        device.adb_run_as(args.package, "cp",
-                          ANDROID_TMP_DIR + vkLayerBaseName, ".")
+        device.adb_run_as(args.package, "cp", os.path.join(ANDROID_TMP_DIR, vkLayerBaseName), ".")
         device.adb("shell", "settings", "put", "global",
                    "enable_gpu_debug_layers", "1")
         device.adb("shell", "settings", "put", "global",
@@ -984,7 +988,7 @@ def enable_vulkan_debug_layer(device, args):
                        "gpu_debug_layers", EXPECTED_VULKAN_LAYER_NAME)
 
 
-def enable_gles_debug_layer(device, args):
+def enable_gles_debug_layer(device: Device, args: ap.Namespace):
     """
     Args:
         device: The device instance.
@@ -999,8 +1003,7 @@ def enable_gles_debug_layer(device, args):
         print("\nWARNING: The OpenGL ES layer is not the default layer")
 
     device.adb("push", args.glesLayerLibPath, ANDROID_TMP_DIR)
-    device.adb_run_as(args.package, "cp",
-                      ANDROID_TMP_DIR + glesLayerBaseName, ".")
+    device.adb_run_as(args.package, "cp", os.path.join(ANDROID_TMP_DIR, glesLayerBaseName), ".")
     device.adb("shell", "settings", "put", "global",
                "enable_gpu_debug_layers", "1")
     device.adb("shell", "settings", "put", "global",
@@ -1009,7 +1012,7 @@ def enable_gles_debug_layer(device, args):
                "gpu_debug_layers_gles", glesLayerBaseName)
 
 
-def disable_vulkan_debug_layer(device, args):
+def disable_vulkan_debug_layer(device: Device, args: ap.Namespace):
     """
     Clean up the Vulkan layer installation.
 
@@ -1031,11 +1034,11 @@ def disable_vulkan_debug_layer(device, args):
         device.adb("shell", "settings", "delete", "global",
                    "gpu_debug_layers")
 
-    device.adb("shell", "rm", ANDROID_TMP_DIR + layerBaseName, quiet=True)
+    device.adb("shell", "rm", os.path.join(ANDROID_TMP_DIR, layerBaseName), quiet=True)
     device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
-def disable_gles_debug_layer(device, args):
+def disable_gles_debug_layer(device: Device, args: ap.Namespace):
     """
     Clean up the OpenGL ES layer installation.
 
@@ -1055,17 +1058,18 @@ def disable_gles_debug_layer(device, args):
     device.adb("shell", "settings", "delete", "global",
                "gpu_debug_layers_gles")
 
-    device.adb("shell", "rm", ANDROID_TMP_DIR + layerBaseName, quiet=True)
+    device.adb("shell", "rm", os.path.join(ANDROID_TMP_DIR, layerBaseName), quiet=True)
     device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
-def clean_gatord(device, package, removeConfigXml=False):
+def clean_gatord(device: Device, package: str, removeConfigXml: bool = False):
     """
     Cleanup gatord and test process on the device.
 
     Args:
         device: The device instance.
         package: The package name.
+        removeConfigXml: If true, remove "configuration.xml" on the device.
     """
     # Kill any prior instances of gatord
     device.adb_quiet("shell", "pkill", "gatord")
@@ -1076,20 +1080,18 @@ def clean_gatord(device, package, removeConfigXml=False):
     device.adb_quiet("shell", "am", "force-stop", package)
 
     # Remove any data files in both temp directory and app directory
-    device.adb_quiet("shell", "rm", "-f", "%sgatord" % ANDROID_TMP_DIR)
+    device.adb_quiet("shell", "rm", "-f", os.path.join(ANDROID_TMP_DIR, "gatord"))
 
     if removeConfigXml:
-        device.adb_quiet("shell", "rm", "-f",
-                         "%sconfiguration.xml" % ANDROID_TMP_DIR)
+        device.adb_quiet("shell", "rm", "-f", os.path.join(ANDROID_TMP_DIR, "configuration.xml"))
 
-    device.adb_quiet("shell", "rm", "-rf", "%s%s.apc" %
-                     (ANDROID_TMP_DIR, package))
+    device.adb_quiet("shell", "rm", "-rf", os.path.join(ANDROID_TMP_DIR, f"{package}.apc"))
 
     # Disable perf counters
     device.adb_quiet("shell", "setprop", "security.perf_harden", "1")
 
 
-def install_gatord(device, _package, gatord, configuration):
+def install_gatord(device: Device, gatord: str, configuration: str):
     """
     Install the gatord binary and configuration files.
 
@@ -1101,21 +1103,19 @@ def install_gatord(device, _package, gatord, configuration):
             may be None for non-headless runs.
     """
     # Install gatord
-    device.adb("push", gatord, "%sgatord" % ANDROID_TMP_DIR)
-    device.adb("shell", "chmod", "0777", "%sgatord" % ANDROID_TMP_DIR)
+    device.adb("push", gatord, os.path.join(ANDROID_TMP_DIR, "gatord"))
+    device.adb("shell", "chmod", "0777", os.path.join(ANDROID_TMP_DIR, "gatord"))
 
     # Install gatord counter configuration
     if configuration:
-        device.adb("push", configuration, "%sconfiguration.xml" %
-                   ANDROID_TMP_DIR)
-        device.adb("shell", "chmod", "0666", "%sconfiguration.xml" %
-                   ANDROID_TMP_DIR)
+        device.adb("push", configuration, os.path.join(ANDROID_TMP_DIR, "configuration.xml"))
+        device.adb("shell", "chmod", "0666", os.path.join(ANDROID_TMP_DIR, "configuration.xml"))
 
     # Enable perf counters
     device.adb("shell", "setprop", "security.perf_harden", "0")
 
 
-def run_gatord_interactive(_device, _package):
+def run_gatord_interactive():
     """
     Run gatord for an interactive capture session.
 
@@ -1131,7 +1131,7 @@ def run_gatord_interactive(_device, _package):
 
 
 # pylint: disable-msg=too-many-locals
-def run_gatord_headless(device, package, outputName, timeout, activity, activityArgs):
+def run_gatord_headless(device: Device, package: str, outputName: str, timeout: int, activity: str, activityArgs: str):
     """
     Run gatord for a headless capture session.
 
@@ -1143,7 +1143,7 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
         outputName: Name of the output directory (*.apc), or file (*.apc.zip).
         timeout: The test scenario capture timeout in seconds.
         activity: The activity to run, or None if no auto-start.
-        activityArgs: The activity arguments to run, or None if no arguments.
+        activityArgs: The activity arguments to run (as a string), or None if no arguments.
     """
     # Wait for user to do the manual test
     print("\nRunning headless test:")
@@ -1153,10 +1153,10 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
         print("    Capture set to stop after %s seconds" % timeout)
 
     # Run gatord but don't wait for it to return
-    apcName = "%s.apc" % package
-    remoteApcPath = "%s%s" % (ANDROID_TMP_DIR, apcName,)
+    apcName = f"{package}.apc"
+    remoteApcPath = os.path.join(ANDROID_TMP_DIR, apcName)
 
-    gator_cmd = ["%sgatord" % ANDROID_TMP_DIR,
+    gator_cmd = [os.path.join(ANDROID_TMP_DIR, "gatord"),
                  "--android-pkg", package, "--stop-on-exit", "yes",
                  "--max-duration", "%u" % timeout, "--capture-log", "--output", remoteApcPath]
 
@@ -1181,13 +1181,8 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
 
     # If we have an activity, start it
     if activity:
-        if activityArgs:
-            activityArgs = shlex.split(activityArgs)
-            device.adb("shell", "am", "start", "-n",
-                       f"{package}/{activity}", *activityArgs, quote=True)
-        else:
-            device.adb("shell", "am", "start", "-n",
-                       f"{package}/{activity}")
+        argsList = shlex.split(activityArgs) if activityArgs else []
+        device.adb("shell", "am", "start", "-n", f"{package}/{activity}", *argsList, quote=True)
     else:
         print("\n    Couldn't find main activity for this package")
         print("    Please start the application manually or use '--package-activity'")
@@ -1228,7 +1223,7 @@ def run_gatord_headless(device, package, outputName, timeout, activity, activity
             shutil.make_archive(outZipName, "zip", tempDir)
 
 
-def exit_handler(device, args):
+def exit_handler(device: Device, args: ap.Namespace):
     """
     Exit handler which will ensure gatord is killed.
 
@@ -1255,14 +1250,12 @@ def exit_handler(device, args):
         except sp.CalledProcessError as e:
             handle_disconnect_error(e)
 
-        device.adb_quiet("shell", "rm", ANDROID_TMP_DIR + CONFIG_FILE)
-        device.adb_run_as(args.package,
-                          "rm", "-rf", "pa_lwi", quiet=True)
-        device.adb_run_as(args.package,
-                          "rm", "-rf", "pa_lwi.tar", quiet=True)
+        device.adb_quiet("shell", "rm", os.path.join(ANDROID_TMP_DIR, CONFIG_FILE))
+        device.adb_run_as(args.package, "rm", "-rf", "pa_lwi", quiet=True)
+        device.adb_run_as(args.package, "rm", "-rf", "pa_lwi.tar", quiet=True)
 
 
-def raise_path_error(message, location, option):
+def raise_path_error(message: str, location: str, option: str):
     """
     Format a path-based error message and raise ValueError.
 
@@ -1277,7 +1270,7 @@ def raise_path_error(message, location, option):
     raise ValueError(label)
 
 
-def parse_cli(parser):
+def parse_cli(parser: ap.ArgumentParser):
     """
     Parse the command line.
 
@@ -1300,7 +1293,7 @@ def parse_cli(parser):
         help="The application package activity to start (default=None)")
 
     parser.add_argument(
-        "--package-arguments",  dest="packageArguments", default=None,
+        "--package-arguments", dest="packageArguments", default=None,
         help="The application package argument string (default=None)")
 
     parser.add_argument(
@@ -1399,7 +1392,7 @@ def parse_cli(parser):
         "--lwi-val", dest="lwiVal", default=False, action="store_true",
         help=ap.SUPPRESS)
 
-    args = parser.parse_args()
+    args = parser.parse_args(namespace=ap.Namespace())
 
     # Always turn API into a list of enabled APIs
     if args.lwiApi == "all":
@@ -1492,7 +1485,7 @@ def parse_cli(parser):
     return args
 
 
-def is_a_directory(device, path_to_test):
+def is_a_directory(device: Device, path_to_test: str):
     is_directory = device.adb(
         "shell", "if [ -d %s ] ; then echo d ; fi" % path_to_test)
     return len(is_directory) > 0
@@ -1505,7 +1498,7 @@ def has_adb():
     return shutil.which("adb") is not None
 
 
-def print_lwi_args_info(args):
+def print_lwi_args_info(args: ap.Namespace):
     if args.lwiMode == "off":
         infoStr = ("--lwi-mode=off, frame marker annotations will not be "
                    "added to your application and screenshots "
@@ -1541,7 +1534,7 @@ def get_script_dir():
     return os.path.dirname(os.path.realpath(__file__))
 
 
-def get_daemon(isArm32):
+def get_daemon(isArm32: bool):
     scriptDir = get_script_dir()
     daemonName = "gatord"
     sameDirPath = os.path.join(scriptDir, daemonName)
@@ -1554,7 +1547,7 @@ def get_daemon(isArm32):
         "android", dirName, daemonName)
 
 
-def get_default_lib_layer_path(isArm32, layerName):
+def get_default_lib_layer_path(isArm32: bool, layerName: str):
     scriptDir = get_script_dir()
 
     sameDirPath = os.path.join(scriptDir, layerName)
@@ -1565,7 +1558,7 @@ def get_default_lib_layer_path(isArm32, layerName):
     return os.path.join(scriptDir, dirName, layerName)
 
 
-def ensure_lwi_output_path_usable(abs_lwi_out_dir, overwrite):
+def ensure_lwi_output_path_usable(abs_lwi_out_dir: str, overwrite: bool):
     # Check that the LWI capture output directory is empty and writable.
 
     if os.path.exists(abs_lwi_out_dir):
@@ -1603,7 +1596,7 @@ def ensure_lwi_output_path_usable(abs_lwi_out_dir, overwrite):
                          abs_lwi_out_dir, "--lwi-out-dir")
 
 
-def handle_disconnect_error(e):
+def handle_disconnect_error(e: sp.CalledProcessError):
     print("ERROR: Unexpected error while running gatord on device, unable to run command:",
           file=sys.stderr, end=" ")
     print("\"", end=" ", file=sys.stderr)
@@ -1614,7 +1607,7 @@ def handle_disconnect_error(e):
     sys.exit(1)
 
 
-def main():
+def main() -> int:
     """
     Script main function.
 
@@ -1706,7 +1699,7 @@ def main():
             print("       with --lwi=off to generate the frame boundaries needed.")
             return 4
 
-    gatord_device_path = "%sgatord" % ANDROID_TMP_DIR
+    gatord_device_path = os.path.join(ANDROID_TMP_DIR, "gatord")
     if is_a_directory(device, gatord_device_path):
         print("\nERROR: Unexpected directory on the device, at '%s'. "
               "Ensure nothing resides at the location then retry."
@@ -1757,7 +1750,7 @@ def main():
 
         # Install new gatord files
         print("\nInstalling new gatord files")
-        install_gatord(device, package, gatordLocation, args.config)
+        install_gatord(device, gatordLocation, args.config)
 
     # If LWI activated, make and upload config file
     if args.lwiMode != "off":
@@ -1768,7 +1761,7 @@ def main():
                 print("{0}".format(err))
                 return 4
 
-        if not push_lwi_config(device, args, package):
+        if not push_lwi_config(device, args):
             print("ERROR: Failed to upload the LWI configuration "
                   "onto the device")
             return 4
@@ -1811,7 +1804,7 @@ def main():
     # Run the test scenario
     try:
         if args.headless is None:
-            run_gatord_interactive(device, package)
+            run_gatord_interactive()
         else:
             run_gatord_headless(device, package, args.headless, args.timeout,
                                 args.packageActivity, args.packageArguments)
@@ -1826,7 +1819,7 @@ def main():
         # Disable layers if we enabled them
         if args.lwiMode != "off":
             # Remove config file
-            device.adb_quiet("shell", "rm", ANDROID_TMP_DIR + CONFIG_FILE)
+            device.adb_quiet("shell", "rm", os.path.join(ANDROID_TMP_DIR, CONFIG_FILE))
 
             # Disable vulkan layer debug if necessary
             if "vulkan" in args.lwiApi:
@@ -1839,7 +1832,7 @@ def main():
         atexit.unregister(exit_handler)
 
         # Remove any new files if requested to do so
-        clean_gatord(device, package, removeConfigXml=args.headless)
+        clean_gatord(device, package, removeConfigXml=bool(args.headless))
 
     except sp.CalledProcessError as e:
         atexit.unregister(exit_handler)

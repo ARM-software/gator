@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "lib/WaitForProcessPoller.h"
 
@@ -21,7 +21,7 @@ namespace {
         {
         }
 
-        [[nodiscard]] inline const std::set<int> & pids() const { return mPids; }
+        [[nodiscard]] const std::set<int> & pids() const { return mPids; }
 
         void onProcessDirectory(int pid, const lib::FsEntry & path) override
         {
@@ -31,7 +31,7 @@ namespace {
         }
 
     private:
-        std::set<int> mPids {};
+        std::set<int> mPids;
 
         const std::string & mCommandName;
         const std::optional<lib::FsEntry> & mRealPath;

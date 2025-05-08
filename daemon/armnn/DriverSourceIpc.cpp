@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #include "armnn/DriverSourceIpc.h"
 
@@ -83,26 +83,28 @@ namespace armnn {
         return res;
     }
 
-    static Pipe createPipe()
-    {
-        int fds[2] {-1, -1};
-        int result = ::pipe2(fds, O_CLOEXEC);
+    namespace {
+        Pipe createPipe()
+        {
+            int fds[2] {-1, -1};                        // NOLINT(modernize-avoid-c-arrays)
+            const int result = ::pipe2(fds, O_CLOEXEC); // NOLINT(misc-include-cleaner)
 
-        if (result < 0) {
-            LOG_ERROR("Could not create pipe for armnn, errcode from pipe(fds): %d", result);
-            handleException();
+            if (result < 0) {
+                LOG_ERROR("Could not create pipe for armnn, errcode from pipe(fds): %d", result);
+                handleException();
+            }
+            return Pipe {lib::AutoClosingFd {fds[0]}, lib::AutoClosingFd {fds[1]}};
         }
-        return Pipe {lib::AutoClosingFd {fds[0]}, lib::AutoClosingFd {fds[1]}};
-    }
 
-    // Possible message types that can be sent over the pipes
-    // Between parent and child
-    static const uint8_t START_MSG = 10;
-    static const uint8_t STOP_MSG = 11;
-    static const uint8_t CHILD_DEATH_MSG = 12;
-    static const uint8_t INTERRUPT_MSG = 13;
-    static const uint8_t COUNTERS_MSG = 14;
-    static const uint8_t PACKET_MSG = 15;
+        // Possible message types that can be sent over the pipes
+        // Between parent and child
+        constexpr const uint8_t START_MSG = 10;
+        constexpr const uint8_t STOP_MSG = 11;
+        constexpr const uint8_t CHILD_DEATH_MSG = 12;
+        constexpr const uint8_t INTERRUPT_MSG = 13;
+        constexpr const uint8_t COUNTERS_MSG = 14;
+        constexpr const uint8_t PACKET_MSG = 15;
+    }
 
     ChildToParentController::ChildToParentController() : mChildToParent {createPipe()}
     {
@@ -128,8 +130,9 @@ namespace armnn {
                         mCalledStart = false;
                     }
                     return false;
+                default:
+                    LOG_ERROR("Received unexpected message type %d", data[0]);
             }
-            LOG_ERROR("Received unexpected message type %d", data[0]);
         }
         else {
             std::string p {mChildToParent.toString()};
@@ -173,12 +176,14 @@ namespace armnn {
     {
     }
 
-    template<typename T>
-    static lib::Span<uint8_t> asBytes(T & original)
-    {
-        static_assert(std::is_trivially_copyable_v<T>, "must be a trivially copyable type");
-        void * ptr = static_cast<void *>(&original);
-        return lib::Span<uint8_t>(static_cast<uint8_t *>(ptr), sizeof(T));
+    namespace {
+        template<typename T>
+        lib::Span<uint8_t> asBytes(T & original)
+        {
+            static_assert(std::is_trivially_copyable_v<T>, "must be a trivially copyable type");
+            void * ptr = static_cast<void *>(&original);
+            return {static_cast<uint8_t *>(ptr), sizeof(T)};
+        }
     }
 
     struct CounterMsg {
@@ -208,6 +213,8 @@ namespace armnn {
                     return readCounterStruct(destination);
                 case PACKET_MSG:
                     return readPacket(destination, isOneShot, getBufferBytesAvailable);
+                default:
+                    LOG_ERROR("Unexpected message type %d", msgtype[0]);
             }
         }
         else {
@@ -277,17 +284,19 @@ namespace armnn {
         return true;
     }
 
-    static bool writePacket(Pipe & pipe, std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
-    {
-        TimelineHeader header {sessionId, data.size()};
-        std::uint8_t mtype[1] {PACKET_MSG};
-        if (!pipe.writeAll(mtype)) {
-            return false;
+    namespace {
+        bool writePacket(Pipe & pipe, std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
+        {
+            TimelineHeader header {sessionId, data.size()};
+            const std::uint8_t mtype[1] {PACKET_MSG}; // NOLINT(modernize-avoid-c-arrays)
+            if (!pipe.writeAll(mtype)) {
+                return false;
+            }
+            if (!pipe.writeAll(asBytes(header))) {
+                return false;
+            }
+            return pipe.writeAll(data);
         }
-        if (!pipe.writeAll(asBytes(header))) {
-            return false;
-        }
-        return pipe.writeAll(data);
     }
 
     bool ParentToChildCounterConsumer::consumePacket(std::uint32_t sessionId, lib::Span<const std::uint8_t> data)
@@ -364,7 +373,7 @@ namespace armnn {
 
     void DriverSourceIpc::interrupt()
     {
-        if (!mCountersChannel->interruptReader()) {
+        if (!mCountersChannel || !mCountersChannel->interruptReader()) {
             LOG_ERROR("Could not interrupt armnn::DriverSourceIpc");
             handleException();
         }

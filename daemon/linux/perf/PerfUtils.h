@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #ifndef PERF_UTILS_H
 #define PERF_UTILS_H
@@ -7,11 +7,10 @@
 #include "lib/Utils.h"
 
 #include <optional>
-#include <set>
 #include <string>
 
 namespace perf_utils {
-    inline std::set<int> readCpuMask(const char * pmncName)
+    inline lib::CpuIdSet readCpuMask(const char * pmncName)
     {
         std::string path = lib::Format() << "/sys/bus/event_source/devices/" << pmncName << "/cpumask";
         return lib::readCpuMaskFromFile(path.c_str());

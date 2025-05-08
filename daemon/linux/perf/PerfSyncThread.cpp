@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfSyncThread.h"
 
@@ -31,21 +31,40 @@
 #endif
 
 namespace {
-    inline std::uint64_t get_cntfreq_el0(bool readTimer)
+    /// Try to set max priority with either FIFO or OTHER scheduling
+    bool set_thread_scheduling(pid_t tid)
     {
-        if (readTimer) {
-            return lib::get_cntfreq_el0();
+        struct sched_param param;
+
+        // Try FIFO scheduling
+        param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+        if (param.sched_priority == -1) {
+            LOG_DEBUG("Unable to sched_get_priority_max(SCHED_FIFO): %d (%s)", errno, strerror(errno));
+        }
+        else {
+            if (sched_setscheduler(tid, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
+                LOG_DEBUG("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
+            }
+            else {
+                return true;
+            }
         }
 
-        return 0;
-    }
-
-    inline std::uint64_t get_cntvct_el0(bool readTimer)
-    {
-        if (readTimer) {
-            return lib::get_cntvct_el0();
+        // Try OTHER (round-robin) scheduling
+        param.sched_priority = sched_get_priority_max(SCHED_OTHER);
+        if (param.sched_priority == -1) {
+            LOG_WARNING("Unable to sched_get_priority_max(SCHED_OTHER): %d (%s)", errno, strerror(errno));
+            return false;
         }
-        return 0;
+
+        if (sched_setscheduler(tid, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
+            // Note: This is not implemented in musl, so failure is expected and not loudly reported [SDDAP-13577]
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
+            return false;
+        }
+
+        return true;
     }
 }
 
@@ -108,18 +127,7 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
     const pid_t tid = lib::gettid();
 
     // change thread priority
-    {
-        struct sched_param param;
-        param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-        if (sched_setscheduler(tid, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
-            LOG_DEBUG("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
-            param.sched_priority = sched_get_priority_max(SCHED_OTHER);
-            if (sched_setscheduler(tid, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
-                //NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_WARNING("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
-            }
-        }
-    }
+    set_thread_scheduling(tid);
 
     // Mask all signals so that this thread will not be woken up
     {
@@ -143,7 +151,7 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
     }
 
     // read CNTFREQ_EL0
-    const std::uint64_t frequency = get_cntfreq_el0(readTimer);
+    const std::uint64_t frequency = readTimer ? lib::get_cntfreq_el0() : 0;
 
     // main loop (always executes at least once to ensure we always capture at least one sync point
     do {
@@ -151,7 +159,7 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
         const std::uint64_t syncTime = getTime();
 
         // get architectural timer for SPE sync
-        const std::uint64_t vcount = get_cntvct_el0(readTimer);
+        const std::uint64_t vcount = readTimer ? lib::get_cntvct_el0() : 0;
 
         // send the updated name with the monotonic delta
         rename(syncTime - monotonicRawBase);

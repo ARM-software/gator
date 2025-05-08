@@ -3,6 +3,7 @@
 #include "linux/PerCoreIdentificationThread.h"
 
 #include "Logging.h"
+#include "lib/CpuIdSet.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
@@ -12,7 +13,6 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
-#include <set>
 #include <utility>
 
 #include <sys/prctl.h>
@@ -44,25 +44,20 @@ void PerCoreIdentificationThread::launch(PerCoreIdentificationThread * _this) no
     _this->run();
 }
 
-bool PerCoreIdentificationThread::configureAffinity()
+bool PerCoreIdentificationThread::configureAffinity() // NOLINT(readability-make-member-function-const)
 {
     // the maximum number of times we will attempt to affine to the core before bailing
     static constexpr unsigned AFFINE_LOOP_COUNT = 65535;
 
     const pid_t tid = lib::gettid();
 
-    auto const cpu_set_size = CPU_ALLOC_SIZE(cpu + 1);
-
-    std::unique_ptr<cpu_set_t, std::function<void(cpu_set_t *)>> cpuset {CPU_ALLOC(cpu + 1),
-                                                                         [](cpu_set_t * ptr) { CPU_FREE(ptr); }};
-
-    CPU_ZERO_S(cpu_set_size, cpuset.get());
-    CPU_SET_S(cpu, cpu_set_size, cpuset.get());
+    lib::CpuIdSet cpuset(cpu + 1);
+    cpuset.add(cpu);
 
     // try and set affinity
     bool affinitySucceeded = false;
     for (unsigned count = 0; count < AFFINE_LOOP_COUNT && !affinitySucceeded; ++count) {
-        if (sched_setaffinity(tid, cpu_set_size, cpuset.get()) == 0) {
+        if (lib::sched_setaffinity(tid, cpuset) == 0) {
             affinitySucceeded = true;
         }
     }
@@ -124,7 +119,7 @@ PerCoreIdentificationThread::properties_t PerCoreIdentificationThread::detectFor
     int core_id = 0;
     int physical_package_id = 0;
     int64_t midr_el1 = 0;
-    std::set<int> core_siblings;
+    lib::CpuIdSet core_siblings;
 
     // attempt to read topology and identification information
     {

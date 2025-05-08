@@ -61,26 +61,26 @@ void SessionData::parseSessionXML(char * xmlString)
 
     // Set session data values - use prime numbers just below the desired value to reduce the chance of events firing at the same time
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0) {
-        if (strcmp(session.parameters.sample_rate, "high") == 0) {
+        if (session.parameters.sample_rate == "high") {
             mSampleRate = high;
             mSampleRateGpu = mSampleRate;
         }
-        else if (strcmp(session.parameters.sample_rate, "normal") == 0) {
+        else if (session.parameters.sample_rate == "normal") {
             mSampleRate = normal;
 
             // sample rate will be doubled in normal mode for gpuid >= Valhall
             mSampleRateGpu = normal_x2;
         }
-        else if (strcmp(session.parameters.sample_rate, "low") == 0) {
+        else if (session.parameters.sample_rate == "low") {
             mSampleRate = low;
             mSampleRateGpu = mSampleRate;
         }
-        else if (strcmp(session.parameters.sample_rate, "none") == 0) {
+        else if (session.parameters.sample_rate == "none") {
             mSampleRate = none;
             mSampleRateGpu = mSampleRate;
         }
         else {
-            LOG_ERROR("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate);
+            LOG_ERROR("Invalid sample rate (%s) in session xml.", session.parameters.sample_rate.c_str());
             handleException();
         }
     }
@@ -92,17 +92,17 @@ void SessionData::parseSessionXML(char * xmlString)
 
     // Determine buffer size (in MB) based on buffer mode
     mOneShot = true;
-    if (strcmp(session.parameters.buffer_mode, "streaming") == 0) {
+    if (session.parameters.buffer_mode == "streaming") {
         mOneShot = false;
         mTotalBufferSize = 1; //NOLINT(readability-magic-numbers)
     }
-    else if (strcmp(session.parameters.buffer_mode, "small") == 0) {
+    else if (session.parameters.buffer_mode == "small") {
         mTotalBufferSize = 16; //NOLINT(readability-magic-numbers)
     }
-    else if (strcmp(session.parameters.buffer_mode, "normal") == 0) {
+    else if (session.parameters.buffer_mode == "normal") {
         mTotalBufferSize = 64; //NOLINT(readability-magic-numbers)
     }
-    else if (strcmp(session.parameters.buffer_mode, "large") == 0) {
+    else if (session.parameters.buffer_mode == "large") {
         mTotalBufferSize = 256; //NOLINT(readability-magic-numbers)
     }
     else {

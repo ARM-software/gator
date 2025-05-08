@@ -58,7 +58,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     int version = 0;
     bool userSetIncludeKernelEvents = false;
     if ((mxmlElementGetAttr(node, ATTR_VERSION) != nullptr)
-        && !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), 10)) {
+        && !stringToInt(&version, mxmlElementGetAttr(node, ATTR_VERSION), OlyBase::Decimal)) {
         LOG_ERROR("Invalid session.xml version must be an integer");
         handleException();
     }
@@ -71,17 +71,11 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     }
     // copy to pre-allocated strings
     if (mxmlElementGetAttr(node, ATTR_BUFFER_MODE) != nullptr) {
-        strncpy(parameters.buffer_mode, mxmlElementGetAttr(node, ATTR_BUFFER_MODE), sizeof(parameters.buffer_mode) - 1);
-        parameters.buffer_mode[sizeof(parameters.buffer_mode) - 1] =
-            0; // strncpy does not guarantee a null-terminated string
+        parameters.buffer_mode = mxmlElementGetAttr(node, ATTR_BUFFER_MODE);
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0)) {
         if (mxmlElementGetAttr(node, ATTR_SAMPLE_RATE) != nullptr) {
-            strncpy(parameters.sample_rate,
-                    mxmlElementGetAttr(node, ATTR_SAMPLE_RATE),
-                    sizeof(parameters.sample_rate) - 1);
-            parameters.sample_rate[sizeof(parameters.sample_rate) - 1] =
-                0; // strncpy does not guarantee a null-terminated string
+            parameters.sample_rate = mxmlElementGetAttr(node, ATTR_SAMPLE_RATE);
         }
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_CAPTURE_WORKING_DIR) == 0)) {
@@ -118,7 +112,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_DURATION) == 0)) {
         if (mxmlElementGetAttr(node, ATTR_DURATION) != nullptr) {
-            if (!stringToInt(&gSessionData.mDuration, mxmlElementGetAttr(node, ATTR_DURATION), 10)) {
+            if (!stringToInt(&gSessionData.mDuration, mxmlElementGetAttr(node, ATTR_DURATION), OlyBase::Decimal)) {
                 LOG_ERROR("Invalid session.xml duration must be an integer");
                 handleException();
             }
@@ -129,7 +123,7 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
             stringToBool(mxmlElementGetAttr(node, USE_EFFICIENT_FTRACE), false); // default to false
     }
     if (mxmlElementGetAttr(node, ATTR_LIVE_RATE) != nullptr) {
-        if (!stringToInt(&parameters.live_rate, mxmlElementGetAttr(node, ATTR_LIVE_RATE), 10)) {
+        if (!stringToInt(&parameters.live_rate, mxmlElementGetAttr(node, ATTR_LIVE_RATE), OlyBase::Decimal)) {
             LOG_ERROR("Invalid session.xml live_rate must be an integer");
             handleException();
         }

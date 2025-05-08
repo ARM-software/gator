@@ -1,7 +1,9 @@
-/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 #include "lib/source_location.h"
+
+#include <cstdint>
 
 #include <sys/types.h>
 
@@ -13,7 +15,7 @@
 
 namespace logging {
     /** Possible logging levels */
-    enum class log_level_t {
+    enum class log_level_t : uint8_t {
         trace,
         debug,
         setup,
@@ -37,5 +39,4 @@ namespace logging {
 
     /** Identifies the source thread */
     enum class thread_id_t : pid_t;
-
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2020-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -35,8 +35,8 @@ namespace armnn {
         std::string toString();
 
     private:
-        lib::AutoClosingFd mReadFd {};
-        lib::AutoClosingFd mWriteFd {};
+        lib::AutoClosingFd mReadFd;
+        lib::AutoClosingFd mWriteFd;
     };
 
     /**
@@ -55,7 +55,7 @@ namespace armnn {
         bool consumeControlMsg(ICaptureStartStopHandler & armnnHandler);
 
     private:
-        Pipe mChildToParent {};
+        Pipe mChildToParent;
         bool mCalledStart {false};
     };
 
@@ -86,7 +86,7 @@ namespace armnn {
         bool getOneShotModeEnabledAndEnded() const { return mOneShotModeEnabledAndEnded; }
 
     private:
-        Pipe mToChild {};
+        Pipe mToChild;
         bool mOneShotModeEnabledAndEnded;
         bool readCounterStruct(ICounterConsumer & destination);
         bool readPacket(ICounterConsumer & destination,
@@ -162,11 +162,11 @@ namespace armnn {
         void interrupt() override;
 
     private:
-        ChildToParentController mControlChannel {};
-        std::optional<ParentToChildCounterConsumer> mCountersChannel {};
-        std::thread mControlThread {};
+        ChildToParentController mControlChannel;
+        std::optional<ParentToChildCounterConsumer> mCountersChannel;
+        std::thread mControlThread;
         ICaptureStartStopHandler & mArmnnController;
-        std::mutex mParentMutex {};
+        std::mutex mParentMutex;
     };
 
 }

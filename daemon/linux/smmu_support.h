@@ -1,14 +1,9 @@
-/* Copyright (C) 2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
 #pragma once
 
-#include "lib/Assert.h"
 #include "linux/smmu_identifier.h"
 
-#include <array>
-#include <optional>
-#include <string>
 #include <string_view>
-#include <variant>
 
 struct PerfDriverConfiguration;
 struct PmuXML;

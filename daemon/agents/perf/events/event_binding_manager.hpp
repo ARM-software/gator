@@ -21,7 +21,6 @@
 #include <vector>
 
 #include <k/perf_event.h>
-#include <sched.h>
 
 namespace agents::perf {
 
@@ -61,13 +60,13 @@ namespace agents::perf {
              */
             aggregate_state_t state;
             /** The mapping from event id to key */
-            id_to_key_mappings_t mappings {};
+            id_to_key_mappings_t mappings {}; // NOLINT(readability-redundant-member-init)
             /** The set of pids that were previously tracked, but were removed as were detected as terminated during the prepare call */
-            std::set<pid_t> terminated_pids {};
+            std::set<pid_t> terminated_pids {}; // NOLINT(readability-redundant-member-init)
             /** The stream descriptors to monitor */
             std::vector<pid_fd_pair_t> event_fds_by_pid {};
             /** The mmap */
-            std::shared_ptr<perf_ringbuffer_mmap_t> mmap_ptr {};
+            std::shared_ptr<perf_ringbuffer_mmap_t> mmap_ptr {}; // NOLINT(readability-redundant-member-init)
         };
 
         /** Returned by core_online_start */
@@ -80,7 +79,7 @@ namespace agents::perf {
              */
             aggregate_state_t state;
             /** The set of pids that were previously tracked, but were removed as were detected as terminated during the start call */
-            std::set<pid_t> terminated_pids {};
+            std::set<pid_t> terminated_pids;
         };
 
         /** Returned by pid_track_prepare */
@@ -93,9 +92,9 @@ namespace agents::perf {
              */
             aggregate_state_t state;
             /** The mapping from event id to key */
-            id_to_key_mappings_t mappings {};
+            id_to_key_mappings_t mappings;
             /** The set of cores that were previously online, but were removed as were detected as offline during the prepare call */
-            std::set<core_no_t> offlined_cores {};
+            std::set<core_no_t> offlined_cores;
             /** The stream descriptors to monitor */
             std::vector<core_no_fd_pair_t> event_fds_by_core_no {};
         };
@@ -110,7 +109,7 @@ namespace agents::perf {
              */
             aggregate_state_t state;
             /** The set of cores that were previously online, but were removed as were detected as offline during the start call */
-            std::set<core_no_t> offlined_cores {};
+            std::set<core_no_t> offlined_cores;
         };
 
         static constexpr pid_t self_pid {0};
@@ -605,13 +604,13 @@ namespace agents::perf {
             /** Store all the binding sets, by pid */
             std::map<pid_t, event_binding_set_type> binding_sets {};
             /** The set of uncore PMUs active on this CPU */
-            std::set<uncore_pmu_id_t> active_uncore_pmu_ids {};
+            std::set<uncore_pmu_id_t> active_uncore_pmu_ids;
             /** The core number */
             core_no_t no;
             /** The core cluster id */
             cpu_cluster_id_t cluster_id;
             /** The mmap */
-            std::shared_ptr<perf_ringbuffer_mmap_t> mmap {};
+            std::shared_ptr<perf_ringbuffer_mmap_t> mmap;
             /** The header event fd */
             std::shared_ptr<stream_descriptor_t> header_event_fd {};
 
@@ -626,8 +625,8 @@ namespace agents::perf {
         bool is_system_wide;
         bool enable_on_exec;
         bool capture_started {false};
-        std::set<pid_t> tracked_pids {};
-        std::set<uncore_pmu_id_t> all_active_uncore_pmu_ids {};
+        std::set<pid_t> tracked_pids;
+        std::set<uncore_pmu_id_t> all_active_uncore_pmu_ids;
 
         /**
          * Create the binding sets for some core.
@@ -871,17 +870,15 @@ namespace agents::perf {
                 runtime_assert((index >= 0) && (std::size_t(index) < uncore_pmus.size()), "Invalid uncore pmu id");
                 auto const & pmu = uncore_pmus.at(index);
                 auto const cpu_mask = perf_utils::readCpuMask(pmu.getId());
-                auto const current_cpu_not_in_mask = ((!cpu_mask.empty()) && (cpu_mask.count(cpu_no) == 0));
+                auto const matches_mask = cpu_mask.empty() || cpu_mask.contains(cpu_no);
                 auto const mask_is_empty_and_cpu_not_default = (cpu_mask.empty() && (cpu_no != 0));
 
                 // skip pmus not associated with this core
-                if (current_cpu_not_in_mask || mask_is_empty_and_cpu_not_default) {
-                    LOG_DEBUG("Ignoring uncore %d on %d as not selected (%zu / %u / %u)",
+                if (!matches_mask || mask_is_empty_and_cpu_not_default) {
+                    LOG_DEBUG("Ignoring uncore %d on %d as not selected (mask_size=%zu)",
                               lib::toEnumValue(id),
                               lib::toEnumValue(no),
-                              cpu_mask.size(),
-                              current_cpu_not_in_mask,
-                              mask_is_empty_and_cpu_not_default);
+                              cpu_mask.count());
                     continue;
                 }
 

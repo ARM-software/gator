@@ -1,12 +1,13 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
 #define INCLUDE_LINUX_PER_CORE_IDENTIFICATION_THREAD_H
 
+#include "lib/CpuIdSet.h"
+
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <set>
 #include <thread>
 
 class PerCoreIdentificationThread {
@@ -18,7 +19,7 @@ public:
     struct properties_t {
         unsigned core_id;
         unsigned physical_package_id;
-        std::set<int> core_siblings;
+        lib::CpuIdSet core_siblings;
         std::uint64_t midr_el1;
     };
 

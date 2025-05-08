@@ -1,3 +1,9 @@
+# Gator 9.4.0
+
+Various logging/warning message improvements
+
+Improved profiling hotspots for high core counts
+
 # Gator 9.3.1
 
 Detect CPU revision and correctly select metrics based on that (for Neoverse-N2 in particular)

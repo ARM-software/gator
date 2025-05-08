@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_ASSERT_H
 #define INCLUDE_LIB_ASSERT_H
@@ -26,14 +26,14 @@ namespace lib {
 #if defined(__FUNCSIG__)
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #else
-#define __PRETTY_FUNCTION__ __FUNCTION__
+#define __PRETTY_FUNCTION__ __FUNCTION__ // NOLINT(bugprone-reserved-identifier)
 #endif
 #endif
 
 /** assertion macro */
 #define runtime_assert(test, msg)                                                                                      \
     do {                                                                                                               \
-        if (!(test)) {                                                                                                 \
+        if (!(test)) { /* NOLINT(readability-simplify-boolean-expr) */                                                 \
             ::lib::_assert_internal::runtime_assert_terminate(__FILE__, __LINE__, __PRETTY_FUNCTION__, msg);           \
         }                                                                                                              \
     } while (0)

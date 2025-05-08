@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -29,14 +29,10 @@ namespace logging {
         }
 
         /** Toggle whether TRACE/DEBUG/SETUP messages are output to the console */
-        void set_debug_enabled(bool /*enabled*/) override
-        { /*ignored*/
-        }
+        void set_debug_enabled(bool /*enabled*/) override { /*ignored*/ }
 
         /** Toggle whether fine messages are output to the console */
-        void set_fine_enabled(bool /*enabled*/) override
-        { /*ignored*/
-        }
+        void set_fine_enabled(bool /*enabled*/) override { /*ignored*/ }
 
         /** Store some log item to the log */
         void log_item(thread_id_t tid,
@@ -47,7 +43,7 @@ namespace logging {
 
     private:
         /** To protect against concurrect modifications */
-        mutable std::mutex mutex {};
+        mutable std::mutex mutex;
         /** The file descriptor to write to */
         int pipe_fd;
         /** The additional log file descriptor */

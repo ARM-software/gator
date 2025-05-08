@@ -643,7 +643,7 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
 
         void process_initialised() override
         {
-            // This line has to be printed because Streamline needs to detect when
+            // When streamline is listening, this line has to be printed so it can detect when
             // gator is ready to listen and accept socket connections via adb forwarding.  Without this
             // print out there is a chance that Streamline establishes a connection to the adb forwarder,
             // but the forwarder cannot establish a connection to a gator, because gator is not up and listening
@@ -651,7 +651,10 @@ int start_capture_process(const ParserResult & result, logging::log_access_ops_t
             // experiences is a successful socket connection, but when it attempts to read from the socket
             // it reads an empty line when attempting to read the gator protocol header, and terminates the
             // connection.
-            std::cout << gator_shell_ready.data() << std::endl; // NOLINT(performance-avoid-endl)
+
+            if (!gSessionData.mLocalCapture) {
+                std::cout << gator_shell_ready.data() << std::endl; // NOLINT(performance-avoid-endl)
+            }
         }
 
         [[nodiscard]] bool waiting_for_target() override
@@ -749,7 +752,7 @@ int gator_main(int argc, char ** argv)
 
     if (!result.error_messages.empty()) {
         for (const auto & message : parser.result.error_messages) {
-            std::cerr << message << "\n";
+            LOG_WARNING("%s", message.c_str());
         }
     }
 

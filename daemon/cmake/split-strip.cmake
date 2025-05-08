@@ -18,6 +18,7 @@ MACRO(STRIP_TARGET TARGET_NAME)
         SET(TARGET_NAME_DEBUG_FILE  "${SPLIT_DEBUG_LOCATION}/$<TARGET_FILE_NAME:${TARGET_NAME}>.debug")
         ADD_CUSTOM_COMMAND( TARGET ${TARGET_NAME} POST_BUILD
                             COMMAND ${CMAKE_OBJCOPY} --only-keep-debug "$<TARGET_FILE:${TARGET_NAME}>" "${TARGET_NAME_DEBUG_FILE}"
+                            COMMAND chmod -x "${TARGET_NAME_DEBUG_FILE}"
                             COMMAND ${CMAKE_STRIP} --strip-all "$<TARGET_FILE:${TARGET_NAME}>"
                             COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink="${TARGET_NAME_DEBUG_FILE}" "$<TARGET_FILE:${TARGET_NAME}>"
                             COMMENT "Stripping ${TARGET_NAME}, generating $<TARGET_FILE:${TARGET_NAME}>.debug")

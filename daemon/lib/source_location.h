@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -67,7 +67,7 @@ namespace lib {
         [[nodiscard]] constexpr std::uint32_t line_no() const { return line; }
 
     private:
-        std::string_view file {};
+        std::string_view file;
         std::uint32_t line {};
     };
 }

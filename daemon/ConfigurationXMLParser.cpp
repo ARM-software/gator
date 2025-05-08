@@ -40,9 +40,6 @@ namespace {
     constexpr const char * ATTR_MIN_LATENCY = "min-latency";
     constexpr const char * ATTR_INV_EVENT_FILTER_FLAG = "inverse-event-filter";
 
-    constexpr const int BASE_10 = 10;
-    constexpr const int BASE_16 = 16;
-
     int configurationsTag(mxml_node_t * node)
     {
         const char * revision_string;
@@ -53,7 +50,7 @@ namespace {
         }
 
         int revision;
-        if (!stringToInt(&revision, revision_string, BASE_10)) {
+        if (!stringToInt(&revision, revision_string, OlyBase::Decimal)) {
             LOG_ERROR("Configuration XML revision must be an integer");
             return VERSION_ERROR;
         }
@@ -80,14 +77,14 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     CounterConfiguration counter;
     counter.counterName = counterName;
     if (mxmlElementGetAttr(node, ATTR_COUNT) != nullptr) {
-        if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), BASE_10)) {
+        if (!stringToInt(&count, mxmlElementGetAttr(node, ATTR_COUNT), OlyBase::Decimal)) {
             LOG_ERROR("Configuration XML count must be an integer");
             return PARSER_ERROR;
         }
         counter.count = count;
     }
     if (mxmlElementGetAttr(node, ATTR_CORES) != nullptr) {
-        if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), BASE_10)) {
+        if (!stringToInt(&cores, mxmlElementGetAttr(node, ATTR_CORES), OlyBase::Decimal)) {
             LOG_ERROR("Configuration XML cores must be an integer");
             return PARSER_ERROR;
         }
@@ -95,7 +92,7 @@ int ConfigurationXMLParser::readCounter(mxml_node_t * node)
     }
     long long event;
     if (eventStr != nullptr) {
-        if (!stringToLongLong(&event, eventStr, BASE_16)) {
+        if (!stringToLongLong(&event, eventStr, OlyBase::Hexadecimal)) {
             LOG_ERROR("Configuration XML event must be an integer");
             return PARSER_ERROR;
         }
@@ -165,7 +162,7 @@ int ConfigurationXMLParser::readSpe(mxml_node_t * node)
     }
     const char * attrMinLatency = mxmlElementGetAttr(node, ATTR_MIN_LATENCY);
     if (attrMinLatency != nullptr) {
-        if (!stringToInt(&minLatency, attrMinLatency, BASE_10)) {
+        if (!stringToInt(&minLatency, attrMinLatency, OlyBase::Decimal)) {
             LOG_ERROR("Configuration XML spe min-latency must be an integer");
             return PARSER_ERROR;
         }

@@ -3,17 +3,15 @@
 #ifndef SESSION_XML_H
 #define SESSION_XML_H
 
-#include <mxml.h>
+#include <string>
 
-namespace {
-    constexpr const size_t BUFFER_SIZE = 64;
-}
+#include <mxml.h>
 
 struct ConfigParameters {
     /// buffer mode, "streaming", "low", "normal", "high" defines oneshot and buffer size
-    char buffer_mode[BUFFER_SIZE] = {0};
+    std::string buffer_mode;
     /// capture mode, "high", "normal", or "low"
-    char sample_rate[BUFFER_SIZE] = {0};
+    std::string sample_rate;
     /// whether stack unwinding is performed
     bool call_stack_unwinding = false;
     int live_rate = 0;

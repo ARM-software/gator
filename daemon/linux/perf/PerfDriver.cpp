@@ -15,6 +15,7 @@
 #include "SimpleDriver.h"
 #include "agents/perf/capture_configuration.h"
 #include "k/perf_event.h"
+#include "lib/Format.h"
 #include "lib/Span.h"
 #include "lib/String.h"
 #include "lib/Utils.h"
@@ -118,54 +119,25 @@ namespace {
                                      version.minor_version);
     }
 
-    char const * metric_title(metrics::metric_priority_t prio)
+    // NOLINTNEXTLINE(misc-no-recursion)
+    void flatten_hierarchy_into(std::vector<std::reference_wrapper<metrics::metric_events_set_t const>> & result,
+                                lib::Span<combined_metrics_hierarchy_entry_t const> events)
     {
-        switch (prio) {
-            case metrics::metric_priority_t::backend_bound:
-            case metrics::metric_priority_t::backend_stalled_cycles:
-            case metrics::metric_priority_t::backend:
-                return "Backend";
-            case metrics::metric_priority_t::bad_speculation:
-                return "Basic";
-            case metrics::metric_priority_t::branch:
-                return "Branch";
-            case metrics::metric_priority_t::bus:
-                return "Bus";
-            case metrics::metric_priority_t::cas:
-                return "CAS";
-            case metrics::metric_priority_t::cpi:
-                return "Basic";
-            case metrics::metric_priority_t::data:
-                return "L1D Cache";
-            case metrics::metric_priority_t::frontend_bound:
-            case metrics::metric_priority_t::frontend_stalled_cycles:
-            case metrics::metric_priority_t::frontend:
-                return "Frontend";
-            case metrics::metric_priority_t::instruction:
-                return "Instructions";
-            case metrics::metric_priority_t::ipc:
-                return "Basic";
-            case metrics::metric_priority_t::l2:
-            case metrics::metric_priority_t::l2i:
-                return "L2 Cache";
-            case metrics::metric_priority_t::l3:
-                return "L3 Cache";
-            case metrics::metric_priority_t::ll:
-                return "Last Level Cache";
-            case metrics::metric_priority_t::ls:
-            case metrics::metric_priority_t::numeric:
-                return "Instructions";
-            case metrics::metric_priority_t::retiring:
-                return "Basic";
-            case metrics::metric_priority_t::barrier:
-                return "Barriers";
-            case metrics::metric_priority_t::latency:
-                return "Latency";
-            case metrics::metric_priority_t::iq:
-                return "Issue Queue";
-            default:
-                return "unknown";
+        for (auto const & event : events) {
+            result.emplace_back(event.metric);
+
+            flatten_hierarchy_into(result, event.children);
         }
+    }
+
+    [[nodiscard]] std::vector<std::reference_wrapper<metrics::metric_events_set_t const>> flatten_hierarchy(
+        lib::Span<combined_metrics_hierarchy_entry_t const> events)
+    {
+        std::vector<std::reference_wrapper<metrics::metric_events_set_t const>> result {};
+
+        flatten_hierarchy_into(result, events);
+
+        return result;
     }
 
     [[nodiscard]] std::unordered_map<metrics::metric_events_set_t const *, int> make_metric_to_key_map(
@@ -393,25 +365,27 @@ namespace {
         auto const n_available = (use_return_counter ? std::max<std::size_t>(1, n_available_raw) - 1 //
                                                      : n_available_raw);
 
-        LOG_DEBUG("Found metric set for core type %s, n_counters=%i (used %zu, raw %zu, ret %u, avail %zu, size %zu)",
-                  cluster.gator_cpu.getCoreName(),
-                  cluster.gator_cpu.getPmncCounters(),
-                  n_used,
-                  n_available_raw,
-                  use_return_counter,
-                  n_available,
-                  combined_metrics.events.size());
+        LOG_FINE("Found metric set for core type %s, n_counters=%i (used %zu, raw %zu, ret %u, avail %zu, size %zu)",
+                 cluster.gator_cpu.getCoreName(),
+                 cluster.gator_cpu.getPmncCounters(),
+                 n_used,
+                 n_available_raw,
+                 use_return_counter,
+                 n_available,
+                 combined_metrics.total_num_events);
+
+        // flatten out the hierarchy tree
+        auto const flattened_events = flatten_hierarchy(combined_metrics.root_events);
 
         // make a lookup from metric set to counter key .
         // this is used by streamline to correlate the perf ids via there keys back to the original event code / metric(s)
-        auto const set_to_key =
-            make_metric_to_key_map(cluster, metric_ids, combined_metrics.version, combined_metrics.events);
+        auto const set_to_key = make_metric_to_key_map(cluster, metric_ids, combined_metrics.version, flattened_events);
 
         // find the valid metric combinations. this is the smallest set of multiplexed counter groups that will fit all valid metrics
         auto const combinations = metrics::make_combinations(
             n_available,
-            combined_metrics.events,
-            make_metric_filter(cluster, metric_ids, combined_metrics.version, combined_metrics.events));
+            flattened_events,
+            make_metric_filter(cluster, metric_ids, combined_metrics.version, flattened_events));
 
         LOG_DEBUG("Combinations set size %zu", combinations.size());
 
@@ -521,6 +495,29 @@ namespace {
         return result;
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion)
+    [[nodiscard]] std::size_t combine_metrics_recursive(
+        std::unordered_set<std::string_view> & seen_ids,
+        std::initializer_list<metrics::metric_hierarchy_entry_t> const & events,
+        std::vector<combined_metrics_hierarchy_entry_t> & result)
+    {
+        std::size_t total_num_events = 0;
+
+        for (auto const & entry : events) {
+            auto const & metric = entry.metric.get();
+            if (auto const [it, inserted] = seen_ids.insert(metric.identifier); inserted) {
+                (void) it; //GCC7 :-(
+
+                auto & child = result.emplace_back(entry);
+
+                total_num_events += 1;
+                total_num_events += combine_metrics_recursive(seen_ids, entry.children, child.children);
+            }
+        }
+
+        return total_num_events;
+    }
+
     [[nodiscard]] combined_metrics_t combine_metrics(
         metrics::metric_cpu_version_map_entry_t const & cpu_metrics_common,
         metrics::metric_cpu_version_t const & version,
@@ -534,21 +531,15 @@ namespace {
             result.largest_metric_event_count = std::max(cpu_metrics_version->largest_metric_event_count,
                                                          cpu_metrics_common.largest_metric_event_count);
 
-            for (auto const & metric : cpu_metrics_version->events.get()) {
-                seen_ids.insert(metric.get().identifier);
-                result.events.emplace_back(metric);
-            }
+            result.total_num_events =
+                combine_metrics_recursive(seen_ids, cpu_metrics_version->root_events.get(), result.root_events);
         }
         else {
             result.largest_metric_event_count = cpu_metrics_common.largest_metric_event_count;
         }
 
-        for (auto const & metric : cpu_metrics_common.events.get()) {
-            if (auto const [it, inserted] = seen_ids.insert(metric.get().identifier); inserted) {
-                (void) it; // GCC7 :-(
-                result.events.emplace_back(metric);
-            }
-        }
+        result.total_num_events +=
+            combine_metrics_recursive(seen_ids, cpu_metrics_common.root_events.get(), result.root_events);
 
         return result;
     }
@@ -584,7 +575,7 @@ public:
                 uint64_t count,
                 uint64_t config_id2 = noConfigId2,
                 bool fixUpClockCyclesEvent = fixUpClockCyclesEventDefault,
-                std::set<metrics::metric_group_id_t> && metricGroups = {})
+                std::unordered_set<metrics::metric_group_id_t> metricGroups = {})
         : PerfCounter(next, groupIdentifier, name, IPerfGroups::Attr {}, false, config_id2, fixUpClockCyclesEvent)
     {
         attr.type = type;
@@ -662,7 +653,7 @@ private:
     bool mUsesAux;
     // Where this PerfCounter represents a metric, this member represents
     // the groups it is a part of.
-    std::set<metrics::metric_group_id_t> mMetricGroups;
+    std::unordered_set<metrics::metric_group_id_t> mMetricGroups {};
 };
 
 class CPUFreqDriver : public PerfCounter {
@@ -1035,10 +1026,7 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
             get_specific_metrics_version(*cpu_metrics, cpu, cpu_metric_versions);
         auto const combined_metrics = combine_metrics(cpu_metrics_common, cpu_version, cpu_metrics_for_version);
 
-        LOG_DEBUG("PMU %s has %zu metrics",
-                  cpu.getCoreName(),
-                  cpu_metrics_common.events.get().size()
-                      + (cpu_metrics_for_version != nullptr ? cpu_metrics_for_version->events.get().size() : 0));
+        LOG_DEBUG("PMU %s has %zu metrics", cpu.getCoreName(), combined_metrics.total_num_events);
 
         addCpuCounterMetrics(perfCpu, combined_metrics);
     }
@@ -1046,22 +1034,31 @@ void PerfDriver::addCpuCounters(const PerfCpu & perfCpu)
 
 void PerfDriver::addCpuCounterMetrics(const PerfCpu & perfCpu, combined_metrics_t const & cpu_metrics)
 {
-    const GatorCpu & cpu = perfCpu.gator_cpu;
-    auto const & metrics_sets = cpu_metrics.events;
+    addCpuCounterMetricsRecursive(perfCpu, cpu_metrics.version, cpu_metrics.root_events);
+}
 
-    for (metrics::metric_events_set_t const & metrics_set : metrics_sets) {
-        LOG_DEBUG("PMU %s has metric %s:%u containing %zu events",
+// NOLINTNEXTLINE(misc-no-recursion)
+void PerfDriver::addCpuCounterMetricsRecursive(const PerfCpu & perfCpu,
+                                               metrics::metric_cpu_version_t const & version,
+                                               lib::Span<combined_metrics_hierarchy_entry_t const> events)
+{
+    const GatorCpu & cpu = perfCpu.gator_cpu;
+
+    for (auto const & entry : events) {
+        auto const & metrics_set = entry.metric.get();
+        auto const metric_id = metric_counter_name(perfCpu, version, metrics_set);
+
+        LOG_DEBUG("PMU %s has metric %s:%u containing %zu events as %s",
                   cpu.getCoreName(),
                   metrics_set.identifier.data(),
                   metrics_set.instance_no,
-                  metrics_set.event_codes.size());
+                  metrics_set.event_codes.size(),
+                  metric_id.c_str());
+
+        std::unordered_set<metrics::metric_group_id_t> groups {metrics_set.groups};
+        groups.insert(entry.group);
+
         if ((cpu.getPmncCounters() > 0) && (metrics_set.event_codes.size() <= std::size_t(cpu.getPmncCounters()))) {
-            auto const metric_id = metric_counter_name(perfCpu, cpu_metrics.version, metrics_set);
-
-            LOG_DEBUG("Adding metric %s", metric_id.c_str());
-
-            std::set<metrics::metric_group_id_t> groups {metrics_set.groups};
-
             setCounters(new PerfCounter(getCounters(),
                                         PerfEventGroupIdentifier(cpu, 1),
                                         metric_id.c_str(),
@@ -1073,6 +1070,8 @@ void PerfDriver::addCpuCounterMetrics(const PerfCpu & perfCpu, combined_metrics_
                                         PerfCounter::fixUpClockCyclesEventDefault,
                                         std::move(groups)));
         }
+
+        addCpuCounterMetricsRecursive(perfCpu, version, entry.children);
     }
 }
 
@@ -1082,12 +1081,12 @@ void PerfDriver::addUncoreCounters(const PerfUncore & perfUncore)
     const int type = perfUncore.pmu_type;
 
     if (pmu.getHasCyclesCounter()) {
-        lib::dyn_printf_str_t name {"%s_ccnt", pmu.getId()};
+        lib::dyn_printf_str_t const name {"%s_ccnt", pmu.getId()};
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu), name, type, -1, PERF_SAMPLE_READ, 0));
     }
 
     for (int j = 0; j < pmu.getPmncCounters(); ++j) {
-        lib::dyn_printf_str_t name {"%s_cnt%d", pmu.getId(), j};
+        lib::dyn_printf_str_t const name {"%s_cnt%d", pmu.getId(), j};
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(pmu), name, type, -1, PERF_SAMPLE_READ, 0));
     }
 }
@@ -1551,30 +1550,65 @@ void PerfDriver::writeEvents(mxml_node_t * root) const
             continue;
         }
 
-        auto * category = mxmlNewElement(root, "category");
-        mxmlElementSetAttr(category, "name", lib::dyn_printf_str_t("%s: Metrics", gator_cpu.getCoreName()));
-
         auto const & cpu_metrics_common = get_common_metrics_version(*cpu_metrics);
         auto const [cpu_version, cpu_metrics_for_version] =
             get_specific_metrics_version(*cpu_metrics, gator_cpu, cpu_metric_versions);
         auto const combined_metrics = combine_metrics(cpu_metrics_common, cpu_version, cpu_metrics_for_version);
 
-        writeEventsFor(perf_cpu, category, combined_metrics);
+        std::vector<combined_metrics_hierarchy_entry_t> root_events_top_down;
+        std::vector<combined_metrics_hierarchy_entry_t> root_events_other;
+
+        for (auto const & entry : combined_metrics.root_events) {
+            if (entry.top_down) {
+                root_events_top_down.emplace_back(entry);
+            }
+            else {
+                root_events_other.emplace_back(entry);
+            }
+        }
+
+        if (!root_events_top_down.empty()) {
+            writeEventsFor(perf_cpu,
+                           root,
+                           lib::dyn_printf_str_t("%s: Top Down Metrics", gator_cpu.getCoreName()),
+                           cpu_version,
+                           root_events_top_down);
+        }
+
+        if (!root_events_other.empty()) {
+            writeEventsFor(perf_cpu,
+                           root,
+                           lib::dyn_printf_str_t("%s: Other Metrics", gator_cpu.getCoreName()),
+                           cpu_version,
+                           root_events_other);
+        }
     }
 }
 
-void PerfDriver::writeEventsFor(const PerfCpu & perfCpu, mxml_node_t * category, combined_metrics_t const & cpu_metrics)
+// NOLINTNEXTLINE(misc-no-recursion)
+void PerfDriver::writeEventsFor(const PerfCpu & perfCpu,
+                                mxml_node_t * root,
+                                std::string const & category_name,
+                                metrics::metric_cpu_version_t const & version,
+                                lib::Span<combined_metrics_hierarchy_entry_t const> events)
 {
     auto const & gator_cpu = perfCpu.gator_cpu;
-    for (metrics::metric_events_set_t const & metrics_set : cpu_metrics.events) {
+
+    auto * category = mxmlNewElement(root, "category");
+    mxmlElementSetAttr(category, "name", category_name.c_str());
+
+    for (auto const & entry : events) {
+        auto const & metrics_set = entry.metric.get();
+
         // only expose metrics that fit in the available PMU counter count
         if ((gator_cpu.getPmncCounters() > 0)
             && (metrics_set.event_codes.size() <= std::size_t(gator_cpu.getPmncCounters()))) {
 
             auto * node = mxmlNewElement(category, "event");
+            auto const group_name = metrics::metric_group_title(entry.group);
 
-            mxmlElementSetAttr(node, "counter", metric_counter_name(perfCpu, cpu_metrics.version, metrics_set).c_str());
-            mxmlElementSetAttr(node, "title", metric_title(metrics_set.priority_group));
+            mxmlElementSetAttr(node, "counter", metric_counter_name(perfCpu, version, metrics_set).c_str());
+            mxmlElementSetAttr(node, "title", group_name.data());
             mxmlElementSetAttr(node, "name", metrics_set.title.data());
             mxmlElementSetAttr(node, "display", "average");
             mxmlElementSetAttr(node, "class", "delta");
@@ -1582,9 +1616,18 @@ void PerfDriver::writeEventsFor(const PerfCpu & perfCpu, mxml_node_t * category,
             mxmlElementSetAttr(node, "average_selection", "yes");
             mxmlElementSetAttr(node, "series_composition", "stacked");
             mxmlElementSetAttr(node, "rendering_type", "bar");
-            mxmlElementSetAttr(node, "per_core", "yes");
+            mxmlElementSetAttr(node, "per_cpu", "yes");
             mxmlElementSetAttr(node, "description", metrics_set.description.data());
             mxmlElementSetAttr(node, "metric", "yes");
+        }
+
+        // recurse to children
+        if (!entry.children.empty()) {
+            writeEventsFor(perfCpu,
+                           root, //
+                           lib::Format() << category_name << ": " << /*n << ". " <<*/ metrics_set.title.data(),
+                           version,
+                           entry.children);
         }
     }
 }
@@ -1622,10 +1665,21 @@ int PerfDriver::writeCountersFor(const PerfCpu & perfCpu,
                                  combined_metrics_t const & cpu_metrics,
                                  available_counter_consumer_t const & consumer)
 {
+    return writeCountersForRecursive(perfCpu, cpu_metrics.version, cpu_metrics.root_events, consumer);
+}
+
+// NOLINTNEXTLINE(misc-no-recursion)
+int PerfDriver::writeCountersForRecursive(const PerfCpu & perfCpu,
+                                          metrics::metric_cpu_version_t const & version,
+                                          lib::Span<combined_metrics_hierarchy_entry_t const> events,
+                                          available_counter_consumer_t const & consumer)
+{
     int count = 0;
-    for (metrics::metric_events_set_t const & metrics_set : cpu_metrics.events) {
-        consumer(counter_type_t::counter, metric_counter_name(perfCpu, cpu_metrics.version, metrics_set));
-        ++count;
+    for (auto const & entry : events) {
+        auto const & metrics_set = entry.metric.get();
+        consumer(counter_type_t::counter, metric_counter_name(perfCpu, version, metrics_set));
+
+        count = count + 1 + writeCountersForRecursive(perfCpu, version, entry.children, consumer);
     }
     return count;
 }

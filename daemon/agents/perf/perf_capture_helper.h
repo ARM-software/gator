@@ -8,8 +8,6 @@
 #include "agents/agent_environment.h"
 #include "agents/perf/async_perf_ringbuffer_monitor.hpp"
 #include "agents/perf/cpufreq_counter.h"
-#include "agents/perf/events/event_binding_manager.hpp"
-#include "agents/perf/events/event_bindings.hpp"
 #include "agents/perf/events/perf_activator.hpp"
 #include "agents/perf/events/types.hpp"
 #include "agents/perf/perf_buffer_consumer.h"
@@ -841,7 +839,8 @@ namespace agents::perf {
                 // termination handler, which may be defered
                 auto handler = [timer, st](boost::system::error_code const & ec) mutable {
                     if (ec != boost::asio::error::operation_aborted) {
-                        LOG_FATAL("Terminating pid monitoring... terminating.");
+                        LOG_FINE("Terminating pid monitoring... terminating.");
+                        LOG_INFO("Ending capture...\n");
                         timer->cancel();
                         timer.reset();
 
@@ -865,7 +864,7 @@ namespace agents::perf {
 
                 // defer the terminate() call to allow the async_perf_ringbuffer_monitor to receive any closed() events for the event fds it monitors
                 if (defer) {
-                    LOG_FATAL("Terminating pid monitoring... starting termination countdown.");
+                    LOG_FINE("Terminating pid monitoring... starting termination countdown.");
                     timer->expires_from_now(defer_delay_ms);
                     timer->async_wait(std::move(handler));
                 }

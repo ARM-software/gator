@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
 
 #include "TtraceDriver.h"
 
@@ -76,7 +76,7 @@ void TtraceDriver::readEvents(mxml_node_t * const xml)
             handleException();
         }
         int flag;
-        if (!stringToInt(&flag, flagStr, 16)) {
+        if (!stringToInt(&flag, flagStr, OlyBase::Hexadecimal)) {
             LOG_ERROR("The flag attribute of the ttrace counter %s is not a hex integer", counter);
             handleException();
         }

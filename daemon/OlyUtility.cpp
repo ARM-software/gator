@@ -1,9 +1,10 @@
-/* Copyright (C) 2010-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
 
 #include "OlyUtility.h"
 
 #include <cctype>
 #include <cerrno>
+#include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -61,13 +62,13 @@ void stringToLower(char * string)
     }
 }
 
-bool stringToLongLong(long long * const value, const char * str, const int base)
+bool stringToLongLong(long long * const value, const char * str, OlyBase base)
 {
     char * endptr;
     long long v;
     errno = 0;
-    if (base >= 2) {
-        v = strtoll(str, &endptr, base);
+    if (str != nullptr) {
+        v = strtoll(str, &endptr, static_cast<int>(base));
         if (errno != 0 || *endptr != '\0') {
             return false;
         }
@@ -77,14 +78,14 @@ bool stringToLongLong(long long * const value, const char * str, const int base)
     return false;
 }
 
-bool stringToLong(long * const value, const char * str, const int base)
+bool stringToLong(long * const value, const char * str, OlyBase base)
 {
     char * endptr;
     long v;
     errno = 0;
 
-    if ((str != nullptr) && ((base >= 2) || (base == 0))) {
-        v = strtol(str, &endptr, base);
+    if (str != nullptr) {
+        v = strtol(str, &endptr, static_cast<int>(base));
         if (errno != 0 || *endptr != '\0') {
             return false;
         }
@@ -94,14 +95,18 @@ bool stringToLong(long * const value, const char * str, const int base)
     return false;
 }
 
-bool stringToInt(int * const value, const char * str, const int base)
+bool stringToInt(int * const value, const char * str, OlyBase base)
 {
     long v;
     if (!stringToLong(&v, str, base)) {
         return false;
     }
-    *value = v;
 
+    if (v < INT_MIN || v > INT_MAX) {
+        return false;
+    }
+
+    *value = v;
     return true;
 }
 

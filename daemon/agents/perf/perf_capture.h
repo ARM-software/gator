@@ -2,35 +2,20 @@
 
 #pragma once
 
-#include "GetEventKey.h"
-#include "SessionData.h"
-#include "Time.h"
-#include "agents/common/nl_cpu_monitor.h"
-#include "agents/common/polling_cpu_monitor.h"
 #include "agents/perf/capture_configuration.h"
 #include "agents/perf/cpu_info.h"
-#include "agents/perf/cpufreq_counter.h"
-#include "agents/perf/events/event_binding_manager.hpp"
 #include "agents/perf/events/perf_activator.hpp"
 #include "agents/perf/perf_capture_cpu_monitor.h"
 #include "agents/perf/perf_capture_helper.h"
-#include "agents/perf/perf_driver_summary.h"
 #include "agents/perf/sync_generator.h"
-#include "apc/misc_apc_frame_ipc_sender.h"
-#include "apc/summary_apc_frame_utils.h"
 #include "async/continuations/async_initiate.h"
 #include "async/continuations/continuation.h"
 #include "async/continuations/operations.h"
-#include "async/continuations/stored_continuation.h"
 #include "async/continuations/use_continuation.h"
-#include "ipc/messages.h"
 #include "ipc/raw_ipc_channel_sink.h"
 #include "lib/Assert.h"
-#include "lib/Utils.h"
 
 #include <memory>
-#include <optional>
-#include <set>
 
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
@@ -259,11 +244,11 @@ namespace agents::perf {
         boost::asio::io_context::strand strand;
         std::shared_ptr<ipc::raw_ipc_channel_sink_t> ipc_sink;
         std::shared_ptr<perf_capture_configuration_t> configuration;
-        std::shared_ptr<cpu_info_t> cpu_info {};
-        std::shared_ptr<perf_activator_t> perf_activator {};
-        std::shared_ptr<perf_capture_helper_t> perf_capture_helper {};
-        std::unique_ptr<sync_generator> sync_thread {};
-        std::shared_ptr<perf_capture_cpu_monitor_t> perf_capture_cpu_monitor {};
+        std::shared_ptr<cpu_info_t> cpu_info;
+        std::shared_ptr<perf_activator_t> perf_activator;
+        std::shared_ptr<perf_capture_helper_t> perf_capture_helper;
+        std::unique_ptr<sync_generator> sync_thread;
+        std::shared_ptr<perf_capture_cpu_monitor_t> perf_capture_cpu_monitor;
         static constexpr std::size_t MEGABYTES = 1024UL * 1024UL;
 
         /** @return True if the capture is terminated, false if not */

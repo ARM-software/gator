@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PROC_PROCPIDSTATFILERECORD_H
 #define INCLUDE_LINUX_PROC_PROCPIDSTATFILERECORD_H
@@ -75,93 +75,50 @@ namespace lnx {
                               unsigned long guest_time,
                               long cguest_time);
 
-        unsigned long getBlocked() const { return blocked; }
-
-        long getCguestTime() const { return cguest_time; }
-
-        unsigned long getCmajflt() const { return cmajflt; }
-
-        unsigned long getCminflt() const { return cminflt; }
-
-        unsigned long getCnswap() const { return cnswap; }
-
-        const std::string & getComm() const { return comm; }
-
-        long getCstime() const { return cstime; }
-
-        long getCutime() const { return cutime; }
-
-        unsigned long long getDelayacctBlkioTicks() const { return delayacct_blkio_ticks; }
-
-        unsigned long getEndcode() const { return endcode; }
-
-        int getExitSignal() const { return exit_signal; }
-
-        unsigned getFlags() const { return flags; }
-
-        unsigned long getGuestTime() const { return guest_time; }
-
-        long getItrealvalue() const { return itrealvalue; }
-
-        unsigned long getKstkeip() const { return kstkeip; }
-
-        unsigned long getKstkesp() const { return kstkesp; }
-
-        unsigned long getMajflt() const { return majflt; }
-
-        unsigned long getMinflt() const { return minflt; }
-
-        long getNice() const { return nice; }
-
-        unsigned long getNswap() const { return nswap; }
-
-        long getNumThreads() const { return num_threads; }
-
-        int getPgid() const { return pgid; }
-
-        int getPid() const { return pid; }
-
-        unsigned getPolicy() const { return policy; }
-
-        int getPpid() const { return ppid; }
-
-        long getPriority() const { return priority; }
-
-        int getProcessor() const { return processor; }
-
-        long getRss() const { return rss; }
-
-        unsigned long getRsslim() const { return rsslim; }
-
-        unsigned getRtPriority() const { return rt_priority; }
-
-        int getSession() const { return session; }
-
-        unsigned long getSigcatch() const { return sigcatch; }
-
-        unsigned long getSigignore() const { return sigignore; }
-
-        unsigned long getSignal() const { return signal; }
-
-        unsigned long getStartcode() const { return startcode; }
-
-        unsigned long getStartstack() const { return startstack; }
-
-        unsigned long long getStarttime() const { return starttime; }
-
-        char getState() const { return state; }
-
-        unsigned long getStime() const { return stime; }
-
-        int getTpgid() const { return tpgid; }
-
-        int getTtyNr() const { return tty_nr; }
-
-        unsigned long getUtime() const { return utime; }
-
-        unsigned long getVsize() const { return vsize; }
-
-        unsigned long getWchan() const { return wchan; }
+        [[nodiscard]] unsigned long getBlocked() const { return blocked; }
+        [[nodiscard]] long getCguestTime() const { return cguest_time; }
+        [[nodiscard]] unsigned long getCmajflt() const { return cmajflt; }
+        [[nodiscard]] unsigned long getCminflt() const { return cminflt; }
+        [[nodiscard]] unsigned long getCnswap() const { return cnswap; }
+        [[nodiscard]] const std::string & getComm() const { return comm; }
+        [[nodiscard]] long getCstime() const { return cstime; }
+        [[nodiscard]] long getCutime() const { return cutime; }
+        [[nodiscard]] unsigned long long getDelayacctBlkioTicks() const { return delayacct_blkio_ticks; }
+        [[nodiscard]] unsigned long getEndcode() const { return endcode; }
+        [[nodiscard]] int getExitSignal() const { return exit_signal; }
+        [[nodiscard]] unsigned getFlags() const { return flags; }
+        [[nodiscard]] unsigned long getGuestTime() const { return guest_time; }
+        [[nodiscard]] long getItrealvalue() const { return itrealvalue; }
+        [[nodiscard]] unsigned long getKstkeip() const { return kstkeip; }
+        [[nodiscard]] unsigned long getKstkesp() const { return kstkesp; }
+        [[nodiscard]] unsigned long getMajflt() const { return majflt; }
+        [[nodiscard]] unsigned long getMinflt() const { return minflt; }
+        [[nodiscard]] long getNice() const { return nice; }
+        [[nodiscard]] unsigned long getNswap() const { return nswap; }
+        [[nodiscard]] long getNumThreads() const { return num_threads; }
+        [[nodiscard]] int getPgid() const { return pgid; }
+        [[nodiscard]] int getPid() const { return pid; }
+        [[nodiscard]] unsigned getPolicy() const { return policy; }
+        [[nodiscard]] int getPpid() const { return ppid; }
+        [[nodiscard]] long getPriority() const { return priority; }
+        [[nodiscard]] int getProcessor() const { return processor; }
+        [[nodiscard]] long getRss() const { return rss; }
+        [[nodiscard]] unsigned long getRsslim() const { return rsslim; }
+        [[nodiscard]] unsigned getRtPriority() const { return rt_priority; }
+        [[nodiscard]] int getSession() const { return session; }
+        [[nodiscard]] unsigned long getSigcatch() const { return sigcatch; }
+        [[nodiscard]] unsigned long getSigignore() const { return sigignore; }
+        [[nodiscard]] unsigned long getSignal() const { return signal; }
+        [[nodiscard]] unsigned long getStartcode() const { return startcode; }
+        [[nodiscard]] unsigned long getStartstack() const { return startstack; }
+        [[nodiscard]] unsigned long long getStarttime() const { return starttime; }
+        [[nodiscard]] char getState() const { return state; }
+        [[nodiscard]] unsigned long getStime() const { return stime; }
+        [[nodiscard]] int getTpgid() const { return tpgid; }
+        [[nodiscard]] int getTtyNr() const { return tty_nr; }
+        [[nodiscard]] unsigned long getUtime() const { return utime; }
+        [[nodiscard]] unsigned long getVsize() const { return vsize; }
+        [[nodiscard]] unsigned long getWchan() const { return wchan; }
 
     private:
         char state {0};
@@ -207,7 +164,7 @@ namespace lnx {
         unsigned long guest_time {0};
         unsigned long long starttime {0};
         unsigned long long delayacct_blkio_ticks {0};
-        std::string comm {};
+        std::string comm;
     };
 }
 

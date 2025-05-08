@@ -42,7 +42,7 @@ namespace cpu_utils {
         while ((dirent = readdir(dir)) != nullptr) {
             if (strncmp(dirent->d_name, "cpu", 3) == 0) {
                 long coreNum;
-                if (stringToLong(&coreNum, dirent->d_name + 3, 10) && (coreNum >= maxCoreNum)) {
+                if (stringToLong(&coreNum, dirent->d_name + 3, OlyBase::Decimal) && (coreNum >= maxCoreNum)) {
                     maxCoreNum = coreNum + 1;
                 }
             }
@@ -131,7 +131,7 @@ namespace cpu_utils {
 
                     if (foundCPUArchitecture) {
                         int architecture;
-                        if (!stringToInt(&architecture, position, 0)) {
+                        if (!stringToInt(&architecture, position)) {
                             // Do nothing
                         }
                         else {
@@ -149,7 +149,7 @@ namespace cpu_utils {
 
                     if (foundCPUImplementer) {
                         int implementer;
-                        if (!stringToInt(&implementer, position, 0)) {
+                        if (!stringToInt(&implementer, position)) {
                             // Do nothing
                         }
                         else {
@@ -166,7 +166,7 @@ namespace cpu_utils {
 
                     if (foundCPUPart) {
                         int part_num;
-                        if (!stringToInt(&part_num, position, 0)) {
+                        if (!stringToInt(&part_num, position)) {
                             // Do nothing
                         }
                         else {
@@ -183,7 +183,7 @@ namespace cpu_utils {
 
                     if (foundCPURevision) {
                         int revision;
-                        if (!stringToInt(&revision, position, 0)) {
+                        if (!stringToInt(&revision, position)) {
                             // Do nothing
                         }
                         else {
@@ -200,7 +200,7 @@ namespace cpu_utils {
 
                     if (foundCPUVariant) {
                         int variant;
-                        if (!stringToInt(&variant, position, 0)) {
+                        if (!stringToInt(&variant, position)) {
                             // Do nothing
                         }
                         else {
@@ -217,7 +217,7 @@ namespace cpu_utils {
 
                     if (foundProcessor) {
                         int processorId = -1;
-                        const bool converted = stringToInt(&processorId, position, 0);
+                        const bool converted = stringToInt(&processorId, position);
 
                         // update min and max processor ids
                         if (converted) {
@@ -326,8 +326,8 @@ namespace cpu_utils {
             else {
                 for (unsigned cpu = 0; cpu < midrs.size(); ++cpu) {
                     if (collected_properties.count(cpu) == 0) {
-                        auto const properties = PerCoreIdentificationThread::detectFor(cpu);
-                        collected_properties.emplace(cpu, properties);
+                        auto properties = PerCoreIdentificationThread::detectFor(cpu);
+                        collected_properties.emplace(cpu, std::move(properties));
                     }
                 }
             }

@@ -7,14 +7,10 @@
 #include "agents/perf/events/types.hpp"
 #include "k/perf_event.h"
 #include "lib/Assert.h"
-#include "lib/EnumUtils.h"
 #include "lib/Span.h"
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <map>
-#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -23,7 +19,7 @@
 namespace agents::perf {
 
     /** Enumerates possible states for each binding */
-    enum class event_binding_state_t {
+    enum class event_binding_state_t : std::uint8_t {
         /** The event has not been created or enabled */
         offline,
         /** The event has been created (fd & perf if is valid), but it has not been activated yet */
@@ -39,7 +35,7 @@ namespace agents::perf {
     };
 
     /** Enumerate possible states for the aggregate bindings */
-    enum class aggregate_state_t {
+    enum class aggregate_state_t : std::uint8_t {
         /** All bindings are offline */
         offline,
         /** At least some bindings are ready/online */

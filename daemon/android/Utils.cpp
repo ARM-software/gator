@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #include "android/Utils.h"
 
@@ -16,6 +16,31 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+namespace {
+    // Trim any newline characters off the right end of the string
+    void rightTrim(std::string & s)
+    {
+        s.erase(std::remove(s.begin(), s.end(), '\n'), s.cend());
+    }
+
+    bool findAndroidPackage(const lib::PopenResult invokedCmd, const std::string & package)
+    {
+        std::string currentPackage;
+        lib::LineReader reader(invokedCmd.out);
+        lib::LineReaderResult moreLines {};
+        while (moreLines.ok()) {
+            currentPackage.clear();
+            moreLines = reader.readLine(currentPackage);
+            rightTrim(currentPackage);
+            if (currentPackage == "package:" + package) {
+                LOG_DEBUG("Package found: " + package);
+                return true;
+            }
+        }
+        return false;
+    }
+}
 
 namespace android_utils {
 
@@ -88,7 +113,9 @@ namespace android_utils {
                       targetTarFile.c_str());
             return false;
         }
-        auto destination = origApcDir.parent() ? origApcDir.parent().value().path() : "/data/local/tmp";
+
+        auto parentDir = origApcDir.parent();
+        auto destination = parentDir ? parentDir.value().path() : "/data/local/tmp";
         //unzip tar
         auto unzipResult = gator::process::runCommandAndRedirectOutput("tar --no-same-owner -xf " + targetTarFile
                                                                            + " -C " + destination,
@@ -119,7 +146,7 @@ namespace android_utils {
         auto apcDir = lib::FsEntry::create(targetApcPath);
         std::string apcPathWithEtn(apcDir.path());
         //check if path ends with .apc, if not append .apc to folder
-        if (apcPathWithEtn.size() > 0
+        if (!apcPathWithEtn.empty()
             && apcPathWithEtn.compare(apcPathWithEtn.size() - 4, apcPathWithEtn.size(), ".apc") != 0) {
             apcPathWithEtn += ".apc";
         }
@@ -131,36 +158,15 @@ namespace android_utils {
                 return {};
             }
         }
-        if (!origApcDir.parent() || !origApcDir.parent().value().exists()) {
+
+        auto apcParentDir = origApcDir.parent();
+        if (!apcParentDir || !apcParentDir.value().exists()) {
             if (!origApcDir.create_directory()) {
                 LOG_ERROR("Failed to create a destination folder '%s'.", apcPathWithEtn.c_str());
                 return {};
             };
         }
         return {origApcDir.path()};
-    }
-
-    // Trim any newline characters off the right end of the string
-    static void rightTrim(std::string & s)
-    {
-        s.erase(std::remove(s.begin(), s.end(), '\n'), s.cend());
-    }
-
-    static bool findAndroidPackage(const lib::PopenResult invokedCmd, const std::string & package)
-    {
-        std::string currentPackage;
-        lib::LineReader reader(invokedCmd.out);
-        lib::LineReaderResult moreLines {};
-        while (moreLines.ok()) {
-            currentPackage.clear();
-            moreLines = reader.readLine(currentPackage);
-            rightTrim(currentPackage);
-            if (currentPackage == "package:" + package) {
-                LOG_DEBUG("Package found: " + package);
-                return true;
-            }
-        }
-        return false;
     }
 
     bool packageExists(const std::string & desiredPackage)

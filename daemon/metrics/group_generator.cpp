@@ -11,44 +11,24 @@
 #include <cstdint>
 #include <functional>
 #include <set>
-#include <stdexcept>
 #include <string_view>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace metrics {
     namespace {
-        enum class metric_priority_simplified_t {
-            top_level,
-            boundness,
-            stall_cycles,
-            backend,
-            branch,
-            frontend,
-            instruction,
-            bus,
-            cas,
-            data,
-            l2,
-            l3,
-            ll,
-            ls,
-            numeric,
-            barrier,
-            latency,
-            iq,
-        };
 
         struct raw_combination_t {
             std::unordered_set<metric_events_set_t const *> contains_sets;
             std::unordered_set<std::uint16_t> event_codes;
-            metric_priority_simplified_t priority;
+            metric_priority_t priority;
             metric_arch_t arch;
 
             raw_combination_t(std::unordered_set<metric_events_set_t const *> contains_sets,
                               std::unordered_set<std::uint16_t> event_codes,
-                              metric_priority_simplified_t priority,
+                              metric_priority_t priority,
                               metric_arch_t arch)
                 : contains_sets(std::move(contains_sets)),
                   event_codes(std::move(event_codes)),
@@ -74,61 +54,9 @@ namespace metrics {
             }
         }
 
-        [[nodiscard]] constexpr metric_priority_simplified_t select_best(metric_priority_simplified_t a,
-                                                                         metric_priority_simplified_t b)
+        [[nodiscard]] constexpr metric_priority_t select_best(metric_priority_t a, metric_priority_t b)
         {
             return std::min(a, b);
-        }
-
-        [[nodiscard]] constexpr metric_priority_simplified_t normalize_group_0(metric_priority_t prio)
-        {
-            switch (prio) {
-                case metric_priority_t::backend_bound:
-                case metric_priority_t::frontend_bound:
-                    return metric_priority_simplified_t::boundness;
-                case metric_priority_t::backend_stalled_cycles:
-                case metric_priority_t::frontend_stalled_cycles:
-                    return metric_priority_simplified_t::stall_cycles;
-                case metric_priority_t::bad_speculation:
-                case metric_priority_t::cpi:
-                case metric_priority_t::ipc:
-                case metric_priority_t::retiring:
-                    return metric_priority_simplified_t::top_level;
-
-                case metric_priority_t::backend:
-                    return metric_priority_simplified_t::backend;
-                case metric_priority_t::branch:
-                    return metric_priority_simplified_t::branch;
-                case metric_priority_t::bus:
-                    return metric_priority_simplified_t::bus;
-                case metric_priority_t::cas:
-                    return metric_priority_simplified_t::cas;
-                case metric_priority_t::data:
-                    return metric_priority_simplified_t::data;
-                case metric_priority_t::frontend:
-                    return metric_priority_simplified_t::frontend;
-                case metric_priority_t::instruction:
-                    return metric_priority_simplified_t::instruction;
-                case metric_priority_t::l2:
-                case metric_priority_t::l2i:
-                    return metric_priority_simplified_t::l2;
-                case metric_priority_t::l3:
-                    return metric_priority_simplified_t::l3;
-                case metric_priority_t::ll:
-                    return metric_priority_simplified_t::ll;
-                case metric_priority_t::ls:
-                    return metric_priority_simplified_t::ls;
-                case metric_priority_t::numeric:
-                    return metric_priority_simplified_t::numeric;
-                case metrics::metric_priority_t::barrier:
-                    return metric_priority_simplified_t::barrier;
-                case metrics::metric_priority_t::latency:
-                    return metric_priority_simplified_t::latency;
-                case metrics::metric_priority_t::iq:
-                    return metric_priority_simplified_t::iq;
-                default:
-                    throw std::runtime_error("What is this?");
-            }
         }
 
         [[nodiscard]] metric_arch_t combine_arch(metric_arch_t a, metric_arch_t b)
@@ -208,7 +136,7 @@ namespace metrics {
                 raw_combination_t current_combination {
                     {&metric_a},
                     filter_cycles(metric_a.event_codes, metric_a.arch),
-                    normalize_group_0(metric_a.priority_group),
+                    metric_a.priority_group,
                     metric_a.arch,
                 };
 
@@ -217,8 +145,8 @@ namespace metrics {
                 }
 
                 // update the input flags
-                has_boundness |= (current_combination.priority == metric_priority_simplified_t::boundness);
-                has_stalled_cycles |= (current_combination.priority == metric_priority_simplified_t::stall_cycles);
+                has_boundness |= (current_combination.priority == metric_priority_t::boundness);
+                has_stalled_cycles |= (current_combination.priority == metric_priority_t::stall_cycles);
 
                 // stick normalized priority items together
                 for (metric_events_set_t const & metric_b : metric_events) {
@@ -233,8 +161,7 @@ namespace metrics {
                     }
 
                     // can it be combined as it is in the same group
-                    auto const priority = normalize_group_0(metric_b.priority_group);
-                    if (current_combination.priority != priority) {
+                    if (current_combination.priority != metric_b.priority_group) {
                         continue;
                     }
 
@@ -372,13 +299,13 @@ namespace metrics {
             }
         }
 
-        template<metric_priority_simplified_t... Enums>
-        [[nodiscard]] constexpr bool is_one_of(metric_priority_simplified_t v)
+        template<metric_priority_t... Enums>
+        [[nodiscard]] constexpr bool is_one_of(metric_priority_t v)
         {
             return (... || (v == Enums));
         }
 
-        template<metric_priority_simplified_t... Priorities>
+        template<metric_priority_t... Priorities>
         [[nodiscard]] constexpr auto filter_for_priorities()
         {
             return [](raw_combination_t const & a, raw_combination_t const & b) -> bool {
@@ -424,76 +351,75 @@ namespace metrics {
             make_initial_combinations(max_events, events, filter_predicate, has_boundness, has_stalled_cycles);
 
         // merge boundness and top_level if possible
-        raw_combinations = combine_combinations(
-            max_events,
-            std::move(raw_combinations),
-            filter_for_priorities<metric_priority_simplified_t::top_level, metric_priority_simplified_t::boundness>());
+        raw_combinations =
+            combine_combinations(max_events,
+                                 std::move(raw_combinations),
+                                 filter_for_priorities<metric_priority_t::top_level, metric_priority_t::boundness>());
 
         // merge branch and top_level if the group has boundness and stalled_cycles (branches are prioritized over stall cycles)
         if (has_boundness && has_stalled_cycles) {
-            raw_combinations = combine_combinations(
-                max_events,
-                std::move(raw_combinations),
-                filter_for_priorities<metric_priority_simplified_t::top_level, metric_priority_simplified_t::branch>());
+            raw_combinations =
+                combine_combinations(max_events,
+                                     std::move(raw_combinations),
+                                     filter_for_priorities<metric_priority_t::top_level, metric_priority_t::branch>());
         }
 
         // merge stalled_cycles and top_level if possible
-        raw_combinations = combine_combinations(max_events,
-                                                std::move(raw_combinations),
-                                                filter_for_priorities<metric_priority_simplified_t::top_level,
-                                                                      metric_priority_simplified_t::stall_cycles>());
+        raw_combinations = combine_combinations(
+            max_events,
+            std::move(raw_combinations),
+            filter_for_priorities<metric_priority_t::top_level, metric_priority_t::stall_cycles>());
 
         // merge branch and top_level if not done previously
         if (!has_boundness || !has_stalled_cycles) {
-            raw_combinations = combine_combinations(
-                max_events,
-                std::move(raw_combinations),
-                filter_for_priorities<metric_priority_simplified_t::top_level, metric_priority_simplified_t::branch>());
+            raw_combinations =
+                combine_combinations(max_events,
+                                     std::move(raw_combinations),
+                                     filter_for_priorities<metric_priority_t::top_level, metric_priority_t::branch>());
         }
 
         // merge boundness, stall_cylces, frontend, backend
         raw_combinations = combine_combinations(max_events,
                                                 std::move(raw_combinations),
-                                                filter_for_priorities<metric_priority_simplified_t::boundness,
-                                                                      metric_priority_simplified_t::stall_cycles,
-                                                                      metric_priority_simplified_t::frontend,
-                                                                      metric_priority_simplified_t::backend>());
+                                                filter_for_priorities<metric_priority_t::boundness,
+                                                                      metric_priority_t::stall_cycles,
+                                                                      metric_priority_t::frontend,
+                                                                      metric_priority_t::backend>());
 
         // merge data and top_level
-        raw_combinations = combine_combinations(
-            max_events,
-            std::move(raw_combinations),
-            filter_for_priorities<metric_priority_simplified_t::top_level, metric_priority_simplified_t::data>());
+        raw_combinations =
+            combine_combinations(max_events,
+                                 std::move(raw_combinations),
+                                 filter_for_priorities<metric_priority_t::top_level, metric_priority_t::data>());
 
         // merge data and ls
+        raw_combinations =
+            combine_combinations(max_events,
+                                 std::move(raw_combinations),
+                                 filter_for_priorities<metric_priority_t::data, metric_priority_t::ls>());
+
+        // merge data, ls, l2
         raw_combinations = combine_combinations(
             max_events,
             std::move(raw_combinations),
-            filter_for_priorities<metric_priority_simplified_t::data, metric_priority_simplified_t::ls>());
-
-        // merge data, ls, l2
-        raw_combinations = combine_combinations(max_events,
-                                                std::move(raw_combinations),
-                                                filter_for_priorities<metric_priority_simplified_t::data,
-                                                                      metric_priority_simplified_t::ls,
-                                                                      metric_priority_simplified_t::l2>());
+            filter_for_priorities<metric_priority_t::data, metric_priority_t::ls, metric_priority_t::l2>());
 
         // merge data, ls, l2, l3
         raw_combinations = combine_combinations(max_events,
                                                 std::move(raw_combinations),
-                                                filter_for_priorities<metric_priority_simplified_t::data,
-                                                                      metric_priority_simplified_t::ls,
-                                                                      metric_priority_simplified_t::l2,
-                                                                      metric_priority_simplified_t::l3>());
+                                                filter_for_priorities<metric_priority_t::data,
+                                                                      metric_priority_t::ls,
+                                                                      metric_priority_t::l2,
+                                                                      metric_priority_t::l3>());
 
         // merge data, ls, l2, l3, ll
         raw_combinations = combine_combinations(max_events,
                                                 std::move(raw_combinations),
-                                                filter_for_priorities<metric_priority_simplified_t::data,
-                                                                      metric_priority_simplified_t::ls,
-                                                                      metric_priority_simplified_t::l2,
-                                                                      metric_priority_simplified_t::l3,
-                                                                      metric_priority_simplified_t::ll>());
+                                                filter_for_priorities<metric_priority_t::data,
+                                                                      metric_priority_t::ls,
+                                                                      metric_priority_t::l2,
+                                                                      metric_priority_t::l3,
+                                                                      metric_priority_t::ll>());
 
         // merge anything else that will fit together
         raw_combinations =

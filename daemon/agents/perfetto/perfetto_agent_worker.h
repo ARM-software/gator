@@ -8,6 +8,7 @@
 #include "async/continuations/operations.h"
 #include "async/continuations/use_continuation.h"
 #include "ipc/messages.h"
+#include "lib/Assert.h"
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -50,7 +51,7 @@ namespace agents {
 
         boost::asio::io_context::strand strand;
         PerfettoSource & perfetto_source;
-        std::optional<boost::asio::posix::stream_descriptor> perfetto_source_pipe {};
+        std::optional<boost::asio::posix::stream_descriptor> perfetto_source_pipe;
 
         /** @return A continuation that requests the remote agent to shutdown */
         auto cont_shutdown()
@@ -84,6 +85,8 @@ namespace agents {
         auto cont_on_recv_message(ipc::msg_perfetto_recv_bytes_t && msg)
         {
             using namespace async::continuations;
+
+            runtime_assert(perfetto_source_pipe, "Perfetto external data pipe not created.");
 
             const auto * data = msg.suffix.data();
             return boost::asio::async_write(*perfetto_source_pipe,                        //

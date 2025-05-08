@@ -71,7 +71,7 @@ namespace agents::perf {
         /** Returned by scan_for_new_tids */
         struct scan_for_new_tids_result_t {
             /** The set of newly added pids/tids*/
-            std::set<pid_t> new_pids {};
+            std::set<pid_t> new_pids;
             /** The mapping from event id to key */
             id_to_key_mappings_t id_to_key_mappings {};
             /** The stream descriptors to monitor */

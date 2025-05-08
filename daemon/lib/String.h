@@ -1,7 +1,10 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
+#include "Logging.h"
+
+#include <algorithm>
 #include <array>
 #include <cstdarg>
 #include <cstdio>
@@ -37,7 +40,7 @@ namespace lib {
 
         constexpr printf_str_t() = default;
 
-        [[gnu::format(printf, 2, 3)]] inline printf_str_t(char const * format, ...)
+        [[gnu::format(printf, 2, 3)]] printf_str_t(char const * format, ...) // NOLINT(cert-dcl50-cpp)
         {
             va_list args;
             va_start(args, format);
@@ -45,7 +48,7 @@ namespace lib {
             va_end(args);
         }
 
-        [[gnu::format(printf, 2, 3)]] inline void printf(char const * format, ...)
+        [[gnu::format(printf, 2, 3)]] void printf(char const * format, ...) // NOLINT(cert-dcl50-cpp)
         {
             va_list args;
             va_start(args, format);
@@ -53,12 +56,12 @@ namespace lib {
             va_end(args);
         }
 
-        [[gnu::format(printf, 2, 0)]] inline void vprintf(char const * format, va_list args)
+        [[gnu::format(printf, 2, 0)]] void vprintf(char const * format, va_list args)
         {
-            auto n = vsnprintf(buffer.data(), buffer.size(), format, args);
+            auto required_length = vsnprintf(buffer.data(), buffer.size(), format, args);
 
-            // make sure to terminate
-            length = (n > 0 ? (std::size_t(n) < buffer.size() ? n : N - 1) : 0);
+            // update length and null-terminate
+            length = std::clamp<size_t>(required_length, 0, N - 1);
             buffer[length] = 0;
         }
 
@@ -77,9 +80,9 @@ namespace lib {
 
     class dyn_printf_str_t {
     public:
-        inline dyn_printf_str_t() = default;
+        dyn_printf_str_t() = default;
 
-        [[gnu::format(printf, 2, 3)]] inline dyn_printf_str_t(char const * format, ...)
+        [[gnu::format(printf, 2, 3)]] dyn_printf_str_t(char const * format, ...) // NOLINT(cert-dcl50-cpp)
         {
             va_list args;
             va_start(args, format);
@@ -87,7 +90,7 @@ namespace lib {
             va_end(args);
         }
 
-        [[gnu::format(printf, 2, 3)]] inline void printf(char const * format, ...)
+        [[gnu::format(printf, 2, 3)]] void printf(char const * format, ...) // NOLINT(cert-dcl50-cpp)
         {
             va_list args;
             va_start(args, format);
@@ -95,7 +98,7 @@ namespace lib {
             va_end(args);
         }
 
-        [[gnu::format(printf, 2, 0)]] inline void vprintf(char const * format, va_list args)
+        [[gnu::format(printf, 2, 0)]] void vprintf(char const * format, va_list args)
         {
             std::size_t length {};
 
@@ -114,7 +117,13 @@ namespace lib {
 
             // print
             if (length > 0) {
-                vsnprintf(buffer.data(), buffer.size() + 1, format, args);
+                const int needed_len = vsnprintf(buffer.data(), buffer.size() + 1, format, args);
+                if (needed_len < 0) {
+                    LOG_DEBUG("Encoding error processing: %s", format);
+                }
+                else if (static_cast<std::size_t>(needed_len) > length) {
+                    LOG_DEBUG("Not enough space to expand: %s", format);
+                }
             }
         }
 
@@ -130,7 +139,7 @@ namespace lib {
         [[nodiscard]] std::string release() { return std::move(buffer); }
 
     private:
-        std::string buffer {};
+        std::string buffer;
     };
 
     /** Try to parse an int from a string view */

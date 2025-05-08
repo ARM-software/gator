@@ -14,9 +14,9 @@
 #include <string>
 #include <utility>
 
-namespace mali_userspace {
-    static void enumerateMaliGpuClockPaths(const lib::FsEntry & currentDirectory,
-                                           std::map<unsigned int, std::string> & gpuClockPaths)
+namespace {
+    void enumerateMaliGpuClockPaths(const lib::FsEntry & currentDirectory,
+                                    std::map<unsigned int, std::string> & gpuClockPaths)
     {
         // open sysfs directory
         if (currentDirectory.read_stats().type() != lib::FsEntry::Type::DIR) {
@@ -64,7 +64,9 @@ namespace mali_userspace {
             }
         }
     }
+}
 
+namespace mali_userspace {
     std::map<unsigned int, std::unique_ptr<MaliDevice>> enumerateAllMaliHwCntrDrivers()
     {
         using namespace hwcpipe::device;

@@ -17,31 +17,23 @@ namespace metrics {
     };
 
     /** Enumerates possible priority groups */
-    enum class metric_priority_t : std::uint8_t {
-        backend_bound,
-        backend_stalled_cycles,
+    enum class metric_priority_t {
+        top_level,
+        boundness,
+        stall_cycles,
         backend,
-        bad_speculation,
-        barrier,
         branch,
         bus,
         cas,
-        cpi,
         data,
-        frontend_bound,
-        frontend_stalled_cycles,
         frontend,
         instruction,
-        ipc,
-        iq,
         l2,
-        l2i,
         l3,
-        latency,
         ll,
         ls,
+        mem,
         numeric,
-        retiring,
     };
 
     enum class metric_group_id_t : std::uint8_t {
@@ -55,6 +47,7 @@ namespace metrics {
         fp_arithmetic_intensity,
         fp_precision_mix,
         general,
+        iq_effectiveness,
         itlb_effectiveness,
         l1d_cache_effectiveness,
         l1i_cache_effectiveness,
@@ -63,15 +56,15 @@ namespace metrics {
         l2i_cache_effectiveness,
         l3_cache_effectiveness,
         ll_cache_effectiveness,
+        mcq_effectiveness,
         miss_ratio,
         mpki,
         operation_mix,
+        other,
+        sve_effectiveness,
         topdown_backend,
         topdown_frontend,
         topdown_l1,
-        iq_effectiveness,
-        mcq_effectiveness,
-        sve_effectiveness,
     };
 
     /** Definition of a single metric */
@@ -87,12 +80,20 @@ namespace metrics {
         std::initializer_list<metric_group_id_t> groups;
     };
 
+    /** Represents a single entry in the hierarchy */
+    struct metric_hierarchy_entry_t {
+        std::reference_wrapper<metric_events_set_t const> metric;
+        std::initializer_list<metric_hierarchy_entry_t> children;
+        metric_group_id_t group;
+        bool top_down;
+    };
+
     /** The list of metrics associated with some CPU */
-    using metric_cpu_events_t = std::initializer_list<std::reference_wrapper<metric_events_set_t const>>;
+    using metric_cpu_events_t = std::initializer_list<metric_hierarchy_entry_t>;
 
     /** Properties pertaining to on version of a cpu */
     struct metric_cpu_version_map_entry_t {
-        std::reference_wrapper<metric_cpu_events_t const> events;
+        std::reference_wrapper<metric_cpu_events_t const> root_events;
         std::size_t largest_metric_event_count;
     };
 
@@ -159,4 +160,9 @@ namespace metrics {
      * The map from CPU to metric list
      */
     extern metric_cpu_events_map_t const cpu_metrics_table;
+
+    /**
+     * Map group title from enum
+     */
+    [[nodiscard]] extern std::string_view metric_group_title(metric_group_id_t id);
 }

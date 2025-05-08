@@ -95,10 +95,31 @@ namespace {
         };
     }
 
+    [[nodiscard]] bool wait_for_ready(std::optional<bool> const & ready_worker,
+                                      std::optional<bool> const & ready_agent,
+                                      bool session_ended)
+    {
+        // wait, if no worker value received
+        if (!ready_worker) {
+            return true;
+        }
+
+        // stop waiting if worker failed
+        if (!*ready_worker) {
+            return false;
+        }
+
+        // stop if the session ended
+        if (session_ended) {
+            return false;
+        }
+
+        // worker is started successfully, wait for agent
+        return (!ready_agent);
+    }
 }
 
 /// this method is extracted so that it can be excluded from the unit tests as it brings deps on PerfSource...
-
 std::shared_ptr<PrimarySource> PerfDriver::create_source(
     sem_t & senderSem,
     ISender & sender,
@@ -175,29 +196,6 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(
                                  enableOnCommandExec);
 }
 
-[[nodiscard]] static bool wait_for_ready(std::optional<bool> const & ready_worker,
-                                         std::optional<bool> const & ready_agent,
-                                         bool session_ended)
-{
-    // wait, if no worker value received
-    if (!ready_worker) {
-        return true;
-    }
-
-    // stop waiting if worker failed
-    if (!*ready_worker) {
-        return false;
-    }
-
-    // stop if the session ended
-    if (session_ended) {
-        return false;
-    }
-
-    // worker is started successfully, wait for agent
-    return (!ready_agent);
-}
-
 std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_adapter(
     agents::agent_workers_process_default_t & agent_workers_process,
     sem_t & senderSem,
@@ -259,10 +257,10 @@ std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
 
     // start the agent worker and tell it to communicate with the source adapter
     struct wait_state_t {
-        std::mutex ready_mutex {};
-        std::condition_variable condition {};
-        std::optional<bool> ready_worker {};
-        std::optional<bool> ready_agent {};
+        std::mutex ready_mutex;
+        std::condition_variable condition;
+        std::optional<bool> ready_worker;
+        std::optional<bool> ready_agent;
     };
 
     auto wait_state = std::make_shared<wait_state_t>();

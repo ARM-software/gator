@@ -1,4 +1,4 @@
-/* Copyright (C) 2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -166,9 +166,9 @@ namespace agents {
         boost::asio::steady_timer timer;
         boost::asio::io_context::strand strand;
         std::vector<std::pair<lib::FsEntry, int>> monitor_paths;
-        completion_handler_t pending_handler {};
-        std::set<unsigned> online_cpu_nos {};
-        std::deque<event_t> pending_events {};
+        completion_handler_t pending_handler;
+        std::set<unsigned> online_cpu_nos;
+        std::deque<event_t> pending_events;
         bool terminated {false};
         bool first_pass {true};
 

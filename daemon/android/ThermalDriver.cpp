@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #include "android/ThermalDriver.h"
 
@@ -103,7 +103,7 @@ namespace gator::android {
         mxmlElementSetAttr(node, "series_composition", "stacked");
         mxmlElementSetAttr(node, "rendering_type", "bar");
         mxmlElementSetAttr(node, "proc", "no");
-        mxmlElementSetAttr(node, "per_core", "no");
+        mxmlElementSetAttr(node, "per_cpu", "no");
         mxmlElementSetAttr(node, "cores", "1");
         mxmlElementSetAttr(node, "description", "Counter for reading Thermal status");
 

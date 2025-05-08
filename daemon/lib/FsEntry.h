@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LIB_FSENTRY_H
 #define INCLUDE_LIB_FSENTRY_H
@@ -21,7 +21,7 @@ namespace lib {
         /**
          * Enumerate file type
          */
-        enum class Type { UNKNOWN, FILE, DIR, CHAR_DEV, BLOCK_DEV, FIFO, SOCKET };
+        enum class Type : uint8_t { UNKNOWN, FILE, DIR, CHAR_DEV, BLOCK_DEV, FIFO, SOCKET };
 
         /**
          * Stats about file (type, whether it exists etc)
@@ -31,11 +31,9 @@ namespace lib {
             Stats();
             Stats(Type type, bool exists, bool symlink);
 
-            Type type() const { return type_; }
-
-            bool exists() const { return exists_; }
-
-            bool is_symlink() const { return symlink_; }
+            [[nodiscard]] Type type() const { return type_; }
+            [[nodiscard]] bool exists() const { return exists_; }
+            [[nodiscard]] bool is_symlink() const { return symlink_; }
 
         private:
             friend class FsEntry;
@@ -49,36 +47,36 @@ namespace lib {
          * Factory method
          * @param path The path the entry should point to. If the path is not rooted, will use CWD.
          */
-        inline static FsEntry create(const std::string & path) { return FsEntry(path); }
+        static FsEntry create(const std::string & path) { return {path}; }
 
         /**
          * Factory method, for sub path
          * @param parent The parent path
          * @param path The sub path string (any leading '/' is ignored)
          */
-        inline static FsEntry create(const FsEntry & parent, const std::string & path) { return FsEntry(parent, path); }
+        static FsEntry create(const FsEntry & parent, const std::string & path) { return {parent, path}; }
 
         static std::optional<FsEntry> create_unique_file(const FsEntry & parent);
 
         /** @return Object representing the parent directory for some path, or empty for root directory */
-        std::optional<FsEntry> parent() const;
+        [[nodiscard]] std::optional<FsEntry> parent() const;
         /** @return The name of the entry */
-        std::string name() const;
+        [[nodiscard]] std::string name() const;
         /** @return The full path of the entry */
-        std::string path() const;
+        [[nodiscard]] std::string path() const;
 
         /** @return True if is the root entry (e.g. '/') */
-        bool is_root() const;
+        [[nodiscard]] bool is_root() const;
 
         /** @return True if is absolute (e.g. starts with '/') */
-        bool is_absolute() const;
+        [[nodiscard]] bool is_absolute() const;
 
         /** @return An iterator object for enumerating the children of a directory entry */
-        FsEntryDirectoryIterator children() const;
+        [[nodiscard]] FsEntryDirectoryIterator children() const;
         /** @return The contents of a link */
-        std::optional<FsEntry> readlink() const;
+        [[nodiscard]] std::optional<FsEntry> readlink() const;
         /** @return The absolute, cannonical path, or nothing if it was not possible to resolve the read path */
-        std::optional<FsEntry> realpath() const;
+        [[nodiscard]] std::optional<FsEntry> realpath() const;
 
         /** Equality operator */
         bool operator==(const FsEntry & that) const;
@@ -86,7 +84,7 @@ namespace lib {
         bool operator<(const FsEntry & that) const;
 
         /** @return Current stats for file */
-        Stats read_stats() const;
+        [[nodiscard]] Stats read_stats() const;
 
         /**
          * Check if file can be accessed for a certain kind of operation. If all arguments are false, just checks for existances
@@ -95,29 +93,29 @@ namespace lib {
          * @param exec True to check if executable
          * @return True if *all* the requested access modes are valid (e.g. 'readable and writable' rather than 'readable or writable')
          */
-        bool canAccess(bool read, bool write, bool exec) const;
+        [[nodiscard]] bool canAccess(bool read, bool write, bool exec) const;
 
         /** @return True if the file exists */
-        bool exists() const { return canAccess(false, false, false); }
+        [[nodiscard]] bool exists() const { return canAccess(false, false, false); }
 
         /**
          * Checks if the path has any children whose name is prefixed with @a prefix.
          * @param prefix Prefix to match
          * @return True if any results
          */
-        bool hasChildWithNamePrefix(const char * prefix) const;
+        [[nodiscard]] bool hasChildWithNamePrefix(const char * prefix) const;
 
         /**
          * Read the contents of a file and return it as a std::string. The file is read as a text file and each line is delimited by '\n'
          * @return  The contents of that file
          */
-        std::string readFileContents() const;
+        [[nodiscard]] std::string readFileContents() const;
 
         /**
          * Read the contents of a file and return it as a std::string. Only the first line is read and returned without any '\n'
          * @return  The contents of that file
          */
-        std::string readFileContentsSingleLine() const;
+        [[nodiscard]] std::string readFileContentsSingleLine() const;
 
         /**
          * Write the contents of a file
@@ -130,15 +128,15 @@ namespace lib {
          */
         void copyTo(const FsEntry & dest) const;
 
-        bool remove() const;
+        bool remove() const; // NOLINT(modernize-use-nodiscard)
 
         /**
          * Removes all the content of path and finally the path itself.
          * @return The number of files removed.
          */
-        uintmax_t remove_all() const;
+        uintmax_t remove_all() const; // NOLINT(modernize-use-nodiscard)
 
-        bool create_directory() const;
+        bool create_directory() const; // NOLINT(modernize-use-nodiscard)
 
     private:
         std::string path_;
@@ -186,7 +184,7 @@ namespace lib {
         std::optional<FsEntry> next();
 
     private:
-        std::optional<FsEntry> parent_;
+        FsEntry parent_;
         std::unique_ptr<DIR, int (*)(DIR *)> directory_;
     };
 

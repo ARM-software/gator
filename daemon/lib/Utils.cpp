@@ -1,8 +1,9 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 #include "lib/Utils.h"
 
 #include "ExitStatus.h"
 #include "Logging.h"
+#include "lib/CpuIdSet.h"
 #include "lib/FsEntry.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -17,7 +18,6 @@
 #include <cstring>
 #include <limits>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 
@@ -173,9 +173,9 @@ namespace lib {
         return 0;
     }
 
-    std::set<int> readCpuMaskFromFile(const char * path)
+    lib::CpuIdSet readCpuMaskFromFile(const char * path)
     {
-        std::set<int> result;
+        lib::CpuIdSet result;
 
         const lib::FsEntry fsEntry = lib::FsEntry::create(path);
 
@@ -213,10 +213,9 @@ namespace lib {
                         contents[to] = 0;
                         int nf = (int) std::strtol(contents.c_str() + from, nullptr, 10);
                         const int nt = (int) std::strtol(contents.c_str() + split + 1, nullptr, 10);
+                        LOG_DEBUG("    Adding cpus %d-%d to mask", nf, nt);
                         while (nf <= nt) {
-                            LOG_DEBUG("    Adding cpu %d to mask", nf);
-                            result.insert(nf);
-                            nf += 1;
+                            result.add(nf++);
                         }
                     }
                     else {
@@ -224,7 +223,7 @@ namespace lib {
                         contents[to] = 0;
                         const int n = (int) std::strtol(contents.c_str() + from, nullptr, 10);
                         LOG_DEBUG("    Adding cpu %d to mask", n);
-                        result.insert(n);
+                        result.add(n);
                     }
                 }
 

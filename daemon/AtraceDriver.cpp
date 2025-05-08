@@ -98,7 +98,7 @@ void AtraceDriver::readEvents(mxml_node_t * const xml)
             handleException();
         }
         int flag;
-        if (!stringToInt(&flag, flagStr, 16)) {
+        if (!stringToInt(&flag, flagStr, OlyBase::Hexadecimal)) {
             LOG_ERROR("The flag attribute of the atrace counter %s is not a hex integer", counter);
             handleException();
         }

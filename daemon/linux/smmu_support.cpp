@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
 #include "linux/smmu_support.h"
 
 #include "Logging.h"
@@ -10,6 +10,7 @@
 #include "xml/PmuXML.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -20,7 +21,7 @@
 namespace gator::smmuv3 {
 
     namespace {
-        enum class pmu_type_t { tcu, tbu };
+        enum class pmu_type_t : std::uint8_t { tcu, tbu };
 
         constexpr std::string_view smmuv3_device_prefix = "smmuv3_pmcg_";
         constexpr std::string_view sysfs_event_devices = "/sys/bus/event_source/devices";
@@ -109,14 +110,15 @@ namespace gator::smmuv3 {
                     continue;
                 }
 
-                const auto & other_iidr = it.get_iidr().value();
-                if (other_iidr.has_full_iidr() && other_iidr == iidr) {
-                    exact_matches.push_back(std::ref(it));
-                    // no point continuing the search if we've got an exact match
-                    break;
-                }
-                if (other_iidr.get_wildcard_value() == iidr.get_wildcard_value()) {
-                    partial_matches.push_back(std::ref(it));
+                if (const auto & other_iidr = it.get_iidr()) {
+                    if (other_iidr->has_full_iidr() && *other_iidr == iidr) {
+                        exact_matches.push_back(std::ref(it));
+                        // no point continuing the search if we've got an exact match
+                        break;
+                    }
+                    if (other_iidr->get_wildcard_value() == iidr.get_wildcard_value()) {
+                        partial_matches.push_back(std::ref(it));
+                    }
                 }
             }
 
@@ -213,13 +215,13 @@ namespace gator::smmuv3 {
             }
         }
         else if (pmu_type == pmu_type_t::tcu) {
-            if (default_identifiers.get_tcu_identifier()) {
-                identifier_to_lookup = &default_identifiers.get_tcu_identifier().value();
+            if (const auto & tcu_id = default_identifiers.get_tcu_identifier()) {
+                identifier_to_lookup = &tcu_id.value();
             }
         }
         else {
-            if (default_identifiers.get_tbu_identifier()) {
-                identifier_to_lookup = &default_identifiers.get_tbu_identifier().value();
+            if (const auto & tbu_id = default_identifiers.get_tbu_identifier()) {
+                identifier_to_lookup = &tbu_id.value();
             }
         }
 

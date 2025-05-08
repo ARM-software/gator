@@ -517,6 +517,7 @@ namespace events_xml {
 
                 auto const [it, inserted] = modified_nodes.insert(node);
                 (void) it;
+
                 const char * const count_str = mxmlElementGetAttr(node, ATTR_COUNT);
                 if (count_str == nullptr) {
                     continue;
