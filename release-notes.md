@@ -1,3 +1,13 @@
+# Gator 9.6.0
+
+Add GPU product name to captures, using libGPUInfo
+
+Update GPU event descriptions
+
+# Gator 9.5.1
+
+streamline_me.py: Explicitly decode adb output as UTF-8, fixing an issue when running in locales that are not compatible with UTF-8
+
 # Gator 9.5.0
 
 The '--pid' and '--wait-process' options now understand the '--inherit no' option and can be used to capture data for exactly one thread of a multithreaded process.

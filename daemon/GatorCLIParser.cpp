@@ -1119,14 +1119,19 @@ mode specify an output directory with --output.
                                         partially (e.g., 483_43b).
   -Y|--off-cpu-time (yes|no)            Collect Off-CPU time statistics.
                                         Detailed statistics require 'root' permission.
-  -I|--inherit (yes|no|poll)            When profiling an application, gatord
+  -I|--inherit (yes|no|poll|experimental)
+                                        When profiling an application, gatord
                                         monitors all threads and child processes.
                                         Specify 'no' to monitor only the initial
                                         thread of the application. Specify 'poll' to
                                         periodically poll for new processes/threads.
+                                        Specify "experimental" if you have applied
+                                        the kernel patches provided by Arm for
+                                        top-down profiling.
                                         NB: Per-function metrics are only supported in
                                         system-wide mode, or when '--inherit' is set to
-                                        'no' or 'poll'. The default is 'yes'.
+                                        'no', 'poll' or 'experimental'. The default
+                                        is 'yes'.
   -N|--num-pmu-counters <n>             Override the number of programmable PMU
                                         counters that are available.
                                         This option reduces the number of programmable

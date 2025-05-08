@@ -4,3 +4,6 @@
 [submodule "ext/perfetto"]
 	path = ext/perfetto
 	url = https://github.com/google/perfetto.git
+[submodule "ext/libGPUInfo"]
+	path = ext/libGPUInfo
+	url = https://github.com/ARM-software/libGPUInfo.git

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "ConfigurationXML.h"
 
@@ -15,6 +15,7 @@
 #include "lib/Format.h"
 #include "lib/Span.h"
 #include "lib/String.h"
+#include "libGPUInfo/source/libgpuinfo.hpp"
 #include "xml/EventsXML.h"
 #include "xml/EventsXMLHelpers.h"
 #include "xml/MxmlUtils.h"
@@ -26,6 +27,7 @@
 #include <cstring>
 #include <map>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <set>
 #include <sstream>
@@ -38,7 +40,9 @@
 
 namespace {
     constexpr const char * TAG_CONFIGURATION = "configuration";
+    constexpr const char * TAG_CONFIGURATIONS = "configurations";
     constexpr const char * ATTR_COUNTER = "counter";
+    constexpr const char * ATTR_GPU_PUBLIC_NAME = "gpu_public_name";
     constexpr const char * CLUSTER_VAR = "${cluster}";
 
     void appendError(std::ostream & error, const std::string & possibleError)
@@ -66,6 +70,19 @@ namespace configuration_xml {
                            lib::Span<Driver * const> drivers,
                            const std::map<std::string, EventCode> & counterToEventMap);
 
+    static std::optional<std::string> getGpuPublicName()
+    {
+        LOG_FINE("Attempting to grab GPU info from libGPUInfo and pass to configuraton.xml");
+        // Get the instance at id 0, as in multi-gpu case gpus are homogenous.
+        const auto gpuInfoInstance = libarmgpuinfo::instance::create();
+
+        if (gpuInfoInstance == nullptr) {
+            return std::nullopt;
+        }
+
+        return {std::string(gpuInfoInstance->get_info().gpu_name)};
+    }
+
     Contents getConfigurationXML(lib::Span<const GatorCpu> clusters)
     {
         // try the configuration.xml file first
@@ -75,6 +92,29 @@ namespace configuration_xml {
             std::unique_ptr<char, void (*)(void *)> configurationXML {readFromDisk(path), &free};
 
             if (configurationXML) {
+                // Check existing config xml for gpu_public_name and update it.
+                mxml_node_t * xmlDoc = mxmlLoadString(nullptr, configurationXML.get(), MXML_OPAQUE_CALLBACK);
+                if (xmlDoc != nullptr) {
+                    //Find <configurations> tag.
+                    mxml_node_t * configurationsNode =
+                        mxmlFindElement(xmlDoc, xmlDoc, TAG_CONFIGURATIONS, nullptr, nullptr, MXML_DESCEND);
+
+                    if (configurationsNode != nullptr) {
+                        //Get the gpu public name from libGPUInfo
+                        std::string gpuPublicName = getGpuPublicName().value_or("");
+
+                        if (!gpuPublicName.empty()) {
+                            mxmlElementSetAttr(configurationsNode, ATTR_GPU_PUBLIC_NAME, gpuPublicName.c_str());
+                        }
+                    }
+
+                    char * modifiedXml = mxmlSaveAllocString(xmlDoc, MXML_NO_CALLBACK);
+
+                    configurationXML.reset(modifiedXml);
+
+                    mxmlDelete(xmlDoc);
+                }
+
                 ConfigurationXMLParser parser;
                 if (parser.parseConfigurationContent(configurationXML.get()) == 0) {
                     return {std::move(configurationXML),
@@ -171,8 +211,23 @@ namespace configuration_xml {
     {
         constexpr const std::size_t BUFFER_SIZE = 128;
 
-        // Resolve ${cluster}
         mxml_node_t * xml = mxmlLoadString(nullptr, DEFAULTS_XML.data(), MXML_NO_CALLBACK);
+
+        // Attempt to add the target gpu name, and add it to the config xml if we can.
+        // We use this in the GUI to find the matching template for this GPU.
+        // This allows us to distinguish between Mali/Immortalis variants.
+        mxml_node_t * configurations_node =
+            mxmlFindElement(xml, xml, TAG_CONFIGURATIONS, nullptr, nullptr, MXML_DESCEND);
+
+        if (configurations_node != nullptr) {
+            std::string gpuPublicName = getGpuPublicName().value_or("");
+
+            if (!gpuPublicName.empty()) {
+                mxmlElementSetAttr(configurations_node, ATTR_GPU_PUBLIC_NAME, gpuPublicName.c_str());
+            }
+        }
+
+        // Resolve ${cluster}
         for (mxml_node_t *node = mxmlFindElement(xml, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND),
                          *next = mxmlFindElement(node, xml, TAG_CONFIGURATION, nullptr, nullptr, MXML_DESCEND);
              node != nullptr;
@@ -198,12 +253,14 @@ namespace configuration_xml {
     {
         if (gSessionData.mConfigurationXMLPath != nullptr) {
             strncpy(path, gSessionData.mConfigurationXMLPath, n - 1);
+            path[n - 1] = '\0';
         }
         else {
             if (getApplicationFullPath(path, n) != 0) {
                 LOG_DEBUG("Unable to determine the full path of gatord, the cwd will be used");
             }
-            strncat(path, "configuration.xml", n - strlen(path) - 1);
+            size_t available = (strlen(path) < n) ? (n - strlen(path) - 1) : 0;
+            strncat(path, "configuration.xml", available);
         }
     }
 

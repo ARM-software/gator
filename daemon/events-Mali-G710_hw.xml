@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017-2024 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2025 by Arm Limited. All rights reserved. -->
 <category name="Mali CSF" per_cpu="no">
     <event counter="ARM_Mali-G710_GPU_ACTIVE" description="The number of cycles when the GPU has a workload of any type queued for processing" name="GPU active" title="Mali GPU Cycles" units="cycles"/>
     <event advanced="yes" counter="ARM_Mali-G710_MCU_ACTIVE" description="The number of cycles when the CSF front-end MCU is actively processing" name="MCU active" title="Mali CSF Cycles" units="cycles"/>
@@ -111,7 +111,7 @@
     <event counter="ARM_Mali-G710_EXEC_INSTR_CVT" description="The number of instructions issued to the CVT pipe" name="CVT pipe instructions" title="Mali ALU Instructions" units="instructions"/>
     <event counter="ARM_Mali-G710_EXEC_INSTR_SFU" description="The number of instructions issued to the SFU pipe" name="SFU pipe instructions" title="Mali ALU Instructions" units="instructions"/>
     <event counter="ARM_Mali-G710_EXEC_INSTR_DIVERGED" description="The number of instructions run per warp that have control flow divergence" name="Diverged instructions" title="Mali ALU Instructions" units="instructions"/>
-    <event advanced="yes" counter="ARM_Mali-G710_EXEC_ICACHE_MISS" description="The number of instruction cache misses" name="Cache misses" title="Mali Shader Core Cache" units="requests"/>
+    <event advanced="yes" counter="ARM_Mali-G710_EXEC_ICACHE_MISS" description="The number of instruction cache misses" name="I-cache misses" title="Mali Shader Core Cache" units="requests"/>
     <event advanced="yes" counter="ARM_Mali-G710_EXEC_STARVE_ARITH" description="The number of cycles when the processing unit is starved of work" name="Execution engine starvation" title="Mali Shader Core Stall Cycles" units="cycles"/>
     <event counter="ARM_Mali-G710_CALL_BLEND_SHADER" description="The number of blend shader invocations run" name="Blend shader calls" title="Mali ALU Instructions" units="instructions"/>
     <event counter="ARM_Mali-G710_TEX_MSGI_NUM_FLITS" description="The number of texture request message data beats" name="Input beats" title="Mali Texture Unit Bus" units="beats"/>

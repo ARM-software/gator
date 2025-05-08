@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017-2024 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2025 by Arm Limited. All rights reserved. -->
 <category name="Mali CSF" per_cpu="no">
     <event counter="ARM_Mali-G625_GPU_ACTIVE" description="The number of cycles when the GPU has a workload of any type queued for processing" name="GPU active" title="Mali GPU Cycles" units="cycles"/>
     <event advanced="yes" counter="ARM_Mali-G625_MCU_ACTIVE" description="The number of cycles when the CSF front-end MCU is actively processing" name="MCU active" title="Mali CSF Cycles" units="cycles"/>
@@ -116,7 +116,7 @@
     <event counter="ARM_Mali-G625_EXEC_INSTR_CVT" description="The number of instructions issued to the CVT pipe" name="CVT pipe instructions" title="Mali ALU Instructions" units="instructions"/>
     <event counter="ARM_Mali-G625_EXEC_INSTR_SFU" description="The number of instructions issued to the SFU pipe" name="SFU pipe instructions" title="Mali ALU Instructions" units="instructions"/>
     <event counter="ARM_Mali-G625_EXEC_INSTR_DIVERGED" description="The number of instructions run per warp that have control flow divergence" name="Diverged instructions" title="Mali ALU Instructions" units="instructions"/>
-    <event advanced="yes" counter="ARM_Mali-G625_EXEC_ICACHE_MISS" description="The number of instruction cache misses" name="Cache misses" title="Mali Shader Core Cache" units="requests"/>
+    <event advanced="yes" counter="ARM_Mali-G625_EXEC_ICACHE_MISS" description="The number of instruction cache misses" name="I-cache misses" title="Mali Shader Core Cache" units="requests"/>
     <event advanced="yes" counter="ARM_Mali-G625_EXEC_STARVE_ARITH" description="The number of cycles when the processing unit is starved of work" name="Execution engine starvation" title="Mali Shader Core Stall Cycles" units="cycles"/>
     <event counter="ARM_Mali-G625_CALL_BLEND_SHADER" description="The number of blend shader invocations run" name="Blend shader calls" title="Mali ALU Instructions" units="instructions"/>
     <event counter="ARM_Mali-G625_TEX_MSGI_NUM_FLITS" description="The number of texture request message data beats" name="Input beats" title="Mali Texture Unit Bus" units="beats"/>
@@ -163,8 +163,8 @@
     <event counter="ARM_Mali-G625_RT_TERM_FIRST_HIT" description="The number of rays that terminate on their first hit" name="First hit terminated rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
     <event counter="ARM_Mali-G625_RT_MISS" description="The number of rays that miss during triangle intersection tests" name="Missed rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
     <event counter="ARM_Mali-G625_RT_RAYS_STARTED" description="The number of rays started" name="Started rays" title="Mali Ray Tracing Unit Rays" units="rays"/>
-    <event counter="ARM_Mali-G625_RT_RAY_BOX_ISSUED" description="The number of active issue cycles for the ray tracing unit box test data path" name="Box tester active" title="Mali Ray Tracing Unit Cycles" units="cycles"/>
-    <event counter="ARM_Mali-G625_RT_RAY_TRI_ISSUED" description="The number of active issue cycles for the ray tracing unit triangle test data path" name="Triangle tester active" title="Mali Ray Tracing Unit Cycles" units="cycles"/>
+    <event counter="ARM_Mali-G625_RT_RAY_BOX_ISSUED" description="The number of active issue cycles for the ray tracing box test unit" name="Box tester active" title="Mali Ray Tracing Unit Cycles" units="cycles"/>
+    <event counter="ARM_Mali-G625_RT_RAY_TRI_ISSUED" description="The number of active issue cycles for the ray tracing triangle test unit" name="Triangle tester active" title="Mali Ray Tracing Unit Cycles" units="cycles"/>
     <event advanced="yes" counter="ARM_Mali-G625_TEX_CFCH_NUM_OUTPUT_OPERATIONS" description="The number of cycles the L1 cache is being loaded" name="L1 load active" title="Mali Texture Unit Cache Cycles" units="cycles"/>
     <event advanced="yes" counter="ARM_Mali-G625_TEX_CFCH_NUM_DIRECT_PATH_OPERATIONS" description="The number of cycles loading simple texture formats" name="Simple load active" title="Mali Texture Unit Cache Cycles" units="cycles"/>
     <event advanced="yes" counter="ARM_Mali-G625_TEX_CFCH_NUM_L1_CL_OPERATIONS" description="The number of cycles the L1 cache is returning data" name="L1 output active" title="Mali Texture Unit Cache Cycles" units="cycles"/>

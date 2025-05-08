@@ -1,18 +1,16 @@
-/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2025 by Arm Limited. All rights reserved. */
 
 #ifndef NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 #define NATIVE_GATOR_DAEMON_MALI_USERSPACE_MALIDEVICE_H_
 
 #include "Constant.h"
 #include "IBlockCounterFrameBuilder.h"
-#include "Logging.h"
 #include "device/handle.hpp"
 #include "device/hwcnt/block_extents.hpp"
 #include "device/hwcnt/block_metadata.hpp"
 #include "device/hwcnt/sample.hpp"
 #include "device/instance.hpp"
 #include "device/product_id.hpp"
-#include "lib/AutoClosingFd.h"
 #include "lib/Span.h"
 
 #include <cassert>

@@ -730,7 +730,17 @@ TARGET_LINK_LIBRARIES(gatord
     PRIVATE Boost::regex
     PRIVATE ipcproto
     PRIVATE dl
+    PRIVATE libGPUInfo
 )
+
+ADD_LIBRARY(libGPUInfo STATIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ext/libGPUInfo/source/libgpuinfo.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../ext/libGPUInfo/source/libgpuinfo.hpp
+    )
+    TARGET_INCLUDE_DIRECTORIES(libGPUInfo
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../ext/
+    )
+    TARGET_COMPILE_OPTIONS(libGPUInfo PRIVATE "-Wno-error")
 
 IF(NOT ANDROID)
     TARGET_LINK_LIBRARIES(gatord

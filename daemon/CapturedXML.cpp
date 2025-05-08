@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "CapturedXML.h"
 
@@ -17,6 +17,7 @@
 #include "lib/FsEntry.h"
 #include "lib/Span.h"
 #include "lib/String.h"
+#include "libGPUInfo/source/libgpuinfo.hpp"
 #include "xml/MxmlUtils.h"
 
 #include <algorithm>
@@ -27,6 +28,7 @@
 #include <ctime>
 #include <map>
 #include <memory>
+#include <regex>
 #include <set>
 #include <string>
 #include <vector>
@@ -143,6 +145,18 @@ static mxml_node_t * getTree(bool includeTime,
 
     const auto & cpuInfo = primarySourceProvider.getCpuInfo();
     mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
+
+    // Get the instance at id 0, as in multi-gpu case gpus are homogenous.
+    const auto gpuInfoInstance = libarmgpuinfo::instance::create();
+
+    if (gpuInfoInstance != nullptr) {
+        const auto * const gpuPublicName = gpuInfoInstance->get_info().gpu_name;
+
+        if (!maliGpuIds.empty() && gpuPublicName != nullptr) {
+            mxmlElementSetAttr(target, "gpu_public_name", gpuPublicName);
+        }
+    }
+
     const auto midrs = cpuInfo.getMidrs();
     mxmlElementSetAttrf(target, "cores", "%zu", midrs.size());
     // GPU cores

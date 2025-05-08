@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2016-2025 by Arm Limited. All rights reserved. */
 
 #include "mali_userspace/MaliDevice.h"
 
@@ -15,6 +15,7 @@
 #include "device/instance.hpp"
 #include "device/product_id.hpp"
 #include "lib/Span.h"
+#include "libGPUInfo/source/libgpuinfo.hpp"
 #include "mali_userspace/MaliHwCntrNamesGenerated.h"
 
 #include <algorithm>
@@ -486,11 +487,29 @@ namespace mali_userspace {
         else {
             std::ostringstream log_output;
 
-            log_output << "Mali GPU Counters\nSuccessfully probed Mali Device";
+            log_output << "Mali GPU Counters\nSuccessfully probed device";
 
-            if (product_record->mName != nullptr) {
-                log_output << " as Mali-" << product_record->mName << " (0x" << std::hex << constants.gpu_id << std::dec
-                           << ")";
+            // Try to grab the gpu name from libGPUInfo, if we can't, fall back to product record.
+            // We use this to distinguish between Mali and Immortalis variants.
+            // Get the instance at id 0, as in multi-gpu case gpus are homogenous.
+            auto gpu_info_instance = libarmgpuinfo::instance::create();
+            libarmgpuinfo::gpuinfo gpu_info {};
+
+            if (gpu_info_instance != nullptr) {
+                gpu_info = gpu_info_instance->get_info();
+            }
+
+            std::string product_name;
+
+            if (gpu_info.gpu_name != nullptr) {
+                product_name = gpu_info.gpu_name;
+            }
+            else if (product_record->mName != nullptr) {
+                product_name = "Mali-" + std::string(product_record->mName);
+            }
+
+            if (!product_name.empty()) {
+                log_output << " as " << product_name << " (0x" << std::hex << constants.gpu_id << std::dec << ")";
             }
             else {
                 log_output << "but it is not recognised (id: 0x" << std::hex << constants.gpu_id;

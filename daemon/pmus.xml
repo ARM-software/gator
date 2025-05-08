@@ -124,6 +124,7 @@
 
     <!-- Arm China -->
     <pmu counter_set="DWT" id="ARMv8M_STAR" cpuid="0x63132" core_name="STAR" pmnc_counters="6" profile="8m"/>
+    <pmu counter_set="DWT" id="ARMv8M_STAR_2" cpuid="0x63d24" core_name="STAR 2" pmnc_counters="6" profile="8m"/>
 
     <!-- Qualcomm -->
     <pmu counter_set="Scorpion" id="ARMv7_Scorpion" cpuid="0x5100f" core_name="Scorpion" pmnc_counters="4" profile="7a"/>
