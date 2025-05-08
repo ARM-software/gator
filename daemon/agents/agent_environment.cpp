@@ -6,6 +6,7 @@
 #include "ipc/raw_ipc_channel_sink.h"
 #include "ipc/raw_ipc_channel_source.h"
 #include "lib/AutoClosingFd.h"
+#include "lib/Error.h"
 #include "lib/Span.h"
 #include "lib/String.h"
 #include "logging/agent_log.h"
@@ -39,8 +40,7 @@ namespace agents {
             lib::AutoClosingFd dup_fd {fcntl(fd, F_DUPFD_CLOEXEC)};
 
             if (!dup_fd) {
-                // NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_WARNING("fcntl failed with error %d (%s)", errno, strerror(errno));
+                LOG_WARNING("fcntl failed with error %d (%s)", errno, lib::strerror());
 
                 // not ideal, but just use the FD directly
                 return lib::AutoClosingFd {fd};

@@ -28,6 +28,7 @@ public:
         bool task = false;
         bool context_switch = false;
         bool userspace_only = false;
+        bool ebs = false;
 
         constexpr Attr() = default;
     };

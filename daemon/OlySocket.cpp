@@ -2,6 +2,8 @@
 
 #include "OlySocket.h"
 
+#include "lib/Error.h"
+
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -44,7 +46,7 @@ int socket_cloexec(int domain, int type, int protocol)
         return sock;
     }
     //NOLINTNEXTLINE(concurrency-mt-unsafe)
-    LOG_WARNING("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, strerror(errno));
+    LOG_WARNING("Failed socket %i/%i/%i CLOEXEC due to %i %s", domain, type, protocol, errno, lib::strerror());
 
 #endif
 
@@ -56,8 +58,7 @@ int socket_cloexec(int domain, int type, int protocol)
                     type,
                     protocol,
                     errno,
-                    //NOLINTNEXTLINE(concurrency-mt-unsafe)
-                    strerror(errno));
+                    lib::strerror());
         return -1;
     }
 
@@ -73,7 +74,7 @@ int socket_cloexec(int domain, int type, int protocol)
                     fdf,
                     errno,
                     //NOLINTNEXTLINE(concurrency-mt-unsafe)
-                    strerror(errno));
+                    lib::strerror());
         close(sock);
         return -1;
     }
@@ -157,7 +158,7 @@ OlySocket::OlySocket(int socketID)
         //                                                                    if path was actually empty string
         //                                                                    vv
         const char * const printablePath = path[0] != '\0' ? path : &sockaddr.sun_path[1];
-        LOG_ERROR("Binding of server socket to '%s' failed: %s", printablePath, strerror(errno));
+        LOG_ERROR("Binding of server socket to '%s' failed: %s", printablePath, lib::strerror());
         handleException();
     }
 
@@ -240,7 +241,7 @@ void OlyServerSocket::createServerSocket(int port)
         family = AF_INET;
         mFDServer = socket_cloexec(PF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (mFDServer < 0) {
-            LOG_ERROR("Error creating server TCP socket (%d : %s)", errno, strerror(errno));
+            LOG_ERROR("Error creating server TCP socket (%d : %s)", errno, lib::strerror());
             handleException();
         }
     }
@@ -309,7 +310,7 @@ void OlySocket::send(const uint8_t * buffer, int size) // NOLINT(readability-mak
     while (size > 0) {
         int n = ::send(mSocketID, buffer, size, 0);
         if (n < 0) {
-            LOG_ERROR("Socket send error (%d): %s", errno, strerror(errno));
+            LOG_ERROR("Socket send error (%d): %s", errno, lib::strerror());
             handleException();
         }
         size -= n;
@@ -326,7 +327,7 @@ int OlySocket::receive(uint8_t * buffer, int size) // NOLINT(readability-make-me
 
     int bytes = recv(mSocketID, buffer, size, 0);
     if (bytes < 0) {
-        LOG_ERROR("Socket receive error (%d): %s", errno, strerror(errno));
+        LOG_ERROR("Socket receive error (%d): %s", errno, lib::strerror());
         handleException();
     }
     else if (bytes == 0) {
@@ -343,7 +344,7 @@ int OlySocket::receiveNBytes(uint8_t * buffer, int size) // NOLINT(readability-m
     while (size > 0 && buffer != nullptr) {
         bytes = recv(mSocketID, buffer, size, 0);
         if (bytes < 0) {
-            LOG_ERROR("Socket receive error (%d): %s", errno, strerror(errno));
+            LOG_ERROR("Socket receive error (%d): %s", errno, lib::strerror());
             handleException();
         }
         else if (bytes == 0) {
@@ -370,7 +371,7 @@ int OlySocket::receiveString(uint8_t * buffer, int size) // NOLINT(readability-m
         // Receive a single character
         int bytes = recv(mSocketID, &buffer[bytes_received], 1, 0);
         if (bytes < 0) {
-            LOG_ERROR("Socket receive error (%d): %s", errno, strerror(errno));
+            LOG_ERROR("Socket receive error (%d): %s", errno, lib::strerror());
             handleException();
         }
         else if (bytes == 0) {

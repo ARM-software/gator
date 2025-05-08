@@ -11,6 +11,7 @@
 #include "Logging.h"
 #include "OlyUtility.h"
 #include "PrimarySourceProvider.h"
+#include "ProductVersion.h"
 #include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "lib/FsEntry.h"
@@ -95,7 +96,7 @@ static std::string modeAsString(const ConstantMode mode)
 }
 
 /** Generate the xml tree for capture.xml */
-//NOLINTNEXTLINE(readability-function-cognitive-complexity)
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 static mxml_node_t * getTree(bool includeTime,
                              lib::Span<const CapturedSpe> spes,
                              const std::vector<TemplateConfiguration> & templateConfiguration,
@@ -111,6 +112,8 @@ static mxml_node_t * getTree(bool includeTime,
                                                           : "none");
     mxmlElementSetAttr(captured, "type", primarySourceProvider.getCaptureXmlTypeValue());
     mxmlElementSetAttrf(captured, "protocol", "%d", PROTOCOL_VERSION);
+    mxmlElementSetAttrf(captured, "product", "%d", PRODUCT_VERSION);
+    mxmlElementSetAttrf(captured, "product_tag", "%s", PRODUCT_VERSION_BRANCH_NAME);
     if (includeTime) {                    // Send the following only after the capture is complete
         if (time(nullptr) > 1267000000) { // If the time is reasonable (after Feb 23, 2010)
             mxmlElementSetAttrf(captured,
@@ -142,11 +145,11 @@ static mxml_node_t * getTree(bool includeTime,
     mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
     const auto midrs = cpuInfo.getMidrs();
     mxmlElementSetAttrf(target, "cores", "%zu", midrs.size());
-    //GPU cores
+    // GPU cores
     mxmlElementSetAttrf(target, "gpu_cores", "%zu", maliGpuIds.size());
-    //gatord src md5
+    // gatord src md5
     mxmlElementSetAttrf(target, "gatord_src_md5sum", "%s", gSrcMd5);
-    //gatord build commit id
+    // gatord build commit id
     mxmlElementSetAttrf(target, "gatord_build_id", "%s", gBuildId);
 
     assert(midrs.size() > 0); // gatord should've died earlier if there were no cpus

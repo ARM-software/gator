@@ -35,10 +35,10 @@ IF(EXISTS ${CLANG_TIDY})
     ### CMAKE_xxx_CLANG_TIDY need to be before the ADD_LIBRARY
     OPTION(ENABLE_CLANG_TIDY_DURING_BUILD   "Compile and tidy at the same time" ON)
     IF(ENABLE_CLANG_TIDY_DURING_BUILD)
-        SET(CMAKE_C_CLANG_TIDY      ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR})
+        SET(CMAKE_C_CLANG_TIDY      ${CLANG_TIDY} -p ${CMAKE_CURRENT_BINARY_DIR})
     ENDIF()
     ADD_CUSTOM_TARGET(clang-tidy
-                      COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR} $<$<BOOL:${CLANG_TIDY_FIX}>:--fix> ${STREAMLINE_ANNOTATE_SOURCES}
+                      COMMAND ${CLANG_TIDY} -p ${CMAKE_CURRENT_BINARY_DIR} $<$<BOOL:${CLANG_TIDY_FIX}>:--fix> ${STREAMLINE_ANNOTATE_SOURCES}
                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                       SOURCES ${STREAMLINE_ANNOTATE_SOURCES}
                       COMMENT "Run clang-tidy on the sources")

@@ -3,7 +3,10 @@
 #ifndef IPERF_ATTRS_CONSUMER_H
 #define IPERF_ATTRS_CONSUMER_H
 
+#include "lib/Span.h"
+
 #include <cstdint>
+#include <string_view>
 
 struct perf_event_attr;
 
@@ -33,6 +36,9 @@ public:
     virtual void marshalHeaderPage(const char * headerPage) = 0;
     virtual void marshalHeaderEvent(const char * headerEvent) = 0;
     virtual void marshalMetricKey(int metric_key, std::uint16_t event_code, int event_key, MetricEventType type) = 0;
+
+    virtual void marshalKernelBuildId(lib::Span<std::uint8_t const> build_id) = 0;
+    virtual void marshalKernelModuleBuildId(std::string_view module_name, lib::Span<std::uint8_t const> build_id) = 0;
 };
 
 #endif // PERF_ATTRS_CONSUMER_H

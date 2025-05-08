@@ -1,4 +1,7 @@
 ---
-Checks:              '-*,cert-*-c,-cert-dcl*-c' # just cert checks (but not the name ones)
-FormatStyle:         none
-WarningsAsErrors:    '-*'
+Checks: # just cert checks (but not the name ones)
+  - "-*"
+  - "cert-*-c"
+  - "-cert-dcl*-c"
+FormatStyle: none
+WarningsAsErrors: "-*"

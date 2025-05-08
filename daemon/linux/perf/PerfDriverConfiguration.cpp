@@ -10,6 +10,7 @@
 #include "k/perf_event.h"
 #include "lib/AutoClosingFd.h"
 #include "lib/CpuIdSet.h"
+#include "lib/Error.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Format.h"
 #include "lib/FsEntry.h"
@@ -64,11 +65,10 @@ namespace {
         const char * const command[] = {"getprop", securityPerfHardenPropString.data(), nullptr};
         const lib::PopenResult getprop = lib::popen(command);
         if (getprop.pid < 0) {
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
             LOG_DEBUG("lib::popen(%s %s) failed: %s. Probably not android",
                       command[0],
                       command[1],
-                      std::strerror(-getprop.pid));
+                      lib::strerror(-getprop.pid));
             return false;
         }
 
@@ -85,21 +85,19 @@ namespace {
         const lib::PopenResult setPropResult = lib::popen(command);
         //setprop not found, probably not Android.
         if (setPropResult.pid == -ENOENT) {
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
             LOG_DEBUG("lib::popen(%s %s %s) failed: %s",
                       command[0],
                       command[1],
                       command[2],
-                      std::strerror(-setPropResult.pid));
+                      lib::strerror(-setPropResult.pid));
             return;
         }
         if (setPropResult.pid < 0) {
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
             LOG_ERROR("lib::popen(%s %s %s) failed: %s",
                       command[0],
                       command[1],
                       command[2],
-                      std::strerror(-setPropResult.pid));
+                      lib::strerror(-setPropResult.pid));
             return;
         }
 
@@ -256,9 +254,7 @@ namespace {
             }
         }
         else {
-            auto const e = errno;
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_DEBUG("Failed to read data from counters due to res=%zd, errno=%d (%s)", res, e, std::strerror(e));
+            LOG_DEBUG("Failed to read data from counters due to res=%zd, errno=%d (%s)", res, errno, lib::strerror());
         }
 
         return result;
@@ -286,8 +282,7 @@ namespace {
         }
 
         if (!affinitySucceeded) {
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_WARNING("Error calling sched_setaffinity on %zu: %d (%s)", cpuNo, errno, strerror(errno));
+            LOG_WARNING("Error calling sched_setaffinity on %zu: %d (%s)", cpuNo, errno, lib::strerror());
         }
 
         // make sure we are definitely running on the CPU...
@@ -325,9 +320,7 @@ namespace {
                 }
             }
             else {
-                auto const e = errno;
-                //NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_DEBUG("Failed to open test event# %zu due to %d (%s)", n, e, std::strerror(e));
+                LOG_DEBUG("Failed to open test event# %zu due to %d (%s)", n, errno, lib::strerror());
                 break;
             }
         }
@@ -351,9 +344,7 @@ namespace {
         // record the current thread affinity so it can be restored later
         lib::CpuIdSet original_cpuset(midrs.size());
         if (lib::sched_getaffinity(0, original_cpuset) < 0) {
-            auto const e = errno;
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_DEBUG("Error calling sched_getaffinity to get current mask: %d (%s)", e, strerror(e));
+            LOG_DEBUG("Error calling sched_getaffinity to get current mask: %d (%s)", errno, lib::strerror());
 
             original_cpuset.clear();
 
@@ -392,9 +383,7 @@ namespace {
             }
 
             if (!affinitySucceeded) {
-                auto const e = errno;
-                //NOLINTNEXTLINE(concurrency-mt-unsafe)
-                LOG_WARNING("Error calling sched_setaffinity to restore all: %d (%s)", e, strerror(e));
+                LOG_WARNING("Error calling sched_setaffinity to restore all: %d (%s)", errno, lib::strerror());
             }
         }
 
@@ -572,6 +561,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     configuration->config.has_sample_identifier = (kernelVersion >= KERNEL_VERSION(3U, 12U, 0U));
     configuration->config.has_attr_comm_exec = (kernelVersion >= KERNEL_VERSION(3U, 16U, 0U));
     configuration->config.has_attr_mmap2 = (kernelVersion >= KERNEL_VERSION(3U, 16U, 0U));
+    configuration->config.has_attr_build_id = (kernelVersion >= KERNEL_VERSION(5U, 12U, 0U));
     configuration->config.has_attr_clockid_support = (kernelVersion >= KERNEL_VERSION(4U, 1U, 0U));
     configuration->config.has_attr_context_switch = (kernelVersion >= KERNEL_VERSION(4U, 3U, 0U));
     configuration->config.has_ioctl_read_id = (kernelVersion >= KERNEL_VERSION(3U, 12U, 0U));
@@ -616,9 +606,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
             close(fd);
         }
         else {
-            auto const e = errno;
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_DEBUG("No support for alternative sample period features, error was %d (%s)", e, std::strerror(e));
+            LOG_DEBUG("No support for alternative sample period features, error was %d (%s)", errno, lib::strerror());
         }
     }
 
@@ -646,9 +634,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
             close(fd);
         }
         else {
-            auto const e = errno;
-            //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_DEBUG("No support for inheritable counter groups, error was %d (%s)", e, std::strerror(e));
+            LOG_DEBUG("No support for inheritable counter groups, error was %d (%s)", errno, lib::strerror());
         }
     }
 

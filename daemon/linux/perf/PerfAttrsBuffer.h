@@ -44,6 +44,9 @@ public:
                           int event_key,
                           IPerfAttrsConsumer::MetricEventType type) override;
 
+    void marshalKernelBuildId(lib::Span<std::uint8_t const> build_id) override;
+    void marshalKernelModuleBuildId(std::string_view module_name, lib::Span<std::uint8_t const> build_id) override;
+
 private:
     void waitForSpace(int bytes);
 

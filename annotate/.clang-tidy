@@ -1,147 +1,26 @@
-#############
-# As per https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/checks/list.html
-# the following items are aliases of some other check. We explicitly disable them here to avoid 
-# having the check run twice or having to emit NOLINT(ALIAS,REAL) when required
-#############
-# cert-con36-c -> bugprone-spuriously-wake-up-functions
-# cert-con54-cpp -> bugprone-spuriously-wake-up-functions
-# cert-dcl03-c -> misc-static-assert
-# cert-dcl16-c -> readability-uppercase-literal-suffix
-# cert-dcl37-c -> bugprone-reserved-identifier
-# cert-dcl51-cpp -> bugprone-reserved-identifier
-# cert-dcl54-cpp -> misc-new-delete-overloads
-# cert-dcl59-cpp -> google-build-namespaces
-# cert-err09-cpp -> misc-throw-by-value-catch-by-reference
-# cert-err61-cpp -> misc-throw-by-value-catch-by-reference
-# cert-fio38-c -> misc-non-copyable-objects
-# cert-msc30-c -> cert-msc50-cpp
-# cert-msc32-c -> cert-msc51-cpp
-# cert-oop11-cpp -> performance-move-constructor-init
-# cert-oop54-cpp -> bugprone-unhandled-self-assignment
-# cert-pos44-c -> bugprone-bad-signal-to-kill-thread
-# cert-str34-c -> bugprone-signed-char-misuse
-# clang-analyzer-core.CallAndMessage -> ClangStaticAnalyzer
-# clang-analyzer-core.DivideZero -> ClangStaticAnalyzer
-# clang-analyzer-core.NonNullParamChecker -> ClangStaticAnalyzer
-# clang-analyzer-core.NullDereference -> ClangStaticAnalyzer
-# clang-analyzer-core.StackAddressEscape -> ClangStaticAnalyzer
-# clang-analyzer-core.UndefinedBinaryOperatorResult -> ClangStaticAnalyzer
-# clang-analyzer-core.VLASize -> ClangStaticAnalyzer
-# clang-analyzer-core.uninitialized.ArraySubscript -> ClangStaticAnalyzer
-# clang-analyzer-core.uninitialized.Assign -> ClangStaticAnalyzer
-# clang-analyzer-core.uninitialized.Branch -> ClangStaticAnalyzer
-# clang-analyzer-core.uninitialized.UndefReturn -> ClangStaticAnalyzer
-# clang-analyzer-cplusplus.Move -> ClangStaticAnalyzer
-# clang-analyzer-cplusplus.NewDelete -> ClangStaticAnalyzer
-# clang-analyzer-cplusplus.NewDeleteLeaks -> ClangStaticAnalyzer
-# clang-analyzer-deadcode.DeadStores -> ClangStaticAnalyzer
-# clang-analyzer-nullability.NullPassedToNonnull -> ClangStaticAnalyzer
-# clang-analyzer-nullability.NullReturnedFromNonnull -> ClangStaticAnalyzer
-# clang-analyzer-nullability.NullableDereferenced -> ClangStaticAnalyzer
-# clang-analyzer-nullability.NullablePassedToNonnull -> ClangStaticAnalyzer
-# clang-analyzer-optin.cplusplus.UninitializedObject -> ClangStaticAnalyzer
-# clang-analyzer-optin.cplusplus.VirtualCall -> ClangStaticAnalyzer
-# clang-analyzer-optin.mpi.MPI-Checker -> ClangStaticAnalyzer
-# clang-analyzer-optin.osx.cocoa.localizability.EmptyLocalizationContextChecker -> ClangStaticAnalyzer
-# clang-analyzer-optin.osx.cocoa.localizability.NonLocalizedStringChecker -> ClangStaticAnalyzer
-# clang-analyzer-osx.API -> ClangStaticAnalyzer
-# clang-analyzer-osx.SecKeychainAPI -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.AtSync -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.ClassRelease -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.Dealloc -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.IncompatibleMethodTypes -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.NSAutoreleasePool -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.NSError -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.NilArg -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.ObjCGenerics -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.RetainCount -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.SelfInit -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.SuperDealloc -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.UnusedIvars -> ClangStaticAnalyzer
-# clang-analyzer-osx.cocoa.VariadicMethodTypes -> ClangStaticAnalyzer
-# clang-analyzer-osx.coreFoundation.CFError -> ClangStaticAnalyzer
-# clang-analyzer-osx.coreFoundation.CFNumber -> ClangStaticAnalyzer
-# clang-analyzer-osx.coreFoundation.CFRetainRelease -> ClangStaticAnalyzer
-# clang-analyzer-osx.coreFoundation.containers.OutOfBounds -> ClangStaticAnalyzer
-# clang-analyzer-osx.coreFoundation.containers.PointerSizedValues -> ClangStaticAnalyzer
-# clang-analyzer-security.FloatLoopCounter -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.UncheckedReturn -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.bcmp -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.bcopy -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.bzero -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.getpw -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.gets -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.mkstemp -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.mktemp -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.rand -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.strcpy -> ClangStaticAnalyzer
-# clang-analyzer-security.insecureAPI.vfork -> ClangStaticAnalyzer
-# clang-analyzer-unix.API -> ClangStaticAnalyzer
-# clang-analyzer-unix.Malloc -> ClangStaticAnalyzer
-# clang-analyzer-unix.MallocSizeof -> ClangStaticAnalyzer
-# clang-analyzer-unix.MismatchedDeallocator -> ClangStaticAnalyzer
-# clang-analyzer-unix.Vfork -> ClangStaticAnalyzer
-# clang-analyzer-unix.cstring.BadSizeArg -> ClangStaticAnalyzer
-# clang-analyzer-unix.cstring.NullArg -> ClangStaticAnalyzer
-# cppcoreguidelines-avoid-c-arrays -> modernize-avoid-c-arrays
-# cppcoreguidelines-avoid-magic-numbers -> readability-magic-numbers
-# cppcoreguidelines-c-copy-assignment-signature -> misc-unconventional-assign-operator
-# cppcoreguidelines-explicit-virtual-functions -> modernize-use-override
-# cppcoreguidelines-non-private-member-variables-in-classes -> misc-non-private-member-variables-in-classes
-# fuchsia-header-anon-namespaces -> google-build-namespaces
-# google-readability-braces-around-statements -> readability-braces-around-statements
-# google-readability-function-size -> readability-function-size
-# google-readability-namespace-comments -> llvm-namespace-comment
-# hicpp-avoid-c-arrays -> modernize-avoid-c-arrays
-# hicpp-braces-around-statements -> readability-braces-around-statements
-# hicpp-deprecated-headers -> modernize-deprecated-headers
-# hicpp-explicit-conversions -> google-explicit-constructor
-# hicpp-function-size -> readability-function-size
-# hicpp-invalid-access-moved -> bugprone-use-after-move
-# hicpp-member-init -> cppcoreguidelines-pro-type-member-init
-# hicpp-move-const-arg -> performance-move-const-arg
-# hicpp-named-parameter -> readability-named-parameter
-# hicpp-new-delete-operators -> misc-new-delete-overloads
-# hicpp-no-array-decay -> cppcoreguidelines-pro-bounds-array-to-pointer-decay
-# hicpp-no-malloc -> cppcoreguidelines-no-malloc
-# hicpp-noexcept-move -> performance-noexcept-move-constructor
-# hicpp-special-member-functions -> cppcoreguidelines-special-member-functions
-# hicpp-static-assert -> misc-static-assert
-# hicpp-undelegated-constructor -> bugprone-undelegated-constructor
-# hicpp-uppercase-literal-suffix -> readability-uppercase-literal-suffix
-# hicpp-use-auto -> modernize-use-auto
-# hicpp-use-emplace -> modernize-use-emplace
-# hicpp-use-equals-default -> modernize-use-equals-default
-# hicpp-use-equals-delete -> modernize-use-equals-delete
-# hicpp-use-noexcept -> modernize-use-noexcept
-# hicpp-use-nullptr -> modernize-use-nullptr
-# hicpp-use-override -> modernize-use-override
-# hicpp-vararg -> cppcoreguidelines-pro-type-vararg
-# llvm-else-after-return -> readability-else-after-return
-# llvm-qualified-auto -> readability-qualified-auto
-#
-# Things we care about:
-# android-*, bugprone-*, cert-*, clang-analyzer-*, clang-diagnostic-*, concurrency-*, cppcorequidelines-*, hicpp-*, misc-*, modernize-*, performance-*, portability-*, readability-*, 
-# Things we dont:
-# -abseil-*, -altera-*, -boost-*, -clang-analyzer-osx.*, -clang-analyzer-optin.osx.*, -darwin, -fuchsia-*, -google-*, -linuxkernel-*, -llvm-*, -llvmlibc-*, -mpi-*, -objc-*, -openmp-*, -zircon
-# Annoying things:
-# -modernize-use-trailing-return-type,
-# Thinks that should be on but can't due to legacy:
-# -bugprone-narrowing-conversions, -hicpp-signed-bitwise, -misc-non-private-member-variables-in-classes, -misc-unconventional-assign-operator, -modernize-avoid-c-arrays, -readability-else-after-return, -readability-magic-numbers
-# Aliases in the set of things we care about:
-# -cert-con36-c, -cert-con54-cpp, -cert-dcl03-c, -cert-dcl16-c, -cert-dcl37-c, -cert-dcl51-cpp, -cert-dcl54-cpp, -cert-err09-cpp, -cert-err61-cpp, -cert-fio38-c, -cert-msc30-c, -cert-msc32-c, -cert-oop11-cpp, -cert-oop54-cpp, -cert-pos44-c, -cert-str34-c, -cppcoreguidelines-avoid-c-arrays, -cppcoreguidelines-avoid-magic-numbers, -cppcoreguidelines-c-copy-assignment-signature, -cppcoreguidelines-explicit-virtual-functions, -cppcoreguidelines-non-private-member-variables-in-classes, -hicpp-avoid-c-arrays, -hicpp-braces-around-statements, -hicpp-deprecated-headers, -hicpp-function-size, -hicpp-invalid-access-moved, -hicpp-member-init, -hicpp-move-const-arg, -hicpp-named-parameter, -hicpp-new-delete-operators, -hicpp-no-array-decay, -hicpp-no-malloc, -hicpp-noexcept-move, -hicpp-special-member-functions, -hicpp-static-assert, -hicpp-undelegated-constructor, -hicpp-uppercase-literal-suffix, -hicpp-use-auto, -hicpp-use-emplace, -hicpp-use-equals-default, -hicpp-use-equals-delete, -hicpp-use-noexcept, -hicpp-use-nullptr, -hicpp-use-override, -hicpp-vararg
-
-#
-# is appended to the end of the check list
-
 ---
-Checks:              '-*,android-*,bugprone-*,cert-*-c,clang-analyzer-*,concurrency-*,portability-*,readability-*,-clang-analyzer-cplusplus.*,-clang-analyzer-osx.*,-clang-analyzer-optin.osx.*'
-FormatStyle:         file
+Checks:
+  # Disable default checks
+  - "-*"
+  # Things we care about:
+  - "android-*"
+  - "bugprone-*"
+  - "cert-*-c"
+  - "clang-analyzer-*"
+  - "concurrency-*"
+  - "portability-*"
+  - "readability-*"
+  # Things we don't care about:
+  - "-clang-analyzer-cplusplus.*"
+  - "-clang-analyzer-osx.*"
+  - "-clang-analyzer-optin.osx.*'"
+  # Annoying things:
+  - "-bugprone-easily-swappable-parameters"
+  - "-readability-identifier-length"
+FormatStyle: file
 CheckOptions:
-  - key:             cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
-    value:           '0'
-  - key:             cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
-    value:           '1'
-  - key:             hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
-    value:           '1'
+  cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions: False
+  cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: True
+  hicpp-signed-bitwise.IgnorePositiveIntegerLiterals: True
+  readability-function-cognitive-complexity.IgnoreMacros: True
+  readability-magic-numbers.IgnorePowersOf2IntegerValues: True

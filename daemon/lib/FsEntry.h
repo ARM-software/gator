@@ -3,9 +3,11 @@
 #ifndef INCLUDE_LIB_FSENTRY_H
 #define INCLUDE_LIB_FSENTRY_H
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <dirent.h>
 
@@ -110,6 +112,12 @@ namespace lib {
          * @return  The contents of that file
          */
         [[nodiscard]] std::string readFileContents() const;
+
+        /**
+         * Read the contents of a file and return it as a std::vector<std::uint8_t>.
+         * @return  The contents of that file
+         */
+        [[nodiscard]] std::vector<std::uint8_t> readFileContentsAsBytes() const;
 
         /**
          * Read the contents of a file and return it as a std::string. Only the first line is read and returned without any '\n'

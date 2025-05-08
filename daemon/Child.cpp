@@ -31,6 +31,7 @@
 #include "armnn/ArmNNSource.h"
 #include "capture/CaptureProcess.h"
 #include "lib/Assert.h"
+#include "lib/Error.h"
 #include "lib/FsUtils.h"
 #include "lib/Waiter.h"
 #include "logging/suppliers.h"
@@ -138,7 +139,7 @@ Child::Child(agents::i_agent_spawner_t & hi_priv_spawner,
 {
     const int fd = eventfd(0, EFD_CLOEXEC);
     if (fd == -1) {
-        LOG_ERROR("eventfd failed (%d) %s", errno, strerror(errno));
+        LOG_ERROR("eventfd failed (%d) %s", errno, lib::strerror());
         handleException();
     }
 
@@ -606,7 +607,7 @@ void Child::endSession(int signum)
             // and if this has failed something has gone really wrong
             _exit(SIGNAL_FAILED_EXIT_CODE);
         }
-        LOG_ERROR("write failed (%d) %s", errno, strerror(errno));
+        LOG_ERROR("write failed (%d) %s", errno, lib::strerror());
         handleException();
     }
 }
@@ -732,15 +733,15 @@ void Child::stopThreadEntryPoint()
     prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(&"gatord-stopper"), 0, 0, 0);
     Monitor monitor {};
     if (!monitor.init()) {
-        LOG_ERROR("Monitor::init() failed: %d, (%s)", errno, strerror(errno));
+        LOG_ERROR("Monitor::init() failed: %d, (%s)", errno, lib::strerror());
         handleException();
     }
     if (!monitor.add(*sessionEndEventFd)) {
-        LOG_ERROR("Monitor::add(sessionEndEventFd=%d) failed: %d, (%s)", *sessionEndEventFd, errno, strerror(errno));
+        LOG_ERROR("Monitor::add(sessionEndEventFd=%d) failed: %d, (%s)", *sessionEndEventFd, errno, lib::strerror());
         handleException();
     }
     if ((socket != nullptr) && !monitor.add(socket->getFd())) {
-        LOG_ERROR("Monitor::add(socket=%d) failed: %d, (%s)", socket->getFd(), errno, strerror(errno));
+        LOG_ERROR("Monitor::add(socket=%d) failed: %d, (%s)", socket->getFd(), errno, lib::strerror());
         handleException();
     }
 
@@ -796,7 +797,7 @@ void Child::senderThreadEntryPoint()
 
     do {
         if (sem_wait(&senderSem) != 0) {
-            LOG_ERROR("wait failed: %d, (%s)", errno, strerror(errno));
+            LOG_ERROR("wait failed: %d, (%s)", errno, lib::strerror());
         }
     } while (sendAllSources());
 

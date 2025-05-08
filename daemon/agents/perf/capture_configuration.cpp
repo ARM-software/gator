@@ -87,6 +87,7 @@ namespace agents::perf {
             msg.set_has_sample_identifier(perf_config.has_sample_identifier);
             msg.set_has_attr_comm_exec(perf_config.has_attr_comm_exec);
             msg.set_has_attr_mmap2(perf_config.has_attr_mmap2);
+            msg.set_has_attr_build_id(perf_config.has_attr_build_id);
             msg.set_has_attr_clockid_support(perf_config.has_attr_clockid_support);
             msg.set_has_attr_context_switch(perf_config.has_attr_context_switch);
             msg.set_has_ioctl_read_id(perf_config.has_ioctl_read_id);
@@ -226,6 +227,7 @@ namespace agents::perf {
             msg.set_exclude_callchain_kernel(attr.exclude_callchain_kernel);
             msg.set_exclude_callchain_user(attr.exclude_callchain_user);
             msg.set_mmap2(attr.mmap2);
+            msg.set_build_id(attr.build_id);
             msg.set_comm_exec(attr.comm_exec);
             msg.set_use_clockid(attr.use_clockid);
             msg.set_context_switch(attr.context_switch);
@@ -373,6 +375,7 @@ namespace agents::perf {
             perf_config.has_sample_identifier = msg.has_sample_identifier();
             perf_config.has_attr_comm_exec = msg.has_attr_comm_exec();
             perf_config.has_attr_mmap2 = msg.has_attr_mmap2();
+            perf_config.has_attr_build_id = msg.has_attr_build_id();
             perf_config.has_attr_clockid_support = msg.has_attr_clockid_support();
             perf_config.has_attr_context_switch = msg.has_attr_context_switch();
             perf_config.has_ioctl_read_id = msg.has_ioctl_read_id();
@@ -494,6 +497,7 @@ namespace agents::perf {
             result.exclude_callchain_kernel = msg.exclude_callchain_kernel();
             result.exclude_callchain_user = msg.exclude_callchain_user();
             result.mmap2 = msg.mmap2();
+            result.build_id = msg.build_id();
             result.comm_exec = msg.comm_exec();
             result.use_clockid = msg.use_clockid();
             result.context_switch = msg.context_switch();
@@ -649,6 +653,7 @@ namespace agents::perf {
         perf_groups_configurer_state_t const & perf_groups,
         agents::perf::buffer_config_t const & ringbuffer_config,
         std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name,
+        lnx::tid_enumeration_mode_t tid_enumeration_mode,
         bool enable_on_exec,
         bool stop_pids)
     {
@@ -667,6 +672,7 @@ namespace agents::perf {
         result.suffix.set_num_cpu_cores(cpu_info.getNumberOfCores());
         result.suffix.set_enable_on_exec(enable_on_exec);
         result.suffix.set_stop_pids(stop_pids);
+        result.suffix.set_tid_enumeration_mode(std::uint32_t(tid_enumeration_mode));
 
         return result;
     }
@@ -729,6 +735,7 @@ namespace agents::perf {
         result->num_cpu_cores = msg.suffix.num_cpu_cores();
         result->enable_on_exec = msg.suffix.enable_on_exec();
         result->stop_pids = msg.suffix.stop_pids();
+        result->tid_enumeration_mode = lnx::tid_enumeration_mode_t(msg.suffix.tid_enumeration_mode());
 
         extract_event_configuration(msg.suffix.event_configuration(),
                                     result->event_configuration,

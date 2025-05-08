@@ -1,9 +1,10 @@
-/* Copyright (C) 2013-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
 
 #include "UEvent.h"
 
 #include "Logging.h"
 #include "OlySocket.h"
+#include "lib/Error.h"
 
 #include <cerrno>
 #include <cstring>
@@ -33,8 +34,7 @@ bool UEvent::init()
 {
     mFd = socket_cloexec(PF_NETLINK, SOCK_RAW, NETLINK_KOBJECT_UEVENT);
     if (mFd < 0) {
-        //NOLINTNEXTLINE(concurrency-mt-unsafe)
-        LOG_WARNING("Socket failed for uevents (%d - %s)", errno, strerror(errno));
+        LOG_WARNING("Socket failed for uevents (%d - %s)", errno, lib::strerror());
         return false;
     }
 
@@ -44,8 +44,7 @@ bool UEvent::init()
     sockaddr.nl_groups = 1; // bitmask: (1 << 0) == kernel events, (1 << 1) == udev events
     sockaddr.nl_pid = 0;
     if (bind(mFd, reinterpret_cast<struct sockaddr *>(&sockaddr), sizeof(sockaddr)) != 0) {
-        //NOLINTNEXTLINE(concurrency-mt-unsafe)
-        LOG_WARNING("Bind failed for uevents (%d - %s)", errno, strerror(errno));
+        LOG_WARNING("Bind failed for uevents (%d - %s)", errno, lib::strerror());
         return false;
     }
 

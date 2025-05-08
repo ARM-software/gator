@@ -49,6 +49,7 @@ message capture_configuration_t {
         bool has_armv7_pmu_driver = 13;
         bool has_64bit_uname = 14;
         bool use_64bit_register_set = 15;
+        bool has_attr_build_id = 16;
     }
 
     /** Equivalent to perf_ringbuffer_config_t */
@@ -148,15 +149,16 @@ message capture_configuration_t {
         bool comm_exec = 29;
         bool use_clockid = 30;
         bool context_switch = 31;
-        uint32 wakeup_events_or_watermark = 32;
-        uint64 config1 = 33;
-        uint64 config2 = 34;
-        uint64 config3 = 35;
-        uint64 sample_regs_user = 36;
-        uint32 sample_stack_user = 37;
-        int32 clockid = 38;
-        uint32 aux_watermark = 39;
-        uint64 alternative_sample_period = 40;
+        bool build_id = 32;
+        uint32 wakeup_events_or_watermark = 33;
+        uint64 config1 = 34;
+        uint64 config2 = 35;
+        uint64 config3 = 36;
+        uint64 sample_regs_user = 37;
+        uint32 sample_stack_user = 38;
+        int32 clockid = 39;
+        uint32 aux_watermark = 40;
+        uint64 alternative_sample_period = 41;
     }
 
     /** Equivalent to event_definition_t */
@@ -202,5 +204,6 @@ message capture_configuration_t {
     bool enable_on_exec = 13;
     map<uint32, string> cpuid_to_core_name = 14;
     map<uint32, string> perf_pmu_type_to_name = 15;
-    bool stop_pids = 16;
+    uint32 tid_enumeration_mode = 16;
+    bool stop_pids = 17;
 }

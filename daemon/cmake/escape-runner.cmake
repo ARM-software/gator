@@ -1,3 +1,5 @@
+# Copyright (C) 2024 by Arm Limited (or its affiliates). All rights reserved.
+
 # load and escape the string
 FILE(READ "${INPUT_FILE}" INPUT_FILE_CONTENTS)
 STRING(REPLACE "\\" "\\\\" INPUT_FILE_CONTENTS "${INPUT_FILE_CONTENTS}")

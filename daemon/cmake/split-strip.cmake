@@ -1,3 +1,5 @@
+# Copyright (C) 2024 by Arm Limited (or its affiliates). All rights reserved.
+
 #
 #   The name of the zipped up split-debug file
 #

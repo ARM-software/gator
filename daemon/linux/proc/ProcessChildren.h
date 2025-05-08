@@ -1,31 +1,43 @@
-/* Copyright (C) 2018-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PROC_PROCESS_CHILDREN_H
 #define INCLUDE_LINUX_PROC_PROCESS_CHILDREN_H
 
 #include "lib/Syscall.h"
-#include "unistd.h"
 
 #include <csignal>
+#include <cstdint>
 #include <map>
 #include <set>
 #include <utility>
 
+#include <unistd.h>
+
 namespace lnx {
+
+    enum class tid_enumeration_mode_t : std::uint8_t {
+        /** Only collect the pids specified by the user */
+        self_only = 0,
+        /** Only collect the pids specified by the user and any of their threads */
+        self_and_threads = 1,
+        /** Only collect the pids specified by the user and any of their threads, and any other processes they spawn */
+        self_and_threads_and_children = 2,
+    };
+
     /**
      * Inherently racey function to collect child tids because threads can be created and destroyed while this is running
      */
-    void addTidsRecursively(std::set<int> & tids, int tid, bool including_children);
+    void addTidsRecursively(std::set<int> & tids, int tid, tid_enumeration_mode_t tid_enumeration_mode);
 
     /**
      * Inherently racey function to collect child tids because threads can be created and destroyed while this is running
      *
      * @return as many of the known child tids (including child processes)
      */
-    inline std::set<int> getChildTids(int tid, bool including_children)
+    inline std::set<int> getChildTids(int tid, tid_enumeration_mode_t tid_enumeration_mode)
     {
         std::set<int> result;
-        addTidsRecursively(result, tid, including_children);
+        addTidsRecursively(result, tid, tid_enumeration_mode);
         return result;
     }
 
@@ -69,7 +81,8 @@ namespace lnx {
     /** Find all the tids associated with a set of pids and sigstop them (so long as the pid is not in the filter set) */
     [[nodiscard]] std::set<pid_t> stop_all_tids(std::set<pid_t> const & pids,
                                                 std::set<pid_t> const & filter_set,
-                                                std::map<pid_t, sig_continuer_t> & paused_tids);
+                                                std::map<pid_t, sig_continuer_t> & paused_tids,
+                                                tid_enumeration_mode_t tid_enumeration_mode);
 }
 
 #endif

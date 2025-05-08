@@ -8,6 +8,7 @@
 #include "PrimarySourceProvider.h"
 #include "SessionData.h"
 #include "SimpleDriver.h"
+#include "lib/Error.h"
 #include "lib/FileDescriptor.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -539,7 +540,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
         fd = ::open(traceFsConstants.path__trace, O_WRONLY | O_TRUNC | O_CLOEXEC);
         if (fd < 0) {
-            LOG_ERROR("Unable truncate ftrace buffer: %s", strerror(errno));
+            LOG_ERROR("Unable truncate ftrace buffer: %s", lib::strerror());
             handleException();
         }
         close(fd);
@@ -610,8 +611,7 @@ std::pair<std::vector<int>, bool> FtraceDriver::prepare()
     for (size_t cpu = 0; cpu < mNumberOfCores; ++cpu) {
         std::array<int, 2> pfd;
         if (pipe2(pfd.data(), O_CLOEXEC) != 0) {
-            // NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_ERROR("pipe2 failed, %s (%i)", strerror(errno), errno);
+            LOG_ERROR("pipe2 failed, %s (%i)", lib::strerror(), errno);
             handleException();
         }
 

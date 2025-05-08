@@ -5,6 +5,7 @@
 #include "Logging.h"
 #include "SessionData.h"
 #include "android/GatorAndroidSetupHandler.h"
+#include "lib/Error.h"
 #include "lib/FsEntry.h"
 #include "lib/Resource.h"
 #include "lib/Utils.h"
@@ -64,8 +65,7 @@ namespace {
             }
         }
         else {
-            // NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_WARNING("getpwnam_r errored %d (%s)", errno, strerror(errno));
+            LOG_WARNING("getpwnam_r errored %d (%s)", errno, lib::strerror());
         }
 
         //

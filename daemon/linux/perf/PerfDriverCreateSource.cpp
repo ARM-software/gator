@@ -12,6 +12,7 @@
 #include "agents/agent_workers_process.h"
 #include "agents/agent_workers_process_holder.h"
 #include "agents/perf/capture_configuration.h"
+#include "agents/perf/events/types.hpp"
 #include "agents/perf/record_types.h"
 #include "agents/perf/source_adapter.h"
 #include "async/continuations/operations.h"
@@ -28,6 +29,7 @@
 #include "linux/perf/PerfGroups.h"
 #include "linux/perf/attr_to_key_mapping_tracker.h"
 #include "linux/perf/metric_key_to_event_key_tracker.h"
+#include "linux/proc/ProcessChildren.h"
 #include "xml/PmuXML.h"
 
 #include <chrono>
@@ -117,6 +119,23 @@ namespace {
         // worker is started successfully, wait for agent
         return (!ready_agent);
     }
+
+    [[nodiscard]] constexpr lnx::tid_enumeration_mode_t map_tid_enumeration_mode(CaptureOperationMode mode)
+    {
+        switch (mode) {
+            case CaptureOperationMode::application_no_inherit:
+                return lnx::tid_enumeration_mode_t::self_only;
+
+            case CaptureOperationMode::system_wide:
+            case CaptureOperationMode::application_default:
+            case CaptureOperationMode::application_inherit:
+            case CaptureOperationMode::application_poll:
+            case CaptureOperationMode::application_experimental_patch:
+            default:
+                return lnx::tid_enumeration_mode_t::self_and_threads_and_children;
+        }
+    }
+
 }
 
 /// this method is extracted so that it can be excluded from the unit tests as it brings deps on PerfSource...
@@ -183,6 +202,18 @@ std::shared_ptr<PrimarySource> PerfDriver::create_source(
     attrs_buffer->flush();
     attrs_buffer->write(sender);
 
+    // read the kernel build ids
+    readKernelBuildId(*attrs_buffer);
+    // write directly to the sender
+    attrs_buffer->flush();
+    attrs_buffer->write(sender);
+
+    // read the module build ids
+    readModuleBuildIds(*attrs_buffer);
+    // write directly to the sender
+    attrs_buffer->flush();
+    attrs_buffer->write(sender);
+
     return create_source_adapter(agent_workers_process,
                                  senderSem,
                                  sender,
@@ -224,6 +255,8 @@ std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
 
     auto type_to_name_map = collect_pmu_type_to_name_map(mConfig);
 
+    auto const tid_enumeration_mode = map_tid_enumeration_mode(gSessionData.mCaptureOperationMode);
+
     ipc::msg_capture_configuration_t config_msg = agents::perf::create_capture_configuration_msg(
         gSessionData,
         mConfig.config,
@@ -235,6 +268,7 @@ std::shared_ptr<agents::perf::perf_source_adapter_t> PerfDriver::create_source_a
         perf_groups,
         ringbuffer_config,
         type_to_name_map,
+        tid_enumeration_mode,
         enable_on_exec,
         // only use SIGSTOP pause when waiting for newly launched Android package
         (gSessionData.mAndroidPackage != nullptr));

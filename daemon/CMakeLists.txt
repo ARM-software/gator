@@ -86,7 +86,8 @@ ENDIF()
 
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler-flags.cmake)
 
-ADD_SUBDIRECTORY(ipc/proto)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/ipc/proto
+                 ${CMAKE_CURRENT_BINARY_DIR}/ipc/proto/generated)
 
 # Include the clang tools (after HWCPIPE and PROTO, so as not to lint that subproject when ENABLE_CLANG_TIDY_DURING_BUILD is ON)
 SET(CLANG_TIDY_YAML "${CMAKE_SOURCE_DIR}/../.clang-tidy")
@@ -243,7 +244,7 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Proc.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Proc.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Protocol.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/ProtocolVersion.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ProductVersion.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Sender.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Sender.h
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionData.cpp
@@ -479,6 +480,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/EnumUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/error_code_or.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/exception.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/Error.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/Error.h
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/File.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/FileDescriptor.h
@@ -648,7 +651,7 @@ SET(FILES_TO_HASH ${FILES_TO_HASH}
     ${CMAKE_CURRENT_SOURCE_DIR}/events_footer.xml
     ${CMAKE_CURRENT_SOURCE_DIR}/pmus.xml
     ${CMAKE_CURRENT_SOURCE_DIR}/defaults.xml)
-LIST(FILTER FILES_TO_HASH EXCLUDE REGEX "/ipc/proto/generated/|SrcMd5\\.cpp|_xml\\.h|events\\.xml")
+LIST(FILTER FILES_TO_HASH EXCLUDE REGEX "/ipc/proto/generated/|capture_configuration\\.pb\\.h|SrcMd5\\.cpp|_xml\\.h|events\\.xml")
 
 CREATE_SRC_MD5("gSrcMd5" "gBuildId" "gCopyrightYear" "${GATORD_BUILD_ID}" "${COPYRIGHT_YEAR}" "${GENERATED_MD5_SOURCE}" "${GENERATED_MD5_FILE}" ${FILES_TO_HASH})
 

@@ -4,6 +4,7 @@
 
 #include "Logging.h"
 #include "lib/CpuIdSet.h"
+#include "lib/Error.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
 #include "lib/Utils.h"
@@ -63,8 +64,7 @@ bool PerCoreIdentificationThread::configureAffinity() // NOLINT(readability-make
     }
 
     if (!affinitySucceeded) {
-        //NOLINTNEXTLINE(concurrency-mt-unsafe)
-        LOG_WARNING("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, strerror(errno));
+        LOG_WARNING("Error calling sched_setaffinity on %u: %d (%s)", cpu, errno, lib::strerror());
         return false;
     }
 

@@ -582,6 +582,7 @@ public:
         attr.config = config;
         attr.periodOrFreq = count;
         attr.sampleType = sampleType;
+        attr.ebs = true;
         mMetricGroups = std::move(metricGroups);
     }
 
@@ -1186,6 +1187,7 @@ void PerfDriver::addMidgardHwTracepoints(const char * const maliFamilyName)
         attr.periodOrFreq = 1;
         attr.sampleType = PERF_SAMPLE_RAW;
         attr.task = true;
+        attr.ebs = true;
         setCounters(new PerfCounter(getCounters(), PerfEventGroupIdentifier(), name, attr, false, configId2, false));
     };
     auto addCounter = [addCounterWithConfigId2](const char * name, uint64_t id) {

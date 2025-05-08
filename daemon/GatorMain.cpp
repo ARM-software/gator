@@ -10,11 +10,12 @@
 #include "ICpuInfo.h"
 #include "Logging.h"
 #include "ParserResult.h"
-#include "ProtocolVersion.h"
+#include "ProductVersion.h"
 #include "SessionData.h"
 #include "android/AndroidActivityManager.h"
 #include "capture/CaptureProcess.h"
 #include "capture/Environment.h"
+#include "lib/Error.h"
 #include "lib/Format.h"
 #include "lib/Process.h"
 #include "lib/String.h"
@@ -62,7 +63,7 @@ namespace {
         }
     }
 
-    //Gator ready messages
+    // Gator ready messages
     constexpr std::string_view gator_shell_ready = "Gator ready";
     constexpr unsigned int VERSION_STRING_CHAR_SIZE = 256;
 
@@ -707,8 +708,7 @@ int gator_main(int argc, char ** argv)
 
     const int pipeResult = lib::pipe2(signalPipe, O_CLOEXEC);
     if (pipeResult == -1) {
-        // NOLINTNEXTLINE(concurrency-mt-unsafe)
-        LOG_ERROR("pipe failed (%d) %s", errno, strerror(errno));
+        LOG_ERROR("pipe failed (%d) %s", errno, lib::strerror());
         handleException();
     }
 
@@ -723,28 +723,37 @@ int gator_main(int argc, char ** argv)
 
     lib::printf_str_t<VERSION_STRING_CHAR_SIZE> versionString;
 
-    const int baseProtocolVersion =
-        (PROTOCOL_VERSION >= 0 ? PROTOCOL_VERSION : -(PROTOCOL_VERSION % PROTOCOL_VERSION_DEV_MULTIPLIER));
-    const int protocolDevTag = (PROTOCOL_VERSION >= 0 ? 0 : -(PROTOCOL_VERSION / PROTOCOL_VERSION_DEV_MULTIPLIER));
-    const int majorVersion = baseProtocolVersion / 100;
-    const int minorVersion = (baseProtocolVersion / 10) % 10;
-    const int revisionVersion = baseProtocolVersion % 10;
+    const int baseProductVersion =
+        (PRODUCT_VERSION >= 0 ? PRODUCT_VERSION : -(PRODUCT_VERSION % PRODUCT_VERSION_DEV_MULTIPLIER));
+    const int protocolDevTag = (PRODUCT_VERSION >= 0 ? 0 : -(PRODUCT_VERSION / PRODUCT_VERSION_DEV_MULTIPLIER));
+    const int majorVersion = baseProductVersion / 100;
+    const int minorVersion = (baseProductVersion / 10) % 10;
+    const int revisionVersion = baseProductVersion % 10;
     const char * formatString =
-        (PROTOCOL_VERSION >= 0 ? (revisionVersion == 0 ? "Streamline gatord version %d (Streamline v%d.%d)"
-                                                       : "Streamline gatord version %d (Streamline v%d.%d.%d)")
-                               : "Streamline gatord development version %d (Streamline v%d.%d.%d), tag %d");
+        (PRODUCT_VERSION >= 0 ? (revisionVersion == 0 ? "Streamline gatord version %d (Streamline v%d.%d)"
+                                                      : "Streamline gatord version %d (Streamline v%d.%d.%d)")
+                              : "Streamline gatord development version %d (Streamline v%d.%d.%d), "
+                                "tag %d");
 
-    versionString.printf(formatString, PROTOCOL_VERSION, majorVersion, minorVersion, revisionVersion, protocolDevTag);
+    versionString.printf(formatString, PRODUCT_VERSION, majorVersion, minorVersion, revisionVersion, protocolDevTag);
+
+    std::string_view const branchName {PRODUCT_VERSION_BRANCH_NAME};
+    auto const useBranchName = (!branchName.empty()) && (branchName != "main");
 
     // Parse the command line parameters
     GatorCLIParser parser;
     parser.parseCLIArguments(argc, argv, versionString, gSrcMd5, gBuildId);
     const ParserResult & result = parser.result;
 
-    const std::string header {lib::Format()
-                              << "Streamline Data Recorder v" << majorVersion << '.' << minorVersion << '.'
-                              << revisionVersion << " (Build " << gBuildId << ")\n"
-                              << "Copyright (c) 2010-" << gCopyrightYear << " Arm Limited. All rights reserved.\n\n"};
+    lib::Format headerFmt;
+    headerFmt << "Streamline Data Recorder v" << majorVersion << '.' << minorVersion << '.' << revisionVersion
+              << " (Build " << gBuildId;
+    if (useBranchName) {
+        headerFmt << " [" << branchName << "]";
+    }
+    headerFmt << ")\n"
+              << "Copyright (c) 2010-" << gCopyrightYear << " Arm Limited. All rights reserved.\n\n";
+    const std::string header {headerFmt};
 
     if (result.mode != ParserResult::ExecutionMode::PRINT) {
         std::cout << header;

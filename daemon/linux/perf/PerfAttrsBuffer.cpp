@@ -12,6 +12,7 @@
 #include "Logging.h"
 #include "Protocol.h"
 #include "k/perf_event.h"
+#include "lib/Assert.h"
 #include "linux/perf/IPerfAttrsConsumer.h"
 
 #include <cstdint>
@@ -221,4 +222,29 @@ void PerfAttrsBuffer::marshalMetricKey(int metric_key,
     buffer.packInt(event_code);
     buffer.packInt(event_key);
     buffer.packInt(static_cast<int>(type));
+}
+
+void PerfAttrsBuffer::marshalKernelBuildId(lib::Span<std::uint8_t const> build_id)
+{
+    runtime_assert(static_cast<uint32_t>(build_id.size()) == build_id.size(), "Unexpected build-id size");
+
+    waitForSpace((buffer_utils::MAXSIZE_PACK32 * 2UL) + build_id.size());
+
+    // the fields
+    buffer.packInt(static_cast<int32_t>(CodeType::KERNEL_BUILD_ID));
+    buffer.packInt(static_cast<uint32_t>(build_id.size()));
+    buffer.writeBytes(build_id.data(), build_id.size());
+}
+
+void PerfAttrsBuffer::marshalKernelModuleBuildId(std::string_view module_name, lib::Span<std::uint8_t const> build_id)
+{
+    runtime_assert(static_cast<uint32_t>(build_id.size()) == build_id.size(), "Unexpected build-id size");
+
+    waitForSpace((buffer_utils::MAXSIZE_PACK32 * 3UL) + module_name.size() + build_id.size());
+
+    // the fields
+    buffer.packInt(static_cast<int32_t>(CodeType::KERNEL_MODULE_BUILD_ID));
+    buffer.writeString(module_name);
+    buffer.packInt(static_cast<uint32_t>(build_id.size()));
+    buffer.writeBytes(build_id.data(), build_id.size());
 }

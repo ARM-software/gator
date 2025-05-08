@@ -4,6 +4,7 @@
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/Error.h"
 #include "lib/GenericTimer.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -39,11 +40,11 @@ namespace {
         // Try FIFO scheduling
         param.sched_priority = sched_get_priority_max(SCHED_FIFO);
         if (param.sched_priority == -1) {
-            LOG_DEBUG("Unable to sched_get_priority_max(SCHED_FIFO): %d (%s)", errno, strerror(errno));
+            LOG_DEBUG("Unable to sched_get_priority_max(SCHED_FIFO): %d (%s)", errno, lib::strerror());
         }
         else {
             if (sched_setscheduler(tid, SCHED_FIFO | SCHED_RESET_ON_FORK, &param) != 0) {
-                LOG_DEBUG("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, strerror(errno));
+                LOG_DEBUG("Unable to schedule sync thread as FIFO, trying OTHER: %d (%s)", errno, lib::strerror());
             }
             else {
                 return true;
@@ -53,14 +54,14 @@ namespace {
         // Try OTHER (round-robin) scheduling
         param.sched_priority = sched_get_priority_max(SCHED_OTHER);
         if (param.sched_priority == -1) {
-            LOG_WARNING("Unable to sched_get_priority_max(SCHED_OTHER): %d (%s)", errno, strerror(errno));
+            LOG_WARNING("Unable to sched_get_priority_max(SCHED_OTHER): %d (%s)", errno, lib::strerror());
             return false;
         }
 
         if (sched_setscheduler(tid, SCHED_OTHER | SCHED_RESET_ON_FORK, &param) != 0) {
             // Note: This is not implemented in musl, so failure is expected and not loudly reported [SDDAP-13577]
             //NOLINTNEXTLINE(concurrency-mt-unsafe)
-            LOG_DEBUG("sched_setscheduler failed: %d (%s)", errno, strerror(errno));
+            LOG_DEBUG("sched_setscheduler failed: %d (%s)", errno, lib::strerror());
             return false;
         }
 
@@ -133,11 +134,11 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
     {
         sigset_t set;
         if (sigfillset(&set) != 0) {
-            LOG_ERROR("sigfillset failed: %d (%s)", errno, strerror(errno));
+            LOG_ERROR("sigfillset failed: %d (%s)", errno, lib::strerror());
             handleException();
         }
         if (sigprocmask(SIG_SETMASK, &set, nullptr) != 0) {
-            LOG_ERROR("sigprocmask failed %d (%s)", errno, strerror(errno));
+            LOG_ERROR("sigprocmask failed %d (%s)", errno, lib::strerror());
             handleException();
         }
     }
@@ -172,7 +173,7 @@ void PerfSyncThread::run(std::uint64_t monotonicRawBase) noexcept
         ts.tv_sec = NS_TO_SLEEP / NS_PER_S;
         ts.tv_nsec = NS_TO_SLEEP % NS_PER_S;
         if (nanosleep(&ts, nullptr) != 0) {
-            LOG_ERROR("nanosleep failed: %d (%s)", errno, strerror(errno));
+            LOG_ERROR("nanosleep failed: %d (%s)", errno, lib::strerror());
             handleException();
         }
     } while (!terminateFlag.load(std::memory_order_acquire));

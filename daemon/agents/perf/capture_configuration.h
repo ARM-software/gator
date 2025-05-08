@@ -14,6 +14,7 @@
 #include "linux/perf/PerfEventGroup.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
 #include "linux/perf/PerfGroups.h"
+#include "linux/proc/ProcessChildren.h"
 #include "xml/PmuXML.h"
 
 namespace agents::perf {
@@ -65,6 +66,7 @@ namespace agents::perf {
         std::string android_pkg;
         std::set<pid_t> pids;
         std::uint32_t num_cpu_cores {};
+        lnx::tid_enumeration_mode_t tid_enumeration_mode;
         bool enable_on_exec {};
         bool stop_pids {};
     };
@@ -83,6 +85,7 @@ namespace agents::perf {
         perf_groups_configurer_state_t const & perf_groups,
         agents::perf::buffer_config_t const & ringbuffer_config,
         std::map<std::uint32_t, std::string> const & perf_pmu_type_to_name,
+        lnx::tid_enumeration_mode_t tid_enumeration_mode,
         bool enable_on_exec,
         bool stop_pids);
 

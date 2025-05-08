@@ -4,6 +4,7 @@
 
 #include "Logging.h"
 #include "lib/Assert.h"
+#include "lib/Error.h"
 
 #include <cerrno>
 #include <climits>
@@ -18,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <boost/filesystem/exception.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -79,8 +81,7 @@ namespace lib {
             return FsEntry::create(template_buffer);
         }
 
-        //NOLINTNEXTLINE(concurrency-mt-unsafe)
-        LOG_ERROR("Error generating unique filename. errno: %d (%s)", errno, strerror(errno));
+        LOG_ERROR("Error generating unique filename. errno: %d (%s)", errno, lib::strerror());
         return {};
     }
 
@@ -292,6 +293,29 @@ namespace lib {
         }
 
         return buffer.str();
+    }
+
+    std::vector<std::uint8_t> FsEntry::readFileContentsAsBytes() const
+    {
+        std::ifstream stream(path(), std::ios::in | std::ios::binary);
+
+        stream.unsetf(std::ios::skipws);
+
+        stream.seekg(0, std::ios::end);
+        auto const size = stream.tellg();
+        stream.seekg(0, std::ios::beg);
+
+        std::vector<std::uint8_t> result {};
+
+        if (size > 0) {
+            result.reserve(size);
+        }
+
+        result.insert(result.begin(),
+                      std::istream_iterator<std::uint8_t>(stream),
+                      std::istream_iterator<std::uint8_t>());
+
+        return result;
     }
 
     std::string FsEntry::readFileContentsSingleLine() const

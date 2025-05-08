@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #include "lib/Process.h"
 
@@ -28,7 +28,6 @@ namespace gator::process {
     {
         int result = ::prctl(PR_SET_PDEATHSIG, signal);
         if (result != 0) {
-            // NOLINTNEXTLINE(concurrency-mt-unsafe)
             LOG_ERROR("Call to prctl(PR_SET_PDEATHSIG(%d) failed with errno %d. This is non-fatal but "
                       "may result in orphaned processes",
                       signal,

@@ -11,6 +11,7 @@
 #include "Logging.h"
 #include "OlySocket.h"
 #include "armnn/ISocketIO.h"
+#include "lib/Error.h"
 #include "lib/Span.h"
 
 #include <cassert>
@@ -73,13 +74,13 @@ namespace armnn {
         if (flags >= 0) {
             if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) { // NOLINT(hicpp-signed-bitwise)
                 // Unable to set socket flags, running in blocking mode
-                LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
+                LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", lib::strerror(), errno);
                 return false;
             }
         }
         else {
             // Unable to get socket flags, running in blocking mode
-            LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_WARNING("Failed to set non-blocking socket due to %s (%d)", lib::strerror(), errno);
             return false;
         }
 
@@ -98,7 +99,7 @@ namespace armnn {
 #ifdef USE_SO_NOSIGPIPE
         const int set = 1;
         if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, (void *) &set, sizeof(set)) < 0) {
-            LOG_WARNING("Failed to set no sigpipe socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_WARNING("Failed to set no sigpipe socket due to %s (%d)", lib::strerror(), errno);
             return false;
         }
 #else
@@ -131,7 +132,7 @@ namespace armnn {
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR)) {
                 return defaultReturnValue;
             }
-            LOG_ERROR("Failed to poll socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to poll socket due to %s (%d)", lib::strerror(), errno);
         }
         else {
             // NOLINTNEXTLINE(hicpp-signed-bitwise,misc-include-cleaner)
@@ -169,7 +170,7 @@ namespace armnn {
         const socklen_t addressLength = init_sockaddr_un(udsAddress, address.data(), length, useStructSize);
 
         if (connect(*fd, reinterpret_cast<const sockaddr *>(&udsAddress), addressLength) < 0) {
-            LOG_ERROR("Failed to connect socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to connect socket due to %s (%d)", lib::strerror(), errno);
             handleException();
         }
 
@@ -193,7 +194,7 @@ namespace armnn {
         AutoClosingFd fd {armnn::socket_cloexec(PF_UNIX, SOCK_STREAM, 0)};
         if (!fd) {
             LOG_ERROR("Failed to obtain file descriptor when preparing to listen on socket due to %s (%d)",
-                      std::strerror(errno),
+                      lib::strerror(),
                       errno);
             handleException();
         }
@@ -203,12 +204,12 @@ namespace armnn {
 
         // bind socket to address
         if (bind(*fd, reinterpret_cast<const sockaddr *>(&udsAddress), addressLength) < 0) {
-            LOG_ERROR("Failed to bind socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to bind socket due to %s (%d)", lib::strerror(), errno);
             handleException();
         }
 
         if (listen(*fd, MAX_LISTEN_BACKLOG) < 0) {
-            LOG_ERROR("Failed to listen socket due to %s (%d)", std::strerror(errno), errno);
+            LOG_ERROR("Failed to listen socket due to %s (%d)", lib::strerror(), errno);
             handleException();
         }
 
@@ -238,7 +239,7 @@ namespace armnn {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR) || (errno == EINVAL)) {
             return nullptr;
         }
-        LOG_ERROR("Failed to accept socket due to %s (%d)", std::strerror(errno), errno);
+        LOG_ERROR("Failed to accept socket due to %s (%d)", lib::strerror(), errno);
         handleException();
     }
 

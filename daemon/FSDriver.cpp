@@ -5,6 +5,7 @@
 #include "DriverCounter.h"
 #include "Logging.h"
 #include "PolledDriver.h"
+#include "lib/Error.h"
 #include "lib/Utils.h"
 
 #include <cerrno>
@@ -99,7 +100,7 @@ int64_t FSCounter::read()
             errno = 0;
             value = strtoll(buf + match[1].rm_so, nullptr, 0);
             if (errno != 0) {
-                LOG_ERROR("Parsing %s failed: %s", mPath, strerror(errno));
+                LOG_ERROR("Parsing %s failed: %s", mPath, lib::strerror());
                 handleException();
             }
         }

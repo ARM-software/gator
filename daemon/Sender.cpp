@@ -6,6 +6,7 @@
 #include "ISender.h"
 #include "Logging.h"
 #include "OlySocket.h"
+#include "ProductVersion.h"
 #include "ProtocolVersion.h"
 #include "SessionData.h"
 #include "Time.h"

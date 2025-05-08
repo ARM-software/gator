@@ -81,6 +81,8 @@ namespace agents::perf {
                           << indentation << "read_format: 0x" << attr.read_format << separator << std::dec            //
                           << indentation << "pinned: " << (attr.pinned ? "true" : "false") << separator               //
                           << indentation << "mmap: " << (attr.mmap ? "true" : "false") << separator                   //
+                          << indentation << "mmap2: " << (attr.mmap2 ? "true" : "false") << separator                 //
+                          << indentation << "build_id: " << (attr.build_id ? "true" : "false") << separator           //
                           << indentation << "comm: " << (attr.comm ? "true" : "false") << separator                   //
                           << indentation << "freq: " << (attr.freq ? "true" : "false") << separator                   //
                           << indentation << "task: " << (attr.task ? "true" : "false") << separator                   //

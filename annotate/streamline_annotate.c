@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2023 by Arm Limited. All rights reserved.
+ * Copyright (C) 2014-2024 by Arm Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,6 +65,9 @@
 #define STREAMLINE_ANNOTATE_PARENT "\0streamline-annotate-parent"
 #define STREAMLINE_ANNOTATE "\0streamline-annotate"
 #endif
+
+// Disable thread-safety lint warnings for strerror - it is thread-safe for glibc and musl
+#define strerror(e) strerror(e) // NOLINT(concurrency-mt-unsafe)
 
 static const char gator_annotate_handshake[] = "ANNOTATE 5\n";
 static const int gator_minimum_version = 24;

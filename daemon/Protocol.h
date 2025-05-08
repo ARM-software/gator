@@ -37,6 +37,8 @@ enum class CodeType : int {
     HEADER_PAGE = 11,
     HEADER_EVENT = 12,
     METRIC_EVENT_KEY = 13,
+    KERNEL_BUILD_ID = 14,
+    KERNEL_MODULE_BUILD_ID = 15,
 };
 
 // Summary Frame Messages

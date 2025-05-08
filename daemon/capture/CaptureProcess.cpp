@@ -21,6 +21,7 @@
 #include "agents/spawn_agent.h"
 #include "android/AndroidActivityManager.h"
 #include "capture/internal/UdpListener.h"
+#include "lib/Error.h"
 #include "lib/FileDescriptor.h"
 #include "lib/Process.h"
 #include "lib/Syscall.h"
@@ -397,7 +398,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
 {
     // Set to high priority
     if (setpriority(PRIO_PROCESS, lib::gettid(), high_priority) == -1) {
-        LOG_DEBUG("setpriority() failed: %s (%d)", std::strerror(errno), errno);
+        LOG_DEBUG("setpriority() failed: %s (%d)", lib::strerror(), errno);
     }
 
     // Ignore the SIGPIPE signal so that any send to a broken socket will return an error code instead of asserting a signal
@@ -511,7 +512,7 @@ int capture::beginCaptureProcess(const ParserResult & result,
                     const int amountRead = ::read(signalPipe[0], &signum, sizeof(signum));
                     if (amountRead != sizeof(signum)) {
                         auto ss = std::stringstream("read failed(");
-                        ss << errno << ") " << strerror(errno);
+                        ss << errno << ") " << lib::strerror();
                         throw GatorException(ss.str());
                     }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
 
 #include "linux/proc/ProcessChildren.h"
 
@@ -22,7 +22,7 @@
 
 namespace lnx {
     // NOLINTNEXTLINE(misc-no-recursion)
-    void addTidsRecursively(std::set<int> & tids, int tid, bool including_children)
+    void addTidsRecursively(std::set<int> & tids, int tid, tid_enumeration_mode_t tid_enumeration_mode)
     {
         constexpr std::size_t buffer_size = 64; // should be large enough for the proc path
 
@@ -34,14 +34,24 @@ namespace lnx {
         lib::printf_str_t<buffer_size> filename {};
 
         // try to get all children (forked processes), available since Linux 3.5
-        if (including_children) {
-            filename.printf("/proc/%d/task/%d/children", tid, tid);
-            std::ifstream children {filename, std::ios_base::in};
-            if (children) {
-                int child;
-                while (children >> child) {
-                    addTidsRecursively(tids, child, true);
+        switch (tid_enumeration_mode) {
+            case tid_enumeration_mode_t::self_and_threads_and_children: {
+                filename.printf("/proc/%d/task/%d/children", tid, tid);
+                std::ifstream children {filename, std::ios_base::in};
+                if (children) {
+                    int child;
+                    while (children >> child) {
+                        addTidsRecursively(tids, child, tid_enumeration_mode);
+                    }
                 }
+                break;
+            }
+
+            case tid_enumeration_mode_t::self_only:
+            case tid_enumeration_mode_t::self_and_threads:
+            default: {
+                // nothing to do
+                break;
             }
         }
 
@@ -49,18 +59,29 @@ namespace lnx {
         // If 'children' is not found then new processes won't be counted on onlined cpu.
         // We could read /proc/[pid]/stat for every process and create a map in reverse
         // but that would likely be time consuming
-        filename.printf("/proc/%d/task", tid);
-        const std::unique_ptr<DIR, int (*)(DIR *)> taskDir {opendir(filename), &closedir};
-        if (taskDir != nullptr) {
-            const dirent * taskEntry;
-            while ((taskEntry = readdir(taskDir.get())) != nullptr) {
-                // no point recursing if we're relying on the fall back
-                if (std::strcmp(taskEntry->d_name, ".") != 0 && std::strcmp(taskEntry->d_name, "..") != 0) {
-                    const auto child = std::strtol(taskEntry->d_name, nullptr, 10);
-                    if (child > 0) {
-                        tids.insert(pid_t(child));
+        switch (tid_enumeration_mode) {
+            case tid_enumeration_mode_t::self_and_threads:
+            case tid_enumeration_mode_t::self_and_threads_and_children: {
+                filename.printf("/proc/%d/task", tid);
+                const std::unique_ptr<DIR, int (*)(DIR *)> taskDir {opendir(filename), &closedir};
+                if (taskDir != nullptr) {
+                    const dirent * taskEntry;
+                    // NOLINTNEXTLINE(concurrency-mt-unsafe)
+                    while ((taskEntry = readdir(taskDir.get())) != nullptr) {
+                        // no point recursing if we're relying on the fall back
+                        if (std::strcmp(taskEntry->d_name, ".") != 0 && std::strcmp(taskEntry->d_name, "..") != 0) {
+                            const auto child = std::strtol(taskEntry->d_name, nullptr, 10);
+                            if (child > 0) {
+                                tids.insert(pid_t(child));
+                            }
+                        }
                     }
                 }
+                break;
+            }
+            case tid_enumeration_mode_t::self_only:
+            default: {
+                break;
             }
         }
     }
@@ -68,7 +89,8 @@ namespace lnx {
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     std::set<pid_t> stop_all_tids(std::set<pid_t> const & pids,
                                   std::set<pid_t> const & filter_set,
-                                  std::map<pid_t, sig_continuer_t> & paused_tids)
+                                  std::map<pid_t, sig_continuer_t> & paused_tids,
+                                  tid_enumeration_mode_t tid_enumeration_mode)
     {
         constexpr unsigned sleep_usecs = 100;
 
@@ -83,7 +105,7 @@ namespace lnx {
             // first find any children
             std::set<int> tids {};
             for (pid_t pid : pids) {
-                addTidsRecursively(tids, pid, true);
+                addTidsRecursively(tids, pid, tid_enumeration_mode);
             }
             // then sigstop them all
             for (pid_t tid : tids) {

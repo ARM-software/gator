@@ -152,11 +152,15 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.sample_regs_user = 0;
 #endif
 
+    // is the event sampled?
+    const bool is_sampled = !leader
+                         && (attr.ebs && (attr.periodOrFreq != 0)
+                             && ((attr.sampleType & (PERF_SAMPLE_IP | PERF_SAMPLE_CALLCHAIN)) != 0));
     // make sure all new children are counted too
     const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode) && !is_header;
     // group doesn't require a leader (so all events are stand alone)
     const bool every_attribute_in_own_group =
-        (!requires_leader) || is_header
+        (!requires_leader) || is_header || is_sampled
         || !isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
                                                           config.perfConfig.supports_inherit_sample_read);
     // use READ_FORMAT_GROUP; for any item that overflows, but not for inherit (which cannot support groups) and not a stand alone event
@@ -202,6 +206,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     event.attr.alternative_sample_period = (strobe && config.perfConfig.supports_strobing_core ? attr.strobePeriod : 0);
     event.attr.sample_period = attr.periodOrFreq;
     event.attr.mmap = attr.mmap;
+    event.attr.mmap2 = attr.mmap && config.perfConfig.has_attr_mmap2; // requires attr.mmap is also set.
+    event.attr.build_id = attr.mmap && config.perfConfig.has_attr_mmap2 && config.perfConfig.has_attr_build_id;
     event.attr.comm = attr.comm;
     event.attr.comm_exec = attr.comm && config.perfConfig.has_attr_comm_exec;
     event.attr.freq = attr.freq;

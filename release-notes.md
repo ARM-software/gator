@@ -1,3 +1,9 @@
+# Gator 9.5.0
+
+The '--pid' and '--wait-process' options now understand the '--inherit no' option and can be used to capture data for exactly one thread of a multithreaded process.
+
+On recent kernels, gatord will collect the build-id if available, and Streamline will display a warning when an attached image mismatches.
+
 # Gator 9.4.0
 
 Various logging/warning message improvements

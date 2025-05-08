@@ -2,10 +2,6 @@
 
 find_package(Protobuf REQUIRED)
 
-set(GENERATED_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
-file(MAKE_DIRECTORY ${GENERATED_DIR})
-
-set(CMAKE_CURRENT_BINARY_DIR ${GENERATED_DIR})
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_LIST_DIR})
 
 protobuf_generate_cpp(PROTO_SRC PROTO_HEADERS
@@ -17,14 +13,15 @@ add_library(ipcproto STATIC
     ${PROTO_HEADERS}
 )
 
-target_include_directories(ipcproto SYSTEM
-    PUBLIC ${Protobuf_INCLUDE_DIRS}
-           ${GENERATED_DIR}
+target_include_directories(ipcproto
+    SYSTEM PUBLIC ${Protobuf_INCLUDE_DIRS}
 )
 
 target_link_libraries(ipcproto
     PRIVATE ${Protobuf_LITE_LIBRARIES}
 )
+
+target_compile_options(ipcproto PRIVATE "-Wno-error")
 
 if(ANDROID)
     # The protobuf logging code on Android has references to symbols in the

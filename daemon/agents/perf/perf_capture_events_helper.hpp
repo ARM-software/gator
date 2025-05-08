@@ -86,6 +86,7 @@ namespace agents::perf {
                                      std::set<pid_t> && monitored_pids)
             : event_binding_manager(std::forward<event_binding_manager_t>(event_binding_manager)),
               monitored_pids(std::move(monitored_pids)),
+              tid_enumeration_mode(configuration->tid_enumeration_mode),
               is_system_wide(isCaptureOperationModeSystemWide(configuration->session_data.capture_operation_mode)),
               stop_on_exit(configuration->session_data.stop_on_exit || !is_system_wide),
 #if (defined(GATOR_SELF_PROFILE) && GATOR_SELF_PROFILE)
@@ -161,7 +162,7 @@ namespace agents::perf {
                 (void) just_agent_tids; //gcc7 :-(
 
                 // SIGSTOP all pids so that they wait
-                auto actual_tids = lnx::stop_all_tids(pids, all_gatord_tids, all_stopped_tids);
+                auto actual_tids = lnx::stop_all_tids(pids, all_gatord_tids, all_stopped_tids, tid_enumeration_mode);
 
                 // add the detected tids to the monitor
                 for (auto tid : actual_tids) {
@@ -214,7 +215,7 @@ namespace agents::perf {
             std::vector<core_no_fd_pair_t> supplimentary_event_fds {};
 
             // collect the monitored pids and their tids
-            auto monitored_tids = find_monitored_tids(true);
+            auto monitored_tids = find_monitored_tids(tid_enumeration_mode);
 
             // get the perf agent pids
             auto [just_agent_tids, all_gatord_tids] = find_gatord_tids();
@@ -332,7 +333,7 @@ namespace agents::perf {
             std::vector<core_no_fd_pair_t> event_fds {};
 
             // collect the monitored pids and their tids
-            auto monitored_tids = find_monitored_tids(false);
+            auto monitored_tids = find_monitored_tids(lnx::tid_enumeration_mode_t::self_and_threads);
 
             // get the perf agent pids
             auto [just_agent_tids, all_gatord_tids] = find_gatord_tids();
@@ -446,7 +447,7 @@ namespace agents::perf {
             // but not for any cores that are already online as it is assumed the tid will be tracked via the 'inherit' bit
             if (!is_system_wide) {
                 // collect the monitored pids and their tids
-                auto monitored_tids = find_monitored_tids(true);
+                auto monitored_tids = find_monitored_tids(tid_enumeration_mode);
 
                 // get the perf agent pids
                 auto [just_agent_tids, all_gatord_tids] = find_gatord_tids();
@@ -562,6 +563,7 @@ namespace agents::perf {
         std::set<pid_t> monitored_pids;
         std::set<pid_t> monitored_gatord_tids {};
         std::map<pid_t, lnx::sig_continuer_t> all_stopped_tids {};
+        lnx::tid_enumeration_mode_t tid_enumeration_mode;
         bool const is_system_wide;
         bool const stop_on_exit;
         bool const profile_gator;
@@ -730,15 +732,16 @@ namespace agents::perf {
                 monitored_tids,
                 all_gatord_tids,
                 // if the global paused set is still not resumed, then extend that, otherwise just temporarily pause them
-                (initial_pause_complete ? paused_pids : all_stopped_tids));
+                (initial_pause_complete ? paused_pids : all_stopped_tids),
+                tid_enumeration_mode);
         }
 
         /** collect the monitored pids and their tids */
-        [[nodiscard]] std::set<pid_t> find_monitored_tids(bool include_forked_children)
+        [[nodiscard]] std::set<pid_t> find_monitored_tids(lnx::tid_enumeration_mode_t tid_enumeration_mode)
         {
             std::set<pid_t> result {};
             for (pid_t pid : monitored_pids) {
-                lnx::addTidsRecursively(result, pid, include_forked_children);
+                lnx::addTidsRecursively(result, pid, tid_enumeration_mode);
             }
             return result;
         }
@@ -747,11 +750,14 @@ namespace agents::perf {
         [[nodiscard]] std::pair<std::set<pid_t>, std::set<pid_t>> find_gatord_tids()
         {
             // get the perf agent pids
-            std::set<pid_t> just_agent_tids = lnx::getChildTids(lib::getpid(), false);
+            std::set<pid_t> just_agent_tids =
+                lnx::getChildTids(lib::getpid(), lnx::tid_enumeration_mode_t::self_and_threads);
             // then copy it and repeat recursively for the parent (gatord-child) pids, which will ignore any children of the perf agent
             // producing a set containing all gatord-child and agent threads, but not any forked command pid
             std::set<pid_t> all_gatord_tids = just_agent_tids;
-            lnx::addTidsRecursively(all_gatord_tids, lib::getppid(), true);
+            lnx::addTidsRecursively(all_gatord_tids,
+                                    lib::getppid(),
+                                    lnx::tid_enumeration_mode_t::self_and_threads_and_children);
 
             return {std::move(just_agent_tids), std::move(all_gatord_tids)};
         }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -6,7 +6,9 @@
 #include "GatorException.h"
 #include "Logging.h"
 #include "OlySocket.h"
+#include "ProductVersion.h"
 #include "ProtocolVersion.h"
+#include "lib/Error.h"
 
 #include <array>
 #include <cstring>
@@ -52,7 +54,7 @@ namespace capture::internal {
                 else {
                     // Should be unreachable
                     auto ss = std::stringstream("gethostname failed: (");
-                    ss << errno << ") " << strerror(errno);
+                    ss << errno << ") " << lib::strerror();
                     throw GatorException(ss.str());
                 }
 

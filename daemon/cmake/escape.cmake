@@ -1,3 +1,5 @@
+# Copyright (C) 2024 by Arm Limited (or its affiliates). All rights reserved.
+
 # Save this outside the macro so that development build will retrigger the generation of the source file if this file changes
 SET(ESCAPE_CMAKE_FILE               "${CMAKE_CURRENT_LIST_FILE}")
 SET(ESCAPE_TEMPLATE                 "${CMAKE_CURRENT_LIST_DIR}/escape.template")
