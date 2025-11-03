@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "agents/perf/events/perf_event_utils.hpp"
 
@@ -86,14 +86,16 @@ namespace agents::perf {
                           << indentation << "comm: " << (attr.comm ? "true" : "false") << separator                   //
                           << indentation << "freq: " << (attr.freq ? "true" : "false") << separator                   //
                           << indentation << "task: " << (attr.task ? "true" : "false") << separator                   //
-                          << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false")
-                          << separator //
-                          << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")
+                          << indentation << "exclude_kernel: " << (attr.exclude_kernel ? "true" : "false")            //
+                          << separator                                                                                //
+                          << indentation << "disabled: " << (attr.disabled ? "true" : "false") << separator           //
+                          << indentation << "enable_on_exec: " << (attr.enable_on_exec ? "true" : "false")            //
                           << separator                                                                                //
                           << indentation << "inherit: " << (attr.inherit ? "true" : "false") << separator             //
+                          << indentation << "inherit_stat: " << (attr.inherit_stat ? "true" : "false") << separator   //
                           << indentation << "sample_id_all: " << (attr.sample_id_all ? "true" : "false") << separator //
-                          << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator
-                          << std::dec //
+                          << indentation << "sample_regs_user: 0x" << std::hex << attr.sample_regs_user << separator  //
+                          << std::dec                                                                                 //
                           << indentation << "aux_watermark: " << attr.aux_watermark << separator);
     }
 }

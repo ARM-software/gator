@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2025 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #ifndef CONFIGURATION_H_
 #define CONFIGURATION_H_
@@ -40,7 +40,6 @@ enum class CaptureOperationMode {
                                                                            bool supports_inherit_sample_read)
 {
     switch (mode) {
-
         case CaptureOperationMode::system_wide:
         case CaptureOperationMode::application_no_inherit:
         case CaptureOperationMode::application_poll:
@@ -52,12 +51,6 @@ enum class CaptureOperationMode {
         default:
             return false;
     }
-}
-
-[[nodiscard]] constexpr bool isCaptureOperationModeSupportingMetrics(CaptureOperationMode mode,
-                                                                     bool supports_inherit_sample_read)
-{
-    return isCaptureOperationModeSupportingCounterGroups(mode, supports_inherit_sample_read);
 }
 
 [[nodiscard]] constexpr bool isCaptureOperationModeSupportingUsesInherit(CaptureOperationMode mode)
@@ -159,6 +152,12 @@ enum class GPUTimelineEnablement {
                ///< MaliTimeline_Perfetto is present - error otherwise
     automatic, ///< Enable GPU Timeline data collection if counter
                ///< MaliTimeline_Perfetto is present - do nothing otherwise
+};
+
+enum class MetricSamplingMode {
+    automatic,
+    ebs,
+    strobing,
 };
 
 #endif /* CONFIGURATION_H_ */

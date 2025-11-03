@@ -3,8 +3,8 @@
 
 /* Define the product release version */
 
-// Product version Streamline v9.7.1
-#define PRODUCT_VERSION 971
+// Product version Streamline v9.7.2
+#define PRODUCT_VERSION 972
 // Differentiates development versions from release code
 #define PRODUCT_VERSION_DEV_MULTIPLIER 100000
 // Special branch tag

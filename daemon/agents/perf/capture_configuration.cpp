@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 
 #include "agents/perf/capture_configuration.h"
 
@@ -125,6 +125,7 @@ namespace agents::perf {
                 SET_IF_NOT_NULL(cpu.getCounterSet(), cluster, set_counter_set);
                 SET_IF_NOT_NULL(cpu.getDtName(), cluster, set_dt_name);
                 SET_IF_NOT_NULL(cpu.getSpeName(), cluster, set_spe_name);
+                cluster->set_cpu_is_known_to_support_spe(cpu.getCpuIsKnownToSupportSPE());
                 cluster->set_pmnc_counters(cpu.getPmncCounters());
                 cluster->set_is_v8(cpu.getIsV8());
                 for (auto id : cpu.getCpuIds()) {
@@ -407,6 +408,7 @@ namespace agents::perf {
                                       std::move(*cluster->mutable_dt_name()),
                                       std::move(*cluster->mutable_spe_name()),
                                       std::move(*cluster->mutable_spe_version()),
+                                      cluster->cpu_is_known_to_support_spe(),
                                       std::move(cpuids),
                                       cluster->pmnc_counters(),
                                       cluster->is_v8());

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXML.h"
 
@@ -19,6 +19,7 @@ GatorCpu::GatorCpu(std::string coreName,
                    const char * dtName,
                    const char * speName,
                    const char * speVersion,
+                   bool cpuIsKnownToSupportSPE,
                    const std::set<cpu_utils::cpuid_t> & cpuIds,
                    int pmncCounters,
                    bool isV8)
@@ -28,6 +29,7 @@ GatorCpu::GatorCpu(std::string coreName,
       mDtName(dtName != nullptr ? dtName : ""),
       mSpeName(speName != nullptr ? speName : ""),
       mSpeVersion(speVersion != nullptr ? speVersion : ""),
+      mCpuIsKnownToSupportSPE(cpuIsKnownToSupportSPE),
       mCpuIds(cpuIds.begin(), cpuIds.end()),
       mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
@@ -41,6 +43,7 @@ GatorCpu::GatorCpu(std::string coreName,
                    std::string dtName,
                    std::string speName,
                    std::string speVersion,
+                   bool cpuIsKnownToSupportSPE,
                    std::set<cpu_utils::cpuid_t> const & cpuIds,
                    int pmncCounters,
                    bool isV8)
@@ -50,6 +53,7 @@ GatorCpu::GatorCpu(std::string coreName,
       mDtName(std::move(dtName)),
       mSpeName(std::move(speName)),
       mSpeVersion(std::move(speVersion)),
+      mCpuIsKnownToSupportSPE(cpuIsKnownToSupportSPE),
       mCpuIds(cpuIds.begin(), cpuIds.end()),
       mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
@@ -62,6 +66,7 @@ GatorCpu::GatorCpu(std::string coreName,
                    std::string dtName,
                    std::string speName,
                    std::string speVersion,
+                   bool cpuIsKnownToSupportSPE,
                    std::vector<cpu_utils::cpuid_t> cpuIds,
                    int pmncCounters,
                    bool isV8)
@@ -71,6 +76,7 @@ GatorCpu::GatorCpu(std::string coreName,
       mDtName(std::move(dtName)),
       mSpeName(std::move(speName)),
       mSpeVersion(std::move(speVersion)),
+      mCpuIsKnownToSupportSPE(cpuIsKnownToSupportSPE),
       mCpuIds(std::move(cpuIds)),
       mPmncCounters(gSessionData.mOverrideNoPmuSlots > 0 ? gSessionData.mOverrideNoPmuSlots : pmncCounters),
       mIsV8(isV8)
@@ -79,13 +85,14 @@ GatorCpu::GatorCpu(std::string coreName,
     std::sort(mCpuIds.begin(), mCpuIds.end());
 }
 
-GatorCpu::GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion)
+GatorCpu::GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion, bool cpuIsKnownToSupportSPE)
     : mCoreName(that.mCoreName),
       mId(that.mId),
       mCounterSet(that.mCounterSet),
       mDtName(that.mDtName),
       mSpeName(speName),
       mSpeVersion(speVersion),
+      mCpuIsKnownToSupportSPE(cpuIsKnownToSupportSPE),
       mCpuIds(that.mCpuIds),
       mPmncCounters(that.mPmncCounters),
       mIsV8(that.mIsV8)

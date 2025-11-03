@@ -275,7 +275,7 @@ static int get_correct_socket_fd(bool for_parent)
     struct sockaddr_un addr = {0};
     addr.sun_family = AF_UNIX;
 
-    char * socket_name = STREAMLINE_ANNOTATE;
+    const char * socket_name = STREAMLINE_ANNOTATE;
     size_t name_len = sizeof(STREAMLINE_ANNOTATE);
     if (for_parent) {
         socket_name = STREAMLINE_ANNOTATE_PARENT;

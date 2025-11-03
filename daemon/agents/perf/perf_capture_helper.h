@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #pragma once
 
@@ -755,6 +755,8 @@ namespace agents::perf {
                                if (!fc) {
                                    return;
                                }
+
+                               LOG_DEBUG("Exec-ing workload");
 
                                // spawn the termination observer
                                spawn("Waiting for process termination",

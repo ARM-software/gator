@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
@@ -637,6 +637,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     configuration->config.use_ftrace_for_cpu_frequency = use_ftrace_for_cpu_frequency;
 
     // detect supports_strobing_core
+    // should we do instead: if (gSessionData.mMetricSamplingMode == MetricSamplingMode::strobing) {
     {
         perf_event_attr attr {};
 
@@ -890,7 +891,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         for (auto & cpu : configuration->cpus) {
             const auto & currentValue = cpu;
             cpu = PerfCpu {
-                with_max_counters_value(GatorCpu(currentValue.gator_cpu, ARMV82_SPE, "v1p1"), max_event_count_by_cpuid),
+                with_max_counters_value(GatorCpu(currentValue.gator_cpu, ARMV82_SPE, "v1p1", true),
+                                        max_event_count_by_cpuid),
                 currentValue.pmu_type,
             };
         }
@@ -917,6 +919,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                                                  nullptr,
                                                  speName,
                                                  speVersion,
+                                                 addOtherForUnknownSpe,
                                                  unrecognisedCpuIds,
                                                  defaultPmncCounters,
                                                  true,
@@ -932,6 +935,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                                                  nullptr,
                                                  speName,
                                                  speVersion,
+                                                 addOtherForUnknownSpe,
                                                  unrecognisedCpuIds,
                                                  defaultPmncCounters,
                                                  anyV8,
@@ -947,6 +951,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                                                  nullptr,
                                                  speName,
                                                  speVersion,
+                                                 addOtherForUnknownSpe,
                                                  unrecognisedCpuIds,
                                                  defaultPmncCounters,
                                                  false,

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "linux/perf/PerfGroups.h"
 
@@ -15,7 +15,8 @@
 #include <string>
 
 perf_event_group_configurer_t perf_groups_configurer_t::getGroup(attr_to_key_mapping_tracker_t & mapping_tracker,
-                                                                 const PerfEventGroupIdentifier & groupIdentifier)
+                                                                 const PerfEventGroupIdentifier & groupIdentifier,
+                                                                 bool ebs_metric)
 {
     auto it_inserted = state.perfEventGroupMap.try_emplace(groupIdentifier);
     auto & it = it_inserted.first;
@@ -25,7 +26,7 @@ perf_event_group_configurer_t perf_groups_configurer_t::getGroup(attr_to_key_map
     // Does a group exist for this already?
     if (eventGroup.requiresLeader() && !eventGroup.hasLeader()) {
         LOG_DEBUG("    Adding group leader");
-        if (!eventGroup.createGroupLeader(mapping_tracker)) {
+        if (!eventGroup.createGroupLeader(mapping_tracker, ebs_metric)) {
             LOG_DEBUG("    Group leader not created");
         }
         else {
@@ -68,15 +69,15 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
                                    const IPerfGroups::Attr & attr,
                                    bool hasAuxData)
 {
-    if ((groupIdentifier.getType() == PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED)
-        && (!isCaptureOperationModeSupportingMetrics(configuration.captureOperationMode,
-                                                     configuration.perfConfig.supports_inherit_sample_read))) {
-        LOG_ERROR("Per-function metrics are not supported in application tracing mode when `--inherit yes` (the "
-                  "default) is used.");
+    if (attr.metric && !attr.ebs && (groupIdentifier.getType() == PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED)
+        && (!isCaptureOperationModeSupportingCounterGroups(configuration.captureOperationMode,
+                                                           configuration.perfConfig.supports_inherit_sample_read))) {
+        LOG_ERROR("Per-function metrics are not supported in application tracing mode when `--inherit yes` is used; "
+                  "disable inherit or metrics to proceed.");
         return false;
     }
 
-    auto eventGroup = getGroup(mapping_tracker, groupIdentifier);
+    auto eventGroup = getGroup(mapping_tracker, groupIdentifier, attr.ebs);
 
     LOG_FINE("Adding event: group='%s', key=%i, type=%" PRIu32 ", config=%" PRIu64 ", config1=%" PRIu64
              ", config2=%" PRIu64 ", config3=%" PRIu64 ", period=%" PRIu64 ", strobePeriod=0x%" PRIx64
@@ -110,9 +111,10 @@ bool perf_groups_configurer_t::add(attr_to_key_mapping_tracker_t & mapping_track
 
     // If we are not system wide the group leader can't read counters for us
     // so we need to add sample them individually periodically
-    if ((!isCaptureOperationModeSupportingCounterGroups(configuration.captureOperationMode,
-                                                        configuration.perfConfig.supports_inherit_sample_read))
-        && eventGroup.requiresLeader() && (attr.periodOrFreq == 0)) {
+    const bool isEbsMetric = (attr.ebs && attr.metric);
+    if (!isCaptureOperationModeSupportingCounterGroups(configuration.captureOperationMode,
+                                                       configuration.perfConfig.supports_inherit_sample_read)
+        && !isEbsMetric && eventGroup.requiresLeader() && (attr.periodOrFreq == 0)) {
         LOG_DEBUG("    Forcing as freq counter");
         newAttr.periodOrFreq =
             configuration.sampleRate > 0 && configuration.enablePeriodicSampling ? configuration.sampleRate : 10UL;

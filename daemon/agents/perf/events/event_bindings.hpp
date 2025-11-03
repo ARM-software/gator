@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #pragma once
 
@@ -523,18 +523,18 @@ namespace agents::perf {
          * @retval true if the events were successfully added
          * @retval false if the events wer not added (e.g. because the bindings were not offline, or the span is empty)
          */
-        [[nodiscard]] bool add_mixed(lib::Span<event_definition_t const> events)
+        [[nodiscard]] bool add_mixed(lib::Span<event_definition_t const> events, bool muxed_group = false)
         {
             if ((state != aggregate_state_t::offline) || events.empty()) {
                 return false;
             }
 
-            runtime_assert(is_group_leader(events.front()), "First item must be group leader");
+            runtime_assert(muxed_group || is_group_leader(events.front()), "First item must be group leader");
 
             auto & group = groups.emplace_back(events.front(), lib::Span<event_definition_t const>());
 
             for (auto const & event : events.subspan(1)) {
-                if (is_stand_alone(event)) {
+                if (is_stand_alone(event) && !muxed_group) {
                     groups.emplace_back(event, lib::Span<event_definition_t const>());
                 }
                 else {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #ifndef PERF_GROUPS_H
 #define PERF_GROUPS_H
@@ -44,9 +44,10 @@ public:
                            bool hasAuxData = false) override;
 
     void addGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker,
-                        const PerfEventGroupIdentifier & groupIdentifier) override
+                        const PerfEventGroupIdentifier & groupIdentifier,
+                        bool ebs_metric) override
     {
-        getGroup(mapping_tracker, groupIdentifier);
+        getGroup(mapping_tracker, groupIdentifier, ebs_metric);
     }
 
 private:
@@ -55,7 +56,8 @@ private:
 
     /// Get the group and create the group leader if needed
     perf_event_group_configurer_t getGroup(attr_to_key_mapping_tracker_t & mapping_tracker,
-                                           const PerfEventGroupIdentifier & groupIdentifier);
+                                           const PerfEventGroupIdentifier & groupIdentifier,
+                                           bool ebs_metric);
 
     void initHeader(attr_to_key_mapping_tracker_t & mapping_tracker);
 };

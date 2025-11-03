@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #ifndef PMUXML_H
 #define PMUXML_H
@@ -20,6 +20,7 @@ public:
              const char * dtName,
              const char * speName,
              const char * speVersion,
+             bool cpuIsKnownToSupportSPE,
              std::set<cpu_utils::cpuid_t> const & cpuIds,
              int pmncCounters,
              bool isV8);
@@ -30,11 +31,12 @@ public:
              std::string dtName,
              std::string speName,
              std::string speVersion,
+             bool cpuIsKnownToSupportSPE,
              std::set<cpu_utils::cpuid_t> const & cpuIds,
              int pmncCounters,
              bool isV8);
 
-    GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion);
+    GatorCpu(const GatorCpu & that, const char * speName, const char * speVersion, bool cpuIsKnownToSupportSPE);
 
     GatorCpu(const GatorCpu &) = default;
     GatorCpu & operator=(const GatorCpu &) = default;
@@ -50,6 +52,7 @@ public:
             mDtName,
             mSpeName,
             mSpeVersion,
+            mCpuIsKnownToSupportSPE,
             mCpuIds,
             pmncCount,
             mIsV8,
@@ -67,6 +70,8 @@ public:
     [[nodiscard]] const char * getSpeName() const { return (!mSpeName.empty() ? mSpeName.c_str() : nullptr); }
 
     [[nodiscard]] const char * getSpeVersion() const { return (!mSpeVersion.empty() ? mSpeVersion.c_str() : nullptr); }
+
+    [[nodiscard]] bool getCpuIsKnownToSupportSPE() const { return mCpuIsKnownToSupportSPE; }
 
     [[nodiscard]] bool getIsV8() const { return mIsV8; }
 
@@ -87,6 +92,7 @@ private:
     std::string mDtName;
     std::string mSpeName;
     std::string mSpeVersion;
+    bool mCpuIsKnownToSupportSPE;
     std::vector<cpu_utils::cpuid_t> mCpuIds;
     int mPmncCounters;
     bool mIsV8;
@@ -97,6 +103,7 @@ private:
              std::string dtName,
              std::string speName,
              std::string speVersion,
+             bool cpuIsKnownToSupportSPE,
              std::vector<cpu_utils::cpuid_t> cpuIds,
              int pmncCounters,
              bool isV8);

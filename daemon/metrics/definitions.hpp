@@ -203,9 +203,31 @@ namespace metrics {
         return "";
     }
 
+    struct metric_event_code_and_ratio_t {
+        std::uint16_t code;
+        std::uint16_t ebs_ratio;
+
+        constexpr metric_event_code_and_ratio_t(std::uint16_t code, std::uint16_t ebs_ratio)
+            : code(code), ebs_ratio(ebs_ratio)
+        {
+        }
+
+        constexpr friend bool operator==(metric_event_code_and_ratio_t const & a,
+                                         metric_event_code_and_ratio_t const & b)
+        {
+            return (a.code == b.code) && (a.ebs_ratio == b.ebs_ratio);
+        }
+
+        constexpr friend bool operator!=(metric_event_code_and_ratio_t const & a,
+                                         metric_event_code_and_ratio_t const & b)
+        {
+            return !(a == b);
+        }
+    };
+
     /** Definition of a single metric */
     struct metric_events_set_t {
-        std::initializer_list<std::uint16_t> event_codes;
+        std::initializer_list<metric_event_code_and_ratio_t> event_codes;
         std::string_view identifier;
         std::string_view title;
         std::string_view description;
@@ -214,6 +236,7 @@ namespace metrics {
         metric_priority_t priority_group;
         metric_arch_t arch;
         std::initializer_list<metric_group_id_t> groups;
+        bool uses_cycles;
     };
 
     /** Represents a single entry in the hierarchy */
@@ -301,4 +324,16 @@ namespace metrics {
      * Map group title from enum
      */
     [[nodiscard]] extern std::string_view metric_group_title(metric_group_id_t id);
+}
+
+namespace std {
+    template<>
+    struct hash<metrics::metric_event_code_and_ratio_t> {
+        using argument_type = metrics::metric_event_code_and_ratio_t;
+        using result_type = std::size_t;
+        result_type operator()(argument_type const & v) const noexcept
+        {
+            return (std::size_t(v.code) << 16U) | std::size_t(v.ebs_ratio);
+        }
+    };
 }

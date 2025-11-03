@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2025 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "GatorCLIParser.h"
 
@@ -44,55 +44,60 @@ namespace {
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
     constexpr int SPE_MAX_SAMPLE_RATE = 1000000000;
 
+    enum {
+        OPT_METRIC_MODE = 256,
+    };
+
     constexpr const char * OPTSTRING_SHORT =
         ":ac:de:f:g:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:I:JLM:N:O:P:Q:R:S:TW:VX:Y:Z:";
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
                                              // Remaining free letters are: bjqyBGHKU
-        {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
-        {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
-        {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
-        {"events-xml", /*************/ required_argument, nullptr, 'e'}, //
-        {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'}, //
-        {"gpu-timeline", /***********/ required_argument, nullptr, 'g'}, //
-        {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
-        {"pid", /********************/ required_argument, nullptr, 'i'}, //
-        {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
-        ANDROID_PACKAGE,                                                 //
-        ANDROID_ACTIVITY,                                                //
-        PACKAGE_FLAGS,                                                   //
-        {"output", /*****************/ required_argument, nullptr, 'o'}, //
-        {"port", /*******************/ required_argument, nullptr, 'p'}, //
-        {"sample-rate", /************/ required_argument, nullptr, 'r'}, //
-        {"session-xml", /************/ required_argument, nullptr, 's'}, //
-        {"max-duration", /***********/ required_argument, nullptr, 't'}, //
-        {"call-stack-unwinding", /***/ required_argument, nullptr, 'u'}, //
-        {"version", /****************/ no_argument, /***/ nullptr, 'v'}, //
-        {"app-cwd", /****************/ required_argument, nullptr, 'w'}, //
-        {"stop-on-exit", /***********/ required_argument, nullptr, 'x'}, //
-        {"smmuv3-model", /***********/ required_argument, nullptr, 'z'}, //
-        APP,                                                             //
-        {"counters", /***************/ required_argument, nullptr, 'C'}, //
-        {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'}, //
-        {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
-        {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
-        {"inherit", /****************/ required_argument, nullptr, 'I'}, //
-        {"probe-report", /***********/ no_argument, /***/ nullptr, 'J'}, //
-        {"capture-log", /************/ no_argument, /***/ nullptr, 'L'}, //
-        {"metric-group", /***********/ required_argument, nullptr, 'M'}, //
-        {"num-pmu-counters", /*******/ required_argument, nullptr, 'N'}, //
-        {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
-        {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
-        WAIT_PROCESS,                                                    //
-        {"print", /******************/ required_argument, nullptr, 'R'}, //
-        {"system-wide", /************/ required_argument, nullptr, 'S'}, //
-        {"trace", /******************/ no_argument, /***/ nullptr, 'T'}, //
-        {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
-        {"workflow", /***************/ required_argument, nullptr, 'W'}, //
-        {"spe", /********************/ required_argument, nullptr, 'X'}, //
-        {"off-cpu-time", /***********/ required_argument, nullptr, 'Y'}, //
-        {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
+        {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'},             //
+        {"config-xml", /*************/ required_argument, nullptr, 'c'},             //
+        {"debug", /******************/ no_argument, /***/ nullptr, 'd'},             //
+        {"events-xml", /*************/ required_argument, nullptr, 'e'},             //
+        {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'},             //
+        {"gpu-timeline", /***********/ required_argument, nullptr, 'g'},             //
+        {"help", /*******************/ no_argument, /***/ nullptr, 'h'},             //
+        {"pid", /********************/ required_argument, nullptr, 'i'},             //
+        {"exclude-kernel", /*********/ required_argument, nullptr, 'k'},             //
+        ANDROID_PACKAGE,                                                             //
+        ANDROID_ACTIVITY,                                                            //
+        PACKAGE_FLAGS,                                                               //
+        {"output", /*****************/ required_argument, nullptr, 'o'},             //
+        {"port", /*******************/ required_argument, nullptr, 'p'},             //
+        {"sample-rate", /************/ required_argument, nullptr, 'r'},             //
+        {"session-xml", /************/ required_argument, nullptr, 's'},             //
+        {"max-duration", /***********/ required_argument, nullptr, 't'},             //
+        {"call-stack-unwinding", /***/ required_argument, nullptr, 'u'},             //
+        {"version", /****************/ no_argument, /***/ nullptr, 'v'},             //
+        {"app-cwd", /****************/ required_argument, nullptr, 'w'},             //
+        {"stop-on-exit", /***********/ required_argument, nullptr, 'x'},             //
+        {"smmuv3-model", /***********/ required_argument, nullptr, 'z'},             //
+        APP,                                                                         //
+        {"counters", /***************/ required_argument, nullptr, 'C'},             //
+        {"disable-kernel-annotations", no_argument, /***/ nullptr, 'D'},             //
+        {"append-events-xml", /******/ required_argument, nullptr, 'E'},             //
+        {"spe-sample-rate", /********/ required_argument, nullptr, 'F'},             //
+        {"inherit", /****************/ required_argument, nullptr, 'I'},             //
+        {"probe-report", /***********/ no_argument, /***/ nullptr, 'J'},             //
+        {"capture-log", /************/ no_argument, /***/ nullptr, 'L'},             //
+        {"metric-group", /***********/ required_argument, nullptr, 'M'},             //
+        {"num-pmu-counters", /*******/ required_argument, nullptr, 'N'},             //
+        {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'},             //
+        {"pmus-xml", /***************/ required_argument, nullptr, 'P'},             //
+        WAIT_PROCESS,                                                                //
+        {"print", /******************/ required_argument, nullptr, 'R'},             //
+        {"system-wide", /************/ required_argument, nullptr, 'S'},             //
+        {"trace", /******************/ no_argument, /***/ nullptr, 'T'},             //
+        {"version", /****************/ no_argument, /***/ nullptr, 'V'},             //
+        {"workflow", /***************/ required_argument, nullptr, 'W'},             //
+        {"spe", /********************/ required_argument, nullptr, 'X'},             //
+        {"off-cpu-time", /***********/ required_argument, nullptr, 'Y'},             //
+        {"mmap-pages", /*************/ required_argument, nullptr, 'Z'},             //
+        {"metric-mode", /************/ required_argument, nullptr, OPT_METRIC_MODE}, //
         {nullptr, 0, nullptr, 0}};
 
     const char PRINTABLE_SEPARATOR = ',';
@@ -501,7 +506,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
     bool inheritSet = false;
     bool systemWideSet = false;
     bool userSetIncludeKernelEvents = false;
-    optind = 1;
+    int current_opt;
+    current_opt = optind = 1;
     opterr = 0; // Tell getopt_long not to report errors
     int c;
     while ((c = getopt_long(argc, argv, OPTSTRING_SHORT, OPTSTRING_LONG, nullptr)) != -1) {
@@ -548,7 +554,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     result.mGPUTimelineEnablement = GPUTimelineEnablement::automatic;
                 }
                 else {
-                    result.error_messages.emplace_back(lib::Format() << "Invalid argument for -g/--gpu-timeline (" << optarg << ")");
+                    result.error_messages.emplace_back(lib::Format()
+                                                       << "Invalid argument for -g/--gpu-timeline (" << optarg << ")");
                     result.parsingFailed();
                     return;
                 }
@@ -937,10 +944,30 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 result.mHasProbeReportFlag = GatorCLIParser::hasProbeReportFlag(argc, argv);
                 break;
             }
+            case OPT_METRIC_MODE: {
+                result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_METRIC_SAMPLING_MODE;
+                if (strcmp(optarg, "ebs") == 0) {
+                    result.mMetricMode = MetricSamplingMode::ebs;
+                }
+                else if (strcmp(optarg, "strobing") == 0) {
+                    result.mMetricMode = MetricSamplingMode::strobing;
+                }
+                else if (strcmp(optarg, "auto") == 0) {
+                    result.mMetricMode = MetricSamplingMode::automatic;
+                }
+                else {
+                    result.error_messages.emplace_back(lib::Format()
+                                                       << "Unknown metric mode [" << optarg
+                                                       << R"(]. Expected one of "ebs", "strobing", "auto".)");
+                    result.parsingFailed();
+                    return;
+                }
+                break;
+            }
             case ':': // Missing argument
             case '?': // Unrecognised
             default: {
-                const char * opt_string = argv[optind - 1];
+                const char * opt_string = argv[current_opt];
                 while (*opt_string == '-') {
                     opt_string++;
                 }
@@ -952,6 +979,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 return;
             }
         }
+
+        current_opt = optind;
     }
     if (indexApp > 0) {
         //Some --app args was found
@@ -1107,6 +1136,7 @@ void GatorCLIParser::parseCLIArguments(int argc,
         result.parsingFailed();
         return;
     }
+
     // Error checking
     if (optind < argc) {
         result.error_messages.emplace_back(lib::Format() << "Unknown argument:" << argv[optind]
@@ -1234,19 +1264,10 @@ mode specify an output directory with --output.
                                         partially (e.g., 483_43b).
   -Y|--off-cpu-time (yes|no)            Collect Off-CPU time statistics.
                                         Detailed statistics require 'root' permission.
-  -I|--inherit (yes|no|poll|experimental)
-                                        When profiling an application, gatord
+  -I|--inherit (yes|no)                 When profiling an application, gatord
                                         monitors all threads and child processes.
                                         Specify 'no' to monitor only the initial
-                                        thread of the application. Specify 'poll' to
-                                        periodically poll for new processes/threads.
-                                        Specify "experimental" if you have applied
-                                        the kernel patches provided by Arm for
-                                        top-down profiling.
-                                        NB: Per-function metrics are only supported in
-                                        system-wide mode, or when '--inherit' is set to
-                                        'no', 'poll' or 'experimental'. The default
-                                        is 'yes'.
+                                        thread of the application.
   -N|--num-pmu-counters <n>             Override the number of programmable PMU
                                         counters that are available.
                                         This option reduces the number of programmable

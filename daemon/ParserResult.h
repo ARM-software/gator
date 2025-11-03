@@ -70,6 +70,7 @@ public:
     GPUTimelineEnablement mGPUTimelineEnablement {GPUTimelineEnablement::automatic};
 
     CaptureOperationMode mCaptureOperationMode = CaptureOperationMode::system_wide;
+    MetricSamplingMode mMetricMode = MetricSamplingMode::automatic;
 
     bool mFtraceRaw {false};
     bool mStopGator {false};

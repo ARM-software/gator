@@ -6,6 +6,7 @@
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
 #include "CpuUtils.h"
+#include "ExitStatus.h"
 #include "GatorCLIFlags.h"
 #include "GatorCLIParser.h"
 #include "ICpuInfo.h"
@@ -14,11 +15,11 @@
 #include "ParserResult.h"
 #include "ProductVersion.h"
 #include "SessionData.h"
+#include "SetupChecks.h"
 #include "android/AndroidActivityManager.h"
 #include "capture/CaptureProcess.h"
 #include "capture/Environment.h"
 #include "lib/Format.h"
-#include "lib/FsEntry.h"
 #include "lib/Process.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -40,7 +41,6 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -75,7 +75,8 @@ This collects all SPE events, no filters are applied when using this workflow."}
     void handler(int signum)
     {
         if (::write(signalPipe[1], &signum, sizeof(signum)) != sizeof(signum)) {
-            handleException();
+            // We can't do any useful cleanup during a signal handler, so just exit
+            _exit(SIGNAL_NOTIFICATION_FAILED_CODE);
         }
     }
 
@@ -569,6 +570,8 @@ void setDefaults()
     // use_efficient_ftrace default is yes
     gSessionData.mFtraceRaw = true;
     gSessionData.mOverrideNoPmuSlots = -1;
+    // metric mode
+    gSessionData.mMetricSamplingMode = MetricSamplingMode::automatic;
 #if defined(WIN32)
     // TODO
     gSessionData.mCaptureUser = nullptr;
@@ -647,6 +650,10 @@ void updateSessionData(const ParserResult & result)
     }
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) != 0) {
         gSessionData.mEnableOffCpuSampling = result.mEnableOffCpuSampling;
+    }
+
+    if ((result.parameterSetFlag & USE_CMDLINE_ARG_METRIC_SAMPLING_MODE) != 0) {
+        gSessionData.mMetricSamplingMode = result.mMetricMode;
     }
 }
 
@@ -959,6 +966,13 @@ bool run_setup_probes(Drivers & drivers,
         LOG_ERROR(system_wide_not_available);
         do_handle_exception = true;
         return true;
+    }
+
+    if (!result.mSpeConfigs.empty()) {
+        if (!check_spe_available(setup_warnings, drivers.getPrimarySourceProvider().getCpuInfo().getClusters())) {
+            do_handle_exception = true;
+            return true;
+        }
     }
 
     return false;

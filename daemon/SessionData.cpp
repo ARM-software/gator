@@ -127,6 +127,22 @@ void SessionData::parseSessionXML(char * xmlString)
         }
     }
 
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_METRIC_SAMPLING_MODE) == 0) {
+        if (session.parameters.metric_sampling_mode == "strobing") {
+            mMetricSamplingMode = MetricSamplingMode::strobing;
+        }
+        else if (session.parameters.metric_sampling_mode == "ebs") {
+            mMetricSamplingMode = MetricSamplingMode::ebs;
+        }
+        else if (session.parameters.metric_sampling_mode == "auto") {
+            mMetricSamplingMode = MetricSamplingMode::automatic;
+        }
+        else {
+            LOG_ERROR("Invalid value (%s) for metric_sampling_mode.", session.parameters.metric_sampling_mode.c_str());
+            handleException();
+        }
+    }
+
     mLiveRate = 0;
     if (session.parameters.live_rate > 0) {
         if (mLocalCapture) {

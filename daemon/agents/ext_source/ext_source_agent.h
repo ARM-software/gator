@@ -384,7 +384,7 @@ namespace agents {
                     LOG_DEBUG("Failed to setup %s. Is the socket already in use?", name.data());
                 }
                 else if constexpr (std::is_same_v<ProtocolType, uds_protocol_t>) {
-                    LOG_WARNING("Failed to setup %s. Is the socket already in use?", name.data());
+                    LOG_DEBUG("Failed to setup %s. Is the socket already in use?", name.data());
                 }
                 else {
                     static_assert(lib::always_false<ProtocolType>::value, "Log call not implemented for socket type.");

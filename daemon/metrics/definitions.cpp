@@ -3,7 +3,7 @@
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // This file is generated and has a matching component in Streamline.
 // Do not manually modify the metric definitions without doing the same in Streamline.
-// Updated on 2025-09-01T13:59:41.290222464 using <unknown> - HEAD (0e1508cfe032c43ac4c6fecc773ebbcaab16643c) - "Added SME2 Utilization template"
+// Updated on 2025-10-08T10:06:59.620412191 using eu-gerrit-1.euhpc.arm.com:29418/dsg/streamline - origin/changes/94/812594/2 (1b72a88ebef859f413efb6af8259e293c1f4a337) - "Fix typo in cpu-counters.xml"
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #include "metrics/definitions.hpp"
@@ -16,7 +16,7 @@ namespace metrics {
     namespace {
         [[maybe_unused]] const metric_events_set_t backend_bound_0 {
             {
-                std::uint16_t(0x003d),
+                {std::uint16_t(0x003d), 10},
             },
             "backend_bound",
             "Backend Bound",
@@ -30,11 +30,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t backend_bound_1 {
             {
-                std::uint16_t(0x003d),
-                std::uint16_t(0x0010),
+                {std::uint16_t(0x003d), 10},
+                {std::uint16_t(0x0010), 100},
             },
             "backend_bound",
             "Backend Bound",
@@ -48,11 +49,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t backend_busy_bound_0 {
             {
-                std::uint16_t(0x816b),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x816b), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_busy_bound",
             "Backend Busy Bound",
@@ -65,11 +67,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_busy_ls_bound_0 {
             {
-                std::uint16_t(0x0024),
-                std::uint16_t(0x00f1),
+                {std::uint16_t(0x0024), 10},
+                {std::uint16_t(0x00f1), 100},
             },
             "backend_busy_ls_bound",
             "Backend Busy LS Bound",
@@ -82,11 +85,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_busy_vpu_arb_bound_0 {
             {
-                std::uint16_t(0x00ef),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x00ef), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_busy_vpu_arb_bound",
             "Backend Busy VPU Arbitration Bound",
@@ -99,11 +103,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cache_l1d_bound_0 {
             {
-                std::uint16_t(0x4005),
-                std::uint16_t(0x8165),
+                {std::uint16_t(0x4005), 100},
+                {std::uint16_t(0x8165), 100},
             },
             "backend_cache_l1d_bound",
             "Backend Cache L1D Bound",
@@ -116,11 +121,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cache_l2d_bound_0 {
             {
-                std::uint16_t(0x4005),
-                std::uint16_t(0x8165),
+                {std::uint16_t(0x4005), 100},
+                {std::uint16_t(0x8165), 100},
             },
             "backend_cache_l2d_bound",
             "Backend Cache L2D Bound",
@@ -133,11 +139,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cme_backpressure_bound_0 {
             {
-                std::uint16_t(0x3200),
-                std::uint16_t(0x3201),
+                {std::uint16_t(0x3200), 100},
+                {std::uint16_t(0x3201), 100},
             },
             "backend_cme_backpressure_bound",
             "Backend SME Backpressure Bound",
@@ -150,11 +157,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_cme,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cme_busy_arb_bound_0 {
             {
-                std::uint16_t(0x3200),
-                std::uint16_t(0x3202),
+                {std::uint16_t(0x3200), 100},
+                {std::uint16_t(0x3202), 100},
             },
             "backend_cme_busy_arb_bound",
             "Backend SME Arbitration Bound",
@@ -167,11 +175,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_cme,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cme_busy_bound_0 {
             {
-                std::uint16_t(0x3200),
-                std::uint16_t(0x816b),
+                {std::uint16_t(0x3200), 100},
+                {std::uint16_t(0x816b), 100},
             },
             "backend_cme_busy_bound",
             "Backend SME Busy Bound",
@@ -183,10 +192,11 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_cme,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cme_busy_bound_1 {
             {
-                std::uint16_t(0x3200),
+                {std::uint16_t(0x3200), 100},
             },
             "backend_cme_busy_bound",
             "Backend SME Busy Bound",
@@ -198,11 +208,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_cme,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_cme_cpu_bound_0 {
             {
-                std::uint16_t(0x3203),
-                std::uint16_t(0x3200),
+                {std::uint16_t(0x3203), 100},
+                {std::uint16_t(0x3200), 100},
             },
             "backend_cme_cpu_bound",
             "Backend SME CPU Bound",
@@ -215,11 +226,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_cme,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_core_bound_0 {
             {
-                std::uint16_t(0x0024),
-                std::uint16_t(0x816a),
+                {std::uint16_t(0x0024), 10},
+                {std::uint16_t(0x816a), 100},
             },
             "backend_core_bound",
             "Backend Core Bound",
@@ -232,11 +244,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_core_cme_bound_0 {
             {
-                std::uint16_t(0x3200),
-                std::uint16_t(0x816a),
+                {std::uint16_t(0x3200), 100},
+                {std::uint16_t(0x816a), 100},
             },
             "backend_core_cme_bound",
             "Backend Core SME Bound",
@@ -249,12 +262,13 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_core_other_bound_0 {
             {
-                std::uint16_t(0x1003),
-                std::uint16_t(0x1005),
-                std::uint16_t(0x816a),
+                {std::uint16_t(0x1003), 100},
+                {std::uint16_t(0x1005), 100},
+                {std::uint16_t(0x816a), 100},
             },
             "backend_core_other_bound",
             "Backend Core Other Bound",
@@ -267,11 +281,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_core_other_bound_1 {
             {
-                std::uint16_t(0x1338),
-                std::uint16_t(0x816a),
+                {std::uint16_t(0x1338), 100},
+                {std::uint16_t(0x816a), 100},
             },
             "backend_core_other_bound",
             "Backend Core Other Bound",
@@ -284,11 +299,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_core_rename_bound_0 {
             {
-                std::uint16_t(0x816a),
-                std::uint16_t(0x816d),
+                {std::uint16_t(0x816a), 100},
+                {std::uint16_t(0x816d), 100},
             },
             "backend_core_rename_bound",
             "Backend Core Rename Bound",
@@ -301,11 +317,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_core_spec_throttle_bound_0 {
             {
-                std::uint16_t(0x3009),
-                std::uint16_t(0x816a),
+                {std::uint16_t(0x3009), 100},
+                {std::uint16_t(0x816a), 100},
             },
             "backend_core_spec_throttle_bound",
             "Backend Core Specuation Throttle Bound",
@@ -318,11 +335,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_bound_0 {
             {
-                std::uint16_t(0x4005),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x4005), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_mem_bound",
             "Backend Memory Bound",
@@ -335,11 +353,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_bound_1 {
             {
-                std::uint16_t(0x0024),
-                std::uint16_t(0x8164),
+                {std::uint16_t(0x0024), 10},
+                {std::uint16_t(0x8164), 100},
             },
             "backend_mem_bound",
             "Backend Memory Bound",
@@ -352,12 +371,13 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cache_bound_0 {
             {
-                std::uint16_t(0x4005),
-                std::uint16_t(0x8165),
-                std::uint16_t(0x8164),
+                {std::uint16_t(0x4005), 100},
+                {std::uint16_t(0x8165), 100},
+                {std::uint16_t(0x8164), 100},
             },
             "backend_mem_cache_bound",
             "Backend Mem Cache Bound",
@@ -370,12 +390,13 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cache_bound_1 {
             {
-                std::uint16_t(0x4005),
-                std::uint16_t(0x8165),
-                std::uint16_t(0x8164),
+                {std::uint16_t(0x4005), 100},
+                {std::uint16_t(0x8165), 100},
+                {std::uint16_t(0x8164), 100},
             },
             "backend_mem_cache_bound",
             "Backend Memory Cache Bound",
@@ -388,11 +409,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cme_barrier_bound_0 {
             {
-                std::uint16_t(0x3210),
-                std::uint16_t(0x320d),
+                {std::uint16_t(0x3210), 100},
+                {std::uint16_t(0x320d), 100},
             },
             "backend_mem_cme_barrier_bound",
             "Backend SME LSRT Barrier Bound",
@@ -405,11 +427,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cme_bound_0 {
             {
-                std::uint16_t(0x3210),
-                std::uint16_t(0x8164),
+                {std::uint16_t(0x3210), 100},
+                {std::uint16_t(0x8164), 100},
             },
             "backend_mem_cme_bound",
             "Backend Memory SME Bound",
@@ -424,11 +447,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cme_hazard_cpu_bound_0 {
             {
-                std::uint16_t(0x3210),
-                std::uint16_t(0x320e),
+                {std::uint16_t(0x3210), 100},
+                {std::uint16_t(0x320e), 100},
             },
             "backend_mem_cme_hazard_cpu_bound",
             "Backend SME Memory Hazard CPU Bound",
@@ -442,11 +466,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cme_lsrt_full_bound_0 {
             {
-                std::uint16_t(0x3210),
-                std::uint16_t(0x320c),
+                {std::uint16_t(0x3210), 100},
+                {std::uint16_t(0x320c), 100},
             },
             "backend_mem_cme_lsrt_full_bound",
             "Backend SME LSRT Full Bound",
@@ -460,11 +485,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_cpu_hazard_cme_bound_0 {
             {
-                std::uint16_t(0x3210),
-                std::uint16_t(0x320f),
+                {std::uint16_t(0x3210), 100},
+                {std::uint16_t(0x320f), 100},
             },
             "backend_mem_cpu_hazard_cme_bound",
             "Backend CPU Memory Hazard SME Bound",
@@ -479,11 +505,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_store_bound_0 {
             {
-                std::uint16_t(0x8168),
-                std::uint16_t(0x8164),
+                {std::uint16_t(0x8168), 100},
+                {std::uint16_t(0x8164), 100},
             },
             "backend_mem_store_bound",
             "Backend Mem Store Bound",
@@ -496,11 +523,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_store_bound_1 {
             {
-                std::uint16_t(0x8168),
-                std::uint16_t(0x8164),
+                {std::uint16_t(0x8168), 100},
+                {std::uint16_t(0x8164), 100},
             },
             "backend_mem_store_bound",
             "Backend Memory Store Bound",
@@ -513,11 +541,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_tlb_bound_0 {
             {
-                std::uint16_t(0x8164),
-                std::uint16_t(0x8167),
+                {std::uint16_t(0x8164), 100},
+                {std::uint16_t(0x8167), 100},
             },
             "backend_mem_tlb_bound",
             "Backend Mem Tlb Bound",
@@ -530,11 +559,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_mem_tlb_bound_1 {
             {
-                std::uint16_t(0x8164),
-                std::uint16_t(0x8167),
+                {std::uint16_t(0x8164), 100},
+                {std::uint16_t(0x8167), 100},
             },
             "backend_mem_tlb_bound",
             "Backend Memory TLB Bound",
@@ -547,11 +577,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_bound_0 {
             {
-                std::uint16_t(0x00e4),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x00e4), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_stall_interlock_bound",
             "Backend Stall Interlock Rate",
@@ -565,11 +596,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_bound_1 {
             {
-                std::uint16_t(0x816c),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x816c), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_stall_interlock_bound",
             "Backend Stall Interlock Rate",
@@ -583,11 +615,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_ls_bound_0 {
             {
-                std::uint16_t(0x00f2),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x00f2), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_stall_interlock_ls_bound",
             "Backend Stall memory source interlock",
@@ -602,11 +635,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_ptr_chase_bound_0 {
             {
-                std::uint16_t(0x0024),
-                std::uint16_t(0x00f3),
+                {std::uint16_t(0x0024), 10},
+                {std::uint16_t(0x00f3), 100},
             },
             "backend_stall_interlock_ptr_chase_bound",
             "Backend Stall pointer chase interlock Rate",
@@ -622,11 +656,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_stall_interlock_vpu_bound_0 {
             {
-                std::uint16_t(0x00e6),
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x00e6), 100},
+                {std::uint16_t(0x0024), 10},
             },
             "backend_stall_interlock_vpu_bound",
             "Backend Stall VPU source interlock",
@@ -639,10 +674,11 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t backend_stalled_cycles_0 {
             {
-                std::uint16_t(0x0024),
+                {std::uint16_t(0x0024), 10},
             },
             "backend_stalled_cycles",
             "Backend Stalled Cycles",
@@ -656,13 +692,14 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cycle_accounting,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t bad_speculation_0 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
-                std::uint16_t(0x8162),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003f), 10},
+                {std::uint16_t(0x003b), 10},
+                {std::uint16_t(0x8162), 100},
             },
             "bad_speculation",
             "Bad Speculation",
@@ -676,13 +713,14 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t bad_speculation_1 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
-                std::uint16_t(0x0010),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003f), 10},
+                {std::uint16_t(0x003b), 10},
+                {std::uint16_t(0x0010), 100},
             },
             "bad_speculation",
             "Bad Speculation",
@@ -696,13 +734,14 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t bad_speculation_2 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
-                std::uint16_t(0x0010),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003f), 10},
+                {std::uint16_t(0x003b), 10},
+                {std::uint16_t(0x0010), 100},
             },
             "bad_speculation",
             "Bad Speculation",
@@ -716,13 +755,14 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t barrier_percentage_0 {
             {
-                std::uint16_t(0x007e),
-                std::uint16_t(0x007d),
-                std::uint16_t(0x001b),
-                std::uint16_t(0x007c),
+                {std::uint16_t(0x007e), 10},
+                {std::uint16_t(0x007d), 10},
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x007c), 10},
             },
             "barrier_percentage",
             "Barrier Operations Percentage",
@@ -735,11 +775,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_direct_ratio_0 {
             {
-                std::uint16_t(0x0021),
-                std::uint16_t(0x000d),
+                {std::uint16_t(0x0021), 10},
+                {std::uint16_t(0x000d), 10},
             },
             "branch_direct_ratio",
             "Branch Direct Percentage",
@@ -753,11 +794,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::branch_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_indirect_ratio_0 {
             {
-                std::uint16_t(0x0021),
-                std::uint16_t(0x811d),
+                {std::uint16_t(0x0021), 10},
+                {std::uint16_t(0x811d), 10},
             },
             "branch_indirect_ratio",
             "Branch Indirect Percentage",
@@ -771,11 +813,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::branch_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_misprediction_ratio_0 {
             {
-                std::uint16_t(0x0021),
-                std::uint16_t(0x0022),
+                {std::uint16_t(0x0021), 10},
+                {std::uint16_t(0x0022), 100},
             },
             "branch_misprediction_ratio",
             "Branch Misprediction Percentage",
@@ -790,11 +833,12 @@ namespace metrics {
                 metric_group_id_t::branch_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_mpki_0 {
             {
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0010),
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0010), 100},
             },
             "branch_mpki",
             "Branch MPKI",
@@ -807,11 +851,12 @@ namespace metrics {
                 metric_group_id_t::branch_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_mpki_1 {
             {
-                std::uint16_t(0x0022),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0022), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "branch_mpki",
             "Branch MPKI",
@@ -825,12 +870,13 @@ namespace metrics {
                 metric_group_id_t::branch_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_percentage_0 {
             {
-                std::uint16_t(0x0078),
-                std::uint16_t(0x007a),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0078), 10},
+                {std::uint16_t(0x007a), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "branch_percentage",
             "Branch Operations Percentage",
@@ -842,12 +888,13 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_percentage_1 {
             {
-                std::uint16_t(0x0076),
-                std::uint16_t(0x001b),
-                std::uint16_t(0x007c),
+                {std::uint16_t(0x0076), 10},
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x007c), 10},
             },
             "branch_percentage",
             "Branch Operations Percentage",
@@ -859,11 +906,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_percentage_2 {
             {
-                std::uint16_t(0x0076),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0076), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "branch_percentage",
             "Branch Operations Percentage",
@@ -875,10 +923,11 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t branch_port_utilization_0 {
             {
-                std::uint16_t(0x3000),
+                {std::uint16_t(0x3000), 10},
             },
             "branch_port_utilization",
             "Branch Execution Unit Utilization",
@@ -891,11 +940,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::port_utilization,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t branch_return_ratio_0 {
             {
-                std::uint16_t(0x0021),
-                std::uint16_t(0x000e),
+                {std::uint16_t(0x0021), 10},
+                {std::uint16_t(0x000e), 10},
             },
             "branch_return_ratio",
             "Branch Return Percentage",
@@ -909,12 +959,13 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::branch_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t bus_access_average_count_0 {
             {
-                std::uint16_t(0x0061),
-                std::uint16_t(0x818f),
-                std::uint16_t(0x0060),
+                {std::uint16_t(0x0061), 1},
+                {std::uint16_t(0x818f), 1},
+                {std::uint16_t(0x0060), 1},
             },
             "bus_access_average_count",
             "Bus Access Average Count",
@@ -927,11 +978,12 @@ namespace metrics {
             {
                 metric_group_id_t::bus_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t bus_read_requests_average_latency_0 {
             {
-                std::uint16_t(0x8125),
-                std::uint16_t(0x818d),
+                {std::uint16_t(0x8125), 1},
+                {std::uint16_t(0x818d), 1},
             },
             "bus_read_requests_average_latency",
             "Bus Read Request Average Latency",
@@ -945,11 +997,12 @@ namespace metrics {
                 metric_group_id_t::average_latency,
                 metric_group_id_t::bus_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cas_far_ratio_0 {
             {
-                std::uint16_t(0x8174),
-                std::uint16_t(0x8172),
+                {std::uint16_t(0x8174), 10},
+                {std::uint16_t(0x8172), 10},
             },
             "cas_far_ratio",
             "Compare and Swap Far Percentage",
@@ -962,11 +1015,12 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cas_near_fail_ratio_0 {
             {
-                std::uint16_t(0x8172),
-                std::uint16_t(0x8171),
+                {std::uint16_t(0x8172), 10},
+                {std::uint16_t(0x8171), 100},
             },
             "cas_near_fail_ratio",
             "Compare and Swap Near Fail Percentage",
@@ -979,11 +1033,12 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cas_near_pass_ratio_0 {
             {
-                std::uint16_t(0x8172),
-                std::uint16_t(0x8171),
+                {std::uint16_t(0x8172), 10},
+                {std::uint16_t(0x8171), 100},
             },
             "cas_near_pass_ratio",
             "Compare and Swap Near Pass Percentage",
@@ -996,11 +1051,12 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cas_near_ratio_0 {
             {
-                std::uint16_t(0x8174),
-                std::uint16_t(0x8172),
+                {std::uint16_t(0x8174), 10},
+                {std::uint16_t(0x8172), 10},
             },
             "cas_near_ratio",
             "Compare and Swap Near Percentage",
@@ -1013,10 +1069,11 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_alloc_cycles_ratio_0 {
             {
-                std::uint16_t(0x3213),
+                {std::uint16_t(0x3213), 10},
             },
             "cme_alloc_cycles_ratio",
             "SME Allocation Cycles Percentage",
@@ -1029,11 +1086,12 @@ namespace metrics {
             {
                 metric_group_id_t::cycle_accounting,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t cme_alu_port_utilization_0 {
             {
-                std::uint16_t(0x3246),
-                std::uint16_t(0x3260),
+                {std::uint16_t(0x3246), 1},
+                {std::uint16_t(0x3260), 10},
             },
             "cme_alu_port_utilization",
             "SME Arithmetic EU Utilization",
@@ -1045,10 +1103,11 @@ namespace metrics {
             {
                 metric_group_id_t::cme_port_utilization,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_arb_pending_ratio_0 {
             {
-                std::uint16_t(0x3214),
+                {std::uint16_t(0x3214), 10},
             },
             "cme_arb_pending_ratio",
             "SME Arbitration Pending Cycles Percentage",
@@ -1061,11 +1120,12 @@ namespace metrics {
             {
                 metric_group_id_t::cycle_accounting,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t cme_backend_bound_0 {
             {
-                std::uint16_t(0x324d),
-                std::uint16_t(0x3246),
+                {std::uint16_t(0x324d), 10},
+                {std::uint16_t(0x3246), 1},
             },
             "cme_backend_bound",
             "SME Backend Bound",
@@ -1079,11 +1139,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_topdown_l1,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_backend_core_bound_0 {
             {
-                std::uint16_t(0x324d),
-                std::uint16_t(0x324e),
+                {std::uint16_t(0x324d), 10},
+                {std::uint16_t(0x324e), 100},
             },
             "cme_backend_core_bound",
             "SME Backend Core Bound",
@@ -1096,11 +1157,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_backend_mem_bound_0 {
             {
-                std::uint16_t(0x324f),
-                std::uint16_t(0x324d),
+                {std::uint16_t(0x324f), 100},
+                {std::uint16_t(0x324d), 10},
             },
             "cme_backend_mem_bound",
             "SME Backend Memory Bound",
@@ -1113,11 +1175,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_backend_mem_cache_bound_0 {
             {
-                std::uint16_t(0x324f),
-                std::uint16_t(0x3251),
+                {std::uint16_t(0x324f), 100},
+                {std::uint16_t(0x3251), 100},
             },
             "cme_backend_mem_cache_bound",
             "SME Backend Cache Bound",
@@ -1130,11 +1193,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_backend_mem_store_bound_0 {
             {
-                std::uint16_t(0x324f),
-                std::uint16_t(0x3252),
+                {std::uint16_t(0x324f), 100},
+                {std::uint16_t(0x3252), 100},
             },
             "cme_backend_mem_store_bound",
             "SME Backend Store Bound",
@@ -1147,11 +1211,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_backend_prefetch_bound_0 {
             {
-                std::uint16_t(0x324d),
-                std::uint16_t(0x3250),
+                {std::uint16_t(0x324d), 10},
+                {std::uint16_t(0x3250), 100},
             },
             "cme_backend_prefetch_bound",
             "SME Backend Prefetch Bound",
@@ -1164,11 +1229,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_backend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_bus_access_average_length_0 {
             {
-                std::uint16_t(0x3267),
-                std::uint16_t(0x326b),
+                {std::uint16_t(0x3267), 1},
+                {std::uint16_t(0x326b), 1},
             },
             "cme_bus_access_average_length",
             "SME Bus Access Average Length",
@@ -1180,11 +1246,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_bus_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_frontend_bound_0 {
             {
-                std::uint16_t(0x3246),
-                std::uint16_t(0x324a),
+                {std::uint16_t(0x3246), 1},
+                {std::uint16_t(0x324a), 10},
             },
             "cme_frontend_bound",
             "SME Frontend Bound",
@@ -1198,11 +1265,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_topdown_l1,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_frontend_cpu_bound_0 {
             {
-                std::uint16_t(0x324a),
-                std::uint16_t(0x324b),
+                {std::uint16_t(0x324a), 10},
+                {std::uint16_t(0x324b), 100},
             },
             "cme_frontend_cpu_bound",
             "SME Frontend CPU Bound",
@@ -1215,11 +1283,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_frontend_other_bound_0 {
             {
-                std::uint16_t(0x324a),
-                std::uint16_t(0x324c),
+                {std::uint16_t(0x324a), 10},
+                {std::uint16_t(0x324c), 100},
             },
             "cme_frontend_other_bound",
             "SME Frontend Other CPU Bound",
@@ -1232,11 +1301,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_ipc_0 {
             {
-                std::uint16_t(0x3247),
-                std::uint16_t(0x3246),
+                {std::uint16_t(0x3247), 10},
+                {std::uint16_t(0x3246), 1},
             },
             "cme_ipc",
             "SME IPC",
@@ -1249,11 +1319,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_general,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_iq_dp0_stall_percentage_0 {
             {
-                std::uint16_t(0x325d),
-                std::uint16_t(0x324d),
+                {std::uint16_t(0x325d), 100},
+                {std::uint16_t(0x324d), 10},
             },
             "cme_iq_dp0_stall_percentage",
             "IQ DP0 Stall Percentage",
@@ -1266,11 +1337,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_iq_dp1_stall_percentage_0 {
             {
-                std::uint16_t(0x324d),
-                std::uint16_t(0x325e),
+                {std::uint16_t(0x324d), 10},
+                {std::uint16_t(0x325e), 100},
             },
             "cme_iq_dp1_stall_percentage",
             "IQ DP1 Stall Percentage",
@@ -1283,11 +1355,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_iq_load_stall_percentage_0 {
             {
-                std::uint16_t(0x325f),
-                std::uint16_t(0x324d),
+                {std::uint16_t(0x325f), 100},
+                {std::uint16_t(0x324d), 10},
             },
             "cme_iq_load_stall_percentage",
             "IQ Load Stall Percentage",
@@ -1300,12 +1373,13 @@ namespace metrics {
             {
                 metric_group_id_t::cme_iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l1_prefetcher_accuracy_0 {
             {
-                std::uint16_t(0x32b2),
-                std::uint16_t(0x32ad),
-                std::uint16_t(0x3274),
+                {std::uint16_t(0x32b2), 100},
+                {std::uint16_t(0x32ad), 100},
+                {std::uint16_t(0x3274), 10},
             },
             "cme_l1_prefetcher_accuracy",
             "SME L1D Cache Prefetcher Accuracy",
@@ -1317,13 +1391,14 @@ namespace metrics {
             {
                 metric_group_id_t::cme_prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l1_prefetcher_coverage_0 {
             {
-                std::uint16_t(0x3281),
-                std::uint16_t(0x32ad),
-                std::uint16_t(0x3274),
-                std::uint16_t(0x3280),
+                {std::uint16_t(0x3281), 100},
+                {std::uint16_t(0x32ad), 100},
+                {std::uint16_t(0x3274), 10},
+                {std::uint16_t(0x3280), 100},
             },
             "cme_l1_prefetcher_coverage",
             "SME L1D Cache Prefetcher Coverage",
@@ -1335,11 +1410,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l1_prefetcher_timeliness_0 {
             {
-                std::uint16_t(0x32ad),
-                std::uint16_t(0x3274),
+                {std::uint16_t(0x32ad), 100},
+                {std::uint16_t(0x3274), 10},
             },
             "cme_l1_prefetcher_timeliness",
             "SME L1D Cache Prefetcher Timeliness",
@@ -1351,11 +1427,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l1d_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x326f),
-                std::uint16_t(0x3270),
+                {std::uint16_t(0x326f), 10},
+                {std::uint16_t(0x3270), 10},
             },
             "cme_l1d_cache_hit_ratio",
             "SME L1D Cache Hit Percentage",
@@ -1370,11 +1447,12 @@ namespace metrics {
                 metric_group_id_t::cme_l1d_cache_effectiveness,
                 metric_group_id_t::cme_miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l1d_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x326f),
-                std::uint16_t(0x327c),
+                {std::uint16_t(0x326f), 10},
+                {std::uint16_t(0x327c), 100},
             },
             "cme_l1d_cache_miss_ratio",
             "SME L1D Cache Miss Percentage",
@@ -1389,11 +1467,12 @@ namespace metrics {
                 metric_group_id_t::cme_l1d_cache_effectiveness,
                 metric_group_id_t::cme_miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l1d_cache_mpki_0 {
             {
-                std::uint16_t(0x327c),
-                std::uint16_t(0x3247),
+                {std::uint16_t(0x327c), 100},
+                {std::uint16_t(0x3247), 10},
             },
             "cme_l1d_cache_mpki",
             "SME L1D Cache MPKI",
@@ -1408,11 +1487,12 @@ namespace metrics {
                 metric_group_id_t::cme_l1d_cache_effectiveness,
                 metric_group_id_t::cme_mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l3d_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x3287),
-                std::uint16_t(0x328e),
+                {std::uint16_t(0x3287), 10},
+                {std::uint16_t(0x328e), 10},
             },
             "cme_l3d_cache_hit_ratio",
             "SME L3D Cache Hit Percentage",
@@ -1427,11 +1507,12 @@ namespace metrics {
                 metric_group_id_t::cme_l3d_cache_effectiveness,
                 metric_group_id_t::cme_miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l3d_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x3287),
-                std::uint16_t(0x3290),
+                {std::uint16_t(0x3287), 10},
+                {std::uint16_t(0x3290), 100},
             },
             "cme_l3d_cache_miss_ratio",
             "SME L3D Cache Miss Percentage",
@@ -1446,11 +1527,12 @@ namespace metrics {
                 metric_group_id_t::cme_l3d_cache_effectiveness,
                 metric_group_id_t::cme_miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_l3d_cache_mpki_0 {
             {
-                std::uint16_t(0x3247),
-                std::uint16_t(0x3290),
+                {std::uint16_t(0x3247), 10},
+                {std::uint16_t(0x3290), 100},
             },
             "cme_l3d_cache_mpki",
             "SME L3D Cache MPKI",
@@ -1465,11 +1547,12 @@ namespace metrics {
                 metric_group_id_t::cme_l3d_cache_effectiveness,
                 metric_group_id_t::cme_mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_ll_cache_read_hit_ratio_0 {
             {
-                std::uint16_t(0x3295),
-                std::uint16_t(0x3294),
+                {std::uint16_t(0x3295), 100},
+                {std::uint16_t(0x3294), 10},
             },
             "cme_ll_cache_read_hit_ratio",
             "SME LL Cache Read Hit Percentage",
@@ -1482,11 +1565,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_ll_cache_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_ll_cache_read_miss_ratio_0 {
             {
-                std::uint16_t(0x3295),
-                std::uint16_t(0x3294),
+                {std::uint16_t(0x3295), 100},
+                {std::uint16_t(0x3294), 10},
             },
             "cme_ll_cache_read_miss_ratio",
             "SME LL Cache Read Miss Percentage",
@@ -1501,11 +1585,12 @@ namespace metrics {
                 metric_group_id_t::cme_ll_cache_effectiveness,
                 metric_group_id_t::cme_miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_ll_cache_read_mpki_0 {
             {
-                std::uint16_t(0x3295),
-                std::uint16_t(0x3247),
+                {std::uint16_t(0x3295), 100},
+                {std::uint16_t(0x3247), 10},
             },
             "cme_ll_cache_read_mpki",
             "SME LL Cache Read MPKI",
@@ -1520,11 +1605,12 @@ namespace metrics {
                 metric_group_id_t::cme_ll_cache_effectiveness,
                 metric_group_id_t::cme_mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_load_percentage_0 {
             {
-                std::uint16_t(0x3254),
-                std::uint16_t(0x3247),
+                {std::uint16_t(0x3254), 10},
+                {std::uint16_t(0x3247), 10},
             },
             "cme_load_percentage",
             "SME Load Operations Percentage",
@@ -1537,11 +1623,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_mac_port_utilization_0 {
             {
-                std::uint16_t(0x3261),
-                std::uint16_t(0x3246),
+                {std::uint16_t(0x3261), 10},
+                {std::uint16_t(0x3246), 1},
             },
             "cme_mac_port_utilization",
             "SME MAC EU Utilization",
@@ -1553,11 +1640,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_port_utilization,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_mmdp_port_utilization_0 {
             {
-                std::uint16_t(0x3246),
-                std::uint16_t(0x3264),
+                {std::uint16_t(0x3246), 1},
+                {std::uint16_t(0x3264), 10},
             },
             "cme_mmdp_port_utilization",
             "Matmul Datapath EU Utilization",
@@ -1570,11 +1658,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_port_utilization,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_mmmv_port_utilization_0 {
             {
-                std::uint16_t(0x3265),
-                std::uint16_t(0x3246),
+                {std::uint16_t(0x3265), 10},
+                {std::uint16_t(0x3246), 1},
             },
             "cme_mmmv_port_utilization",
             "Matmul Move EU Utilization",
@@ -1587,11 +1676,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_port_utilization,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_perm_port_utilization_0 {
             {
-                std::uint16_t(0x3262),
-                std::uint16_t(0x3246),
+                {std::uint16_t(0x3262), 10},
+                {std::uint16_t(0x3246), 1},
             },
             "cme_perm_port_utilization",
             "Permute EU Utilization",
@@ -1603,12 +1693,13 @@ namespace metrics {
             {
                 metric_group_id_t::cme_port_utilization,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_retiring_0 {
             {
-                std::uint16_t(0x324d),
-                std::uint16_t(0x3246),
-                std::uint16_t(0x324a),
+                {std::uint16_t(0x324d), 10},
+                {std::uint16_t(0x3246), 1},
+                {std::uint16_t(0x324a), 10},
             },
             "cme_retiring",
             "SME Retiring",
@@ -1621,11 +1712,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_topdown_l1,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_st_port_utilization_0 {
             {
-                std::uint16_t(0x3263),
-                std::uint16_t(0x3246),
+                {std::uint16_t(0x3263), 10},
+                {std::uint16_t(0x3246), 1},
             },
             "cme_st_port_utilization",
             "Store EU Utilization",
@@ -1637,11 +1729,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_port_utilization,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_store_percentage_0 {
             {
-                std::uint16_t(0x3259),
-                std::uint16_t(0x3247),
+                {std::uint16_t(0x3259), 10},
+                {std::uint16_t(0x3247), 10},
             },
             "cme_store_percentage",
             "SME Store Operations Percentage",
@@ -1654,11 +1747,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_system_dram_mem_hit_ratio_0 {
             {
-                std::uint16_t(0x327c),
-                std::uint16_t(0x32ac),
+                {std::uint16_t(0x327c), 100},
+                {std::uint16_t(0x32ac), 1},
             },
             "cme_system_dram_mem_hit_ratio",
             "SME System DRAM Hit Percentage",
@@ -1671,11 +1765,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_system_l3d_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x327c),
-                std::uint16_t(0x328e),
+                {std::uint16_t(0x327c), 100},
+                {std::uint16_t(0x328e), 10},
             },
             "cme_system_l3d_cache_hit_ratio",
             "SME System L3D Cache Hit Percentage",
@@ -1688,11 +1783,12 @@ namespace metrics {
             {
                 metric_group_id_t::cme_system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cme_system_ll_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x327c),
-                std::uint16_t(0x3296),
+                {std::uint16_t(0x327c), 100},
+                {std::uint16_t(0x3296), 10},
             },
             "cme_system_ll_cache_hit_ratio",
             "SME System Last Level Cache Hit Percentage",
@@ -1706,10 +1802,11 @@ namespace metrics {
             {
                 metric_group_id_t::cme_system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t cpi_0 {
             {
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0008), 1},
             },
             "cpi",
             "Cycles Per Instruction",
@@ -1721,11 +1818,12 @@ namespace metrics {
             {
                 metric_group_id_t::general,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t crypto_percentage_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x0077),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x0077), 10},
             },
             "crypto_percentage",
             "Crypto Operations Percentage",
@@ -1737,11 +1835,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_mpki_0 {
             {
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0034),
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0034), 100},
             },
             "dtlb_mpki",
             "DTLB MPKI",
@@ -1754,11 +1853,12 @@ namespace metrics {
                 metric_group_id_t::dtlb_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_average_depth_0 {
             {
-                std::uint16_t(0x8136),
-                std::uint16_t(0x0034),
+                {std::uint16_t(0x8136), 10},
+                {std::uint16_t(0x0034), 100},
             },
             "dtlb_walk_average_depth",
             "DTLB Walk Average Depth of Accesses",
@@ -1770,11 +1870,12 @@ namespace metrics {
             {
                 metric_group_id_t::dtlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_average_latency_0 {
             {
-                std::uint16_t(0x8128),
-                std::uint16_t(0x0034),
+                {std::uint16_t(0x8128), 100},
+                {std::uint16_t(0x0034), 100},
             },
             "dtlb_walk_average_latency",
             "DTLB Walk Average Latency",
@@ -1787,11 +1888,12 @@ namespace metrics {
                 metric_group_id_t::average_latency,
                 metric_group_id_t::dtlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_block_ratio_0 {
             {
-                std::uint16_t(0x8188),
-                std::uint16_t(0x0025),
+                {std::uint16_t(0x8188), 100},
+                {std::uint16_t(0x0025), 10},
             },
             "dtlb_walk_block_ratio",
             "DTLB Walk Block Percentage",
@@ -1804,11 +1906,12 @@ namespace metrics {
             {
                 metric_group_id_t::dtlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_large_ratio_0 {
             {
-                std::uint16_t(0x8138),
-                std::uint16_t(0x0025),
+                {std::uint16_t(0x8138), 100},
+                {std::uint16_t(0x0025), 10},
             },
             "dtlb_walk_large_ratio",
             "DTLB Walk Large Page Percentage",
@@ -1821,11 +1924,12 @@ namespace metrics {
             {
                 metric_group_id_t::dtlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_page_ratio_0 {
             {
-                std::uint16_t(0x818a),
-                std::uint16_t(0x0025),
+                {std::uint16_t(0x818a), 100},
+                {std::uint16_t(0x0025), 10},
             },
             "dtlb_walk_page_ratio",
             "DTLB Walk Page Percentage",
@@ -1838,11 +1942,12 @@ namespace metrics {
             {
                 metric_group_id_t::dtlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_ratio_0 {
             {
-                std::uint16_t(0x0025),
-                std::uint16_t(0x0034),
+                {std::uint16_t(0x0025), 10},
+                {std::uint16_t(0x0034), 100},
             },
             "dtlb_walk_ratio",
             "DTLB Walk Percentage",
@@ -1856,11 +1961,12 @@ namespace metrics {
                 metric_group_id_t::dtlb_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_small_ratio_0 {
             {
-                std::uint16_t(0x813a),
-                std::uint16_t(0x0025),
+                {std::uint16_t(0x813a), 100},
+                {std::uint16_t(0x0025), 10},
             },
             "dtlb_walk_small_ratio",
             "DTLB Walk Small Page Percentage",
@@ -1873,11 +1979,12 @@ namespace metrics {
             {
                 metric_group_id_t::dtlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t fp16_percentage_0 {
             {
-                std::uint16_t(0x8014),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x8014), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "fp16_percentage",
             "Half Precision Floating Point Percentage",
@@ -1890,11 +1997,12 @@ namespace metrics {
             {
                 metric_group_id_t::fp_precision_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t fp32_percentage_0 {
             {
-                std::uint16_t(0x8018),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x8018), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "fp32_percentage",
             "Single Precision Floating Point Percentage",
@@ -1907,11 +2015,12 @@ namespace metrics {
             {
                 metric_group_id_t::fp_precision_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t fp64_percentage_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x801c),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x801c), 10},
             },
             "fp64_percentage",
             "Double Precision Floating Point Percentage",
@@ -1924,11 +2033,12 @@ namespace metrics {
             {
                 metric_group_id_t::fp_precision_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t fp_ops_per_cycle_0 {
             {
-                std::uint16_t(0x80c0),
-                std::uint16_t(0x80c1),
+                {std::uint16_t(0x80c0), 10},
+                {std::uint16_t(0x80c1), 10},
             },
             "fp_ops_per_cycle",
             "Floating Point Operations per Cycle",
@@ -1942,11 +2052,12 @@ namespace metrics {
             {
                 metric_group_id_t::fp_arithmetic_intensity,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t frontend_bound_0 {
             {
-                std::uint16_t(0x003e),
-                std::uint16_t(0x8162),
+                {std::uint16_t(0x003e), 10},
+                {std::uint16_t(0x8162), 100},
             },
             "frontend_bound",
             "Frontend Bound",
@@ -1960,11 +2071,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t frontend_bound_1 {
             {
-                std::uint16_t(0x003e),
-                std::uint16_t(0x0010),
+                {std::uint16_t(0x003e), 10},
+                {std::uint16_t(0x0010), 100},
             },
             "frontend_bound",
             "Frontend Bound",
@@ -1978,11 +2090,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t frontend_bound_2 {
             {
-                std::uint16_t(0x003e),
-                std::uint16_t(0x0010),
+                {std::uint16_t(0x003e), 10},
+                {std::uint16_t(0x0010), 100},
             },
             "frontend_bound",
             "Frontend Bound",
@@ -1996,11 +2109,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t frontend_cache_l1i_bound_0 {
             {
-                std::uint16_t(0x8159),
-                std::uint16_t(0x815b),
+                {std::uint16_t(0x8159), 100},
+                {std::uint16_t(0x815b), 100},
             },
             "frontend_cache_l1i_bound",
             "Frontend Cache L1I Bound",
@@ -2013,11 +2127,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_cache_l2i_bound_0 {
             {
-                std::uint16_t(0x8159),
-                std::uint16_t(0x815b),
+                {std::uint16_t(0x8159), 100},
+                {std::uint16_t(0x815b), 100},
             },
             "frontend_cache_l2i_bound",
             "Frontend Cache L2I Bound",
@@ -2030,11 +2145,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_bound_0 {
             {
-                std::uint16_t(0x8160),
-                std::uint16_t(0x0023),
+                {std::uint16_t(0x8160), 100},
+                {std::uint16_t(0x0023), 10},
             },
             "frontend_core_bound",
             "Frontend Core Bound",
@@ -2047,11 +2163,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_flow_bound_0 {
             {
-                std::uint16_t(0x8161),
-                std::uint16_t(0x8160),
+                {std::uint16_t(0x8161), 100},
+                {std::uint16_t(0x8160), 100},
             },
             "frontend_core_flow_bound",
             "Frontend Core Flow Bound",
@@ -2064,11 +2181,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_flush_bound_0 {
             {
-                std::uint16_t(0x8160),
-                std::uint16_t(0x8162),
+                {std::uint16_t(0x8160), 100},
+                {std::uint16_t(0x8162), 100},
             },
             "frontend_core_flush_bound",
             "Frontend Core Flush Bound",
@@ -2081,11 +2199,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_flush_machine_clear_bound_0 {
             {
-                std::uint16_t(0x8162),
-                std::uint16_t(0x3006),
+                {std::uint16_t(0x8162), 100},
+                {std::uint16_t(0x3006), 100},
             },
             "frontend_core_flush_machine_clear_bound",
             "Frontend Core Flush Machine Clear Bound",
@@ -2098,11 +2217,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_flush_resteer_bound_0 {
             {
-                std::uint16_t(0x3007),
-                std::uint16_t(0x8162),
+                {std::uint16_t(0x3007), 100},
+                {std::uint16_t(0x8162), 100},
             },
             "frontend_core_flush_resteer_bound",
             "Frontend Core Flush Branch Resteer Bound",
@@ -2115,11 +2235,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_core_spec_throttle_bound_0 {
             {
-                std::uint16_t(0x3005),
-                std::uint16_t(0x8160),
+                {std::uint16_t(0x3005), 100},
+                {std::uint16_t(0x8160), 100},
             },
             "frontend_core_spec_throttle_bound",
             "Frontend Core Specuation Throttle Bound",
@@ -2132,11 +2253,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_mem_bound_0 {
             {
-                std::uint16_t(0x8158),
-                std::uint16_t(0x0023),
+                {std::uint16_t(0x8158), 100},
+                {std::uint16_t(0x0023), 10},
             },
             "frontend_mem_bound",
             "Frontend Memory Bound",
@@ -2149,12 +2271,13 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_mem_cache_bound_0 {
             {
-                std::uint16_t(0x8158),
-                std::uint16_t(0x8159),
-                std::uint16_t(0x815b),
+                {std::uint16_t(0x8158), 100},
+                {std::uint16_t(0x8159), 100},
+                {std::uint16_t(0x815b), 100},
             },
             "frontend_mem_cache_bound",
             "Frontend Mem Cache Bound",
@@ -2167,11 +2290,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_mem_tlb_bound_0 {
             {
-                std::uint16_t(0x815c),
-                std::uint16_t(0x8158),
+                {std::uint16_t(0x815c), 100},
+                {std::uint16_t(0x8158), 100},
             },
             "frontend_mem_tlb_bound",
             "Frontend Mem TLB Bound",
@@ -2184,10 +2308,11 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_frontend,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t frontend_stalled_cycles_0 {
             {
-                std::uint16_t(0x0023),
+                {std::uint16_t(0x0023), 10},
             },
             "frontend_stalled_cycles",
             "Frontend Stalled Cycles",
@@ -2201,11 +2326,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cycle_accounting,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t instruction_fetch_average_latency_0 {
             {
-                std::uint16_t(0x8120),
-                std::uint16_t(0x8124),
+                {std::uint16_t(0x8120), 1},
+                {std::uint16_t(0x8124), 1},
             },
             "instruction_fetch_average_latency",
             "Instruction Fetch Average Latency",
@@ -2217,10 +2343,11 @@ namespace metrics {
             {
                 metric_group_id_t::average_latency,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t int_port_utilization_0 {
             {
-                std::uint16_t(0x3001),
+                {std::uint16_t(0x3001), 10},
             },
             "int_port_utilization",
             "Integer Execution Unit Utilization",
@@ -2233,12 +2360,13 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::port_utilization,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t integer_dp_percentage_0 {
             {
-                std::uint16_t(0x007d),
-                std::uint16_t(0x0073),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x007d), 10},
+                {std::uint16_t(0x0073), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "integer_dp_percentage",
             "Integer Operations Percentage",
@@ -2251,11 +2379,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t integer_dp_percentage_1 {
             {
-                std::uint16_t(0x0073),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0073), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "integer_dp_percentage",
             "Integer Operations Percentage",
@@ -2268,10 +2397,11 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t ipc_0 {
             {
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0008), 1},
             },
             "ipc",
             "Instructions Per Cycle",
@@ -2284,11 +2414,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::general,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t iq_stall_lsu_percentage_0 {
             {
-                std::uint16_t(0x015e),
-                std::uint16_t(0x816b),
+                {std::uint16_t(0x015e), 100},
+                {std::uint16_t(0x816b), 100},
             },
             "iq_stall_lsu_percentage",
             "Load/Store IQ Stall Percentage",
@@ -2301,11 +2432,12 @@ namespace metrics {
             {
                 metric_group_id_t::iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t iq_stall_mx_percentage_0 {
             {
-                std::uint16_t(0x015d),
-                std::uint16_t(0x816b),
+                {std::uint16_t(0x015d), 100},
+                {std::uint16_t(0x816b), 100},
             },
             "iq_stall_mx_percentage",
             "Integer MX IQ Stall Percentage",
@@ -2318,11 +2450,12 @@ namespace metrics {
             {
                 metric_group_id_t::iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t iq_stall_sx_percentage_0 {
             {
-                std::uint16_t(0x816b),
-                std::uint16_t(0x015c),
+                {std::uint16_t(0x816b), 100},
+                {std::uint16_t(0x015c), 100},
             },
             "iq_stall_sx_percentage",
             "Integer SX IQ Stall Percentage",
@@ -2335,11 +2468,12 @@ namespace metrics {
             {
                 metric_group_id_t::iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t iq_stall_vpu_percentage_0 {
             {
-                std::uint16_t(0x816b),
-                std::uint16_t(0x015f),
+                {std::uint16_t(0x816b), 100},
+                {std::uint16_t(0x015f), 100},
             },
             "iq_stall_vpu_percentage",
             "Vector IQ Stall Percentage",
@@ -2352,11 +2486,12 @@ namespace metrics {
             {
                 metric_group_id_t::iq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_mpki_0 {
             {
-                std::uint16_t(0x0035),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0035), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "itlb_mpki",
             "ITLB MPKI",
@@ -2369,11 +2504,12 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_average_depth_0 {
             {
-                std::uint16_t(0x0035),
-                std::uint16_t(0x8137),
+                {std::uint16_t(0x0035), 100},
+                {std::uint16_t(0x8137), 10},
             },
             "itlb_walk_average_depth",
             "ITLB Walk Average Depth of Accesses",
@@ -2385,11 +2521,12 @@ namespace metrics {
             {
                 metric_group_id_t::itlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_average_latency_0 {
             {
-                std::uint16_t(0x0035),
-                std::uint16_t(0x8129),
+                {std::uint16_t(0x0035), 100},
+                {std::uint16_t(0x8129), 100},
             },
             "itlb_walk_average_latency",
             "ITLB Walk Average Latency",
@@ -2402,11 +2539,12 @@ namespace metrics {
                 metric_group_id_t::average_latency,
                 metric_group_id_t::itlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_block_ratio_0 {
             {
-                std::uint16_t(0x0026),
-                std::uint16_t(0x8189),
+                {std::uint16_t(0x0026), 10},
+                {std::uint16_t(0x8189), 100},
             },
             "itlb_walk_block_ratio",
             "ITLB Walk Block Percentage",
@@ -2420,11 +2558,12 @@ namespace metrics {
             {
                 metric_group_id_t::itlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_large_ratio_0 {
             {
-                std::uint16_t(0x8139),
-                std::uint16_t(0x0026),
+                {std::uint16_t(0x8139), 100},
+                {std::uint16_t(0x0026), 10},
             },
             "itlb_walk_large_ratio",
             "ITLB Walk Large Page Percentage",
@@ -2437,11 +2576,12 @@ namespace metrics {
             {
                 metric_group_id_t::itlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_page_ratio_0 {
             {
-                std::uint16_t(0x818b),
-                std::uint16_t(0x0026),
+                {std::uint16_t(0x818b), 100},
+                {std::uint16_t(0x0026), 10},
             },
             "itlb_walk_page_ratio",
             "ITLB Walk Page Percentage",
@@ -2454,11 +2594,12 @@ namespace metrics {
             {
                 metric_group_id_t::itlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_ratio_0 {
             {
-                std::uint16_t(0x0035),
-                std::uint16_t(0x0026),
+                {std::uint16_t(0x0035), 100},
+                {std::uint16_t(0x0026), 10},
             },
             "itlb_walk_ratio",
             "ITLB Walk Percentage",
@@ -2472,11 +2613,12 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t itlb_walk_small_ratio_0 {
             {
-                std::uint16_t(0x813b),
-                std::uint16_t(0x0026),
+                {std::uint16_t(0x813b), 100},
+                {std::uint16_t(0x0026), 10},
             },
             "itlb_walk_small_ratio",
             "ITLB Walk Small Page Percentage",
@@ -2489,12 +2631,13 @@ namespace metrics {
             {
                 metric_group_id_t::itlb_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1_prefetcher_accuracy_0 {
             {
-                std::uint16_t(0x81ec),
-                std::uint16_t(0x81bc),
-                std::uint16_t(0x826c),
+                {std::uint16_t(0x81ec), 10},
+                {std::uint16_t(0x81bc), 100},
+                {std::uint16_t(0x826c), 100},
             },
             "l1_prefetcher_accuracy",
             "L1D Prefetcher Accuracy",
@@ -2506,12 +2649,13 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1_prefetcher_accuracy_1 {
             {
-                std::uint16_t(0x81ec),
-                std::uint16_t(0x81bc),
-                std::uint16_t(0x826c),
+                {std::uint16_t(0x81ec), 10},
+                {std::uint16_t(0x81bc), 100},
+                {std::uint16_t(0x826c), 100},
             },
             "l1_prefetcher_accuracy",
             "L1D Prefetcher Accuracy",
@@ -2523,13 +2667,14 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1_prefetcher_coverage_0 {
             {
-                std::uint16_t(0x81ec),
-                std::uint16_t(0x0042),
-                std::uint16_t(0x0043),
-                std::uint16_t(0x826c),
+                {std::uint16_t(0x81ec), 10},
+                {std::uint16_t(0x0042), 100},
+                {std::uint16_t(0x0043), 100},
+                {std::uint16_t(0x826c), 100},
             },
             "l1_prefetcher_coverage",
             "L1D Prefetcher Coverage",
@@ -2541,11 +2686,12 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1_prefetcher_timeliness_0 {
             {
-                std::uint16_t(0x81ec),
-                std::uint16_t(0x826c),
+                {std::uint16_t(0x81ec), 10},
+                {std::uint16_t(0x826c), 100},
             },
             "l1_prefetcher_timeliness",
             "L1D Prefetcher Timeliness",
@@ -2557,12 +2703,13 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_demand_mpki_0 {
             {
-                std::uint16_t(0x0042),
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0043),
+                {std::uint16_t(0x0042), 100},
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0043), 100},
             },
             "l1d_cache_demand_mpki",
             "L1D Cache Demand MPKI",
@@ -2576,12 +2723,13 @@ namespace metrics {
                 metric_group_id_t::l1d_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x0042),
-                std::uint16_t(0x8140),
-                std::uint16_t(0x0043),
+                {std::uint16_t(0x0042), 100},
+                {std::uint16_t(0x8140), 10},
+                {std::uint16_t(0x0043), 100},
             },
             "l1d_cache_miss_ratio",
             "L1D Cache Miss Percentage",
@@ -2596,11 +2744,12 @@ namespace metrics {
                 metric_group_id_t::l1d_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_miss_ratio_1 {
             {
-                std::uint16_t(0x0003),
-                std::uint16_t(0x0004),
+                {std::uint16_t(0x0003), 100},
+                {std::uint16_t(0x0004), 10},
             },
             "l1d_cache_miss_ratio",
             "L1D Cache Miss Percentage",
@@ -2615,12 +2764,13 @@ namespace metrics {
                 metric_group_id_t::l1d_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_mpki_0 {
             {
-                std::uint16_t(0x0042),
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0043),
+                {std::uint16_t(0x0042), 100},
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0043), 100},
             },
             "l1d_cache_mpki",
             "L1D Cache MPKI",
@@ -2634,11 +2784,12 @@ namespace metrics {
                 metric_group_id_t::l1d_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_mpki_1 {
             {
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0003),
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0003), 100},
             },
             "l1d_cache_mpki",
             "L1D Cache MPKI",
@@ -2652,11 +2803,12 @@ namespace metrics {
                 metric_group_id_t::l1d_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_tlb_miss_ratio_0 {
             {
-                std::uint16_t(0x0005),
-                std::uint16_t(0x0025),
+                {std::uint16_t(0x0005), 100},
+                {std::uint16_t(0x0025), 10},
             },
             "l1d_tlb_miss_ratio",
             "L1 Data TLB Miss Percentage",
@@ -2670,11 +2822,12 @@ namespace metrics {
                 metric_group_id_t::dtlb_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1d_tlb_mpki_0 {
             {
-                std::uint16_t(0x0005),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0005), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l1d_tlb_mpki",
             "L1 Data TLB MPKI",
@@ -2687,11 +2840,12 @@ namespace metrics {
                 metric_group_id_t::dtlb_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1i_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x0001),
-                std::uint16_t(0x0014),
+                {std::uint16_t(0x0001), 100},
+                {std::uint16_t(0x0014), 10},
             },
             "l1i_cache_miss_ratio",
             "L1I Cache Miss Percentage",
@@ -2707,11 +2861,12 @@ namespace metrics {
                 metric_group_id_t::l1i_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1i_cache_mpki_0 {
             {
-                std::uint16_t(0x0001),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0001), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l1i_cache_mpki",
             "L1I Cache MPKI",
@@ -2726,11 +2881,12 @@ namespace metrics {
                 metric_group_id_t::l1i_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1i_tlb_miss_ratio_0 {
             {
-                std::uint16_t(0x0002),
-                std::uint16_t(0x0026),
+                {std::uint16_t(0x0002), 100},
+                {std::uint16_t(0x0026), 10},
             },
             "l1i_tlb_miss_ratio",
             "L1 Instruction TLB Miss Percentage",
@@ -2744,11 +2900,12 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l1i_tlb_mpki_0 {
             {
-                std::uint16_t(0x0002),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0002), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l1i_tlb_mpki",
             "L1 Instruction TLB MPKI",
@@ -2762,12 +2919,13 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x0052),
-                std::uint16_t(0x0053),
-                std::uint16_t(0x8148),
+                {std::uint16_t(0x0052), 100},
+                {std::uint16_t(0x0053), 100},
+                {std::uint16_t(0x8148), 10},
             },
             "l2_cache_miss_ratio",
             "L2 Cache Miss Percentage",
@@ -2784,11 +2942,12 @@ namespace metrics {
                 metric_group_id_t::l2_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_miss_ratio_1 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0016),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0016), 10},
             },
             "l2_cache_miss_ratio",
             "L2 Cache Miss Percentage",
@@ -2805,12 +2964,13 @@ namespace metrics {
                 metric_group_id_t::l2_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_mpki_0 {
             {
-                std::uint16_t(0x0052),
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0053),
+                {std::uint16_t(0x0052), 100},
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0053), 100},
             },
             "l2_cache_mpki",
             "L2 Cache MPKI",
@@ -2826,11 +2986,12 @@ namespace metrics {
                 metric_group_id_t::l2_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_mpki_1 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l2_cache_mpki",
             "L2 Cache MPKI",
@@ -2846,12 +3007,13 @@ namespace metrics {
                 metric_group_id_t::l2_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_exclusive_0 {
             {
-                std::uint16_t(0x81ed),
-                std::uint16_t(0x81bd),
-                std::uint16_t(0x826d),
+                {std::uint16_t(0x81ed), 10},
+                {std::uint16_t(0x81bd), 100},
+                {std::uint16_t(0x826d), 100},
             },
             "l2_prefetcher_accuracy_l1hwprf_exclusive",
             "L2 Cache Prefetcher Accuracy (L1 HW prefetch exclusive)",
@@ -2863,12 +3025,13 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_exclusive_1 {
             {
-                std::uint16_t(0x81ed),
-                std::uint16_t(0x81bd),
-                std::uint16_t(0x826d),
+                {std::uint16_t(0x81ed), 10},
+                {std::uint16_t(0x81bd), 100},
+                {std::uint16_t(0x826d), 100},
             },
             "l2_prefetcher_accuracy_l1hwprf_exclusive",
             "L2 Cache Prefetcher Accuracy (L1 HW prefetch exclusive)",
@@ -2880,12 +3043,13 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_inclusive_0 {
             {
-                std::uint16_t(0x0179),
-                std::uint16_t(0x010b),
-                std::uint16_t(0x81bd),
+                {std::uint16_t(0x0179), 10},
+                {std::uint16_t(0x010b), 100},
+                {std::uint16_t(0x81bd), 100},
             },
             "l2_prefetcher_accuracy_l1hwprf_inclusive",
             "L2 Cache Prefetcher Accuracy (L1 HW prefetch inclusive)",
@@ -2897,12 +3061,13 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_inclusive_1 {
             {
-                std::uint16_t(0x0179),
-                std::uint16_t(0x010b),
-                std::uint16_t(0x81bd),
+                {std::uint16_t(0x0179), 10},
+                {std::uint16_t(0x010b), 100},
+                {std::uint16_t(0x81bd), 100},
             },
             "l2_prefetcher_accuracy_l1hwprf_inclusive",
             "L2 Cache Prefetcher Accuracy (L1 HW prefetch inclusive)",
@@ -2914,14 +3079,15 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_coverage_l1hwprf_exclusive_0 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x01b9),
-                std::uint16_t(0x81ed),
-                std::uint16_t(0x81bd),
-                std::uint16_t(0x826d),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x01b9), 100},
+                {std::uint16_t(0x81ed), 10},
+                {std::uint16_t(0x81bd), 100},
+                {std::uint16_t(0x826d), 100},
             },
             "l2_prefetcher_coverage_l1hwprf_exclusive",
             "L2 Cache Prefetcher Coverage (L1 HW prefetch exclusive)",
@@ -2933,13 +3099,14 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_coverage_l1hwprf_exclusive_1 {
             {
-                std::uint16_t(0x0052),
-                std::uint16_t(0x81ed),
-                std::uint16_t(0x0053),
-                std::uint16_t(0x826d),
+                {std::uint16_t(0x0052), 100},
+                {std::uint16_t(0x81ed), 10},
+                {std::uint16_t(0x0053), 100},
+                {std::uint16_t(0x826d), 100},
             },
             "l2_prefetcher_coverage_l1hwprf_exclusive",
             "L2 Cache Prefetcher Coverage (L1 HW prefetch exclusive)",
@@ -2951,13 +3118,14 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_coverage_l1hwprf_inclusive_0 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0179),
-                std::uint16_t(0x010b),
-                std::uint16_t(0x81bd),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0179), 10},
+                {std::uint16_t(0x010b), 100},
+                {std::uint16_t(0x81bd), 100},
             },
             "l2_prefetcher_coverage_l1hwprf_inclusive",
             "L2 Cache Prefetcher Coverage (L1 HW prefetch inclusive)",
@@ -2969,11 +3137,12 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_timeliness_l1hwprf_exclusive_0 {
             {
-                std::uint16_t(0x81ed),
-                std::uint16_t(0x826d),
+                {std::uint16_t(0x81ed), 10},
+                {std::uint16_t(0x826d), 100},
             },
             "l2_prefetcher_timeliness_l1hwprf_exclusive",
             "L2 Cache Prefetcher Timeliness (L1 HW prefetch exclusive)",
@@ -2985,11 +3154,12 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_prefetcher_timeliness_l1hwprf_inclusive_0 {
             {
-                std::uint16_t(0x0179),
-                std::uint16_t(0x010b),
+                {std::uint16_t(0x0179), 10},
+                {std::uint16_t(0x010b), 100},
             },
             "l2_prefetcher_timeliness_l1hwprf_inclusive",
             "L2 Cache Prefetcher Timeliness (L1 HW prefetch inclusive)",
@@ -3001,11 +3171,12 @@ namespace metrics {
             {
                 metric_group_id_t::prefetcher_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_tlb_miss_ratio_0 {
             {
-                std::uint16_t(0x002d),
-                std::uint16_t(0x002f),
+                {std::uint16_t(0x002d), 100},
+                {std::uint16_t(0x002f), 10},
             },
             "l2_tlb_miss_ratio",
             "L2 Unified TLB Miss Percentage",
@@ -3020,11 +3191,12 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2_tlb_mpki_0 {
             {
-                std::uint16_t(0x002d),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x002d), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l2_tlb_mpki",
             "L2 Unified TLB MPKI",
@@ -3039,12 +3211,13 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2d_cache_demand_mpki_0 {
             {
-                std::uint16_t(0x0052),
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0053),
+                {std::uint16_t(0x0052), 100},
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0053), 100},
             },
             "l2d_cache_demand_mpki",
             "L2D Cache Demand MPKI",
@@ -3060,12 +3233,13 @@ namespace metrics {
                 metric_group_id_t::l2d_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2d_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x0052),
-                std::uint16_t(0x0053),
-                std::uint16_t(0x8148),
+                {std::uint16_t(0x0052), 100},
+                {std::uint16_t(0x0053), 100},
+                {std::uint16_t(0x8148), 10},
             },
             "l2d_cache_miss_ratio",
             "L2D Cache Miss Percentage",
@@ -3082,11 +3256,13 @@ namespace metrics {
                 metric_group_id_t::l2d_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2d_cache_miss_ratio_1 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0016),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0051), 10},
+                {std::uint16_t(0x0016), 10},
             },
             "l2d_cache_miss_ratio",
             "L2D Cache Miss Percentage",
@@ -3103,12 +3279,35 @@ namespace metrics {
                 metric_group_id_t::l2d_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
+        };
+        [[maybe_unused]] const metric_events_set_t l2d_cache_miss_ratio_2 {
+            {
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0016), 10},
+            },
+            "l2d_cache_miss_ratio",
+            "L2D Cache Miss Percentage",
+            "This metric measures the ratio of level 2 cache data accesses missed to the total number of level 2 data "
+            "cache accesses. This gives an indication of the effectiveness of data accesses in the level 2 cache, "
+            "which is a unified cache that stores both data and instruction. Note that cache accesses in this cache "
+            "are either data memory access or instruction fetch as this is a unified cache.",
+            "percent",
+            2,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::l2d_cache_effectiveness,
+                metric_group_id_t::miss_ratio,
+            },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2d_cache_mpki_0 {
             {
-                std::uint16_t(0x0052),
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0053),
+                {std::uint16_t(0x0052), 100},
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0053), 100},
             },
             "l2d_cache_mpki",
             "L2D Cache MPKI",
@@ -3124,11 +3323,12 @@ namespace metrics {
                 metric_group_id_t::l2d_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2d_cache_mpki_1 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l2d_cache_mpki",
             "L2D Cache MPKI",
@@ -3144,11 +3344,12 @@ namespace metrics {
                 metric_group_id_t::l2d_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2i_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x0028),
-                std::uint16_t(0x0027),
+                {std::uint16_t(0x0028), 100},
+                {std::uint16_t(0x0027), 10},
             },
             "l2i_cache_miss_ratio",
             "L2I Cache Miss Percentage",
@@ -3165,11 +3366,12 @@ namespace metrics {
                 metric_group_id_t::l2i_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l2i_cache_mpki_0 {
             {
-                std::uint16_t(0x0028),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x0028), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l2i_cache_mpki",
             "L2I Cache MPKI",
@@ -3185,11 +3387,12 @@ namespace metrics {
                 metric_group_id_t::l2i_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l3_cache_miss_ratio_0 {
             {
-                std::uint16_t(0x002a),
-                std::uint16_t(0x002b),
+                {std::uint16_t(0x002a), 100},
+                {std::uint16_t(0x002b), 10},
             },
             "l3_cache_miss_ratio",
             "L3 Cache Miss Percentage",
@@ -3206,11 +3409,12 @@ namespace metrics {
                 metric_group_id_t::l3_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l3_cache_miss_ratio_1 {
             {
-                std::uint16_t(0x00a2),
-                std::uint16_t(0x00a0),
+                {std::uint16_t(0x00a2), 100},
+                {std::uint16_t(0x00a0), 10},
             },
             "l3_cache_miss_ratio",
             "L3 Cache Miss Percentage",
@@ -3227,11 +3431,12 @@ namespace metrics {
                 metric_group_id_t::l3_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l3_cache_mpki_0 {
             {
-                std::uint16_t(0x002a),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x002a), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l3_cache_mpki",
             "L3 Cache MPKI",
@@ -3247,11 +3452,12 @@ namespace metrics {
                 metric_group_id_t::l3_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t l3_cache_mpki_1 {
             {
-                std::uint16_t(0x00a2),
-                std::uint16_t(0x0008),
+                {std::uint16_t(0x00a2), 100},
+                {std::uint16_t(0x0008), 1},
             },
             "l3_cache_mpki",
             "L3 Cache MPKI",
@@ -3267,11 +3473,12 @@ namespace metrics {
                 metric_group_id_t::l3_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t ldrex_percentage_0 {
             {
-                std::uint16_t(0x006c),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x006c), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "ldrex_percentage",
             "Load-Exclusive Instructions Percentage",
@@ -3284,11 +3491,12 @@ namespace metrics {
                 metric_group_id_t::atomics_effectiveness,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t ll_cache_read_hit_ratio_0 {
             {
-                std::uint16_t(0x0036),
-                std::uint16_t(0x0037),
+                {std::uint16_t(0x0036), 10},
+                {std::uint16_t(0x0037), 100},
             },
             "ll_cache_read_hit_ratio",
             "LL Cache Read Hit Percentage",
@@ -3304,11 +3512,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::ll_cache_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t ll_cache_read_miss_ratio_0 {
             {
-                std::uint16_t(0x0036),
-                std::uint16_t(0x0037),
+                {std::uint16_t(0x0036), 10},
+                {std::uint16_t(0x0037), 100},
             },
             "ll_cache_read_miss_ratio",
             "LL Cache Read Miss Percentage",
@@ -3325,11 +3534,12 @@ namespace metrics {
                 metric_group_id_t::ll_cache_effectiveness,
                 metric_group_id_t::miss_ratio,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t ll_cache_read_mpki_0 {
             {
-                std::uint16_t(0x0008),
-                std::uint16_t(0x0037),
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x0037), 100},
             },
             "ll_cache_read_mpki",
             "LL Cache Read MPKI",
@@ -3344,11 +3554,12 @@ namespace metrics {
                 metric_group_id_t::ll_cache_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t load_average_latency_0 {
             {
-                std::uint16_t(0x0013),
-                std::uint16_t(0x8121),
+                {std::uint16_t(0x0013), 10},
+                {std::uint16_t(0x8121), 10},
             },
             "load_average_latency",
             "Load Operation Average Latency",
@@ -3360,11 +3571,12 @@ namespace metrics {
             {
                 metric_group_id_t::average_latency,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t load_ls_percentage_0 {
             {
-                std::uint16_t(0x0070),
-                std::uint16_t(0x0072),
+                {std::uint16_t(0x0070), 10},
+                {std::uint16_t(0x0072), 10},
             },
             "load_ls_percentage",
             "Load as Load/Store Operations Percentage",
@@ -3376,11 +3588,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t load_percentage_0 {
             {
-                std::uint16_t(0x0070),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0070), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "load_percentage",
             "Load Operations Percentage",
@@ -3393,11 +3606,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t load_store_percentage_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x0072),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x0072), 10},
             },
             "load_store_percentage",
             "Load/Store Operations Percentage",
@@ -3409,11 +3623,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t lse_atomics_ratio_0 {
             {
-                std::uint16_t(0x8177),
-                std::uint16_t(0x0072),
+                {std::uint16_t(0x8177), 10},
+                {std::uint16_t(0x0072), 10},
             },
             "lse_atomics_ratio",
             "LSE Atomics Percentage",
@@ -3426,11 +3641,12 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t lse_load_ratio_0 {
             {
-                std::uint16_t(0x8177),
-                std::uint16_t(0x8175),
+                {std::uint16_t(0x8177), 10},
+                {std::uint16_t(0x8175), 10},
             },
             "lse_load_ratio",
             "LSE Load Percentage",
@@ -3443,11 +3659,12 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t lse_store_ratio_0 {
             {
-                std::uint16_t(0x8177),
-                std::uint16_t(0x8176),
+                {std::uint16_t(0x8177), 10},
+                {std::uint16_t(0x8176), 10},
             },
             "lse_store_ratio",
             "LSE Store Percentage",
@@ -3460,10 +3677,11 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t lsu_port_utilization_0 {
             {
-                std::uint16_t(0x3003),
+                {std::uint16_t(0x3003), 10},
             },
             "lsu_port_utilization",
             "Load/Store Address Execution Unit Utilization",
@@ -3476,11 +3694,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::port_utilization,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t mcq_stall_percentage_0 {
             {
-                std::uint16_t(0x0160),
-                std::uint16_t(0x816a),
+                {std::uint16_t(0x0160), 100},
+                {std::uint16_t(0x816a), 100},
             },
             "mcq_stall_percentage",
             "Commit Queue Stall Percentage",
@@ -3492,10 +3711,11 @@ namespace metrics {
             {
                 metric_group_id_t::mcq_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t nonsve_fp_ops_per_cycle_0 {
             {
-                std::uint16_t(0x80c1),
+                {std::uint16_t(0x80c1), 10},
             },
             "nonsve_fp_ops_per_cycle",
             "Non-SVE Floating Point Operations per Cycle",
@@ -3509,11 +3729,12 @@ namespace metrics {
             {
                 metric_group_id_t::fp_arithmetic_intensity,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t rc_ld_percentage_0 {
             {
-                std::uint16_t(0x0090),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0090), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "rc_ld_percentage",
             "Load-Acquire Instructions Percentage",
@@ -3527,11 +3748,12 @@ namespace metrics {
                 metric_group_id_t::atomics_effectiveness,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rc_st_percentage_0 {
             {
-                std::uint16_t(0x0091),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0091), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "rc_st_percentage",
             "Store-Release Instructions Percentage",
@@ -3545,13 +3767,14 @@ namespace metrics {
                 metric_group_id_t::atomics_effectiveness,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_flags_ratio_0 {
             {
-                std::uint16_t(0x0399),
-                std::uint16_t(0x0159),
-                std::uint16_t(0x0158),
-                std::uint16_t(0x015a),
+                {std::uint16_t(0x0399), 100},
+                {std::uint16_t(0x0159), 100},
+                {std::uint16_t(0x0158), 100},
+                {std::uint16_t(0x015a), 100},
             },
             "rename_stall_flags_ratio",
             "Flag Register Rename Percentage",
@@ -3563,11 +3786,12 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_flags_ratio_1 {
             {
-                std::uint16_t(0x0158),
-                std::uint16_t(0x816d),
+                {std::uint16_t(0x0158), 100},
+                {std::uint16_t(0x816d), 100},
             },
             "rename_stall_flags_ratio",
             "Flag Register Rename Percentage",
@@ -3579,13 +3803,14 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_int_ratio_0 {
             {
-                std::uint16_t(0x0399),
-                std::uint16_t(0x0159),
-                std::uint16_t(0x015a),
-                std::uint16_t(0x0158),
+                {std::uint16_t(0x0399), 100},
+                {std::uint16_t(0x0159), 100},
+                {std::uint16_t(0x015a), 100},
+                {std::uint16_t(0x0158), 100},
             },
             "rename_stall_int_ratio",
             "Integer Register Rename Percentage",
@@ -3597,11 +3822,12 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_int_ratio_1 {
             {
-                std::uint16_t(0x0159),
-                std::uint16_t(0x816d),
+                {std::uint16_t(0x0159), 100},
+                {std::uint16_t(0x816d), 100},
             },
             "rename_stall_int_ratio",
             "Integer Register Rename Percentage",
@@ -3613,13 +3839,14 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_pred_ratio_0 {
             {
-                std::uint16_t(0x0399),
-                std::uint16_t(0x0159),
-                std::uint16_t(0x015a),
-                std::uint16_t(0x0158),
+                {std::uint16_t(0x0399), 100},
+                {std::uint16_t(0x0159), 100},
+                {std::uint16_t(0x015a), 100},
+                {std::uint16_t(0x0158), 100},
             },
             "rename_stall_pred_ratio",
             "Predicate Register Rename Percentage",
@@ -3631,11 +3858,12 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_pred_ratio_1 {
             {
-                std::uint16_t(0x0170),
-                std::uint16_t(0x816d),
+                {std::uint16_t(0x0170), 100},
+                {std::uint16_t(0x816d), 100},
             },
             "rename_stall_pred_ratio",
             "Predicate Register Rename Percentage",
@@ -3647,13 +3875,14 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_vec_ratio_0 {
             {
-                std::uint16_t(0x0399),
-                std::uint16_t(0x0159),
-                std::uint16_t(0x015a),
-                std::uint16_t(0x0158),
+                {std::uint16_t(0x0399), 100},
+                {std::uint16_t(0x0159), 100},
+                {std::uint16_t(0x015a), 100},
+                {std::uint16_t(0x0158), 100},
             },
             "rename_stall_vec_ratio",
             "Vector Register Rename Percentage",
@@ -3665,11 +3894,12 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_vec_ratio_1 {
             {
-                std::uint16_t(0x015a),
-                std::uint16_t(0x816d),
+                {std::uint16_t(0x015a), 100},
+                {std::uint16_t(0x816d), 100},
             },
             "rename_stall_vec_ratio",
             "Vector Register Rename Percentage",
@@ -3681,11 +3911,12 @@ namespace metrics {
             {
                 metric_group_id_t::rename_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t retired_insns_percent_0 {
             {
-                std::uint16_t(0x0008),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0008), 1},
+                {std::uint16_t(0x001b), 1},
             },
             "retired_insns_percent",
             "Retired Instructions Percentage",
@@ -3697,11 +3928,12 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_l1,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t retired_ops_percent_0 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003b),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003b), 10},
             },
             "retired_ops_percent",
             "Retired Operations Percentage",
@@ -3713,12 +3945,13 @@ namespace metrics {
             {
                 metric_group_id_t::topdown_l1,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t retiring_0 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003f), 10},
+                {std::uint16_t(0x003b), 10},
             },
             "retiring",
             "Retiring",
@@ -3732,12 +3965,13 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t retiring_1 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003f), 10},
+                {std::uint16_t(0x003b), 10},
             },
             "retiring",
             "Retiring",
@@ -3751,12 +3985,13 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t retiring_2 {
             {
-                std::uint16_t(0x003a),
-                std::uint16_t(0x003f),
-                std::uint16_t(0x003b),
+                {std::uint16_t(0x003a), 10},
+                {std::uint16_t(0x003f), 10},
+                {std::uint16_t(0x003b), 10},
             },
             "retiring",
             "Retiring",
@@ -3770,11 +4005,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::topdown_l1,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t scalar_fp_percentage_0 {
             {
-                std::uint16_t(0x0075),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0075), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "scalar_fp_percentage",
             "Floating Point Operations Percentage",
@@ -3788,11 +4024,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t simd_percentage_0 {
             {
-                std::uint16_t(0x0074),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0074), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "simd_percentage",
             "Advanced SIMD Operations Percentage",
@@ -3805,11 +4042,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sme_percentage_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x835e),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x835e), 10},
             },
             "sme_percentage",
             "SME Operations Percentage",
@@ -3822,10 +4060,11 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t std_port_utilization_0 {
             {
-                std::uint16_t(0x3004),
+                {std::uint16_t(0x3004), 10},
             },
             "std_port_utilization",
             "Integer Store Data Execution Unit Utilization",
@@ -3838,11 +4077,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::port_utilization,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t store_ls_percentage_0 {
             {
-                std::uint16_t(0x0071),
-                std::uint16_t(0x0072),
+                {std::uint16_t(0x0071), 10},
+                {std::uint16_t(0x0072), 10},
             },
             "store_ls_percentage",
             "Store as Load/Store Operations Percentage",
@@ -3855,11 +4095,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t store_percentage_0 {
             {
-                std::uint16_t(0x0071),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x0071), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "store_percentage",
             "Store Operations Percentage",
@@ -3872,11 +4113,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_fp_op_percentage_0 {
             {
-                std::uint16_t(0x3220),
-                std::uint16_t(0x3219),
+                {std::uint16_t(0x3220), 10},
+                {std::uint16_t(0x3219), 10},
             },
             "streaming_fp_op_percentage",
             "Streaming FP Operations Percentage",
@@ -3890,11 +4132,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_int_op_percentage_0 {
             {
-                std::uint16_t(0x321f),
-                std::uint16_t(0x3219),
+                {std::uint16_t(0x321f), 10},
+                {std::uint16_t(0x3219), 10},
             },
             "streaming_int_op_percentage",
             "Streaming Integer Operations Percentage",
@@ -3908,11 +4151,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_ld_op_percentage_0 {
             {
-                std::uint16_t(0x321c),
-                std::uint16_t(0x3219),
+                {std::uint16_t(0x321c), 10},
+                {std::uint16_t(0x3219), 10},
             },
             "streaming_ld_op_percentage",
             "Streaming Load Operations Percentage",
@@ -3926,11 +4170,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_ls_op_percentage_0 {
             {
-                std::uint16_t(0x321b),
-                std::uint16_t(0x3219),
+                {std::uint16_t(0x321b), 10},
+                {std::uint16_t(0x3219), 10},
             },
             "streaming_ls_op_percentage",
             "Streaming Load/Store Operations Percentage",
@@ -3944,11 +4189,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_op_percentage_0 {
             {
-                std::uint16_t(0x3219),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x3219), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "streaming_op_percentage",
             "Streaming Operations Percentage",
@@ -3963,11 +4209,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_slow_inst_percentage_0 {
             {
-                std::uint16_t(0x3219),
-                std::uint16_t(0x32a4),
+                {std::uint16_t(0x3219), 10},
+                {std::uint16_t(0x32a4), 100},
             },
             "streaming_slow_inst_percentage",
             "Streaming Slow Instructions Percentage",
@@ -3981,11 +4228,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t streaming_st_op_percentage_0 {
             {
-                std::uint16_t(0x321d),
-                std::uint16_t(0x3219),
+                {std::uint16_t(0x321d), 10},
+                {std::uint16_t(0x3219), 10},
             },
             "streaming_st_op_percentage",
             "Streaming Store Operations Percentage",
@@ -3999,17 +4247,18 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t strex_fail_mpki_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x006e),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x006e), 10},
             },
             "strex_fail_mpki",
             "Store-Exclusive Failures PKI",
             "This metric measures the number of store-exclusive instructions that failed per thousand instructions "
             "speculatively executed",
-            "percent",
+            "failures",
             0,
             metric_priority_t::ls,
             metric_arch_t::any,
@@ -4017,11 +4266,12 @@ namespace metrics {
                 metric_group_id_t::atomics_effectiveness,
                 metric_group_id_t::mpki,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t strex_fail_percent_0 {
             {
-                std::uint16_t(0x006f),
-                std::uint16_t(0x006e),
+                {std::uint16_t(0x006f), 10},
+                {std::uint16_t(0x006e), 10},
             },
             "strex_fail_percent",
             "Store-Exclusive Failures Percentage",
@@ -4034,11 +4284,12 @@ namespace metrics {
             {
                 metric_group_id_t::atomics_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t strex_percentage_0 {
             {
-                std::uint16_t(0x006f),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x006f), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "strex_percentage",
             "Store-Exclusive Instructions Percentage",
@@ -4051,11 +4302,12 @@ namespace metrics {
                 metric_group_id_t::atomics_effectiveness,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sve_all_percentage_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x8006),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x8006), 10},
             },
             "sve_all_percentage",
             "SVE Operations (Load/Store Inclusive) Percentage",
@@ -4069,10 +4321,11 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sve_fp_ops_per_cycle_0 {
             {
-                std::uint16_t(0x80c0),
+                {std::uint16_t(0x80c0), 10},
             },
             "sve_fp_ops_per_cycle",
             "SVE Floating Point Operations per Cycle",
@@ -4086,11 +4339,12 @@ namespace metrics {
             {
                 metric_group_id_t::fp_arithmetic_intensity,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t sve_percentage_0 {
             {
-                std::uint16_t(0x8056),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x8056), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "sve_percentage",
             "SVE Operations Percentage",
@@ -4102,11 +4356,12 @@ namespace metrics {
             {
                 metric_group_id_t::operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sve_predicate_empty_percentage_0 {
             {
-                std::uint16_t(0x8075),
-                std::uint16_t(0x8074),
+                {std::uint16_t(0x8075), 10},
+                {std::uint16_t(0x8074), 10},
             },
             "sve_predicate_empty_percentage",
             "SVE Empty Predicate Percentage",
@@ -4119,11 +4374,12 @@ namespace metrics {
             {
                 metric_group_id_t::sve_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sve_predicate_full_percentage_0 {
             {
-                std::uint16_t(0x8076),
-                std::uint16_t(0x8074),
+                {std::uint16_t(0x8076), 10},
+                {std::uint16_t(0x8074), 10},
             },
             "sve_predicate_full_percentage",
             "SVE Full Predicate Percentage",
@@ -4136,11 +4392,12 @@ namespace metrics {
             {
                 metric_group_id_t::sve_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sve_predicate_partial_percentage_0 {
             {
-                std::uint16_t(0x8077),
-                std::uint16_t(0x8074),
+                {std::uint16_t(0x8077), 10},
+                {std::uint16_t(0x8074), 10},
             },
             "sve_predicate_partial_percentage",
             "SVE Partial Predicate Percentage",
@@ -4153,11 +4410,12 @@ namespace metrics {
             {
                 metric_group_id_t::sve_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t sve_predicate_percentage_0 {
             {
-                std::uint16_t(0x8074),
-                std::uint16_t(0x001b),
+                {std::uint16_t(0x8074), 10},
+                {std::uint16_t(0x001b), 1},
             },
             "sve_predicate_percentage",
             "SVE Predicate Percentage",
@@ -4170,12 +4428,13 @@ namespace metrics {
             {
                 metric_group_id_t::sve_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t system_dram_mem_hit_ratio_0 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x3008),
-                std::uint16_t(0x0028),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x3008), 1},
+                {std::uint16_t(0x0028), 100},
             },
             "system_dram_mem_hit_ratio",
             "System DRAM Hit Percentage",
@@ -4190,12 +4449,13 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t system_l3_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x8206),
-                std::uint16_t(0x0028),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x8206), 10},
+                {std::uint16_t(0x0028), 100},
             },
             "system_l3_cache_hit_ratio",
             "System L3 Cache Hit Percentage",
@@ -4210,12 +4470,13 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t system_llc_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x0028),
-                std::uint16_t(0x8207),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x0028), 100},
+                {std::uint16_t(0x8207), 10},
             },
             "system_llc_cache_hit_ratio",
             "System Last Level Cache Hit Percentage",
@@ -4230,13 +4491,14 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t system_peer_cluster_cache_hit_ratio_0 {
             {
-                std::uint16_t(0x0017),
-                std::uint16_t(0x8190),
-                std::uint16_t(0x0028),
-                std::uint16_t(0x81b4),
+                {std::uint16_t(0x0017), 100},
+                {std::uint16_t(0x8190), 100},
+                {std::uint16_t(0x0028), 100},
+                {std::uint16_t(0x81b4), 100},
             },
             "system_peer_cluster_cache_hit_ratio",
             "System Peer Cluster Cache Hit Percentage",
@@ -4251,10 +4513,11 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::system_memory_effectiveness,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t vpu_port_utilization_0 {
             {
-                std::uint16_t(0x3002),
+                {std::uint16_t(0x3002), 10},
             },
             "vpu_port_utilization",
             "Vector Execution Unit Utilization",
@@ -4267,10 +4530,11 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::port_utilization,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t za_active_cycles_ratio_0 {
             {
-                std::uint16_t(0x8380),
+                {std::uint16_t(0x8380), 10},
             },
             "za_active_cycles_ratio",
             "ZA Active Cycles Percentage",
@@ -4283,11 +4547,12 @@ namespace metrics {
             {
                 metric_group_id_t::cycle_accounting,
             },
+            true,
         };
         [[maybe_unused]] const metric_events_set_t za_fp_addsub_percentage_0 {
             {
-                std::uint16_t(0x8370),
-                std::uint16_t(0x8352),
+                {std::uint16_t(0x8370), 10},
+                {std::uint16_t(0x8352), 10},
             },
             "za_fp_addsub_percentage",
             "Streaming ZA Add Sub Floating Point Operations Percentage",
@@ -4301,11 +4566,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_fp_dot_percentage_0 {
             {
-                std::uint16_t(0x8352),
-                std::uint16_t(0x8374),
+                {std::uint16_t(0x8352), 10},
+                {std::uint16_t(0x8374), 10},
             },
             "za_fp_dot_percentage",
             "Streaming ZA Dot Floating Point Operations Percentage",
@@ -4319,11 +4585,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_fp_fma_percentage_0 {
             {
-                std::uint16_t(0x8352),
-                std::uint16_t(0x8372),
+                {std::uint16_t(0x8352), 10},
+                {std::uint16_t(0x8372), 10},
             },
             "za_fp_fma_percentage",
             "Streaming ZA FMA Floating Point Operations Percentage",
@@ -4338,11 +4605,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_fp_mopa_percentage_0 {
             {
-                std::uint16_t(0x8352),
-                std::uint16_t(0x8376),
+                {std::uint16_t(0x8352), 10},
+                {std::uint16_t(0x8376), 10},
             },
             "za_fp_mopa_percentage",
             "Streaming ZA MOPA Floating Point Operations Percentage",
@@ -4357,11 +4625,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_fp_op_percentage_0 {
             {
-                std::uint16_t(0x8352),
-                std::uint16_t(0x835e),
+                {std::uint16_t(0x8352), 10},
+                {std::uint16_t(0x835e), 10},
             },
             "za_fp_op_percentage",
             "Streaming ZA Floating Point Operations Percentage",
@@ -4376,11 +4645,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_fp_other_percentage_0 {
             {
-                std::uint16_t(0x32b0),
-                std::uint16_t(0x8352),
+                {std::uint16_t(0x32b0), 10},
+                {std::uint16_t(0x8352), 10},
             },
             "za_fp_other_percentage",
             "Streaming ZA Other Floating Point Operations Percentage",
@@ -4394,11 +4664,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_int_dot_percentage_0 {
             {
-                std::uint16_t(0x8378),
-                std::uint16_t(0x837c),
+                {std::uint16_t(0x8378), 10},
+                {std::uint16_t(0x837c), 10},
             },
             "za_int_dot_percentage",
             "Streaming ZA Dot Integer Operations Percentage",
@@ -4412,11 +4683,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_int_mopa_percentage_0 {
             {
-                std::uint16_t(0x8378),
-                std::uint16_t(0x837e),
+                {std::uint16_t(0x8378), 10},
+                {std::uint16_t(0x837e), 10},
             },
             "za_int_mopa_percentage",
             "Streaming ZA MOPA Integer Operations Percentage",
@@ -4430,11 +4702,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_int_op_percentage_0 {
             {
-                std::uint16_t(0x8378),
-                std::uint16_t(0x835e),
+                {std::uint16_t(0x8378), 10},
+                {std::uint16_t(0x835e), 10},
             },
             "za_int_op_percentage",
             "Streaming ZA Integer Operations Percentage",
@@ -4449,11 +4722,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_int_other_percentage_0 {
             {
-                std::uint16_t(0x8378),
-                std::uint16_t(0x32af),
+                {std::uint16_t(0x8378), 10},
+                {std::uint16_t(0x32af), 10},
             },
             "za_int_other_percentage",
             "Streaming ZA Other Integer Operations Percentage",
@@ -4467,11 +4741,12 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         [[maybe_unused]] const metric_events_set_t za_op_percentage_0 {
             {
-                std::uint16_t(0x001b),
-                std::uint16_t(0x835e),
+                {std::uint16_t(0x001b), 1},
+                {std::uint16_t(0x835e), 10},
             },
             "za_op_percentage",
             "Streaming ZA Operations Percentage",
@@ -4485,6 +4760,7 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::cme_operation_mix,
             },
+            false,
         };
         const metric_cpu_events_t c1_nano_metrics {
             {
@@ -5941,7 +6217,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_1,
+                                                l2d_cache_miss_ratio_2,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -7237,7 +7513,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_1,
+                                                l2d_cache_miss_ratio_2,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -8429,7 +8705,7 @@ namespace metrics {
                                 backend_busy_bound_0,
                                 {
                                     {
-                                        backend_cme_busy_bound_1,
+                                        backend_cme_busy_bound_0,
                                         {
                                             {
                                                 backend_cme_cpu_bound_0,
@@ -8527,7 +8803,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_1,
+                                                l2d_cache_miss_ratio_2,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -10165,7 +10441,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -10434,7 +10710,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -10697,7 +10973,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -10880,7 +11156,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -11039,7 +11315,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -11308,7 +11584,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -11607,7 +11883,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -11906,7 +12182,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -12206,7 +12482,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -12506,7 +12782,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -12806,7 +13082,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -14392,7 +14668,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -14758,7 +15034,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15124,7 +15400,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15490,7 +15766,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15583,38 +15859,6 @@ namespace metrics {
                         frontend_mem_bound_0,
                         {
                             {
-                                frontend_mem_cache_bound_0,
-                                {
-                                    {
-                                        frontend_cache_l1i_bound_0,
-                                        {
-                                            {
-                                                l1i_cache_mpki_0,
-                                                {},
-                                                metric_group_id_t::l1i_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l1i_cache_miss_ratio_0,
-                                                {},
-                                                metric_group_id_t::l1i_cache_effectiveness,
-                                                true,
-                                            },
-                                        },
-                                        metric_group_id_t::topdown_frontend,
-                                        true,
-                                    },
-                                    {
-                                        frontend_cache_l2i_bound_0,
-                                        {},
-                                        metric_group_id_t::topdown_frontend,
-                                        true,
-                                    },
-                                },
-                                metric_group_id_t::topdown_frontend,
-                                true,
-                            },
-                            {
                                 frontend_mem_tlb_bound_0,
                                 {
                                     {
@@ -15708,81 +15952,6 @@ namespace metrics {
                     {
                         backend_mem_bound_1,
                         {
-                            {
-                                backend_mem_cache_bound_1,
-                                {
-                                    {
-                                        backend_cache_l1d_bound_0,
-                                        {
-                                            {
-                                                l1d_cache_mpki_1,
-                                                {},
-                                                metric_group_id_t::l1d_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l1d_cache_miss_ratio_1,
-                                                {},
-                                                metric_group_id_t::l1d_cache_effectiveness,
-                                                true,
-                                            },
-                                        },
-                                        metric_group_id_t::topdown_backend,
-                                        true,
-                                    },
-                                    {
-                                        backend_cache_l2d_bound_0,
-                                        {
-                                            {
-                                                l2_cache_mpki_1,
-                                                {},
-                                                metric_group_id_t::l2_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l2_cache_miss_ratio_1,
-                                                {},
-                                                metric_group_id_t::l2_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l3_cache_mpki_0,
-                                                {},
-                                                metric_group_id_t::l3_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l3_cache_miss_ratio_0,
-                                                {},
-                                                metric_group_id_t::l3_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                ll_cache_read_mpki_0,
-                                                {},
-                                                metric_group_id_t::ll_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                ll_cache_read_miss_ratio_0,
-                                                {},
-                                                metric_group_id_t::ll_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                ll_cache_read_hit_ratio_0,
-                                                {},
-                                                metric_group_id_t::ll_cache_effectiveness,
-                                                true,
-                                            },
-                                        },
-                                        metric_group_id_t::topdown_backend,
-                                        true,
-                                    },
-                                },
-                                metric_group_id_t::topdown_backend,
-                                true,
-                            },
                             {
                                 backend_mem_tlb_bound_1,
                                 {
@@ -16029,6 +16198,42 @@ namespace metrics {
                 false,
             },
             {
+                l1d_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1d_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1i_cache_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1i_cache_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
                 l2d_cache_demand_mpki_0,
                 {},
                 metric_group_id_t::other,
@@ -16042,6 +16247,36 @@ namespace metrics {
             },
             {
                 l2d_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l3_cache_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l3_cache_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                ll_cache_read_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                ll_cache_read_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                ll_cache_read_mpki_0,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -16134,38 +16369,6 @@ namespace metrics {
                         frontend_mem_bound_0,
                         {
                             {
-                                frontend_mem_cache_bound_0,
-                                {
-                                    {
-                                        frontend_cache_l1i_bound_0,
-                                        {
-                                            {
-                                                l1i_cache_mpki_0,
-                                                {},
-                                                metric_group_id_t::l1i_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l1i_cache_miss_ratio_0,
-                                                {},
-                                                metric_group_id_t::l1i_cache_effectiveness,
-                                                true,
-                                            },
-                                        },
-                                        metric_group_id_t::topdown_frontend,
-                                        true,
-                                    },
-                                    {
-                                        frontend_cache_l2i_bound_0,
-                                        {},
-                                        metric_group_id_t::topdown_frontend,
-                                        true,
-                                    },
-                                },
-                                metric_group_id_t::topdown_frontend,
-                                true,
-                            },
-                            {
                                 frontend_mem_tlb_bound_0,
                                 {
                                     {
@@ -16259,81 +16462,6 @@ namespace metrics {
                     {
                         backend_mem_bound_1,
                         {
-                            {
-                                backend_mem_cache_bound_1,
-                                {
-                                    {
-                                        backend_cache_l1d_bound_0,
-                                        {
-                                            {
-                                                l1d_cache_mpki_1,
-                                                {},
-                                                metric_group_id_t::l1d_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l1d_cache_miss_ratio_1,
-                                                {},
-                                                metric_group_id_t::l1d_cache_effectiveness,
-                                                true,
-                                            },
-                                        },
-                                        metric_group_id_t::topdown_backend,
-                                        true,
-                                    },
-                                    {
-                                        backend_cache_l2d_bound_0,
-                                        {
-                                            {
-                                                l2_cache_mpki_1,
-                                                {},
-                                                metric_group_id_t::l2_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l2_cache_miss_ratio_1,
-                                                {},
-                                                metric_group_id_t::l2_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l3_cache_mpki_0,
-                                                {},
-                                                metric_group_id_t::l3_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                l3_cache_miss_ratio_0,
-                                                {},
-                                                metric_group_id_t::l3_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                ll_cache_read_mpki_0,
-                                                {},
-                                                metric_group_id_t::ll_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                ll_cache_read_miss_ratio_0,
-                                                {},
-                                                metric_group_id_t::ll_cache_effectiveness,
-                                                true,
-                                            },
-                                            {
-                                                ll_cache_read_hit_ratio_0,
-                                                {},
-                                                metric_group_id_t::ll_cache_effectiveness,
-                                                true,
-                                            },
-                                        },
-                                        metric_group_id_t::topdown_backend,
-                                        true,
-                                    },
-                                },
-                                metric_group_id_t::topdown_backend,
-                                true,
-                            },
                             {
                                 backend_mem_tlb_bound_1,
                                 {
@@ -16580,6 +16708,42 @@ namespace metrics {
                 false,
             },
             {
+                l1d_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1d_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1i_cache_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1i_cache_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
                 l2d_cache_demand_mpki_0,
                 {},
                 metric_group_id_t::other,
@@ -16593,6 +16757,36 @@ namespace metrics {
             },
             {
                 l2d_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l3_cache_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l3_cache_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                ll_cache_read_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                ll_cache_read_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                ll_cache_read_mpki_0,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -16855,7 +17049,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_1,
+                                                l2d_cache_miss_ratio_2,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -17492,7 +17686,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -17792,7 +17986,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -18325,7 +18519,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -18900,7 +19094,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -19705,7 +19899,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -20030,7 +20224,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -20395,7 +20589,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -21376,7 +21570,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -21670,7 +21864,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_1,
+                                                l2d_cache_miss_ratio_2,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -22583,7 +22777,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -23171,7 +23365,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_1,
+                l2d_cache_miss_ratio_2,
                 {},
                 metric_group_id_t::other,
                 false,

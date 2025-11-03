@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "linux/perf/PerfEventGroup.h"
 
@@ -104,12 +104,17 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
                                               bool has_aux_data,
                                               bool uses_strobe_period)
 {
+
+    // is it an ebs based metric (rathr than a strobe based metric)
+    const bool ebs_metric = attr.ebs && attr.metric;
+
     event.attr.size = sizeof(event.attr);
+
     /* Emit time, read_format below, group leader id, and raw tracepoint info */
     const uint64_t sampleReadMask =
         (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
                                                        config.perfConfig.supports_inherit_sample_read)
-                 && (type != PerfEventGroupIdentifier::Type::SPE)
+                 && (type != PerfEventGroupIdentifier::Type::SPE) && (!ebs_metric)
              ? 0
              : PERF_SAMPLE_READ); // Unfortunately PERF_SAMPLE_READ is not allowed with inherit
 
@@ -126,12 +131,13 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
         // always sample TID for application mode; we use it to attribute counter values to their processes
         | (isCaptureOperationModeSystemWide(config.captureOperationMode) && !attr.context_switch ? 0 : PERF_SAMPLE_TID)
         // must sample PERIOD is used if 'freq' or non-zero period to read the actual period value
-        | (attr.periodOrFreq != 0
-               ? (isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
-                                                                config.perfConfig.supports_inherit_sample_read)
-                      ? PERF_SAMPLE_READ
-                      : PERF_SAMPLE_PERIOD)
-               : 0);
+        | (attr.periodOrFreq != 0 ? ((!ebs_metric)
+                                             && isCaptureOperationModeSupportingCounterGroups(
+                                                 config.captureOperationMode,
+                                                 config.perfConfig.supports_inherit_sample_read)
+                                         ? PERF_SAMPLE_READ
+                                         : PERF_SAMPLE_PERIOD)
+                                  : 0);
 
 #if CONFIG_PERF_SUPPORT_REGISTER_UNWINDING
     // collect the user mode registers if sampling the callchain
@@ -154,17 +160,23 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
 
     // is the event sampled?
     const bool is_sampled = !leader
-                         && (attr.ebs && (attr.periodOrFreq != 0)
+                         && (attr.ebs && !attr.metric && (attr.periodOrFreq != 0)
                              && ((attr.sampleType & (PERF_SAMPLE_IP | PERF_SAMPLE_CALLCHAIN)) != 0));
     // make sure all new children are counted too
     const bool use_inherit = isCaptureOperationModeSupportingUsesInherit(config.captureOperationMode) && !is_header;
+
+    // should prefer to be in a group
+    const bool should_be_in_group =
+        ebs_metric
+        || (requires_leader && !is_sampled
+            && isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
+                                                             config.perfConfig.supports_inherit_sample_read));
+
     // group doesn't require a leader (so all events are stand alone)
-    const bool every_attribute_in_own_group =
-        (!requires_leader) || is_header || is_sampled
-        || !isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
-                                                          config.perfConfig.supports_inherit_sample_read);
+    const bool every_attribute_in_own_group = is_header || !should_be_in_group;
+
     // use READ_FORMAT_GROUP; for any item that overflows, but not for inherit (which cannot support groups) and not a stand alone event
-    const bool use_read_format_group = (!every_attribute_in_own_group) && (!is_header);
+    const bool use_read_format_group = (!every_attribute_in_own_group) && (!is_header) && (!ebs_metric);
 
     // filter kernel events?
     const bool exclude_kernel = should_exclude_kernel(attr.type, //
@@ -188,7 +200,8 @@ bool perf_event_group_configurer_t::initEvent(perf_event_group_configurer_config
     // Always be on the CPU but only a perf_event_open group leader can be pinned
     // We can only use perf_event_open groups if PERF_FORMAT_GROUP is used to sample group members
     // If the group has no leader, then all members are in separate perf_event_open groups (and hence their own leader)
-    event.attr.pinned = ((leader || every_attribute_in_own_group || is_header) ? 1 : 0);
+    event.attr.pinned =
+        ((leader || (every_attribute_in_own_group && !ebs_metric) || is_header || attr.pinnable) ? 1 : 0);
     // group leader must start disabled, all others enabled
     event.attr.disabled = event.attr.pinned;
     /* have a sampling interrupt happen when we cross the wakeup_watermark boundary */
@@ -277,14 +290,14 @@ bool perf_event_group_configurer_t::addEvent(const bool leader,
                      uses_strobe_period);
 }
 
-bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker)
+bool perf_event_group_configurer_t::createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker, bool ebs_metric)
 {
     switch (identifier.getType()) {
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_PINNED:
             return createCpuGroupLeaderPinned(mapping_tracker);
 
         case PerfEventGroupIdentifier::Type::PER_CLUSTER_CPU_MUXED:
-            return createCpuGroupLeaderMuxed(mapping_tracker);
+            return createCpuGroupLeaderMuxed(mapping_tracker, ebs_metric);
 
         case PerfEventGroupIdentifier::Type::UNCORE_PMU:
             return createUncoreGroupLeader(mapping_tracker);
@@ -365,7 +378,7 @@ bool perf_event_group_configurer_t::createCpuGroupLeaderPinned(attr_to_key_mappi
             attr.config = PERF_COUNT_SW_DUMMY;
             attr.periodOrFreq = 0;
             attr.context_switch = true;
-            enableTaskClock = true;
+            enableTaskClock = false;
         }
         // too old for context switch records, but can at least see kernel events; use switch as the leader so that we at
         // least get switch out events
@@ -426,14 +439,27 @@ bool perf_event_group_configurer_t::createCpuGroupLeaderPinned(attr_to_key_mappi
     return true;
 }
 
-bool perf_event_group_configurer_t::createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker)
+bool perf_event_group_configurer_t::createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker,
+                                                              bool ebs_metric)
 {
-    (void) mapping_tracker;
-    if (!isCaptureOperationModeSupportingMetrics(config.captureOperationMode,
-                                                 config.perfConfig.supports_inherit_sample_read)) {
-        LOG_ERROR("Multiplexed CPU counters currently only work in system-wide mode, or when inherit is "
-                  "no/poll/experimental");
-        handleException();
+    auto const enableCallChain = (config.backtraceDepth > 0);
+
+    // sample on context switch so that counters attribute to a single thread
+    if ((!ebs_metric) && (!config.perfConfig.exclude_kernel)
+        && isCaptureOperationModeSupportingCounterGroups(config.captureOperationMode,
+                                                         config.perfConfig.supports_inherit_sample_read)) {
+        IPerfGroups::Attr attr {};
+        attr.type = PERF_TYPE_SOFTWARE;
+        attr.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
+        attr.periodOrFreq = 1;
+        attr.sampleType = PERF_SAMPLE_TID                          //
+                        | PERF_SAMPLE_READ                         //
+                        | PERF_SAMPLE_IP                           //
+                        | (enableCallChain ? PERF_SAMPLE_CALLCHAIN //
+                                           : 0);
+        attr.ebs = false;
+
+        return addEvent(false, mapping_tracker, nextDummyKey(), attr, false);
     }
 
     return true;

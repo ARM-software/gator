@@ -141,15 +141,15 @@ namespace agents {
             return listener_t::create(std::forward<WorkerSpawnerFn>(worker_spawner), ctx, endpoint);
         }
         catch (boost::system::system_error const & ex) {
-            LOG_WARNING("Failed to create new UDS socket listener due to %s", ex.what());
+            LOG_DEBUG("Failed to create new UDS socket listener due to %s", ex.what());
             return std::shared_ptr<listener_t> {};
         }
         catch (std::exception const & ex) {
-            LOG_WARNING("Failed to create new UDS socket listener due to %s", ex.what());
+            LOG_DEBUG("Failed to create new UDS socket listener due to %s", ex.what());
             return std::shared_ptr<listener_t> {};
         }
         catch (...) {
-            LOG_WARNING("Failed to create new UDS socket listener due to unexpected throw");
+            LOG_DEBUG("Failed to create new UDS socket listener due to unexpected throw");
             return std::shared_ptr<listener_t> {};
         }
     }
@@ -169,11 +169,11 @@ namespace agents {
             return std::shared_ptr<listener_t> {};
         }
         catch (std::exception const & ex) {
-            LOG_WARNING("Failed to create new UDS socket listener due to %s", ex.what());
+            LOG_DEBUG("Failed to create new UDS socket listener due to %s", ex.what());
             return std::shared_ptr<listener_t> {};
         }
         catch (...) {
-            LOG_WARNING("Failed to create new UDS socket listener due to unexpected throw");
+            LOG_DEBUG("Failed to create new UDS socket listener due to unexpected throw");
             return std::shared_ptr<listener_t> {};
         }
     }

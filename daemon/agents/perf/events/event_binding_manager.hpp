@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited (or its affiliates). All rights reserved. */
 #pragma once
 
 #include "Logging.h"
@@ -776,7 +776,7 @@ namespace agents::perf {
                 for (auto const & [ndx, events] : *cluster_events) {
                     (void) ndx; // gcc7 :-(
                     runtime_assert(!events.empty(), "Cluster sub-group is unexpectedly empty");
-                    auto result = binding_set.add_mixed(events);
+                    auto result = binding_set.add_mixed(events, ndx > 0);
                     // this should be impossible since the group is new
                     runtime_assert(
                         result,

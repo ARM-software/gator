@@ -251,6 +251,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionData.h
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SetupChecks.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/SetupChecks.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/setup_warnings.h
     ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.h

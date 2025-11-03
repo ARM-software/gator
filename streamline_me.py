@@ -138,6 +138,7 @@ import atexit
 import datetime
 import math
 import os
+import errno
 import re
 import shlex
 import shutil
@@ -481,7 +482,7 @@ class Device:
         """
         cmdResult = self.adb("shell", "su --help || echo SLFAILED", check=False)
 
-        if ("Magisk" in cmdResult.stdout):
+        if "Magisk" in cmdResult.stdout:
             print("    Warning: Magisk rooted devices are not officially supported by this product.")
 
         return (cmdResult.returncode == 0) and ("SLFAILED" not in cmdResult.stdout)
@@ -1335,7 +1336,7 @@ def run_gatord_interactive():
     input("\nWaiting for data capture ...")
 
 
-# pylint: disable-msg=too-many-locals,too-many-positional-arguments
+# pylint: disable-msg=too-many-locals,too-many-arguments,too-many-positional-arguments
 def run_gatord_headless(device: Device, package: str, outputName: str, timeout: int, activity: str, activityArgs: str, enableGpuTimeline: str):
     """
     Run gatord for a headless capture session.
@@ -1699,7 +1700,14 @@ def parse_cli(parser: ap.ArgumentParser):
             if os.path.isfile(args.headless):
                 os.remove(args.headless)
             else:
-                shutil.rmtree(args.headless)
+                try:
+                    shutil.rmtree(args.headless)
+                except PermissionError as err:
+                    if err.errno == errno.EACCES:
+                        print("Capture {0} is currently open by another process and cannot be overwritten.".format(args.headless))
+                    else:
+                        print("{0}".format(err))
+                    raise err
 
     # Ensure the lwi output path is absolute
     # Use a default path if the user hasn't specified it
@@ -1814,7 +1822,10 @@ def ensure_lwi_output_path_usable(abs_lwi_out_dir: str, overwrite: bool):
         if os.path.isfile(abs_lwi_out_dir):
             os.remove(abs_lwi_out_dir)
         else:
-            shutil.rmtree(abs_lwi_out_dir)
+            try:
+                shutil.rmtree(abs_lwi_out_dir)
+            except PermissionError as err:
+                print("{0}".format(err))
 
     if not os.path.exists(abs_lwi_out_dir):
         try:
@@ -1865,8 +1876,8 @@ def main() -> int:
         parser.print_usage()
         print("{0}".format(err))
         return 4
-    except PermissionError as err:
-        print("{0}".format(err))
+    except PermissionError as _err:
+        # Just silently ignore exception. Exception was handled before.
         return 5
 
     if args.verbose:

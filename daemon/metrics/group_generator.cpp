@@ -1,4 +1,4 @@
-/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "metrics/group_generator.hpp"
 
@@ -24,16 +24,22 @@ namespace metrics {
             std::unordered_set<metric_events_set_t const *> contains_sets;
             std::unordered_set<std::uint16_t> event_codes;
             metric_priority_t priority;
+            std::uint16_t ebs_ratio;
             metric_arch_t arch;
+            bool uses_cycles;
 
             raw_combination_t(std::unordered_set<metric_events_set_t const *> contains_sets,
                               std::unordered_set<std::uint16_t> event_codes,
                               metric_priority_t priority,
-                              metric_arch_t arch)
+                              std::uint16_t ebs_ratio,
+                              metric_arch_t arch,
+                              bool uses_cycles)
                 : contains_sets(std::move(contains_sets)),
                   event_codes(std::move(event_codes)),
                   priority(priority),
-                  arch(arch)
+                  ebs_ratio(ebs_ratio),
+                  arch(arch),
+                  uses_cycles(uses_cycles)
             {
             }
         };
@@ -74,6 +80,16 @@ namespace metrics {
             return a;
         }
 
+        [[nodiscard]] constexpr std::uint16_t to_event_code(std::uint16_t event)
+        {
+            return event;
+        }
+
+        [[nodiscard]] constexpr std::uint16_t to_event_code(metric_event_code_and_ratio_t const & event)
+        {
+            return event.code;
+        }
+
         template<typename EventCodesA, typename EventCodesB>
         [[nodiscard]] std::unordered_set<std::uint16_t> combine_codes(EventCodesA const & event_codes_a,
                                                                       metric_arch_t arch_a,
@@ -82,15 +98,17 @@ namespace metrics {
         {
             std::unordered_set<std::uint16_t> result {};
 
-            for (auto const event : event_codes_a) {
-                if (!is_cycle_counter(event, arch_a)) {
-                    result.insert(event);
+            for (auto const & event : event_codes_a) {
+                auto const code = to_event_code(event);
+                if (!is_cycle_counter(code, arch_a)) {
+                    result.insert(code);
                 }
             }
 
-            for (auto const event : event_codes_b) {
-                if (!is_cycle_counter(event, arch_b)) {
-                    result.insert(event);
+            for (auto const & event : event_codes_b) {
+                auto const code = to_event_code(event);
+                if (!is_cycle_counter(code, arch_b)) {
+                    result.insert(code);
                 }
             }
 
@@ -103,16 +121,58 @@ namespace metrics {
         {
             std::unordered_set<std::uint16_t> result {};
 
-            for (auto const event : event_codes) {
-                if (!is_cycle_counter(event, arch)) {
-                    result.insert(event);
+            for (auto const & event : event_codes) {
+                if (!is_cycle_counter(event.code, arch)) {
+                    result.insert(event.code);
                 }
             }
 
             return result;
         }
 
+        inline constexpr std::uint16_t EBS_RATE_CYCLES = 1;
+
+        template<typename EventCodes>
+        [[nodiscard]] std::uint16_t max_ebs_ratio(bool uses_cycles, EventCodes const & event_codes)
+        {
+            // if cycles is sampled, then just sample at period=`rate` since that is a high frequency event
+            if (uses_cycles) {
+                return EBS_RATE_CYCLES;
+            }
+
+            // otherwise find the largest ebs_ratio value which causes all events in the group
+            // to be sampled with a period=`rate / ebs_ratio`, or in otherwords we want the highest
+            // sampling rate of all events in the group to get the best coverage for low-frequency events
+            std::uint16_t result = EBS_RATE_CYCLES;
+
+            for (auto const & event : event_codes) {
+                result = std::max(result, event.ebs_ratio);
+            }
+
+            return result;
+        }
+
+        [[nodiscard]] bool is_valid_ebs_combo(std::uint16_t rate_a,
+                                              std::uint16_t rate_b,
+                                              bool uses_cycles_a,
+                                              bool uses_cycles_b)
+        {
+            // the rates must match
+            if (rate_a != rate_b) {
+                return false;
+            }
+
+            // if the rate is EBS_RATE_CYCLES it can be combined regardless of uses_cycles value
+            if (rate_a <= EBS_RATE_CYCLES) {
+                return true;
+            }
+
+            // uses cycles value must also match
+            return uses_cycles_a == uses_cycles_b;
+        }
+
         void make_initial_combinations_inner(
+            bool ebs_mode,
             std::size_t max_events,
             lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> const & metric_events,
             std::function<bool(metric_events_set_t const &)> const & filter_predicate,
@@ -137,7 +197,9 @@ namespace metrics {
                     {&metric_a},
                     filter_cycles(metric_a.event_codes, metric_a.arch),
                     metric_a.priority_group,
+                    (ebs_mode ? max_ebs_ratio(metric_a.uses_cycles, metric_a.event_codes) : std::uint16_t(0)),
                     metric_a.arch,
+                    metric_a.uses_cycles,
                 };
 
                 if (current_combination.event_codes.size() > max_events) {
@@ -165,6 +227,15 @@ namespace metrics {
                         continue;
                     }
 
+                    // they should have the same ebs_ratio value since that controls the sample rate
+                    if (ebs_mode
+                        && !is_valid_ebs_combo(max_ebs_ratio(metric_b.uses_cycles, metric_b.event_codes),
+                                               current_combination.ebs_ratio,
+                                               metric_b.uses_cycles,
+                                               current_combination.uses_cycles)) {
+                        continue;
+                    }
+
                     // combine the event codes
                     auto combined_codes = combine_codes(current_combination.event_codes,
                                                         current_combination.arch,
@@ -189,6 +260,7 @@ namespace metrics {
         }
 
         [[nodiscard]] std::vector<raw_combination_t> make_initial_combinations(
+            bool ebs_mode,
             std::size_t max_events,
             lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> events,
             std::function<bool(metric_events_set_t const &)> const & filter_predicate,
@@ -202,7 +274,8 @@ namespace metrics {
             has_boundness = false;
             has_stalled_cycles = false;
 
-            make_initial_combinations_inner(max_events,
+            make_initial_combinations_inner(ebs_mode,
+                                            max_events,
                                             events,
                                             filter_predicate,
                                             has_boundness,
@@ -226,6 +299,7 @@ namespace metrics {
 
         template<typename Predicate>
         [[nodiscard]] std::vector<raw_combination_t> combine_combinations(
+            bool ebs_mode,
             std::size_t max_events,
             std::vector<raw_combination_t> initial_combinations,
             Predicate && predicate)
@@ -262,6 +336,15 @@ namespace metrics {
 
                         // check combination
                         if (!predicate(current_combination, combination_b)) {
+                            continue;
+                        }
+
+                        // they should have the same ebs_ratio value since that controls the sample rate
+                        if (ebs_mode
+                            && !is_valid_ebs_combo(combination_b.ebs_ratio,
+                                                   current_combination.ebs_ratio,
+                                                   combination_b.uses_cycles,
+                                                   current_combination.uses_cycles)) {
                             continue;
                         }
 
@@ -320,10 +403,11 @@ namespace metrics {
             result.reserve(combinations.size());
 
             for (auto & combination : combinations) {
-                result.emplace_back(
-                    std::move(combination.contains_sets),
-                    std::set<std::uint16_t>(combination.event_codes.begin(), combination.event_codes.end()),
-                    combination.arch);
+                result.emplace_back(std::move(combination.contains_sets),
+                                    std::move(combination.event_codes),
+                                    combination.ebs_ratio,
+                                    combination.arch,
+                                    combination.uses_cycles);
             }
 
             return result;
@@ -339,6 +423,7 @@ namespace metrics {
     }
 
     std::vector<combination_t> make_combinations(
+        bool ebs_mode,
         std::size_t max_events,
         lib::Span<std::reference_wrapper<metrics::metric_events_set_t const> const> events,
         std::function<bool(metric_events_set_t const &)> const & filter_predicate)
@@ -347,25 +432,32 @@ namespace metrics {
         bool has_stalled_cycles = false;
 
         // make the initial set
-        auto raw_combinations =
-            make_initial_combinations(max_events, events, filter_predicate, has_boundness, has_stalled_cycles);
+        auto raw_combinations = make_initial_combinations(ebs_mode,
+                                                          max_events,
+                                                          events,
+                                                          filter_predicate,
+                                                          has_boundness,
+                                                          has_stalled_cycles);
 
         // merge boundness and top_level if possible
         raw_combinations =
-            combine_combinations(max_events,
+            combine_combinations(ebs_mode,
+                                 max_events,
                                  std::move(raw_combinations),
                                  filter_for_priorities<metric_priority_t::top_level, metric_priority_t::boundness>());
 
         // merge branch and top_level if the group has boundness and stalled_cycles (branches are prioritized over stall cycles)
         if (has_boundness && has_stalled_cycles) {
             raw_combinations =
-                combine_combinations(max_events,
+                combine_combinations(ebs_mode,
+                                     max_events,
                                      std::move(raw_combinations),
                                      filter_for_priorities<metric_priority_t::top_level, metric_priority_t::branch>());
         }
 
         // merge stalled_cycles and top_level if possible
         raw_combinations = combine_combinations(
+            ebs_mode,
             max_events,
             std::move(raw_combinations),
             filter_for_priorities<metric_priority_t::top_level, metric_priority_t::stall_cycles>());
@@ -373,13 +465,15 @@ namespace metrics {
         // merge branch and top_level if not done previously
         if (!has_boundness || !has_stalled_cycles) {
             raw_combinations =
-                combine_combinations(max_events,
+                combine_combinations(ebs_mode,
+                                     max_events,
                                      std::move(raw_combinations),
                                      filter_for_priorities<metric_priority_t::top_level, metric_priority_t::branch>());
         }
 
         // merge boundness, stall_cylces, frontend, backend
-        raw_combinations = combine_combinations(max_events,
+        raw_combinations = combine_combinations(ebs_mode,
+                                                max_events,
                                                 std::move(raw_combinations),
                                                 filter_for_priorities<metric_priority_t::boundness,
                                                                       metric_priority_t::stall_cycles,
@@ -388,24 +482,28 @@ namespace metrics {
 
         // merge data and top_level
         raw_combinations =
-            combine_combinations(max_events,
+            combine_combinations(ebs_mode,
+                                 max_events,
                                  std::move(raw_combinations),
                                  filter_for_priorities<metric_priority_t::top_level, metric_priority_t::data>());
 
         // merge data and ls
         raw_combinations =
-            combine_combinations(max_events,
+            combine_combinations(ebs_mode,
+                                 max_events,
                                  std::move(raw_combinations),
                                  filter_for_priorities<metric_priority_t::data, metric_priority_t::ls>());
 
         // merge data, ls, l2
         raw_combinations = combine_combinations(
+            ebs_mode,
             max_events,
             std::move(raw_combinations),
             filter_for_priorities<metric_priority_t::data, metric_priority_t::ls, metric_priority_t::l2>());
 
         // merge data, ls, l2, l3
-        raw_combinations = combine_combinations(max_events,
+        raw_combinations = combine_combinations(ebs_mode,
+                                                max_events,
                                                 std::move(raw_combinations),
                                                 filter_for_priorities<metric_priority_t::data,
                                                                       metric_priority_t::ls,
@@ -413,7 +511,8 @@ namespace metrics {
                                                                       metric_priority_t::l3>());
 
         // merge data, ls, l2, l3, ll
-        raw_combinations = combine_combinations(max_events,
+        raw_combinations = combine_combinations(ebs_mode,
+                                                max_events,
                                                 std::move(raw_combinations),
                                                 filter_for_priorities<metric_priority_t::data,
                                                                       metric_priority_t::ls,
@@ -423,7 +522,8 @@ namespace metrics {
 
         // merge anything else that will fit together
         raw_combinations =
-            combine_combinations(max_events,
+            combine_combinations(ebs_mode,
+                                 max_events,
                                  std::move(raw_combinations),
                                  [](raw_combination_t const & /*a*/, raw_combination_t const & /*b*/) { return true; });
 

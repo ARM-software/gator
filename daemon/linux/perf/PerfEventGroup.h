@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #ifndef INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
 #define INCLUDE_LINUX_PERF_PERF_EVENT_GROUP_H
@@ -122,7 +122,7 @@ public:
                                 int key,
                                 const IPerfGroups::Attr & attr,
                                 bool hasAuxData);
-    [[nodiscard]] bool createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker);
+    [[nodiscard]] bool createGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker, bool ebs_metric);
 
 private:
     perf_event_group_configurer_config_t & config;
@@ -130,7 +130,7 @@ private:
     perf_event_group_configurer_state_t & state;
 
     [[nodiscard]] bool createCpuGroupLeaderPinned(attr_to_key_mapping_tracker_t & mapping_tracker);
-    [[nodiscard]] bool createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker);
+    [[nodiscard]] bool createCpuGroupLeaderMuxed(attr_to_key_mapping_tracker_t & mapping_tracker, bool ebs_metric);
     [[nodiscard]] bool createUncoreGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker);
     [[nodiscard]] int nextDummyKey() { return nextDummyKey(config); }
 };

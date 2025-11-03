@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "linux/perf/PerfDriver.h"
 
@@ -15,6 +15,7 @@
 #include "SimpleDriver.h"
 #include "agents/perf/capture_configuration.h"
 #include "k/perf_event.h"
+#include "lib/Assert.h"
 #include "lib/Format.h"
 #include "lib/Span.h"
 #include "lib/String.h"
@@ -185,10 +186,12 @@ namespace {
                                             std::uint16_t event_code,
                                             std::uint64_t rate,
                                             std::uint32_t window,
-                                            std::unordered_map<std::uint16_t, int> & event_to_key)
+                                            std::unordered_map<std::uint16_t, int> & event_to_key,
+                                            bool ebs,
+                                            bool pinnable)
     {
 
-        LOG_DEBUG("Metric [%zu] = 0x%04x", group_ndx, event_code);
+        LOG_DEBUG("Metric [%zu] = 0x%04x, rate=%llu", group_ndx, event_code, static_cast<unsigned long long>(rate));
         const int key = group.nextDummyKey();
         IPerfGroups::Attr attr {};
 
@@ -198,7 +201,10 @@ namespace {
         attr.strobePeriod = window;
         // NOLINTNEXTLINE(hicpp-signed-bitwise)
         attr.sampleType = (PERF_SAMPLE_TID | PERF_SAMPLE_READ | PERF_SAMPLE_IP | PERF_SAMPLE_CALLCHAIN);
-        attr.userspace_only = true;
+        attr.userspace_only = !ebs;
+        attr.metric = true;
+        attr.ebs = ebs;
+        attr.pinnable = pinnable;
 
         if (!group.add(mapping_tracker, PerfEventGroupIdentifier(cluster.gator_cpu, group_ndx), key, attr)) {
             LOG_DEBUG("Failed to add metrics group counter");
@@ -249,18 +255,23 @@ namespace {
         }
 
         // other events
-        for (auto event : set.event_codes) {
-            if ((event == cpu_cycles_event) || (event == branch_return_event)) {
+        for (auto const & event : set.event_codes) {
+            if ((event.code == cpu_cycles_event) || (event.code == branch_return_event)) {
                 continue;
             }
-            auto const event_key = event_to_key.at(event);
+            auto it = event_to_key.find(event.code);
+            runtime_assert(it != event_to_key.end(), "Missing event_to_key for metric event");
+            auto const event_key = it->second;
             LOG_DEBUG("Metric %s:%u maps key %i to 0x%04x:%i",
                       set.identifier.data(),
                       set.instance_no,
                       set_key,
-                      event,
+                      event.code,
                       event_key);
-            metric_tracker(set_key, event, event_key, metric_key_to_event_key_tracker_t::metric_event_type_t::event);
+            metric_tracker(set_key,
+                           event.code,
+                           event_key,
+                           metric_key_to_event_key_tracker_t::metric_event_type_t::event);
         }
     }
 
@@ -341,59 +352,20 @@ namespace {
         return {result_version, result};
     }
 
-    [[nodiscard]] bool add_metrics_for(IPerfGroups & group,
-                                       attr_to_key_mapping_tracker_t & mapping_tracker,
-                                       metric_key_to_event_key_tracker_t & metric_tracker,
-                                       std::map<PerfEventGroupIdentifier, std::size_t> const & cpu_event_counts,
-                                       std::unordered_map<std::string, int> const & metric_ids,
-                                       std::uint16_t const cpu_cycles_event,
-                                       bool supports_strobing,
-                                       PerfCpu const & cluster,
-                                       std::uint16_t return_event_code,
-                                       combined_metrics_t const & combined_metrics)
+    [[nodiscard]] bool add_metrics_for_strobed(
+        IPerfGroups & group,
+        attr_to_key_mapping_tracker_t & mapping_tracker,
+        metric_key_to_event_key_tracker_t & metric_tracker,
+        std::uint16_t const cpu_cycles_event,
+        PerfCpu const & cluster,
+        std::uint16_t const return_event_code,
+        std::unordered_map<metrics::metric_events_set_t const *, int> const & set_to_key,
+        std::vector<metrics::combination_t> const & combinations,
+        unsigned long const rate,
+        unsigned long const window,
+        bool const use_return_counter)
     {
-        auto const n_used = get_n_used_pmu_counters(cpu_event_counts, cluster);
-        auto const n_available_raw = cluster.gator_cpu.getPmncCounters() //
-                                   - std::min<std::size_t>(n_used, cluster.gator_cpu.getPmncCounters());
-
-        // counting return events is only enabled if there is space. Prioritize collecting metrics when there is limited number of programmable counters available
-        auto const use_return_counter = (return_event_code != 0) //
-                                     && ((combined_metrics.largest_metric_event_count + 1) <= n_available_raw);
-
-        // counting return events consumes one counter
-        auto const n_available = (use_return_counter ? std::max<std::size_t>(1, n_available_raw) - 1 //
-                                                     : n_available_raw);
-
-        LOG_FINE("Found metric set for core type %s, n_counters=%i (used %zu, raw %zu, ret %u, avail %zu, size %zu)",
-                 cluster.gator_cpu.getCoreName(),
-                 cluster.gator_cpu.getPmncCounters(),
-                 n_used,
-                 n_available_raw,
-                 use_return_counter,
-                 n_available,
-                 combined_metrics.total_num_events);
-
-        // flatten out the hierarchy tree
-        auto const flattened_events = flatten_hierarchy(combined_metrics.root_events);
-
-        // make a lookup from metric set to counter key .
-        // this is used by streamline to correlate the perf ids via there keys back to the original event code / metric(s)
-        auto const set_to_key = make_metric_to_key_map(cluster, metric_ids, combined_metrics.version, flattened_events);
-
-        // find the valid metric combinations. this is the smallest set of multiplexed counter groups that will fit all valid metrics
-        auto const combinations = metrics::make_combinations(
-            n_available,
-            flattened_events,
-            make_metric_filter(cluster, metric_ids, combined_metrics.version, flattened_events));
-
-        LOG_DEBUG("Combinations set size %zu", combinations.size());
-
-        // select the sample rate and strobe window
-        auto const long_period = (gSessionData.mSampleRate > 0 ? (1'000'000'000UL / gSessionData.mSampleRate) //
-                                                               : 1'000'000UL);
-        auto const short_period = 100UL;
-        auto const rate = (supports_strobing ? long_period : short_period);
-        auto const window = (supports_strobing ? short_period : 0);
+        runtime_assert(window > 0 && rate > 0, "Strobed mode requires rate/window > 0");
 
         // output each of the combinations as a seperate multiplexed group
         for (std::size_t n = 0; n < combinations.size(); ++n) {
@@ -402,7 +374,7 @@ namespace {
             bool contains_return_event = false;
 
             // add the leader
-            group.addGroupLeader(mapping_tracker, PerfEventGroupIdentifier {cluster.gator_cpu, group_ndx});
+            group.addGroupLeader(mapping_tracker, PerfEventGroupIdentifier {cluster.gator_cpu, group_ndx}, false);
 
             // add cycles, which is the sampling event
             if (!add_one_metric_event(group,
@@ -412,22 +384,33 @@ namespace {
                                       cpu_cycles_event,
                                       rate,
                                       window,
-                                      event_to_key)) {
+                                      event_to_key,
+                                      false,
+                                      false)) {
                 return false;
             }
 
             // add the metric events (which are not sampling)
-            for (auto event : combinations[n].event_codes) {
+            for (auto const event_code : combinations[n].event_codes) {
                 // no need to add it twice
-                if (event == cpu_cycles_event) {
+                if (event_code == cpu_cycles_event) {
                     continue;
                 }
 
-                if (!add_one_metric_event(group, mapping_tracker, cluster, group_ndx, event, 0, 0, event_to_key)) {
+                if (!add_one_metric_event(group,
+                                          mapping_tracker,
+                                          cluster,
+                                          group_ndx,
+                                          event_code,
+                                          0,
+                                          0,
+                                          event_to_key,
+                                          false,
+                                          false)) {
                     return false;
                 }
 
-                contains_return_event |= (event == return_event_code);
+                contains_return_event |= (event_code == return_event_code);
             }
 
             // add branch-return counter for checking
@@ -439,7 +422,9 @@ namespace {
                                          return_event_code,
                                          0,
                                          0,
-                                         event_to_key)) {
+                                         event_to_key,
+                                         false,
+                                         false)) {
                 return false;
             }
 
@@ -455,6 +440,171 @@ namespace {
         }
 
         return true;
+    }
+
+    [[nodiscard]] bool add_metrics_for_ebs(
+        IPerfGroups & group,
+        attr_to_key_mapping_tracker_t & mapping_tracker,
+        metric_key_to_event_key_tracker_t & metric_tracker,
+        std::uint16_t const cpu_cycles_event,
+        PerfCpu const & cluster,
+        std::unordered_map<metrics::metric_events_set_t const *, int> const & set_to_key,
+        std::vector<metrics::combination_t> const & combinations,
+        unsigned long const rate)
+    {
+        runtime_assert(rate > 0, "EBS mode requires non-zero sample period");
+
+        auto const pinnable = (combinations.size() == 1);
+
+        // output each of the combinations as a seperate multiplexed group
+        for (std::size_t n = 0; n < combinations.size(); ++n) {
+            std::uint32_t const group_ndx = n + 1;
+            std::unordered_map<std::uint16_t, int> event_to_key {};
+
+            auto const ebs_ratio = combinations[n].ebs_ratio;
+            auto const uses_cycles = combinations[n].uses_cycles;
+            auto const sample_period = std::max<unsigned long>(1, rate / (1U * (ebs_ratio > 0 ? ebs_ratio
+                                                                                              : 1)));
+            auto const cycles_period = (uses_cycles ? sample_period : rate);
+
+            LOG_DEBUG("Metric group #%zu has ebs_ratio=%llu, uses_cycles=%c, cycles_period=%lu, sample_period=%lu",
+                      n + 1,
+                      static_cast<unsigned long long>(ebs_ratio),
+                      uses_cycles ? 'Y' : 'N',
+                      cycles_period,
+                      sample_period);
+
+            runtime_assert((ebs_ratio == 1) || !uses_cycles, "Unexpected ebs_ratio value with uses_cycles");
+
+            // add the leader
+            group.addGroupLeader(mapping_tracker, PerfEventGroupIdentifier {cluster.gator_cpu, group_ndx}, true);
+
+            // add cycles
+            if (!add_one_metric_event(group,
+                                      mapping_tracker,
+                                      cluster,
+                                      group_ndx,
+                                      cpu_cycles_event,
+                                      cycles_period,
+                                      0,
+                                      event_to_key,
+                                      true,
+                                      pinnable)) {
+                return false;
+            }
+
+            // add the metric events (EBS sampling, in addition to cycles)
+            for (auto const event_code : combinations[n].event_codes) {
+                // no need to add it twice
+                if (event_code == cpu_cycles_event) {
+                    continue;
+                }
+
+                if (!add_one_metric_event(group,
+                                          mapping_tracker,
+                                          cluster,
+                                          group_ndx,
+                                          event_code,
+                                          sample_period,
+                                          0,
+                                          event_to_key,
+                                          true,
+                                          false)) {
+                    return false;
+                }
+            }
+
+            // add the mappings
+            for (auto const * set : combinations[n].contains_sets) {
+                track_metric_events(metric_tracker, set_to_key, event_to_key, cpu_cycles_event, *set, 0);
+            }
+        }
+
+        return true;
+    }
+
+    [[nodiscard]] bool add_metrics_for(IPerfGroups & group,
+                                       attr_to_key_mapping_tracker_t & mapping_tracker,
+                                       metric_key_to_event_key_tracker_t & metric_tracker,
+                                       std::map<PerfEventGroupIdentifier, std::size_t> const & cpu_event_counts,
+                                       std::unordered_map<std::string, int> const & metric_ids,
+                                       std::uint16_t const cpu_cycles_event,
+                                       bool strobing_mode,
+                                       PerfCpu const & cluster,
+                                       std::uint16_t return_event_code,
+                                       combined_metrics_t const & combined_metrics)
+    {
+        auto const n_used = get_n_used_pmu_counters(cpu_event_counts, cluster);
+        auto const n_available_raw = cluster.gator_cpu.getPmncCounters() //
+                                   - std::min<std::size_t>(n_used, cluster.gator_cpu.getPmncCounters());
+
+        // counting return events is only enabled if there is space. Prioritize collecting metrics when there is limited number of programmable counters available
+        auto const use_return_counter = (return_event_code != 0) //
+                                     && strobing_mode            //
+                                     && ((combined_metrics.largest_metric_event_count + 1) <= n_available_raw);
+
+        // counting return events consumes one counter
+        auto const n_available = (use_return_counter ? std::max<std::size_t>(1, n_available_raw) - 1 //
+                                                     : n_available_raw);
+
+        LOG_FINE("Found metric set for core type %s, n_counters=%i (used %zu, raw %zu, ret %u, avail %zu, size %zu), "
+                 "strobing_mode=%c",
+                 cluster.gator_cpu.getCoreName(),
+                 cluster.gator_cpu.getPmncCounters(),
+                 n_used,
+                 n_available_raw,
+                 use_return_counter,
+                 n_available,
+                 combined_metrics.total_num_events,
+                 strobing_mode ? 'y' : 'n');
+
+        // flatten out the hierarchy tree
+        auto const flattened_events = flatten_hierarchy(combined_metrics.root_events);
+
+        // make a lookup from metric set to counter key .
+        // this is used by streamline to correlate the perf ids via there keys back to the original event code / metric(s)
+        auto const set_to_key = make_metric_to_key_map(cluster, metric_ids, combined_metrics.version, flattened_events);
+
+        // find the valid metric combinations. this is the smallest set of multiplexed counter groups that will fit all valid metrics
+        auto const combinations = metrics::make_combinations(
+            !strobing_mode,
+            n_available,
+            flattened_events,
+            make_metric_filter(cluster, metric_ids, combined_metrics.version, flattened_events));
+
+        LOG_DEBUG("Combinations set size %zu", combinations.size());
+
+        // select the sample rate and strobe window
+        constexpr unsigned one_billion = 1'000'000'000U;
+        auto const sample_rate = std::min(gSessionData.mSampleRate > 0 ? unsigned(gSessionData.mSampleRate) //
+                                                                       : 1000U,
+                                          one_billion);
+        auto const long_period = one_billion / sample_rate;
+
+        if (strobing_mode) {
+            constexpr unsigned short_period = 100U;
+
+            return add_metrics_for_strobed(group,
+                                           mapping_tracker,
+                                           metric_tracker,
+                                           cpu_cycles_event,
+                                           cluster,
+                                           return_event_code,
+                                           set_to_key,
+                                           combinations,
+                                           long_period,
+                                           short_period,
+                                           use_return_counter);
+        }
+
+        return add_metrics_for_ebs(group,
+                                   mapping_tracker,
+                                   metric_tracker,
+                                   cpu_cycles_event,
+                                   cluster,
+                                   set_to_key,
+                                   combinations,
+                                   long_period);
     }
 
     bool enableGatorTracePoint(IPerfGroups & group, attr_to_key_mapping_tracker_t & mapping_tracker, long long id)
@@ -1437,7 +1587,7 @@ bool PerfDriver::enable(IPerfGroups & group,
     // prepare the per-cpu group leaders (these collect context switch/forks/exits/mmaps/etc)
     for (const PerfCpu & cluster : mConfig.cpus) {
         PerfEventGroupIdentifier clusterGroupIdentifier(cluster.gator_cpu);
-        group.addGroupLeader(mapping_tracker, clusterGroupIdentifier);
+        group.addGroupLeader(mapping_tracker, clusterGroupIdentifier, false);
     }
 
     // add gatord annotations
@@ -1461,6 +1611,30 @@ bool PerfDriver::enable(IPerfGroups & group,
     }
 
     // enable metrics
+    auto const supports_groups_read_format =
+        isCaptureOperationModeSupportingCounterGroups(gSessionData.mCaptureOperationMode,
+                                                      mConfig.config.supports_inherit_sample_read);
+    auto const supports_strobing = (mConfig.config.supports_strobing_core || mConfig.config.supports_strobing_patches);
+
+    auto strobing_mode = (supports_strobing && supports_groups_read_format);
+
+    switch (gSessionData.mMetricSamplingMode) {
+        case MetricSamplingMode::strobing:
+            if (!strobing_mode) {
+                LOG_ERROR("Strobed metrics collection is not supported on this target.");
+                return false;
+            }
+            break;
+        case MetricSamplingMode::ebs:
+            strobing_mode = false;
+            break;
+        case MetricSamplingMode::automatic:
+            break;
+        default:
+            LOG_ERROR("Unknown metric sampling mode. should be strobing or ebs");
+            return false;
+    }
+
     for (const PerfCpu & cluster : mConfig.cpus) {
         std::string_view const counter_set = cluster.gator_cpu.getCounterSet();
         auto const * cpu_metrics = metrics::find_events_for_cset(counter_set);
@@ -1477,7 +1651,7 @@ bool PerfDriver::enable(IPerfGroups & group,
                                  cpu_event_counts,
                                  metric_ids,
                                  cpu_cycles_event,
-                                 mConfig.config.supports_strobing_core || mConfig.config.supports_strobing_patches,
+                                 strobing_mode,
                                  cluster,
                                  cpu_metrics->return_event_code,
                                  combined_metrics)) {
@@ -1620,6 +1794,9 @@ void PerfDriver::writeEventsFor(const PerfCpu & perfCpu,
             mxmlElementSetAttr(node, "per_cpu", "yes");
             mxmlElementSetAttr(node, "description", metrics_set.description.data());
             mxmlElementSetAttr(node, "metric", "yes");
+            mxmlElementSetAttr(node, "metric_uses_cycles", (metrics_set.uses_cycles ? "yes" : "no"));
+            mxmlElementSetAttrf(node, "metric_num_events", "%zu", metrics_set.event_codes.size());
+            mxmlElementSetAttr(node, "metric_cpu_counter_set", gator_cpu.getCounterSet());
         }
 
         // recurse to children

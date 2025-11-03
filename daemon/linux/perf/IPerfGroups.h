@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #ifndef IPERF_GROUPS_H
 #define IPERF_GROUPS_H
@@ -29,6 +29,8 @@ public:
         bool context_switch = false;
         bool userspace_only = false;
         bool ebs = false;
+        bool metric = false;
+        bool pinnable = false;
 
         constexpr Attr() = default;
     };
@@ -42,7 +44,8 @@ public:
                                    bool hasAuxData = false) = 0;
 
     virtual void addGroupLeader(attr_to_key_mapping_tracker_t & mapping_tracker,
-                                const PerfEventGroupIdentifier & groupIdentifier) = 0;
+                                const PerfEventGroupIdentifier & groupIdentifier,
+                                bool ebs_metric) = 0;
 
     virtual ~IPerfGroups() = default;
 };

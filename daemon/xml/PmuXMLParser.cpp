@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "xml/PmuXMLParser.h"
 
@@ -310,7 +310,8 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
                   pmncCounters);
 
         // Check if SPE name is specified for the given CPU. If so, check to see if the SPE device is configured on the device.
-        if (speName != nullptr) {
+        bool cpuIsKnownToSupportSPE = speName != nullptr;
+        if (cpuIsKnownToSupportSPE) {
             bool speDeviceFound = false;
             lib::FsEntryDirectoryIterator it = lib::FsEntry::create(perf_devices.data()).children();
             std::optional<lib::FsEntry> child;
@@ -328,8 +329,16 @@ bool parseXml(const char * const xml, PmuXML & pmuXml)
             }
         }
 
-        pmuXml.cpus
-            .emplace_back(coreName, id, counterSet, dtName, speName, speVersion, std::move(cpuIds), pmncCounters, isV8);
+        pmuXml.cpus.emplace_back(coreName,
+                                 id,
+                                 counterSet,
+                                 dtName,
+                                 speName,
+                                 speVersion,
+                                 cpuIsKnownToSupportSPE,
+                                 std::move(cpuIds),
+                                 pmncCounters,
+                                 isV8);
     }
 
     for (mxml_node_t * node = mxmlFindElement(root, root, TAG_UNCORE_PMU.data(), nullptr, nullptr, MXML_DESCEND);

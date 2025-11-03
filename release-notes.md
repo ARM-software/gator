@@ -1,3 +1,15 @@
+# Gator 9.7.2
+
+EBS support updates
+
+Updates to help text to remove outdated information
+
+Suppressing unnecessary warnings in certain use cases
+
+Improvements to the recently released GPU Timeline feature
+
+Bug fixes and performance improvements
+
 # Gator 9.7.1
 
 Adds new GPU Support for Mali G1-Pro/Premium/Ultra

@@ -28,15 +28,15 @@ enum log_levels {
 /* LINUX IMPLEMENTATION */
 #elif defined(linux) || defined(__linux) || defined(__linux__)
 // clang-format off
-char *log_levels[] = { "UNKNOWN",
-                       "DEFAULT",
-                       "VERBOSE",
-                       "DEBUG",
-                       "INFO",
-                       "WARN",
-                       "ERROR",
-                       "FATAL",
-                       "SILENT"};
+const char *log_levels[] = { "UNKNOWN",
+                             "DEFAULT",
+                             "VERBOSE",
+                             "DEBUG",
+                             "INFO",
+                             "WARN",
+                             "ERROR",
+                             "FATAL",
+                             "SILENT"};
 // clang-format on
 #define LOGGING(LOG_LEVEL, fmt, ...)                                                                                   \
     printf("%s/%s:%d [%s] " fmt " \n", __FILE__, __func__, __LINE__, log_levels[LOG_LEVEL], ##__VA_ARGS__);

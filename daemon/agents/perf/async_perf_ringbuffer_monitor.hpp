@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -550,6 +550,12 @@ namespace agents::perf {
                                          }
 
                                          if (ec) {
+                                             if (ec == boost::asio::error::operation_aborted
+                                                 || ec == boost::asio::error::bad_descriptor) {
+                                                 // The CPU may have been offlined and FDs deleted
+                                                 // Mark this CPU for removal
+                                                 st->removed_cpus.emplace_back(cpu_no);
+                                             }
                                              return start_with(ec) | map_error();
                                          }
 

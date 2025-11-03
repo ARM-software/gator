@@ -196,22 +196,6 @@ static mxml_node_t * getTree(bool includeTime,
 #endif
 #endif
 
-    // add mali gpu ids
-    if (!maliGpuIds.empty()) {
-        // make set of unique ids
-        std::set<unsigned> uniqueGpuIds;
-        for (auto gpuid : maliGpuIds) {
-            uniqueGpuIds.insert(gpuid.second);
-        }
-
-        mxml_node_t * const gpuids = mxmlNewElement(captured, "gpus");
-
-        for (unsigned gpuid : uniqueGpuIds) {
-            mxml_node_t * const node = mxmlNewElement(gpuids, "gpu");
-            mxmlElementSetAttrf(node, "id", "0x%x", gpuid);
-        }
-    }
-
     mxml_node_t * counters = nullptr;
     for (const auto & counter : gSessionData.mCounters) {
         if (counter.excludeFromCapturedXml()) {

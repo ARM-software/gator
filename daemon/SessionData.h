@@ -87,6 +87,7 @@ public:
     int mOverrideNoPmuSlots {-1};
 
     CaptureOperationMode mCaptureOperationMode = CaptureOperationMode::system_wide;
+    MetricSamplingMode mMetricSamplingMode = MetricSamplingMode::automatic;
 
     bool mStopOnExit {false};
     bool mWaitingOnCommand {false};

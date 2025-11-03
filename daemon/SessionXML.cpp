@@ -32,6 +32,7 @@ namespace {
     constexpr const char * ATTR_EXCLUDE_KERNEL_EVENTS = "exclude_kernel_events";
     constexpr const char * ATTR_OFF_CPU_PROFILING = "off_cpu_profiling";
     constexpr const char * ATTR_GPU_TIMELINE = "gpu_timeline";
+    constexpr const char * ATTR_METRIC_SAMPLING_MODE = "metric_sampling_mode";
 }
 
 SessionXML::SessionXML(const char * str) : mSessionXML(str)
@@ -148,6 +149,15 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
 
     if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) == 0) {
         gSessionData.mEnableOffCpuSampling = stringToBool(mxmlElementGetAttr(node, ATTR_OFF_CPU_PROFILING), false);
+    }
+
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_METRIC_SAMPLING_MODE) == 0)) {
+        if (mxmlElementGetAttr(node, ATTR_METRIC_SAMPLING_MODE) != nullptr) {
+            parameters.metric_sampling_mode = mxmlElementGetAttr(node, ATTR_METRIC_SAMPLING_MODE);
+        }
+        else {
+            parameters.metric_sampling_mode = "auto";
+        }
     }
 
     // parse subtags

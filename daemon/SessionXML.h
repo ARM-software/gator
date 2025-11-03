@@ -14,6 +14,8 @@ struct ConfigParameters {
     std::string sample_rate;
     /// GPU timeline, "yes", "no", or "auto"
     std::string gpu_timeline;
+    /// Metric sampling mode, "strobing", "ebs", or "auto"
+    std::string metric_sampling_mode;
     /// whether stack unwinding is performed
     bool call_stack_unwinding = false;
     int live_rate = 0;
