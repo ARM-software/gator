@@ -74,7 +74,7 @@ run_cmake() {
 
 # Fetch vcpkg
 checkout_vcpkg() {
-    local vcpkg_commit="501db0f17ef6df184fcdbfbe0f87cde2313b6ab1" # upstream/2023.04.15
+    local vcpkg_commit="74e6536215718009aae747d86d84b78376bf9e09" # upstream/2023.04.15
     local root="${1}"
     local use_system_binaries="${2}"
     local exe_path="${root}/vcpkg/vcpkg"
