@@ -1,3 +1,7 @@
+# Gator 9.6.1
+
+Internal bug fixes and improvements
+
 # Gator 9.6.0
 
 Add GPU product name to captures, using libGPUInfo
