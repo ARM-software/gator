@@ -514,8 +514,8 @@ namespace mali_userspace {
             // Try to grab the gpu name from libGPUInfo, if we can't, fall back to product record.
             // We use this to distinguish between Mali and Immortalis variants.
             // Get the instance at id 0, as in multi-gpu case gpus are homogenous.
-            auto gpu_info_instance = libgpuinfo::instance::create();
-            libgpuinfo::gpuinfo gpu_info {};
+            auto gpu_info_instance = libarmgpuinfo::instance::create();
+            libarmgpuinfo::gpuinfo gpu_info {};
 
             if (gpu_info_instance != nullptr) {
                 gpu_info = gpu_info_instance->get_info();
