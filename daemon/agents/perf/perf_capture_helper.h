@@ -34,11 +34,11 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
-#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/read_until.hpp>
+#include <boost/asio/system_timer.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/system/error_code.hpp>
 
@@ -829,8 +829,10 @@ namespace agents::perf {
         void terminate(bool defer = false)
         {
             boost::asio::post(strand, [defer, st = this->shared_from_this()]() {
+                using namespace std::chrono_literals;
+
                 // delay to use when deferring shutdown
-                constexpr auto defer_delay_ms = boost::posix_time::milliseconds(1000);
+                constexpr auto defer_delay_ms = 1000ms;
 
                 // only perform the terminate once
                 auto timer = std::exchange(st->terminate_delay_timer, nullptr);
@@ -867,7 +869,7 @@ namespace agents::perf {
                 // defer the terminate() call to allow the async_perf_ringbuffer_monitor to receive any closed() events for the event fds it monitors
                 if (defer) {
                     LOG_FINE("Terminating pid monitoring... starting termination countdown.");
-                    timer->expires_from_now(defer_delay_ms);
+                    timer->expires_after(defer_delay_ms);
                     timer->async_wait(std::move(handler));
                 }
                 // otherwise, call the handler directly
@@ -905,7 +907,7 @@ namespace agents::perf {
                     return;
             }
 
-            auto poll_delay_timer = std::make_shared<boost::asio::deadline_timer>(st->strand.context());
+            auto poll_delay_timer = std::make_shared<boost::asio::system_timer>(st->strand.context());
 
             spawn("process scanner",
                   repeatedly(
@@ -962,10 +964,12 @@ namespace agents::perf {
                                                 | st->async_read_process_maps(use_continuation);
                                        }) //
                                | then([poll_delay_timer]() {
-                                     // delay to use when deferring scanning
-                                     constexpr auto defer_delay_ms = boost::posix_time::milliseconds(100);
+                                     using namespace std::chrono_literals;
 
-                                     poll_delay_timer->expires_from_now(defer_delay_ms);
+                                     // delay to use when deferring scanning
+                                     constexpr auto defer_delay_ms = 100ms;
+
+                                     poll_delay_timer->expires_after(defer_delay_ms);
                                      return poll_delay_timer->async_wait(use_continuation);
                                  })
                                | then([](auto /*ec*/) {
@@ -990,8 +994,9 @@ namespace agents::perf {
         std::shared_ptr<async::async_wait_for_process_t<boost::asio::io_context::executor_type>> waiter {};
         std::shared_ptr<async_perf_ringbuffer_monitor_t> async_perf_ringbuffer_monitor;
         std::shared_ptr<async::proc::async_process_t> forked_command;
-        std::shared_ptr<boost::asio::deadline_timer> terminate_delay_timer {
-            new boost::asio::deadline_timer(strand.context())};
+        std::shared_ptr<boost::asio::system_timer> terminate_delay_timer {
+            new boost::asio::system_timer(strand.context()),
+        };
         perf_capture_events_helper_t perf_capture_events_helper;
         bool terminate_requested {false};
 

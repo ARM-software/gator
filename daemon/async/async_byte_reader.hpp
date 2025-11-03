@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -24,9 +24,6 @@ namespace async {
     class async_byte_reader_t : public std::enable_shared_from_this<async_byte_reader_t> {
     public:
         static constexpr std::size_t default_read_chunk_size = 65536;
-
-        // assumes that data returns a single item
-        static_assert(std::is_same_v<boost::asio::streambuf::const_buffers_type, boost::asio::const_buffers_1>);
 
         /** Constructor */
         explicit async_byte_reader_t(boost::asio::posix::stream_descriptor && sd,

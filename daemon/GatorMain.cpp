@@ -56,7 +56,15 @@
 #include <boost/filesystem/file_status.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/version.hpp>
+
+#if BOOST_VERSION >= (108600)
+#include <boost/process/v1/search_path.hpp>
+namespace boost_process = boost::process::v1;
+#else
 #include <boost/process/search_path.hpp>
+namespace boost_process = boost::process;
+#endif
 
 #include <Drivers.h>
 #include <fcntl.h>
@@ -872,7 +880,7 @@ bool check_command_exists(std::string & command, const char * working_directory)
         return true;
     }
 
-    return !boost::process::search_path(command).empty();
+    return !boost_process::search_path(command).empty();
 }
 
 bool run_setup_probes(Drivers & drivers,

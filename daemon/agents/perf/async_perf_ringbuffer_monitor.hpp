@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cstddef>
 #include <deque>
+#include <map>
 #include <memory>
 #include <set>
 #include <utility>
@@ -651,7 +652,7 @@ namespace agents::perf {
                                  });
                       }, //
                       [st]() {
-                          st->timer.expires_from_now(st->live_mode ? live_poll_interval : local_poll_interval);
+                          st->timer.expires_after(st->live_mode ? live_poll_interval : local_poll_interval);
 
                           return st->timer.async_wait(use_continuation) //
                                | post_on(st->strand)                    //

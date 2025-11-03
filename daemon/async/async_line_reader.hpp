@@ -1,7 +1,8 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
+#include "Logging.h"
 #include "async/continuations/async_initiate.h"
 #include "async/continuations/continuation.h"
 #include "async/continuations/continuation_of.h"
@@ -12,9 +13,11 @@
 #include <string_view>
 #include <type_traits>
 
+#include <boost/asio/async_result.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <boost/system/error_code.hpp>
 
 namespace async {
@@ -34,64 +37,57 @@ namespace async {
         template<typename CompletionToken>
         auto async_read_line(CompletionToken && token)
         {
-            using namespace async::continuations;
-
-            return async_initiate_cont(
-                [st = shared_from_this()]() {
+            return boost::asio::async_initiate<CompletionToken, void(boost::system::error_code, std::string_view)>(
+                [st = shared_from_this()](auto handler) {
                     // consume the bytes from the buffer, ready for the next loop
                     st->buffer.consume(std::exchange(st->n_to_consume, 0));
 
-                    return boost::asio::async_read_until(st->stream_descriptor,
-                                                         st->buffer,
-                                                         '\n',
-                                                         use_continuation) //
-                         | then([st](boost::system::error_code const & ec, std::size_t n) {
-                               // assumes that data returns a single item
-                               static_assert(std::is_same_v<boost::asio::streambuf::const_buffers_type,
-                                                            boost::asio::const_buffers_1>);
+                    return boost::asio::async_read_until(
+                        st->stream_descriptor,
+                        st->buffer,
+                        '\n',
+                        [st, handler = std::move(handler)](boost::system::error_code ec,
+                                                           std::size_t n) mutable -> void {
+                            // assumes that data returns a single item
+                            auto const is_eof = (ec == boost::asio::error::eof);
 
-                               auto const is_eof = (ec == boost::asio::error::eof);
+                            // handle errors
+                            if ((!is_eof) && ec) {
+                                LOG_DEBUG("Read failed with %s", ec.message().c_str());
+                                return handler(ec, std::string_view());
+                            }
 
-                               // handle errors
-                               if ((!is_eof) && ec) {
-                                   LOG_DEBUG("Read failed with %s", ec.message().c_str());
-                                   return std::pair {ec, std::string_view()};
-                               }
+                            // process line of text
 
-                               // process line of text
+                            // find the modified buffer chunk
+                            auto const input_area = st->buffer.data();
+                            auto const read_area_length = std::min(n, input_area.size());
 
-                               // find the modified buffer chunk
-                               auto const input_area = st->buffer.data();
-                               auto const read_area_length = std::min(n, input_area.size());
+                            // first find the substr containing up-to the first '\n' marker
+                            auto const read_area =
+                                std::string_view(reinterpret_cast<char const *>(input_area.data()), read_area_length);
 
-                               // first find the substr containing up-to the first '\n' marker
-                               auto const read_area =
-                                   std::string_view(reinterpret_cast<char const *>(input_area.data()),
-                                                    read_area_length);
+                            auto const message = find_end_of_line(read_area);
+                            st->n_to_consume = message.size();
 
-                               auto const message = find_end_of_line(read_area);
-                               st->n_to_consume = message.size();
+                            // only report EOF once buffer is drained of complete lines
+                            if (is_eof && message.empty()) {
+                                // if there is some trailing, unterminated (by EOL) text, send it
+                                if (input_area.size() > 0) {
+                                    st->n_to_consume = input_area.size();
+                                    return handler(boost::system::error_code {},
+                                                   std::string_view(reinterpret_cast<char const *>(input_area.data()),
+                                                                    input_area.size()));
+                                }
 
-                               // only report EOF once buffer is drained of complete lines
-                               if (is_eof && message.empty()) {
-                                   // if there is some trailing, unterminated (by EOL) text, send it
-                                   if (input_area.size() > 0) {
-                                       st->n_to_consume = input_area.size();
-                                       return std::pair {
-                                           boost::system::error_code {},
-                                           std::string_view(reinterpret_cast<char const *>(input_area.data()),
-                                                            input_area.size())};
-                                   }
+                                // otherwise report the EOF
+                                return handler(boost::system::error_code {boost::asio::error::eof},
+                                               std::string_view {});
+                            }
 
-                                   // otherwise report the EOF
-                                   return std::pair {boost::system::error_code {boost::asio::error::eof},
-                                                     std::string_view {}};
-                               }
-
-                               // report the line
-                               return std::pair {boost::system::error_code {}, message};
-                           }) //
-                         | unpack_tuple();
+                            // report the line
+                            return handler(boost::system::error_code {}, message);
+                        });
                 },
                 std::forward<CompletionToken>(token));
         }

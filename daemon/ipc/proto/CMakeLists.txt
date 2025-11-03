@@ -1,6 +1,6 @@
-# Copyright (C) 2022 by Arm Limited. All rights reserved.
+# Copyright (C) 2022-2025 by Arm Limited. All rights reserved.
 
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 
 set(Protobuf_IMPORT_DIRS ${CMAKE_CURRENT_LIST_DIR})
 
@@ -18,7 +18,7 @@ target_include_directories(ipcproto
 )
 
 target_link_libraries(ipcproto
-    PRIVATE ${Protobuf_LITE_LIBRARIES}
+    PRIVATE ${Protobuf_LITE_LIBRARIES} protobuf::libprotobuf-lite
 )
 
 target_compile_options(ipcproto PRIVATE "-Wno-error")

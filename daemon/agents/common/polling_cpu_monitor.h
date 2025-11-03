@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -99,7 +99,7 @@ namespace agents {
                         return start_on(st->strand)                             //
                              | then([st]() { return st->on_strand_do_poll(); }) //
                              | then([st](bool any_offline) {
-                                   st->timer.expires_from_now(any_offline ? short_poll_interval : long_poll_interval);
+                                   st->timer.expires_after(any_offline ? short_poll_interval : long_poll_interval);
                                })                                     //
                              | st->timer.async_wait(use_continuation) //
                              | post_on(st->strand)                    //
