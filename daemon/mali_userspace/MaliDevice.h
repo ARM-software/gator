@@ -189,6 +189,13 @@ namespace mali_userspace {
         const char * getSupportedDeviceFamilyName() const;
 
         /**
+         * @brief Get the major mali ddk version on this device.
+         *
+         * @return ddk major version, or -1 if not found.
+         */
+        [[nodiscard]] int getDDKVersion() const;
+
+        /**
          * Get the name of the counter for the given block and index
          *
          * @return The name of the counter, or nullptr if invalid combination of indexes
@@ -218,6 +225,13 @@ namespace mali_userspace {
         block_metadata_t get_block_metadata() const { return block_metadata; }
 
         std::size_t get_num_counters_per_block() const { return block_metadata.num_counters_per_block; }
+
+        /**
+         * @brief Get the ddk version on this device.
+         *
+         * @return int ddk major version, or -1 if not found.
+         */
+        static int get_mali_ddk_version_from_device();
 
     private:
         struct AccumulatedCounter {
@@ -272,6 +286,9 @@ namespace mali_userspace {
 
         counter_delta_writer_t delta_writer;
         counter_accumulator_t counter_accumulator;
+
+        /** Mali DDK Version on device */
+        int ddk_version;
 
         MaliDevice(const MaliProductVersion & productVersion,
                    hwcpipe::device::handle::handle_ptr handle,

@@ -29,6 +29,7 @@
 #include <ios>
 #include <map>
 #include <memory>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -111,7 +112,10 @@ namespace mali_userspace {
             PRODUCT_ID_TTIX = 0xc000,
             PRODUCT_ID_TTIX2 = 0xc001,
             PRODUCT_ID_TKRX = 0xd000,
-            PRODUCT_ID_TKRX2 = 0xd001
+            PRODUCT_ID_TKRX2 = 0xd001,
+            PRODUCT_ID_G1_ULTRA = 0xe000,
+            PRODUCT_ID_G1_PREMIUM = 0xe001,
+            PRODUCT_ID_G1_PRO = 0xe003
         };
 
         constexpr std::string_view MIDGARD {"Midgard"};
@@ -291,6 +295,24 @@ namespace mali_userspace {
                                                                        "G625",
                                                                        GPUGEN5,
                                                                        hardware_counters_mali_g625,
+                                                                       false),
+                                                  MALI_PRODUCT_VERSION(PRODUCT_ID_G1_PRO,
+                                                                       dev::product_id::g1_pro,
+                                                                       "G1_PRO",
+                                                                       GPUGEN5,
+                                                                       hardware_counters_mali_g1,
+                                                                       false),
+                                                  MALI_PRODUCT_VERSION(PRODUCT_ID_G1_PREMIUM,
+                                                                       dev::product_id::g1_premium,
+                                                                       "G1_PREMIUM",
+                                                                       GPUGEN5,
+                                                                       hardware_counters_mali_g1,
+                                                                       false),
+                                                  MALI_PRODUCT_VERSION(PRODUCT_ID_G1_ULTRA,
+                                                                       dev::product_id::g1_ultra,
+                                                                       "G1_ULTRA",
+                                                                       GPUGEN5,
+                                                                       hardware_counters_mali_g1,
                                                                        false)};
 
         enum { NUM_PRODUCT_VERSIONS = COUNT_OF(PRODUCT_VERSIONS) };
@@ -492,8 +514,8 @@ namespace mali_userspace {
             // Try to grab the gpu name from libGPUInfo, if we can't, fall back to product record.
             // We use this to distinguish between Mali and Immortalis variants.
             // Get the instance at id 0, as in multi-gpu case gpus are homogenous.
-            auto gpu_info_instance = libarmgpuinfo::instance::create();
-            libarmgpuinfo::gpuinfo gpu_info {};
+            auto gpu_info_instance = libgpuinfo::instance::create();
+            libgpuinfo::gpuinfo gpu_info {};
 
             if (gpu_info_instance != nullptr) {
                 gpu_info = gpu_info_instance->get_info();
@@ -533,6 +555,15 @@ namespace mali_userspace {
 
             LOG_SETUP(log_output.str());
         }
+
+        //Get Mali DDK Version
+        ddk_version = get_mali_ddk_version_from_device();
+        if (ddk_version != -1) {
+            LOG_SETUP("Mali DDK\nFound Mali DDK version: " + std::to_string(ddk_version));
+        }
+        else {
+            LOG_SETUP("Mali DDK\nMali DDK version could not be found.");
+        }
     }
 
     uint32_t MaliDevice::getGpuId() const
@@ -553,6 +584,11 @@ namespace mali_userspace {
     const char * MaliDevice::getProductName() const
     {
         return mProductVersion.mName;
+    }
+
+    int MaliDevice::getDDKVersion() const
+    {
+        return ddk_version;
     }
 
     const char * MaliDevice::getSupportedDeviceFamilyName() const
@@ -698,4 +734,42 @@ namespace mali_userspace {
                 {maliCacheSliceCount.getKey(), static_cast<std::uint32_t>(constants.num_l2_slices)},
                 {maliShaderCoreCount.getKey(), static_cast<std::uint32_t>(constants.num_shader_cores)}};
     };
+
+    int MaliDevice::get_mali_ddk_version_from_device()
+    {
+        std::array<char, 256> buffer;
+        std::string result;
+
+#if defined(ANDROID) || defined(__ANDROID__)
+        std::string command = "dumpsys SurfaceFlinger | grep \"GLES:\"";
+#else
+        std::string command = "dmesg | grep mali";
+#endif
+
+        FILE * pipe = popen(command.c_str(), "r");
+        if (!pipe) {
+            return -1;
+        }
+
+        // Read the output into result
+        while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+            result += buffer.data();
+        }
+        pclose(pipe);
+
+        std::regex version_regex(R"(r(\d+)p)");
+        std::smatch match;
+
+        if (std::regex_search(result, match, version_regex) && match.size() > 1) {
+
+            try {
+                return std::stoi(match.str(1));
+            }
+            catch (...) {
+                return -1;
+            }
+        }
+
+        return -1;
+    }
 }

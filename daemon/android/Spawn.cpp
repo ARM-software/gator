@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "Spawn.h"
 
@@ -10,6 +10,22 @@
 #include <string>
 
 namespace gp = gator::process;
+
+std::optional<std::string> gator::android ::copy_to_pkg_data_dir(const std::string & package,
+                                                                 const std::string & src_path,
+                                                                 const std::string & dst_filename)
+{
+    const auto target_exe_path = "/data/data/" + package + "/" + dst_filename;
+    const auto cmd = "run-as " + package + " cp -f " + src_path + " " + target_exe_path;
+    int result = gp::system(cmd);
+    return result == 0 ? std::optional<std::string> {target_exe_path} : std::nullopt;
+}
+
+int gator::android ::remove_from_pkg_data_dir(const std::string & package, const std::string & filename)
+{
+    const auto target_path = "/data/data/" + package + "/" + filename;
+    return gp::system("run-as " + package + " rm -fr " + target_path);
+}
 
 std::optional<std::string> gator::android::deploy_to_package(const std::string & package)
 {
@@ -37,16 +53,11 @@ std::optional<std::string> gator::android::deploy_to_package(const std::string &
         remove_real_path = true;
     }
 
-    const auto target_exe_path = "/data/data/" + package + "/" + exe_name;
-    const auto cmd = "run-as " + package + " cp -f " + real_path.path() + " " + target_exe_path;
-    const auto copy_result = gp::system(cmd);
+    const auto copy_result = copy_to_pkg_data_dir(package, real_path.path(), exe_name);
 
     if (remove_real_path) {
         real_path.remove();
     }
 
-    if (copy_result == 0) {
-        return {target_exe_path};
-    }
-    return std::nullopt;
+    return copy_result;
 }

@@ -168,6 +168,12 @@
     <!-- nvidia -->
     <pmu counter_set="Other" id="ARMv8_NVIDIA_Denver" cpuid="0x4e000" core_name="Nvidia-Denver" pmnc_counters="6" profile="8a"/>
 
+    <!-- ============================ TC24 ============================ -->
+    <pmu counter_set="ARMv9_C1_Nano" id="armv9_c1_nano" cpuid="0x41d8a" core_name="C1-Nano" dt_name="arm,c1-nano" pmnc_counters="20" profile="9a" spe_version="v1p2"/>
+    <pmu counter_set="ARMv9_C1_Pro" id="armv9_c1_pro" cpuid="0x41d8b" core_name="C1-Pro" dt_name="arm,c1-pro" pmnc_counters="31" profile="9a" spe="arm_c1_pro_spe_pmu" spe_version="v1p2"/>
+    <pmu counter_set="ARMv9_C1_Premium" id="armv9_c1_premium" cpuid="0x41d90" core_name="C1-Premium" dt_name="arm,c1-premium" pmnc_counters="31" profile="9a" spe="arm_c1_premium_spe_pmu" spe_version="v1p2"/>
+    <pmu counter_set="ARMv9_C1_Ultra" id="armv9_c1_ultra" cpuid="0x41d8c" core_name="C1-Ultra" dt_name="arm,c1-ultra" pmnc_counters="31" profile="9a" spe="arm_c1_ultra_spe_pmu" spe_version="v1p2"/>
+
     <!--  Huawei -->
     <pmu counter_set="ARMv8_Cortex_A76" id="ARMv8_Kirin_980" cpuid="0x48d40" core_name="Kirin 980" pmnc_counters="6" profile="8a"/>
 

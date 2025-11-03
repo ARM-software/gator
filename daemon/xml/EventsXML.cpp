@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #include "xml/EventsXML.h"
 
@@ -9,6 +9,7 @@
 #include "lib/File.h"
 #include "lib/Span.h"
 #include "lib/String.h"
+#include "mali_userspace/MaliDevice.h"
 #include "xml/EventsXMLProcessor.h"
 #include "xml/MxmlUtils.h"
 #include "xml/PmuXML.h"
@@ -66,6 +67,7 @@ namespace events_xml {
 
         // inject additional counter sets
         processClusters(mainXml.get(), clusters, uncores);
+
         return mainXml;
     }
 
@@ -83,9 +85,12 @@ namespace events_xml {
                 "<events>");
             handleException();
         }
+
         for (const Driver * driver : drivers) {
             driver->writeEvents(events);
         }
+
+        writeDDKToGPUTimelineEvents(events);
 
         return xml;
     }
@@ -109,6 +114,46 @@ namespace events_xml {
         if (writeToDisk(file, getDynamicXML(drivers, clusters, uncores).get()) < 0) {
             LOG_ERROR("Error writing %s\nPlease verify the path.", file.c_str());
             handleException();
+        }
+    }
+
+    void writeDDKToGPUTimelineEvents(mxml_node_t * events)
+    {
+
+        // Add DDK version to GPU Timeline tag if it exists
+        mxml_node_t * maliTimelineCategory =
+            mxmlFindElement(events, events, "category", "name", "Mali Timeline", MXML_DESCEND);
+
+        LOG_DEBUG("Looking for MaliTimeline category in events XML: %s",
+                  maliTimelineCategory != nullptr ? "found" : "not found");
+
+        if (maliTimelineCategory != nullptr) {
+            // Grab "MaliTimeline_Perfetto" event
+            mxml_node_t * perfettoEvent = mxmlFindElement(maliTimelineCategory,
+                                                          maliTimelineCategory,
+                                                          "event",
+                                                          "counter",
+                                                          "MaliTimeline_Perfetto",
+                                                          MXML_DESCEND);
+
+            LOG_DEBUG("Looking for MaliTimeline_Perfetto event in events XML: %s",
+                      perfettoEvent != nullptr ? "found" : "not found");
+
+            if (perfettoEvent != nullptr) {
+                int ddkVersion = mali_userspace::MaliDevice::get_mali_ddk_version_from_device();
+
+                if (ddkVersion != -1) { // -1 indicates no ddk version found.
+                    std::ostringstream oss;
+                    oss << ddkVersion;
+                    mxmlElementSetAttr(perfettoEvent, "ddk_version", oss.str().c_str());
+
+                    LOG_DEBUG("Set MaliTimeline_Perfetto event ddk_version attribute to %s", oss.str().c_str());
+                }
+                else {
+                    LOG_DEBUG(
+                        "Mali DDK version not found, not setting ddk_version attribute on MaliTimeline_Perfetto event");
+                }
+            }
         }
     }
 }

@@ -1,3 +1,13 @@
+# Gator 9.7.1
+
+Adds new GPU Support for Mali G1-Pro/Premium/Ultra
+
+Adds new IP support for CPUs C1-Nano/Pro/Premium/Ultra and SME2
+
+Fixes event from Cortex-A9 events file - https://github.com/ARM-software/gator/issues/58
+
+Bug fixes and improvements
+
 # Gator 9.7.0
 
 Adds a new argument `--gpu-timeline` to collect semantic information of GPU timeline events from Perfetto.

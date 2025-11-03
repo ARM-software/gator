@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited (or its affiliates). All rights reserved. */
 #include "agents/spawn_agent.h"
 
 #include "Logging.h"

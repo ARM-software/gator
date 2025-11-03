@@ -96,4 +96,8 @@
     <event title="DSU SCU Hazard" event="0x00D0" name="Arbitration hazard, address" description="Counts every flush caused by an address hazard." />
     <!-- SCU_BIB_ACCESS -->
     <event title="DSU SCU Filter" event="0x00F3" name="BIB Access" description="Counts for every snoop filter back invalidation." />
+    <!-- SCU_BACK_INVALIDATE -->
+    <event title="DSU SCU Snoop filter" event="0x00F4" name="Back Invalidate" description="Counts when a core must be snooped to invalidate a line because of not enough capacity in the snoop filter." />
+    <!-- SCU_BIB_ECC -->
+    <event title="DSU SCU ECC errors" event="0x00F5" name="BIB ECC errors counter" description="ECC errors detected on a back invalidation accesses that cause a way to be avoided but are not corrected or reported in the Reliability, Availability, and Serviceability (RAS) registers." />
 </category>

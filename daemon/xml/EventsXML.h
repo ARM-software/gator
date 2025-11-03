@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -31,4 +31,6 @@ namespace events_xml {
                lib::Span<const Driver * const> drivers,
                lib::Span<const GatorCpu> clusters,
                lib::Span<const UncorePmu> uncores);
+
+    void writeDDKToGPUTimelineEvents(mxml_node_t * events);
 };

@@ -3,7 +3,7 @@
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // This file is generated and has a matching component in Streamline.
 // Do not manually modify the metric definitions without doing the same in Streamline.
-// Updated on 2025-07-10T09:45:45.487845815 using <unknown> - HEAD (62ff151fee78e3e2507c6fdc5a3879fd278af41a) - "Fix some issues with cpu-counter-gen"
+// Updated on 2025-09-01T13:59:41.290222464 using <unknown> - HEAD (0e1508cfe032c43ac4c6fecc773ebbcaab16643c) - "Added SME2 Utilization template"
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #include "metrics/definitions.hpp"
@@ -66,6 +66,40 @@ namespace metrics {
                 metric_group_id_t::topdown_backend,
             },
         };
+        [[maybe_unused]] const metric_events_set_t backend_busy_ls_bound_0 {
+            {
+                std::uint16_t(0x0024),
+                std::uint16_t(0x00f1),
+            },
+            "backend_busy_ls_bound",
+            "Backend Busy LS Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to memory system issue queues "
+            "being full to accept operations for execution.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_busy_vpu_arb_bound_0 {
+            {
+                std::uint16_t(0x00ef),
+                std::uint16_t(0x0024),
+            },
+            "backend_busy_vpu_arb_bound",
+            "Backend Busy VPU Arbitration Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to VPU arbitration preventing "
+            "the VPU from accepting operations for execution.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t backend_cache_l1d_bound_0 {
             {
                 std::uint16_t(0x4005),
@@ -100,6 +134,88 @@ namespace metrics {
                 metric_group_id_t::topdown_backend,
             },
         };
+        [[maybe_unused]] const metric_events_set_t backend_cme_backpressure_bound_0 {
+            {
+                std::uint16_t(0x3200),
+                std::uint16_t(0x3201),
+            },
+            "backend_cme_backpressure_bound",
+            "Backend SME Backpressure Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the SME unit is busy\ndue to "
+            "other reasons like the SME unit being power down(TBD)",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_cme,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_cme_busy_arb_bound_0 {
+            {
+                std::uint16_t(0x3200),
+                std::uint16_t(0x3202),
+            },
+            "backend_cme_busy_arb_bound",
+            "Backend SME Arbitration Bound",
+            "This metric is the percentage of total cycles stalled in the backend because an SME is busy. "
+            "The\ninstruction cannot be sent to SME because it is waiting for arbitration.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_cme,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_cme_busy_bound_0 {
+            {
+                std::uint16_t(0x3200),
+                std::uint16_t(0x816b),
+            },
+            "backend_cme_busy_bound",
+            "Backend SME Busy Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the SME unit is busy.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_cme,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_cme_busy_bound_1 {
+            {
+                std::uint16_t(0x3200),
+            },
+            "backend_cme_busy_bound",
+            "Backend SME Busy Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the SME unit is busy.",
+            "percent",
+            1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_cme,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_cme_cpu_bound_0 {
+            {
+                std::uint16_t(0x3203),
+                std::uint16_t(0x3200),
+            },
+            "backend_cme_cpu_bound",
+            "Backend SME CPU Bound",
+            "This metric is the percentage of total cycles stalled in the SME unit of the backend due to "
+            "dependency\nto the other units of CPU for execution.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_cme,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t backend_core_bound_0 {
             {
                 std::uint16_t(0x0024),
@@ -117,6 +233,58 @@ namespace metrics {
                 metric_group_id_t::topdown_backend,
             },
         };
+        [[maybe_unused]] const metric_events_set_t backend_core_cme_bound_0 {
+            {
+                std::uint16_t(0x3200),
+                std::uint16_t(0x816a),
+            },
+            "backend_core_cme_bound",
+            "Backend Core SME Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to the resource constraints to "
+            "dispatch to the SME.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_core_other_bound_0 {
+            {
+                std::uint16_t(0x1003),
+                std::uint16_t(0x1005),
+                std::uint16_t(0x816a),
+            },
+            "backend_core_other_bound",
+            "Backend Core Other Bound",
+            "This metric is the percentage of total cycles stalled in the backend as some other resource is "
+            "unavailable.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_core_other_bound_1 {
+            {
+                std::uint16_t(0x1338),
+                std::uint16_t(0x816a),
+            },
+            "backend_core_other_bound",
+            "Backend Core Other Bound",
+            "This metric is the percentage of total cycles stalled in the backend as some other resource is "
+            "unavailable.",
+            "percent",
+            1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t backend_core_rename_bound_0 {
             {
                 std::uint16_t(0x816a),
@@ -126,6 +294,23 @@ namespace metrics {
             "Backend Core Rename Bound",
             "This metric is the percentage of total cycles stalled in the backend as the rename unit registers are "
             "unavailable.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_core_spec_throttle_bound_0 {
+            {
+                std::uint16_t(0x3009),
+                std::uint16_t(0x816a),
+            },
+            "backend_core_spec_throttle_bound",
+            "Backend Core Specuation Throttle Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the processor is stalling due to "
+            "power throttling linked to low confidence branches",
             "percent",
             0,
             metric_priority_t::backend,
@@ -198,6 +383,97 @@ namespace metrics {
             "by data cache misses.",
             "percent",
             1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_mem_cme_barrier_bound_0 {
+            {
+                std::uint16_t(0x3210),
+                std::uint16_t(0x320d),
+            },
+            "backend_mem_cme_barrier_bound",
+            "Backend SME LSRT Barrier Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the SME unit is busy\nbecause a "
+            "CPU barrier waits for SME load/store transaction completion.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_mem_cme_bound_0 {
+            {
+                std::uint16_t(0x3210),
+                std::uint16_t(0x8164),
+            },
+            "backend_mem_cme_bound",
+            "Backend Memory SME Bound",
+            "This metric is the percentage of total cycles stalled in the backend caused by\nload or store address "
+            "hazards caused by SME unit memory execution dependency.\nSME and PE share the CPU memory subsystem and "
+            "are synchronized via the LSRT block,\ncausing memory execution units in them to have dependencies on data "
+            "accesses.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_mem_cme_hazard_cpu_bound_0 {
+            {
+                std::uint16_t(0x3210),
+                std::uint16_t(0x320e),
+            },
+            "backend_mem_cme_hazard_cpu_bound",
+            "Backend SME Memory Hazard CPU Bound",
+            "This metric is the percentage of total cycles stalled in the backend\ndue to a SME LSRT hazard causing "
+            "SME instructions to stall. SME and PE share the CPU memory subsystem and are\nsynchronized via the LSRT "
+            "block, causing both the execution units to have dependencies\non data accesses.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_mem_cme_lsrt_full_bound_0 {
+            {
+                std::uint16_t(0x3210),
+                std::uint16_t(0x320c),
+            },
+            "backend_mem_cme_lsrt_full_bound",
+            "Backend SME LSRT Full Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the SME unit is busy\ndue to the "
+            "LSRT being full. SME and PE share the CPU memory subsystem and are\nsynchronized via the LSRT block, "
+            "causing both execution units to have dependencies\non data accesses.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_mem_cpu_hazard_cme_bound_0 {
+            {
+                std::uint16_t(0x3210),
+                std::uint16_t(0x320f),
+            },
+            "backend_mem_cpu_hazard_cme_bound",
+            "Backend CPU Memory Hazard SME Bound",
+            "This metric is the percentage of total cycles stalled in the backend as the SME unit is busy\ndue SME "
+            "LSRT hazard causing CPU instructions to stall. SME and PE share the CPU memory subsystem and "
+            "are\nsynchronized via the LSRT block, causing both execution units to have dependencies\non data "
+            "accesses.",
+            "percent",
+            0,
             metric_priority_t::backend,
             metric_arch_t::any,
             {
@@ -302,6 +578,62 @@ namespace metrics {
             "in-order core.",
             "percent",
             1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_stall_interlock_ls_bound_0 {
+            {
+                std::uint16_t(0x00f2),
+                std::uint16_t(0x0024),
+            },
+            "backend_stall_interlock_ls_bound",
+            "Backend Stall memory source interlock",
+            "This metric is the percentage of backend stalls due to an interlock, where the source of at least one "
+            "interlock is a memory operation. Refer to `backend_mem_bound` and subsequent breakdown to check whether "
+            "the interlock is likely affected by memory resources such as caches or TLBs, or is instead primarily "
+            "affected by load-to-use latency.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_stall_interlock_ptr_chase_bound_0 {
+            {
+                std::uint16_t(0x0024),
+                std::uint16_t(0x00f3),
+            },
+            "backend_stall_interlock_ptr_chase_bound",
+            "Backend Stall pointer chase interlock Rate",
+            "This metric is the percentage of backend stalls due to a pointer chase interlock - that is, the source of "
+            "at least one interlock is a memory instruction, and the destination is the address of another memory "
+            "instruction. Refer to `backend_mem_bound` and subsequent breakdown to check whether the interlock is "
+            "likely affected by memory resources such as caches or TLBs, or is instead primarily affected by "
+            "load-to-use latency.",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t backend_stall_interlock_vpu_bound_0 {
+            {
+                std::uint16_t(0x00e6),
+                std::uint16_t(0x0024),
+            },
+            "backend_stall_interlock_vpu_bound",
+            "Backend Stall VPU source interlock",
+            "This metric is the percentage of backend stalls due to an interlock, where the source of at least one "
+            "interlock is a VPU operation.",
+            "percent",
+            0,
             metric_priority_t::backend,
             metric_arch_t::any,
             {
@@ -515,6 +847,7 @@ namespace metrics {
             {
                 std::uint16_t(0x0076),
                 std::uint16_t(0x001b),
+                std::uint16_t(0x007c),
             },
             "branch_percentage",
             "Branch Operations Percentage",
@@ -525,6 +858,38 @@ namespace metrics {
             metric_arch_t::any,
             {
                 metric_group_id_t::operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t branch_percentage_2 {
+            {
+                std::uint16_t(0x0076),
+                std::uint16_t(0x001b),
+            },
+            "branch_percentage",
+            "Branch Operations Percentage",
+            "This metric measures branch operations as a percentage of operations speculatively executed.",
+            "percent",
+            2,
+            metric_priority_t::branch,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t branch_port_utilization_0 {
+            {
+                std::uint16_t(0x3000),
+            },
+            "branch_port_utilization",
+            "Branch Execution Unit Utilization",
+            "This metric measures the average number of branch operations executed per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::port_utilization,
             },
         };
         [[maybe_unused]] const metric_events_set_t branch_return_ratio_0 {
@@ -545,6 +910,24 @@ namespace metrics {
                 metric_group_id_t::branch_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t bus_access_average_count_0 {
+            {
+                std::uint16_t(0x0061),
+                std::uint16_t(0x818f),
+                std::uint16_t(0x0060),
+            },
+            "bus_access_average_count",
+            "Bus Access Average Count",
+            "This metric measures the average count of bus accesses taken for read and write requests made by this "
+            "processor",
+            "accesses",
+            0,
+            metric_priority_t::bus,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::bus_effectiveness,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t bus_read_requests_average_latency_0 {
             {
                 std::uint16_t(0x8125),
@@ -561,6 +944,23 @@ namespace metrics {
             {
                 metric_group_id_t::average_latency,
                 metric_group_id_t::bus_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cas_far_ratio_0 {
+            {
+                std::uint16_t(0x8174),
+                std::uint16_t(0x8172),
+            },
+            "cas_far_ratio",
+            "Compare and Swap Far Percentage",
+            "This metric measures the ratio of compare and swap instructions that did not execute locally to the PE to "
+            "the total compare and swap instructions.",
+            "percent",
+            0,
+            metric_priority_t::cas,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
             },
         };
         [[maybe_unused]] const metric_events_set_t cas_near_fail_ratio_0 {
@@ -595,6 +995,716 @@ namespace metrics {
             metric_arch_t::any,
             {
                 metric_group_id_t::atomics_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cas_near_ratio_0 {
+            {
+                std::uint16_t(0x8174),
+                std::uint16_t(0x8172),
+            },
+            "cas_near_ratio",
+            "Compare and Swap Near Percentage",
+            "This metric measures the ratio of compare and swap instructions speculatively executed locally to the PE "
+            "to the total compare and swap instructions.",
+            "percent",
+            0,
+            metric_priority_t::cas,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_alloc_cycles_ratio_0 {
+            {
+                std::uint16_t(0x3213),
+            },
+            "cme_alloc_cycles_ratio",
+            "SME Allocation Cycles Percentage",
+            "This metric is measures the ratio of cycles where the CPU had an SME allocated to it,\nsuch that the SME "
+            "and Streaming SVE state of the CPU is held in that SME\nto the total number of CPU cycles.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::cycle_accounting,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_alu_port_utilization_0 {
+            {
+                std::uint16_t(0x3246),
+                std::uint16_t(0x3260),
+            },
+            "cme_alu_port_utilization",
+            "SME Arithmetic EU Utilization",
+            "This metric measures the average number of operations\nexecuted by the ALU execution unit per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_arb_pending_ratio_0 {
+            {
+                std::uint16_t(0x3214),
+            },
+            "cme_arb_pending_ratio",
+            "SME Arbitration Pending Cycles Percentage",
+            "This metric is measures the ratio of cycles where the CPU is in arbitration while attempting\nto access "
+            "an SME to the total number of CPU cycles.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::cycle_accounting,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_backend_bound_0 {
+            {
+                std::uint16_t(0x324d),
+                std::uint16_t(0x3246),
+            },
+            "cme_backend_bound",
+            "SME Backend Bound",
+            "This metric is the percentage of cycles that were stalled due to resource constraints in the backend unit "
+            "of SME.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_topdown_l1,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_backend_core_bound_0 {
+            {
+                std::uint16_t(0x324d),
+                std::uint16_t(0x324e),
+            },
+            "cme_backend_core_bound",
+            "SME Backend Core Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to DP issue queues not accepting "
+            "instructions.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_backend_mem_bound_0 {
+            {
+                std::uint16_t(0x324f),
+                std::uint16_t(0x324d),
+            },
+            "cme_backend_mem_bound",
+            "SME Backend Memory Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to Load-Store issue queues not "
+            "accepting instructions.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_backend_mem_cache_bound_0 {
+            {
+                std::uint16_t(0x324f),
+                std::uint16_t(0x3251),
+            },
+            "cme_backend_mem_cache_bound",
+            "SME Backend Cache Bound",
+            "This metric is the percentage of total cycles stalled in the backend for memory resource constraints, "
+            "with the oldest instruction in at least one of the LS issue queues waiting for cache arbitration.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_backend_mem_store_bound_0 {
+            {
+                std::uint16_t(0x324f),
+                std::uint16_t(0x3252),
+            },
+            "cme_backend_mem_store_bound",
+            "SME Backend Store Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to Load-Store issue queues not "
+            "accepting instructions.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_backend_prefetch_bound_0 {
+            {
+                std::uint16_t(0x324d),
+                std::uint16_t(0x3250),
+            },
+            "cme_backend_prefetch_bound",
+            "SME Backend Prefetch Bound",
+            "This metric is the percentage of total cycles stalled in the backend due to hardware prefetcher issue "
+            "queues not accepting instructions.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_backend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_bus_access_average_length_0 {
+            {
+                std::uint16_t(0x3267),
+                std::uint16_t(0x326b),
+            },
+            "cme_bus_access_average_length",
+            "SME Bus Access Average Length",
+            "This metric measures the average length of bus accesses taken for all the bus requests made by SME",
+            "accesses",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_bus_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_frontend_bound_0 {
+            {
+                std::uint16_t(0x3246),
+                std::uint16_t(0x324a),
+            },
+            "cme_frontend_bound",
+            "SME Frontend Bound",
+            "This metric is the percentage of cycles that were stalled due to resource constraints in the frontend "
+            "unit of SME.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_topdown_l1,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_frontend_cpu_bound_0 {
+            {
+                std::uint16_t(0x324a),
+                std::uint16_t(0x324b),
+            },
+            "cme_frontend_cpu_bound",
+            "SME Frontend CPU Bound",
+            "This metric is the percentage of total cycles stalled in the frontend due to frontend core resource "
+            "constraints not related to instruction fetch latency issues caused by no instructions sent by CPU.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_frontend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_frontend_other_bound_0 {
+            {
+                std::uint16_t(0x324a),
+                std::uint16_t(0x324c),
+            },
+            "cme_frontend_other_bound",
+            "SME Frontend Other CPU Bound",
+            "This metric is the percentage of total cycles stalled in the frontend due to frontend core resource "
+            "constraints not related to instruction fetch latency issues caused by no instructions sent by CPU.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_topdown_frontend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_ipc_0 {
+            {
+                std::uint16_t(0x3247),
+                std::uint16_t(0x3246),
+            },
+            "cme_ipc",
+            "SME IPC",
+            "This metric measures the number of SME instructions retired per SME cycles.",
+            "instructions",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_general,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_iq_dp0_stall_percentage_0 {
+            {
+                std::uint16_t(0x325d),
+                std::uint16_t(0x324d),
+            },
+            "cme_iq_dp0_stall_percentage",
+            "IQ DP0 Stall Percentage",
+            "This metric measures the percentage of backend stall cycles\nwhere at least one operation is waiting to "
+            "issue to the\nissue queue DP0, but it is full.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_iq_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_iq_dp1_stall_percentage_0 {
+            {
+                std::uint16_t(0x324d),
+                std::uint16_t(0x325e),
+            },
+            "cme_iq_dp1_stall_percentage",
+            "IQ DP1 Stall Percentage",
+            "This metric measures the percentage of backend stall cycles\nwhere at least one operation is waiting to "
+            "issue to the\nissue queue DP1, but it is full.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_iq_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_iq_load_stall_percentage_0 {
+            {
+                std::uint16_t(0x325f),
+                std::uint16_t(0x324d),
+            },
+            "cme_iq_load_stall_percentage",
+            "IQ Load Stall Percentage",
+            "This metric measures the percentage of backend stall cycles\nwhere at least one operation is waiting to "
+            "issue to the\nissue queue LD, but it is full.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_iq_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l1_prefetcher_accuracy_0 {
+            {
+                std::uint16_t(0x32b2),
+                std::uint16_t(0x32ad),
+                std::uint16_t(0x3274),
+            },
+            "cme_l1_prefetcher_accuracy",
+            "SME L1D Cache Prefetcher Accuracy",
+            "This metric measures SME L1D cache prefetcher accuracy",
+            "prefetches",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l1_prefetcher_coverage_0 {
+            {
+                std::uint16_t(0x3281),
+                std::uint16_t(0x32ad),
+                std::uint16_t(0x3274),
+                std::uint16_t(0x3280),
+            },
+            "cme_l1_prefetcher_coverage",
+            "SME L1D Cache Prefetcher Coverage",
+            "This metric measures L1D cache prefetcher coverage",
+            "prefetches",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l1_prefetcher_timeliness_0 {
+            {
+                std::uint16_t(0x32ad),
+                std::uint16_t(0x3274),
+            },
+            "cme_l1_prefetcher_timeliness",
+            "SME L1D Cache Prefetcher Timeliness",
+            "This metric measures SME L1D cache prefetcher timeliness",
+            "prefetches",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l1d_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x326f),
+                std::uint16_t(0x3270),
+            },
+            "cme_l1d_cache_hit_ratio",
+            "SME L1D Cache Hit Percentage",
+            "This metric measures the ratio of level 1 data cache access hits to the total number of level 1 data "
+            "cache accesses. This gives an indication of the effectiveness of the level 1 data cache.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_l1d_cache_effectiveness,
+                metric_group_id_t::cme_miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l1d_cache_miss_ratio_0 {
+            {
+                std::uint16_t(0x326f),
+                std::uint16_t(0x327c),
+            },
+            "cme_l1d_cache_miss_ratio",
+            "SME L1D Cache Miss Percentage",
+            "This metric measures the ratio of SME level 1 data cache accesses missed to the total number of level 1 "
+            "data cache accesses. This gives an indication of the effectiveness of the level 1 data cache.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_l1d_cache_effectiveness,
+                metric_group_id_t::cme_miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l1d_cache_mpki_0 {
+            {
+                std::uint16_t(0x327c),
+                std::uint16_t(0x3247),
+            },
+            "cme_l1d_cache_mpki",
+            "SME L1D Cache MPKI",
+            "This metric measures the number of SME level 1 data cache accesses missed per thousand SME instructions "
+            "executed.",
+            "misses",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_l1d_cache_effectiveness,
+                metric_group_id_t::cme_mpki,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l3d_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x3287),
+                std::uint16_t(0x328e),
+            },
+            "cme_l3d_cache_hit_ratio",
+            "SME L3D Cache Hit Percentage",
+            "This metric measures the ratio of SME level 3 cache access hits to the total number of level 3 cache "
+            "accesses, requested by the SME.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_l3d_cache_effectiveness,
+                metric_group_id_t::cme_miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l3d_cache_miss_ratio_0 {
+            {
+                std::uint16_t(0x3287),
+                std::uint16_t(0x3290),
+            },
+            "cme_l3d_cache_miss_ratio",
+            "SME L3D Cache Miss Percentage",
+            "This metric measures the ratio of SME level 3 cache accesses missed to the total number of level 3 cache "
+            "accesses, requested by the SME.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_l3d_cache_effectiveness,
+                metric_group_id_t::cme_miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_l3d_cache_mpki_0 {
+            {
+                std::uint16_t(0x3247),
+                std::uint16_t(0x3290),
+            },
+            "cme_l3d_cache_mpki",
+            "SME L3D Cache MPKI",
+            "This metric measures the number of SME level 3 cache accesses missed per thousand SME instructions "
+            "executed.",
+            "misses",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_l3d_cache_effectiveness,
+                metric_group_id_t::cme_mpki,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_ll_cache_read_hit_ratio_0 {
+            {
+                std::uint16_t(0x3295),
+                std::uint16_t(0x3294),
+            },
+            "cme_ll_cache_read_hit_ratio",
+            "SME LL Cache Read Hit Percentage",
+            "This metric measures the ratio of SME last level cache read accesses hit in the cache to the total number "
+            "of SME last level cache accesses.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_ll_cache_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_ll_cache_read_miss_ratio_0 {
+            {
+                std::uint16_t(0x3295),
+                std::uint16_t(0x3294),
+            },
+            "cme_ll_cache_read_miss_ratio",
+            "SME LL Cache Read Miss Percentage",
+            "This metric measures the ratio of SME last level cache read accesses missed to the total number of last "
+            "level cache accesses requested by the SME.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_ll_cache_effectiveness,
+                metric_group_id_t::cme_miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_ll_cache_read_mpki_0 {
+            {
+                std::uint16_t(0x3295),
+                std::uint16_t(0x3247),
+            },
+            "cme_ll_cache_read_mpki",
+            "SME LL Cache Read MPKI",
+            "This metric measures the number of SME last level cache read accesses missed per SME thousand "
+            "instructions executed.",
+            "misses",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_ll_cache_effectiveness,
+                metric_group_id_t::cme_mpki,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_load_percentage_0 {
+            {
+                std::uint16_t(0x3254),
+                std::uint16_t(0x3247),
+            },
+            "cme_load_percentage",
+            "SME Load Operations Percentage",
+            "This metric measures SME load operations as a percentage of SME operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_mac_port_utilization_0 {
+            {
+                std::uint16_t(0x3261),
+                std::uint16_t(0x3246),
+            },
+            "cme_mac_port_utilization",
+            "SME MAC EU Utilization",
+            "This metric measures the average number of operations\nexecuted by the MAC execution unit per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_mmdp_port_utilization_0 {
+            {
+                std::uint16_t(0x3246),
+                std::uint16_t(0x3264),
+            },
+            "cme_mmdp_port_utilization",
+            "Matmul Datapath EU Utilization",
+            "This metric measures the average number of operations\nexecuted by the Matmul data path execution unit "
+            "per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_mmmv_port_utilization_0 {
+            {
+                std::uint16_t(0x3265),
+                std::uint16_t(0x3246),
+            },
+            "cme_mmmv_port_utilization",
+            "Matmul Move EU Utilization",
+            "This metric measures the average number of operations\nexecuted by the Matmul move execution unit per "
+            "cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_perm_port_utilization_0 {
+            {
+                std::uint16_t(0x3262),
+                std::uint16_t(0x3246),
+            },
+            "cme_perm_port_utilization",
+            "Permute EU Utilization",
+            "This metric measures the average number of operations\nexecuted by the permute execution unit per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_retiring_0 {
+            {
+                std::uint16_t(0x324d),
+                std::uint16_t(0x3246),
+                std::uint16_t(0x324a),
+            },
+            "cme_retiring",
+            "SME Retiring",
+            "This metric is the percentage of cycles that were not stalled for any reason.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_topdown_l1,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_st_port_utilization_0 {
+            {
+                std::uint16_t(0x3263),
+                std::uint16_t(0x3246),
+            },
+            "cme_st_port_utilization",
+            "Store EU Utilization",
+            "This metric measures the average number of operations\nexecuted by the store execution unit per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_store_percentage_0 {
+            {
+                std::uint16_t(0x3259),
+                std::uint16_t(0x3247),
+            },
+            "cme_store_percentage",
+            "SME Store Operations Percentage",
+            "This metric measures store operations as a percentage of operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_system_dram_mem_hit_ratio_0 {
+            {
+                std::uint16_t(0x327c),
+                std::uint16_t(0x32ac),
+            },
+            "cme_system_dram_mem_hit_ratio",
+            "SME System DRAM Hit Percentage",
+            "This metric measures the ratio of DRAM hits to the total memory accesses that missed in the private L1 "
+            "cache of SME. This metric indicates that the workload is memory bound obtaining data from the local DRAM.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_system_memory_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_system_l3d_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x327c),
+                std::uint16_t(0x328e),
+            },
+            "cme_system_l3d_cache_hit_ratio",
+            "SME System L3D Cache Hit Percentage",
+            "This metric measures the ratio of L3 cache hits to the total memory accesses that missed in the private "
+            "L1 cache of SME. This metric indicates that the workload is memory bound obtaining data from L3 cache.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_system_memory_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t cme_system_ll_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x327c),
+                std::uint16_t(0x3296),
+            },
+            "cme_system_ll_cache_hit_ratio",
+            "SME System Last Level Cache Hit Percentage",
+            "This metric measures the ratio of Last level cache hits to the total memory accesses that missed in the "
+            "private L1 cache of SME. This metric indicates that the workload is memory bound obtaining data from LL "
+            "cache.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::cme_system_memory_effectiveness,
             },
         };
         [[maybe_unused]] const metric_events_set_t cpi_0 {
@@ -678,6 +1788,23 @@ namespace metrics {
                 metric_group_id_t::dtlb_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t dtlb_walk_block_ratio_0 {
+            {
+                std::uint16_t(0x8188),
+                std::uint16_t(0x0025),
+            },
+            "dtlb_walk_block_ratio",
+            "DTLB Walk Block Percentage",
+            "This metric measures the ratio of data TLB Walks that returned a block to the total number of data TLB "
+            "accesses. Block size is any memory block larger than the page granule size set by the system.",
+            "percent",
+            0,
+            metric_priority_t::data,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::dtlb_effectiveness,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t dtlb_walk_large_ratio_0 {
             {
                 std::uint16_t(0x8138),
@@ -687,6 +1814,23 @@ namespace metrics {
             "DTLB Walk Large Page Percentage",
             "This metric measures the ratio of data TLB Walks that returned large page to the total number of data TLB "
             "accesses.",
+            "percent",
+            0,
+            metric_priority_t::data,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::dtlb_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t dtlb_walk_page_ratio_0 {
+            {
+                std::uint16_t(0x818a),
+                std::uint16_t(0x0025),
+            },
+            "dtlb_walk_page_ratio",
+            "DTLB Walk Page Percentage",
+            "This metric measures the ratio of data TLB Walks that returned a page to the total number of data TLB "
+            "accesses. Page size is determined by the page granule size set by the system.",
             "percent",
             0,
             metric_priority_t::data,
@@ -938,6 +2082,57 @@ namespace metrics {
                 metric_group_id_t::topdown_frontend,
             },
         };
+        [[maybe_unused]] const metric_events_set_t frontend_core_flush_machine_clear_bound_0 {
+            {
+                std::uint16_t(0x8162),
+                std::uint16_t(0x3006),
+            },
+            "frontend_core_flush_machine_clear_bound",
+            "Frontend Core Flush Machine Clear Bound",
+            "This metric is the percentage of total cycles stalled in the frontend as the processor is recovering from "
+            "a pipeline flush caused by machine resteers other than bad speculation.",
+            "percent",
+            0,
+            metric_priority_t::frontend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t frontend_core_flush_resteer_bound_0 {
+            {
+                std::uint16_t(0x3007),
+                std::uint16_t(0x8162),
+            },
+            "frontend_core_flush_resteer_bound",
+            "Frontend Core Flush Branch Resteer Bound",
+            "This metric is the percentage of total cycles stalled in the frontend as the processor is recovering from "
+            "a pipeline flush caused by bad speculation.",
+            "percent",
+            0,
+            metric_priority_t::frontend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t frontend_core_spec_throttle_bound_0 {
+            {
+                std::uint16_t(0x3005),
+                std::uint16_t(0x8160),
+            },
+            "frontend_core_spec_throttle_bound",
+            "Frontend Core Specuation Throttle Bound",
+            "This metric is the percentage of total cycles stalled in the frontend as the processor is stalling due to "
+            "power throttling linked to low confidence branches",
+            "percent",
+            0,
+            metric_priority_t::frontend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::topdown_frontend,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t frontend_mem_bound_0 {
             {
                 std::uint16_t(0x8158),
@@ -1021,6 +2216,22 @@ namespace metrics {
             metric_arch_t::any,
             {
                 metric_group_id_t::average_latency,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t int_port_utilization_0 {
+            {
+                std::uint16_t(0x3001),
+            },
+            "int_port_utilization",
+            "Integer Execution Unit Utilization",
+            "This metric measures the average number of integer operations executed per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::port_utilization,
             },
         };
         [[maybe_unused]] const metric_events_set_t integer_dp_percentage_0 {
@@ -1192,6 +2403,24 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t itlb_walk_block_ratio_0 {
+            {
+                std::uint16_t(0x0026),
+                std::uint16_t(0x8189),
+            },
+            "itlb_walk_block_ratio",
+            "ITLB Walk Block Percentage",
+            "This metric measures the ratio of instruction TLB Walks that returned a block to the total number of "
+            "instruction TLB accesses. Block size is any memory block larger than the page granule size set by the "
+            "system.",
+            "percent",
+            0,
+            metric_priority_t::instruction,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t itlb_walk_large_ratio_0 {
             {
                 std::uint16_t(0x8139),
@@ -1201,6 +2430,23 @@ namespace metrics {
             "ITLB Walk Large Page Percentage",
             "This metric measures the ratio of instruction TLB Walks that returned large page to the total number of "
             "instruction TLB accesses.",
+            "percent",
+            0,
+            metric_priority_t::instruction,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::itlb_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t itlb_walk_page_ratio_0 {
+            {
+                std::uint16_t(0x818b),
+                std::uint16_t(0x0026),
+            },
+            "itlb_walk_page_ratio",
+            "ITLB Walk Page Percentage",
+            "This metric measures the ratio of instruction TLB Walks that returned a page to the total number of "
+            "instruction TLB accesses. Page size is determined by the page granule size set by the system.",
             "percent",
             0,
             metric_priority_t::instruction,
@@ -1244,6 +2490,74 @@ namespace metrics {
                 metric_group_id_t::itlb_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t l1_prefetcher_accuracy_0 {
+            {
+                std::uint16_t(0x81ec),
+                std::uint16_t(0x81bc),
+                std::uint16_t(0x826c),
+            },
+            "l1_prefetcher_accuracy",
+            "L1D Prefetcher Accuracy",
+            "This metric measures L1D cache prefetcher accuracy",
+            "prefetches",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l1_prefetcher_accuracy_1 {
+            {
+                std::uint16_t(0x81ec),
+                std::uint16_t(0x81bc),
+                std::uint16_t(0x826c),
+            },
+            "l1_prefetcher_accuracy",
+            "L1D Prefetcher Accuracy",
+            "This metric measures L1D cache prefetcher accuracy",
+            "prefetches",
+            1,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l1_prefetcher_coverage_0 {
+            {
+                std::uint16_t(0x81ec),
+                std::uint16_t(0x0042),
+                std::uint16_t(0x0043),
+                std::uint16_t(0x826c),
+            },
+            "l1_prefetcher_coverage",
+            "L1D Prefetcher Coverage",
+            "This metric measures L1D cache prefetcher coverage",
+            "prefetches",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l1_prefetcher_timeliness_0 {
+            {
+                std::uint16_t(0x81ec),
+                std::uint16_t(0x826c),
+            },
+            "l1_prefetcher_timeliness",
+            "L1D Prefetcher Timeliness",
+            "This metric measures L1D cache prefetcher timeliness",
+            "prefetches",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t l1d_cache_demand_mpki_0 {
             {
                 std::uint16_t(0x0042),
@@ -1265,6 +2579,26 @@ namespace metrics {
         };
         [[maybe_unused]] const metric_events_set_t l1d_cache_miss_ratio_0 {
             {
+                std::uint16_t(0x0042),
+                std::uint16_t(0x8140),
+                std::uint16_t(0x0043),
+            },
+            "l1d_cache_miss_ratio",
+            "L1D Cache Miss Percentage",
+            "This metric measures the ratio of level 1 data cache accesses missed to the total number of level 1 data "
+            "cache accesses. This gives an indication of the effectiveness of the level 1 data cache.",
+            "percent",
+            0,
+            metric_priority_t::data,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::l1d_cache_effectiveness,
+                metric_group_id_t::miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l1d_cache_miss_ratio_1 {
+            {
                 std::uint16_t(0x0003),
                 std::uint16_t(0x0004),
             },
@@ -1273,7 +2607,7 @@ namespace metrics {
             "This metric measures the ratio of level 1 data cache accesses missed to the total number of level 1 data "
             "cache accesses. This gives an indication of the effectiveness of the level 1 data cache.",
             "percent",
-            0,
+            1,
             metric_priority_t::data,
             metric_arch_t::any,
             {
@@ -1431,6 +2765,28 @@ namespace metrics {
         };
         [[maybe_unused]] const metric_events_set_t l2_cache_miss_ratio_0 {
             {
+                std::uint16_t(0x0052),
+                std::uint16_t(0x0053),
+                std::uint16_t(0x8148),
+            },
+            "l2_cache_miss_ratio",
+            "L2 Cache Miss Percentage",
+            "This metric measures the ratio of level 2 cache accesses missed to the total number of level 2 cache "
+            "accesses. This gives an indication of the effectiveness of the level 2 cache, which is a unified cache "
+            "that stores both data and instruction. Note that cache accesses in this cache are either data memory "
+            "access or instruction fetch as this is a unified cache.",
+            "percent",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::l2_cache_effectiveness,
+                metric_group_id_t::miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_cache_miss_ratio_1 {
+            {
                 std::uint16_t(0x0017),
                 std::uint16_t(0x0016),
             },
@@ -1441,7 +2797,7 @@ namespace metrics {
             "that stores both data and instruction. Note that cache accesses in this cache are either data memory "
             "access or instruction fetch as this is a unified cache.",
             "percent",
-            0,
+            1,
             metric_priority_t::l2,
             metric_arch_t::any,
             {
@@ -1489,6 +2845,161 @@ namespace metrics {
                 metric_group_id_t::basic,
                 metric_group_id_t::l2_cache_effectiveness,
                 metric_group_id_t::mpki,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_exclusive_0 {
+            {
+                std::uint16_t(0x81ed),
+                std::uint16_t(0x81bd),
+                std::uint16_t(0x826d),
+            },
+            "l2_prefetcher_accuracy_l1hwprf_exclusive",
+            "L2 Cache Prefetcher Accuracy (L1 HW prefetch exclusive)",
+            "This metric measures L2D cache prefetcher accuracy excluding L1 hardware prefetch requests",
+            "prefetches",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_exclusive_1 {
+            {
+                std::uint16_t(0x81ed),
+                std::uint16_t(0x81bd),
+                std::uint16_t(0x826d),
+            },
+            "l2_prefetcher_accuracy_l1hwprf_exclusive",
+            "L2 Cache Prefetcher Accuracy (L1 HW prefetch exclusive)",
+            "This metric measures L2D cache prefetcher accuracy excluding L1 hardware prefetch requests",
+            "prefetches",
+            1,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_inclusive_0 {
+            {
+                std::uint16_t(0x0179),
+                std::uint16_t(0x010b),
+                std::uint16_t(0x81bd),
+            },
+            "l2_prefetcher_accuracy_l1hwprf_inclusive",
+            "L2 Cache Prefetcher Accuracy (L1 HW prefetch inclusive)",
+            "This metric measures L2D cache prefetcher accuracy treating L1 hardware prefetches as demand requests",
+            "prefetches",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_accuracy_l1hwprf_inclusive_1 {
+            {
+                std::uint16_t(0x0179),
+                std::uint16_t(0x010b),
+                std::uint16_t(0x81bd),
+            },
+            "l2_prefetcher_accuracy_l1hwprf_inclusive",
+            "L2 Cache Prefetcher Accuracy (L1 HW prefetch inclusive)",
+            "This metric measures L2D cache prefetcher accuracy treating L1 hardware prefetches as demand requests",
+            "prefetches",
+            1,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_coverage_l1hwprf_exclusive_0 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x01b9),
+                std::uint16_t(0x81ed),
+                std::uint16_t(0x81bd),
+                std::uint16_t(0x826d),
+            },
+            "l2_prefetcher_coverage_l1hwprf_exclusive",
+            "L2 Cache Prefetcher Coverage (L1 HW prefetch exclusive)",
+            "This metric measures L2D cache prefetcher coverage excluding L1 hardware prefetch requests",
+            "prefetches",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_coverage_l1hwprf_exclusive_1 {
+            {
+                std::uint16_t(0x0052),
+                std::uint16_t(0x81ed),
+                std::uint16_t(0x0053),
+                std::uint16_t(0x826d),
+            },
+            "l2_prefetcher_coverage_l1hwprf_exclusive",
+            "L2 Cache Prefetcher Coverage (L1 HW prefetch exclusive)",
+            "This metric measures L2D cache prefetcher coverage excluding L1 hardware prefetch requests",
+            "prefetches",
+            1,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_coverage_l1hwprf_inclusive_0 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x0179),
+                std::uint16_t(0x010b),
+                std::uint16_t(0x81bd),
+            },
+            "l2_prefetcher_coverage_l1hwprf_inclusive",
+            "L2 Cache Prefetcher Coverage (L1 HW prefetch inclusive)",
+            "This metric measures L2D cache prefetcher coverage treating L1 hardware prefetches as demand requests",
+            "prefetches",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_timeliness_l1hwprf_exclusive_0 {
+            {
+                std::uint16_t(0x81ed),
+                std::uint16_t(0x826d),
+            },
+            "l2_prefetcher_timeliness_l1hwprf_exclusive",
+            "L2 Cache Prefetcher Timeliness (L1 HW prefetch exclusive)",
+            "This metric measures L2D cache prefetcher timeliness excluding L1 hardware prefetch requests",
+            "prefetches",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2_prefetcher_timeliness_l1hwprf_inclusive_0 {
+            {
+                std::uint16_t(0x0179),
+                std::uint16_t(0x010b),
+            },
+            "l2_prefetcher_timeliness_l1hwprf_inclusive",
+            "L2 Cache Prefetcher Timeliness (L1 HW prefetch inclusive)",
+            "This metric measures L2D cache prefetcher timeliness treating L1 hardware prefetches as demand requests",
+            "prefetches",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::prefetcher_effectiveness,
             },
         };
         [[maybe_unused]] const metric_events_set_t l2_tlb_miss_ratio_0 {
@@ -1552,6 +3063,28 @@ namespace metrics {
         };
         [[maybe_unused]] const metric_events_set_t l2d_cache_miss_ratio_0 {
             {
+                std::uint16_t(0x0052),
+                std::uint16_t(0x0053),
+                std::uint16_t(0x8148),
+            },
+            "l2d_cache_miss_ratio",
+            "L2D Cache Miss Percentage",
+            "This metric measures the ratio of level 2 cache data accesses missed to the total number of level 2 cache "
+            "data accesses. This gives an indication of the effectiveness of data accesses in the level 2 cache, which "
+            "is a unified cache that stores both data and instruction. Note that cache accesses in this cache are "
+            "either data memory access or instruction fetch as this is a unified cache.",
+            "percent",
+            0,
+            metric_priority_t::l2,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::l2d_cache_effectiveness,
+                metric_group_id_t::miss_ratio,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t l2d_cache_miss_ratio_1 {
+            {
                 std::uint16_t(0x0017),
                 std::uint16_t(0x0016),
             },
@@ -1562,7 +3095,7 @@ namespace metrics {
             "which is a unified cache that stores both data and instruction. Note that cache accesses in this cache "
             "are either data memory access or instruction fetch as this is a unified cache.",
             "percent",
-            0,
+            1,
             metric_priority_t::l2,
             metric_arch_t::any,
             {
@@ -1877,6 +3410,73 @@ namespace metrics {
                 metric_group_id_t::operation_mix,
             },
         };
+        [[maybe_unused]] const metric_events_set_t lse_atomics_ratio_0 {
+            {
+                std::uint16_t(0x8177),
+                std::uint16_t(0x0072),
+            },
+            "lse_atomics_ratio",
+            "LSE Atomics Percentage",
+            "This metric measures the ratio of LSE atomics instructions speculatively executed locally to the PE to "
+            "the total load and store instructions.",
+            "percent",
+            0,
+            metric_priority_t::ls,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t lse_load_ratio_0 {
+            {
+                std::uint16_t(0x8177),
+                std::uint16_t(0x8175),
+            },
+            "lse_load_ratio",
+            "LSE Load Percentage",
+            "This metric measures the ratio of LSE load instructions speculatively executed to the total LSE "
+            "instructions.",
+            "percent",
+            0,
+            metric_priority_t::ls,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t lse_store_ratio_0 {
+            {
+                std::uint16_t(0x8177),
+                std::uint16_t(0x8176),
+            },
+            "lse_store_ratio",
+            "LSE Store Percentage",
+            "This metric measures the ratio of LSE store instructions speculatively executed to the total LSE "
+            "instructions.",
+            "percent",
+            0,
+            metric_priority_t::ls,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::atomics_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t lsu_port_utilization_0 {
+            {
+                std::uint16_t(0x3003),
+            },
+            "lsu_port_utilization",
+            "Load/Store Address Execution Unit Utilization",
+            "This metric measures the average number of load/store operations executed per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::port_utilization,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t mcq_stall_percentage_0 {
             {
                 std::uint16_t(0x0160),
@@ -1948,8 +3548,10 @@ namespace metrics {
         };
         [[maybe_unused]] const metric_events_set_t rename_stall_flags_ratio_0 {
             {
+                std::uint16_t(0x0399),
+                std::uint16_t(0x0159),
                 std::uint16_t(0x0158),
-                std::uint16_t(0x816d),
+                std::uint16_t(0x015a),
             },
             "rename_stall_flags_ratio",
             "Flag Register Rename Percentage",
@@ -1962,10 +3564,28 @@ namespace metrics {
                 metric_group_id_t::rename_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t rename_stall_flags_ratio_1 {
+            {
+                std::uint16_t(0x0158),
+                std::uint16_t(0x816d),
+            },
+            "rename_stall_flags_ratio",
+            "Flag Register Rename Percentage",
+            "This metric measures the percentage of rename stall cycles due to flag register rename availability",
+            "percent",
+            1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::rename_effectiveness,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t rename_stall_int_ratio_0 {
             {
+                std::uint16_t(0x0399),
                 std::uint16_t(0x0159),
-                std::uint16_t(0x816d),
+                std::uint16_t(0x015a),
+                std::uint16_t(0x0158),
             },
             "rename_stall_int_ratio",
             "Integer Register Rename Percentage",
@@ -1978,7 +3598,75 @@ namespace metrics {
                 metric_group_id_t::rename_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t rename_stall_int_ratio_1 {
+            {
+                std::uint16_t(0x0159),
+                std::uint16_t(0x816d),
+            },
+            "rename_stall_int_ratio",
+            "Integer Register Rename Percentage",
+            "This metric measures the percentage of rename stall cycles due to GPR register rename availability",
+            "percent",
+            1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::rename_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t rename_stall_pred_ratio_0 {
+            {
+                std::uint16_t(0x0399),
+                std::uint16_t(0x0159),
+                std::uint16_t(0x015a),
+                std::uint16_t(0x0158),
+            },
+            "rename_stall_pred_ratio",
+            "Predicate Register Rename Percentage",
+            "This metric measures the percentage of rename stall cycles due to predicate register rename availability",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::rename_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t rename_stall_pred_ratio_1 {
+            {
+                std::uint16_t(0x0170),
+                std::uint16_t(0x816d),
+            },
+            "rename_stall_pred_ratio",
+            "Predicate Register Rename Percentage",
+            "This metric measures the percentage of rename stall cycles due to predicate register rename availability",
+            "percent",
+            1,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::rename_effectiveness,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t rename_stall_vec_ratio_0 {
+            {
+                std::uint16_t(0x0399),
+                std::uint16_t(0x0159),
+                std::uint16_t(0x015a),
+                std::uint16_t(0x0158),
+            },
+            "rename_stall_vec_ratio",
+            "Vector Register Rename Percentage",
+            "This metric measures the percentage of rename stall cycles due to vector register rename availability",
+            "percent",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::rename_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t rename_stall_vec_ratio_1 {
             {
                 std::uint16_t(0x015a),
                 std::uint16_t(0x816d),
@@ -1987,7 +3675,7 @@ namespace metrics {
             "Vector Register Rename Percentage",
             "This metric measures the percentage of rename stall cycles due to vector register rename availability",
             "percent",
-            0,
+            1,
             metric_priority_t::backend,
             metric_arch_t::any,
             {
@@ -2118,6 +3806,39 @@ namespace metrics {
                 metric_group_id_t::operation_mix,
             },
         };
+        [[maybe_unused]] const metric_events_set_t sme_percentage_0 {
+            {
+                std::uint16_t(0x001b),
+                std::uint16_t(0x835e),
+            },
+            "sme_percentage",
+            "SME Operations Percentage",
+            "This metric measures Scalable Matrix extension data processing operations as a percentage\nof operations "
+            "speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t std_port_utilization_0 {
+            {
+                std::uint16_t(0x3004),
+            },
+            "std_port_utilization",
+            "Integer Store Data Execution Unit Utilization",
+            "This metric measures the average number of integer store data operations executed per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::port_utilization,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t store_ls_percentage_0 {
             {
                 std::uint16_t(0x0071),
@@ -2150,6 +3871,133 @@ namespace metrics {
             {
                 metric_group_id_t::basic,
                 metric_group_id_t::operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_fp_op_percentage_0 {
+            {
+                std::uint16_t(0x3220),
+                std::uint16_t(0x3219),
+            },
+            "streaming_fp_op_percentage",
+            "Streaming FP Operations Percentage",
+            "This metric measures streaming floating point operations as a percentage of streaming\noperations "
+            "speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_int_op_percentage_0 {
+            {
+                std::uint16_t(0x321f),
+                std::uint16_t(0x3219),
+            },
+            "streaming_int_op_percentage",
+            "Streaming Integer Operations Percentage",
+            "This metric measures streaming integer operations as a percentage of streaming\noperations speculatively "
+            "executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_ld_op_percentage_0 {
+            {
+                std::uint16_t(0x321c),
+                std::uint16_t(0x3219),
+            },
+            "streaming_ld_op_percentage",
+            "Streaming Load Operations Percentage",
+            "This metric measures streaming load operations as a percentage of streaming\noperations speculatively "
+            "executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_ls_op_percentage_0 {
+            {
+                std::uint16_t(0x321b),
+                std::uint16_t(0x3219),
+            },
+            "streaming_ls_op_percentage",
+            "Streaming Load/Store Operations Percentage",
+            "This metric measures streaming load and store operations as a percentage of streaming\noperations "
+            "speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_op_percentage_0 {
+            {
+                std::uint16_t(0x3219),
+                std::uint16_t(0x001b),
+            },
+            "streaming_op_percentage",
+            "Streaming Operations Percentage",
+            "This metric measures streaming operations as a percentage of operations speculatively "
+            "executed.\nStreaming operations include Advanced SIMD, Scalable vector or\nor Scalable Matrix extension "
+            "data processing when the CPU is in streaming\nmode.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_slow_inst_percentage_0 {
+            {
+                std::uint16_t(0x3219),
+                std::uint16_t(0x32a4),
+            },
+            "streaming_slow_inst_percentage",
+            "Streaming Slow Instructions Percentage",
+            "This metric measures streaming slow instructions as a percentage of streaming\noperations speculatively "
+            "executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t streaming_st_op_percentage_0 {
+            {
+                std::uint16_t(0x321d),
+                std::uint16_t(0x3219),
+            },
+            "streaming_st_op_percentage",
+            "Streaming Store Operations Percentage",
+            "This metric measures streaming store operations as a percentage of streaming\noperations speculatively "
+            "executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
             },
         };
         [[maybe_unused]] const metric_events_set_t strex_fail_mpki_0 {
@@ -2239,6 +4087,22 @@ namespace metrics {
                 metric_group_id_t::fp_arithmetic_intensity,
             },
         };
+        [[maybe_unused]] const metric_events_set_t sve_percentage_0 {
+            {
+                std::uint16_t(0x8056),
+                std::uint16_t(0x001b),
+            },
+            "sve_percentage",
+            "SVE Operations Percentage",
+            "This metric measures scalable vector operations as a percentage of operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::operation_mix,
+            },
+        };
         [[maybe_unused]] const metric_events_set_t sve_predicate_empty_percentage_0 {
             {
                 std::uint16_t(0x8075),
@@ -2307,6 +4171,5323 @@ namespace metrics {
                 metric_group_id_t::sve_effectiveness,
             },
         };
+        [[maybe_unused]] const metric_events_set_t system_dram_mem_hit_ratio_0 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x3008),
+                std::uint16_t(0x0028),
+            },
+            "system_dram_mem_hit_ratio",
+            "System DRAM Hit Percentage",
+            "This metric measures the ratio of DRAM hits to the total memory accesses that missed\nin the private L2 "
+            "cache of the core. This metric indicates that the workload is memory bound obtaining data from the local "
+            "DRAM.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::system_memory_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t system_l3_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x8206),
+                std::uint16_t(0x0028),
+            },
+            "system_l3_cache_hit_ratio",
+            "System L3 Cache Hit Percentage",
+            "This metric measures the ratio of system L3 cache hits to the total memory accesses that missed\nin the "
+            "private L2 cache of the core. This metric indicates that the workload is memory bound obtaining data from "
+            "L3 cache.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::system_memory_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t system_llc_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x0028),
+                std::uint16_t(0x8207),
+            },
+            "system_llc_cache_hit_ratio",
+            "System Last Level Cache Hit Percentage",
+            "This metric measures the ratio of system last level cache hits to the total memory accesses that "
+            "missed\nin the private L2 cache of the core. This metric indicates that the workload is memory bound "
+            "obtaining data from system's last level cache.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::system_memory_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t system_peer_cluster_cache_hit_ratio_0 {
+            {
+                std::uint16_t(0x0017),
+                std::uint16_t(0x8190),
+                std::uint16_t(0x0028),
+                std::uint16_t(0x81b4),
+            },
+            "system_peer_cluster_cache_hit_ratio",
+            "System Peer Cluster Cache Hit Percentage",
+            "This metric measures the ratio of peer cluster cache hits to the total memory accesses that missed\nin "
+            "the private L2 cache of the core.\nThis metric indicates that the workload is memory bound obtaining data "
+            "from peer cores in the compute cluster.",
+            "percent",
+            0,
+            metric_priority_t::mem,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::system_memory_effectiveness,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t vpu_port_utilization_0 {
+            {
+                std::uint16_t(0x3002),
+            },
+            "vpu_port_utilization",
+            "Vector Execution Unit Utilization",
+            "This metric measures the average number of vector operations executed per cycle",
+            "operations",
+            0,
+            metric_priority_t::backend,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::port_utilization,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_active_cycles_ratio_0 {
+            {
+                std::uint16_t(0x8380),
+            },
+            "za_active_cycles_ratio",
+            "ZA Active Cycles Percentage",
+            "This metric is measures the ratio of cycles when PSTATE.ZA was enabled\nto the total number of CPU "
+            "cycles.",
+            "percent",
+            0,
+            metric_priority_t::cme,
+            metric_arch_t::v8,
+            {
+                metric_group_id_t::cycle_accounting,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_fp_addsub_percentage_0 {
+            {
+                std::uint16_t(0x8370),
+                std::uint16_t(0x8352),
+            },
+            "za_fp_addsub_percentage",
+            "Streaming ZA Add Sub Floating Point Operations Percentage",
+            "This metric measures SME/SVE classified floating point addition or subtraction operations\nthat used ZA "
+            "arrays as a percentage of all the SME floating point ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_fp_dot_percentage_0 {
+            {
+                std::uint16_t(0x8352),
+                std::uint16_t(0x8374),
+            },
+            "za_fp_dot_percentage",
+            "Streaming ZA Dot Floating Point Operations Percentage",
+            "This metric measures SME/SVE classified floating point dot product operations that used ZA arrays as "
+            "a\npercentage of all the SME floating point ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_fp_fma_percentage_0 {
+            {
+                std::uint16_t(0x8352),
+                std::uint16_t(0x8372),
+            },
+            "za_fp_fma_percentage",
+            "Streaming ZA FMA Floating Point Operations Percentage",
+            "This metric measures SME/SVE classified floating point multiply-add, multiply-add long, multiply-subtract "
+            "and\nmultiply-subtract long operations that used ZA arrays as a percentage of\nall the SME floating point "
+            "ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_fp_mopa_percentage_0 {
+            {
+                std::uint16_t(0x8352),
+                std::uint16_t(0x8376),
+            },
+            "za_fp_mopa_percentage",
+            "Streaming ZA MOPA Floating Point Operations Percentage",
+            "This metric measures SME/SVE classified floating point outer product and accumulate, or outer\nproduct "
+            "and subtract operations that used ZA arrays as a percentage of\nall the SME integer ZA operations "
+            "speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_fp_op_percentage_0 {
+            {
+                std::uint16_t(0x8352),
+                std::uint16_t(0x835e),
+            },
+            "za_fp_op_percentage",
+            "Streaming ZA Floating Point Operations Percentage",
+            "This metric measures SME/SVE classified floating point operations and used ZA arrays as a percentage "
+            "of\nall the SME operations speculatively executed that used ZA array.\nZA arrays are required for "
+            "instructions that required PSTATE.ZA to be set.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_fp_other_percentage_0 {
+            {
+                std::uint16_t(0x32b0),
+                std::uint16_t(0x8352),
+            },
+            "za_fp_other_percentage",
+            "Streaming ZA Other Floating Point Operations Percentage",
+            "This metric measures SME/SVE classified floating point operations that used ZA arrays not\ncounted in any "
+            "other category as a percentage of\nall the SME floating point ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_int_dot_percentage_0 {
+            {
+                std::uint16_t(0x8378),
+                std::uint16_t(0x837c),
+            },
+            "za_int_dot_percentage",
+            "Streaming ZA Dot Integer Operations Percentage",
+            "This metric measures SME integer dot product operations that used ZA arrays as a percentage of\nall the "
+            "SME integer ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_int_mopa_percentage_0 {
+            {
+                std::uint16_t(0x8378),
+                std::uint16_t(0x837e),
+            },
+            "za_int_mopa_percentage",
+            "Streaming ZA MOPA Integer Operations Percentage",
+            "This metric measures SME integer outer product and accumulate, or outer\nproduct and subtract operations "
+            "that used ZA arrays as a percentage of\nall the SME integer ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_int_op_percentage_0 {
+            {
+                std::uint16_t(0x8378),
+                std::uint16_t(0x835e),
+            },
+            "za_int_op_percentage",
+            "Streaming ZA Integer Operations Percentage",
+            "This metric measures SME integer operations that used ZA arrays as a percentage of\nall the SME "
+            "operations speculatively executed that used ZA array.\nZA arrays are required for instructions that "
+            "required PSTATE.ZA to be set.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_int_other_percentage_0 {
+            {
+                std::uint16_t(0x8378),
+                std::uint16_t(0x32af),
+            },
+            "za_int_other_percentage",
+            "Streaming ZA Other Integer Operations Percentage",
+            "This metric measures SME integer operations that used ZA arrays not\ncounted in any other category as a "
+            "percentage of\nall the SME integer ZA operations speculatively executed.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        [[maybe_unused]] const metric_events_set_t za_op_percentage_0 {
+            {
+                std::uint16_t(0x001b),
+                std::uint16_t(0x835e),
+            },
+            "za_op_percentage",
+            "Streaming ZA Operations Percentage",
+            "This metric measures SME operations that used ZA arrays as a percentage of operations speculatively "
+            "executed.\nZA arrays are required for instructions that required PSTATE.ZA to be set.",
+            "percent",
+            0,
+            metric_priority_t::numeric,
+            metric_arch_t::any,
+            {
+                metric_group_id_t::basic,
+                metric_group_id_t::cme_operation_mix,
+            },
+        };
+        const metric_cpu_events_t c1_nano_metrics {
+            {
+                ipc_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                frontend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                frontend_bound_0,
+                {
+                    {
+                        frontend_core_bound_0,
+                        {
+                            {
+                                frontend_core_flush_bound_0,
+                                {},
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_core_flow_bound_0,
+                                {},
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                    {
+                        frontend_mem_bound_0,
+                        {
+                            {
+                                frontend_mem_cache_bound_0,
+                                {
+                                    {
+                                        frontend_cache_l1i_bound_0,
+                                        {
+                                            {
+                                                l1i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_cache_l2i_bound_0,
+                                        {
+                                            {
+                                                l2i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_mem_tlb_bound_0,
+                                {
+                                    {
+                                        itlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                backend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                backend_bound_0,
+                {
+                    {
+                        backend_core_bound_0,
+                        {
+                            {
+                                backend_core_cme_bound_0,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_busy_bound_0,
+                                {
+                                    {
+                                        backend_busy_ls_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_busy_vpu_arb_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_cme_busy_bound_0,
+                                        {
+                                            {
+                                                backend_cme_cpu_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_backend,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_backpressure_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_busy_arb_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_cme,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_stall_interlock_bound_1,
+                                {
+                                    {
+                                        backend_stall_interlock_ls_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_stall_interlock_ptr_chase_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_stall_interlock_vpu_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                    {
+                        backend_mem_bound_1,
+                        {
+                            {
+                                backend_mem_cme_bound_0,
+                                {
+                                    {
+                                        backend_mem_cme_hazard_cpu_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cpu_hazard_cme_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_lsrt_full_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_barrier_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_cache_bound_0,
+                                {
+                                    {
+                                        backend_cache_l1d_bound_0,
+                                        {
+                                            {
+                                                l1d_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1d_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_cache_l2d_bound_0,
+                                        {
+                                            {
+                                                l2d_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2d_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_mpki_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_hit_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_tlb_bound_0,
+                                {
+                                    {
+                                        dtlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_store_bound_0,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                cas_near_fail_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_pass_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_far_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_atomics_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_load_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_store_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_exclusive_1,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_exclusive_1,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                retired_ops_percent_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                retiring_0,
+                {
+                    {
+                        branch_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        crypto_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp16_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp32_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp64_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        integer_dp_percentage_1,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        ldrex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_ld_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_st_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        scalar_fp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        simd_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sme_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        strex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                bad_speculation_0,
+                {
+                    {
+                        branch_mpki_1,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_misprediction_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_direct_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_indirect_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_return_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                cme_frontend_bound_0,
+                {
+                    {
+                        cme_frontend_cpu_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                    {
+                        cme_frontend_other_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_backend_bound_0,
+                {
+                    {
+                        cme_backend_prefetch_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_core_bound_0,
+                        {
+                            {
+                                cme_iq_dp0_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_dp1_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_load_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_st_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_alu_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mac_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmdp_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmmv_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_perm_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_mem_bound_0,
+                        {
+                            {
+                                cme_backend_mem_cache_bound_0,
+                                {
+                                    {
+                                        cme_l1d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_dram_mem_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_l3d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_ll_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                            {
+                                cme_backend_mem_store_bound_0,
+                                {},
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_retiring_0,
+                {
+                    {
+                        cme_load_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        cme_store_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ld_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_st_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ls_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_slow_inst_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_fma_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_addsub_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                bus_read_requests_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_alloc_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_arb_pending_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_bus_access_average_length_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_ipc_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_accuracy_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_coverage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_timeliness_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l3d_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cpi_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                instruction_fetch_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_miss_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                load_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_percent_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_empty_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_full_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_partial_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                za_active_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+        };
+        const metric_cpu_events_t c1_premium_metrics {
+            {
+                ipc_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                frontend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                frontend_bound_0,
+                {
+                    {
+                        frontend_core_bound_0,
+                        {
+                            {
+                                frontend_core_flush_bound_0,
+                                {
+                                    {
+                                        frontend_core_flush_resteer_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_core_flush_machine_clear_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_core_flow_bound_0,
+                                {},
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                    {
+                        frontend_mem_bound_0,
+                        {
+                            {
+                                frontend_mem_cache_bound_0,
+                                {
+                                    {
+                                        frontend_cache_l1i_bound_0,
+                                        {
+                                            {
+                                                l1i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_cache_l2i_bound_0,
+                                        {
+                                            {
+                                                l2i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_mem_tlb_bound_0,
+                                {
+                                    {
+                                        itlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                backend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                backend_bound_0,
+                {
+                    {
+                        backend_core_bound_0,
+                        {
+                            {
+                                backend_core_cme_bound_0,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_core_rename_bound_0,
+                                {
+                                    {
+                                        rename_stall_vec_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_pred_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_flags_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_int_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_core_other_bound_1,
+                                {
+                                    {
+                                        backend_core_spec_throttle_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        mcq_stall_percentage_0,
+                                        {},
+                                        metric_group_id_t::mcq_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_busy_bound_0,
+                                {
+                                    {
+                                        backend_cme_busy_bound_1,
+                                        {
+                                            {
+                                                backend_cme_cpu_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_backend,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_backpressure_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_busy_arb_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_cme,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                    {
+                        backend_mem_bound_1,
+                        {
+                            {
+                                backend_mem_cme_bound_0,
+                                {
+                                    {
+                                        backend_mem_cme_hazard_cpu_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cpu_hazard_cme_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_lsrt_full_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_barrier_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_cache_bound_1,
+                                {
+                                    {
+                                        backend_cache_l1d_bound_0,
+                                        {
+                                            {
+                                                l1d_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1d_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_cache_l2d_bound_0,
+                                        {
+                                            {
+                                                l2d_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2d_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_mpki_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_hit_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_tlb_bound_1,
+                                {
+                                    {
+                                        dtlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_store_bound_1,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                cas_near_fail_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_pass_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_far_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_atomics_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_load_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_store_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_coverage_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_accuracy_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_timeliness_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                retired_ops_percent_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                retiring_0,
+                {
+                    {
+                        barrier_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        branch_percentage_2,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        crypto_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp16_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp32_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp64_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        integer_dp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        ldrex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_ld_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_st_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        scalar_fp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        simd_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sme_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        strex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_all_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        vpu_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        branch_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        int_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        lsu_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        std_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        iq_stall_lsu_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_sx_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_mx_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_vpu_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                bad_speculation_0,
+                {
+                    {
+                        branch_mpki_1,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_misprediction_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_direct_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_indirect_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_return_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                cme_frontend_bound_0,
+                {
+                    {
+                        cme_frontend_cpu_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                    {
+                        cme_frontend_other_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_backend_bound_0,
+                {
+                    {
+                        cme_backend_prefetch_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_core_bound_0,
+                        {
+                            {
+                                cme_iq_dp0_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_dp1_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_load_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_st_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_alu_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mac_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmdp_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmmv_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_perm_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_mem_bound_0,
+                        {
+                            {
+                                cme_backend_mem_cache_bound_0,
+                                {
+                                    {
+                                        cme_l1d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_dram_mem_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_l3d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_ll_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                            {
+                                cme_backend_mem_store_bound_0,
+                                {},
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_retiring_0,
+                {
+                    {
+                        cme_load_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        cme_store_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ld_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_st_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ls_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_slow_inst_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_fma_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_addsub_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                bus_access_average_count_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                bus_read_requests_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_alloc_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_arb_pending_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_bus_access_average_length_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_ipc_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_accuracy_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_coverage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_timeliness_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l3d_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cpi_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                frontend_core_spec_throttle_bound_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                instruction_fetch_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1d_cache_demand_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2d_cache_demand_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                load_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                nonsve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_percent_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_empty_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_full_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_partial_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_dram_mem_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_l3_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_llc_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_peer_cluster_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                za_active_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+        };
+        const metric_cpu_events_t c1_pro_metrics {
+            {
+                ipc_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                frontend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                frontend_bound_0,
+                {
+                    {
+                        frontend_core_bound_0,
+                        {
+                            {
+                                frontend_core_flush_bound_0,
+                                {
+                                    {
+                                        frontend_core_flush_resteer_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_core_flush_machine_clear_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_core_flow_bound_0,
+                                {},
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                    {
+                        frontend_mem_bound_0,
+                        {
+                            {
+                                frontend_mem_cache_bound_0,
+                                {
+                                    {
+                                        frontend_cache_l1i_bound_0,
+                                        {
+                                            {
+                                                l1i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_cache_l2i_bound_0,
+                                        {
+                                            {
+                                                l2i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_mem_tlb_bound_0,
+                                {
+                                    {
+                                        itlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                backend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                backend_bound_0,
+                {
+                    {
+                        backend_core_bound_0,
+                        {
+                            {
+                                backend_core_cme_bound_0,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_core_rename_bound_0,
+                                {
+                                    {
+                                        rename_stall_vec_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_pred_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_flags_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_int_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_core_other_bound_0,
+                                {
+                                    {
+                                        mcq_stall_percentage_0,
+                                        {},
+                                        metric_group_id_t::mcq_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_busy_bound_0,
+                                {
+                                    {
+                                        backend_cme_busy_bound_1,
+                                        {
+                                            {
+                                                backend_cme_cpu_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_backend,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_backpressure_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_busy_arb_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_cme,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                    {
+                        backend_mem_bound_1,
+                        {
+                            {
+                                backend_mem_cme_bound_0,
+                                {
+                                    {
+                                        backend_mem_cme_hazard_cpu_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cpu_hazard_cme_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_lsrt_full_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_barrier_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_cache_bound_1,
+                                {
+                                    {
+                                        backend_cache_l1d_bound_0,
+                                        {
+                                            {
+                                                l1d_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1d_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_cache_l2d_bound_0,
+                                        {
+                                            {
+                                                l2d_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2d_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_mpki_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_hit_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_tlb_bound_1,
+                                {
+                                    {
+                                        dtlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_store_bound_1,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                cas_near_fail_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_pass_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_far_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_atomics_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_load_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_store_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_coverage_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_accuracy_1,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_timeliness_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_exclusive_1,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_inclusive_1,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                retired_ops_percent_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                retiring_0,
+                {
+                    {
+                        barrier_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        branch_percentage_1,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        crypto_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp16_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp32_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp64_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        integer_dp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_ld_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_st_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        scalar_fp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        simd_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sme_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        strex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_all_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        vpu_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        branch_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        int_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        lsu_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        std_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        iq_stall_lsu_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_sx_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_mx_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_vpu_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                bad_speculation_0,
+                {
+                    {
+                        branch_mpki_1,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_misprediction_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_direct_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_indirect_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_return_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                cme_frontend_bound_0,
+                {
+                    {
+                        cme_frontend_cpu_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                    {
+                        cme_frontend_other_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_backend_bound_0,
+                {
+                    {
+                        cme_backend_prefetch_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_core_bound_0,
+                        {
+                            {
+                                cme_iq_dp0_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_dp1_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_load_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_st_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_alu_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mac_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmdp_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmmv_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_perm_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_mem_bound_0,
+                        {
+                            {
+                                cme_backend_mem_cache_bound_0,
+                                {
+                                    {
+                                        cme_l1d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_dram_mem_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_l3d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_ll_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                            {
+                                cme_backend_mem_store_bound_0,
+                                {},
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_retiring_0,
+                {
+                    {
+                        cme_load_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        cme_store_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ld_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_st_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ls_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_slow_inst_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_fma_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_addsub_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                bus_access_average_count_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                bus_read_requests_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_alloc_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_arb_pending_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_bus_access_average_length_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_ipc_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_accuracy_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_coverage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_timeliness_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l3d_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cpi_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                instruction_fetch_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1d_cache_demand_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2d_cache_demand_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                load_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                nonsve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_percent_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_empty_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_full_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_partial_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_dram_mem_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_l3_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_llc_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_peer_cluster_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                za_active_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+        };
+        const metric_cpu_events_t c1_ultra_metrics {
+            {
+                ipc_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                frontend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                frontend_bound_0,
+                {
+                    {
+                        frontend_core_bound_0,
+                        {
+                            {
+                                frontend_core_flush_bound_0,
+                                {
+                                    {
+                                        frontend_core_flush_resteer_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_core_flush_machine_clear_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_core_flow_bound_0,
+                                {},
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                    {
+                        frontend_mem_bound_0,
+                        {
+                            {
+                                frontend_mem_cache_bound_0,
+                                {
+                                    {
+                                        frontend_cache_l1i_bound_0,
+                                        {
+                                            {
+                                                l1i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l1i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                    {
+                                        frontend_cache_l2i_bound_0,
+                                        {
+                                            {
+                                                l2i_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2i_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l2i_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_frontend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                            {
+                                frontend_mem_tlb_bound_0,
+                                {
+                                    {
+                                        itlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        itlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1i_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::itlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_frontend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                backend_stalled_cycles_0,
+                {},
+                metric_group_id_t::cycle_accounting,
+                true,
+            },
+            {
+                backend_bound_0,
+                {
+                    {
+                        backend_core_bound_0,
+                        {
+                            {
+                                backend_core_cme_bound_0,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_core_rename_bound_0,
+                                {
+                                    {
+                                        rename_stall_vec_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_pred_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_flags_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_int_ratio_0,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_core_other_bound_1,
+                                {
+                                    {
+                                        backend_core_spec_throttle_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        mcq_stall_percentage_0,
+                                        {},
+                                        metric_group_id_t::mcq_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_busy_bound_0,
+                                {
+                                    {
+                                        backend_cme_busy_bound_1,
+                                        {
+                                            {
+                                                backend_cme_cpu_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_backend,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_backpressure_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                            {
+                                                backend_cme_busy_arb_bound_0,
+                                                {},
+                                                metric_group_id_t::topdown_cme,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_cme,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                    {
+                        backend_mem_bound_1,
+                        {
+                            {
+                                backend_mem_cme_bound_0,
+                                {
+                                    {
+                                        backend_mem_cme_hazard_cpu_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cpu_hazard_cme_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_lsrt_full_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_mem_cme_barrier_bound_0,
+                                        {},
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_cache_bound_1,
+                                {
+                                    {
+                                        backend_cache_l1d_bound_0,
+                                        {
+                                            {
+                                                l1d_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l1d_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l1d_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                    {
+                                        backend_cache_l2d_bound_0,
+                                        {
+                                            {
+                                                l2d_cache_mpki_1,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l2d_cache_miss_ratio_1,
+                                                {},
+                                                metric_group_id_t::l2d_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_mpki_0,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                l3_cache_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::l3_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_mpki_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_miss_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                            {
+                                                ll_cache_read_hit_ratio_0,
+                                                {},
+                                                metric_group_id_t::ll_cache_effectiveness,
+                                                true,
+                                            },
+                                        },
+                                        metric_group_id_t::topdown_backend,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_tlb_bound_1,
+                                {
+                                    {
+                                        dtlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_large_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_small_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_page_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_block_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_depth_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        dtlb_walk_average_latency_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l1d_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_mpki_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        l2_tlb_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::dtlb_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                backend_mem_store_bound_1,
+                                {},
+                                metric_group_id_t::topdown_backend,
+                                true,
+                            },
+                            {
+                                cas_near_fail_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_pass_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_near_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                cas_far_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_atomics_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_load_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                lse_store_ratio_0,
+                                {},
+                                metric_group_id_t::atomics_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_coverage_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_accuracy_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l1_prefetcher_timeliness_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_exclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_coverage_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_accuracy_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                            {
+                                l2_prefetcher_timeliness_l1hwprf_inclusive_0,
+                                {},
+                                metric_group_id_t::prefetcher_effectiveness,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                retired_ops_percent_0,
+                {},
+                metric_group_id_t::general,
+                true,
+            },
+            {
+                retiring_0,
+                {
+                    {
+                        barrier_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        branch_percentage_2,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        crypto_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp16_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp32_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        fp64_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        integer_dp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        ldrex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        load_store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_ld_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        rc_st_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        scalar_fp_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        simd_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sme_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_ls_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        store_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        strex_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_all_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        sve_percentage_0,
+                        {},
+                        metric_group_id_t::operation_mix,
+                        true,
+                    },
+                    {
+                        vpu_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        branch_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        int_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        lsu_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        std_port_utilization_0,
+                        {},
+                        metric_group_id_t::port_utilization,
+                        true,
+                    },
+                    {
+                        iq_stall_lsu_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_sx_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_mx_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                    {
+                        iq_stall_vpu_percentage_0,
+                        {},
+                        metric_group_id_t::iq_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                bad_speculation_0,
+                {
+                    {
+                        branch_mpki_1,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_misprediction_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_direct_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_indirect_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                    {
+                        branch_return_ratio_0,
+                        {},
+                        metric_group_id_t::branch_effectiveness,
+                        true,
+                    },
+                },
+                metric_group_id_t::topdown_l1,
+                true,
+            },
+            {
+                cme_frontend_bound_0,
+                {
+                    {
+                        cme_frontend_cpu_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                    {
+                        cme_frontend_other_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_frontend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_backend_bound_0,
+                {
+                    {
+                        cme_backend_prefetch_bound_0,
+                        {},
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_core_bound_0,
+                        {
+                            {
+                                cme_iq_dp0_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_dp1_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_iq_load_stall_percentage_0,
+                                {},
+                                metric_group_id_t::cme_iq_effectiveness,
+                                true,
+                            },
+                            {
+                                cme_st_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_alu_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mac_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmdp_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_mmmv_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                            {
+                                cme_perm_port_utilization_0,
+                                {},
+                                metric_group_id_t::cme_port_utilization,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                    {
+                        cme_backend_mem_bound_0,
+                        {
+                            {
+                                cme_backend_mem_cache_bound_0,
+                                {
+                                    {
+                                        cme_l1d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l1d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l1d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_l3d_cache_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_l3d_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_mpki_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_miss_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_ll_cache_read_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_ll_cache_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_dram_mem_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_l3d_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        cme_system_ll_cache_hit_ratio_0,
+                                        {},
+                                        metric_group_id_t::cme_system_memory_effectiveness,
+                                        true,
+                                    },
+                                },
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                            {
+                                cme_backend_mem_store_bound_0,
+                                {},
+                                metric_group_id_t::cme_topdown_backend,
+                                true,
+                            },
+                        },
+                        metric_group_id_t::cme_topdown_backend,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                cme_retiring_0,
+                {
+                    {
+                        cme_load_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        cme_store_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ld_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_st_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_ls_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        streaming_slow_inst_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_int_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_op_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_mopa_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_fma_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_dot_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_addsub_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                    {
+                        za_fp_other_percentage_0,
+                        {},
+                        metric_group_id_t::cme_operation_mix,
+                        true,
+                    },
+                },
+                metric_group_id_t::cme_topdown_l1,
+                true,
+            },
+            {
+                bus_access_average_count_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                bus_read_requests_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_alloc_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_arb_pending_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_bus_access_average_length_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_ipc_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_accuracy_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_coverage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l1_prefetcher_timeliness_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cme_l3d_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                cpi_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                frontend_core_spec_throttle_bound_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                instruction_fetch_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l1d_cache_demand_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_miss_ratio_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2_cache_mpki_1,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                l2d_cache_demand_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                load_average_latency_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                nonsve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_mpki_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                strex_fail_percent_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_fp_ops_per_cycle_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_empty_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_full_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_partial_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                sve_predicate_percentage_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_dram_mem_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_l3_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_llc_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                system_peer_cluster_cache_hit_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+            {
+                za_active_cycles_ratio_0,
+                {},
+                metric_group_id_t::other,
+                false,
+            },
+        };
         const metric_cpu_events_t cortex_a32_metrics {
             {
                 ipc_0,
@@ -2333,7 +9514,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -2389,7 +9570,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -2476,7 +9657,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -2532,7 +9713,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -2670,7 +9851,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -2930,7 +10111,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -2954,7 +10135,7 @@ namespace metrics {
                 true,
             },
             {
-                l2_cache_miss_ratio_0,
+                l2_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l2_cache_effectiveness,
                 true,
@@ -2984,7 +10165,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -3110,7 +10291,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -3122,7 +10303,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -3253,7 +10434,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -3373,7 +10554,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -3385,7 +10566,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -3516,7 +10697,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -3645,7 +10826,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -3669,7 +10850,7 @@ namespace metrics {
                 true,
             },
             {
-                l2_cache_miss_ratio_0,
+                l2_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l2_cache_effectiveness,
                 true,
@@ -3699,7 +10880,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -3816,7 +10997,7 @@ namespace metrics {
                 true,
             },
             {
-                l1d_cache_miss_ratio_0,
+                l1d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l1d_cache_effectiveness,
                 true,
@@ -3840,7 +11021,7 @@ namespace metrics {
                 true,
             },
             {
-                l2_cache_miss_ratio_0,
+                l2_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::l2_cache_effectiveness,
                 true,
@@ -3858,7 +11039,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -3978,7 +11159,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -3990,7 +11171,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -4127,7 +11308,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -4259,7 +11440,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -4271,7 +11452,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -4426,7 +11607,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -4558,7 +11739,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -4570,7 +11751,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -4725,7 +11906,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -4857,7 +12038,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -4869,7 +12050,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -5025,7 +12206,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -5157,7 +12338,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -5169,7 +12350,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -5325,7 +12506,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -5457,7 +12638,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -5469,7 +12650,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -5625,7 +12806,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -5757,7 +12938,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -6107,7 +13288,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -6591,7 +13772,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -7013,7 +14194,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -7025,7 +14206,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -7211,7 +14392,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -7379,7 +14560,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -7391,7 +14572,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -7577,7 +14758,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -7745,7 +14926,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -7757,7 +14938,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -7943,7 +15124,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -8111,7 +15292,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -8123,7 +15304,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -8309,7 +15490,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -8540,7 +15721,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -8559,7 +15740,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2_cache_miss_ratio_0,
+                                                l2_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2_cache_effectiveness,
                                                 true,
@@ -8854,7 +16035,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -9091,7 +16272,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -9110,7 +16291,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2_cache_miss_ratio_0,
+                                                l2_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2_cache_effectiveness,
                                                 true,
@@ -9405,7 +16586,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -9655,7 +16836,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -9674,7 +16855,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_0,
+                                                l2d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -9963,7 +17144,7 @@ namespace metrics {
                 false,
             },
             {
-                l2_cache_miss_ratio_0,
+                l2_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -10143,7 +17324,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -10155,7 +17336,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -10311,7 +17492,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -10443,7 +17624,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -10455,7 +17636,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -10611,7 +17792,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -10812,7 +17993,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -10831,7 +18012,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2_cache_miss_ratio_0,
+                                                l2_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2_cache_effectiveness,
                                                 true,
@@ -11144,7 +18325,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -11387,7 +18568,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -11406,7 +18587,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2_cache_miss_ratio_0,
+                                                l2_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2_cache_effectiveness,
                                                 true,
@@ -11719,7 +18900,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -11833,7 +19014,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -11951,7 +19132,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -12142,7 +19323,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -12363,7 +19544,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l1d_cache_miss_ratio_0,
+                        l1d_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l1d_cache_effectiveness,
                         true,
@@ -12375,7 +19556,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        l2_cache_miss_ratio_0,
+                        l2_cache_miss_ratio_1,
                         {},
                         metric_group_id_t::l2_cache_effectiveness,
                         true,
@@ -12524,7 +19705,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -12629,7 +19810,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l1d_cache_miss_ratio_0,
+                                l1d_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l1d_cache_effectiveness,
                                 true,
@@ -12641,7 +19822,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l2_cache_miss_ratio_0,
+                                l2_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l2_cache_effectiveness,
                                 true,
@@ -12849,7 +20030,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -12947,7 +20128,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l1d_cache_miss_ratio_0,
+                                l1d_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l1d_cache_effectiveness,
                                 true,
@@ -12959,7 +20140,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l2_cache_miss_ratio_0,
+                                l2_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l2_cache_effectiveness,
                                 true,
@@ -13214,7 +20395,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -13355,7 +20536,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l1d_cache_miss_ratio_0,
+                                l1d_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l1d_cache_effectiveness,
                                 true,
@@ -13367,7 +20548,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l2_cache_miss_ratio_0,
+                                l2_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l2_cache_effectiveness,
                                 true,
@@ -13656,7 +20837,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l1d_cache_miss_ratio_0,
+                                l1d_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l1d_cache_effectiveness,
                                 true,
@@ -13668,7 +20849,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l2_cache_miss_ratio_0,
+                                l2_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l2_cache_effectiveness,
                                 true,
@@ -13957,7 +21138,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l1d_cache_miss_ratio_0,
+                                l1d_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l1d_cache_effectiveness,
                                 true,
@@ -13969,7 +21150,7 @@ namespace metrics {
                                 true,
                             },
                             {
-                                l2_cache_miss_ratio_0,
+                                l2_cache_miss_ratio_1,
                                 {},
                                 metric_group_id_t::l2_cache_effectiveness,
                                 true,
@@ -14195,7 +21376,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -14415,7 +21596,26 @@ namespace metrics {
                         {
                             {
                                 backend_core_rename_bound_0,
-                                {},
+                                {
+                                    {
+                                        rename_stall_vec_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_flags_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_int_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                },
                                 metric_group_id_t::topdown_backend,
                                 true,
                             },
@@ -14451,7 +21651,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -14470,7 +21670,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2d_cache_miss_ratio_0,
+                                                l2d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2d_cache_effectiveness,
                                                 true,
@@ -14622,7 +21822,7 @@ namespace metrics {
                         true,
                     },
                     {
-                        branch_percentage_1,
+                        branch_percentage_2,
                         {},
                         metric_group_id_t::operation_mix,
                         true,
@@ -14789,7 +21989,7 @@ namespace metrics {
                 false,
             },
             {
-                l2_cache_miss_ratio_0,
+                l2_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -14814,24 +22014,6 @@ namespace metrics {
             },
             {
                 nonsve_fp_ops_per_cycle_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_flags_ratio_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_int_ratio_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_vec_ratio_0,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15026,7 +22208,26 @@ namespace metrics {
                         {
                             {
                                 backend_core_rename_bound_0,
-                                {},
+                                {
+                                    {
+                                        rename_stall_vec_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_flags_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_int_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                },
                                 metric_group_id_t::topdown_backend,
                                 true,
                             },
@@ -15062,7 +22263,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -15081,7 +22282,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2_cache_miss_ratio_0,
+                                                l2_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2_cache_effectiveness,
                                                 true,
@@ -15382,7 +22583,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15401,24 +22602,6 @@ namespace metrics {
             },
             {
                 nonsve_fp_ops_per_cycle_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_flags_ratio_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_int_ratio_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_vec_ratio_0,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15613,7 +22796,26 @@ namespace metrics {
                         {
                             {
                                 backend_core_rename_bound_0,
-                                {},
+                                {
+                                    {
+                                        rename_stall_vec_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_flags_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                    {
+                                        rename_stall_int_ratio_1,
+                                        {},
+                                        metric_group_id_t::rename_effectiveness,
+                                        true,
+                                    },
+                                },
                                 metric_group_id_t::topdown_backend,
                                 true,
                             },
@@ -15649,7 +22851,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l1d_cache_miss_ratio_0,
+                                                l1d_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l1d_cache_effectiveness,
                                                 true,
@@ -15668,7 +22870,7 @@ namespace metrics {
                                                 true,
                                             },
                                             {
-                                                l2_cache_miss_ratio_0,
+                                                l2_cache_miss_ratio_1,
                                                 {},
                                                 metric_group_id_t::l2_cache_effectiveness,
                                                 true,
@@ -15969,7 +23171,7 @@ namespace metrics {
                 false,
             },
             {
-                l2d_cache_miss_ratio_0,
+                l2d_cache_miss_ratio_1,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -15988,24 +23190,6 @@ namespace metrics {
             },
             {
                 nonsve_fp_ops_per_cycle_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_flags_ratio_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_int_ratio_0,
-                {},
-                metric_group_id_t::other,
-                false,
-            },
-            {
-                rename_stall_vec_ratio_0,
                 {},
                 metric_group_id_t::other,
                 false,
@@ -16055,6 +23239,42 @@ namespace metrics {
         };
     }
     metric_cpu_events_map_t const cpu_metrics_table {
+        {
+            "ARMv9_C1_Nano",
+            {
+                0x000e,
+                {
+                    {{}, {c1_nano_metrics, 5}},
+                },
+            },
+        },
+        {
+            "ARMv9_C1_Premium",
+            {
+                0x000e,
+                {
+                    {{}, {c1_premium_metrics, 5}},
+                },
+            },
+        },
+        {
+            "ARMv9_C1_Pro",
+            {
+                0x000e,
+                {
+                    {{}, {c1_pro_metrics, 5}},
+                },
+            },
+        },
+        {
+            "ARMv9_C1_Ultra",
+            {
+                0x000e,
+                {
+                    {{}, {c1_ultra_metrics, 5}},
+                },
+            },
+        },
         {
             "ARMv8_Cortex_A32",
             {
@@ -16432,6 +23652,36 @@ namespace metrics {
                 return "Branch Effectiveness";
             case metric_group_id_t::bus_effectiveness:
                 return "Bus Effectiveness";
+            case metric_group_id_t::cme_bus_effectiveness:
+                return "SME Bus Effectiveness";
+            case metric_group_id_t::cme_general:
+                return "SME GENERAL";
+            case metric_group_id_t::cme_iq_effectiveness:
+                return "SME Issue Queue Effectiveness";
+            case metric_group_id_t::cme_l1d_cache_effectiveness:
+                return "SME L1 Data Cache Effectiveness";
+            case metric_group_id_t::cme_l3d_cache_effectiveness:
+                return "SME L3 cluster Cache Effectiveness";
+            case metric_group_id_t::cme_ll_cache_effectiveness:
+                return "SME Last Level Cache Effectiveness";
+            case metric_group_id_t::cme_miss_ratio:
+                return "SME Miss Ratio";
+            case metric_group_id_t::cme_mpki:
+                return "SME Misses Per Kilo Instructions";
+            case metric_group_id_t::cme_operation_mix:
+                return "SME Operation Mix";
+            case metric_group_id_t::cme_port_utilization:
+                return "Execution Unit Effectiveness";
+            case metric_group_id_t::cme_prefetcher_effectiveness:
+                return "SME Prefetcher Effectiveness";
+            case metric_group_id_t::cme_system_memory_effectiveness:
+                return "SME System Memory Effectiveness";
+            case metric_group_id_t::cme_topdown_backend:
+                return "SME Topdown Backend";
+            case metric_group_id_t::cme_topdown_frontend:
+                return "SME Topdown Frontend";
+            case metric_group_id_t::cme_topdown_l1:
+                return "SME Topdown Level 1";
             case metric_group_id_t::cycle_accounting:
                 return "Cycle Accounting";
             case metric_group_id_t::dtlb_effectiveness:
@@ -16468,12 +23718,20 @@ namespace metrics {
                 return "Misses Per Kilo Instructions";
             case metric_group_id_t::operation_mix:
                 return "Speculative Operation Mix";
+            case metric_group_id_t::port_utilization:
+                return "Execution Unit Effectiveness";
+            case metric_group_id_t::prefetcher_effectiveness:
+                return "Prefetcher Effectiveness";
             case metric_group_id_t::rename_effectiveness:
                 return "Register Rename Effectiveness";
             case metric_group_id_t::sve_effectiveness:
                 return "SVE Effectiveness";
+            case metric_group_id_t::system_memory_effectiveness:
+                return "System Memory Effectiveness";
             case metric_group_id_t::topdown_backend:
                 return "Topdown Backend";
+            case metric_group_id_t::topdown_cme:
+                return "Topdown SME";
             case metric_group_id_t::topdown_frontend:
                 return "Topdown Frontend";
             case metric_group_id_t::topdown_l1:

@@ -6,6 +6,7 @@
 #include "Configuration.h"
 #include "Source.h"
 #include "agents/agent_workers_process_holder.h"
+#include "android/GpuTimelineLayerManager.h"
 #include "capture/CaptureProcess.h"
 #include "handleException.h"
 #include "lib/AutoClosingFd.h"
@@ -64,6 +65,7 @@ public:
     void endSession(int signum = 0);
 
 private:
+    using GpuTimelineLayerManager = gator::android::GpuTimelineLayerManager;
     friend void ::handleException();
 
     static std::atomic<Child *> gSingleton;

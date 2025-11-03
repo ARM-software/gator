@@ -338,8 +338,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/android/AppGatorRunner.h
     ${CMAKE_CURRENT_SOURCE_DIR}/android/GatorAndroidSetupHandler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/android/GatorAndroidSetupHandler.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/android/GpuTimelineLayerRunner.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/android/GpuTimelineLayerRunner.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/android/GpuTimelineLayerManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/android/GpuTimelineLayerManager.h
     ${CMAKE_CURRENT_SOURCE_DIR}/android/IAppGatorRunner.h
     ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.h

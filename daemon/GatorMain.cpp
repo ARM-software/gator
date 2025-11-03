@@ -648,7 +648,6 @@ void updateSessionData(const ParserResult & result)
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) != 0) {
         gSessionData.mEnableOffCpuSampling = result.mEnableOffCpuSampling;
     }
-
 }
 
 std::string format_kernel_version(lib::kernel_version_no_t kernel_version)
@@ -875,7 +874,9 @@ bool run_setup_probes(Drivers & drivers,
                       bool & do_handle_exception)
 {
     if (!drivers.hasPrimarySourceProvider()) {
-        LOG_ERROR("Perf is not supported on this target");
+        std::string perf_not_supported_error = "Perf is not supported on this target";
+        setup_warnings.add_error(perf_not_supported_error);
+        LOG_ERROR(perf_not_supported_error);
         do_handle_exception = true;
         return true;
     }
@@ -891,9 +892,10 @@ bool run_setup_probes(Drivers & drivers,
                     lib::Format() << "Insufficient counters to collect metrics. Minimum of "
                                   << minimum_required_counters_for_metrics << " counters required, found " << counters
                                   << " for cpu " << current_cpu);
-                LOG_WARNING(insufficient_counters_for_metrics);
-                setup_warnings.add_warning(insufficient_counters_for_metrics);
-                break;
+                LOG_ERROR(insufficient_counters_for_metrics);
+                setup_warnings.add_error(insufficient_counters_for_metrics);
+                do_handle_exception = true;
+                return true;
             }
             ++current_cpu;
         }

@@ -1443,7 +1443,7 @@ def exit_handler(device: Device, args: ap.Namespace):
     device.adb_quiet("shell", "pkill", "gatord")
     device.adb_run_as(args.package, "pkill", "gatord", quiet=True)
 
-    if args.enableGpuTimeline != "no":
+    if args.enableGpuTimeline and args.enableGpuTimeline != "no":
         try:
             remove_gpu_timeline_layer(device, args)
         except sp.CalledProcessError as e:
@@ -1865,6 +1865,9 @@ def main() -> int:
         parser.print_usage()
         print("{0}".format(err))
         return 4
+    except PermissionError as err:
+        print("{0}".format(err))
+        return 5
 
     if args.verbose:
         global DEBUG_GATORD  # pylint: disable=global-statement
@@ -2046,7 +2049,7 @@ def main() -> int:
                 args.glesLayerLibPath = glesLayerLibPath
                 enable_gles_debug_layer(device, args)
 
-    if args.enableGpuTimeline != "no":
+    if args.enableGpuTimeline and args.enableGpuTimeline != "no":
         timelineLayerLibPath = args.timelineLayerLibPath
         isAuto = args.enableGpuTimeline == "auto"
         isValidLibFile = True
@@ -2104,7 +2107,7 @@ def main() -> int:
             if "gles" in args.lwiApi:
                 disable_gles_debug_layer(device, args)
 
-        if args.enableGpuTimeline != "no":
+        if args.enableGpuTimeline and args.enableGpuTimeline != "no":
             remove_gpu_timeline_layer(device, args)
 
         atexit.unregister(exit_handler)

@@ -28,7 +28,7 @@
 #include "agents/agent_workers_process.h"
 #include "agents/perfetto/perfetto_driver.h"
 #include "agents/spawn_agent.h"
-#include "android/GpuTimelineLayerRunner.h"
+#include "android/GpuTimelineLayerManager.h"
 #include "android/Spawn.h"
 #include "armnn/ArmNNSource.h"
 #include "capture/CaptureProcess.h"
@@ -39,6 +39,7 @@
 #include "lib/Process.h"
 #include "lib/Waiter.h"
 #include "logging/suppliers.h"
+#include "mali_userspace/MaliDevice.h"
 #include "mali_userspace/MaliHwCntrSource.h"
 #include "metrics/metric_group_set.hpp"
 #include "xml/EventsXML.h"
@@ -71,6 +72,7 @@
 #include <unistd.h>
 
 std::atomic<Child *> Child::gSingleton = ATOMIC_VAR_INIT(nullptr);
+constexpr int GPU_TIMELINE_MINIMUM_DDK = 47;
 
 extern void cleanUp();
 
@@ -363,11 +365,27 @@ void Child::run()
             }
             gSessionData.mUseGPUTimeline = GPUTimelineEnablement::disable;
         }
+
+        if (timelineCounterEnabled) {
+            int ddkVersion = mali_userspace::MaliDevice::get_mali_ddk_version_from_device();
+
+            if (ddkVersion == -1) { // -1 indicates ddk version not found.
+                LOG_WARNING(
+                    "Unknown Mali DDK version. The GPU timeline data might be inaccurate if your DDK is earlier "
+                    "than Mali DDK version %i.",
+                    GPU_TIMELINE_MINIMUM_DDK);
+            }
+            else if (ddkVersion < GPU_TIMELINE_MINIMUM_DDK) {
+                LOG_WARNING("The MaliTimeline_Perfetto counter is enabled, but the target must be running Mali DDK %i "
+                            "or later. The GPU timeline data might be inaccurate.",
+                            GPU_TIMELINE_MINIMUM_DDK);
+            }
+        }
     }
 
 #if defined(ANDROID) || defined(__ANDROID__)
     if (gSessionData.mAndroidPackage != nullptr && gSessionData.mUseGPUTimeline != GPUTimelineEnablement::disable) {
-        gator::android::timeline_layer::deploy_to_package(gSessionData.mAndroidPackage);
+        GpuTimelineLayerManager::getInstance().deploy_to_package(gSessionData.mAndroidPackage);
     }
 #endif
 
@@ -583,6 +601,7 @@ void Child::run()
     }
 
     sender.reset();
+    GpuTimelineLayerManager::getInstance().clean_from_package();
 }
 
 void Child::sendGatorLog()
@@ -690,6 +709,7 @@ void Child::cleanupException()
 
             // this indirectly calls close socket which will ensure the data has been sent
             sender.reset();
+            GpuTimelineLayerManager::getInstance().clean_from_package();
         }
     }
 }
