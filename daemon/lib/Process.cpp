@@ -10,18 +10,25 @@
 #include <string>
 #include <system_error>
 
+#include <boost/version.hpp>
+
+#if BOOST_VERSION >= (108600)
+#include <boost/process/v1/child.hpp>
+#include <boost/process/v1/io.hpp>
+namespace boost_process = boost::process::v1;
+#else
 #include <boost/process/child.hpp>
 #include <boost/process/io.hpp>
+namespace boost_process = boost::process;
+#endif
 
 #include <sys/prctl.h>
 
-namespace bp = boost::process;
-
 namespace gator::process {
-    int system(const std::string & cmd)
+    int system(const std::string & process_with_args)
     {
         // TODO: replace with Boost::Process once the dependency mechanism is agreed
-        return std::system(cmd.c_str());
+        return std::system(process_with_args.c_str());
     }
 
     void set_parent_death_signal(int signal)
@@ -38,8 +45,9 @@ namespace gator::process {
     int runCommandAndRedirectOutput(const std::string & cmdToExecWithArgs,
                                     const std::optional<std::string> & targetFile)
     {
-        auto child = targetFile.has_value() ? bp::child(cmdToExecWithArgs, bp::std_out > targetFile.value())
-                                            : bp::child(cmdToExecWithArgs);
+        auto child = targetFile.has_value()
+                       ? boost_process::child(cmdToExecWithArgs, boost_process::std_out > targetFile.value())
+                       : boost_process::child(cmdToExecWithArgs);
 
         std::error_code ec;
         child.wait(ec);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2022-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -17,9 +17,9 @@
 #include <memory>
 #include <set>
 
-#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/io_context_strand.hpp>
+#include <boost/asio/system_timer.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 
 namespace agents::perf {

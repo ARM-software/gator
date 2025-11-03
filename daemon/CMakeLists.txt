@@ -57,6 +57,9 @@ ENDIF()
 
 IF(GATORD_WERROR)
     SET(GATORD_C_CXX_FLAGS "${GATORD_C_CXX_FLAGS} -Werror")
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        set(GATORD_C_CXX_FLAGS "${GATORD_C_CXX_FLAGS} -Wno-error=maybe-uninitialized")
+    endif()
 ENDIF()
 
 IF(GATORD_BUILD_STATIC)
