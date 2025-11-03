@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2017-2024 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2017-2025 by Arm Limited (or its affiliates). All rights reserved. -->
 
 <counter_set count="6" name="ARMv8_Cortex_A55_cnt"/>
 <category counter_set="ARMv8_Cortex_A55_cnt" name="Cortex-A55" per_cpu="yes" supports_event_based_sampling="yes">

@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2011-2024 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2011-2025 by Arm Limited (or its affiliates). All rights reserved. -->
 
 <counter_set count="6" name="ARMv7_Cortex_A15_cnt"/>
 <category counter_set="ARMv7_Cortex_A15_cnt" name="Cortex-A15" per_cpu="yes" supports_event_based_sampling="yes">

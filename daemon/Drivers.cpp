@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2025 by Arm Limited. All rights reserved. */
 
 #include "Drivers.h"
 
@@ -7,6 +7,7 @@
 #include "PolledDriver.h"
 #include "PrimarySourceProvider.h"
 #include "linux/Tracepoints.h"
+#include "setup_warnings.h"
 #include "xml/EventsXML.h"
 #include "xml/PmuXML.h"
 
@@ -18,7 +19,8 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(Captur
                                                                           PmuXML && pmuXml,
                                                                           const char * maliFamilyName,
                                                                           bool disableCpuOnlining,
-                                                                          bool disableKernelAnnotations)
+                                                                          bool disableKernelAnnotations,
+                                                                          setup_warnings_t & setup_warnings)
 {
 
     std::unique_ptr<PrimarySourceProvider> primarySourceProvider =
@@ -27,12 +29,13 @@ static std::unique_ptr<PrimarySourceProvider> createPrimarySourceProvider(Captur
                                       std::move(pmuXml),
                                       maliFamilyName,
                                       disableCpuOnlining,
-                                      disableKernelAnnotations);
+                                      disableKernelAnnotations,
+                                      setup_warnings);
     if (!primarySourceProvider) {
         LOG_ERROR("Unable to initialize primary capture source:\n"
                   "  >>> Run Linux 3.4 or later with perf (CONFIG_PERF_EVENTS and CONFIG_HW_PERF_EVENTS) and tracing "
                   "(CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER) support to collect data via userspace only");
-        handleException();
+        return {};
     }
 
     return primarySourceProvider;
@@ -42,22 +45,27 @@ Drivers::Drivers(CaptureOperationMode captureOperationMode,
                  PmuXML && pmuXml,
                  bool disableCpuOnlining,
                  bool disableKernelAnnotations,
-                 const TraceFsConstants & traceFsConstants)
+                 const TraceFsConstants & traceFsConstants,
+                 setup_warnings_t & setup_warnings)
     : mPrimarySourceProvider {createPrimarySourceProvider(captureOperationMode,
                                                           traceFsConstants,
                                                           std::move(pmuXml),
                                                           mMaliHwCntrs.getSupportedDeviceFamilyName(),
                                                           disableCpuOnlining,
-                                                          disableKernelAnnotations)},
+                                                          disableKernelAnnotations,
+                                                          setup_warnings)},
 
       mFtraceDriver {traceFsConstants,
-                     !mPrimarySourceProvider->supportsTracepointCapture(),
-                     mPrimarySourceProvider->useFtraceDriverForCpuFrequency(),
-                     mPrimarySourceProvider->getCpuInfo().getMidrs().size()},
+                     mPrimarySourceProvider ? !mPrimarySourceProvider->supportsTracepointCapture() : false,
+                     mPrimarySourceProvider ? mPrimarySourceProvider->useFtraceDriverForCpuFrequency() : false,
+                     mPrimarySourceProvider ? mPrimarySourceProvider->getCpuInfo().getMidrs().size() : 0},
       mAtraceDriver {mFtraceDriver},
       mTtraceDriver {mFtraceDriver},
       mPerfettoDriver {mMaliHwCntrs.getSupportedDeviceFamilyName()}
 {
+    if (!mPrimarySourceProvider) {
+        return;
+    }
     all.push_back(&mPrimarySourceProvider->getPrimaryDriver());
     for (PolledDriver * driver : mPrimarySourceProvider->getAdditionalPolledDrivers()) {
         all.push_back(driver);

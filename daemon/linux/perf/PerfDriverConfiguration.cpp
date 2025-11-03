@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriverConfiguration.h"
 
@@ -48,6 +48,10 @@
 #else
 #include <sched.h>
 #endif
+
+#include "setup_warnings.h"
+
+#include <sstream>
 
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -389,6 +393,21 @@ namespace {
 
         return max_event_count_by_cpuid;
     }
+
+    void create_perf_event_paranoid_error(setup_warnings_t & setup_warnings,
+                                          int current_paraniod_value,
+                                          bool wants_system_wide)
+    {
+        const auto needed_paranoid_value = wants_system_wide ? -1 : 2;
+        std::stringstream str;
+        str << "The perf security settings will prevent collection of profiling data. The value of "
+               "/proc/sys/kernel/perf_event_paranoid is "
+            << current_paraniod_value
+            << ". Run the following command on the target to enable data collection: "
+               " `echo "
+            << needed_paranoid_value << " > /proc/sys/kernel/perf_event_paranoid`";
+        setup_warnings.add_error(str.str());
+    }
 }
 
 void logCpuNotFound()
@@ -405,7 +424,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                                                                          const char * tracefsEventsPath,
                                                                          lib::Span<const cpu_utils::midr_t> midrs,
                                                                          const default_identifiers_t & smmu_identifiers,
-                                                                         const PmuXML & pmuXml)
+                                                                         const PmuXML & pmuXml,
+                                                                         setup_warnings_t & setup_warnings)
 {
     struct utsname utsname;
     if (lib::uname(&utsname) != 0) {
@@ -419,6 +439,7 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
 
     // Check the kernel version
     auto const kernelVersion = lib::parseLinuxVersion(utsname);
+    setup_warnings.kernel_version = kernelVersion;
 
     const bool hasArmv7PmuDriver = beginsWith(utsname.machine, "armv7")
                                 || FsEntry::create("/sys/bus/event_source/devices").hasChildWithNamePrefix("armv7");
@@ -438,10 +459,12 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         static const char * error_message = "Unsupported kernel version\nPlease upgrade to 3.4 or later";
         LOG_SETUP("%s", error_message);
         LOG_ERROR("%s", error_message);
+        setup_warnings.add_error("The target's kernel is too old. Please upgrade to kernel version 3.4 or later.");
         return nullptr;
     }
 
     const auto os_type = capture::detectOs();
+    setup_warnings.os_type = os_type;
     const bool is_android = (os_type == capture::OsType::Android);
 
     const bool isRoot = (lib::geteuid() == 0);
@@ -455,6 +478,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                   "Try 'setprop %s 0' as the shell or root user.",
                   securityPerfHardenPropString.data(),
                   securityPerfHardenPropString.data());
+        setup_warnings.add_error("The Android security settings will prevent collection of perf data. "
+                                 "Please run the following command on the device as the shell or root user: "
+                                 "`setprop security.perf_harden 0`");
         return nullptr;
     }
 
@@ -465,6 +491,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                       "Is CONFIG_PERF_EVENTS enabled?");
             LOG_ERROR("perf_event_paranoid not accessible\n"
                       "Is CONFIG_PERF_EVENTS enabled?");
+            setup_warnings.add_error("The /proc/sys/kernel/perf_event_paranoid file could not be read. "
+                                     "Please check that perf support is enabled for this kernel.");
             return nullptr;
         }
 #if defined(CONFIG_ASSUME_PERF_HIGH_PARANOIA) && CONFIG_ASSUME_PERF_HIGH_PARANOIA
@@ -482,6 +510,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
     const bool can_collect_kernel_data = isRoot || (perf_event_paranoid <= 1);
     const bool can_collect_any_data = isRoot || perf_event_paranoid <= 2;
 
+    bool has_errors = false;
+
     if (!can_collect_any_data) {
         // This is only actually true if the kernel has the grsecurity PERF_HARDEN patch
         // but we assume no-one would ever set perf_event_paranoid > 2 without it.
@@ -489,10 +519,11 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         LOG_ERROR("perf_event_open: perf_event_paranoid > 2 is not supported for non-root.\n"
                   "To use it try (as root):\n"
                   "  echo 2 > /proc/sys/kernel/perf_event_paranoid");
-        return nullptr;
-    }
 
-    if (systemWide && !can_collect_system_wide_data) {
+        create_perf_event_paranoid_error(setup_warnings, perf_event_paranoid, systemWide);
+        has_errors = true;
+    }
+    else if (systemWide && !can_collect_system_wide_data) {
         LOG_SETUP("System wide tracing\nperf_event_paranoid > 0 is not supported for system-wide non-root");
         LOG_ERROR("perf_event_open: perf_event_paranoid > 0 is not supported for system-wide non-root.\n"
                   "To use it\n"
@@ -501,7 +532,8 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                   " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
                   "   Try (as root):\n"
                   "    - echo -1 > /proc/sys/kernel/perf_event_paranoid");
-        return nullptr;
+        create_perf_event_paranoid_error(setup_warnings, perf_event_paranoid, systemWide);
+        has_errors = true;
     }
 
     const bool can_access_tracepoints = (lib::access(tracefsEventsPath, R_OK) == 0);
@@ -524,6 +556,9 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                       " * or make sure '/proc/sys/kernel/perf_event_paranoid' is set to -1.\n"
                       "   Try (as root):\n"
                       "    - echo -1 > /proc/sys/kernel/perf_event_paranoid");
+
+            create_perf_event_paranoid_error(setup_warnings, perf_event_paranoid, systemWide);
+            has_errors = true;
         }
         else {
             if (isRoot) {
@@ -533,6 +568,12 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                           "Try:\n"
                           " - mount -t debugfs none /sys/kernel/debug",
                           tracefsEventsPath);
+                std::stringstream msg("Profiling in system-wide mode requires access to '");
+                msg << tracefsEventsPath
+                    << "' but this is not accessible. Check that debugfs is mounted. "
+                       "You can run the following command on the target to mount it: 'mount -t debugfs none "
+                       "/sys/kernel/debug'";
+                setup_warnings.add_warning(msg.str());
             }
             else {
                 LOG_SETUP("%s does not exist\nIs CONFIG_TRACING and CONFIG_CONTEXT_SWITCH_TRACER enabled?",
@@ -545,8 +586,21 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
                           "    - mount -o remount,mode=755 /sys/kernel/debug\n"
                           "    - mount -o remount,mode=755 /sys/kernel/debug/tracing",
                           tracefsEventsPath);
+                std::stringstream msg("Profiling in system-wide mode requires access to '");
+                msg << tracefsEventsPath
+                    << "' but this is not accessible with the current user. "
+                       "Check that debugfs is mounted with the correct read/write permissions. "
+                       "You can run the following commands on the target to remount it: "
+                       "'mount -o remount,mode=755 /sys/kernel/debug' and 'mount -o remount,mode=755 "
+                       "/sys/kernel/debug/tracing'";
+                setup_warnings.add_warning(msg.str());
             }
         }
+        has_errors = true;
+    }
+
+    // everything after here requires perf so, if we've already got errors, there's no point continuing.
+    if (has_errors) {
         return nullptr;
     }
 
@@ -603,10 +657,18 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         if (fd >= 0) {
             LOG_DEBUG("Detected support for alternative sample period features");
             configuration->config.supports_strobing_core = true;
+            setup_warnings.supports_counter_strobing = tri_bool_t::yes;
+
             close(fd);
         }
         else {
-            LOG_DEBUG("No support for alternative sample period features, error was %d (%s)", errno, lib::strerror());
+            auto const e = errno;
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("No support for alternative sample period features, error was %d (%s)", e, std::strerror(e));
+            setup_warnings.supports_counter_strobing = tri_bool_t::no;
+            setup_warnings.add_warning("The target does not support perf counter strobing. Metrics collection "
+                                       "may result in high CPU usage. To resolve this warning, recompile your kernel "
+                                       "with the counter strobing patch applied.");
         }
     }
 
@@ -631,15 +693,23 @@ std::unique_ptr<PerfDriverConfiguration> PerfDriverConfiguration::detect(Capture
         if (fd >= 0) {
             LOG_DEBUG("Detected support for inheritable counter groups");
             configuration->config.supports_inherit_sample_read = true;
+            setup_warnings.supports_event_inherit = tri_bool_t::yes;
             close(fd);
         }
         else {
-            LOG_DEBUG("No support for inheritable counter groups, error was %d (%s)", errno, lib::strerror());
+            auto const e = errno;
+            //NOLINTNEXTLINE(concurrency-mt-unsafe)
+            LOG_DEBUG("No support for inheritable counter groups, error was %d (%s)", e, std::strerror(e));
+            setup_warnings.supports_event_inherit = tri_bool_t::no;
+            setup_warnings.add_warning("The target does not support inheritable counter groups. This can result "
+                                       "in creation of large numbers of file descriptors which might cause the capture "
+                                       "to fail.");
         }
     }
 
     // detect max number of events per PMU
     auto const max_event_count_by_cpuid = calculate_max_event_count_by_cpuid(midrs);
+    setup_warnings.number_of_counters_by_cpu = max_event_count_by_cpuid;
 
     // detect the PMUs
     std::set<const GatorCpu *> cpusDetectedViaSysFs;

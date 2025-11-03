@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2025 by Arm Limited. All rights reserved. */
 
 #include "PrimarySourceProvider.h"
 
@@ -34,13 +34,23 @@
 #include "linux/perf/PerfDriverConfiguration.h"
 #endif
 
+#include "setup_warnings.h"
+
 #include <algorithm>
+#include <string_view>
 #include <utility>
 
 #include <unistd.h>
 
 namespace {
     const char * CORE_NAME_UNKNOWN = "unknown";
+
+    constexpr std::string_view experimental_inherit_error =
+        "Experimental support for perf event inheritance was requested but this feature "
+        "is not available in your kernel. If you require this feature, please update your kernel to version 6.12 or "
+        "later. For older versions, you can use one of the provided patches to add support to your kernel source "
+        "tree. "
+        "Alternatively, please select a different event inheritance mode.";
 
     /// array for cpuIds and clusterIds
     class Ids {
@@ -122,21 +132,25 @@ namespace {
                                                                 Ids & ids,
                                                                 const char * modelName,
                                                                 bool disableCpuOnlining,
-                                                                bool disableKernelAnnotations)
+                                                                bool disableKernelAnnotations,
+                                                                setup_warnings_t & setupWarnings)
         {
             std::unique_ptr<PerfDriverConfiguration> configuration =
                 PerfDriverConfiguration::detect(captureOperationMode,
                                                 traceFsConstants.path__events,
                                                 ids.getMidrs(),
                                                 gSessionData.smmu_identifiers,
-                                                pmuXml);
+                                                pmuXml,
+                                                setupWarnings);
 
             if (configuration != nullptr) {
                 if (!configuration->config.supports_inherit_sample_read
                     && captureOperationMode == CaptureOperationMode::application_experimental_patch) {
-                    LOG_ERROR("Your kernel does not support the requested experimental inherit.\n Please "
+
+                    setupWarnings.add_error(std::string(experimental_inherit_error));
+                    LOG_ERROR("Experimental inherit was requested, but your kernel does not support this.\n Please "
                               "install the required kernel patch or choose a different inherit mode. ");
-                    handleException();
+                    return {};
                 }
 
                 // build the cpuinfo
@@ -186,6 +200,24 @@ namespace {
         ICpuInfo & getCpuInfo() override { return cpuInfo; }
 
         [[nodiscard]] lib::Span<const UncorePmu> getDetectedUncorePmus() const override { return uncorePmus; }
+
+        [[nodiscard]] bool hasCorrectKernelPatchesForTopDown() const override
+        {
+            auto const & perfDriverConfiguration {driver.getConfig()};
+            return (
+                (perfDriverConfiguration.supports_strobing_patches || perfDriverConfiguration.supports_strobing_core)
+                && perfDriverConfiguration.supports_inherit_sample_read);
+        }
+
+        [[nodiscard]] bool supportsMetricGroup(metrics::metric_group_set_t const & metricGroup) const override
+        {
+            // Topdown profiling should be available when selected
+            // Metric counters are available
+            metrics::metric_group_set_t const & metricSet {metricGroup};
+            auto const supportedMetricCounters = driver.metricsSupporting(metricSet);
+            // Check if metric counters exist
+            return !supportedMetricCounters.empty();
+        }
 
         std::shared_ptr<PrimarySource> createPrimarySource(
             sem_t & senderSem,
@@ -270,7 +302,8 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(CaptureOper
                                                                      PmuXML && pmuXml,
                                                                      const char * maliFamilyName,
                                                                      bool disableCpuOnlining,
-                                                                     bool disableKernelAnnotations)
+                                                                     bool disableKernelAnnotations,
+                                                                     setup_warnings_t & setupWarnings)
 {
     Ids ids {cpu_utils::getMaxCoreNum()};
     const std::string modelName = lib::FsEntry::create("/proc/device-tree/model").readFileContents();
@@ -301,7 +334,8 @@ std::unique_ptr<PrimarySourceProvider> PrimarySourceProvider::detect(CaptureOper
                                           ids,
                                           modelNameToUse,
                                           disableCpuOnlining,
-                                          disableKernelAnnotations);
+                                          disableKernelAnnotations,
+                                          setupWarnings);
     if (result != nullptr) {
         LOG_FINE("...Success");
         LOG_SETUP("Profiling Source\nUsing perf API for primary data source");

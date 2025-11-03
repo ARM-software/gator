@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2022 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -7,7 +7,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <type_traits>
 
 namespace ipc {
     /** Enumerates all known message types */
@@ -26,7 +25,7 @@ namespace ipc {
         annotation_send_bytes,
         annotation_close_conn,
 
-        //Perfetto
+        // Perfetto
         perfetto_new_conn,
         perfetto_recv_bytes,
         perfetto_send_bytes,
@@ -40,6 +39,12 @@ namespace ipc {
         cpu_state_change,
         capture_failed,
         capture_started,
+
+        // GPU timeline
+        gpu_timeline_configuration,
+        gpu_timeline_handshake_tag,
+        gpu_timeline_recv,
+        // GPU timeline uses annotation_close_conn
     };
 
     /** The wire-size of the message key */

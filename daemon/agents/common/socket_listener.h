@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -102,7 +102,7 @@ namespace agents {
                 // handle error
                 if (ec) {
                     if (ec != boost::asio::error::operation_aborted) {
-                        LOG_ERROR("(%p) Error occured accepting new connection for %d due to %s",
+                        LOG_ERROR("(%p) Error occurred accepting new connection for %d due to %s",
                                   st.get(),
                                   st->socket_acceptor.native_handle(),
                                   ec.message().c_str());

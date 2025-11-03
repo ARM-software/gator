@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -94,7 +94,7 @@ namespace ipc {
     using msg_annotation_new_conn_t = message_t<message_key_t::annotation_new_conn, annotation_uid_t, void>;
     DEFINE_NAMED_MESSAGE(msg_annotation_new_conn_t);
 
-    /** Sent by the agent or shell to close a connection */
+    /** Sent by the agent or shell to close a connection (EITHER timeline OR annotation) */
     using msg_annotation_close_conn_t = message_t<message_key_t::annotation_close_conn, annotation_uid_t, void>;
     DEFINE_NAMED_MESSAGE(msg_annotation_close_conn_t);
 
@@ -160,6 +160,19 @@ namespace ipc {
     using msg_capture_started_t = message_t<message_key_t::capture_started, void, void>;
     DEFINE_NAMED_MESSAGE(msg_capture_started_t);
 
+    /** Sent from the shell to configure GPU timeline data collection */
+    using msg_gpu_timeline_configuration_t = message_t<message_key_t::gpu_timeline_configuration, bool, void>;
+    DEFINE_NAMED_MESSAGE(msg_gpu_timeline_configuration_t);
+
+    /** Sent from the annotation agent to the shell to supply a handshake tag (ESTATE header) */
+    using msg_gpu_timeline_handshake_tag_t =
+        message_t<message_key_t::gpu_timeline_handshake_tag, annotation_uid_t, std::vector<uint8_t>>;
+    DEFINE_NAMED_MESSAGE(msg_gpu_timeline_handshake_tag_t);
+
+    /** Sent from the annotation agent to the shell when GPU Timeline data is received from a network socket */
+    using msg_gpu_timeline_recv_t = message_t<message_key_t::gpu_timeline_recv, annotation_uid_t, std::vector<uint8_t>>;
+    DEFINE_NAMED_MESSAGE(msg_gpu_timeline_recv_t);
+
     /** All supported message types */
     using all_message_types_variant_t = std::variant<msg_ready_t,
                                                      msg_shutdown_t,
@@ -178,5 +191,8 @@ namespace ipc {
                                                      msg_exec_target_app_t,
                                                      msg_cpu_state_change_t,
                                                      msg_capture_failed_t,
-                                                     msg_capture_started_t>;
+                                                     msg_capture_started_t,
+                                                     msg_gpu_timeline_configuration_t,
+                                                     msg_gpu_timeline_handshake_tag_t,
+                                                     msg_gpu_timeline_recv_t>;
 }

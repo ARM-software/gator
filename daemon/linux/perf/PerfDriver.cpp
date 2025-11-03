@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #include "linux/perf/PerfDriver.h"
 
@@ -293,8 +293,7 @@ namespace {
         return empty_common_metrics;
     }
 
-    [[nodiscard]]
-    std::pair<metrics::metric_cpu_version_t, metrics::metric_cpu_version_map_entry_t const *>
+    [[nodiscard]] std::pair<metrics::metric_cpu_version_t, metrics::metric_cpu_version_map_entry_t const *>
     get_specific_metrics_version(metrics::metric_cpu_event_map_entry_t const & cpu_metrics,
                                  GatorCpu const & cpu,
                                  std::unordered_map<cpu_utils::cpuid_t, metrics::metric_cpu_version_t> const & versions)
@@ -1711,7 +1710,8 @@ PerfDriver::get_cpu_cluster_keys_for_cpu_frequency_counter()
     return result;
 }
 
-std::set<std::string_view> PerfDriver::metricsSupporting(metrics::metric_group_set_t const & desired)
+[[nodiscard]] std::set<std::string_view> PerfDriver::metricsSupporting(
+    metrics::metric_group_set_t const & desired) const
 {
     std::set<std::string_view> metricIds {};
     DriverCounter * current = getCounters();

@@ -80,7 +80,7 @@ Building gatord has the following requirements:
 - A Linux build environment (other CMake compatible enironments may work but are not
   tested).
 - Additionally, vcpkg depends on various unix tools being installed.
--- A minimal build environment for linux can be achieved on Ubuntu 20.04
+-- A minimal build environment for linux can be achieved on Ubuntu 22.04
    with: `sudo apt-get install ninja-build cmake gcc g++ g++-aarch64-linux-gnu curl zip unzip tar pkg-config git`
 
 ### For Android targets

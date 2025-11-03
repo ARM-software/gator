@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2025 by Arm Limited. All rights reserved. */
 
 #ifndef PARSERRESULT_H_
 #define PARSERRESULT_H_
@@ -28,6 +28,7 @@ public:
         DEFAULT_CONFIGURATION_XML,
         COUNTERS,
         COUNTERS_DETAILED,
+        WORKFLOW,
     };
 
     std::vector<SpeConfiguration> mSpeConfigs;
@@ -66,6 +67,7 @@ public:
     int mSpeSampleRate {-1};
     int mOverrideNoPmuSlots {-1};
     int port {DEFAULT_PORT};
+    GPUTimelineEnablement mGPUTimelineEnablement {GPUTimelineEnablement::automatic};
 
     CaptureOperationMode mCaptureOperationMode = CaptureOperationMode::system_wide;
 
@@ -77,6 +79,7 @@ public:
     bool mExcludeKernelEvents {false};
     bool mEnableOffCpuSampling {false};
     bool mLogToFile {false};
+    bool mHasProbeReportFlag {false};
 
     /**
      * @return - a list of argument-value pairs

@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -54,7 +54,7 @@ namespace agents {
                     // log it and close the connection
                     LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(
                         ec,
-                        "(%p) Error occured while notifying IPC of new external connection %d, dropping due to %s",
+                        "(%p) Error occurred while notifying IPC of new external connection %d, dropping due to %s",
                         st.get(),
                         st->socket_ref->native_handle(),
                         ec.message().c_str());
@@ -117,12 +117,12 @@ namespace agents {
                         // close the socket
                         st->socket_ref->close();
                         // notify the handler
-                        return resume_continuation(st->context, std::move(sc));
+                        resume_continuation(st->context, std::move(sc));
                     });
             }
 
             // otherwise just call the handler directly
-            return resume_continuation(context, std::move(sc));
+            resume_continuation(context, std::move(sc));
         }
 
         /** Perform the async send operation */
@@ -150,7 +150,7 @@ namespace agents {
                         if (ec) {
                             // log it and close the connection
                             LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(ec,
-                                                              "(%p) Error occured forwarding bytes to external "
+                                                              "(%p) Error occurred forwarding bytes to external "
                                                               "connection %d, dropping due to %s",
                                                               st.get(),
                                                               socket.native_handle(),
@@ -164,7 +164,7 @@ namespace agents {
                         // send length error
                         if (n_written != bytes_ptr->size()) {
                             // log it and close the connection
-                            LOG_ERROR("(%p) Error occured forwarding bytes to external "
+                            LOG_ERROR("(%p) Error occurred forwarding bytes to external "
                                       "connection %d, dropping due to "
                                       "short write",
                                       st.get(),
@@ -182,7 +182,7 @@ namespace agents {
                         LOG_TRACE("(%p) Sent %zu bytes", st.get(), n_written);
 
                         // wait for the next message
-                        return resume_continuation(st->context, std::move(sc), boost::system::error_code {});
+                        resume_continuation(st->context, std::move(sc), boost::system::error_code {});
                     });
             });
         }
@@ -204,7 +204,7 @@ namespace agents {
                             // log it and close the connection
                             LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(
                                 ec,
-                                "(%p) Error occured reading bytes for external connection %d, dropping due to %s",
+                                "(%p) Error occurred reading bytes for external connection %d, dropping due to %s",
                                 st.get(),
                                 st->socket_ref->native_handle(),
                                 ec.message().c_str());
@@ -238,7 +238,7 @@ namespace agents {
                         // log it and close the connection
                         LOG_ERROR_IF_NOT_EOF_OR_CANCELLED(
                             ec,
-                            "(%p) Error occured forwarding bytes for external connection %d, dropping due to %s",
+                            "(%p) Error occurred forwarding bytes for external connection %d, dropping due to %s",
                             st.get(),
                             st->socket_ref->native_handle(),
                             ec.message().c_str());

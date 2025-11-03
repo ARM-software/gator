@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright (C) 2019-2024 by Arm Limited.
+# Copyright (C) 2019-2025 by Arm Limited.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -147,6 +147,7 @@ import tempfile
 import textwrap
 import time
 from typing import Optional
+from enum import Enum
 
 
 DEBUG_GATORD = False
@@ -157,7 +158,7 @@ PKG_DATA_DIR = None
 ANDROID_TMP_DIR = "/data/local/tmp/"
 
 # The minimum version Arm officially supports for this script
-ANDROID_MIN_SUPPORTED_VERSION = 29
+ANDROID_MIN_SUPPORTED_VERSION = 30
 
 # OpenGL ES needs SDK version 29 (Android 10) for layers
 ANDROID_MIN_OPENGLES_SDK = 29
@@ -177,9 +178,20 @@ EXPECTED_VULKAN_LAYER_NAME = "VK_LAYER_ARM_LWI"
 EXPECTED_VULKAN_LAYER_FILE = "libVkLayerLWI.so"
 EXPECTED_GLES_LAYER_FILE_NAME = "libGLESLayerLWI.so"
 EXPECTED_VALIDATION_LAYER_NAME = "VK_LAYER_KHRONOS_validation"
+EXPECTED_TIMELINE_LAYER_FILE_NAME = "libVkLayerGPUTimeline.so"
 
 # ADB output encoding. Should be specified explicitly as this may not match the host locale
 ADB_ENCODING = "utf-8"
+
+
+class AdbRootSupport(Enum):
+    """
+    Defines how "su" works on the target
+    """
+    NONE = 0
+    SU_0 = 1
+    SU_C = 2
+    ALREADY_ROOT = 3
 
 
 class ArgFormatter(ap.HelpFormatter):
@@ -216,15 +228,15 @@ class Device:
                 or None for non-specific use.
         """
         self.device = deviceName
-        self.is_root = None
+        self.detected_root_mode = None
 
-    def adb_async(self, *args: str):
+    def adb_async(self, *args: str, **kwargs: bool):
         """
         Call `adb` to start a command, but do not wait for it to complete.
 
         Args:
             *args: List of command line parameters.
-
+            **kwargs: quiet: Never log output, even in verbose mode
         Returns:
             The process instance.
         """
@@ -234,11 +246,13 @@ class Device:
             commands.extend(["-s", self.device])
         commands.extend(args)
 
+        quiet = kwargs.get("quiet", not DEBUG_GATORD)
+
         # Note do not use shell=True; arguments are not safely escaped
         # Sink inputs to DEVNULL to stop the child process stealing keyboard
         # Sink outputs to DEVNULL to stop full output buffers blocking child
-        stdo = sys.stdout if DEBUG_GATORD else sp.DEVNULL
-        stde = sys.stderr if DEBUG_GATORD else sp.DEVNULL
+        stdo = sys.stdout if not quiet else sp.DEVNULL
+        stde = sys.stderr if not quiet else sp.DEVNULL
         process = sp.Popen(commands, encoding=ADB_ENCODING, stdin=sp.DEVNULL, stdout=stdo, stderr=stde)  # pylint: disable=consider-using-with
 
         return process
@@ -267,9 +281,11 @@ class Device:
             **kwargs: text: Is output is text, or binary?
                       shell: Use the host shell?
                       quote: Quote arguments before forwarding
+                      check: Check the result for errors (default is True)
 
         Returns:
-            The contents of stdout.
+            When check is set, the process result is returned, otherwise
+            the contents of stdout.
 
         Raises:
             CalledProcessError: The subprocess was not successfully executed.
@@ -282,6 +298,7 @@ class Device:
         encoding = ADB_ENCODING if kwargs.get("text", True) else None
         shell = kwargs.get("shell", False)
         quote = kwargs.get("quote", False)
+        check = kwargs.get("check", True)
 
         command_args: str | list[str]
 
@@ -300,8 +317,11 @@ class Device:
         else:
             command_args = commands
 
-        rep = sp.run(command_args, check=True, shell=shell, stdout=sp.PIPE,
+        rep = sp.run(command_args, check=check, shell=shell, stdout=sp.PIPE,
                      stderr=sp.PIPE, encoding=encoding)
+
+        if not check:
+            return rep
 
         return rep.stdout
 
@@ -327,33 +347,194 @@ class Device:
             PKG_DATA_DIR = ""
             return self.adb("shell", *args)
 
-        command = []
-        if self.has_root_access():
-            args_string = " ".join(args)
-            command = ["shell", "su", "0", "sh", "-c"]
-            command.append(f"'cd {PKG_DATA_DIR} && {args_string}'")
-        else:
-            command = ["shell", "run-as", package]
-            command.extend(args)
+        root_command = [f'cd {PKG_DATA_DIR} && {" ".join(args)}']
+        non_root_command = ["run-as", package]
+        non_root_command.extend(args)
+        command = self.make_rooted_cmd("shell", root_command, non_root_command)
 
         if quiet:
             return self.adb_quiet(*command)
 
         return self.adb(*command)
 
-    def has_root_access(self):
+    def make_rooted_cmd(self, cmd: str, root_cmd: Optional[list[str]], non_root_cmd: Optional[list[str]]):
+        """
+        Produces the command arguments list based on whether or not the device supports
+        root, and how root is to be enabled.
+        For non-root devices, the command is the combination of [cmd, non_root_cmd...], and
+        for root devices, some activator like "su 0" is inserted such that the result is something
+        like [cmd, "su", "0", root_cmd...].
+
+        Args:
+            cmd: The adb command to execute, typically 'shell'
+            root_cmd: The list of commands that are to be executed if the device supports root.
+            non_root_cmd: The list of commands that are to be executed if the device does not support root.
+
+        Return:
+            A list of strings being the command arguments to pass to adb
+        """
+        drm = self.detect_root_mode()
+
+        if drm == AdbRootSupport.NONE:
+            if non_root_cmd is None:
+                return None
+            return [cmd] + non_root_cmd
+
+        if drm == AdbRootSupport.ALREADY_ROOT:
+            if root_cmd is None:
+                return None
+
+            return ["shell", "sh", "-c", shlex.quote(" ".join(root_cmd))]
+
+        if drm == AdbRootSupport.SU_0:
+            if root_cmd is None:
+                return None
+
+            return ["shell", "su", "0", "sh", "-c", shlex.quote((" ".join(root_cmd)))]
+
+        if drm == AdbRootSupport.SU_C:
+            if root_cmd is None:
+                return None
+
+            return ["shell", "su", "-c", shlex.quote((" ".join(root_cmd)))]
+
+        raise AssertionError(f"Unexpected AdbRootSupport value {drm}")
+
+    def detect_root_mode(self):
         """
         Checks if user can get root access on this device
 
         Returns:
             True if root access can be gained, False otherwise.
         """
-        if self.is_root is None:
-            subCmd = "su 0 echo true || exit 0"
-            cmdOutput = self.adb("shell", subCmd)
-            self.is_root = "true" in cmdOutput
+        if self.detected_root_mode is not None:
+            return self.detected_root_mode
 
-        return self.is_root
+        print("\nDetecting if root is available on this device...")
+
+        # Is it su?
+        su0_hangs = False
+        suc_hangs = False
+        if self._has_su_command():
+            # Need to check suc_hangs first beacuse in magisk devices
+            # su 0 works and would use su 0 instead, this will create
+            # issue when the command is generated to run gator
+            suc_hangs = self._check_su_hangs("su -c ls -l /")
+
+            if not suc_hangs and (self._check_id("su", "-c", "id") or self._check_user_root("su", "-c", "sh -c \"echo $USER\"")):
+                self.detected_root_mode = AdbRootSupport.SU_C
+
+                print("    Root is available using 'su -c'")
+
+                return self.detected_root_mode
+
+            su0_hangs = self._check_su_hangs("su 0 ls -l /")
+            if not su0_hangs and (self._check_id("su", "0", "id") or self._check_user_root("su", "0", "sh -c \"echo $USER\"")):
+                self.detected_root_mode = AdbRootSupport.SU_0
+
+                print("    Root is available using 'su 0'")
+
+                return self.detected_root_mode
+
+        # Already root?
+        if (self._check_id("id") or self._check_user_root("echo $USER")):
+            self.detected_root_mode = AdbRootSupport.ALREADY_ROOT
+
+            print("    Root is available, target defaults to root")
+
+            return self.detected_root_mode
+
+        if su0_hangs and suc_hangs:
+            print("    Root is not available on this device. su command hangs or otherwise fails. Are you using Magisk?")
+        else:
+            print("    Root is not available")
+
+        # No root
+        self.detected_root_mode = AdbRootSupport.NONE
+
+        return self.detected_root_mode
+
+    def has_root_access(self):
+        """
+        Returns:
+            True if the device supports some root access mode
+        """
+        drm = self.detect_root_mode()
+
+        if drm == AdbRootSupport.NONE:
+            return False
+
+        if drm == AdbRootSupport.ALREADY_ROOT:
+            return True
+
+        if drm == AdbRootSupport.SU_0:
+            return True
+
+        if drm == AdbRootSupport.SU_C:
+            return True
+
+        raise AssertionError(f"Unexpected AdbRootSupport value {drm}")
+
+    def _has_su_command(self):
+        """
+        Helper for detect_root_mode, checks if "su" command is present.
+        """
+        cmdResult = self.adb("shell", "su --help || echo SLFAILED", check=False)
+
+        if ("Magisk" in cmdResult.stdout):
+            print("    Warning: Magisk rooted devices are not officially supported by this product.")
+
+        return (cmdResult.returncode == 0) and ("SLFAILED" not in cmdResult.stdout)
+
+    def _check_su_hangs(self, *args: str):
+        """
+        Helper for detect_root_mode, checks if "su" command hangs.
+        """
+        # run the command asynchronously
+        command = ["shell"]
+        command.extend(args)
+        process = self.adb_async(*command, quiet=True)
+
+        # wait for termination or timetout
+        try:
+            process.wait(5)
+            return False
+        except sp.TimeoutExpired:
+            return True
+
+    def _check_id(self, *args: str):
+        """
+        Helper for detect_root_mode, checks output of "id" command is root
+        """
+        command = ["shell"]
+        command.extend(args)
+
+        result = self.adb(*command, check=False)
+        if result.returncode != 0:
+            return False
+
+        for part in re.split(r'[ \t\n\r]+', result.stdout):
+            if (part == "uid=0") or (part == "uid=root") or part.startswith("uid=0(") or part.startswith("uid=root("):
+                return True
+
+        return False
+
+    def _check_user_root(self, *args: str):
+        """
+        Helper for detect_root_mode, checks output of "echo $USER" command is root
+        """
+        command = ["shell"]
+        command.extend(args)
+
+        result = self.adb(*command, check=False)
+        if result.returncode != 0:
+            return False
+
+        for part in re.split(r'[ \t\n\r]+', result.stdout):
+            if part == "root":
+                return True
+
+        return False
 
 
 def select_from_menu(title, menuEntries):
@@ -871,15 +1052,13 @@ def write_capture(device: Device, outDir: str, package: str):
         tempName = fileHandle.name
         fileHandle.close()
         pkg_data_dir = get_package_data_dir(device, package)
-        is_root = device.has_root_access()
 
-        if is_root:
-            device.adb("exec-out", "su", "0", "sh", "-c",
-                       f"cd {pkg_data_dir} && tar -c ./{captureName}", ">", tempName,
-                       text=False, shell=True)
-        else:
-            device.adb("exec-out", "run-as", package, "tar", "-c",
-                       captureName, ">", tempName, text=False, shell=True)
+        root_command = [f"cd {pkg_data_dir} && tar -c ./{captureName}"]
+        non_root_command = ["run-as", package, "tar", "-c", captureName]
+        command = device.make_rooted_cmd("exec-out", root_command, non_root_command)
+        command.extend([">", tempName])
+
+        device.adb(*command, text=False, shell=True)
 
         # Repack the tar file into the required output format
         with tempfile.TemporaryDirectory() as tempDir:
@@ -1060,6 +1239,34 @@ def disable_gles_debug_layer(device: Device, args: ap.Namespace):
     device.adb_run_as(args.package, "rm", layerBaseName, quiet=True)
 
 
+def deploy_gpu_timeline_layer(device: Device, args: ap.Namespace):
+    """
+    Args:
+        device: The device instance.
+        args: The command arguments.
+    """
+    print("\nInstalling GPU Timeline layer")
+
+    gpuTimelineLayerBaseName = os.path.basename(
+        os.path.normpath(args.timelineLayerLibPath))
+
+    if gpuTimelineLayerBaseName != EXPECTED_TIMELINE_LAYER_FILE_NAME:
+        print("\nWARNING: The GPU Timeline layer is not the default layer")
+
+    device.adb("push", args.timelineLayerLibPath, ANDROID_TMP_DIR)
+
+
+def remove_gpu_timeline_layer(device: Device, args: ap.Namespace):
+    """
+    Args:
+        device: The device instance.
+        args: The command arguments.
+    """
+    print("\nDisabling GPU Timeline layer")
+    gpuTimelineLayerBaseName = os.path.basename(os.path.normpath(args.timelineLayerLibPath))
+    device.adb("shell", "rm", os.path.join(ANDROID_TMP_DIR, gpuTimelineLayerBaseName), quiet=True)
+
+
 def clean_gatord(device: Device, package: str, removeConfigXml: bool = False):
     """
     Cleanup gatord and test process on the device.
@@ -1129,7 +1336,7 @@ def run_gatord_interactive():
 
 
 # pylint: disable-msg=too-many-locals,too-many-positional-arguments
-def run_gatord_headless(device: Device, package: str, outputName: str, timeout: int, activity: str, activityArgs: str):
+def run_gatord_headless(device: Device, package: str, outputName: str, timeout: int, activity: str, activityArgs: str, enableGpuTimeline: str):
     """
     Run gatord for a headless capture session.
 
@@ -1142,6 +1349,7 @@ def run_gatord_headless(device: Device, package: str, outputName: str, timeout: 
         timeout: The test scenario capture timeout in seconds.
         activity: The activity to run, or None if no auto-start.
         activityArgs: The activity arguments to run (as a string), or None if no arguments.
+        enableGpuTimeline: specify if gpu timeline layer should be enabled, disabled or set to auto.
     """
     # Wait for user to do the manual test
     print("\nRunning headless test:")
@@ -1150,13 +1358,16 @@ def run_gatord_headless(device: Device, package: str, outputName: str, timeout: 
     else:
         print("    Capture set to stop after %s seconds" % timeout)
 
+    # Remove any existing log file
+    device.adb_quiet("shell", "rm", "-f", f"{ANDROID_TMP_DIR}/gator-log.txt")
+
     # Run gatord but don't wait for it to return
     apcName = f"{package}.apc"
     remoteApcPath = os.path.join(ANDROID_TMP_DIR, apcName)
 
     gator_cmd = [os.path.join(ANDROID_TMP_DIR, "gatord"),
                  "--android-pkg", package, "--stop-on-exit", "yes",
-                 "--max-duration", "%u" % timeout, "--capture-log", "--output", remoteApcPath]
+                 "--max-duration", "%u" % timeout, "--capture-log", "--output", remoteApcPath, "--gpu-timeline", enableGpuTimeline]
 
     # Try to find MAIN activity, if no activity specified
     if not activity:
@@ -1167,11 +1378,8 @@ def run_gatord_headless(device: Device, package: str, outputName: str, timeout: 
         if activityArgs:
             gator_cmd += ["--activity-args", activityArgs]
 
-    is_root = device.has_root_access()
-    if is_root:
-        gatorProcess = device.adb_async("shell", "su", "0", *gator_cmd)
-    else:
-        gatorProcess = device.adb_async("shell", *gator_cmd)
+    command = device.make_rooted_cmd("shell", gator_cmd, gator_cmd)
+    gatorProcess = device.adb_async(*command)
 
     # Short sleep just to give time for gator to start
     # TODO: Would be better to programmatically wait for a message that gator is ready
@@ -1191,9 +1399,9 @@ def run_gatord_headless(device: Device, package: str, outputName: str, timeout: 
     print("    Capture complete, downloading from target")
 
     # Change apc directory ownership to shell
-    if is_root:
-        device.adb_quiet("shell", "su", "0", "sh", "-c",
-                         f"'chown -R shell:shell {remoteApcPath}'")
+    command = device.make_rooted_cmd("shell", [f"chown -R shell:shell {remoteApcPath}"], None)
+    if command:
+        device.adb_quiet(*command)
 
     with tempfile.TemporaryDirectory() as tempDir:
         # Fetch the results
@@ -1234,6 +1442,12 @@ def exit_handler(device: Device, args: ap.Namespace):
     """
     device.adb_quiet("shell", "pkill", "gatord")
     device.adb_run_as(args.package, "pkill", "gatord", quiet=True)
+
+    if args.enableGpuTimeline != "no":
+        try:
+            remove_gpu_timeline_layer(device, args)
+        except sp.CalledProcessError as e:
+            handle_disconnect_error(e)
 
     if args.lwiMode != "off":
         try:
@@ -1312,6 +1526,21 @@ def parse_cli(parser: ap.ArgumentParser):
     parser.add_argument(
         "--daemon", "-D", default=None,
         help="The path to the gatord binary to use (default=gatord)")
+
+    parser.add_argument(
+        "--gpu-timeline", "-g", dest="enableGpuTimeline", default=None,
+        choices=["yes", "no", "auto"],
+        help="AF@Controls GPU Timeline data collection.\n"
+        "- yes: enables collection and produces an error if " +
+        "the MaliTimeline_Perfetto counter is not enabled.\n"
+        "- no: disables collection.\n"
+        "- auto: collects data if the counter is enabled but " +
+        "otherwise disables collection without error.\n" +
+        "For headless mode if this option is not set, auto will be used.")
+
+    parser.add_argument(
+        "--gpu-timeline-layer-path", dest="timelineLayerLibPath", default="",
+        help="The GPU Timeline layer library path (default=use standard layer)")
 
     parser.add_argument(
         "--overwrite", action="store_true", default=False,
@@ -1480,6 +1709,11 @@ def parse_cli(parser: ap.ArgumentParser):
         else:
             args.outDir = os.path.abspath(args.outDir)
 
+    # Configure the default value for gpu-timeline for headless mode
+    if args.enableGpuTimeline is None:
+        if args.headless is not None:
+            args.enableGpuTimeline = "auto"
+
     return args
 
 
@@ -1554,6 +1788,17 @@ def get_default_lib_layer_path(isArm32: bool, layerName: str):
 
     dirName = "arm" if isArm32 else "arm64"
     return os.path.join(scriptDir, dirName, layerName)
+
+
+def get_default_timeline_layer_path():
+    scriptDir = get_script_dir()
+
+    sameDirPath = os.path.join(scriptDir, EXPECTED_TIMELINE_LAYER_FILE_NAME)
+    if os.path.exists(sameDirPath):
+        return sameDirPath
+
+    dirName = "arm64"
+    return os.path.join(scriptDir, dirName, EXPECTED_TIMELINE_LAYER_FILE_NAME)
 
 
 def ensure_lwi_output_path_usable(abs_lwi_out_dir: str, overwrite: bool):
@@ -1656,6 +1901,10 @@ def main() -> int:
                 os.remove(args.headless)
             else:
                 shutil.rmtree(args.headless)
+    else:
+        if args.enableGpuTimeline in ("auto", "yes"):
+            print("ERROR: --gpu-timeline is valid only in headless mode (--headless). For live mode timeline layer driver is deployed from Streamline GUI.")
+            return 1
 
     # Now check that adb is present
     if not has_adb():
@@ -1677,8 +1926,8 @@ def main() -> int:
     # Store the device android version
     args.androidVersion = get_android_version(device)
     if args.androidVersion < ANDROID_MIN_SUPPORTED_VERSION:
-        print("\nWARNING: Android version on device is < Android 10. "
-              "Arm only supports Android versions 10 or higher.")
+        print("\nWARNING: Android version on device is < Android 11. "
+              "Arm only supports Android versions 11 or higher.")
 
     # Test if this is a supported device and fail early if it's not
     if args.lwiMode != "off":
@@ -1724,7 +1973,7 @@ def main() -> int:
         return 3
 
     if not pkg_is_debuggable and not device.has_root_access():
-        print("\nERROR: Analysis on a non-debuggable package is not supported without root access on the device.")
+        print("\nERROR: Analysis on a non-debuggable package is not possible without root access on the device.")
         return 3
 
     # Note: this is no longer technical required; gator now reliably
@@ -1797,6 +2046,34 @@ def main() -> int:
                 args.glesLayerLibPath = glesLayerLibPath
                 enable_gles_debug_layer(device, args)
 
+    if args.enableGpuTimeline != "no":
+        timelineLayerLibPath = args.timelineLayerLibPath
+        isAuto = args.enableGpuTimeline == "auto"
+        isValidLibFile = True
+        if timelineLayerLibPath == "":
+            if isArm32:
+                if isAuto:
+                    args.enableGpuTimeline = "no"
+                else:
+                    print(
+                        "\nERROR: Couldn't find GPU Timeline layer suitable for Arm32 ABI, specify with --gpu-timeline-layer-path")
+                    return 4
+
+            timelineLayerLibPath = get_default_timeline_layer_path()
+
+        if not os.path.isfile(timelineLayerLibPath):
+            isValidLibFile = False
+            if isAuto:
+                args.enableGpuTimeline = "no"
+            else:
+                print(
+                    "\nERROR: Couldn't find the GPU Timeline layer, specify with --gpu-timeline-layer-path.")
+                return 4
+
+        if isValidLibFile and args.enableGpuTimeline != "no":
+            args.timelineLayerLibPath = timelineLayerLibPath
+            deploy_gpu_timeline_layer(device, args)
+
     atexit.register(exit_handler, device, args)
 
     # Run the test scenario
@@ -1805,7 +2082,7 @@ def main() -> int:
             run_gatord_interactive()
         else:
             run_gatord_headless(device, package, args.headless, args.timeout,
-                                args.packageActivity, args.packageArguments)
+                                args.packageActivity, args.packageArguments, args.enableGpuTimeline)
 
         # Download LWI screenshots if we enabled them
         if args.lwiMode == "screenshots":
@@ -1826,6 +2103,9 @@ def main() -> int:
             # Disable gles layer if necessary
             if "gles" in args.lwiApi:
                 disable_gles_debug_layer(device, args)
+
+        if args.enableGpuTimeline != "no":
+            remove_gpu_timeline_layer(device, args)
 
         atexit.unregister(exit_handler)
 

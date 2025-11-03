@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2024 by Arm Limited. All rights reserved.
+# Copyright (C) 2010-2025 by Arm Limited (or its affiliates). All rights reserved.
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16 FATAL_ERROR)
 
 OPTION(ENABLE_VCPKG "Pull in dependencies using vcpkg" ON)
@@ -251,6 +251,7 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionData.h
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SessionXML.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup_warnings.h
     ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SimpleDriver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/linux/smmu_identifier.cpp
@@ -283,11 +284,17 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/socket_listener.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/socket_reference.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/socket_worker.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/common/timeline_socket_worker.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_main.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ext_source_agent_worker.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ipc_sink_wrapper.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/ext_source/ipc_sink_wrapper.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/gpu_timeline/endpoint_registry_message.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/gpu_timeline/endpoint_registry_message.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/gpu_timeline/message_header.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/agents/gpu_timeline/message_header.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/async_buffer_builder.h
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/async_perf_ringbuffer_monitor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/agents/perf/capture_configuration.cpp
@@ -331,6 +338,8 @@ SET(GATORD_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/AnnotateListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/android/AppGatorRunner.h
     ${CMAKE_CURRENT_SOURCE_DIR}/android/GatorAndroidSetupHandler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/android/GatorAndroidSetupHandler.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/android/GpuTimelineLayerRunner.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/android/GpuTimelineLayerRunner.h
     ${CMAKE_CURRENT_SOURCE_DIR}/android/IAppGatorRunner.h
     ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/android/PropertyUtils.h

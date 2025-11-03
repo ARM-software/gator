@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_CONFIGURATION_H
 #define PERFDRIVER_CONFIGURATION_H
@@ -16,6 +16,7 @@
 
 class GatorCpu;
 class UncorePmu;
+struct setup_warnings_t;
 
 struct PerfCpu {
     GatorCpu gator_cpu;
@@ -45,7 +46,8 @@ struct PerfDriverConfiguration {
         const char * tracefsEventsPath,
         lib::Span<const cpu_utils::midr_t> midrs,
         const gator::smmuv3::default_identifiers_t & smmu_identifiers,
-        const PmuXML & pmuXml);
+        const PmuXML & pmuXml,
+        setup_warnings_t & setup_warnings);
 
     static constexpr const char * ARMV82_SPE = "armv8.2_spe";
 };

@@ -1,7 +1,10 @@
-/* Copyright (C) 2023-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2023-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #pragma once
 
+#include "lib/Assert.h"
+
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
@@ -61,11 +64,85 @@ namespace metrics {
         mpki,
         operation_mix,
         other,
+        rename_effectiveness,
         sve_effectiveness,
         topdown_backend,
         topdown_frontend,
         topdown_l1,
+
+        // iteration helpers
+        count,
+        begin = 0,
+        end = count
     };
+
+    constexpr std::string_view metric_group_id_to_string(metric_group_id_t group)
+    {
+        switch (group) {
+            case metric_group_id_t::atomics_effectiveness:
+                return "atomics_effectiveness";
+            case metric_group_id_t::average_latency:
+                return "average_latency";
+            case metric_group_id_t::basic:
+                return "basic";
+            case metric_group_id_t::branch_effectiveness:
+                return "branch_effectiveness";
+            case metric_group_id_t::bus_effectiveness:
+                return "bus_effectiveness";
+            case metric_group_id_t::cycle_accounting:
+                return "cycle_accounting";
+            case metric_group_id_t::dtlb_effectiveness:
+                return "dtlb_effectiveness";
+            case metric_group_id_t::fp_arithmetic_intensity:
+                return "fp_arithmetic_intensity";
+            case metric_group_id_t::fp_precision_mix:
+                return "fp_precision_mix";
+            case metric_group_id_t::general:
+                return "general";
+            case metric_group_id_t::iq_effectiveness:
+                return "iq_effectiveness";
+            case metric_group_id_t::itlb_effectiveness:
+                return "itlb_effectiveness";
+            case metric_group_id_t::l1d_cache_effectiveness:
+                return "l1d_cache_effectiveness";
+            case metric_group_id_t::l1i_cache_effectiveness:
+                return "l1i_cache_effectiveness";
+            case metric_group_id_t::l2_cache_effectiveness:
+                return "l2_cache_effectiveness";
+            case metric_group_id_t::l2d_cache_effectiveness:
+                return "l2d_cache_effectiveness";
+            case metric_group_id_t::l2i_cache_effectiveness:
+                return "l2i_cache_effectiveness";
+            case metric_group_id_t::l3_cache_effectiveness:
+                return "l3_cache_effectiveness";
+            case metric_group_id_t::ll_cache_effectiveness:
+                return "ll_cache_effectiveness";
+            case metric_group_id_t::mcq_effectiveness:
+                return "mcq_effectiveness";
+            case metric_group_id_t::miss_ratio:
+                return "miss_ratio";
+            case metric_group_id_t::mpki:
+                return "mpki";
+            case metric_group_id_t::operation_mix:
+                return "operation_mix";
+            case metric_group_id_t::other:
+                return "other";
+            case metric_group_id_t::rename_effectiveness:
+                return "rename_effectiveness";
+            case metric_group_id_t::sve_effectiveness:
+                return "sve_effectiveness";
+            case metric_group_id_t::topdown_backend:
+                return "topdown_backend";
+            case metric_group_id_t::topdown_frontend:
+                return "topdown_frontend";
+            case metric_group_id_t::topdown_l1:
+                return "topdown_l1";
+
+            case metric_group_id_t::count:
+                runtime_assert(false, "Invalid metric group ID was provided");
+        }
+        return "";
+    }
 
     /** Definition of a single metric */
     struct metric_events_set_t {

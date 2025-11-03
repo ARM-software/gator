@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVER_H
 #define DRIVER_H
@@ -74,7 +74,11 @@ public:
     //Any warning messages to be displayed in Streamline post analysis of a capture.
     [[nodiscard]] virtual std::vector<std::string> get_other_warnings() const { return {}; }
 
-    virtual std::set<std::string_view> metricsSupporting(metrics::metric_group_set_t const & /*unused*/) { return {}; };
+    [[nodiscard]] virtual std::set<std::string_view> metricsSupporting(
+        metrics::metric_group_set_t const & /*unused*/) const
+    {
+        return {};
+    };
 
     // name pointer is not owned by this so should just be copied
     Driver(const Driver &) = default;

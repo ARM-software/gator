@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #ifndef PERFDRIVER_H
 #define PERFDRIVER_H
@@ -120,7 +120,8 @@ public:
         lib::Span<UncorePmu> uncore_pmus,
         agents::agent_workers_process_default_t & agent_workers_process);
 
-    std::set<std::string_view> metricsSupporting(metrics::metric_group_set_t const & desired) override;
+    [[nodiscard]] std::set<std::string_view> metricsSupporting(
+        metrics::metric_group_set_t const & desired) const override;
 
 private:
     static void writeEventsFor(const PerfCpu & perfCpu,

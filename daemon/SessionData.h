@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_DATA_H
 #define SESSION_DATA_H
@@ -99,6 +99,7 @@ public:
     bool mExcludeKernelEvents {false};
     bool mEnableOffCpuSampling {false};
     bool mLogToFile {false};
+    GPUTimelineEnablement mUseGPUTimeline {GPUTimelineEnablement::automatic};
 };
 
 extern SessionData gSessionData;

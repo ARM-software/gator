@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2012-2023 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2012-2025 by Arm Limited (or its affiliates). All rights reserved. -->
 
 <counter_set count="4" name="Krait_cnt"/>
 <category counter_set="Krait_cnt" name="Krait" per_cpu="yes" supports_event_based_sampling="yes">

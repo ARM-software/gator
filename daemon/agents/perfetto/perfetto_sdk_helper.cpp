@@ -1,13 +1,16 @@
-/* Copyright (C) 2022-2023 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2022-2025 by Arm Limited. All rights reserved. */
 #include "agents/perfetto/perfetto_sdk_helper.h"
 
 #include "Logging.h"
 #include "lib/AutoClosingFd.h"
 
 #include <array>
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include <boost/asio/posix/stream_descriptor.hpp>
@@ -21,6 +24,8 @@ namespace agents {
         constexpr std::uint32_t perfetto_buffer_size = 2048;
         constexpr std::uint32_t perfetto_flush_period = 100;
         constexpr std::uint32_t perfetto_file_write_period = 100;
+        constexpr std::uint32_t traced_stop_timeout_ms = 10 * 1000;
+        constexpr std::uint32_t traced_stop_thread_sleep_ms = 100;
 
         std::optional<std::array<lib::AutoClosingFd, 2>> create_perfetto_pipe()
         {
@@ -32,6 +37,7 @@ namespace agents {
 
             return {{lib::AutoClosingFd(fds[0]), lib::AutoClosingFd(fds[1])}};
         }
+
     }
 
     void perfetto_sdk_helper_t::initialize_sdk()
@@ -53,7 +59,30 @@ namespace agents {
     void perfetto_sdk_helper_t::stop_sdk()
     {
         if (tracing_session && session_started) {
-            tracing_session->StopBlocking();
+            LOG_DEBUG("Stopping Perfetto SDK");
+
+            auto trace_stopped = std::make_shared<std::atomic_bool>(false);
+
+            tracing_session->Flush(
+                [trace_stopped](bool is_flushed) {
+                    if (!is_flushed) {
+                        LOG_FINE("Perfetto trace hasn't been flushed completely. Some packets may be missing");
+                    }
+                    *trace_stopped = true;
+                },
+                traced_stop_timeout_ms);
+
+            uint64_t elapsed_time_ms = 0;
+            while (!(*trace_stopped) && elapsed_time_ms < traced_stop_timeout_ms) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(traced_stop_thread_sleep_ms));
+                elapsed_time_ms += traced_stop_thread_sleep_ms;
+            }
+
+            if (!(*trace_stopped)) {
+                LOG_DEBUG("Perfetto trace flushing wasn't finished in %d seconds. Some packets may be missing",
+                          traced_stop_timeout_ms / 1000);
+            }
+
             session_started = false;
         }
     }

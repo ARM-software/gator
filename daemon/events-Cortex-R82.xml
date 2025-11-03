@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2021-2024 by Arm Limited. All rights reserved. -->
+<!-- Copyright (C) 2021-2025 by Arm Limited (or its affiliates). All rights reserved. -->
 
 <counter_set count="6" name="ARMv8R_Cortex_R82_cnt"/>
 <category counter_set="ARMv8R_Cortex_R82_cnt" name="Cortex-R82" per_cpu="yes" supports_event_based_sampling="yes">

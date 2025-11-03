@@ -1,22 +1,24 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "GatorMain.h"
 
 #include "Configuration.h"
 #include "ConfigurationXML.h"
 #include "CounterXML.h"
+#include "CpuUtils.h"
 #include "GatorCLIFlags.h"
 #include "GatorCLIParser.h"
 #include "ICpuInfo.h"
 #include "Logging.h"
+#include "OlyUtility.h"
 #include "ParserResult.h"
 #include "ProductVersion.h"
 #include "SessionData.h"
 #include "android/AndroidActivityManager.h"
 #include "capture/CaptureProcess.h"
 #include "capture/Environment.h"
-#include "lib/Error.h"
 #include "lib/Format.h"
+#include "lib/FsEntry.h"
 #include "lib/Process.h"
 #include "lib/String.h"
 #include "lib/Syscall.h"
@@ -26,6 +28,8 @@
 #include "logging/global_log.h"
 #include "logging/std_log_sink.h"
 #include "logging/suppliers.h"
+#include "metrics/metric_group_set.hpp"
+#include "setup_warnings.h"
 #include "xml/EventsXML.h"
 #include "xml/EventsXMLHelpers.h"
 #include "xml/PmuXMLParser.h"
@@ -33,19 +37,26 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
-#include <climits>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <iomanip>
 #include <ios>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+
+#include <boost/filesystem/directory.hpp>
+#include <boost/filesystem/file_status.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/process/search_path.hpp>
 
 #include <Drivers.h>
 #include <fcntl.h>
@@ -53,6 +64,11 @@
 #include <unistd.h>
 
 namespace {
+    const std::map<std::string, std::string> workflow_descriptions {
+        {"topdown", "Captures a predefined set of counters and metrics for a topdown analysis."},
+        {"spe", "SPE (Arm Statistical Profiling Extension) counters will be collected in this workflow.\n\
+This collects all SPE events, no filters are applied when using this workflow."}};
+
     std::array<int, 2> signalPipe;
 
     // Signal Handler
@@ -430,6 +446,85 @@ namespace {
         }
     }
 
+    void print_metric_groups(Drivers const & drivers)
+    {
+        using metrics::metric_group_id_t;
+        using enum_type = std::underlying_type_t<metric_group_id_t>;
+
+        bool header_printed = false;
+
+        for (auto i = static_cast<enum_type>(metric_group_id_t::begin);
+             i != static_cast<enum_type>(metric_group_id_t::end);
+             ++i) {
+
+            auto group = static_cast<metric_group_id_t>(i);
+            metrics::metric_group_set_t group_set {{group}};
+            if (!drivers.getPrimarySourceProvider().supportsMetricGroup(group_set)) {
+                continue;
+            }
+
+            if (!header_printed) {
+                header_printed = true;
+                std::cout << "The following metric groups are available (for use with -M):\n\n";
+            }
+            std::cout << "    " << metrics::metric_group_id_to_string(group) << '\n';
+        }
+
+        if (header_printed) {
+            std::cout << '\n';
+        }
+    }
+
+    /**
+     * @brief Get the Supported Workflows for the current device
+     * Modifies supplied vector with supported workflows
+     */
+    void get_supported_workflows(Drivers const & drivers, std::vector<std::string> & workflows)
+    {
+        // Check if topdown is supported.
+        auto const & perfSourceProvider = drivers.getPrimarySourceProvider();
+        metrics::metric_group_set_t const basicMetricSet {{metrics::metric_group_id_t::basic}};
+        auto supportsTopDownProfiling = perfSourceProvider.supportsMetricGroup(basicMetricSet);
+        if (supportsTopDownProfiling) {
+            workflows.emplace_back("topdown");
+        }
+        // Check if SPE is supported.
+        auto const raw_ids = collect_counterids_from_drivers(drivers);
+        if (!raw_ids.spe_ids.empty()) {
+            workflows.emplace_back("spe");
+        }
+    }
+
+    void print_workflows(Drivers const & drivers)
+    {
+        std::vector<std::string> workflows {};
+        get_supported_workflows(drivers, workflows);
+        if (!workflows.empty()) {
+            auto const & perfSourceProvider = drivers.getPrimarySourceProvider();
+            auto const & hasCorrectKernelPatchesForTopdown = perfSourceProvider.hasCorrectKernelPatchesForTopDown();
+
+            std::cout << "The following workflow arguments are available for this device (for use with -W):\n\n";
+            for (auto & argument : workflows) {
+                std::cout << "\nArgument: " << argument << "\n";
+                const auto & description = workflow_descriptions.at(argument);
+                std::cout << "Description: " << description << "\n";
+
+                // If the kernel patch is not applied. Use topdown warning description.
+                if (!hasCorrectKernelPatchesForTopdown && argument == "topdown") {
+                    // Replace description for topdown with warning addition.
+                    auto const * warning_message = "Warning: Kernel patches are not applied on this device.\n\
+         Some overhead is expected. Capture size may be high as more sampling is done.\n\
+         CPU Usage may also be high.";
+
+                    std::cout << warning_message << "\n";
+                }
+            }
+        }
+        else {
+            std::cout << "There are no available workflows for this device.\n";
+        }
+    }
+
     void dumpCountersForUser(Drivers const & drivers, bool descriptions)
     {
         // collect all the counter IDs
@@ -450,30 +545,32 @@ namespace {
         // output the counters
         print_counters(raw_ids, mapped_categories, descriptions);
 
+        print_metric_groups(drivers);
+
         std::cout << std::flush;
     }
 }
 
 void setDefaults()
 {
-    //default system wide.
+    // default system wide.
     gSessionData.mCaptureOperationMode = CaptureOperationMode::application_default;
     // buffer_mode is normal
     gSessionData.mOneShot = false;
     gSessionData.mTotalBufferSize = 4;
     gSessionData.mPerfMmapSizeInPages = -1;
-    //callStack unwinding default is yes
+    // callStack unwinding default is yes
     gSessionData.mBacktraceDepth = 128; // NOLINT(readability-magic-numbers)
-    //sample rate is normal
+    // sample rate is normal
     gSessionData.mSampleRate = normal;
     gSessionData.mSampleRateGpu = normal_x2;
-    //duration default to 0
+    // duration default to 0
     gSessionData.mDuration = 0;
-    //use_efficient_ftrace default is yes
+    // use_efficient_ftrace default is yes
     gSessionData.mFtraceRaw = true;
     gSessionData.mOverrideNoPmuSlots = -1;
 #if defined(WIN32)
-    //TODO
+    // TODO
     gSessionData.mCaptureUser = nullptr;
     gSessionData.mCaptureWorkingDir = nullptr;
 #else
@@ -521,7 +618,7 @@ void updateSessionData(const ParserResult & result)
     gSessionData.mAndroidActivityFlags = (result.mAndroidActivityFlags == nullptr) ? "" : result.mAndroidActivityFlags;
     gSessionData.smmu_identifiers = result.smmu_identifiers;
     gSessionData.mOverrideNoPmuSlots = result.mOverrideNoPmuSlots;
-
+    gSessionData.mUseGPUTimeline = result.mGPUTimelineEnablement;
     // when profiling an android package, use the package name as the '--wait-process' value
     if ((gSessionData.mAndroidPackage != nullptr) && (gSessionData.mWaitForProcessCommand == nullptr)) {
         gSessionData.mWaitForProcessCommand = gSessionData.mAndroidPackage;
@@ -551,17 +648,161 @@ void updateSessionData(const ParserResult & result)
     if ((result.parameterSetFlag & USE_CMDLINE_ARG_OFF_CPU_PROFILING) != 0) {
         gSessionData.mEnableOffCpuSampling = result.mEnableOffCpuSampling;
     }
+
+}
+
+std::string format_kernel_version(lib::kernel_version_no_t kernel_version)
+{
+    std::stringstream str;
+    str << (kernel_version >> 16) << '.' << ((kernel_version >> 8) & 0xFF) << '.' << (kernel_version & 0xFF);
+    return str.str();
+}
+
+std::string_view os_type_to_string(capture::OsType os_type)
+{
+    switch (os_type) {
+        case capture::OsType::Android:
+            return "android";
+        case capture::OsType::Linux:
+            return "linux";
+        default:
+            handleException();
+    }
+}
+
+std::string_view severity_to_string(advice_message_t::severity_t severity)
+{
+    switch (severity) {
+        case advice_message_t::severity_t::error:
+            return "error";
+        case advice_message_t::severity_t::warning:
+            return "warning";
+        case advice_message_t::severity_t::info:
+            return "info";
+    }
+    handleException();
+}
+
+void write_advice_messages(setup_warnings_t const & setup_warnings, boost::filesystem::ofstream & out)
+{
+    bool first = true;
+    for (auto const & advice : setup_warnings.get_advice_messages()) {
+        if (!first) {
+            out << ',';
+        }
+        first = false;
+        out << "\n   {\n"
+            << R"(     "severity": ")" << severity_to_string(advice.severity) << "\",\n"
+            << R"(     "message": ")" << advice.message << "\"\n"
+            << "   }";
+    }
+    out << '\n';
+}
+
+void write_cpu_topology(const ParserResult & parser_result, boost::filesystem::ofstream & out)
+{
+    auto pmu_xml = readPmuXml(parser_result.pmuPath);
+
+    auto max_cpu_number = cpu_utils::getMaxCoreNum();
+    auto topology = cpu_utils::read_cpu_topology(true, max_cpu_number);
+
+    // Construct the cluster -> cpu array...
+    std::map<int, std::set<int>> cluster_to_cpu {};
+    for (auto [cpu, cluster] : topology.cpu_to_cluster) {
+        cluster_to_cpu[cluster].insert(cpu);
+    }
+
+    out << " \"clusters\": [";
+    bool first_cluster = true;
+    std::size_t cluster_counter = 0;
+    for (auto const & [cluster, cpus] : cluster_to_cpu) {
+        if (!first_cluster) {
+            out << ',';
+        }
+        first_cluster = false;
+
+        // Get the cpus associated with the cluster
+        // clang-format off
+        out << "\n {"
+            << "\n   \"id\": " << std::dec << cluster << ","
+            << "\n   \"name\": \"Cluster " << std::dec << cluster_counter << "\","
+            << "\n   \"cores\": [";
+        // clang-format on
+
+        bool first_cpu = true;
+        for (auto cpu : cpus) {
+            auto midr_it = topology.cpu_to_midr.find(cpu);
+            if (midr_it == topology.cpu_to_midr.end()) {
+                continue;
+            }
+
+            if (!first_cpu) {
+                out << ',';
+            }
+            first_cpu = false;
+            auto const midr = midr_it->second;
+
+            auto const * gator_cpu = pmu_xml.findCpuById(midr.to_cpuid());
+            auto const * cpu_name = gator_cpu == nullptr ? "Unknown CPU" : gator_cpu->getCoreName();
+
+            // clang-format off
+            out << "\n    {"
+                << "\n     \"id\": " << std::dec << cpu << ","
+                << "\n     \"name\": \"" << cpu_name << "\","
+                << "\n     \"cpu_id\": \"0x" << std::hex << midr.to_cpuid().to_raw_value() << std::dec << "\","
+                << "\n     \"midr\": \"0x" << std::hex << midr.to_raw_value() << std::dec << "\""
+                << "\n    }";
+            // clang-format on
+        }
+        out << "\n   ]" << "\n }";
+        ++cluster_counter;
+    }
+    out << "\n ]";
+}
+
+void write_probe_report(setup_warnings_t const & setup_warnings, const ParserResult & parser_result)
+{
+    constexpr std::size_t path_buffer_size = 4096;
+    std::array<char, path_buffer_size> path_buffer {};
+
+    if (getApplicationFullPath(path_buffer.data(), path_buffer.size()) != 0) {
+        throw std::ios_base::failure(
+            "Cannot determine the path of the gatord executable. Unable to create probe report file.");
+    }
+
+    boost::filesystem::path out_path = boost::filesystem::path(path_buffer.data()) / "probe_report.json";
+    boost::filesystem::ofstream out(out_path);
+
+    out << "{\n"
+        << " \"os_type\": \"" << os_type_to_string(setup_warnings.os_type) << "\",\n"
+        << " \"kernel_version\": \"" << format_kernel_version(setup_warnings.kernel_version) << "\",\n"
+        << " \"supports_strobing\": \"" << setup_warnings.supports_counter_strobing << "\",\n"
+        << " \"supports_event_inherit\": \"" << setup_warnings.supports_event_inherit << "\",\n"
+        << " \"advice\": [";
+    write_advice_messages(setup_warnings, out);
+    out << " ],\n";
+    out << " \"cpu_topology\": {\n";
+    write_cpu_topology(parser_result, out);
+    out << "\n }";
+    out << "\n}\n";
 }
 
 void dumpCounterDetails(const ParserResult & result,
                         const logging::log_access_ops_t & log_ops,
                         const std::string & header)
 {
+    setup_warnings_t setup_warnings;
     Drivers drivers {result.mCaptureOperationMode,
                      readPmuXml(result.pmuPath),
                      result.mDisableCpuOnlining,
                      result.mDisableKernelAnnotations,
-                     TraceFsConstants::detect()};
+                     TraceFsConstants::detect(),
+                     setup_warnings};
+
+    if (!drivers.hasPrimarySourceProvider()) {
+        LOG_ERROR("Perf is not supported on this target");
+        return;
+    }
 
     for (auto printable : result.printables) {
         switch (printable) {
@@ -596,6 +837,11 @@ void dumpCounterDetails(const ParserResult & result,
                 dumpCountersForUser(drivers, true);
                 break;
             }
+            case ParserResult::Printable::WORKFLOW: {
+                std::cout << header;
+                print_workflows(drivers);
+                break;
+            }
             default: {
                 break;
             }
@@ -603,25 +849,148 @@ void dumpCounterDetails(const ParserResult & result,
     }
 }
 
-int start_capture_process(const ParserResult & result, logging::log_access_ops_t & log_ops)
+bool check_command_exists(std::string & command, const char * working_directory)
+{
+    boost::filesystem::path const command_path {command};
+    if (command_path.is_absolute()) {
+        return boost::filesystem::exists(command_path);
+    }
+
+    if ((working_directory != nullptr) && (strlen(working_directory)) > 0) {
+        auto const wd_command_path = boost::filesystem::path(working_directory) / command;
+        if (boost::filesystem::exists(wd_command_path)) {
+            return true;
+        }
+    }
+    else if (boost::filesystem::exists(command_path)) {
+        return true;
+    }
+
+    return !boost::process::search_path(command).empty();
+}
+
+bool run_setup_probes(Drivers & drivers,
+                      ParserResult & result,
+                      setup_warnings_t & setup_warnings,
+                      bool & do_handle_exception)
+{
+    if (!drivers.hasPrimarySourceProvider()) {
+        LOG_ERROR("Perf is not supported on this target");
+        do_handle_exception = true;
+        return true;
+    }
+
+    // Validate metrics
+    if (!result.enabled_metric_groups.empty()) {
+        const int minimum_required_counters_for_metrics = 3;
+        int current_cpu = 0;
+        for (const auto & cpu : drivers.getPrimarySourceProvider().getCpuInfo().getClusters()) {
+            auto counters = cpu.getPmncCounters();
+            if (counters < minimum_required_counters_for_metrics) {
+                const std::string insufficient_counters_for_metrics(
+                    lib::Format() << "Insufficient counters to collect metrics. Minimum of "
+                                  << minimum_required_counters_for_metrics << " counters required, found " << counters
+                                  << " for cpu " << current_cpu);
+                LOG_WARNING(insufficient_counters_for_metrics);
+                setup_warnings.add_warning(insufficient_counters_for_metrics);
+                break;
+            }
+            ++current_cpu;
+        }
+
+        if (!drivers.getPrimarySourceProvider().supportsMetricGroup(result.enabled_metric_groups)) {
+            std::string metric_group_not_supported_error = "One of the selected metric groups is not supported. Please "
+                                                           "select a different metric group or workflow.";
+            setup_warnings.add_error(metric_group_not_supported_error);
+            LOG_ERROR(metric_group_not_supported_error);
+            do_handle_exception = true;
+            return true;
+        }
+    }
+
+    // If the capture operation mode has not been set i.e default
+    // Topdown workflow has been set. Determine the operation mode.
+    if (result.mCaptureOperationMode == CaptureOperationMode::application_default
+        && !result.enabled_metric_groups.empty()) {
+        auto const & perfSourceProvider = drivers.getPrimarySourceProvider();
+        auto const & hasCorrectKernelPatchesForTopdown = perfSourceProvider.hasCorrectKernelPatchesForTopDown();
+        if (hasCorrectKernelPatchesForTopdown) {
+            result.mCaptureOperationMode = CaptureOperationMode::application_experimental_patch;
+        }
+        else {
+            result.mCaptureOperationMode = CaptureOperationMode::application_poll;
+        }
+    }
+
+    if (!result.mCaptureCommand.empty()) {
+        // Check command/file exists and is executable.
+        bool command_exists = check_command_exists(gSessionData.mCaptureCommand.front(), result.mCaptureWorkingDir);
+        if (!command_exists) {
+            std::string executable_not_found_error =
+                "The specified command does not exist. Please verify this executable exists.";
+            setup_warnings.add_error(executable_not_found_error);
+            LOG_ERROR(executable_not_found_error);
+            do_handle_exception = true;
+            return true;
+        }
+    }
+
+    // Check pids
+    if (!result.mPids.empty()) {
+        for (auto pid : result.mPids) {
+            if (kill(pid, 0) != 0) {
+                std::string const nonexistent_pid(lib::Format() << "Nonexistent process, pid: " << pid
+                                                                << ". Ensure process will exist on capture.");
+                LOG_WARNING(nonexistent_pid);
+                setup_warnings.add_warning(nonexistent_pid);
+            }
+        }
+    }
+
+    const bool system_wide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
+
+    if (gSessionData.mLocalCapture && system_wide && !drivers.getFtraceDriver().isSupported()) {
+        std::string system_wide_not_available = lib::Format()
+                                             << "System-wide capture requested, but tracefs is not available."
+                                             << (geteuid() == 0 ? "" : " You may need to run as root.");
+        setup_warnings.add_error(system_wide_not_available);
+        LOG_ERROR(system_wide_not_available);
+        do_handle_exception = true;
+        return true;
+    }
+
+    return false;
+}
+
+int start_capture_process(ParserResult & result,
+                          logging::log_access_ops_t & log_ops,
+                          setup_warnings_t & setup_warnings,
+                          bool & do_handle_exception,
+                          bool is_dry_run)
 {
     // Call before setting up the SIGCHLD handler, as system() spawns child processes
     Drivers drivers {result.mCaptureOperationMode,
                      readPmuXml(result.pmuPath),
                      result.mDisableCpuOnlining,
                      result.mDisableKernelAnnotations,
-                     TraceFsConstants::detect()};
+                     TraceFsConstants::detect(),
+                     setup_warnings};
 
-    const bool system_wide = isCaptureOperationModeSystemWide(gSessionData.mCaptureOperationMode);
-    if (gSessionData.mLocalCapture && system_wide && !drivers.getFtraceDriver().isSupported()) {
-        LOG_ERROR("System-wide capture requested, but tracefs is not available.%s",
-                  geteuid() == 0 ? "" : " You may need to run as root.");
-        handleException();
+    // Verify device is suitable for the specified configuration
+    // Populate the setup_warnings stucture with errors/warnings that occur with these checks
+    if (auto is_setup_error = run_setup_probes(drivers, result, setup_warnings, do_handle_exception)) {
+        return static_cast<int>(is_setup_error);
     }
 
     // Handle child exit codes
     if (signal(SIGCHLD, handler) == SIG_ERR) {
         LOG_ERROR("Error setting SIGCHLD signal handler");
+    }
+
+    // Exit if dry run,
+    // We don't want to start gatord
+    if (is_dry_run) {
+        return 0;
     }
 
     class local_event_handler_t : public capture::capture_process_event_listener_t {
@@ -708,7 +1077,8 @@ int gator_main(int argc, char ** argv)
 
     const int pipeResult = lib::pipe2(signalPipe, O_CLOEXEC);
     if (pipeResult == -1) {
-        LOG_ERROR("pipe failed (%d) %s", errno, lib::strerror());
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
+        LOG_ERROR("pipe failed (%d) %s", errno, strerror(errno));
         handleException();
     }
 
@@ -743,7 +1113,7 @@ int gator_main(int argc, char ** argv)
     // Parse the command line parameters
     GatorCLIParser parser;
     parser.parseCLIArguments(argc, argv, versionString, gSrcMd5, gBuildId);
-    const ParserResult & result = parser.result;
+    ParserResult & result = parser.result;
 
     lib::Format headerFmt;
     headerFmt << "Streamline Data Recorder v" << majorVersion << '.' << minorVersion << '.' << revisionVersion
@@ -785,7 +1155,21 @@ int gator_main(int argc, char ** argv)
         dumpCounterDetails(result, *global_logging, header);
     }
     else {
-        return start_capture_process(result, *global_logging);
+        setup_warnings_t setup_warnings;
+        bool handle_exception_flag = false;
+        auto start_result = start_capture_process(result,
+                                                  *global_logging,
+                                                  setup_warnings,
+                                                  handle_exception_flag,
+                                                  result.mHasProbeReportFlag);
+        if (result.mHasProbeReportFlag) {
+            write_probe_report(setup_warnings, result);
+            return 0;
+        }
+        if (handle_exception_flag) {
+            handleException();
+        };
+        return start_result;
     }
 
     return 0;

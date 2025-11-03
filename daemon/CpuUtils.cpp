@@ -1,4 +1,4 @@
-/* Copyright (C) 2013-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2013-2025 by Arm Limited. All rights reserved. */
 
 #include "CpuUtils.h"
 
@@ -272,12 +272,9 @@ namespace cpu_utils {
         }
     }
 
-    std::string readCpuInfo(bool ignoreOffline, bool wantsHardwareName, lib::Span<midr_t> midrs)
+    topology_info_t read_cpu_topology(bool ignore_offline, std::size_t max_cpu_number)
     {
-        std::map<unsigned, unsigned> cpuToCluster;
-        std::map<unsigned, std::set<midr_t>> clusterToMidrs;
-        std::map<unsigned, midr_t> cpuToMidrs;
-
+        topology_info_t topology;
         // first collect the detailed state using the identifier if available
         {
             std::mutex mutex;
@@ -292,8 +289,8 @@ namespace cpu_utils {
             // - once all cores are online and affined, *and* have read the data they are required to read, then they callback here to notify this method to continue
             // - the threads remain online until this function finishes (they are disposed of / terminated by destructor); this is so as
             //   to ensure that the cores remain online until cpuinfo is read
-            if (!ignoreOffline) {
-                for (unsigned cpu = 0; cpu < midrs.size(); ++cpu) {
+            if (!ignore_offline) {
+                for (unsigned cpu = 0; cpu < max_cpu_number; ++cpu) {
                     perCoreThreads.emplace_back(new PerCoreIdentificationThread(
                         false,
                         cpu,
@@ -312,19 +309,19 @@ namespace cpu_utils {
                 // wait until all threads are online
                 std::unique_lock<std::mutex> lock {mutex};
                 auto succeeded = cv.wait_for(lock, std::chrono::seconds(10), [&] {
-                    return identificationThreadCallbackCounter >= midrs.size();
+                    return identificationThreadCallbackCounter >= max_cpu_number;
                 });
                 if (!succeeded) {
                     LOG_WARNING("Could not identify all CPU cores within the timeout period. Activated %zu of %zu",
                                 identificationThreadCallbackCounter,
-                                midrs.size());
+                                max_cpu_number);
                 }
             }
             //
             // when we don't care about onlining the cores, just read them directly, one by one, any that are offline will be ignored anyway
             //
             else {
-                for (unsigned cpu = 0; cpu < midrs.size(); ++cpu) {
+                for (unsigned cpu = 0; cpu < max_cpu_number; ++cpu) {
                     if (collected_properties.count(cpu) == 0) {
                         auto properties = PerCoreIdentificationThread::detectFor(cpu);
                         collected_properties.emplace(cpu, std::move(properties));
@@ -342,37 +339,44 @@ namespace cpu_utils {
 
                 // store the cluster / core mappings to allow us to fill in any gaps by assuming the same core type per cluster
                 if (properties.physical_package_id != PerCoreIdentificationThread::INVALID_PACKAGE_ID) {
-                    cpuToCluster[c] = properties.physical_package_id;
+                    topology.cpu_to_cluster[c] = properties.physical_package_id;
 
                     // also map cluster to MIDR value if read
                     if (properties.midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                        clusterToMidrs[properties.physical_package_id].insert(midr_t::from_raw(properties.midr_el1));
+                        topology.cluster_to_midrs[properties.physical_package_id].insert(
+                            midr_t::from_raw(properties.midr_el1));
                     }
 
                     for (int sibling : properties.core_siblings) {
                         const unsigned sibling_cpu = sibling;
 
-                        if (cpuToCluster.count(sibling_cpu) == 0) {
-                            cpuToCluster[sibling_cpu] = properties.physical_package_id;
+                        if (topology.cpu_to_cluster.count(sibling_cpu) == 0) {
+                            topology.cpu_to_cluster[sibling_cpu] = properties.physical_package_id;
                         }
                     }
                 }
 
                 // map cpu to MIDR value if read
                 if (properties.midr_el1 != PerCoreIdentificationThread::INVALID_MIDR_EL1) {
-                    cpuToMidrs[c] = midr_t::from_raw(properties.midr_el1);
+                    topology.cpu_to_midr[c] = midr_t::from_raw(properties.midr_el1);
                 }
             }
         }
 
+        return topology;
+    }
+
+    std::string readCpuInfo(bool ignoreOffline, bool wantsHardwareName, lib::Span<midr_t> midrs)
+    {
+        auto topology = read_cpu_topology(ignoreOffline, midrs.size());
         // log what we learnt
-        for (const auto & pair : cpuToMidrs) {
+        for (const auto & pair : topology.cpu_to_midr) {
             LOG_FINE("Read CPU %u MIDR_EL1 -> 0x%08x", pair.first, pair.second.to_raw_value());
         }
-        for (const auto & pair : cpuToCluster) {
+        for (const auto & pair : topology.cpu_to_cluster) {
             LOG_FINE("Read CPU %u CLUSTER %u", pair.first, pair.second);
         }
-        for (const auto & pair : clusterToMidrs) {
+        for (const auto & pair : topology.cluster_to_midrs) {
             LOG_FINE("Read CLUSTER %u MIDRs:", pair.first);
             for (auto const & midr : pair.second) {
                 LOG_FINE("    0x%08x", midr.to_raw_value());
@@ -380,7 +384,7 @@ namespace cpu_utils {
         }
 
         // did we successfully read all MIDR values from all cores?
-        const bool knowAllMidrValues = (cpuToMidrs.size() == midrs.size());
+        const bool knowAllMidrValues = (topology.cpu_to_midr.size() == midrs.size());
 
         // do we need to read /proc/cpuinfo
         std::string hardwareName = (wantsHardwareName || (!knowAllMidrValues && !ignoreOffline)
@@ -388,7 +392,10 @@ namespace cpu_utils {
                                         : "");
 
         // update/set known items from MIDR map and topology information. This will override anything read from /proc/cpuinfo
-        updateCpuIdsFromTopologyInformation(midrs, cpuToMidrs, cpuToCluster, clusterToMidrs);
+        updateCpuIdsFromTopologyInformation(midrs,
+                                            topology.cpu_to_midr,
+                                            topology.cpu_to_cluster,
+                                            topology.cluster_to_midrs);
 
         return hardwareName;
     }

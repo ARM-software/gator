@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2025 by Arm Limited. All rights reserved. */
 
 #ifndef DRIVERS_H
 #define DRIVERS_H
@@ -19,13 +19,16 @@
 
 #include <vector>
 
+struct setup_warnings_t;
+
 class Drivers {
 public:
     Drivers(CaptureOperationMode captureOperationMode,
             PmuXML && pmuXml,
             bool disableCpuOnlining,
             bool disableKernelAnnotations,
-            const TraceFsConstants & traceFsConstants);
+            const TraceFsConstants & traceFsConstants,
+            setup_warnings_t & setup_warnings);
 
     Drivers(const Drivers &) = delete;
     Drivers & operator=(const Drivers &) = delete;
@@ -47,6 +50,8 @@ public:
     ExternalDriver & getExternalDriver() { return mExternalDriver; }
 
     agents::perfetto::perfetto_driver_t & getPerfettoDriver() { return mPerfettoDriver; }
+
+    bool hasPrimarySourceProvider() const { return mPrimarySourceProvider != nullptr; }
 
     const PrimarySourceProvider & getPrimarySourceProvider() const { return *mPrimarySourceProvider; }
 

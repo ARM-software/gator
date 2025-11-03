@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "SessionXML.h"
 
@@ -31,6 +31,7 @@ namespace {
     constexpr const char * ATTR_CAPTURE_USER = "capture_user";
     constexpr const char * ATTR_EXCLUDE_KERNEL_EVENTS = "exclude_kernel_events";
     constexpr const char * ATTR_OFF_CPU_PROFILING = "off_cpu_profiling";
+    constexpr const char * ATTR_GPU_TIMELINE = "gpu_timeline";
 }
 
 SessionXML::SessionXML(const char * str) : mSessionXML(str)
@@ -72,6 +73,14 @@ void SessionXML::sessionTag(mxml_node_t * tree, mxml_node_t * node)
     // copy to pre-allocated strings
     if (mxmlElementGetAttr(node, ATTR_BUFFER_MODE) != nullptr) {
         parameters.buffer_mode = mxmlElementGetAttr(node, ATTR_BUFFER_MODE);
+    }
+    if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_GPU_TIMELINE) == 0)) {
+        if (mxmlElementGetAttr(node, ATTR_GPU_TIMELINE) != nullptr) {
+            parameters.gpu_timeline = mxmlElementGetAttr(node, ATTR_GPU_TIMELINE);
+        }
+        else {
+            parameters.gpu_timeline = "auto";
+        }
     }
     if (((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_SAMPLE_RATE) == 0)) {
         if (mxmlElementGetAttr(node, ATTR_SAMPLE_RATE) != nullptr) {

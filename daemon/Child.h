@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #ifndef __CHILD_H__
 #define __CHILD_H__
@@ -110,7 +110,7 @@ private:
      * To be called at the end of capture or in case of
      * exception.
      */
-    void sendGatorLogAndApcEndSequence();
+    void sendGatorLog();
     void cleanupException();
     void durationThreadEntryPoint(const lib::Waiter & waitTillStart, const lib::Waiter & waitTillEnd);
     void stopThreadEntryPoint();

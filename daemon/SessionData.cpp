@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #include "SessionData.h"
 
@@ -29,6 +29,7 @@ void SessionData::initialize()
     mCaptureOperationMode = CaptureOperationMode::application_default;
     mExcludeKernelEvents = false;
     mEnableOffCpuSampling = false;
+    mUseGPUTimeline = GPUTimelineEnablement::automatic;
     mImages.clear();
     mConfigurationXMLPath = nullptr;
     mSessionXMLPath = nullptr;
@@ -108,6 +109,22 @@ void SessionData::parseSessionXML(char * xmlString)
     else {
         LOG_ERROR("Invalid value for buffer mode in session xml.");
         handleException();
+    }
+
+    if ((gSessionData.parameterSetFlag & USE_CMDLINE_ARG_GPU_TIMELINE) == 0) {
+        if (session.parameters.gpu_timeline == "auto") {
+            mUseGPUTimeline = GPUTimelineEnablement::automatic;
+        }
+        else if (session.parameters.gpu_timeline == "yes") {
+            mUseGPUTimeline = GPUTimelineEnablement::enable;
+        }
+        else if (session.parameters.gpu_timeline == "no") {
+            mUseGPUTimeline = GPUTimelineEnablement::disable;
+        }
+        else {
+            LOG_ERROR("Invalid value (%s) for gpu_timeline.", session.parameters.gpu_timeline.c_str());
+            handleException();
+        }
     }
 
     mLiveRate = 0;

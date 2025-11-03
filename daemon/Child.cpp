@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited (or its affiliates). All rights reserved. */
 
 #include "Child.h"
 
@@ -28,11 +28,15 @@
 #include "agents/agent_workers_process.h"
 #include "agents/perfetto/perfetto_driver.h"
 #include "agents/spawn_agent.h"
+#include "android/GpuTimelineLayerRunner.h"
+#include "android/Spawn.h"
 #include "armnn/ArmNNSource.h"
 #include "capture/CaptureProcess.h"
+#include "ipc/messages.h"
 #include "lib/Assert.h"
 #include "lib/Error.h"
 #include "lib/FsUtils.h"
+#include "lib/Process.h"
 #include "lib/Waiter.h"
 #include "logging/suppliers.h"
 #include "mali_userspace/MaliHwCntrSource.h"
@@ -341,6 +345,32 @@ void Child::run()
 
     bool enablePerfettoAgent = drivers.getPerfettoDriver().perfettoEnabled();
 
+    if (gSessionData.mUseGPUTimeline != GPUTimelineEnablement::disable) {
+        bool timelineCounterEnabled = false;
+
+        for (auto && counter : gSessionData.mCounters) {
+            if (strcmp(counter.getType(), "MaliTimeline_Perfetto") == 0) {
+                timelineCounterEnabled = true;
+                break;
+            }
+        }
+        if (!timelineCounterEnabled) {
+            //We don't log errors if the gpu timeline is in 'auto' mode
+            if (gSessionData.mUseGPUTimeline == GPUTimelineEnablement::enable) {
+                LOG_ERROR(
+                    "To capture GPU timeline data, add the MaliTimeline_Perfetto counter in Counter Configuration");
+                handleException();
+            }
+            gSessionData.mUseGPUTimeline = GPUTimelineEnablement::disable;
+        }
+    }
+
+#if defined(ANDROID) || defined(__ANDROID__)
+    if (gSessionData.mAndroidPackage != nullptr && gSessionData.mUseGPUTimeline != GPUTimelineEnablement::disable) {
+        gator::android::timeline_layer::deploy_to_package(gSessionData.mAndroidPackage);
+    }
+#endif
+
     // Initialize ftrace source before child as it's slow and depends on nothing else
     // If initialized later, us gator with ftrace has time sync issues
     // Must be initialized before senderThread is started as senderThread checks externalSource
@@ -348,6 +378,8 @@ void Child::run()
                    [this, &waitForExternalSourceAgent, &waitForPerfettoAgent, enablePerfettoAgent](auto & source) {
                        this->agent_workers_process->async_add_external_source(
                            source,
+                           ipc::msg_gpu_timeline_configuration_t {gSessionData.mUseGPUTimeline
+                                                                  != GPUTimelineEnablement::disable},
                            [&waitForExternalSourceAgent](bool success) {
                                waitForExternalSourceAgent.disable();
                                if (!success) {
@@ -489,6 +521,7 @@ void Child::run()
     senderThreadEntryPoint();
 
     // wake all sleepers
+    waitTillStart.disable(); // To prevent a hang for attempting to attach to non-existent process NEOPROF-137
     waitTillEnd.disable();
 
     // Wait for the other threads to exit
@@ -543,13 +576,16 @@ void Child::run()
         }
     }
     else {
-        sendGatorLogAndApcEndSequence();
+        sendGatorLog();
+
+        // write end-of-capture sequence
+        sender->writeData(nullptr, 0, ResponseType::APC_DATA);
     }
 
     sender.reset();
 }
 
-void Child::sendGatorLogAndApcEndSequence()
+void Child::sendGatorLog()
 {
     constexpr auto LOG_FILE_READ_SIZE = 65536;
     if (gSessionData.mLogToFile) {
@@ -573,8 +609,6 @@ void Child::sendGatorLogAndApcEndSequence()
             sender->writeData(nullptr, 0, ResponseType::GATOR_LOG);
         }
     }
-    // write end-of-capture sequence
-    sender->writeData(nullptr, 0, ResponseType::APC_DATA);
 }
 
 template<typename S>
@@ -636,10 +670,14 @@ void Child::cleanupException()
 
     if (socket != nullptr) {
         if (sender) {
-            sendGatorLogAndApcEndSequence();
+            sendGatorLog();
+
             // send the error, regardless of the command sent by Streamline
             auto last_error = log_ops.get_last_log_error();
             sender->writeData(last_error, ResponseType::ERROR, true);
+
+            // write end-of-capture sequence
+            sender->writeData(nullptr, 0, ResponseType::APC_DATA);
 
             // cannot close the socket before Streamline issues the command, so wait for the command before exiting
             if (gSessionData.mWaitingOnCommand) {

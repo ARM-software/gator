@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2018-2025 by Arm Limited. All rights reserved. */
 
 #ifndef CONFIGURATION_H_
 #define CONFIGURATION_H_
@@ -151,6 +151,14 @@ namespace std {
 
 struct TemplateConfiguration {
     std::string raw;
+};
+
+enum class GPUTimelineEnablement {
+    disable,   ///< Disable GPU Timeline data collection
+    enable,    ///< Enable GPU Timeline data collection if counter
+               ///< MaliTimeline_Perfetto is present - error otherwise
+    automatic, ///< Enable GPU Timeline data collection if counter
+               ///< MaliTimeline_Perfetto is present - do nothing otherwise
 };
 
 #endif /* CONFIGURATION_H_ */

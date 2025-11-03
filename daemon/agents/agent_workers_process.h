@@ -1,4 +1,4 @@
-/* Copyright (C) 2021-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2021-2025 by Arm Limited. All rights reserved. */
 
 #pragma once
 
@@ -111,14 +111,15 @@ namespace agents {
          * @param token Some completion token, called asynchronously once the agent is ready
          * @return depends on completion token type
          */
-        template<typename ExternalSource, typename CompletionToken>
-        auto async_add_external_source(ExternalSource & external_souce, CompletionToken && token)
+        template<typename ExternalSource, typename ConfigMsg, typename CompletionToken>
+        auto async_add_external_source(ExternalSource & external_souce, ConfigMsg && msg, CompletionToken && token)
         {
             return worker_manager.template async_add_agent<ext_source_agent_worker_t<ExternalSource>>(
                 process_monitor,
                 agent_privilege_level_t::low,
                 std::forward<CompletionToken>(token),
-                std::ref(external_souce));
+                std::ref(external_souce),
+                std::forward<ConfigMsg>(msg));
         }
 
 #if CONFIG_ARMNN_AGENT

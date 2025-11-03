@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2025 by Arm Limited. All rights reserved. */
 
 #ifndef GATORCLIPARSER_H_
 #define GATORCLIPARSER_H_
@@ -26,7 +26,7 @@ static const struct option APP = {"app", /********************/ required_argumen
  */
 class GatorCLIParser {
 public:
-    static const char * USAGE_MESSAGE;
+    static const char * const USAGE_MESSAGE;
 
     ParserResult result;
 
@@ -35,6 +35,9 @@ public:
 
     //NOLINTNEXTLINE(modernize-avoid-c-arrays)
     static bool hasCaptureLogFlag(int argc, const char * const argv[]);
+
+    //NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    static bool hasProbeReportFlag(int argc, const char * const argv[]);
 
     void parseCLIArguments(int argc,
                            //NOLINTNEXTLINE(modernize-avoid-c-arrays)
@@ -50,7 +53,7 @@ private:
     void handleCounterList(const std::string & value);
     void addCounter(std::string_view counter);
     int findAndUpdateCmndLineCmnd(int argc, char ** argv);
-    void parseAndUpdateSpe();
+    void parseAndUpdateSpe(const std::string & arguments);
 };
 
 #endif /* GATORCLIPARSER_H_ */

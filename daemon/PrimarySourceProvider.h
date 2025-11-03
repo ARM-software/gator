@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2017-2025 by Arm Limited. All rights reserved. */
 
 #ifndef INCLUDE_PRIMARYSOURCEPROVIDER_H
 #define INCLUDE_PRIMARYSOURCEPROVIDER_H
@@ -8,6 +8,8 @@
 #include "agents/agent_workers_process_holder.h"
 #include "lib/Span.h"
 #include "linux/perf/PerfEventGroupIdentifier.h"
+#include "metrics/definitions.hpp"
+#include "metrics/metric_group_set.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -27,6 +29,8 @@ class UncorePmu;
 struct PmuXML;
 struct TraceFsConstants;
 
+struct setup_warnings_t;
+
 /**
  * Interface for different primary source types.
  * Primary source types currently are:
@@ -43,7 +47,8 @@ public:
                                                          PmuXML && pmuXml,
                                                          const char * maliFamilyName,
                                                          bool disableCpuOnlining,
-                                                         bool disableKernelAnnotations);
+                                                         bool disableKernelAnnotations,
+                                                         setup_warnings_t & setupWarnings);
 
     PrimarySourceProvider(const PrimarySourceProvider &) = delete;
     PrimarySourceProvider & operator=(const PrimarySourceProvider &) = delete;
@@ -66,6 +71,12 @@ public:
 
     /** Return true if the source supports setting more than one EBS counter */
     [[nodiscard]] virtual bool supportsMultiEbs() const = 0;
+
+    /** Return true if the correct kernel patches are found for topdown profiling*/
+    [[nodiscard]] virtual bool hasCorrectKernelPatchesForTopDown() const = 0;
+
+    /** Return true if the specified metric group is supported */
+    [[nodiscard]] virtual bool supportsMetricGroup(const metrics::metric_group_set_t & metricGroup) const = 0;
 
     /** Return list of additional polled drivers required for source */
     [[nodiscard]] virtual const std::vector<PolledDriver *> & getAdditionalPolledDrivers() const;

@@ -1,3 +1,15 @@
+# Gator 9.7.0
+
+Adds a new argument `--gpu-timeline` to collect semantic information of GPU timeline events from Perfetto.
+
+Adds a new argument `--metric-group` to select multiple metrics.
+
+Adds a new argument `--workflow` as a slightly less verbose option to select Topdown and SPE metrics.
+
+Increased minimum Android version requirement for `streamline_me.py` script, from Android 10 to Android 11.
+
+Various bug fixes and improvements
+
 # Gator 9.6.1
 
 Internal bug fixes and improvements

@@ -1,4 +1,4 @@
-/* Copyright (C) 2010-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2010-2025 by Arm Limited. All rights reserved. */
 
 #ifndef SESSION_XML_H
 #define SESSION_XML_H
@@ -12,6 +12,8 @@ struct ConfigParameters {
     std::string buffer_mode;
     /// capture mode, "high", "normal", or "low"
     std::string sample_rate;
+    /// GPU timeline, "yes", "no", or "auto"
+    std::string gpu_timeline;
     /// whether stack unwinding is performed
     bool call_stack_unwinding = false;
     int live_rate = 0;

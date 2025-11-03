@@ -1,4 +1,4 @@
-/* Copyright (C) 2014-2024 by Arm Limited. All rights reserved. */
+/* Copyright (C) 2014-2025 by Arm Limited. All rights reserved. */
 
 #include "GatorCLIParser.h"
 
@@ -44,16 +44,18 @@ namespace {
     constexpr int GATOR_MAX_VALUE_PORT = 65535;
     constexpr int SPE_MAX_SAMPLE_RATE = 1000000000;
 
-    constexpr const char * OPTSTRING_SHORT = ":ac:de:f:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:I:LN:O:P:Q:R:S:TVX:Y:Z:";
+    constexpr const char * OPTSTRING_SHORT =
+        ":ac:de:f:g:hi:k:l:m:n:o:p:r:s:t:u:vw:x:A:C:DE:F:I:JLM:N:O:P:Q:R:S:TW:VX:Y:Z:";
 
     const struct option OPTSTRING_LONG[] = { // PLEASE KEEP THIS LIST IN ALPHANUMERIC ORDER TO ALLOW EASY SELECTION
                                              // OF NEW ITEMS.
-                                             // Remaining free letters are: bgjqyBGHJKMUW
+                                             // Remaining free letters are: bjqyBGHKU
         {"allow-command", /**********/ no_argument, /***/ nullptr, 'a'}, //
         {"config-xml", /*************/ required_argument, nullptr, 'c'}, //
         {"debug", /******************/ no_argument, /***/ nullptr, 'd'}, //
         {"events-xml", /*************/ required_argument, nullptr, 'e'}, //
         {"use-efficient-ftrace", /***/ required_argument, nullptr, 'f'}, //
+        {"gpu-timeline", /***********/ required_argument, nullptr, 'g'}, //
         {"help", /*******************/ no_argument, /***/ nullptr, 'h'}, //
         {"pid", /********************/ required_argument, nullptr, 'i'}, //
         {"exclude-kernel", /*********/ required_argument, nullptr, 'k'}, //
@@ -76,7 +78,9 @@ namespace {
         {"append-events-xml", /******/ required_argument, nullptr, 'E'}, //
         {"spe-sample-rate", /********/ required_argument, nullptr, 'F'}, //
         {"inherit", /****************/ required_argument, nullptr, 'I'}, //
+        {"probe-report", /***********/ no_argument, /***/ nullptr, 'J'}, //
         {"capture-log", /************/ no_argument, /***/ nullptr, 'L'}, //
+        {"metric-group", /***********/ required_argument, nullptr, 'M'}, //
         {"num-pmu-counters", /*******/ required_argument, nullptr, 'N'}, //
         {"disable-cpu-onlining", /***/ required_argument, nullptr, 'O'}, //
         {"pmus-xml", /***************/ required_argument, nullptr, 'P'}, //
@@ -85,6 +89,7 @@ namespace {
         {"system-wide", /************/ required_argument, nullptr, 'S'}, //
         {"trace", /******************/ no_argument, /***/ nullptr, 'T'}, //
         {"version", /****************/ no_argument, /***/ nullptr, 'V'}, //
+        {"workflow", /***************/ required_argument, nullptr, 'W'}, //
         {"spe", /********************/ required_argument, nullptr, 'X'}, //
         {"off-cpu-time", /***********/ required_argument, nullptr, 'Y'}, //
         {"mmap-pages", /*************/ required_argument, nullptr, 'Z'}, //
@@ -177,9 +182,11 @@ namespace {
 
     // Returns true if the string represented a metric group and this function
     // handled it.
-    bool handle_metric_group_option(ParserResult & result, std::string_view arg_value)
+    bool handleMetricGroupOption(ParserResult & result, std::string_view arg_value)
     {
+        using metrics::metric_group_id_t;
         using metrics::metric_group_set_t;
+
         if (arg_value == "workflow_topdown_basic") {
             metric_group_set_t const s {{metrics::metric_group_id_t::basic}};
             result.enabled_metric_groups = result.enabled_metric_groups.set_union(s);
@@ -190,6 +197,19 @@ namespace {
             result.enabled_metric_groups = result.enabled_metric_groups.set_union(s);
             return true;
         }
+
+        using enum_type = std::underlying_type_t<metric_group_id_t>;
+        for (auto i = static_cast<enum_type>(metric_group_id_t::begin);
+             i != static_cast<enum_type>(metric_group_id_t::end);
+             ++i) {
+            auto group = static_cast<metric_group_id_t>(i);
+            if (arg_value == metrics::metric_group_id_to_string(group)) {
+                metric_group_set_t const s({group});
+                result.enabled_metric_groups = result.enabled_metric_groups.set_union(s);
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -259,7 +279,7 @@ std::pair<SampleRate, SampleRate> getSampleRate(const std::string & value)
 
 void GatorCLIParser::addCounter(std::string_view counter)
 {
-    if (handle_metric_group_option(result, counter)) {
+    if (handleMetricGroupOption(result, counter)) {
         return;
     }
 
@@ -312,10 +332,10 @@ int GatorCLIParser::findAndUpdateCmndLineCmnd(int argc, char ** argv)
 }
 
 //NOLINTNEXTLINE(readability-function-cognitive-complexity)
-void GatorCLIParser::parseAndUpdateSpe()
+void GatorCLIParser::parseAndUpdateSpe(const std::string & arguments)
 {
     std::vector<std::string> spe_data;
-    split(std::string(optarg), SPE_DATA_DELIMITER, spe_data);
+    split(arguments, SPE_DATA_DELIMITER, spe_data);
     if (!spe_data.empty()) {
         //add details to structure
         if (!spe_data[0].empty()) { //check if cpu id provided
@@ -419,6 +439,43 @@ void GatorCLIParser::parseAndUpdateSpe()
     }
 }
 
+bool handleMetricGroups(ParserResult & parserResult, std::string const & arg_value)
+{
+    int startpos = -1;
+    size_t metricSplitPos = 0;
+
+    std::string failedMetric;
+
+    while ((metricSplitPos = arg_value.find(',', startpos + 1)) != std::string::npos) {
+        auto current_metric = slice(arg_value, startpos + 1, metricSplitPos);
+        auto result = handleMetricGroupOption(parserResult, current_metric);
+        if (!result) {
+            failedMetric = current_metric;
+
+            parserResult.error_messages.emplace_back(lib::Format()
+                                                     << "Invalid value for --metric-group (" << failedMetric << "):");
+
+            return false;
+        }
+
+        startpos = metricSplitPos;
+    }
+
+    auto last_value = slice(arg_value, startpos + 1, arg_value.length());
+    auto result = handleMetricGroupOption(parserResult, last_value);
+
+    if (!result) {
+        if (failedMetric.empty()) {
+            failedMetric = last_value;
+        }
+        parserResult.error_messages.emplace_back(lib::Format()
+                                                 << "Invalid value for --metric-group (" << failedMetric << "):");
+        return false;
+    }
+
+    return true;
+}
+
 void GatorCLIParser::handleCounterList(const std::string & value)
 {
     int startpos = -1;
@@ -478,6 +535,23 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 break;
             case 'E': // events xml path for append
                 result.mEventsXMLAppend = optarg;
+                break;
+            case 'g':
+                result.parameterSetFlag = result.parameterSetFlag | USE_CMDLINE_ARG_GPU_TIMELINE;
+                if (optionInt > 0) {
+                    result.mGPUTimelineEnablement = GPUTimelineEnablement::enable;
+                }
+                else if (optionInt == 0) {
+                    result.mGPUTimelineEnablement = GPUTimelineEnablement::disable;
+                }
+                else if (strcasecmp(optarg, "auto") == 0) {
+                    result.mGPUTimelineEnablement = GPUTimelineEnablement::automatic;
+                }
+                else {
+                    result.error_messages.emplace_back(lib::Format() << "Invalid argument for -g/--gpu-timeline (" << optarg << ")");
+                    result.parsingFailed();
+                    return;
+                }
                 break;
             case 'P':
                 result.pmuPath = optarg;
@@ -626,6 +700,33 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     }
                 }
                 break;
+            case 'W': // workflow
+            {
+                bool workflowSet = false;
+                value = std::string(optarg);
+                if (value == "topdown") {
+                    handleCounterList("workflow_topdown_basic");
+                    workflowSet = true;
+                }
+                else if (value == "spe") {
+                    const std::string defaultSPEParameters = "workflow_spe:";
+                    parseAndUpdateSpe(defaultSPEParameters);
+                    workflowSet = true;
+                }
+                if (!workflowSet) {
+                    result.error_messages.emplace_back(lib::Format()
+                                                       << "Invalid value for --workflow (" << optarg << "):");
+                    result.parsingFailed();
+                }
+                break;
+            }
+            case 'M': {
+                auto metric_result = handleMetricGroups(result, optarg);
+                if (!metric_result) {
+                    result.parsingFailed();
+                }
+                break;
+            }
             case 'C': //counter
             {
                 value = std::string(optarg);
@@ -637,7 +738,8 @@ void GatorCLIParser::parseCLIArguments(int argc,
                 break;
             case 'X': // spe
             {
-                parseAndUpdateSpe();
+                value = std::string(optarg);
+                parseAndUpdateSpe(value);
                 if (result.mode == ExecutionMode::EXIT) {
                     return;
                 }
@@ -721,6 +823,9 @@ void GatorCLIParser::parseCLIArguments(int argc,
                     }
                     else if (strcasecmp(part.c_str(), "detailed-counters") == 0) {
                         result.printables.insert(ParserResult::Printable::COUNTERS_DETAILED);
+                    }
+                    else if (strcasecmp(part.c_str(), "workflows") == 0) {
+                        result.printables.insert(ParserResult::Printable::WORKFLOW);
                     }
                     else {
                         result.error_messages.emplace_back(lib::Format()
@@ -826,6 +931,10 @@ void GatorCLIParser::parseCLIArguments(int argc,
             }
             case 'L': {
                 result.mLogToFile = true;
+                break;
+            }
+            case 'J': {
+                result.mHasProbeReportFlag = GatorCLIParser::hasProbeReportFlag(argc, argv);
                 break;
             }
             case ':': // Missing argument
@@ -1025,10 +1134,16 @@ bool GatorCLIParser::hasCaptureLogFlag(int argc, const char * const argv[])
     return checkBeforeApp(args, argc, argv);
 }
 
+bool GatorCLIParser::hasProbeReportFlag(int argc, const char * const argv[])
+{
+    constexpr std::array<std::string_view, 2> args {{"-J"sv, "--probe-report"sv}};
+
+    return checkBeforeApp(args, argc, argv);
+}
 /* ------------------------------------ last character before new line here ----+ */
 /*                                                                              | */
 /*                                                                              v */
-const char * GatorCLIParser::USAGE_MESSAGE = R"(
+const char * const GatorCLIParser::USAGE_MESSAGE = R"(
 Streamline has 2 modes of operation. Daemon mode (the default), and local
 capture mode, which will capture to disk and then exit. To enable local capture
 mode specify an output directory with --output.
@@ -1152,6 +1267,16 @@ mode specify an output directory with --output.
                                         programmable counters and no fixed cycle
                                         counter, then pass '1' for the value
                                         of '<n>'.
+  -g|--gpu-timeline (yes|no|auto)       Controls GPU timeline data collection.
+                                        'yes' enables collection and produces
+                                        an error if the MaliTimeline_Perfetto
+                                        counter is not enabled. 'no' disables
+                                        collection. 'auto', the default,
+                                        collects data if the counter is enabled
+                                        but otherwise disables collection
+                                        without error. Note: Timeline data is
+                                        provided by a layer driver loaded into
+                                        your application.
 
 * Arguments available only on Android targets:
 
@@ -1212,6 +1337,15 @@ mode specify an output directory with --output.
                                         analysis.  The name 'workflow_all'
                                         is used to enable all available
                                         metrics.
+  -M|--metric-group <metrics>           A comma separated list of
+                                        metric groups to enable. This option may
+                                        be specified multiple times.
+  -W|--workflow <selected-workflow>     Specify an automated workflow methodology.
+                                        Workflows can be viewed by using the
+                                        appropriate print command,
+                                        `--print workflows`.
+                                        Workflows available vary depending on
+                                        the device capabilities.
   -X|--spe <id>[:events=<indexes>][:ops=<types>][:min_latency=<lat>][:inv]
                                         Enable Statistical Profiling Extension
                                         (SPE). Where:
