@@ -147,7 +147,7 @@ static mxml_node_t * getTree(bool includeTime,
     mxmlElementSetAttr(target, "name", cpuInfo.getModelName());
 
     // Get the instance at id 0, as in multi-gpu case gpus are homogenous.
-    const auto gpuInfoInstance = libgpuinfo::instance::create();
+    const auto gpuInfoInstance = libarmgpuinfo::instance::create();
 
     if (gpuInfoInstance != nullptr) {
         const auto * const gpuPublicName = gpuInfoInstance->get_info().gpu_name;
