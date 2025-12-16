@@ -64,7 +64,7 @@ endif()
 # Add strict warning settings for C++
 # ###
 IF("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(GCC_STRICT_WARNING_FLAGS_CXX "-Wall -Wextra -Wno-shadow -Wno-psabi")
+    set(GCC_STRICT_WARNING_FLAGS_CXX "-Wall -Wextra -Wno-shadow -Wno-psabi -Wno-error=maybe-uninitialized")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_STRICT_WARNING_FLAGS_CXX}")
 ELSEIF("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     # disable this until the hwcpipe2 submodule is changed to a vcpkg port

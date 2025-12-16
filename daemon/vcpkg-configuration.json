@@ -1,14 +1,13 @@
 {
     "default-registry": {
         "kind": "builtin",
-        "baseline": "501db0f17ef6df184fcdbfbe0f87cde2313b6ab1"
+        "baseline": "74e6536215718009aae747d86d84b78376bf9e09"
     },
     "registries": [
         {
             "kind": "filesystem",
             "path": "../vcpkg_registry",
             "packages": [
-                "boost-filesystem",
                 "mxml"
             ]
         }
